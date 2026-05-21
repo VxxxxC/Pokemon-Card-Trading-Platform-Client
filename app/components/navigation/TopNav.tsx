@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const navLinks = [
-  { href: "/", label: "ホーム" },
-  { href: "/search", label: "検索" },
-  { href: "/portfolio", label: "コレクション" },
-  { href: "/market", label: "マーケット" },
+  { href: "/", label: "首頁" },
+  { href: "/search", label: "搜尋" },
+  { href: "/portfolio", label: "收藏集" },
+  { href: "/market", label: "市場" },
 ];
 
 export function TopNav({ activePath = "/" }: { activePath?: string }) {
@@ -45,7 +45,7 @@ export function TopNav({ activePath = "/" }: { activePath?: string }) {
             登入
           </button>
           <button className="h-9 px-4 font-sans text-sm font-medium text-white bg-[#2563EB] rounded-[8px] hover:bg-[#1d4ed8] active:scale-[0.98] active:translate-y-[1px] transition-transform">
-            無料登録
+            免費註冊
           </button>
         </div>
       </div>

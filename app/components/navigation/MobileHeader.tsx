@@ -7,7 +7,7 @@ export function MobileHeader() {
         </span>
         <button
           className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F8F9FA] active:scale-[0.98] transition-transform"
-          aria-label="通知を見る"
+          aria-label="查看通知"
         >
           <BellIcon />
           <span className="absolute top-1.5 right-1.5 w-[18px] h-[18px] bg-[#DC2626] rounded-full font-mono text-[10px] text-white flex items-center justify-center leading-none">

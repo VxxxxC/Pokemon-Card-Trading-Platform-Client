@@ -28,32 +28,32 @@ function ChevronRightIcon() {
 
 const settingsSections = [
   {
-    title: "アカウント",
+    title: "帳號",
     items: [
       {
-        label: "プロフィール編集",
-        description: "名前・プロフィール画像の変更",
+        label: "編輯個人資料",
+        description: "變更名稱與個人頭像",
       },
       {
-        label: "KYC認証",
-        description: "商業売り手として認証（審査: 0〜3営業日）",
+        label: "KYC認證",
+        description: "認證為商業賣家（審核：0〜3個工作日）",
       },
       {
-        label: "支払い方法",
-        description: "クレジットカード・銀行振込の管理",
+        label: "付款方式",
+        description: "信用卡與銀行轉帳管理",
       },
     ],
   },
   {
-    title: "セキュリティ",
+    title: "安全性",
     items: [
       {
-        label: "パスワード変更",
-        description: "8文字以上の強力なパスワードを設定",
+        label: "變更密碼",
+        description: "設定8字元以上的強力密碼",
       },
       {
-        label: "二段階認証",
-        description: "SMS認証でアカウントを保護",
+        label: "兩步驟驗證",
+        description: "以SMS驗證保護帳號",
       },
     ],
   },
@@ -61,29 +61,29 @@ const settingsSections = [
     title: "通知",
     items: [
       {
-        label: "取引通知",
-        description: "入札・落札・発送のリアルタイム通知",
+        label: "交易通知",
+        description: "出價、得標及發貨的即時通知",
       },
       {
-        label: "価格アラート",
-        description: "ウォッチリストの価格変動通知",
+        label: "價格提醒",
+        description: "追蹤清單的價格變動通知",
       },
     ],
   },
   {
-    title: "その他",
+    title: "其他",
     items: [
       {
-        label: "言語 / 通貨",
-        description: "日本語 · 日本円（¥）",
+        label: "語言 / 貨幣",
+        description: "繁體中文 · 日圓（¥）",
       },
       {
-        label: "プライバシーポリシー",
-        description: "個人情報の取り扱いについて",
+        label: "隱私政策",
+        description: "關於個人資料的處理方式",
       },
       {
-        label: "利用規約",
-        description: "PokéTrade JP サービス利用規約",
+        label: "服務條款",
+        description: "PokéTrade JP 服務使用條款",
       },
     ],
   },

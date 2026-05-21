@@ -23,7 +23,7 @@ const featuredCards: CardData[] = [
     delta: 1000,
     deltaDirection: "down",
     image: "https://picsum.photos/seed/poke-mewtwo/400/280",
-    seller: "京都カード専門店",
+    seller: "京都卡牌專門店",
   },
   {
     id: "sv6a-109",
@@ -35,7 +35,7 @@ const featuredCards: CardData[] = [
     delta: 1500,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-umbreon/400/280",
-    seller: "大阪コレクター",
+    seller: "大阪收藏家",
   },
   {
     id: "sv2a-215",
@@ -59,7 +59,7 @@ const featuredCards: CardData[] = [
     delta: 3200,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-mimikyu/400/280",
-    seller: "名古屋トレーダー",
+    seller: "名古屋交易商",
   },
   {
     id: "sv2a-213",
@@ -71,7 +71,7 @@ const featuredCards: CardData[] = [
     delta: 800,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-eevee/400/280",
-    seller: "福岡カードショップ",
+    seller: "福岡卡牌店",
   },
 ];
 

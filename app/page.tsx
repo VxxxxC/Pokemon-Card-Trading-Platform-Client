@@ -22,13 +22,13 @@ export default function HomePage() {
                 id="featured-heading"
                 className="font-sans font-semibold text-[20px] text-[#202124]"
               >
-                厳選出品
+                精選出品
               </h2>
               <a
                 href="/search"
                 className="font-mono text-[12px] text-[#2563EB] hover:underline"
               >
-                すべて見る →
+                查看全部 →
               </a>
             </div>
             <CardGrid />
@@ -41,14 +41,14 @@ export default function HomePage() {
                 id="transactions-heading"
                 className="font-sans font-semibold text-[20px] text-[#202124]"
               >
-                最新の取引
+                最新交易
               </h2>
               <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[#16A34A]">
                 <span
                   className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse"
                   aria-hidden="true"
                 />
-                リアルタイム
+                即時
               </span>
             </div>
             <TransactionWall />

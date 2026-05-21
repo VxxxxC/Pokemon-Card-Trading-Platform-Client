@@ -4,7 +4,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 
 export const metadata: Metadata = {
-  title: "カード検索",
+  title: "卡牌搜尋",
 };
 
 function SearchIcon() {
@@ -34,7 +34,7 @@ export default function SearchPage() {
 
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 lg:px-8 py-6 pb-24 lg:pb-8">
         <h1 className="font-sans font-bold text-[24px] text-[#202124] mb-6">
-          カード検索
+          卡牌搜尋
         </h1>
 
         {/* Search Input */}
@@ -44,19 +44,19 @@ export default function SearchPage() {
           </div>
           <input
             type="search"
-            placeholder="カード名・シリアル番号で検索（例: sv2a-182 / Charizard ex）"
+            placeholder="以卡牌名稱或序號搜尋（例：sv2a-182 / Charizard ex）"
             className="w-full h-12 pl-11 pr-4 bg-white border border-[rgba(226,232,240,0.6)] rounded-[8px] font-sans text-[16px] text-[#202124] placeholder:text-[#5F6368] focus:outline-none focus:ring-1 focus:ring-[rgba(37,99,235,0.4)] shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
           />
         </div>
 
         {/* Filter chips */}
         <div className="flex gap-2 mb-8 flex-wrap">
-          {["すべて", "SAR", "UR", "SR", "AR", "グレード済み"].map(
+          {["全部", "SAR", "UR", "SR", "AR", "已評級"].map(
             (filter) => (
               <button
                 key={filter}
                 className={`h-8 px-3 font-mono text-[12px] font-medium rounded-[4px] border transition-colors active:scale-[0.98] transition-transform ${
-                  filter === "すべて"
+                  filter === "全部"
                     ? "bg-[#2563EB] text-white border-[#2563EB]"
                     : "bg-white text-[#5F6368] border-[rgba(226,232,240,0.6)] hover:border-[#2563EB] hover:text-[#2563EB]"
                 }`}
@@ -70,7 +70,7 @@ export default function SearchPage() {
         {/* Empty state */}
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="font-sans text-[16px] text-[#5F6368] max-w-sm leading-relaxed">
-            カード名またはシリアル番号を入力して検索してください。
+            請輸入卡牌名稱或序號進行搜尋。
           </p>
           <p className="font-mono text-[12px] text-[#5F6368] mt-2">
             例: Charizard ex · sv2a-182 · SAR

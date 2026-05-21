@@ -17,8 +17,8 @@ export type CardData = {
 };
 
 export function CardItem({ card }: { card: CardData }) {
-  const formattedPrice = `¥${card.price.toLocaleString("ja-JP")}`;
-  const formattedDelta = `${card.deltaDirection === "up" ? "▲" : "▼"} ¥${card.delta.toLocaleString("ja-JP")}`;
+  const formattedPrice = `¥${card.price.toLocaleString("zh-TW")}`;
+  const formattedDelta = `${card.deltaDirection === "up" ? "▲" : "▼"} ¥${card.delta.toLocaleString("zh-TW")}`;
 
   return (
     <article className="group bg-white rounded-[16px] border border-[rgba(226,232,240,0.6)] shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200 overflow-hidden">
@@ -72,7 +72,7 @@ export function CardItem({ card }: { card: CardData }) {
             </span>
           </div>
           <div className="text-right">
-            <p className="font-mono text-[11px] text-[#5F6368]">出品者</p>
+            <p className="font-mono text-[11px] text-[#5F6368]">賣家</p>
             <p className="font-sans text-[13px] text-[#202124] truncate max-w-[100px]">
               {card.seller}
             </p>

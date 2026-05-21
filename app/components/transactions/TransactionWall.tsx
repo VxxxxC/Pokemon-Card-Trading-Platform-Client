@@ -6,7 +6,7 @@ const transactions = [
     delta: 2400,
     deltaDir: "up" as const,
     grade: "PSA 10",
-    time: "2分前",
+    time: "2分鐘前",
   },
   {
     id: "sv2a-189",
@@ -15,7 +15,7 @@ const transactions = [
     delta: 1000,
     deltaDir: "down" as const,
     grade: "BGS 9.5",
-    time: "8分前",
+    time: "8分鐘前",
   },
   {
     id: "sv6a-109",
@@ -24,7 +24,7 @@ const transactions = [
     delta: 1500,
     deltaDir: "up" as const,
     grade: "PSA 10",
-    time: "15分前",
+    time: "15分鐘前",
   },
   {
     id: "sv2a-215",
@@ -33,7 +33,7 @@ const transactions = [
     delta: 300,
     deltaDir: "down" as const,
     grade: "CGC 9",
-    time: "23分前",
+    time: "23分鐘前",
   },
   {
     id: "sv2a-233",
@@ -42,7 +42,7 @@ const transactions = [
     delta: 3200,
     deltaDir: "up" as const,
     grade: "PSA 9",
-    time: "31分前",
+    time: "31分鐘前",
   },
   {
     id: "sv2a-213",
@@ -51,7 +51,7 @@ const transactions = [
     delta: 800,
     deltaDir: "up" as const,
     grade: "RAW NM",
-    time: "45分前",
+    time: "45分鐘前",
   },
   {
     id: "sv3-199",
@@ -60,7 +60,7 @@ const transactions = [
     delta: 500,
     deltaDir: "down" as const,
     grade: "BGS 9",
-    time: "1時間前",
+    time: "1小時前",
   },
   {
     id: "sv2a-197",
@@ -69,7 +69,7 @@ const transactions = [
     delta: 700,
     deltaDir: "up" as const,
     grade: "PSA 10",
-    time: "1時間前",
+    time: "1小時前",
   },
 ];
 
@@ -104,7 +104,7 @@ export function TransactionWall() {
           {/* Price + delta */}
           <div className="text-right shrink-0">
             <p className="font-mono font-medium text-[14px] text-[#202124]">
-              ¥{tx.price.toLocaleString("ja-JP")}
+              ¥{tx.price.toLocaleString("zh-TW")}
             </p>
             <span
               className={`font-mono text-[11px] ${
@@ -112,7 +112,7 @@ export function TransactionWall() {
               }`}
             >
               {tx.deltaDir === "up" ? "▲" : "▼"} ¥
-              {tx.delta.toLocaleString("ja-JP")}
+              {tx.delta.toLocaleString("zh-TW")}
             </span>
           </div>
 
