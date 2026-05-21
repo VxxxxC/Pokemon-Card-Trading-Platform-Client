@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="PokéTrade JP icon">
+  <rect width="512" height="512" rx="72" fill="#F8F9FA"/>
+  <rect x="48" y="48" width="416" height="416" rx="64" fill="#FFFFFF" stroke="rgba(226,232,240,0.6)" stroke-width="4"/>
+  <path d="M112 286h288" stroke="#202124" stroke-width="22" stroke-linecap="round"/>
+  <circle cx="256" cy="286" r="46" fill="#FFFFFF" stroke="#202124" stroke-width="20"/>
+  <path d="M101 251c14-78 81-136 155-136s141 58 155 136" fill="none" stroke="#2563EB" stroke-width="26" stroke-linecap="round"/>
+</svg>

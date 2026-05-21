@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
+import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
+import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
 
 const APP_NAME = "PokéTrade JP";
@@ -42,8 +44,12 @@ export default function RootLayout({
       lang="zh-TW"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-[100dvh] bg-[#F8F9FA] text-[#202124] font-sans">
-        <AppSerwistProvider>{children}</AppSerwistProvider>
+      <body className="min-h-dvh bg-[#F8F9FA] text-[#202124] font-sans">
+        <AppSerwistProvider>
+          <PwaNetworkBanner />
+          {children}
+          <PwaInstallPrompt />
+        </AppSerwistProvider>
       </body>
     </html>
   );
