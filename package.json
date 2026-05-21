@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev & lt --port 3000",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "localtunnel": "lt --port 3000 --subdomain pokemon-trading-platform"
   },
   "dependencies": {
     "@serwist/next": "^9.5.7",
