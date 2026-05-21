@@ -16,7 +16,7 @@ When the user asks to create a new page, component, or UI feature, you MUST stri
   - *Prompting Rule:* Always remind the agent to "Strictly adhere to the anti-patterns and aesthetic rules in DESIGN.md. Do not hallucinate generic metrics."
 
 * **Step 3: Code Implementation (`react:components` & `shadcn-ui`)**
-  Once the Stitch prototype is approved, use the `.github/prompts/react-components.md` and `.github/prompts/shadcn-ui.md` skills to convert it into modular Next.js Server/Client components.
+  Once the Stitch prototype is approved, use the `.github/prompts/react-components.prompt.md` and `.github/prompts/shadcn-ui.prompt.md` skills to convert it into modular Next.js Server/Client components.
 
 ## Core Directives
 1. **Design System Absolute Obedience**: ALL frontend code must extract colors, fonts, and spacing STRICTLY from `/design.md`. Never invent arbitrary Tailwind values.
