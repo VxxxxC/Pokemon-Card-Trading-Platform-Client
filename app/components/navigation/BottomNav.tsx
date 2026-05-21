@@ -6,17 +6,17 @@ import { usePathname } from "next/navigation";
 const navItems = [
   {
     href: "/",
-    label: "首頁",
+    label: "ホーム",
     icon: HomeIcon,
   },
   {
     href: "/search",
-    label: "搜尋",
+    label: "検索",
     icon: SearchIcon,
   },
   {
     href: "/portfolio",
-    label: "收藏",
+    label: "収集",
     icon: BookmarkIcon,
   },
   {

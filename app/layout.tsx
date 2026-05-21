@@ -6,10 +6,10 @@ import { AppSerwistProvider } from "@/app/components/serwist-provider";
 import "./globals.css";
 
 const APP_NAME = "PokéTrade JP";
-const APP_DEFAULT_TITLE = "PokéTrade JP — 日版寶可夢卡牌専業交易平台";
+const APP_DEFAULT_TITLE = "PokéTrade JP — 日本版ポケモンカード専門取引プラットフォーム";
 const APP_TITLE_TEMPLATE = "%s | PokéTrade JP";
 const APP_DESCRIPTION =
-  "専業日版寶可夢卡牌交易平台。透明市場成交數據，安全託管付款，針對收藏家及專業投資者。";
+  "日本版ポケモンカードの専門取引プラットフォーム。リアルタイム市場データ、安全なエスクロー決済、コレクター・専門投資家向けサービス。";
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,

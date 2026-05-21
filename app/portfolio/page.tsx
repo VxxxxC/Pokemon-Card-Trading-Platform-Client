@@ -21,7 +21,7 @@ export default function PortfolioPage() {
             マイコレクション
           </h1>
           <p className="font-sans text-[14px] text-[#5F6368] mt-1">
-            資深收藏家
+            ベテランコレクター
           </p>
         </div>
 

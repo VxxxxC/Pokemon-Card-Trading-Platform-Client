@@ -22,7 +22,7 @@ export default function HomePage() {
                 id="featured-heading"
                 className="font-sans font-semibold text-[20px] text-[#202124]"
               >
-                精選上架
+                厳選出品
               </h2>
               <a
                 href="/search"
@@ -41,7 +41,7 @@ export default function HomePage() {
                 id="transactions-heading"
                 className="font-sans font-semibold text-[20px] text-[#202124]"
               >
-                最新成交
+                最新の取引
               </h2>
               <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[#16A34A]">
                 <span

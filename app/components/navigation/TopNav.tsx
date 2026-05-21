@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const navLinks = [
-  { href: "/", label: "首頁" },
-  { href: "/search", label: "搜尋" },
-  { href: "/portfolio", label: "收藏" },
-  { href: "/market", label: "市場" },
+  { href: "/", label: "ホーム" },
+  { href: "/search", label: "検索" },
+  { href: "/portfolio", label: "コレクション" },
+  { href: "/market", label: "マーケット" },
 ];
 
 export function TopNav({ activePath = "/" }: { activePath?: string }) {

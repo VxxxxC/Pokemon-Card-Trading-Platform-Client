@@ -1,7 +1,7 @@
 {
-  "name": "PokéTrade JP — 日版寶可夢卡牌専業交易平台",
+  "name": "PokéTrade JP — 日本版ポケモンカード専門取引プラットフォーム",
   "short_name": "PokéTrade JP",
-  "description": "専業日版寶可夢卡牌交易平台。透明市場成交數據，安全託管付款。",
+  "description": "日本版ポケモンカードの専門取引プラットフォーム。リアルタイム市場データ、安全なエスクロー決済。",
   "icons": [
     {
       "src": "/icons/android-chrome-192x192.png",
