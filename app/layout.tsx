@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="ja"
+      lang="zh-TW"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="min-h-[100dvh] bg-[#F8F9FA] text-[#202124] font-sans">
