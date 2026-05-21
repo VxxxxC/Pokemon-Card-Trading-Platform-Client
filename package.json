@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev & lt --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -24,6 +24,7 @@
     "esbuild": "^0.28.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "localtunnel": "^2.0.2",
     "serwist": "^9.5.7",
     "tailwindcss": "^4",
     "typescript": "^5"
