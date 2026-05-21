@@ -1,6 +1,7 @@
 {
-  "name": "Pokemon Card Trading Platform PWA app",
-  "short_name": "Pokemon Trading App",
+  "name": "PokéTrade JP — 日版寶可夢卡牌専業交易平台",
+  "short_name": "PokéTrade JP",
+  "description": "専業日版寶可夢卡牌交易平台。透明市場成交數據，安全託管付款。",
   "icons": [
     {
       "src": "/icons/android-chrome-192x192.png",
@@ -14,8 +15,8 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#FFFFFF",
-  "background_color": "#FFFFFF",
+  "theme_color": "#2563EB",
+  "background_color": "#F8F9FA",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait"

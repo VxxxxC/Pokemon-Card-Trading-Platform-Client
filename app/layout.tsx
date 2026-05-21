@@ -1,23 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
 import "./globals.css";
 
-const APP_NAME = "My Default PWA App";
-const APP_DEFAULT_TITLE = "PWA App";
-const APP_TITLE_TEMPLATE = "%s - PWA App";
-const APP_DESCRIPTION = "Best PWA App in the world!";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const APP_NAME = "PokéTrade JP";
+const APP_DEFAULT_TITLE = "PokéTrade JP — 日版寶可夢卡牌専業交易平台";
+const APP_TITLE_TEMPLATE = "%s | PokéTrade JP";
+const APP_DESCRIPTION =
+  "専業日版寶可夢卡牌交易平台。透明市場成交數據，安全託管付款，針對收藏家及專業投資者。";
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -30,7 +22,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: APP_DEFAULT_TITLE,
-    // startUpImage: [],
   },
   formatDetection: {
     telephone: false,
@@ -38,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FFFFFF",
+  themeColor: "#2563EB",
 };
 
 export default function RootLayout({
@@ -48,10 +39,10 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="ja"
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body>
+      <body className="min-h-[100dvh] bg-[#F8F9FA] text-[#202124] font-sans">
         <AppSerwistProvider>{children}</AppSerwistProvider>
       </body>
     </html>

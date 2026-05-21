@@ -1,0 +1,39 @@
+export function MobileHeader() {
+  return (
+    <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-white border-b border-[rgba(226,232,240,0.6)]">
+      <div className="h-full px-4 flex items-center justify-between">
+        <span className="font-sans font-bold text-[18px] text-[#202124] tracking-tight">
+          PokéTrade <span className="text-[#2563EB]">JP</span>
+        </span>
+        <button
+          className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F8F9FA] active:scale-[0.98] transition-transform"
+          aria-label="通知を見る"
+        >
+          <BellIcon />
+          <span className="absolute top-1.5 right-1.5 w-[18px] h-[18px] bg-[#DC2626] rounded-full font-mono text-[10px] text-white flex items-center justify-center leading-none">
+            3
+          </span>
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#202124"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
