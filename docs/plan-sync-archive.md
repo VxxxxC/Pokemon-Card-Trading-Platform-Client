@@ -4,7 +4,6 @@
 Before writing code, read these files in order:
 1. [.github/copilot-instructions.md](../.github/copilot-instructions.md)
 2. [design.md](../design.md)
-3. [requirement.md](../requirement.md)
 4. This archive: [docs/plan-sync-archive.md](./plan-sync-archive.md)
 
 If you are using non-Copilot AI tools, still enforce the same workflow and constraints from [/.github/copilot-instructions.md](../.github/copilot-instructions.md).
