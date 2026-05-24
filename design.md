@@ -1,228 +1,489 @@
-# Design System: PokéTrade JP
+# 設計系統：PokéTrade JP
+
+> 🌐 **語言與字體**：本設計系統使用**繁體中文**作為主要用戶介面語言，專為香港用戶優化。主要字體為 **Chiron GoRound TC**（Google Fonts），圓潤親切的現代感。所有用戶文本應遵循繁體中文標準，避免簡體或日文混用。
+
+> **字體匯入**：在 `app/layout.tsx` 或全域 CSS 中加入：
+> ```css
+> @import url('https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;500;600;700&display=swap');
+> ```
+> Tailwind config: `fontFamily: { sans: ['Chiron GoRound TC', 'sans-serif'] }`
 
 ## Brand & Context
 
-- **Product Name**: PokéTrade JP
-- **Sector**: Pokémon TCG 專業交易與投資平台
-- **Target User**: 針對日版卡牌收藏家及專業賣家
-- **Visual Personality**: 結合「專業金融股票系統」的嚴謹感與「日系極簡」設計
-- **Guiding Principle**: 數據驅動與透明化。介面需強調實時成交數據與實物細節展示
+- **產品名稱**: PokéTrade JP
+- **產業**: Pokémon TCG 年輕交易社區與收藏平台
+- **目標用戶**: 日版卡牌收藏家、交易愛好者、遊戲玩家（年輕世代）
+- **視覺個性**: Apple Shop App 的簡潔風格 + Pokémon 品牌的活力感 + 日系極簡美學
+- **設計原則**: 直觀易用、社區驅動。介面強調卡牌視覺展示與交易流暢度，而非數據轟炸
 
 ---
 
-## 1. Visual Theme & Atmosphere
+## 1. 視覺主題與氛圍
 
-A precision-engineered trading terminal blended with Japanese curatorial minimalism. The atmosphere is **data-dense but never cluttered** — like a Bloomberg Terminal that attended a Tokyo TCG gallery opening. Every pixel earns its place: real transaction prices, real card grades, real yen values. No decorative noise, no AI filler.
+年輕、極簡的交易中心，靈感來自 **Apple Shop App**——強調清晰性與呼吸感勝過數據密度。氛圍是**平靜、活力、卡牌為中心**。每個螢幕都以 Pokémon 卡牌本身為主角，UI 元素優雅地融入負面空間。想像：策劃好的展廊體驗，而非 Bloomberg 終端。
 
-- **Density**: 7 — Data-heavy Fintech dashboard. Prices, grades, escrow status, and live transaction history coexist with calibrated breathing room.
-- **Variance**: 6 — Asymmetric panel splits preferred over equal-width grids. Desktop favours left-heavy data layouts with narrow right sidebars.
-- **Motion**: 8 — Spring-physics driven. Every interactive element has tactile weight. Perpetual micro-motion on live price tickers and active escrow indicators.
-
----
-
-## 2. Color Palette & Roles
-
-- **Misty Canvas** (`#F8F9FA`) — Primary page background. Cool, clinical. Never pure white.
-- **Pure Surface** (`#FFFFFF`) — Card and panel fill. Used only to lift components above the canvas.
-- **Off-Black Ink** (`#202124`) — Primary text, card names, core transaction data. Never pure `#000000`.
-- **Steel Mist** (`#5F6368`) — Secondary text, card serial numbers, rarity labels, timestamps, metadata.
-- **Whisper Border** (`rgba(226,232,240,0.6)`) — All card edges, table row dividers, 1px structural lines. Never heavy strokes.
-- **Trade Indigo** (`#2563EB`) — **Sole brand accent**. Primary CTAs (「直接購買」), active navigation states, focus rings, links. Saturation calibrated below 80%.
-- **Bullish Jade** (`#16A34A`) — **Semantic-only**. Rising price deltas (`▲ ¥2,400`), successful escrow milestones, grade confirmation. Never used as a brand or decorative color.
-- **Bearish Crimson** (`#DC2626`) — **Semantic-only**. Falling price deltas (`▼ ¥1,800`), escrow warnings, security alerts, KYC rejection notices. Never decorative.
-
-> **Accent discipline**: Trade Indigo is the only brand accent. Bullish Jade and Bearish Crimson are market-semantic signals — used exclusively for directional data and status feedback, never for decorative UI elements.
+- **密度**: 4–5 — 充足的留白。卡牌、圖片、描述主導；次要 UI 隱藏在抽屜/彈窗中。
+- **變化度**: 5 — 對稱、平衡的佈局為主。英雄產品圖片佔 60–70% 的視窗。
+- **動畫**: 6 — 溫和的彈簧物理。無永續循環。互動感反應靈敏但絕不喧鬧。手勢滑動與捲軸式揭示。
 
 ---
 
-## 3. Typography Rules
+## 2. 色彩調色板與角色定義
 
-- **Display / Headlines**: `Geist` — Track-tight, weight-driven hierarchy. Bold (700) for page titles (`24px`), SemiBold (600) for section headers (`20px`). Scale capped — no screaming headlines.
-- **Body / UI Text**: `Geist` — Regular (400), relaxed leading (`1.6`), max `65ch` per line. Secondary copy in Steel Mist.
-- **Monospace / All Data**: `Geist Mono` — **Mandatory** for every price (`¥120,000`), grade (`PSA 10`, `BGS 9.5`), serial number (`sv2a-215`), percentage delta, and tabular data. No exceptions.
-- **Rarity Labels**: `Geist Mono` — `12px / Medium`. SAR, UR, SR, AR chips rendered in monospace for typographic precision.
+### 色彩和諧設計理念
 
-**Type Scale:**
-| Role | Font | Size | Weight |
+平台的色彩主題與 **HKCardVault 品牌標誌**（金色主色 + 棕色副色）相協調，同時採用 **Apple Shop App 簡潔美學**。我們創造的是淺色、年輕的調色板，讓**卡牌圖像視覺主導**。
+
+**策略：**
+- **背景**: 純淨白色/米色展示卡牌攝影
+- **品牌重點**: 溫暖金色謹慎使用，用於行動按鈕與互動高亮（非裝飾）
+- **次要重點**: 鮮活活動訊號（綠色代表成功交易、紫色代表特殊事件、粉紅代表社區亮點）
+- **文字**: 最少灰階階層（深色用於主要內容、淡灰用於次要內容）
+
+此方法結合**標誌品牌忠誠度**與 **Apple 的以產品為先的極簡設計哲學**。
+
+### 中立基礎（明亮 & 清爽）
+- **純白** (`#FFFFFF`) — 所有卡牌填充、主要表面。臨床清晰度用於卡牌圖像展示。
+- **米色帆布** (`#FAFAF8`) — 淡色頁面背景，僅比白色深 3–5%。幾乎無法察覺，但暖度存在。
+- **暖深灰** (`#1A1A18`) — 主要文字（卡牌名稱、價格、描述）。富含深色調但無純 `#000000`。
+- **卡奇霧** (`#9CA0A6`) — 次要文字、時間戳、淡化中繼資料。中性灰色以減少視覺競爭。
+- **柔軟邊框** (`rgba(0,0,0,0.08)`) — 卡牌邊緣、分隔線、淡化結構線。最小對比以保持不雜亂外觀。
+
+### 品牌重點（珍貴金屬，謹慎使用）
+- **溫暖金色** (`#D4A574`) — **獨有品牌色**。主要行動按鈕（「購買」、「出品」）、活躍分頁指示器、已選狀態。溫暖底色致敬標誌遺產。僅用作**點綴重點**，從不用於大面積填充。
+- *深度層次替代色:* **淡青銅** (`#C9A674`) — 僅用於金色元素的懸停狀態。創造溫和深度分層。
+
+### 次要活動訊號（年輕驅動）
+- **鮮活綠** (`#10B981`) — 交易確認、成功出價、正面通知。新鮮、容易接近的能量。
+- **鮮活紫** (`#8B5CF6`) — 新上市品、特殊事件、限時優惠、社區亮點。遊戲感美學。
+- **淡粉紅** (`#EC4899`) — 社交功能（評論、社區提及、用戶里程碑）。友善、包容的語調。
+- **警告紅** (`#EF4444`) — 僅限保管警告、過期優惠、關鍵警報。語義訊號，非裝飾。
+
+> **年輕設計規則**: 次要色（綠、紫、粉）注入個性與易近性。金色保持獨有品牌重點。所有色彩位於明亮、最少背景——從不深色或過飽和。這創造**活力但可信**的交易環境。
+
+> ⚠️ **禁止藍色 / 禁止重金融色**：調色板刻意溫暖且年輕，拒絕企業金融科技美學（藍色、灰色、深中立色）。保持能量水平校準：重點飽和度 60–80%，從不純霓虹。
+
+---
+
+## 2B. 深色主題色彩系統
+
+### 設計哲學：夜間展廊美學
+
+深色主題的靈感是**午夜展廊**——溫暖的暗色底蘊、金色打燈、卡牌在深色絲絨上發光。絕非冷藍灰的科技深色模式。整個調色板維持**琥珀底調**，確保深色模式與淺色模式有一致的品牌溫度。
+
+**策略：**
+- 背景使用**暖調深色**（微微琥珀/棕色底），不用純中性灰或冷藍黑
+- **溫暖金色 `#D4A574` 維持完全不變** — 品牌錨點在兩個模式下保持相同
+- 活動訊號色微調至略亮版本以確保深色背景對比
+- 文字改為**溫暖乳白**，從不用純白 `#FFFFFF`
+
+---
+
+### 中立基礎（深色 & 溫暖）
+
+背景層次由深至淺，每層差異細微但可察覺：
+
+| 角色 | 色彩名稱 | Hex | CSS Token | 用途 |
+|---|---|---|---|---|
+| 最深底層 | 深絲絨 | `#0D0C0A` | `--bg-shell` | App Shell 最底層、Modal 遮罩底色 |
+| 頁面背景 | 暖夜色 | `#14120E` | `--bg-page` | 主頁面背景（等同淺色 `#FAFAF8`） |
+| 卡牌表面 | 深畫布 | `#1E1C18` | `--bg-card` | 卡牌填充、面板、側欄（等同淺色 `#FFFFFF`） |
+| 抬升表面 | 浮層 | `#272521` | `--bg-elevated` | Modal 內容區、下拉選單、抽屜 |
+| 高亮表面 | 懸停層 | `#312F2A` | `--bg-hover` | 列表懸停、選中行、聚焦背景 |
+
+> **禁止**: 深色模式下使用 `#000000`（純黑）。最深層用 `#0D0C0A`，保留暖調底色。
+> **禁止**: 使用藍灰或中性灰（`#1A1A2E`、`#16213E`）——這會破壞品牌溫度。
+
+---
+
+### 文字（深色模式）
+
+| 角色 | 色彩名稱 | Hex | CSS Token | 用途 |
+|---|---|---|---|---|
+| 主要文字 | 暖乳白 | `#EDE8E0` | `--text-primary` | 卡牌名稱、價格、區段標題（等同淺色 `#1A1A18`） |
+| 次要文字 | 暖霧灰 | `#8A8680` | `--text-secondary` | 時間戳、中繼資料、次要標籤（等同淺色 `#9CA0A6`） |
+| 停用文字 | 深霧 | `#4A4845` | `--text-disabled` | 停用狀態、佔位符（僅限停用） |
+
+> **禁止**: 主要文字用 `#FFFFFF`（純白）。用 `#EDE8E0` 保持溫度。
+
+---
+
+### 品牌重點（深色模式下更耀眼）
+
+| 角色 | 色彩名稱 | Hex | CSS Token | 說明 |
+|---|---|---|---|---|
+| 主品牌色 | 溫暖金色 | `#D4A574` | `--gold` | **與淺色模式完全相同** — 深色背景令金色自然更突出 |
+| 懸停狀態 | 淡青銅 | `#C9A674` | `--gold-hover` | 金色元素懸停，同淺色模式 |
+| 金色環境光 | 金色暈光 | `rgba(212,165,116,0.15)` | `--gold-ambient` | 活躍標籤背景、骨架微光基底（深色模式下稍加強） |
+| 金色邊框 | 金色描邊 | `rgba(212,165,116,0.25)` | `--gold-border` | 聚焦環、金色輪廓按鈕 |
+
+---
+
+### 邊框與分隔線（深色模式）
+
+| 用途 | 深色模式值 | 淺色模式對應 |
+|---|---|---|
+| 標準卡牌邊框 | `rgba(255,255,255,0.07)` | `rgba(0,0,0,0.08)` |
+| 強調邊框 | `rgba(255,255,255,0.12)` | `rgba(0,0,0,0.12)` |
+| 聚焦環 | `rgba(212,165,116,0.35)` | `rgba(212,165,116,0.40)` |
+
+---
+
+### 次要活動訊號（深色模式微調版）
+
+深色背景下，原始活動色飽和度充足，但微調至 **Tailwind 300–400** 層級以確保 AA 對比：
+
+| 角色 | 淺色模式 | **深色模式** | CSS Token | 用途 |
+|---|---|---|---|---|
+| 鮮活綠 | `#10B981` | **`#34D399`** | `--signal-green` | 交易確認、成功通知 |
+| 鮮活紫 | `#8B5CF6` | **`#A78BFA`** | `--signal-purple` | 新上市、特殊事件 |
+| 淡粉紅 | `#EC4899` | **`#F472B6`** | `--signal-pink` | 社交功能、社區亮點 |
+| 警告紅 | `#EF4444` | **`#F87171`** | `--signal-red` | 保管警告、關鍵警報 |
+
+> 信號色只調亮，**色相不變**。語義意義保持跨模式一致。
+
+---
+
+### CSS 自定義屬性參考
+
+建議在 `app/globals.css` 以 CSS Layer 實現：
+
+```css
+@layer base {
+  :root {
+    /* 淺色模式（預設） */
+    --bg-page:        #FAFAF8;
+    --bg-card:        #FFFFFF;
+    --bg-elevated:    #FFFFFF;
+    --bg-hover:       rgba(0,0,0,0.04);
+    --text-primary:   #1A1A18;
+    --text-secondary: #9CA0A6;
+    --text-disabled:  #C4C4C4;
+    --border:         rgba(0,0,0,0.08);
+    --gold:           #D4A574;
+    --gold-hover:     #C9A674;
+    --gold-ambient:   rgba(212,165,116,0.10);
+    --signal-green:   #10B981;
+    --signal-purple:  #8B5CF6;
+    --signal-pink:    #EC4899;
+    --signal-red:     #EF4444;
+  }
+
+  .dark {
+    /* 深色模式 */
+    --bg-shell:       #0D0C0A;
+    --bg-page:        #14120E;
+    --bg-card:        #1E1C18;
+    --bg-elevated:    #272521;
+    --bg-hover:       #312F2A;
+    --text-primary:   #EDE8E0;
+    --text-secondary: #8A8680;
+    --text-disabled:  #4A4845;
+    --border:         rgba(255,255,255,0.07);
+    --gold:           #D4A574;   /* 不變 */
+    --gold-hover:     #C9A674;   /* 不變 */
+    --gold-ambient:   rgba(212,165,116,0.15);
+    --gold-border:    rgba(212,165,116,0.25);
+    --signal-green:   #34D399;
+    --signal-purple:  #A78BFA;
+    --signal-pink:    #F472B6;
+    --signal-red:     #F87171;
+  }
+}
+```
+
+---
+
+### 深色模式元件覆蓋
+
+#### 卡牌（深色）
+- 背景: `var(--bg-card)` → `#1E1C18`
+- 邊框: `1px solid rgba(255,255,255,0.07)`
+- 陰影: `0 2px 12px rgba(0,0,0,0.40)` — 深色背景陰影需加強才可察覺
+- 懸停陰影: `0 4px 24px rgba(0,0,0,0.55)` + `scale(1.02)`
+
+#### 浮動液體玻璃選項卡欄（深色）
+- 背景: `rgba(13,12,10,0.75)` + `backdrop-filter: blur(20px)`
+- 邊框: `1px solid rgba(255,255,255,0.08)`
+- 活躍標籤背景: `rgba(212,165,116,0.15)` — 金色環境光
+- 活躍圖示: 溫暖金色 `#D4A574`（同淺色）
+- 非活躍圖示: `#8A8680`（暖霧灰，取代淺色模式的卡奇霧）
+
+#### 評分徽章（深色）
+- 背景: `rgba(212,165,116,0.12)` — 略深以保持可見性
+- 文字: `#EDE8E0`（暖乳白）
+
+#### 骨架微光（深色）
+- 基底: `#1E1C18`，微光脈衝: `#272521` → `#312F2A`
+- 無金色底調，保持純深色過渡
+
+#### 輸入 / 表單（深色）
+- 背景: `var(--bg-card)` `#1E1C18`
+- 邊框預設: `rgba(255,255,255,0.10)`
+- 聚焦: `ring-2` 使用 `rgba(212,165,116,0.35)`
+- 文字: `#EDE8E0`
+
+#### 快訊通知（深色）
+- 背景: `#272521`（浮層），左邊框條顏色不變
+- 成功: `var(--signal-green)` `#34D399` 左邊框
+
+#### 社交訊息氣泡（深色）
+- 自己訊息: 溫暖金色背景（同淺色），深色文字 `#0D0C0A`（最深底層）以確保對比
+- 其他用戶: 背景 `#272521`，文字 `#EDE8E0`，邊框 `rgba(255,255,255,0.08)`
+
+---
+
+### 深色模式視覺驗證清單
+
+在實施深色模式時，以下對比需通過 WCAG AA（最低 4.5:1）：
+
+- [ ] `#EDE8E0` 文字 on `#1E1C18` 卡牌背景 — 預估約 **11:1** ✓
+- [ ] `#8A8680` 次要文字 on `#1E1C18` — 預估約 **4.6:1** ✓（剛好 AA）
+- [ ] `#D4A574` 金色 on `#14120E` 頁面背景 — 預估約 **5.2:1** ✓
+- [ ] `#34D399` 綠色 on `#1E1C18` — 預估約 **7.1:1** ✓
+- [ ] `#A78BFA` 紫色 on `#1E1C18` — 預估約 **5.5:1** ✓
+
+---
+
+## 3. 字體規則
+
+### 主要字體系統
+- **標題 / 標誌**: `Chiron GoRound TC` — 圓潤、親切、現代。Regular (400) 或 SemiBold (600) 用於區段標題 (`20px`)。避免超重量級 (700+)。
+- **內容 / UI 文字**: `Chiron GoRound TC` — Regular (400)、寬鬆行距 (`1.6`)、最小強調。用於所有香港用戶介面文本。
+- **數字 / 價格**: `Geist Mono` — **僅用於數字價格** (`¥120,000`)、評分 (`PSA 10`、`BGS 9.5`)、序列號。謹慎使用，絕不濫用。
+- **稀有度標籤**: `Chiron GoRound TC` Regular、`13px` — SAR、UR、SR 徽章用乾淨文字呈現，無裝飾晶片。
+
+### Chiron GoRound TC 特性
+- **圓潤筆畫**: 友善、親切、現代感
+- **繁體中文支援**: 完整支援香港繁體字
+- **多語言**: 同時支援拉丁字符，適合雙語佈局
+- **Google Fonts 免費**: 無授權費用
+
+### 字體縮放
+| 用途 | 字體 | 大小 | 粗細 |
 |---|---|---|---|
-| Page Title | Geist | 24px | 700 |
-| Section Header | Geist | 20px | 600 |
-| Body | Geist | 16px | 400 |
-| Price Ticker | Geist Mono | 18px | 500 |
-| Metadata / Labels | Geist Mono | 12px | 500 |
+| 頁面標題 | Chiron GoRound TC | 28px | 600 |
+| 區段標題 | Chiron GoRound TC | 18px | 600 |
+| 正文 / 描述 | Chiron GoRound TC | 16px | 400 |
+| 價格標籤 | Geist Mono | 16px | 600 |
+| 卡牌中繼資料 / 時間戳 | Chiron GoRound TC | 13px | 400 |
 
-**Banned Fonts:**
-- `Inter` — Generic, overused. Banned platform-wide.
-- `Roboto`, `system-ui` as primary fonts — too anonymous for premium context.
-- All generic serifs (`Times New Roman`, `Georgia`, `Garamond`, `Palatino`) — banned entirely.
-- No serif fonts in any dashboard or trading UI context.
+### 禁用字體
+- `Inter` — 過度使用、通用。平台級禁用。
+- `Roboto`、`system-ui` 作為主字體
+- 所有襯線字體（包括 `Garamond`、`Times New Roman`、`Georgia`）
+- 除價格和評分外的等寬字體
 
 ---
 
 ## 4. Component Stylings
 
 ### Buttons
-- **Primary (「直接購買」)**: Trade Indigo fill, white label. No outer glow. Active: `translateY(1px) scale(0.98)` — tactile push feedback.
-- **Secondary (「即時出價」)**: Ghost style. `1px Whisper Border`, Trade Indigo label. Same tactile active state.
-- **Destructive / Warning**: Bearish Crimson fill, white label. Same tactile feedback.
-- **BANNED**: Purple/neon focus glows. `box-shadow: 0 0 Xpx color`. Use `ring-1 ring-indigo-300/50` instead.
-- **Border-radius**: `8px` — precise, not generic. Override shadcn's `rounded-md`.
+- **Primary (「購入」, 「出品」)**: Warm Gold fill, white label, `rounded-full`. Height `44px` (touch-friendly). Active: gentle `scale(0.98)` spring.
+- **Secondary (「検討中」)**: Ghost style. `1px Soft Border`, Warm Charcoal label. Same scale-down active state.
+- **Tertiary / Text-Only**: No fill, Warm Gold label. Lightweight, for secondary actions.
+- **Destructive**: Soft red fill, white label. Minimal use (only for irreversible actions).
+- **BANNED**: Purple/neon box-shadows, glow effects. Use `ring-1 ring-gold/30` at most for focus states.
+- **Border-radius**: `8px` for rectangular buttons, `full` for pill buttons.
 
-### Cards
-- `Pure Surface` fill, `Whisper Border` (1px), `border-radius: 16px`.
-- Shadow: `0 1px 4px rgba(0,0,0,0.06)` — micro diffused. Never `shadow-md` or `shadow-lg`.
-- High-density contexts (transaction lists, order books): replace cards with `border-top` dividers + negative space, not card stacking.
+### 卡牌（產品展示焦點）
+- `純白` 填充、`柔軟邊框` (1px)、`border-radius: 12px`。
+- 陰影: `0 2px 8px rgba(0,0,0,0.08)` — 淡漠擴散。無重陰影。
+- 圖像繁重佈局：卡牌全寬用於英雄照片，標題 + 價格下方。
+- 懸停：溫和 `scale(1.02)` + 陰影增加 (`0 4px 16px rgba(0,0,0,0.12)`)。
 
-### Rarity Badges (SAR, UR, SR, AR)
-- `Geist Mono`, `12px`, `Pure Surface` background, `Whisper Border`.
-- Subtle `3px` left-border in Trade Indigo to signal rarity tier.
-- Typographic chips — not colored pill badges.
+### 稀有度徽章 (SAR、UR、SR、AR)
+- 純 `Chiron GoRound TC` 文字、`13px`、無背景。範例: `SAR` 乾淨顯示、最小樣式。
+- 可選：`3px` 左邊框重點用溫暖金色標示稀有度層級。
 
-### Grade Badges (PSA 10, BGS 9.5, CGC Pristine 10)
-- `Geist Mono`, chip shape, `Off-Black Ink` background, `Pure Surface` text.
-- Single-line: grading authority + numeric score. No decorative ornamentation.
+### 評分徽章 (PSA 10、BGS 9.5)
+- 淡背景: `rgba(212,165,116,0.1)` (非常稀釋金色)、`Chiron GoRound TC` 文字。
+- 圓角 `6px`。最小、不顯眼的呈現。
 
-### Escrow Progress Stepper
-- Fintech-grade timeline: thin `1px` connector lines, numbered circular nodes.
-- Steps: `Offer Confirmed → Funds Escrowed → Card Shipped ✈ → Inspection → Released`
-- Completed steps: `Bullish Jade` connector line, muted node.
-- Active step: `Trade Indigo` node with a perpetual subtle ring-pulse animation.
-- Step labels: `Geist Mono`, `12px`.
-- NEVER release funds before the Inspection step is confirmed.
+### 浮動液體玻璃選項卡欄（底部導航）✨
+**設計意圖**: 現代、極簡導航，靈感來自 Apple 的流體玻璃美學。
 
-### Price Ticker / Live Transaction Wall
-- `Geist Mono` exclusively. `18px` for primary price, `14px` for card name and grade metadata.
-- Rising price: `Bullish Jade` with `▲` prefix. Falling: `Bearish Crimson` with `▼` prefix. Neutral: `Off-Black Ink`.
-- Ticker tape animation: CSS `transform: translateX` only. Hardware-accelerated. No `left` property.
+```
+// 手機 / 平板 (< 1024px)
++------------------------------------------+
+|                                          |
+|    [您的內容在上方捲軸]                    |
+|                                          |
++------------------------------------------+
+         ┌─────────────────────┐
+         │ 🏠  🔍  🎁  👤      │  ← 浮動欄、置中、距底 16px
+         └─────────────────────┘
+```
 
-### Inputs / Forms
-- Label always above the input. Helper text optional below. Error text in `Bearish Crimson` below input.
-- Focus: `ring-1 ring-indigo-400/60`. No default browser outline.
-- No floating labels. No placeholder-as-label.
+**技術規格：**
+- **容器**: 固定底部、插圖 `16px` (手機) / `24px` (桌面)、水平置中。
+- **寬度**: 手機最大 `280px`、桌面 `320px`。4 個標籤的 Flex 佈局。
+- **外觀**: 
+  - 背景: `rgba(255, 255, 255, 0.7)` 搭配 `backdrop-filter: blur(20px)`。
+  - 邊框: `1px solid rgba(0, 0, 0, 0.05)`。
+  - 圓角: `12px` (圓形膠囊形狀)。
+  - 陰影: `0 4px 12px rgba(0, 0, 0, 0.08)` (淡微提升)。
 
-### KYC Wizard (商業賣家)
-- Step-by-step wizard with persistent progress indicator at top.
-- Steps: `上傳證件 → 審核中 → 完成`
-- Current step: Trade Indigo filled node. Completed: Bullish Jade. Pending: Steel Mist.
+**標籤狀態：**
+- **活躍標籤**: 
+  - 圖示顏色: 溫暖金色 (`#D4A574`)
+  - 背景: `rgba(212, 165, 116, 0.1)` (稀釋金色高亮)
+  - 標籤顏色: 暖深灰
+- **非活躍標籤**: 
+  - 圖示顏色: 卡奇霧 (`#9CA0A6`)
+  - 無背景高亮
+  - 點擊反饋: 溫和 `scale(0.95)` 彈簧動畫
 
-### Loading States
-- Skeletal shimmer matching exact component layout dimensions.
-- Shimmer: `rgba(0,0,0,0.05)` pulse on `Pure Surface`. Never generic circular spinners.
+**標籤**: 圖示 + 標籤對、`Chiron GoRound TC` Regular `11px` 置中於圖示下方。
+
+**動畫**: 標籤轉換使用彈簧物理 `stiffness: 300, damping: 25` 實現順滑顏色/縮放變化。無線性緩動。
+
+**捲軸時**: 
+- 捲軸內容時，標籤欄保持固定和可見（從不隱藏）。
+- 捲軸時輕微提升增加: `0 6px 16px rgba(0, 0, 0, 0.1)`。
+
+### 保管進度步進器（簡化版）
+- 水平時間線：薄 `1px` 連接線、圓形編號節點。
+- 步驟: `優惠 → 保管中 → 已發貨 → 檢查中 → 已釋放`
+- 已完成: 鮮活綠節點、淡化標籤。
+- 活躍: 溫暖金色節點搭配淡微脈衝動畫。
+- 待進行: 柔軟邊框輪廓專用。
+
+### 價格顯示
+- `Geist Mono` 專用。大價格: `18px`、支援文字: `13px`。
+- 價格趨勢指示器: `▲` (綠色) / `▼` (紅色) 搭配差異、語義色彩專用。
+
+### 輸入 / 表單
+- 標籤在上方。幫助文字可選。下方紅色錯誤文字。
+- 聚焦: `ring-2 ring-gold/40` — 溫和、非侵略性。
+- 邊框: 預設狀態 `1px 柔軟邊框`。
+- 圓角: `8px`。
+- 無浮動標籤，無標籤式預留位置。
+
+### 賣方入職（簡化版）
+- 簡單多步表單，非精靈繁重。
+- 頂部進度指示器: `第 1 步，共 3 步`。
+- 每步: 單一卡牌搭配單一清晰動作。
+- 色彩: 完成時金色進度指示器。
+
+### 載入狀態
+- 骨架微光: `rgba(212,165,116,0.08)` 脈衝用於純白背景。
+- 微光持續時間: `1.5s` 緩動進出。
 
 ### Empty States
 - Composed typographic instruction. Example: `まだ取引記録がありません。最初のカードを出品してみましょう。`
 - Never plain "No data found" text.
 
-### Toast Notifications
-- **Success** (付款成功, 發貨確認): `Bullish Jade` `4px` left-border strip, `Pure Surface` background, Trade Indigo check icon.
-- **Warning/Error** (出價被超越, 餘額催付): `Bearish Crimson` `4px` left-border, `Pure Surface` background. High visual weight.
-- Entry animation: spring-slide from top-right (`translateX(120%) → translateX(0)`).
-- No full colored backgrounds on toasts.
+### 快訊通知
+- **成功**: 鮮活綠左邊框條、純白背景、`Chiron GoRound TC` 標籤。
+- **警告**: 淡紅色左邊框、純白背景。
+- 進入: 彈簧右下滑入。
+- 自動關閉於 `4s` 後。
 
-### Notification Center
-- Bell icon with `Bearish Crimson` unread badge (numeric count, `Geist Mono`).
-- Dropdown: two tabs — `交易狀態` / `系統公告`. Whisper Border separators.
+### 通知中心
+- 鈴形圖示搭配活動類型的鮮活綠/紫未讀徽章。
+- 下拉清單: 最近交易更新和社區活動列表。最小樣式。
 
-### Chat System
-- Buyer messages: right-aligned, `Trade Indigo` bubble, white `Geist` text.
-- Seller messages: left-aligned, `Pure Surface` bubble, `Whisper Border`, `Off-Black Ink` text.
-- System messages (trade state updates): centered, `Steel Mist`, `Geist` italic. No bubble.
-- Security warning: full-width `Bearish Crimson` banner above chat input when sensitive content detected.
+### 社交 / 社區功能（聊天、評論）
+- 用戶評論氣泡：右對齐搭配溫暖金色背景、白色文字（自己的訊息）。
+- 其他用戶訊息：左對齐、柔軟邊框輪廓、暖深灰文字。
+- 系統訊息：置中、卡奇霧文字、斜體。無氣泡。
 
-### Seller/Admin Dashboard
-- Metric Cards: `Pure Surface`, `Whisper Border`, `Geist Mono` for all figures. Real data only — no fabricated metrics.
-- Charts: Bar/Line using `Trade Indigo` as primary series. `Bullish Jade` / `Bearish Crimson` for delta indicators.
-- Data Tables: Support Filter, Sort, Pagination. `Geist Mono` for all numeric columns.
+### 賣方儀表板（簡化版）
+- 中繼資料卡牌: 純白、`柔軟邊框`、乾淨 `Chiron GoRound TC` 排字。僅限真實資料。
+- 圖表: 使用溫暖金色作為主要數列顏色。綠色/紅色用於趨勢指示器。
+- 資料表: 乾淨邊框、最小視覺重量。
 
-### Card Search & Display
-- Search: supports card serial number input, auto-suggest with name + rarity attribute.
-- Condition Gallery: force 4–6 real card photos with detail zoom for corner/scratch inspection.
-- Image fallback: `picsum.photos` or local assets. Never broken Unsplash links.
+### 卡牌探索與顯示
+- 搜尋: 支援卡牌名稱輸入、自動建議搭配卡牌圖像縮圖。
+- 卡牌詳情: 英雄圖像展廊 (4–6 張真實卡牌照片)、下方規格、社區評論/評論區。
+- 圖像備選: `picsum.photos` 或本地資產。永遠不要破損的 Unsplash 連結。
 
-### User Portfolio
-- Stats display: user's total collection value in `Geist Mono` (`¥` denomination). Real calculated data only.
-- Identity tier labels: 資深收藏家, 専門道館主 — in `Geist`, not `Geist Mono`.
-- 7-day check-in milestone: thin progress bar in Trade Indigo. No gamification emojis.
+### 用戶設定檔
+- 乾淨設定檔標題: 虛擬人頭、顯示名稱、身份徽章 (例如，資深收藏家)。
+- 收藏摘要: 卡牌計數、總收藏值 (僅限真實資料)。無遊戲化鐘/口哨。
 
 ---
 
-## 5. Layout Principles
+## 5. 版面原則
 
-- **Grid-First**: CSS Grid for all multi-column layouts. Never `calc()` percentage hacks with Flexbox.
-- **Max-Width Container**: `1400px` centered, `32px` horizontal gutter on desktop.
-- **No Equal 3-Column Card Grids**: Use asymmetric grid (`5:3` split), 2-column zig-zag, or horizontal scroll.
-- **Full-Height Sections**: Always `min-h-[100dvh]`. Never `h-screen` (iOS Safari viewport catastrophe).
-- **Spacing Base Unit**: `8px`. All spacing values are multiples of 8.
-- **No Overlapping Elements**: Every element occupies its own clean spatial zone. No absolute-positioned stacking.
+- **卡牌為中心**: 英雄產品圖像 + 最小 UI。利用負面空間。
+- **最大寬度容器**: `1200px` 置中、`24px` 水平溝槽在桌面。比金融儀表板更多呼吸空間。
+- **對稱網格首選**: 桌面上相等寬度 2–3 欄卡牌網格。非對稱網格僅用於特定儀表板佈局。
+- **全高部分**: 始終 `min-h-[100dvh]`。永遠不要 `h-screen` (iOS Safari 視窗災難)。
+- **間距基礎單位**: `8px`。所有間距值都是 8 的倍數。
+- **寬敞留白**: 比金融儀表板多 2 倍垂直填充。圖像呼吸。
 
-### Responsive Strategy
-- **Mobile (< 768px)**: Single column collapse. No horizontal overflow. Vertical section gaps via `clamp(3rem, 8vw, 6rem)`.
-- **Tablet (768px–1023px)**: 2-column layouts. Top nav or hamburger.
-- **Desktop (≥ 1024px)**: Top horizontal Navigation Bar or collapsible Left Sidebar. Full chart and table layouts.
-- **Touch Targets**: All interactive elements minimum `44×44px`.
-- **Container Padding**: `16px` mobile / `32px` desktop.
+### 響應式策略
+- **手機 (< 768px)**: 單欄折疊。無水平溢出。垂直區段間隙透過 `clamp(3rem, 8vw, 6rem)`。
+- **平板 (768px–1023px)**: 2 欄佈局。上方導航或漢堡菜單。
+- **桌面 (≥ 1024px)**: 上方水平導航欄或可折疊左側邊欄。完整圖表和表格佈局。
+- **觸碰目標**: 所有互動元素最小 `44×44px`。
+- **容器填充**: `16px` 手機 / `32px` 桌面。
 
-### Navigation Patterns
-- Mobile (< 1024px): Fixed Bottom Navigation Bar — 4 tabs: 首頁, 搜尋, 收藏, 設定.
-- Desktop (≥ 1024px): Top horizontal nav or left sidebar.
-- Active tab: `Trade Indigo` icon + label. Inactive: `Steel Mist`.
-- PWA Install Prompt: Non-intrusive banner (not modal). `Trade Indigo` primary button. Dismissible.
-
----
-
-## 6. Motion & Interaction
-
-- **Spring Physics Default**: `stiffness: 400, damping: 30` for micro-interactions (buttons, tooltips, toasts). `stiffness: 100, damping: 20` for page-level transitions.
-- **No Linear Easing**: All interactive state changes use spring or `cubic-bezier(0.34, 1.56, 0.64, 1)`. `ease-in-out` and `linear` are banned for interactive elements.
-- **Tactile Buttons**: `active:scale-[0.98] active:translate-y-[1px]` on all clickable elements.
-- **Perpetual Micro-Interactions**:
-  - Live ticker tape: infinite `transform: translateX` CSS animation loop.
-  - Active escrow step node: subtle `ring-pulse` in `Trade Indigo`.
-  - New transaction arrival: `opacity: 0→1` + `translateY(4px→0)` spring reveal.
-- **Staggered Cascade**: Card and list mounts use `staggerChildren: 0.05s` — waterfall reveal, never simultaneous pop-in.
-- **Modal / Drawer Entry**: Spring scale-up (`scale(0.95) → scale(1.0)`) + `backdrop-blur-sm` overlay.
-- **Performance Rule**: Animate ONLY `transform` and `opacity`. Never animate `top`, `left`, `width`, `height`, or `background-color`.
-- **Client Component Isolation**: All spring-physics and perpetual loop animations must live in `'use client'` components. Server Components must be animation-free.
+### 導航模式
+- **手機 (< 1024px)**: **浮動液體玻璃選項卡欄** 位於底部置中 — 4 個主標籤 (首頁、搜尋、交易/收件匣、設定檔)。
+- **桌面 (≥ 1024px)**: 上方水平導航欄搭配左邊標誌、中央搜尋、右邊用戶設定檔。
+- **活躍標籤**: 溫暖金色圖示 + 標籤、淡微背景高亮。
+- **非活躍標籤**: 卡奇霧圖示、無高亮。
+- **PWA 安裝提示**: 頂部非侵略性橫幅 (非彈窗)。金色行動按鈕。可關閉。
 
 ---
 
-## 7. Anti-Patterns (Banned)
+## 6. 動畫與互動
 
-**Typography:**
-- `Inter` font — banned platform-wide
-- Generic serifs: `Georgia`, `Times New Roman`, `Garamond`, `Palatino` — banned
-- Gradient text on large headings
-- `LABEL // YEAR` formatting (e.g., `SYSTEM // 2025`) — lazy AI convention
+- **彈簧物理預設**: `stiffness: 300, damping: 25` 用於柔軟、活力的互動 (按鈕點擊、標籤轉換)。
+- **無線性緩動**: 所有互動狀態變化都使用彈簧或 `cubic-bezier(0.34, 1.56, 0.64, 1)`。避免互動元素的 `ease-in-out` 和 `linear`。
+- **觸覺按鈕**: `active:scale-[0.98] active:translate-y-[1px]` 在所有可點擊元素上以實現觸覺反饋。
+- **永續微互動**: 最小。活躍標籤節點：僅在溫暖金色中淡微脈衝。避免持續動動。
+- **卡牌懸停**: 溫和 `scale(1.02)` + 陰影增加。
+- **錯開級聯**: 卡牌掛載使用 `staggerChildren: 0.05s` — 瀑布揭示，永遠不要同步彈出。
+- **彈窗 / 抽屜進入**: 彈簧縮放 (`scale(0.95) → scale(1.0)`) + `backdrop-blur-sm` 覆蓋層。
+- **效能規則**: 僅動畫 `transform` 和 `opacity`。永遠不要動畫 `top`、`left`、`width`、`height` 或 `background-color`。
+- **客戶端元件隔離**: 所有彈簧物理和永續動畫必須住在 `'use client'` 元件中。伺服器元件必須無動畫。
 
-**Color:**
-- Pure black (`#000000`) as any UI color — use `Off-Black Ink` (`#202124`)
-- Pure white (`#FFFFFF`) as the page background — use `Misty Canvas` (`#F8F9FA`)
-- Neon glows, purple/blue aura effects, `box-shadow: 0 0 Xpx #color`
-- More than one brand accent color
-- Oversaturated accents (saturation > 80%)
-- Using `Bullish Jade` or `Bearish Crimson` for decorative or branding purposes
+---
 
-**Layout:**
-- 3-column equal-width card grids — use asymmetric splits or 2-column zig-zag
-- Overlapping elements — clean spatial separation always
-- `h-screen` for full-height — use `min-h-[100dvh]`
-- Horizontal scroll on mobile
-- `calc()` percentage hacks in Flexbox
+## 7. 禁止模式
 
-**Content / Data:**
-- `Lorem Ipsum`, `John Doe`, `Acme Corp`, `Nexus` — any placeholder names
-- Fabricated metrics: `99.98% Uptime`, `124ms Response`, `18.5k Deploys` — use `[metric]` placeholder if real data unavailable
-- AI copywriting clichés: `Elevate`, `Seamless`, `Unleash`, `Next-Gen`, `Empower`
-- Filler UI text: `Scroll to explore`, `Swipe down`, bouncing chevrons, scroll arrows
-- Broken Unsplash links — use `picsum.photos` or local project assets
-- Emojis in UI (except functional indicators: ✈ in Escrow step, ✓ in success states)
-- Fabricated dashboard stats sections — `SYSTEM PERFORMANCE METRICS`, `KEY STATISTICS` filled with invented numbers
+**排字:**
+- `Chiron GoRound TC` 預設全平台 — 繁體中文優先
+- `Inter` — 過度使用、通用。平台級禁用。
+- 通用襯線: `Georgia`、`Times New Roman`、`Garamond`、`Palatino` — 禁用
+- 大標題上的梯度文字
+- 身體文字上的重或加粗排字 (700+ 粗細)
+- `LABEL // YEAR` 格式化 (例如，`SYSTEM // 2025`) — 懶惰 AI 慣例
 
-**Interaction:**
-- `ease-in-out` or `linear` transitions for interactive states
-- Generic browser blue focus rings — use `ring-1 ring-indigo-300/50`
-- Custom mouse cursors
-- Circular loading spinners
-- Instant list mounts without stagger
-- Releasing escrow funds before Inspection step is confirmed
-- Hiding Mercari JP historical price data — all market data must be transparent to users
+**色彩:**
+- 純黑 (`#000000`) 作為任何 UI 色彩 — 使用 `暖深灰` (`#1A1A18`)
+- 純白 (`#FFFFFF`) 作為頁面背景 — 使用米色帆布 (`#FAFAF8`)
+- 霓虹光暈、藍色氣氛效果、`box-shadow: 0 0 Xpx #color`
+- 超過一個品牌重點色彩 (溫暖金色是獨有)
+- 過飽和重點 (飽和度 > 80%)
+- 使用 `鮮活綠` 或 `鮮活紫` 用於非語義目的 (僅用於活動訊號)
+- 使用 `淡紅色` 用於除警告/錯誤外的任何東西
+- **無藍色調** — 溫暖金色和白色調色板對金融科技無免疫
+
+**佈局:**
+- 用於產品展示的相等寬度 3 欄卡牌網格 — 使用 2 欄或非對稱佈局
+- 重疊元素 — 總是乾淨空間分隔
+- `h-screen` 用於全高 — 使用 `min-h-[100dvh]`
+- 手機上的水平捲軸
+- Flexbox 中的 `calc()` 百分比駭客
+
+**內容 / 資料:**
+- `Lorem Ipsum`、`John Doe`、`Acme Corp`、`Nexus` — 任何預留位置名稱
+- 虛構中繼資料: `99.98% 正常運作時間`、`124ms 回應`、`18.5k 部署` — 如果真實資料無法取得，請使用 `[中繼資料]` 預留位置
+- AI 複製寫作陳詞濫調: `提升`、`無縫`、`釋放`、`下一代`、`授權`
+- 填充 UI 文字: `捲軸以探索`、`向下滑動`、彈動雪佛龍、捲軸箭頭
+- 破損 Unsplash 連結 — 使用 `picsum.photos` 或本地專案資產
+- 用戶介面中的表情符號 (除功能指示器外：✈ 在保管步驟中、✓ 在成功狀態中)
+- 虛構儀表板統計 — 無虛構數字
+
+**互動:**
+- 互動狀態的 `ease-in-out` 或 `linear` 轉換
+- 通用瀏覽器藍色聚焦圈 — 使用 `ring-1 ring-gold/40`
+- 自訂滑鼠游標
+- 圓形載入旋轉木馬 — 改用骨架微光
+- 無錯開的即時列表掛載
+- 每個元素上的永續動畫 (保留用於活躍狀態專用)
