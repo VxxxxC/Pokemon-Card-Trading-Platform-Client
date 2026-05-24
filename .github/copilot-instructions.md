@@ -28,3 +28,21 @@ When the user asks to create a new page, component, or UI feature, you MUST stri
    - Use TypeScript strictly.
    - Mobile-first layout is non-negotiable.
    - For Escrow and Trading logic, ensure state separation between Client and Server components.
+
+## Task Management & Planning Directives
+1. **Task Decomposition Source of Truth**:
+  - During task management, all work items MUST be decomposed directly from `requirement.md` section `1. 系統開發`.
+  - Every task must map to one or more requirement IDs under 1.1-1.9 (e.g., 1.2 股票式交易系統, 1.5 Stripe Connect專業金流與交易託管系統).
+  - Do not create implementation tasks that are outside section 1 scope unless explicitly marked as technical enablers.
+
+2. **Development Planning Order**:
+  - During development planning, task sequencing MUST follow `requirement.md` Remarks `開發時間表`.
+  - Required order:
+    1) Month 1: UI/UX design prototype confirmation (including PWA mobile layout)
+    2) Month 2-4: system development and API integration (database, Stripe, API integration, trading logic)
+    3) End of Month 4: final testing, bug fixing, production deployment
+  - When creating sprint plans or milestone plans, annotate each task with the corresponding timeline stage above.
+
+3. **Execution Gate**:
+  - Before implementation starts, verify the current task list is fully traceable to section `1. 系統開發` and ordered per `開發時間表`.
+  - If mismatch exists, re-plan first, then implement.
