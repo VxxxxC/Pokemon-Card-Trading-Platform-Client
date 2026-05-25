@@ -18,7 +18,7 @@ export function ProfileTabNav({ tabs }: ProfileTabNavProps) {
 
   return (
     <nav
-      className="flex gap-0.5 overflow-x-auto scrollbar-none border-b border-[rgba(237,232,224,0.08)] mb-6"
+      className="flex gap-0.5 overflow-x-auto overflow-y-hidden scrollbar-none border-b border-[rgba(237,232,224,0.08)] mb-6"
       aria-label="個人頁面導航"
     >
       {tabs.map(({ href, label, icon }) => {
