@@ -20,6 +20,7 @@ interface Listing {
   createdAt: string;
 }
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch merchant's listings from `listings` table WHERE seller_id = current user, ordered by created_at DESC
 const listings: Listing[] = [
   { id: "LST-001", cardName: "Charizard ex SAR",   cardNo: "sv2a-182", set: "151",            grade: "PSA 10", grader: "PSA", askPrice: 49_800, photos: 6, views: 324, status: "active",  createdAt: "2025/5/15" },
   { id: "LST-002", cardName: "Umbreon ex SAR",     cardNo: "sv6a-109", set: "Night Wanderer",  grade: "BGS 9",  grader: "BGS", askPrice: 36_500, photos: 5, views: 218, status: "active",  createdAt: "2025/5/14" },
@@ -128,6 +129,7 @@ export default function MerchantInventoryPage() {
           </div>
 
           {/* Photo Upload — 4-6 required */}
+          {/* TODO [BACKEND]: Photo upload divs are decorative — no `<input type="file">` and no Supabase Storage upload handler; implement with supabase.storage.from('listing-photos').upload(`${listingId}/${i}`, file) */}
           <div>
             <label className="font-mono text-[12px] text-text-secondary block mb-1.5">
               實物照片 (必須 4–6 張) <span className="text-warning">*</span>
@@ -161,6 +163,8 @@ export default function MerchantInventoryPage() {
           </div>
 
           <div className="flex gap-3">
+            {/* TODO [BACKEND]: "儲存草稿" has no handler — must call server action to INSERT into `listings` with status='draft' */}
+            {/* TODO [BACKEND]: "立即上架" form submit has no handler — must call server action to INSERT into `listings` with status='active', then update merchant inventory count */}
             <button type="button" className="flex-1 h-11 font-sans text-[14px] font-medium text-text-secondary border border-[rgba(237,232,224,0.12)] rounded-xl hover:bg-bg-elevated active:scale-[0.98] transition-all">
               儲存草稿
             </button>

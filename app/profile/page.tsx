@@ -11,5 +11,7 @@ import { redirect } from "next/navigation";
  * Use the role-switcher banner on each profile page to test other roles.
  */
 export default function ProfileGateway() {
+  // TODO [BACKEND]: Read auth session role from Supabase — supabase.auth.getSession() then check user.user_metadata.role
+  // Redirect: USER → /profile/user | MERCHANT → /profile/merchant | ADMIN → /admin | unauthenticated → /auth
   redirect("/profile/user");
 }

@@ -7,6 +7,7 @@ import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { CardGrid } from "@/app/components/cards/CardGrid";
 import { TransactionWall } from "@/app/components/transactions/TransactionWall";
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch active box series from `card_series` table with live price feed
 const marketSeries = [
   { code: "sv4a", name: "Shiny Treasure ex Box", price: "¥4,500", delta: "+12%", dir: "up" as const },
   { code: "sv2a", name: "Pokémon Card 151 Box", price: "¥12,000", delta: "-3%", dir: "down" as const },
@@ -34,6 +35,7 @@ export default function HomePage() {
             className="object-cover"
             priority
           />
+          {/* TODO [MOCK DATA]: Replace picsum placeholder with real card image from Supabase Storage or TCGdex CDN */}
           {/* Mobile: bottom-up gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#17130f] via-[#17130f]/55 to-transparent lg:hidden" />
           {/* Desktop: left-to-right gradient */}

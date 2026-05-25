@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   description: "實時監控平台整體交易量、營收及系統狀態",
 };
 
+// TODO [MOCK DATA]: Replace with Supabase aggregation — query `orders`, `stripe_payouts` and `sessions` tables for live platform metrics
 const platformMetrics = [
   { label: "全平台 GMV",      value: "¥12,840,000",  note: "▲ +38% vs 上月",    dir: "up"    as const },
   { label: "Stripe 佣金收入", value: "¥642,000",      note: "本月累計",           dir: "brand" as const },
@@ -12,6 +13,7 @@ const platformMetrics = [
   { label: "今日成交筆數",    value: "63",             note: "▲ +8 vs 昨日",      dir: "up"    as const },
 ];
 
+// TODO [MOCK DATA]: Replace with Supabase Realtime subscription on `orders` table JOIN `users` and `listings`, limit 5, order by created_at DESC
 const recentTransactions = [
   { id: "TX-001", buyer: "M.佐藤",   seller: "KojiTCG Premium",   card: "Charizard ex SAR",  grade: "PSA 10", amount: 49_800, time: "2分鐘前" },
   { id: "TX-002", buyer: "C.Chen",   seller: "TokyoRareCards",    card: "Umbreon ex SAR",    grade: "BGS 9",  amount: 38_200, time: "8分鐘前" },
@@ -20,6 +22,7 @@ const recentTransactions = [
   { id: "TX-005", buyer: "A.Yamamoto",seller:"NagoyaTCG",         card: "Espeon ex SAR",     grade: "BGS 9.5",amount: 31_200, time: "1小時前"  },
 ];
 
+// TODO [MOCK DATA]: Replace with live health checks — ping each service endpoint and measure latency; update status in real-time
 const systemStatus = [
   { service: "Next.js 應用伺服器",     status: "online"  as const, latency: "12ms"  },
   { service: "Supabase PostgreSQL",    status: "online"  as const, latency: "8ms"   },
@@ -37,6 +40,7 @@ export default function AdminOverviewPage() {
         <div>
           <h1 className="font-sans font-bold text-[22px] text-text-primary">平台監控</h1>
           <p className="font-mono text-[12px] text-text-secondary mt-0.5">
+            {/* TODO [MOCK DATA]: Replace hardcoded timestamp with real server time — use new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Hong_Kong' }) or server-side Date */}
             最後更新：2025年 5月 21日 13:17 UTC+8
           </p>
         </div>

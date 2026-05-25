@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description: "查看個人收藏估值、身份等級及交易紀錄",
 };
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch authenticated user's portfolio stats from `portfolios` table
 const portfolioStats = [
   { label: "總資產估值",  value: "¥1,234,500", note: "▲ ¥28,400 本月",  noteDir: "up"      as const },
   { label: "持有卡牌數",  value: "42",          note: "8 張待售中",       noteDir: "neutral" as const },
@@ -23,6 +24,7 @@ const LEVEL_TIERS = [
   { tier: 5, label: "傳奇卡師",    xp: 6_000 },
 ] as const;
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch authenticated user's member level, XP, and rating from `profiles` table
 const member = {
   levelTier:   3,
   xpCurrent:   2_040,
@@ -32,6 +34,7 @@ const member = {
   reviewCount: 24,
 };
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch earned badges from `user_badges` join table
 const badges = [
   { id: "early-bird", label: "早鳥收藏家", emoji: "🐦", desc: "平台早期加入" },
   { id: "psa-fan",    label: "PSA愛好者",  emoji: "🏆", desc: "持有 5+ PSA 鑑定卡" },
@@ -39,6 +42,8 @@ const badges = [
   { id: "top-rated",  label: "高評分賣家", emoji: "⭐", desc: "評分維持 4.8+ 滿 30 天" },
 ];
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch recent transactions from `orders` table for authenticated user, ordered by created_at DESC, limit 4
+// TODO [MOCK DATA]: Relative timestamps (e.g. "3分鐘前") must be computed from real `created_at` using date-fns relativeTimeFromNow
 const recentActivity = [
   { id: "txn-001", type: "sold"   as const, name: "Charizard ex SAR", cardNo: "sv2a-182", grade: "PSA 10", price: 44_800, delta: 2_400, deltaDir: "up"   as const, time: "3分鐘前" },
   { id: "txn-002", type: "bought" as const, name: "Umbreon ex SAR",   cardNo: "sv6a-109", grade: "BGS 9.5", price: 39_500, delta: 1_500, deltaDir: "up"   as const, time: "2小時前" },
@@ -46,12 +51,14 @@ const recentActivity = [
   { id: "txn-004", type: "bought" as const, name: "Pikachu AR",       cardNo: "sv2a-215", grade: "CGC 9",   price:  8_200, delta:   300, deltaDir: "down" as const, time: "3天前" },
 ];
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch reviews from `reviews` table where reviewee_id = current user, ordered by created_at DESC
 const reviews = [
   { id: "rev-001", reviewer: "K.田中",  rating: 5, comment: "包裝非常謹慎，卡況與描述完全一致，快速發貨，強力推薦！",          date: "2025年 4月" },
   { id: "rev-002", reviewer: "C.Lin",   rating: 5, comment: "專業賣家，溝通回應快，第二次購買同一位賣家，值得信賴。",            date: "2025年 3月" },
   { id: "rev-003", reviewer: "M.佐藤",  rating: 5, comment: "SAR 成色完美，PSA 10 完全合理。非常滿意這次交易。",               date: "2025年 2月" },
 ];
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch streak and reward status from `user_streaks` table for authenticated user
 const streakReward = { hasReward: true, streakDays: 7, rewardLabel: "順豐免運費券 x1" };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────

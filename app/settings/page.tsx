@@ -29,6 +29,8 @@ function ChevronRightIcon() {
 }
 
 const settingsSections = [
+  // TODO [BACKEND]: All action buttons (語言變更, 貨幣變更, 通知偏好管理, 隱私政策查看, FAQ前往, 聯絡客服) have no onClick handlers — each must open a modal or navigate to sub-pages once those routes are created
+  // TODO [MOCK DATA]: "語言" / "貨幣" current values are hardcoded — replace with user preference from `user_preferences` table in Supabase
   {
     title: "偏好設定",
     items: [

@@ -189,6 +189,7 @@ export default function AuthPage() {
           </p>
 
           {/* Trust stats */}
+          {/* TODO [MOCK DATA]: ¥2.4億+, 12,800+, 99.8% are placeholder metrics — replace with real aggregation from Supabase: sum(orders.amount), count(listings), avg(user_ratings.score) */}
           <div className="mt-6 flex items-center gap-5">
             <div>
               <p className="font-mono text-[20px] font-semibold text-brand">¥2.4億+</p>

@@ -19,6 +19,7 @@ interface PlatformUser {
   lastActive: string;
 }
 
+// TODO [MOCK DATA]: Replace with Supabase query — fetch all users from `profiles` table with role JOIN, ordered by join_date DESC
 const users: PlatformUser[] = [
   { id: "USR-0001", name: "山田 Ren",       handle: "@yamada_ren",     email: "ren@example.com",       role: "USER",             joinDate: "2024/8",  totalTrades: 18,  rating: 4.9,  isBanned: false, lastActive: "5分鐘前"  },
   { id: "USR-0002", name: "田中 Koji",       handle: "@koji_tcg",       email: "koji@kojitcg.jp",       role: "MERCHANT",         joinDate: "2023/11", totalTrades: 247, rating: 4.95, isBanned: false, lastActive: "1小時前"  },
@@ -68,6 +69,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* ── Search ──────────────────────────────────────────────────── */}
+      {/* TODO [BACKEND]: Search input and role filter have no handler — connect to Supabase query with .ilike('name', `%${query}%`) and .eq('role', selectedRole) */}
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 flex items-center h-10 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-3 shrink-0" aria-hidden="true">
@@ -134,6 +136,8 @@ export default function AdminUsersPage() {
                 </span>
 
                 {/* Actions */}
+                {/* TODO [BACKEND]: "詳情" → navigate to /admin/users/[id] detail page (not yet created) */}
+                {/* TODO [BACKEND]: "封禁"/"解封" must call server action — update profiles.is_banned = true/false in Supabase + invalidate user session */}
                 <div className="flex gap-1.5">
                   <button type="button" className="px-2.5 py-1.5 font-mono text-[11px] text-text-secondary border border-[rgba(237,232,224,0.08)] rounded-lg hover:text-text-primary hover:bg-bg-elevated transition-colors">
                     詳情
