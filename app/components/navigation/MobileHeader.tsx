@@ -1,12 +1,12 @@
 export function MobileHeader() {
   return (
-    <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-white border-b border-[rgba(226,232,240,0.6)]">
+    <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
       <div className="h-full px-4 flex items-center justify-between">
-        <span className="font-sans font-bold text-[18px] text-[#202124] tracking-tight">
-          PokéTrade <span className="text-[#2563EB]">JP</span>
+        <span className="font-sans font-bold text-[18px] text-text-primary tracking-tight">
+          PokéTrade <span className="text-brand">JP</span>
         </span>
         <button
-          className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#F8F9FA] active:scale-[0.98] transition-transform"
+          className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg-elevated active:scale-[0.98] transition-transform"
           aria-label="查看通知"
         >
           <BellIcon />
@@ -26,7 +26,7 @@ function BellIcon() {
       height="20"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#202124"
+      stroke="#eae1da"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"

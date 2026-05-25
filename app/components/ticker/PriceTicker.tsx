@@ -65,7 +65,7 @@ export function PriceTicker() {
 
   return (
     <div
-      className="w-full bg-[#202124] overflow-hidden h-9 flex items-center shrink-0"
+      className="w-full bg-bg-shell overflow-hidden h-9 flex items-center shrink-0 border-b border-[rgba(237,232,224,0.08)]"
       aria-label="即時價格走勢"
       aria-live="off"
     >
@@ -75,20 +75,20 @@ export function PriceTicker() {
             key={i}
             className="inline-flex items-center gap-2 px-6 font-mono text-[12px] shrink-0"
           >
-            <span className="text-[#5F6368]">{item.id}</span>
-            <span className="text-white font-medium">{item.name}</span>
-            <span className="text-[#F8F9FA] font-medium">
+            <span className="text-text-disabled">{item.id}</span>
+            <span className="text-text-primary font-medium">{item.name}</span>
+            <span className="text-text-primary font-medium">
               ¥{item.price.toLocaleString("zh-TW")}
             </span>
             <span
               className={
-                item.direction === "up" ? "text-[#16A34A]" : "text-[#DC2626]"
+                item.direction === "up" ? "text-success" : "text-warning"
               }
             >
               {item.direction === "up" ? "▲" : "▼"} ¥
               {item.delta.toLocaleString("zh-TW")}
             </span>
-            <span className="text-[#5F6368] ml-1" aria-hidden="true">
+            <span className="text-text-disabled ml-1" aria-hidden="true">
               ·
             </span>
           </span>

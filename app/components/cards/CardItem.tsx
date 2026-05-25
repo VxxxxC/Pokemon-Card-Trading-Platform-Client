@@ -21,11 +21,11 @@ export function CardItem({ card }: { card: CardData }) {
   const formattedDelta = `${card.deltaDirection === "up" ? "▲" : "▼"} ¥${card.delta.toLocaleString("zh-TW")}`;
 
   return (
-    <article className="group bg-white rounded-[16px] border border-[rgba(226,232,240,0.6)] shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200 overflow-hidden">
+    <article className="group bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow duration-200 overflow-hidden">
       {/* Card Image */}
       <Link
         href={`/listing/${card.id}`}
-        className="block relative w-full aspect-[5/3.5] overflow-hidden bg-[#F8F9FA]"
+        className="block relative w-full aspect-[5/3.5] overflow-hidden bg-bg-elevated"
       >
         <Image
           src={card.image}
@@ -43,10 +43,10 @@ export function CardItem({ card }: { card: CardData }) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="min-w-0">
-            <h3 className="font-sans font-semibold text-[16px] text-[#202124] leading-tight truncate">
+            <h3 className="font-sans font-semibold text-[16px] text-text-primary leading-tight truncate">
               {card.name}
             </h3>
-            <span className="font-mono text-[12px] text-[#5F6368]">
+            <span className="font-mono text-[12px] text-text-secondary">
               {card.id} · {card.set}
             </span>
           </div>
@@ -58,22 +58,22 @@ export function CardItem({ card }: { card: CardData }) {
 
         <div className="flex items-end justify-between mt-3">
           <div>
-            <p className="font-mono font-medium text-[18px] text-[#202124]">
+            <p className="font-mono font-medium text-[18px] text-text-primary">
               {formattedPrice}
             </p>
             <span
               className={`font-mono text-[12px] ${
                 card.deltaDirection === "up"
-                  ? "text-[#16A34A]"
-                  : "text-[#DC2626]"
+                  ? "text-success"
+                  : "text-warning"
               }`}
             >
               {formattedDelta}
             </span>
           </div>
           <div className="text-right">
-            <p className="font-mono text-[11px] text-[#5F6368]">賣家</p>
-            <p className="font-sans text-[13px] text-[#202124] truncate max-w-[100px]">
+            <p className="font-mono text-[11px] text-text-secondary">賣家</p>
+            <p className="font-sans text-[13px] text-text-primary truncate max-w-[100px]">
               {card.seller}
             </p>
           </div>
@@ -81,10 +81,10 @@ export function CardItem({ card }: { card: CardData }) {
 
         {/* CTAs */}
         <div className="mt-4 flex gap-2">
-          <button className="flex-1 h-10 bg-[#2563EB] text-white font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-[#1d4ed8] min-h-[44px]">
+          <button className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover min-h-[44px]">
             直接購買
           </button>
-          <button className="flex-1 h-10 border border-[rgba(226,232,240,0.6)] text-[#2563EB] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-[#F8F9FA] min-h-[44px]">
+          <button className="flex-1 h-10 border border-[rgba(237,232,224,0.12)] text-brand font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-bg-elevated min-h-[44px]">
             即時出價
           </button>
         </div>
