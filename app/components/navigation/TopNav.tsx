@@ -10,12 +10,12 @@ const navLinks = [
   { href: "/profile", label: "會員中心" },
 ];
 
-export function TopNav({ activePath: _activePath }: { activePath?: string } = {}) {
+export function TopNav() {
   const pathname = usePathname();
 
   return (
     <header className="hidden lg:flex sticky top-0 z-50 w-full h-16 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
-      <div className="max-w-[1400px] mx-auto w-full px-8 flex items-center justify-between">
+      <div className="max-w-350 mx-auto w-full px-8 flex items-center justify-between">
         {/* Logo */}
         <Link
           href="/"
@@ -32,7 +32,7 @@ export function TopNav({ activePath: _activePath }: { activePath?: string } = {}
               <Link
                 key={href}
                 href={href}
-                className={`font-sans text-sm font-medium px-3 py-1.5 rounded-[8px] transition-colors ${
+                className={`font-sans text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${
                   isActive
                     ? "bg-[rgba(212,165,116,0.12)] text-brand"
                     : "text-text-secondary hover:text-brand hover:bg-[rgba(212,165,116,0.06)]"
@@ -44,14 +44,14 @@ export function TopNav({ activePath: _activePath }: { activePath?: string } = {}
           })}
         </nav>
 
-        {/* CTA Buttons */}
-        <div className="flex items-center gap-3 shrink-0">
-          <button className="h-9 px-4 font-sans text-sm font-medium text-brand border border-[rgba(237,232,224,0.12)] rounded-[8px] hover:bg-bg-elevated active:scale-[0.98] active:translate-y-[1px] transition-transform">
-            登入
-          </button>
-          <button className="h-9 px-4 font-sans text-sm font-medium text-[#17130f] bg-brand rounded-[8px] hover:bg-brand-hover active:scale-[0.98] active:translate-y-[1px] transition-transform">
-            免費註冊
-          </button>
+        {/* CTA Button */}
+        <div className="shrink-0">
+          <Link
+            href="/auth"
+            className="h-9 px-4 font-sans text-sm font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform inline-flex items-center justify-center"
+          >
+            登入 / 註冊
+          </Link>
         </div>
       </div>
     </header>
