@@ -1,23 +1,23 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
+import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
+import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
 
-const APP_NAME = "My Default PWA App";
-const APP_DEFAULT_TITLE = "PWA App";
-const APP_TITLE_TEMPLATE = "%s - PWA App";
-const APP_DESCRIPTION = "Best PWA App in the world!";
+const APP_NAME = "PokéTrade JP";
+const APP_DEFAULT_TITLE = "PokéTrade JP — 寶可夢卡牌專業交易平台";
+const APP_TITLE_TEMPLATE = "%s | PokéTrade JP";
+const APP_DESCRIPTION =
+  "寶可夢卡牌專業交易平台。即時市場數據、安全的第三方託管付款、收藏家及專業投資者服務。";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+/* TODO: Import Hanken Grotesk and JetBrains Mono when available
+   Currently: Geist (Headline), Geist (Body fallback)
+   Target: Geist (Headline), Hanken Grotesk (Body), JetBrains Mono (Data)
+   Reference: DESIGN.md Section 3 (字體規則)
+ */
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -30,7 +30,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: APP_DEFAULT_TITLE,
-    // startUpImage: [],
   },
   formatDetection: {
     telephone: false,
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FFFFFF",
+  themeColor: "#17130f",
 };
 
 export default function RootLayout({
@@ -48,11 +47,15 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="zh-TW"
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body>
-        <AppSerwistProvider>{children}</AppSerwistProvider>
+      <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
+        <AppSerwistProvider>
+          <PwaNetworkBanner />
+          {children}
+          <PwaInstallPrompt />
+        </AppSerwistProvider>
       </body>
     </html>
   );
