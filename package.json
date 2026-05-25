@@ -10,7 +10,7 @@
     "localtunnel": "lt --port 3000 --subdomain pokemon-trading-platform"
   },
   "dependencies": {
-    "@serwist/next": "^9.5.7",
+    "@serwist/next": "^9.5.11",
     "geist": "^1.7.1",
     "next": "16.2.2",
     "react": "19.2.4",
@@ -26,7 +26,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "localtunnel": "^2.0.2",
-    "serwist": "^9.5.7",
+    "serwist": "^9.5.11",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
