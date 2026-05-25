@@ -2,11 +2,12 @@
 
 ## Read First (All Collaborators & AI Agents)
 Before writing code, read these files in order:
-1. [.github/copilot-instructions.md](../.github/copilot-instructions.md)
-2. [design.md](../design.md)
-4. This archive: [docs/plan-sync-archive.md](./plan-sync-archive.md)
+1. [requirement.md](./requirement.md)
+2. [task.md](./docs/task.md)
 
-If you are using non-Copilot AI tools, still enforce the same workflow and constraints from [/.github/copilot-instructions.md](../.github/copilot-instructions.md).
+
+## Task Planning
+- According to the [requirement.md](./requirement.md) Development Timeline, planning the task ticket from [task.md](./docs/task.md) for various period
 
 ## Golden Workflow (Mandatory)
 1. `taste-design`: confirm aesthetics and anti-pattern rules are covered.
@@ -62,7 +63,7 @@ Never skip from idea to direct code without checking the design system.
 - Track H (QA/Release): E2E + Lighthouse + release guardrails.
 
 ## Definition of Done (Cross-Track)
-1. Matches [design.md](../design.md) tokens and anti-pattern rules.
+1. Matches [design.md](../.stitch/designs/design.md) tokens and anti-pattern rules.
 2. Uses realistic Japanese Pokemon card context and no fabricated metrics.
 3. Passes TypeScript, lint, and runtime smoke checks.
 4. Includes mobile-first behavior and PWA/offline compatibility.
@@ -70,6 +71,7 @@ Never skip from idea to direct code without checking the design system.
 
 ## Handoff Note Template
 When handing off work, include:
+- update checkbox status of task ticket in [task.md](./docs/task.md)
 - Files changed
 - Contract changes (API/schema/event)
 - Test evidence
