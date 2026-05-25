@@ -43,15 +43,15 @@ export default function AdminApprovalsPage() {
   return (
     <>
       {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6">
+        <div className="flex-1 min-w-0">
           <h1 className="font-sans font-bold text-[22px] text-text-primary">審核中心</h1>
           <p className="font-sans text-[13px] text-text-secondary mt-0.5">
             處理商戶 KYC 申請，批准後用戶角色升級為 MERCHANT
           </p>
         </div>
         {pendingCount > 0 && (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-warning bg-[rgba(239,68,68,0.10)] border border-warning/25 px-3 py-1.5 rounded-xl">
+          <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-warning bg-[rgba(239,68,68,0.10)] border border-warning/25 px-3 py-1.5 rounded-xl shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" aria-hidden="true" />
             {pendingCount} 件待審核
           </span>
@@ -59,7 +59,7 @@ export default function AdminApprovalsPage() {
       </div>
 
       {/* ── Stats Bar ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
         {[
           { label: "待審核", value: pendingCount,  color: "text-warning" },
           { label: "已批准", value: approvedCount, color: "text-success" },

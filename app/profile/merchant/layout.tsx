@@ -12,6 +12,7 @@ const MERCHANT_TABS: TabItem[] = [
   { href: "/profile/merchant/inventory", label: "商品管理", icon: "🗂️" },
   { href: "/profile/merchant/sales",     label: "銷售訂單", icon: "🤝" },
   { href: "/profile/merchant/finance",   label: "資金金流", icon: "💰" },
+  { href: "/profile/merchant/settings",  label: "店舖設定", icon: "⚙️" },
 ];
 
 const mockMerchant = {
@@ -34,7 +35,7 @@ export default function MerchantProfileLayout({ children }: { children: ReactNod
       <TopNav />
       <MobileHeader />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
+      <main className="flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
         {/* ── Demo Role Banner ──────────────────────────────────────────── */}
         <div className="mt-4 mb-4 flex items-center justify-between px-3 py-2 bg-[rgba(212,165,116,0.06)] border border-brand/20 rounded-xl">
           <span className="font-mono text-[11px] text-brand">

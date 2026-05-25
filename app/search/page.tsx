@@ -38,6 +38,7 @@ export default function SearchPage() {
         </h1>
 
         {/* Search Input */}
+        {/* TODO [BACKEND]: Search input has no onChange/onSubmit handler — must connect to Supabase query on `listings` table with .textSearch('name', query) or TCGdex API lookup */}
         <div className="relative mb-8 max-w-2xl">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <SearchIcon />
@@ -50,6 +51,7 @@ export default function SearchPage() {
         </div>
 
         {/* Filter chips */}
+        {/* TODO [BACKEND]: Filter chip buttons have no onClick handlers — must update URL search params (e.g., ?rarity=SAR) and re-query Supabase with rarity filter */}
         <div className="flex gap-2 mb-8 flex-wrap">
           {["全部", "SAR", "UR", "SR", "AR", "已評級"].map(
             (filter) => (

@@ -31,7 +31,7 @@ export function AdminNav() {
           </span>
         </div>
 
-        <nav className="flex-1 p-3 space-y-0.5" aria-label="後台導航">
+        <nav className="p-3 space-y-0.5" aria-label="後台導航">
           {NAV_ITEMS.map(({ href, label, icon, exact }) => {
             const isActive = exact ? pathname === href : pathname.startsWith(href);
             return (

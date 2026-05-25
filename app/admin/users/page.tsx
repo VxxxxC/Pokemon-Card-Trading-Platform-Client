@@ -54,7 +54,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* ── Stats ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6">
         {[
           { label: "總用戶",   value: totalUsers,    color: "text-text-primary" },
           { label: "商戶",     value: merchantCount, color: "text-brand" },

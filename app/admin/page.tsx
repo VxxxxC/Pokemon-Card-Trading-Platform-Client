@@ -36,17 +36,23 @@ export default function AdminOverviewPage() {
   return (
     <>
       {/* ── Page Header ───────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-sans font-bold text-[22px] text-text-primary">平台監控</h1>
-          <p className="font-mono text-[12px] text-text-secondary mt-0.5">
-            {/* TODO [MOCK DATA]: Replace hardcoded timestamp with real server time — use new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Hong_Kong' }) or server-side Date */}
-            最後更新：2025年 5月 21日 13:17 UTC+8
-          </p>
+      <div className="mb-6">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-sans font-bold text-[22px] text-text-primary">平台監控</h1>
+            <p className="font-mono text-[12px] text-text-secondary mt-0.5">
+              {/* TODO [MOCK DATA]: Replace hardcoded timestamp with real server time — use new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Hong_Kong' }) or server-side Date */}
+              最後更新：2025年 5月 21日 13:17 UTC+8
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse" aria-hidden="true" />
+            <span className="font-mono text-[12px] text-success">系統運作正常</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="sm:hidden flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse" aria-hidden="true" />
-          <span className="font-mono text-[12px] text-success">系統運作正常</span>
+          <span className="font-mono text-[11px] text-success">系統運作正常</span>
         </div>
       </div>
 

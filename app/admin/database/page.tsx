@@ -40,27 +40,30 @@ export default function AdminDatabasePage() {
   return (
     <>
       {/* ── Header ───────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="font-sans font-bold text-[22px] text-text-primary">卡牌資料庫</h1>
-          <p className="font-sans text-[13px] text-text-secondary mt-0.5">
-            管理卡牌條目 · 手動錄入非 API 覆蓋卡種 · 快取更新控制
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {/* TODO [BACKEND]: "更新 Top-100 快取" has no handler — must call server action to re-run TCGdex API fetch and update `price_cache` table in Supabase */}
-          <button type="button" className="flex items-center gap-1.5 px-3 py-2 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl font-mono text-[12px] text-text-secondary hover:text-text-primary transition-colors">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            更新 Top-100 快取
-          </button>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-sans font-bold text-[22px] text-text-primary">卡牌資料庫</h1>
+            <p className="font-sans text-[13px] text-text-secondary mt-0.5">
+              管理卡牌條目 · 手動錄入非 API 覆蓋卡種 · 快取更新控制
+            </p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            {/* TODO [BACKEND]: "更新 Top-100 快取" has no handler — must call server action to re-run TCGdex API fetch and update `price_cache` table in Supabase */}
+            <button type="button" className="flex items-center gap-1.5 px-3 py-2 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl font-mono text-[11px] sm:text-[12px] text-text-secondary hover:text-text-primary transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              <span className="hidden sm:inline">更新 Top-100 快取</span>
+              <span className="sm:hidden">更新快取</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ── Stats ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-6">
         {[
           { label: "總條目",     value: cardEntries.length,                          color: "text-text-primary" },
           { label: "待審核",     value: needsReviewCount,                            color: needsReviewCount > 0 ? "text-warning" : "text-text-primary" },
