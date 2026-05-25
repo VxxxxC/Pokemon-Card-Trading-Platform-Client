@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function UserSettingsPage() {
   return (
-    <div className="max-w-[640px] space-y-6">
+    <div className="max-w-160 space-y-6">
       {/* ── Personal Info ──────────────────────────────────────────────── */}
       <section
         aria-labelledby="personal-info-heading"

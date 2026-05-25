@@ -17,7 +17,7 @@ const marketSeries = [
 export default function HomePage() {
   return (
     <div className="min-h-[100dvh] bg-bg-page flex flex-col">
-      <TopNav activePath="/" />
+      <TopNav />
       <MobileHeader />
       <PriceTicker />
 

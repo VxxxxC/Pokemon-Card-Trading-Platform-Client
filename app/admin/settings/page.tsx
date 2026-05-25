@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LogoutModal } from "@/app/components/profile/LogoutModal";
 
 export const metadata: Metadata = {
   title: "營運設定 — PokéTrade JP 後台",
@@ -7,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function AdminSettingsPage() {
   return (
-    <div className="max-w-[720px] space-y-6">
+    <div className="max-w-180 space-y-6">
       {/* ── Page Header ──────────────────────────────────────────────── */}
       <div className="mb-2">
         <h1 className="font-sans font-bold text-[22px] text-text-primary">營運設定</h1>
@@ -214,6 +215,17 @@ export default function AdminSettingsPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* ── Session Control ───────────────────────────────────────────── */}
+      <section
+        aria-labelledby="session-ctrl"
+        className="bg-bg-card border border-[rgba(237,232,224,0.08)] rounded-2xl p-4"
+      >
+        <h2 id="session-ctrl" className="font-mono text-[11px] font-medium text-text-secondary uppercase tracking-wider mb-3">
+          Session Control
+        </h2>
+        <LogoutModal />
       </section>
     </div>
   );

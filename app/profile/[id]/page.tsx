@@ -255,7 +255,7 @@ export default async function ProfileIdPage({ params }: ProfileIdPageProps) {
   if (!member) {
     return (
       <div className="min-h-dvh bg-bg-page flex flex-col">
-        <TopNav activePath="/profile" />
+        <TopNav />
         <MobileHeader />
         <main className="flex-1 flex items-center justify-center px-4">
           <div className="text-center">
@@ -316,7 +316,7 @@ export default async function ProfileIdPage({ params }: ProfileIdPageProps) {
 
   return (
     <div className="min-h-dvh bg-bg-page flex flex-col">
-      <TopNav activePath="/profile" />
+      <TopNav />
       <MobileHeader />
 
       <main className="flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">

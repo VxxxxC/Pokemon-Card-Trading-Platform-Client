@@ -31,7 +31,7 @@ const mockMerchant = {
 export default function MerchantProfileLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-bg-page flex flex-col">
-      <TopNav activePath="/profile" />
+      <TopNav />
       <MobileHeader />
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">

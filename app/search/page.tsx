@@ -29,7 +29,7 @@ function SearchIcon() {
 export default function SearchPage() {
   return (
     <div className="min-h-[100dvh] bg-[#F8F9FA] flex flex-col">
-      <TopNav activePath="/search" />
+      <TopNav />
       <MobileHeader />
 
       <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 lg:px-8 py-6 pb-24 lg:pb-8">

@@ -133,7 +133,7 @@ export default function UserOverviewPage() {
                       }`}>
                         {tier.tier}
                       </div>
-                      <span className={`font-mono text-[9px] text-center leading-tight max-w-[52px] ${
+                      <span className={`font-mono text-[9px] text-center leading-tight max-w-13 ${
                         isActive ? "text-brand" : isDone ? "text-text-secondary" : "text-text-disabled"
                       }`}>
                         {tier.label}
