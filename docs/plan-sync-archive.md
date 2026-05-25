@@ -4,7 +4,10 @@
 Before writing code, read these files in order:
 1. [requirement.md](./requirement.md)
 2. [task.md](./docs/task.md)
+3. [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)
 
+## Membership Level
+- Before implement related to the membership system (such as: login / register / individual interface, sub-tab or sub-page according to the member level ) , please reference to [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)
 
 ## Task Planning
 - According to the [requirement.md](./requirement.md) Development Timeline, planning the task ticket from [task.md](./docs/task.md) for various period
