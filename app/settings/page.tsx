@@ -42,6 +42,10 @@ const settingsSections = [
         label: "付款方式",
         description: "信用卡與銀行轉帳管理",
       },
+      {
+        label: "預設收件地址 (順豐)",
+        description: "852M1001 · 上環文和東街 135 號地下",
+      },
     ],
   },
   {
@@ -52,8 +56,8 @@ const settingsSections = [
         description: "設定8字元以上的強力密碼",
       },
       {
-        label: "兩步驟驗證",
-        description: "以SMS驗證保護帳號",
+        label: "兩步驟驗證 (2FA)",
+        description: "目前狀態：已啟用 · Authenticator App",
       },
     ],
   },

@@ -5,6 +5,7 @@ import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CheckInWidget } from "@/app/components/profile/CheckInWidget";
+import { LogoutModal } from "@/app/components/profile/LogoutModal";
 
 export const metadata: Metadata = {
   title: "我的帳號 — PokéTrade JP",
@@ -33,6 +34,12 @@ const portfolioStats = [
   { label: "本月損益", value: "¥128,000", note: "▲ +11.6%", noteDir: "up" as const },
   { label: "成交紀錄", value: "18", note: "★ 4.9 評分", noteDir: "neutral" as const },
 ];
+
+const streakReward = {
+  hasReward: true,
+  streakDays: 7,
+  rewardLabel: "順豐免運費券 x1",
+};
 
 const LEVEL_TIERS = [
   { tier: 1, label: "新手收藏家", xp: 0 },
@@ -190,9 +197,9 @@ export default function ProfilePage() {
               </div>
               <Link
                 href="/settings"
-                className="h-9 px-4 font-sans text-[13px] font-medium text-brand border border-[rgba(237,232,224,0.12)] rounded-lg hover:bg-bg-elevated active:scale-[0.98] active:translate-y-px transition-transform"
+                className="flex justify-center items-center min-h-11 px-4 font-sans text-[13px] font-medium text-brand border border-[rgba(237,232,224,0.12)] rounded-lg hover:bg-bg-elevated active:scale-[0.98] active:translate-y-px transition-transform"
               >
-                編輯資料
+                設定
               </Link>
             </div>
 
@@ -376,10 +383,10 @@ export default function ProfilePage() {
                   近期交易
                 </h2>
                 <Link
-                  href="/portfolio"
+                  href="/search"
                   className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
                 >
-                  全部紀錄 →
+                  搜尋更多 →
                 </Link>
               </div>
 
@@ -475,72 +482,49 @@ export default function ProfilePage() {
             {/* ── Daily Check-in ──────────────────────────────────────── */}
             <CheckInWidget initialStreak={4} />
 
-            {/* ── Quick Links ─────────────────────────────────────────── */}
-            <nav aria-label="快速連結">
-              <h2 className="font-sans font-semibold text-[16px] text-text-primary mb-3">
-                快速連結
-              </h2>
-              <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-                {[
-                  {
-                    href: "/portfolio",
-                    label: "我的收藏集",
-                    desc: "查看持有卡牌與資產",
-                    emoji: "🗃️",
-                  },
-                  {
-                    href: "/search",
-                    label: "搜尋卡牌",
-                    desc: "瀏覽市場上架品",
-                    emoji: "🔍",
-                  },
-                  {
-                    href: "/settings",
-                    label: "帳號設定",
-                    desc: "安全性、通知與付款方式",
-                    emoji: "⚙️",
-                  },
-                ].map(({ href, label, desc, emoji }, i) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={`flex items-center gap-3 px-4 py-3.5 hover:bg-bg-elevated active:scale-[0.99] transition-colors ${
-                      i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
-                    }`}
-                  >
-                    <span
-                      className="text-[18px] w-8 h-8 flex items-center justify-center bg-bg-elevated rounded-lg shrink-0"
-                      aria-hidden="true"
-                    >
-                      {emoji}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-sans font-medium text-[14px] text-text-primary">
-                        {label}
-                      </p>
-                      <p className="font-mono text-[11px] text-text-secondary">
-                        {desc}
-                      </p>
-                    </div>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#50453b"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <polyline points="9 18 15 12 9 6" />
+            {/* ── Pending Rewards ─────────────────────────────────────── */}
+            {streakReward.hasReward && (
+              <section
+                className="bg-bg-card border border-[rgba(212,165,116,0.20)] rounded-2xl p-4 shadow-[0_1px_4px_rgba(0,0,0,0.30)]"
+                aria-labelledby="streak-reward-heading"
+              >
+                <h2
+                  id="streak-reward-heading"
+                  className="font-mono text-[11px] font-medium text-text-secondary uppercase tracking-wider mb-3"
+                >
+                  待領取獎勵
+                </h2>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[rgba(212,165,116,0.12)] border border-[rgba(212,165,116,0.20)] flex items-center justify-center shrink-0">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#d4a574" strokeWidth="1.5" aria-hidden="true">
+                      <path d="M20 12V22H4V12" />
+                      <path d="M22 7H2v5h20V7z" />
+                      <path d="M12 22V7" />
+                      <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
                     </svg>
-                  </Link>
-                ))}
-              </div>
-            </nav>
+                  </div>
+                  <div>
+                    <p className="font-sans font-medium text-[14px] text-text-primary">
+                      {streakReward.rewardLabel}
+                    </p>
+                    <p className="font-mono text-[11px] text-brand mt-0.5">
+                      連續簽到 {streakReward.streakDays} 天達成
+                    </p>
+                  </div>
+                </div>
+                <form action="#">
+                  <button
+                    type="submit"
+                    className="w-full h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform"
+                  >
+                    立即領取
+                  </button>
+                </form>
+              </section>
+            )}
 
-            {/* ── Referral / Points ───────────────────────────────────── */}
+            {/* ── Points Balance ───────────────────────────────────────── */}
             <div className="bg-[rgba(212,165,116,0.08)] rounded-2xl border border-brand/20 p-4">
               <div className="flex items-start gap-3">
                 <span className="text-[24px] shrink-0" aria-hidden="true">
@@ -562,6 +546,20 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* ── Session Control ──────────────────────────────────────── */}
+            <section
+              className="bg-bg-card border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 shadow-[0_1px_4px_rgba(0,0,0,0.30)]"
+              aria-labelledby="session-ctrl-heading"
+            >
+              <h2
+                id="session-ctrl-heading"
+                className="font-mono text-[11px] font-medium text-text-secondary uppercase tracking-wider mb-3"
+              >
+                Session Control
+              </h2>
+              <LogoutModal />
+            </section>
           </div>
         </div>
       </main>
