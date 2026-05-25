@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navLinks = [
   { href: "/", label: "首頁" },
@@ -7,7 +10,9 @@ const navLinks = [
   { href: "/profile", label: "會員中心" },
 ];
 
-export function TopNav({ activePath = "/" }: { activePath?: string }) {
+export function TopNav({ activePath: _activePath }: { activePath?: string } = {}) {
+  const pathname = usePathname();
+
   return (
     <header className="hidden lg:flex sticky top-0 z-50 w-full h-16 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
       <div className="max-w-[1400px] mx-auto w-full px-8 flex items-center justify-between">
@@ -20,17 +25,17 @@ export function TopNav({ activePath = "/" }: { activePath?: string }) {
         </Link>
 
         {/* Nav Links */}
-        <nav className="flex items-center gap-8">
+        <nav className="flex items-center gap-1">
           {navLinks.map(({ href, label }) => {
-            const isActive = activePath === href;
+            const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
-                className={`font-sans text-sm font-medium transition-colors ${
+                className={`font-sans text-sm font-medium px-3 py-1.5 rounded-[8px] transition-colors ${
                   isActive
-                    ? "text-text-primary"
-                    : "text-text-secondary hover:text-brand"
+                    ? "bg-[rgba(212,165,116,0.12)] text-brand"
+                    : "text-text-secondary hover:text-brand hover:bg-[rgba(212,165,116,0.06)]"
                 }`}
               >
                 {label}

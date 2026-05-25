@@ -31,7 +31,7 @@ export function BottomNav() {
     >
       <div className="flex items-center gap-1 px-2 py-2 bg-[rgba(26,22,18,0.85)] backdrop-blur-xl border border-[rgba(237,232,224,0.10)] rounded-[28px] shadow-[0_4px_16px_rgba(0,0,0,0.50)]">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href;
+          const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
               key={href}
