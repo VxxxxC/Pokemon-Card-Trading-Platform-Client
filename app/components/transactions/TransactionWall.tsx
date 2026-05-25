@@ -75,27 +75,27 @@ const transactions = [
 
 export function TransactionWall() {
   return (
-    <div className="bg-white rounded-[16px] border border-[rgba(226,232,240,0.6)] shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
+    <div className="bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] overflow-hidden">
       {transactions.map((tx, i) => (
         <div
           key={`${tx.id}-${i}`}
-          className={`flex items-center justify-between px-4 py-3 hover:bg-[#F8F9FA] transition-colors ${
-            i > 0 ? "border-t border-[rgba(226,232,240,0.6)]" : ""
+          className={`flex items-center justify-between px-4 py-3 hover:bg-bg-elevated transition-colors ${
+            i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
           }`}
         >
           {/* Card name + metadata */}
           <div className="flex-1 min-w-0 pr-3">
-            <p className="font-sans text-[13px] font-medium text-[#202124] truncate">
+            <p className="font-sans text-[13px] font-medium text-text-primary truncate">
               {tx.name}
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="font-mono text-[11px] text-[#5F6368]">
+              <span className="font-mono text-[11px] text-text-secondary">
                 {tx.id}
               </span>
-              <span className="text-[#5F6368]" aria-hidden="true">
+              <span className="text-text-secondary" aria-hidden="true">
                 ·
               </span>
-              <span className="font-mono text-[11px] text-[#5F6368]">
+              <span className="font-mono text-[11px] text-text-secondary">
                 {tx.grade}
               </span>
             </div>
@@ -103,12 +103,12 @@ export function TransactionWall() {
 
           {/* Price + delta */}
           <div className="text-right shrink-0">
-            <p className="font-mono font-medium text-[14px] text-[#202124]">
+            <p className="font-mono font-medium text-[14px] text-text-primary">
               ¥{tx.price.toLocaleString("zh-TW")}
             </p>
             <span
               className={`font-mono text-[11px] ${
-                tx.deltaDir === "up" ? "text-[#16A34A]" : "text-[#DC2626]"
+                tx.deltaDir === "up" ? "text-success" : "text-warning"
               }`}
             >
               {tx.deltaDir === "up" ? "▲" : "▼"} ¥
@@ -118,7 +118,7 @@ export function TransactionWall() {
 
           {/* Timestamp */}
           <div className="text-right shrink-0 ml-3 w-[52px]">
-            <p className="font-mono text-[11px] text-[#5F6368]">{tx.time}</p>
+            <p className="font-mono text-[11px] text-text-secondary">{tx.time}</p>
           </div>
         </div>
       ))}
