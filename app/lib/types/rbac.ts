@@ -1,0 +1,51 @@
+export type UserRole = 'USER' | 'MERCHANT' | 'ADMIN' | 'PENDING_MERCHANT';
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  handle: string;
+  avatarSeed: string;
+  role: UserRole;
+  joinDate: string;
+  verifiedBuyer: boolean;
+  rating: number;
+  reviewCount: number;
+  level: string;
+  levelTier: number;
+  nextLevel: string;
+  xpCurrent: number;
+  xpRequired: number;
+}
+
+export interface MerchantProfile {
+  id: string;
+  name: string;
+  shopName: string;
+  handle: string;
+  avatarSeed: string;
+  joinDate: string;
+  kycVerified: boolean;
+  stripeConnected: boolean;
+  rating: number;
+  reviewCount: number;
+  totalListings: number;
+  totalSalesCount: number;
+}
+
+export interface EscrowStep {
+  id: string;
+  label: string;
+  description: string;
+}
+
+export const ESCROW_STEPS: EscrowStep[] = [
+  { id: 'payment',  label: '付款',   description: '買家已付全款或訂金' },
+  { id: 'custody',  label: '保管中', description: '資金由平台第三方託管' },
+  { id: 'shipped',  label: '已發貨', description: '賣家已上載物流追蹤號' },
+  { id: 'grading',  label: '鑑定中', description: '第三方鑑定機構處理中' },
+  { id: 'released', label: '已釋放', description: '款項已釋放給賣家' },
+];
+
+export type OrderStatus = 'payment' | 'custody' | 'shipped' | 'grading' | 'released';
+export type ListingStatus = 'active' | 'sold' | 'draft' | 'pending';
+export type KycStatus = 'pending' | 'approved' | 'rejected';
