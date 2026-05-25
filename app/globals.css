@@ -1,33 +1,57 @@
 @import "tailwindcss";
 
-/* PokéTrade JP Design System Tokens */
-:root {
-  --background: #F8F9FA;
-  --foreground: #202124;
-  --surface: #FFFFFF;
-  --mist: #5F6368;
-  --border: rgba(226, 232, 240, 0.6);
-  --trade-indigo: #2563EB;
-  --jade: #16A34A;
-  --crimson: #DC2626;
+/* PokéTrade JP — 暗金色設計系統 (Dark Golden Theme Only) */
+@layer base {
+  :root {
+    /* 背景層次 */
+    --bg-shell:          #1A1612;
+    --bg-page:           #17130f;
+    --bg-card:           #26211C;
+    --bg-elevated:       #2e2925;
+    --bg-hover:          #39342f;
+    /* 文字 */
+    --text-primary:      #eae1da;
+    --text-secondary:    #d4c4b7;
+    --text-disabled:     #50453b;
+    /* 邊框 */
+    --border:            rgba(237, 232, 224, 0.08);
+    --border-strong:     rgba(237, 232, 224, 0.12);
+    /* 品牌 */
+    --brand:             #d4a574;
+    --brand-hover:       #e8b896;
+    /* 語義色 */
+    --success:           #10b981;
+    --warning:           #ef4444;
+  }
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-mist: var(--mist);
-  --color-trade-indigo: var(--trade-indigo);
-  --color-jade: var(--jade);
-  --color-crimson: var(--crimson);
+  /* 背景層次 */
+  --color-bg-shell:        var(--bg-shell);
+  --color-bg-page:         var(--bg-page);
+  --color-bg-card:         var(--bg-card);
+  --color-bg-elevated:     var(--bg-elevated);
+  --color-bg-hover:        var(--bg-hover);
+  /* 文字 */
+  --color-text-primary:    var(--text-primary);
+  --color-text-secondary:  var(--text-secondary);
+  --color-text-disabled:   var(--text-disabled);
+  /* 品牌 */
+  --color-brand:           var(--brand);
+  --color-brand-hover:     var(--brand-hover);
+  /* 語義色 */
+  --color-success:         var(--success);
+  --color-warning:         var(--warning);
+  /* 字體 — Geist + Hanken Grotesk (Body) + JetBrains Mono (Data) */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* TODO: Add Hanken Grotesk and JetBrains Mono CSS variables when fonts are imported */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), 'Chiron GoRound TC', sans-serif;
 }
 
 /* Live ticker tape — hardware-accelerated translateX only */
@@ -45,14 +69,14 @@ body {
   will-change: transform;
 }
 
-/* Active escrow node ring pulse */
+/* Active escrow node ring pulse — warm gold (Stitch #d4a574) */
 @keyframes ring-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+    box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.50);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 6px rgba(212, 165, 116, 0);
   }
 }
 
@@ -73,9 +97,9 @@ body {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(0, 0, 0, 0.04) 0%,
-    rgba(0, 0, 0, 0.08) 50%,
-    rgba(0, 0, 0, 0.04) 100%
+    #26211C 0%,
+    #2e2925 50%,
+    #26211C 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;

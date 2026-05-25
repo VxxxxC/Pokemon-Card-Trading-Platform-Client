@@ -13,6 +13,12 @@ const APP_TITLE_TEMPLATE = "%s | PokéTrade JP";
 const APP_DESCRIPTION =
   "寶可夢卡牌專業交易平台。即時市場數據、安全的第三方託管付款、收藏家及專業投資者服務。";
 
+/* TODO: Import Hanken Grotesk and JetBrains Mono when available
+   Currently: Geist (Headline), Geist (Body fallback)
+   Target: Geist (Headline), Hanken Grotesk (Body), JetBrains Mono (Data)
+   Reference: DESIGN.md Section 3 (字體規則)
+ */
+
 export const metadata: Metadata = {
   applicationName: APP_NAME,
   title: {
@@ -31,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563EB",
+  themeColor: "#17130f",
 };
 
 export default function RootLayout({
@@ -44,7 +50,7 @@ export default function RootLayout({
       lang="zh-TW"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-dvh bg-[#F8F9FA] text-[#202124] font-sans">
+      <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
         <AppSerwistProvider>
           <PwaNetworkBanner />
           {children}
