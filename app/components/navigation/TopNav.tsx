@@ -3,8 +3,8 @@ import Link from "next/link";
 const navLinks = [
   { href: "/", label: "首頁" },
   { href: "/search", label: "搜尋" },
-  { href: "/portfolio", label: "收藏集" },
   { href: "/market", label: "市場" },
+  { href: "/profile", label: "會員中心" },
 ];
 
 export function TopNav({ activePath = "/" }: { activePath?: string }) {

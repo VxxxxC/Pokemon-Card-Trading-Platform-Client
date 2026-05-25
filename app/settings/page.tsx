@@ -14,7 +14,7 @@ function ChevronRightIcon() {
       height="16"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#5F6368"
+      stroke="#d4c4b7"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -91,34 +91,34 @@ const settingsSections = [
 
 export default function SettingsPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#F8F9FA] flex flex-col">
+    <div className="min-h-dvh bg-bg-page flex flex-col">
       <TopNav activePath="/settings" />
       <MobileHeader />
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 lg:px-8 py-6 pb-24 lg:pb-8">
-        <h1 className="font-sans font-bold text-[24px] text-[#202124] mb-6">
+      <main className="flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-8">
+        <h1 className="font-sans font-bold text-[24px] text-text-primary mb-6">
           設定
         </h1>
 
         <div className="space-y-6 max-w-2xl">
           {settingsSections.map((section) => (
             <div key={section.title}>
-              <h2 className="font-mono text-[11px] font-medium text-[#5F6368] uppercase tracking-wider mb-2 px-1">
+              <h2 className="font-mono text-[11px] font-medium text-text-secondary uppercase tracking-wider mb-2 px-1">
                 {section.title}
               </h2>
-              <div className="bg-white rounded-[16px] border border-[rgba(226,232,240,0.6)] shadow-[0_1px_4px_rgba(0,0,0,0.06)] overflow-hidden">
+              <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] overflow-hidden">
                 {section.items.map((item, i) => (
                   <button
                     key={item.label}
-                    className={`w-full flex items-center justify-between px-4 py-4 text-left hover:bg-[#F8F9FA] transition-colors active:scale-[0.99] min-h-[44px] ${
-                      i > 0 ? "border-t border-[rgba(226,232,240,0.6)]" : ""
+                    className={`w-full flex items-center justify-between px-4 py-4 text-left hover:bg-bg-elevated transition-colors active:scale-[0.99] min-h-[44px] ${
+                      i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
                     }`}
                   >
                     <div>
-                      <p className="font-sans font-medium text-[15px] text-[#202124]">
+                      <p className="font-sans font-medium text-[15px] text-text-primary">
                         {item.label}
                       </p>
-                      <p className="font-sans text-[13px] text-[#5F6368] mt-0.5">
+                      <p className="font-sans text-[13px] text-text-secondary mt-0.5">
                         {item.description}
                       </p>
                     </div>
