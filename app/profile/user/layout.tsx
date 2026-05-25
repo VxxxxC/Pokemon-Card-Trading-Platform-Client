@@ -74,12 +74,6 @@ export default function UserProfileLayout({ children }: { children: ReactNode })
                   className="object-cover"
                 />
               </div>
-              <Link
-                href="/profile/user/settings"
-                className="flex justify-center items-center min-h-11 px-4 font-sans text-[13px] font-medium text-brand border border-[rgba(237,232,224,0.12)] rounded-lg hover:bg-bg-elevated active:scale-[0.98] active:translate-y-px transition-transform"
-              >
-                設定
-              </Link>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
