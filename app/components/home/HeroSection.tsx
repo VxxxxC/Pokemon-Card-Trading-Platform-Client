@@ -96,7 +96,7 @@ export function HeroSection() {
           </form>
 
           {/* Spec: Quick Filter Chips — horizontal scrolling pills */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-[520px]">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none max-w-[520px]">
             {quickFilters.map((filter) => (
               <button
                 key={filter.query}
