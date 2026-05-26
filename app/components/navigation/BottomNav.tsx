@@ -10,8 +10,8 @@ const navItems = [
     icon: HomeIcon,
   },
   {
-    href: "/search",
-    label: "搜尋",
+    href: "/marketplace",
+    label: "市場",
     icon: SearchIcon,
   },
   {
