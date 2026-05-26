@@ -1,7 +1,7 @@
 import type { PokemonCard } from "@/app/api/pokemon-cards/route";
 import type { CardData } from "@/app/components/cards/CardItem";
 
-// TODO [API]: In production, all mock data will come from Supabase DB, not pokemontcg.io
+// TODO [database]: In production, all mock data will come from Supabase DB, not pokemontcg.io
 // This module provides helpers to:
 // 1. Fetch cards directly from pokemontcg.io (server components) or via /api/pokemon-cards (client)
 // 2. Transform API responses into the types our components expect
@@ -39,20 +39,23 @@ export async function fetchPokemonCards(params?: {
   }
 }
 
+const EUR_TO_JPY_RATE = 160;
+const USD_TO_JPY_RATE = 150;
+
 /** Get a price for a Pokemon card from available pricing data */
 function getCardPrice(card: PokemonCard): number {
   // Try cardmarket first (more common for Japanese cards)
   if (card.cardmarket?.prices?.averageSellPrice) {
-    return Math.round(card.cardmarket.prices.averageSellPrice * 160); // EUR → JPY rough conversion
+    return Math.round(card.cardmarket.prices.averageSellPrice * EUR_TO_JPY_RATE);
   }
   if (card.cardmarket?.prices?.trendPrice) {
-    return Math.round(card.cardmarket.prices.trendPrice * 160);
+    return Math.round(card.cardmarket.prices.trendPrice * EUR_TO_JPY_RATE);
   }
   // Try tcgplayer
   if (card.tcgplayer?.prices) {
     const firstType = Object.values(card.tcgplayer.prices)[0];
-    if (firstType?.market) return Math.round(firstType.market * 150); // USD → JPY rough conversion
-    if (firstType?.mid) return Math.round(firstType.mid * 150);
+    if (firstType?.market) return Math.round(firstType.market * USD_TO_JPY_RATE);
+    if (firstType?.mid) return Math.round(firstType.mid * USD_TO_JPY_RATE);
   }
   // Fallback: generate from card name hash for consistency
   let hash = 0;

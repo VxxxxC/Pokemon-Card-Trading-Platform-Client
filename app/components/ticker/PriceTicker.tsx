@@ -24,13 +24,15 @@ export function PriceTicker() {
   const [transactions, setTransactions] = useState(fallbackTransactions);
 
   useEffect(() => {
-    fetchPokemonCards({ q: "supertype:pokémon", pageSize: 8 }).then(
-      (cards) => {
+    fetchPokemonCards({ q: "supertype:pokémon", pageSize: 8 })
+      .then((cards) => {
         if (cards.length > 0) {
           setTransactions(cards.map(toTickerTransaction));
         }
-      }
-    );
+      })
+      .catch(() => {
+        // Keep fallback data on error
+      });
   }, []);
 
   const items = [...transactions, ...transactions];

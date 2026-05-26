@@ -27,13 +27,15 @@ export function FollowingFeed() {
   const [hotCards, setHotCards] = useState(fallbackCards);
 
   useEffect(() => {
-    fetchPokemonCards({ q: "supertype:pokémon rarity:rare", pageSize: 8 }).then(
-      (cards) => {
+    fetchPokemonCards({ q: "supertype:pokémon rarity:rare", pageSize: 8 })
+      .then((cards) => {
         if (cards.length > 0) {
           setHotCards(cards.map(toFollowingCard));
         }
-      }
-    );
+      })
+      .catch(() => {
+        // Keep fallback data on error
+      });
   }, []);
 
   return (
