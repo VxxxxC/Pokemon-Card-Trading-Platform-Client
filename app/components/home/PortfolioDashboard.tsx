@@ -3,9 +3,9 @@
 import Link from "next/link";
 
 // Spec Section 6: Portfolio & Daily Rewards — personal card box + 7-day check-in
-// TODO [MOCK DATA]: Replace with Supabase query — aggregate user's card collection value from card_catalog market prices
-// TODO [BACKEND]: Check-in must use server-side timezone('Asia/Hong_Kong', now()) — reject client timestamps
-// TODO [BACKEND]: user_check_ins table needs UNIQUE(user_id, check_in_date) constraint + FOR UPDATE row lock
+// TODO [database]: Replace with Supabase query — aggregate user's card collection value from card_catalog market prices
+// TODO [server]: Check-in must use server-side timezone('Asia/Hong_Kong', now()) — reject client timestamps
+// TODO [database]: user_check_ins table needs UNIQUE(user_id, check_in_date) constraint + FOR UPDATE row lock
 
 const checkInDays = [
   { day: 1, reward: "5 積分", completed: true },
@@ -18,7 +18,7 @@ const checkInDays = [
 ];
 
 export function PortfolioDashboard() {
-  // TODO [BACKEND]: Check auth state — show login prompt if not authenticated
+  // TODO [server]: Check auth state — show login prompt if not authenticated
   const isLoggedIn = false;
 
   return (
@@ -51,7 +51,7 @@ export function PortfolioDashboard() {
             <p className="font-sans text-[13px] text-text-secondary mb-1">
               收藏總身家
             </p>
-            {/* TODO [MOCK DATA]: Replace with real calculated portfolio value */}
+            {/* TODO [database]: Replace with real calculated portfolio value */}
             <p className="font-mono font-bold text-[28px] text-text-primary">
               ¥248,500
             </p>

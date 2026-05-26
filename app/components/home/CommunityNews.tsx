@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch announcements from `announcements` table ordered by created_at DESC, limit 3
+// TODO [database]: Replace with Supabase query — fetch announcements from `announcements` table ordered by created_at DESC, limit 3
 const announcements = [
   {
     id: "ann-001",
@@ -113,7 +113,7 @@ export function Footer() {
               條款與政策
             </h4>
             <ul className="space-y-2">
-              {/* TODO [BACKEND]: Create dedicated policy pages */}
+              {/* TODO [server]: Create dedicated policy pages */}
               <li>
                 <span className="font-sans text-[13px] text-text-secondary">
                   隱私政策

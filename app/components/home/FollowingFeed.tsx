@@ -1,65 +1,40 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  fetchPokemonCards,
+  toFollowingCard,
+} from "@/app/lib/pokemon-data";
 
 // Spec Section 3: My Following Feed — horizontal slider
-// TODO [MOCK DATA]: Replace with Supabase query — logged-in: user's followed cards lowest prices; logged-out: global hot recommendations
-// TODO [BACKEND]: Requires compound index on user_favorites (user_id, listing_id) and (user_id, merchant_id)
-const hotCards = [
-  {
-    id: "sv2a-182",
-    name: "Charizard ex",
-    rarity: "SAR",
-    price: 45000,
-    image: "https://picsum.photos/seed/follow-charizard/200/280",
-    seller: "渡邊道館",
-  },
-  {
-    id: "sv2a-189",
-    name: "Mewtwo ex",
-    rarity: "SAR",
-    price: 52000,
-    image: "https://picsum.photos/seed/follow-mewtwo/200/280",
-    seller: "京都卡牌專門店",
-  },
-  {
-    id: "sv6a-109",
-    name: "Umbreon ex",
-    rarity: "SAR",
-    price: 38000,
-    image: "https://picsum.photos/seed/follow-umbreon/200/280",
-    seller: "東京TCG市場",
-  },
-  {
-    id: "sv2a-215",
-    name: "Pikachu",
-    rarity: "AR",
-    price: 8500,
-    image: "https://picsum.photos/seed/follow-pikachu/200/280",
-    seller: "大阪收藏家",
-  },
-  {
-    id: "sv2a-233",
-    name: "Mimikyu ex",
-    rarity: "SAR",
-    price: 28000,
-    image: "https://picsum.photos/seed/follow-mimikyu/200/280",
-    seller: "名古屋交易商",
-  },
-  {
-    id: "sv2a-213",
-    name: "Eevee",
-    rarity: "AR",
-    price: 6200,
-    image: "https://picsum.photos/seed/follow-eevee/200/280",
-    seller: "福岡卡牌店",
-  },
+// TODO [server]: Replace with Supabase query — logged-in: user's followed cards lowest prices; logged-out: global hot recommendations
+// TODO [database]: Requires compound index on user_favorites (user_id, listing_id) and (user_id, merchant_id)
+
+const fallbackCards = [
+  { id: "sv2a-182", name: "Charizard ex", rarity: "SAR", price: 45000, image: "https://images.pokemontcg.io/sv3pt5/215_hires.png", seller: "渡邊道館" },
+  { id: "sv2a-189", name: "Mewtwo ex", rarity: "SAR", price: 52000, image: "https://images.pokemontcg.io/sv3pt5/222_hires.png", seller: "京都卡牌專門店" },
+  { id: "sv6a-109", name: "Umbreon ex", rarity: "SAR", price: 38000, image: "https://images.pokemontcg.io/sv3pt5/198_hires.png", seller: "東京TCG市場" },
+  { id: "sv2a-215", name: "Pikachu", rarity: "AR", price: 8500, image: "https://images.pokemontcg.io/sv3pt5/207_hires.png", seller: "大阪收藏家" },
+  { id: "sv2a-233", name: "Mimikyu ex", rarity: "SAR", price: 28000, image: "https://images.pokemontcg.io/sv3pt5/201_hires.png", seller: "名古屋交易商" },
+  { id: "sv2a-213", name: "Eevee", rarity: "AR", price: 6200, image: "https://images.pokemontcg.io/sv3pt5/196_hires.png", seller: "福岡卡牌店" },
 ];
 
 export function FollowingFeed() {
-  // TODO [BACKEND]: Check auth state — show personalized feed if logged in
+  // TODO [server]: Check auth state — show personalized feed if logged in
   const isLoggedIn = false;
+  const [hotCards, setHotCards] = useState(fallbackCards);
+
+  useEffect(() => {
+    fetchPokemonCards({ q: "supertype:pokémon rarity:rare", pageSize: 8 }).then(
+      (cards) => {
+        if (cards.length > 0) {
+          setHotCards(cards.map(toFollowingCard));
+        }
+      }
+    );
+  }, []);
 
   return (
     <section className="mb-8" aria-labelledby="following-heading">

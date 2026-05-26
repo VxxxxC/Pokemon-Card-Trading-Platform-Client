@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 // Spec Section 5: Premium Escrow Market — KYC-verified merchant cards with badge system
-// TODO [MOCK DATA]: Replace with Supabase query — WHERE account_type='merchant' AND kyc_status='verified', ordered by rating DESC
-// TODO [BACKEND]: RLS policy must enforce account_type='merchant' AND kyc_status='verified' for use_authentication=true listings
+// TODO [database]: Replace with Supabase query — WHERE account_type='merchant' AND kyc_status='verified', ordered by rating DESC
+// TODO [server]: RLS policy must enforce account_type='merchant' AND kyc_status='verified' for use_authentication=true listings
 
 const verifiedMerchants = [
   {

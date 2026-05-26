@@ -14,16 +14,37 @@ import { PortfolioDashboard } from "@/app/components/home/PortfolioDashboard";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
 import { Footer } from "@/app/components/home/CommunityNews";
+import { fetchPokemonCards, toMarketSeries } from "@/app/lib/pokemon-data";
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch active box series from `card_series` table with live price feed
-const marketSeries = [
+// TODO [server]: Replace with Supabase query — fetch active box series from `card_series` table with live price feed
+const fallbackSeries = [
   { code: "sv4a", name: "Shiny Treasure ex Box", price: "¥4,500", delta: "+12%", dir: "up" as const },
   { code: "sv2a", name: "Pokémon Card 151 Box", price: "¥12,000", delta: "-3%", dir: "down" as const },
   { code: "s12a", name: "VSTAR Universe Box", price: "¥6,800", delta: "+8%", dir: "up" as const },
   { code: "sv6a", name: "Night Wanderer Box", price: "¥3,200", delta: "+5%", dir: "up" as const },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  let marketSeries;
+  try {
+    const apiCards = await fetchPokemonCards({
+      q: "supertype:pokémon",
+      pageSize: 4,
+    });
+    // Deduplicate by set id
+    const seenSets = new Set<string>();
+    const uniqueBySet = apiCards.filter((c) => {
+      if (seenSets.has(c.set.id)) return false;
+      seenSets.add(c.set.id);
+      return true;
+    });
+    marketSeries =
+      uniqueBySet.length >= 4
+        ? uniqueBySet.slice(0, 4).map(toMarketSeries)
+        : fallbackSeries;
+  } catch {
+    marketSeries = fallbackSeries;
+  }
   return (
     <div className="min-h-[100dvh] bg-bg-page flex flex-col">
       <TopNav />

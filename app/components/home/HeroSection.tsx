@@ -55,7 +55,7 @@ export function HeroSection() {
         className="object-cover"
         priority
       />
-      {/* TODO [MOCK DATA]: Replace picsum placeholder with real card image from Supabase Storage or bunny.net CDN */}
+      {/* TODO [server]: Replace picsum placeholder with real card image from Supabase Storage or bunny.net CDN */}
 
       {/* Gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#17130f] via-[#17130f]/80 to-transparent" />

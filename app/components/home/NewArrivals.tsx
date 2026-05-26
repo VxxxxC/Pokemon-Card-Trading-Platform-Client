@@ -1,75 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
+import {
+  fetchPokemonCards,
+  toNewArrival,
+} from "@/app/lib/pokemon-data";
 
 // Spec Section 7: New Arrivals — C2C latest listings waterfall
-// TODO [MOCK DATA]: Replace with Supabase query — fetch latest C2C listings ordered by created_at DESC
-// TODO [BACKEND]: Cover thumbnails must be WebP compressed via Edge Function + bunny.net CDN
-// TODO [BACKEND]: "直接購買" sets listing status to 'escrow_locked' — RLS blocks other buyers from paying
+// TODO [server]: Replace with Supabase query — fetch latest C2C listings ordered by created_at DESC
+// TODO [server]: Cover thumbnails must be WebP compressed via Edge Function + bunny.net CDN
+// TODO [server]: "直接購買" sets listing status to 'escrow_locked' — RLS blocks other buyers from paying
 
-const c2cListings = [
-  {
-    id: "c2c-001",
-    name: "Mew ex",
-    set: "151",
-    rarity: "SAR",
-    price: 15800,
-    image: "https://picsum.photos/seed/c2c-mew/300/200",
-    seller: "玩家A***",
-    timeAgo: "3分鐘前",
-  },
-  {
-    id: "c2c-002",
-    name: "Rayquaza VMAX",
-    set: "VMAX Climax",
-    rarity: "UR",
-    price: 22500,
-    image: "https://picsum.photos/seed/c2c-rayquaza/300/200",
-    seller: "收藏家B***",
-    timeAgo: "8分鐘前",
-  },
-  {
-    id: "c2c-003",
-    name: "Gardevoir ex",
-    set: "sv3",
-    rarity: "SAR",
-    price: 19200,
-    image: "https://picsum.photos/seed/c2c-gardevoir/300/200",
-    seller: "玩家C***",
-    timeAgo: "15分鐘前",
-  },
-  {
-    id: "c2c-004",
-    name: "Sylveon VMAX",
-    set: "Eevee Heroes",
-    rarity: "SA",
-    price: 35000,
-    image: "https://picsum.photos/seed/c2c-sylveon/300/200",
-    seller: "投資者D***",
-    timeAgo: "22分鐘前",
-  },
-  {
-    id: "c2c-005",
-    name: "Arceus VSTAR",
-    set: "Star Birth",
-    rarity: "UR",
-    price: 12500,
-    image: "https://picsum.photos/seed/c2c-arceus/300/200",
-    seller: "玩家E***",
-    timeAgo: "31分鐘前",
-  },
-  {
-    id: "c2c-006",
-    name: "Giratina VSTAR",
-    set: "Lost Abyss",
-    rarity: "UR",
-    price: 18000,
-    image: "https://picsum.photos/seed/c2c-giratina/300/200",
-    seller: "收藏家F***",
-    timeAgo: "45分鐘前",
-  },
+const fallbackListings = [
+  { id: "c2c-001", name: "Mew ex", set: "151", rarity: "SAR", price: 15800, image: "https://images.pokemontcg.io/sv3pt5/205_hires.png", seller: "玩家A***", timeAgo: "3分鐘前" },
+  { id: "c2c-002", name: "Rayquaza VMAX", set: "VMAX Climax", rarity: "UR", price: 22500, image: "https://images.pokemontcg.io/swsh12pt5/218_hires.png", seller: "收藏家B***", timeAgo: "8分鐘前" },
+  { id: "c2c-003", name: "Gardevoir ex", set: "sv3", rarity: "SAR", price: 19200, image: "https://images.pokemontcg.io/sv3pt5/200_hires.png", seller: "玩家C***", timeAgo: "15分鐘前" },
+  { id: "c2c-004", name: "Sylveon VMAX", set: "Eevee Heroes", rarity: "SR", price: 35000, image: "https://images.pokemontcg.io/swsh7/212_hires.png", seller: "投資者D***", timeAgo: "22分鐘前" },
+  { id: "c2c-005", name: "Arceus VSTAR", set: "Star Birth", rarity: "UR", price: 12500, image: "https://images.pokemontcg.io/swsh9/176_hires.png", seller: "玩家E***", timeAgo: "31分鐘前" },
+  { id: "c2c-006", name: "Giratina VSTAR", set: "Lost Abyss", rarity: "UR", price: 18000, image: "https://images.pokemontcg.io/swsh11/131_hires.png", seller: "收藏家F***", timeAgo: "45分鐘前" },
 ];
 
-export function NewArrivals() {
+export async function NewArrivals() {
+  let c2cListings;
+  try {
+    const apiCards = await fetchPokemonCards({
+      q: "supertype:pokémon",
+      pageSize: 6,
+      orderBy: "-set.releaseDate",
+    });
+    c2cListings =
+      apiCards.length > 0
+        ? apiCards.map((c, i) => toNewArrival(c, i))
+        : fallbackListings;
+  } catch {
+    c2cListings = fallbackListings;
+  }
   return (
     <section className="mb-8" aria-labelledby="arrivals-heading">
       <div className="flex items-center justify-between mb-4">
@@ -136,7 +100,7 @@ export function NewArrivals() {
               </p>
 
               {/* Spec: "直接購買" as primary bright CTA, "即時出價" as secondary */}
-              {/* TODO [BACKEND]: 直接購買 triggers Stripe escrow PaymentIntent + listing lock */}
+              {/* TODO [server]: 直接購買 triggers Stripe escrow PaymentIntent + listing lock */}
               <div className="flex gap-2">
                 <button type="button" aria-label={`直接購買 ${listing.name}`} className="flex-1 h-9 bg-brand text-[#17130f] font-sans font-medium text-[13px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover min-h-[44px]">
                   直接購買

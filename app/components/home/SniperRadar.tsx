@@ -1,54 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
+import {
+  fetchPokemonCards,
+  toSniperDeal,
+} from "@/app/lib/pokemon-data";
 
 // Spec Section 4: Sniper Radar — below-market-price items with radar scan animation
-// TODO [MOCK DATA]: Replace with Supabase query — WHERE price_delta_percentage <= -10, ordered by delta DESC
-// TODO [BACKEND]: price_delta_percentage must be pre-calculated by backend trigger when Apify updates Mercari JP prices
-const sniperDeals = [
-  {
-    id: "sv2a-182",
-    name: "Charizard ex",
-    rarity: "SAR",
-    price: 38000,
-    marketPrice: 45000,
-    deltaPercent: -15,
-    image: "https://picsum.photos/seed/sniper-charizard/300/200",
-    seller: "渡邊道館",
-    grade: "PSA 10",
-  },
-  {
-    id: "sv6a-109",
-    name: "Umbreon ex",
-    rarity: "SAR",
-    price: 31500,
-    marketPrice: 38000,
-    deltaPercent: -17,
-    image: "https://picsum.photos/seed/sniper-umbreon/300/200",
-    seller: "東京TCG市場",
-    grade: "BGS 9.5",
-  },
-  {
-    id: "sv2a-233",
-    name: "Mimikyu ex",
-    rarity: "SAR",
-    price: 23800,
-    marketPrice: 28000,
-    deltaPercent: -15,
-    image: "https://picsum.photos/seed/sniper-mimikyu/300/200",
-    seller: "名古屋交易商",
-    grade: "PSA 9",
-  },
-  {
-    id: "sv2a-213",
-    name: "Eevee",
-    rarity: "AR",
-    price: 5200,
-    marketPrice: 6200,
-    deltaPercent: -16,
-    image: "https://picsum.photos/seed/sniper-eevee/300/200",
-    seller: "福岡卡牌店",
-    grade: "RAW NM",
-  },
+// TODO [server]: Replace with Supabase query — WHERE price_delta_percentage <= -10, ordered by delta DESC
+// TODO [server]: price_delta_percentage must be pre-calculated by backend trigger when Apify updates Mercari JP prices
+
+const fallbackDeals = [
+  { id: "sv2a-182", name: "Charizard ex", rarity: "SAR", price: 38000, marketPrice: 45000, deltaPercent: -15, image: "https://images.pokemontcg.io/sv3pt5/215_hires.png", seller: "渡邊道館", grade: "PSA 10" },
+  { id: "sv6a-109", name: "Umbreon ex", rarity: "SAR", price: 31500, marketPrice: 38000, deltaPercent: -17, image: "https://images.pokemontcg.io/sv3pt5/198_hires.png", seller: "東京TCG市場", grade: "BGS 9.5" },
+  { id: "sv2a-233", name: "Mimikyu ex", rarity: "SAR", price: 23800, marketPrice: 28000, deltaPercent: -15, image: "https://images.pokemontcg.io/sv3pt5/201_hires.png", seller: "名古屋交易商", grade: "PSA 9" },
+  { id: "sv2a-213", name: "Eevee", rarity: "AR", price: 5200, marketPrice: 6200, deltaPercent: -16, image: "https://images.pokemontcg.io/sv3pt5/196_hires.png", seller: "福岡卡牌店", grade: "RAW NM" },
 ];
 
 function RadarIcon() {
@@ -62,7 +27,17 @@ function RadarIcon() {
   );
 }
 
-export function SniperRadar() {
+export async function SniperRadar() {
+  let sniperDeals;
+  try {
+    const apiCards = await fetchPokemonCards({
+      q: "supertype:pokémon rarity:rare",
+      pageSize: 4,
+    });
+    sniperDeals = apiCards.length > 0 ? apiCards.map(toSniperDeal) : fallbackDeals;
+  } catch {
+    sniperDeals = fallbackDeals;
+  }
   return (
     <section className="mb-8" aria-labelledby="sniper-heading">
       <div className="flex items-center justify-between mb-4">

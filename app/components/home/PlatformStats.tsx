@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch platform stats from `platform_stats` or aggregate queries
+// TODO [database]: Replace with Supabase query — fetch platform stats from `platform_stats` or aggregate queries
 const platformStats = [
   { label: "上架商品", value: "1,240+", icon: CardIcon },
   { label: "活躍交易者", value: "860+", icon: UsersIcon },

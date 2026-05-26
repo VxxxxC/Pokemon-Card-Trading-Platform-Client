@@ -16,9 +16,63 @@ export type CardData = {
   seller: string;
 };
 
-export function CardItem({ card }: { card: CardData }) {
+export function CardItem({ card, compact }: { card: CardData; compact?: boolean }) {
   const formattedPrice = `¥${card.price.toLocaleString("zh-TW")}`;
   const formattedDelta = `${card.deltaDirection === "up" ? "▲" : "▼"} ¥${card.delta.toLocaleString("zh-TW")}`;
+
+  if (compact) {
+    return (
+      <article className="group bg-bg-card rounded-[12px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow duration-200 overflow-hidden">
+        <Link
+          href={`/listing/${card.id}`}
+          className="block relative w-full aspect-[3/4] overflow-hidden bg-bg-elevated"
+        >
+          <Image
+            src={card.image}
+            alt={`${card.name} — ${card.rarity}`}
+            fill
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            sizes="(max-width: 640px) 200px, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+          />
+          <div className="absolute top-2 right-2">
+            <RarityBadge rarity={card.rarity} />
+          </div>
+        </Link>
+        <div className="p-2.5">
+          <h3 className="font-sans font-semibold text-[13px] text-text-primary leading-tight truncate">
+            {card.name}
+          </h3>
+          <span className="font-mono text-[10px] text-text-secondary">
+            {card.id} · {card.set}
+          </span>
+          <div className="flex items-end justify-between mt-1.5">
+            <div>
+              <p className="font-mono font-medium text-[14px] text-text-primary">
+                {formattedPrice}
+              </p>
+              <span
+                className={`font-mono text-[10px] ${
+                  card.deltaDirection === "up" ? "text-success" : "text-warning"
+                }`}
+              >
+                {formattedDelta}
+              </span>
+            </div>
+            <GradeBadge authority={card.grade.authority} score={card.grade.score} />
+          </div>
+          {/* TODO [server]: "直接購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
+          <div className="mt-2 flex gap-1.5">
+            <button className="flex-1 h-8 bg-brand text-[#17130f] font-sans font-medium text-[11px] rounded-[6px] active:scale-[0.98] transition-transform hover:bg-brand-hover min-h-[36px]">
+              直接購買
+            </button>
+            <button className="flex-1 h-8 border border-[rgba(237,232,224,0.12)] text-brand font-sans font-medium text-[11px] rounded-[6px] active:scale-[0.98] transition-transform hover:bg-bg-elevated min-h-[36px]">
+              出價
+            </button>
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article className="group bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow duration-200 overflow-hidden">
@@ -80,9 +134,9 @@ export function CardItem({ card }: { card: CardData }) {
         </div>
 
         {/* CTAs */}
-        {/* TODO [BACKEND]: "直接購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
-        {/* TODO [BACKEND]: "即時出價" must open bid modal and submit to `bids` table with user auth check */}
-        {/* TODO [BACKEND]: /listing/${card.id} route does not exist yet — create app/listing/[id]/page.tsx */}
+        {/* TODO [server]: "直接購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
+        {/* TODO [server]: "即時出價" must open bid modal and submit to `bids` table with user auth check */}
+        {/* TODO [server]: /listing/${card.id} route does not exist yet — create app/listing/[id]/page.tsx */}
         <div className="mt-4 flex gap-2">
           <button className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover min-h-[44px]">
             直接購買

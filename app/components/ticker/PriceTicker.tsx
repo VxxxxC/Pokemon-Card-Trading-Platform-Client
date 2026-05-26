@@ -1,8 +1,15 @@
 "use client";
 
-// TODO [MOCK DATA]: Replace with Supabase Edge Function polling — fetch latest 20 completed transactions from Redis/memory cache every 30-60s
+import { useEffect, useState } from "react";
+import {
+  fetchPokemonCards,
+  toTickerTransaction,
+} from "@/app/lib/pokemon-data";
+
 // Spec: Market Pulse Ticker — show transaction-style FOMO messages, NOT raw price feed
-const recentTransactions = [
+// TODO [server]: Replace with Supabase Edge Function polling — fetch latest 20 completed transactions from Redis/memory cache every 30-60s
+
+const fallbackTransactions = [
   { buyer: "玩家K***", price: 45000, card: "Charizard ex SAR" },
   { buyer: "收藏家M***", price: 52000, card: "Mewtwo ex SAR" },
   { buyer: "投資者T***", price: 38000, card: "Umbreon ex SAR" },
@@ -14,7 +21,19 @@ const recentTransactions = [
 ];
 
 export function PriceTicker() {
-  const items = [...recentTransactions, ...recentTransactions];
+  const [transactions, setTransactions] = useState(fallbackTransactions);
+
+  useEffect(() => {
+    fetchPokemonCards({ q: "supertype:pokémon", pageSize: 8 }).then(
+      (cards) => {
+        if (cards.length > 0) {
+          setTransactions(cards.map(toTickerTransaction));
+        }
+      }
+    );
+  }, []);
+
+  const items = [...transactions, ...transactions];
 
   return (
     <div

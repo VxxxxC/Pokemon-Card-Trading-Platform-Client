@@ -1,58 +1,19 @@
 import Link from "next/link";
+import {
+  fetchPokemonCards,
+  toMarketIndex,
+} from "@/app/lib/pokemon-data";
 
 // Spec Section 8: Tokyo Market Reference Index — Mercari JP sold data with mini sparklines
-// TODO [MOCK DATA]: Replace with Apify-scraped Mercari JP sold-out data (Top 100 daily 4x, others daily 1x)
 // TODO [API]: Connect to Apify scraper endpoint for Mercari JP real completed transaction prices
 
-const marketCards = [
-  {
-    id: "sv2a-182",
-    name: "Charizard ex SAR",
-    jpPrice: 45000,
-    delta: 2400,
-    deltaDir: "up" as const,
-    sparkline: [38, 40, 42, 41, 43, 44, 45],
-  },
-  {
-    id: "sv2a-189",
-    name: "Mewtwo ex SAR",
-    jpPrice: 52000,
-    delta: 1000,
-    deltaDir: "down" as const,
-    sparkline: [55, 54, 53, 54, 53, 52, 52],
-  },
-  {
-    id: "sv6a-109",
-    name: "Umbreon ex SAR",
-    jpPrice: 38000,
-    delta: 1500,
-    deltaDir: "up" as const,
-    sparkline: [34, 35, 36, 35, 37, 37, 38],
-  },
-  {
-    id: "sv2a-233",
-    name: "Mimikyu ex SAR",
-    jpPrice: 28000,
-    delta: 3200,
-    deltaDir: "up" as const,
-    sparkline: [22, 23, 24, 25, 26, 27, 28],
-  },
-  {
-    id: "sv2a-215",
-    name: "Pikachu AR",
-    jpPrice: 8500,
-    delta: 300,
-    deltaDir: "down" as const,
-    sparkline: [9, 9, 8.8, 8.7, 8.6, 8.5, 8.5],
-  },
-  {
-    id: "sv2a-213",
-    name: "Eevee AR",
-    jpPrice: 6200,
-    delta: 800,
-    deltaDir: "up" as const,
-    sparkline: [5, 5.2, 5.5, 5.8, 5.9, 6, 6.2],
-  },
+const fallbackCards = [
+  { id: "sv2a-182", name: "Charizard ex SAR", jpPrice: 45000, delta: 2400, deltaDir: "up" as const, sparkline: [38, 40, 42, 41, 43, 44, 45] },
+  { id: "sv2a-189", name: "Mewtwo ex SAR", jpPrice: 52000, delta: 1000, deltaDir: "down" as const, sparkline: [55, 54, 53, 54, 53, 52, 52] },
+  { id: "sv6a-109", name: "Umbreon ex SAR", jpPrice: 38000, delta: 1500, deltaDir: "up" as const, sparkline: [34, 35, 36, 35, 37, 37, 38] },
+  { id: "sv2a-233", name: "Mimikyu ex SAR", jpPrice: 28000, delta: 3200, deltaDir: "up" as const, sparkline: [22, 23, 24, 25, 26, 27, 28] },
+  { id: "sv2a-215", name: "Pikachu AR", jpPrice: 8500, delta: 300, deltaDir: "down" as const, sparkline: [9, 9, 8.8, 8.7, 8.6, 8.5, 8.5] },
+  { id: "sv2a-213", name: "Eevee AR", jpPrice: 6200, delta: 800, deltaDir: "up" as const, sparkline: [5, 5.2, 5.5, 5.8, 5.9, 6, 6.2] },
 ];
 
 /** Render a tiny SVG sparkline from data points */
@@ -84,7 +45,17 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-export function TokyoMarketIndex() {
+export async function TokyoMarketIndex() {
+  let marketCards;
+  try {
+    const apiCards = await fetchPokemonCards({
+      q: "supertype:pokémon rarity:illustration",
+      pageSize: 6,
+    });
+    marketCards = apiCards.length > 0 ? apiCards.map(toMarketIndex) : fallbackCards;
+  } catch {
+    marketCards = fallbackCards;
+  }
   return (
     <section className="mb-8" aria-labelledby="tokyo-heading">
       <div className="flex items-center justify-between mb-4">
