@@ -19,7 +19,7 @@ export default function UserSettingsPage() {
         </h2>
         <form className="space-y-4">
           <div>
-            {/* TODO [MOCK DATA]: defaultValue="山田レン" is hardcoded — replace with value from `profiles.display_name` for current user */}
+            {/* TODO [database]: defaultValue="山田レン" is hardcoded — replace with value from `profiles.display_name` for current user */}
             <label htmlFor="display-name" className="font-mono text-[12px] text-text-secondary block mb-1.5">
               顯示名稱
             </label>
@@ -31,7 +31,7 @@ export default function UserSettingsPage() {
             />
           </div>
           <div>
-            {/* TODO [MOCK DATA]: defaultValue="yamada_ren" is hardcoded — replace with value from `profiles.handle` for current user */}
+            {/* TODO [database]: defaultValue="yamada_ren" is hardcoded — replace with value from `profiles.handle` for current user */}
             <label htmlFor="handle" className="font-mono text-[12px] text-text-secondary block mb-1.5">
               用戶名 (Handle)
             </label>
@@ -46,7 +46,7 @@ export default function UserSettingsPage() {
             </div>
           </div>
           <div>
-            {/* TODO [MOCK DATA]: defaultValue bio is hardcoded — replace with value from `profiles.bio` for current user */}
+            {/* TODO [database]: defaultValue bio is hardcoded — replace with value from `profiles.bio` for current user */}
             <label htmlFor="bio" className="font-mono text-[12px] text-text-secondary block mb-1.5">
               個人簡介
             </label>
@@ -57,7 +57,7 @@ export default function UserSettingsPage() {
               className="w-full bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-xl px-4 py-3 font-sans text-[14px] text-text-primary resize-none focus:outline-none focus:border-brand/50 transition-colors"
             />
           </div>
-          {/* TODO [BACKEND]: "儲存更改" form submit has no handler — must call server action to UPDATE `profiles` table (display_name, handle, bio) for current user */}
+          {/* TODO [server]: "儲存更改" form submit has no handler — must call server action to UPDATE `profiles` table (display_name, handle, bio) for current user */}
           <button
             type="submit"
             className="h-11 px-6 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform"
@@ -76,7 +76,7 @@ export default function UserSettingsPage() {
           安全設定
         </h2>
         <div className="space-y-3">
-          {/* TODO [MOCK DATA]: Email "yamada.ren@example.com" and 2FA status "已停用" are hardcoded — replace with values from `auth.users` and `profiles.two_factor_enabled` for current user */}
+          {/* TODO [database]: Email "yamada.ren@example.com" and 2FA status "已停用" are hardcoded — replace with values from `auth.users` and `profiles.two_factor_enabled` for current user */}
           {[
             { label: "電郵地址",   value: "yamada.ren@example.com", action: "修改" },
             { label: "登入密碼",   value: "••••••••••••",            action: "更改" },
@@ -90,7 +90,7 @@ export default function UserSettingsPage() {
                 <p className="font-mono text-[11px] text-text-secondary mb-0.5">{label}</p>
                 <p className="font-sans text-[13px] text-text-primary">{value}</p>
               </div>
-              {/* TODO [BACKEND]: "修改"/"更改"/"開啟" action buttons have no handlers — must open modals/flows: email update via Supabase auth.updateUser(), password reset via sendPasswordRecovery(), 2FA via MFA enrollment API */}
+              {/* TODO [server]: "修改"/"更改"/"開啟" action buttons have no handlers — must open modals/flows: email update via Supabase auth.updateUser(), password reset via sendPasswordRecovery(), 2FA via MFA enrollment API */}
               <button
                 type="button"
                 className="font-mono text-[12px] text-brand hover:text-brand-hover border border-brand/30 px-2.5 py-1 rounded-lg transition-colors"
@@ -137,7 +137,7 @@ export default function UserSettingsPage() {
             <label htmlFor="kyc-doc" className="font-mono text-[12px] text-text-secondary block mb-1.5">
               身份證明文件 (JPG / PDF) <span className="text-warning">*</span>
             </label>
-            {/* TODO [BACKEND]: File upload div is decorative — no `<input type="file">` element, no Supabase Storage upload handler. Implement with supabase.storage.from('kyc-docs').upload(userId, file) */}
+            {/* TODO [server]: File upload div is decorative — no `<input type="file">` element, no Supabase Storage upload handler. Implement with supabase.storage.from('kyc-docs').upload(userId, file) */}
           <div className="h-24 bg-bg-elevated border border-dashed border-[rgba(237,232,224,0.20)] rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-brand/40 transition-colors">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -158,7 +158,7 @@ export default function UserSettingsPage() {
             </label>
           </div>
 
-          {/* TODO [BACKEND]: "提交 KYC 申請" form submit has no handler — must call server action to INSERT into `kyc_applications` table and update `profiles.role = 'PENDING_MERCHANT'` */}
+          {/* TODO [server]: "提交 KYC 申請" form submit has no handler — must call server action to INSERT into `kyc_applications` table and update `profiles.role = 'PENDING_MERCHANT'` */}
           <button
             type="submit"
             className="w-full h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform"
@@ -181,8 +181,8 @@ export default function UserSettingsPage() {
           通知設定
         </h2>
         <div className="space-y-3">
-          {/* TODO [MOCK DATA]: Notification preferences (`on: true/false`) are hardcoded — replace with user's actual preferences from `notification_settings` table in Supabase */}
-          {/* TODO [BACKEND]: Toggle buttons have no onClick handlers — must call server action to UPDATE `notification_settings` for current user */}
+          {/* TODO [database]: Notification preferences (`on: true/false`) are hardcoded — replace with user's actual preferences from `notification_settings` table in Supabase */}
+          {/* TODO [server]: Toggle buttons have no onClick handlers — must call server action to UPDATE `notification_settings` for current user */}
           {[
             { label: "訂單狀態更新",    desc: "Escrow 進度變更即時推送", on: true  },
             { label: "每日簽到提醒",    desc: "連續簽到里程碑提醒",       on: true  },

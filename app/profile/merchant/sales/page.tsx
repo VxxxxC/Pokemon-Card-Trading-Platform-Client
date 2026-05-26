@@ -20,7 +20,7 @@ interface SaleOrder {
   trackingNo?: string;
 }
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch merchant's sales orders from `orders` table WHERE seller_id = current user, ordered by created_at DESC
+// TODO [database]: Replace with Supabase query — fetch merchant's sales orders from `orders` table WHERE seller_id = current user, ordered by created_at DESC
 const saleOrders: SaleOrder[] = [
   { id: "ORD-20250519-041", buyer: "M.佐藤",     cardName: "Charizard ex SAR", cardNo: "sv2a-182", grade: "PSA 10", amount: 49_800, depositPaid: 9_960,  status: "custody",  createdAt: "2025/5/19" },
   { id: "ORD-20250519-039", buyer: "K.田中",     cardName: "Umbreon ex SAR",   cardNo: "sv6a-109", grade: "BGS 9",  amount: 38_200, depositPaid: 7_640,  status: "payment",  createdAt: "2025/5/19" },
@@ -110,8 +110,8 @@ export default function MerchantSalesPage() {
               </div>
 
               {/* Action area based on status */}
-              {/* TODO [BACKEND]: "確認並準備發貨" and "確認發貨" buttons have no handlers — must call server action to update `orders.status`, then notify buyer via Supabase realtime / email */}
-              {/* TODO [BACKEND]: "聯絡買家" button has no handler — must open in-platform messaging or navigate to chat thread */}
+              {/* TODO [server]: "確認並準備發貨" and "確認發貨" buttons have no handlers — must call server action to update `orders.status`, then notify buyer via Supabase realtime / email */}
+              {/* TODO [server]: "聯絡買家" button has no handler — must open in-platform messaging or navigate to chat thread */}
               {order.status === "payment" && (
                 <div className="flex gap-2">
                   <button type="button" className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform">

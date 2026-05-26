@@ -17,7 +17,7 @@ interface CardEntry {
   needsReview: boolean;
 }
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch card entries from `card_catalog` table, with JOIN `price_cache` for cachedAt; filter by needsReview flag
+// TODO [database]: Replace with Supabase query — fetch card entries from `card_catalog` table, with JOIN `price_cache` for cachedAt; filter by needsReview flag
 const cardEntries: CardEntry[] = [
   { id: "DB-001", cardNo: "sv2a-182", name: "Charizard ex SAR",  nameJP: "リザードン ex SAR", set: "151 (sv2a)",              rarity: "SR",   source: "tcgdex", cachedAt: "2025/5/21 12:00", needsReview: false },
   { id: "DB-002", cardNo: "sv6a-109", name: "Umbreon ex SAR",    nameJP: "ブラッキー ex SAR", set: "Night Wanderer (sv6a)",   rarity: "SR",   source: "tcgdex", cachedAt: "2025/5/21 12:00", needsReview: false },
@@ -49,7 +49,7 @@ export default function AdminDatabasePage() {
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
-            {/* TODO [BACKEND]: "更新 Top-100 快取" has no handler — must call server action to re-run TCGdex API fetch and update `price_cache` table in Supabase */}
+            {/* TODO [server]: "更新 Top-100 快取" has no handler — must call server action to re-run TCGdex API fetch and update `price_cache` table in Supabase */}
             <button type="button" className="flex items-center gap-1.5 px-3 py-2 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl font-mono text-[11px] sm:text-[12px] text-text-secondary hover:text-text-primary transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
@@ -78,7 +78,7 @@ export default function AdminDatabasePage() {
       </div>
 
       {/* ── Manual Entry Form ─────────────────────────────────────────── */}
-      {/* TODO [BACKEND]: Manual entry form submit has no handler — must call server action to INSERT into `card_catalog` table with admin auth check */}
+      {/* TODO [server]: Manual entry form submit has no handler — must call server action to INSERT into `card_catalog` table with admin auth check */}
       <section
         aria-labelledby="manual-entry-heading"
         className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 mb-6"

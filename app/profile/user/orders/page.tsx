@@ -21,7 +21,7 @@ interface Order {
   isHighValue: boolean;
 }
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch buyer's active orders from `orders` table WHERE buyer_id = current user AND status NOT IN ('released', 'cancelled'), ordered by updated_at DESC
+// TODO [database]: Replace with Supabase query — fetch buyer's active orders from `orders` table WHERE buyer_id = current user AND status NOT IN ('released', 'cancelled'), ordered by updated_at DESC
 const activeOrders: Order[] = [
   {
     id: "ORD-20250401-001",
@@ -51,7 +51,7 @@ const activeOrders: Order[] = [
   },
 ];
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch completed orders from `orders` table WHERE buyer_id = current user AND status = 'released', ordered by updated_at DESC, limit 20
+// TODO [database]: Replace with Supabase query — fetch completed orders from `orders` table WHERE buyer_id = current user AND status = 'released', ordered by updated_at DESC, limit 20
 const completedOrders: Order[] = [
   {
     id: "ORD-20250310-008",
@@ -160,7 +160,7 @@ function OrderCard({ order, compact = false }: { order: Order; compact?: boolean
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-[rgba(237,232,224,0.06)]">
         <p className="font-mono text-[11px] text-text-disabled">建立 {order.createdAt} · 更新 {order.updatedAt}</p>
         {order.status !== "released" && (
-            // TODO [BACKEND]: "聯絡賣家" button has no handler — must navigate to in-platform chat thread or open a messaging modal for order.id
+            // TODO [server]: "聯絡賣家" button has no handler — must navigate to in-platform chat thread or open a messaging modal for order.id
             <button type="button" className="font-mono text-[11px] text-brand hover:text-brand-hover transition-colors">
             聯絡賣家
           </button>

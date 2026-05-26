@@ -115,8 +115,8 @@ export function CheckInWidget({ initialStreak = 4 }: CheckInWidgetProps) {
       ) : canCheckIn ? (
         <button
           onClick={() => {
-            // TODO [BACKEND]: Persist check-in to Supabase — call server action: supabase.from('user_streaks').upsert({ user_id, last_checkin: new Date(), streak_days: streak + 1 })
-            // TODO [BACKEND]: Award points via server action: supabase.from('user_points').insert({ user_id, points: 50, reason: 'daily_checkin' })
+            // TODO [server]: Persist check-in to Supabase — call server action: supabase.from('user_streaks').upsert({ user_id, last_checkin: new Date(), streak_days: streak + 1 })
+            // TODO [server]: Award points via server action: supabase.from('user_points').insert({ user_id, points: 50, reason: 'daily_checkin' })
             setStreak((s) => s + 1);
             setCheckedInToday(true);
           }}
