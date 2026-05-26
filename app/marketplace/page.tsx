@@ -348,9 +348,9 @@ export default function MarketplacePage() {
               <p className="font-mono text-[12px] text-text-secondary">
                 {filtered.length} 件結果
               </p>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" role="group" aria-label="排序選項">
                 <FilterIcon />
-                <span className="font-mono text-[11px] text-text-secondary mr-1">排序</span>
+                <span className="font-mono text-[11px] text-text-secondary mr-1" aria-hidden="true">排序</span>
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt}
