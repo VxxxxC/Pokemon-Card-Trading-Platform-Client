@@ -54,7 +54,7 @@ export default function HomePage() {
               精選高分鑑定卡，實時價格透明。
             </p>
             <Link
-              href="/search?set=sv2a"
+              href="/marketplace?set=sv2a"
               className="inline-flex items-center justify-center h-11 px-6 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover"
             >
               立即探索
@@ -74,7 +74,7 @@ export default function HomePage() {
                 精選拍賣
               </h2>
               <Link
-                href="/search"
+                href="/marketplace"
                 className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
               >
                 查看全部 →
@@ -97,7 +97,7 @@ export default function HomePage() {
                 {marketSeries.map((series) => (
                   <Link
                     key={series.code}
-                    href={`/search?set=${series.code}`}
+                    href={`/marketplace?set=${series.code}`}
                     className="flex items-center justify-between px-4 py-3 bg-bg-card rounded-[10px] border border-[rgba(237,232,224,0.08)] hover:bg-bg-elevated transition-colors"
                   >
                     <div className="flex items-center gap-3">
