@@ -14,6 +14,9 @@
 > }
 > ```
 
+## Tailwindcss syntax 
+- 如果需要隱藏scroll bar，請做用`scrollbar-none`
+
 ## Brand & Context
 
 - **產品名稱**: PokéTrade JP
