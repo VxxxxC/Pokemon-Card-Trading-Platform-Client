@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
@@ -6,6 +5,11 @@ import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { CardGrid } from "@/app/components/cards/CardGrid";
 import { TransactionWall } from "@/app/components/transactions/TransactionWall";
+import { HeroSection } from "@/app/components/home/HeroSection";
+import { QuickSearch } from "@/app/components/home/QuickSearch";
+import { PlatformStats } from "@/app/components/home/PlatformStats";
+import { TrustedSellers } from "@/app/components/home/TrustedSellers";
+import { CommunityNews, Footer } from "@/app/components/home/CommunityNews";
 
 // TODO [MOCK DATA]: Replace with Supabase query — fetch active box series from `card_series` table with live price feed
 const marketSeries = [
@@ -23,47 +27,17 @@ export default function HomePage() {
       <PriceTicker />
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
-        {/* Hero section — card image with gradient overlay + CTA */}
-        <section
-          className="relative mt-5 mb-8 rounded-[16px] overflow-hidden min-h-[220px] lg:min-h-[300px] flex items-end"
-          aria-labelledby="hero-heading"
-        >
-          <Image
-            src="https://picsum.photos/seed/poke-hero-charizard/800/400"
-            alt="Charizard ex SAR — 151 系列"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* TODO [MOCK DATA]: Replace picsum placeholder with real card image from Supabase Storage or TCGdex CDN */}
-          {/* Mobile: bottom-up gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#17130f] via-[#17130f]/55 to-transparent lg:hidden" />
-          {/* Desktop: left-to-right gradient */}
-          <div className="absolute inset-0 hidden lg:block bg-gradient-to-r from-[#17130f] via-[#17130f]/70 to-transparent" />
-          <div className="relative z-10 p-6 lg:p-10 w-full lg:max-w-[560px]">
-            <span className="font-mono text-[11px] text-brand uppercase tracking-widest">
-              最新系列
-            </span>
-            <h1
-              id="hero-heading"
-              className="font-sans font-bold text-[26px] lg:text-[34px] text-text-primary leading-tight mt-1 mb-2"
-            >
-              151 系列絕版收藏
-            </h1>
-            <p className="font-sans text-[14px] text-text-secondary mb-5 max-w-[320px]">
-              精選高分鑑定卡，實時價格透明。
-            </p>
-            <Link
-              href="/marketplace?set=sv2a"
-              className="inline-flex items-center justify-center h-11 px-6 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover"
-            >
-              立即探索
-            </Link>
-          </div>
-        </section>
+        {/* ── Hero Section ──────────────────────────────────────────── */}
+        <HeroSection />
 
-        {/* Asymmetric 3:2 split on desktop */}
-        <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8">
+        {/* ── Quick Search ──────────────────────────────────────────── */}
+        <QuickSearch />
+
+        {/* ── Platform Statistics ────────────────────────────────────── */}
+        <PlatformStats />
+
+        {/* ── Asymmetric 3:2 split — Featured + Market/Transactions ── */}
+        <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 mb-8">
           {/* Left: Featured Listings */}
           <section aria-labelledby="featured-heading">
             <div className="flex items-center justify-between mb-4">
@@ -146,7 +120,16 @@ export default function HomePage() {
             </section>
           </aside>
         </div>
+
+        {/* ── Trusted Sellers ───────────────────────────────────────── */}
+        <TrustedSellers />
+
+        {/* ── Community News & Announcements ────────────────────────── */}
+        <CommunityNews />
       </main>
+
+      {/* ── Footer ────────────────────────────────────────────────── */}
+      <Footer />
 
       <BottomNav />
     </div>
