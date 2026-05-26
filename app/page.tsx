@@ -6,10 +6,14 @@ import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { CardGrid } from "@/app/components/cards/CardGrid";
 import { TransactionWall } from "@/app/components/transactions/TransactionWall";
 import { HeroSection } from "@/app/components/home/HeroSection";
-import { QuickSearch } from "@/app/components/home/QuickSearch";
-import { PlatformStats } from "@/app/components/home/PlatformStats";
+import { TrustBooster } from "@/app/components/home/TrustBooster";
+import { FollowingFeed } from "@/app/components/home/FollowingFeed";
+import { SniperRadar } from "@/app/components/home/SniperRadar";
 import { TrustedSellers } from "@/app/components/home/TrustedSellers";
-import { CommunityNews, Footer } from "@/app/components/home/CommunityNews";
+import { PortfolioDashboard } from "@/app/components/home/PortfolioDashboard";
+import { NewArrivals } from "@/app/components/home/NewArrivals";
+import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
+import { Footer } from "@/app/components/home/CommunityNews";
 
 // TODO [MOCK DATA]: Replace with Supabase query — fetch active box series from `card_series` table with live price feed
 const marketSeries = [
@@ -24,19 +28,27 @@ export default function HomePage() {
     <div className="min-h-[100dvh] bg-bg-page flex flex-col">
       <TopNav />
       <MobileHeader />
+
+      {/* Spec Global Top: 實時成交走馬燈 (Market Pulse Ticker) */}
       <PriceTicker />
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
-        {/* ── Hero Section ──────────────────────────────────────────── */}
+        {/* ── Spec Section 1: Hero & Smart Search (with Quick Filter Chips) ── */}
         <HeroSection />
 
-        {/* ── Quick Search ──────────────────────────────────────────── */}
-        <QuickSearch />
+        {/* ── Spec Section 2: Trust Booster Banner (3-step How It Works) ── */}
+        <TrustBooster />
 
-        {/* ── Platform Statistics ────────────────────────────────────── */}
-        <PlatformStats />
+        {/* ── Spec Section 3: My Following Feed (horizontal card slider) ── */}
+        <FollowingFeed />
 
-        {/* ── Asymmetric 3:2 split — Featured + Market/Transactions ── */}
+        {/* ── Spec Section 4: Sniper Radar (below-market-price deals) ── */}
+        <SniperRadar />
+
+        {/* ── Spec Section 5: Premium Escrow Market (KYC merchant cards) ── */}
+        <TrustedSellers />
+
+        {/* ── Spec Section 5 (cont.): Featured Listings + Market Dynamics ── */}
         <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 mb-8">
           {/* Left: Featured Listings */}
           <section aria-labelledby="featured-heading">
@@ -121,14 +133,17 @@ export default function HomePage() {
           </aside>
         </div>
 
-        {/* ── Trusted Sellers ───────────────────────────────────────── */}
-        <TrustedSellers />
+        {/* ── Spec Section 6: Portfolio & Daily Rewards ── */}
+        <PortfolioDashboard />
 
-        {/* ── Community News & Announcements ────────────────────────── */}
-        <CommunityNews />
+        {/* ── Spec Section 7: New Arrivals C2C ── */}
+        <NewArrivals />
+
+        {/* ── Spec Section 8: Tokyo Market Reference Index ── */}
+        <TokyoMarketIndex />
       </main>
 
-      {/* ── Footer ────────────────────────────────────────────────── */}
+      {/* ── Footer ── */}
       <Footer />
 
       <BottomNav />
