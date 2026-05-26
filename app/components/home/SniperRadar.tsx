@@ -70,7 +70,7 @@ export function SniperRadar() {
           <div className="relative">
             <RadarIcon />
             {/* Subtle radar ping animation */}
-            <span className="absolute inset-0 rounded-full animate-ping bg-[rgba(212,165,116,0.15)]" />
+            <span className="absolute inset-0 rounded-full animate-pulse bg-[rgba(212,165,116,0.15)]" />
           </div>
           <div>
             <h2

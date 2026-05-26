@@ -151,6 +151,7 @@ export function TokyoMarketIndex() {
                 className={`font-mono text-[12px] ${
                   card.deltaDir === "up" ? "text-success" : "text-warning"
                 }`}
+                aria-label={card.deltaDir === "up" ? "上升" : "下跌"}
               >
                 {card.deltaDir === "up" ? "▲" : "▼"} ¥{card.delta.toLocaleString("zh-TW")}
               </span>

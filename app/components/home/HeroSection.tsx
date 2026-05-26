@@ -84,7 +84,7 @@ export function HeroSection() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜尋卡牌編號或名稱（例：SV8a-123 · Charizard ex）"
+              placeholder="搜尋卡牌編號或名稱（例：sv8a-123 · Charizard ex）"
               className="w-full h-12 pl-12 pr-20 bg-[rgba(38,33,28,0.90)] backdrop-blur-sm border border-[rgba(237,232,224,0.12)] rounded-[10px] font-sans text-[14px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.30)] transition-shadow"
             />
             <button

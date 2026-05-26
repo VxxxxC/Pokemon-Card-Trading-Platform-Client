@@ -138,10 +138,10 @@ export function NewArrivals() {
               {/* Spec: "直接購買" as primary bright CTA, "即時出價" as secondary */}
               {/* TODO [BACKEND]: 直接購買 triggers Stripe escrow PaymentIntent + listing lock */}
               <div className="flex gap-2">
-                <button className="flex-1 h-9 bg-brand text-[#17130f] font-sans font-medium text-[13px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover min-h-[44px]">
+                <button type="button" aria-label={`直接購買 ${listing.name}`} className="flex-1 h-9 bg-brand text-[#17130f] font-sans font-medium text-[13px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover min-h-[44px]">
                   直接購買
                 </button>
-                <button className="flex-[0.6] h-9 border border-[rgba(237,232,224,0.12)] text-brand font-sans text-[12px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-bg-elevated min-h-[44px]">
+                <button type="button" aria-label={`即時出價 ${listing.name}`} className="flex-[0.6] h-9 border border-[rgba(237,232,224,0.12)] text-brand font-sans text-[12px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-bg-elevated min-h-[44px]">
                   即時出價
                 </button>
               </div>
