@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { RarityBadge } from "./RarityBadge";
 import { GradeBadge } from "./GradeBadge";
+import { WishlistButton } from "@/app/components/market/WishlistButton";
 
 export type CardData = {
   id: string;
@@ -36,6 +37,10 @@ export function CardItem({ card }: { card: CardData }) {
         />
         <div className="absolute top-3 right-3">
           <RarityBadge rarity={card.rarity} />
+        </div>
+        {/* Wishlist star — absolute top-left */}
+        <div className="absolute top-3 left-3">
+          <WishlistButton listingId={card.id} />
         </div>
       </Link>
 
