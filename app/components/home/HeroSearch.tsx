@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { PwaHeroInstallButton } from "@/app/components/pwa/PwaHeroInstallButton";
 
 // TODO: [API] Connect search to Supabase `card_catalog` table for real-time card lookup by set number (e.g. SV8a-123)
 // TODO: [database] Query `card_catalog` with indexed search on `card_number` column for millisecond autocomplete
@@ -26,9 +27,12 @@ export function HeroSearch() {
       <div className="absolute inset-0 bg-gradient-to-br from-[rgba(212,165,116,0.06)] via-transparent to-[rgba(212,165,116,0.03)]" />
 
       <div className="relative z-10 px-5 py-8 lg:px-10 lg:py-12">
-        <span className="font-mono text-[11px] text-brand uppercase tracking-widest">
-          HKcardvault
-        </span>
+        <div className="flex items-start justify-between gap-4">
+          <span className="font-mono text-[11px] text-brand uppercase tracking-widest">
+            HKcardvault
+          </span>
+          <PwaHeroInstallButton />
+        </div>
         <h1
           id="hero-search-heading"
           className="font-sans font-bold text-[26px] lg:text-[34px] text-text-primary leading-tight mt-1 mb-2"
