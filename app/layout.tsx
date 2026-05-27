@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
-import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
 import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
 
@@ -54,7 +53,6 @@ export default function RootLayout({
         <AppSerwistProvider>
           <PwaNetworkBanner />
           {children}
-          <PwaInstallPrompt />
         </AppSerwistProvider>
       </body>
     </html>

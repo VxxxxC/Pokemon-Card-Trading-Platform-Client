@@ -1,3 +1,5 @@
+import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
+
 export function MobileHeader() {
   return (
     <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
@@ -5,15 +7,18 @@ export function MobileHeader() {
         <span className="font-sans font-bold text-[18px] text-text-primary tracking-tight">
           PokéTrade <span className="text-brand">JP</span>
         </span>
-        <button
-          className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg-elevated active:scale-[0.98] transition-transform"
-          aria-label="查看通知"
-        >
-          <BellIcon />
-          <span className="absolute top-1.5 right-1.5 w-[18px] h-[18px] bg-[#DC2626] rounded-full font-mono text-[10px] text-white flex items-center justify-center leading-none">
-            3
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <PWANavbarStatus />
+          <button
+            className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg-elevated active:scale-[0.98] transition-transform"
+            aria-label="查看通知"
+          >
+            <BellIcon />
+            <span className="absolute top-1.5 right-1.5 w-[18px] h-[18px] bg-[#DC2626] rounded-full font-mono text-[10px] text-white flex items-center justify-center leading-none">
+              3
+            </span>
+          </button>
+        </div>
       </div>
     </header>
   );

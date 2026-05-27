@@ -6,6 +6,7 @@ import { MobileHeader } from '@/app/components/navigation/MobileHeader';
 import { BottomNav } from '@/app/components/navigation/BottomNav';
 import { CheckInWidget } from '@/app/components/profile/CheckInWidget';
 import { LogoutModal } from '@/app/components/profile/LogoutModal';
+import { InteractiveChat } from './components/InteractiveChat';
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
@@ -79,7 +80,7 @@ const LEVEL_TIERS = [
   { tier: 5, label: '傳奇卡師', xp: 6_000 },
 ] as const;
 
-// TODO: Replace with Supabase query: supabase.from('profiles').select('*').eq('pkt_id', id).single()
+// TODO: [database] Replace with Supabase query: supabase.from('profiles').select('*').eq('pkt_id', id).single()
 const MOCK_MEMBERS: Record<string, MemberData> = {
   'PKT-8839-44A': {
     id: 'PKT-8839-44A',
@@ -640,7 +641,7 @@ export default async function ProfileIdPage({ params }: ProfileIdPageProps) {
                   </div>
                 </div>
                 <form action="#">
-                  {/* TODO [BACKEND]: "立即領取" form submit has no handler — must call server action to INSERT into `user_points` table and mark reward as claimed in `user_streaks.reward_claimed = true` */}
+                  {/* TODO: [server] "立即領取" form submit has no handler — must call server action to INSERT into `user_points` table and mark reward as claimed in `user_streaks.reward_claimed = true` */}
                   <button
                     type="submit"
                     className="w-full h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform min-h-11"
@@ -660,7 +661,7 @@ export default async function ProfileIdPage({ params }: ProfileIdPageProps) {
                   <h3 className="font-sans font-semibold text-[14px] text-text-primary mb-0.5">
                     積分餘額
                   </h3>
-                  {/* TODO [MOCK DATA]: "1,250" points balance is hardcoded — replace with real balance from `user_points` aggregation in Supabase for current user */}
+                  {/* TODO: [database] "1,250" points balance is hardcoded — replace with real balance from `user_points` aggregation in Supabase for current user */}
                   <p className="font-mono font-bold text-[22px] text-brand leading-none">
                     1,250
                     <span className="font-mono text-[12px] text-text-secondary font-normal ml-1">
@@ -688,6 +689,7 @@ export default async function ProfileIdPage({ params }: ProfileIdPageProps) {
             </section>
           </div>
         </div>
+        <InteractiveChat receiverName={member.username} />
       </main>
 
       <BottomNav />

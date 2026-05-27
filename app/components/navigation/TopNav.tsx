@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 
 const navLinks = [
   { href: "/", label: "首頁" },
-  { href: "/search", label: "搜尋" },
-  // { href: "/market", label: "市場" },
+  { href: "/marketplace", label: "市場" },
   { href: "/profile", label: "會員中心" },
 ];
 
@@ -45,7 +45,10 @@ export function TopNav() {
         </nav>
 
         {/* CTA Button */}
-        <div className="shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <div aria-label="PWA 應用狀態">
+            <PWANavbarStatus />
+          </div>
           <Link
             href="/auth"
             className="h-9 px-4 font-sans text-sm font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform inline-flex items-center justify-center"

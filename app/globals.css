@@ -124,3 +124,12 @@ body {
 .animate-float-a { animation: float-a 5s ease-in-out infinite; }
 .animate-float-b { animation: float-b 4s ease-in-out infinite; }
 .animate-float-c { animation: float-c 6s ease-in-out infinite; }
+
+/* Hide scrollbar for horizontal slider (Following Feed, etc.) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

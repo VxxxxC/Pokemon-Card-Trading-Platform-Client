@@ -1,18 +1,28 @@
-import Image from "next/image";
 import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
+import { Footer } from "@/app/components/navigation/Footer";
 import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { CardGrid } from "@/app/components/cards/CardGrid";
 import { TransactionWall } from "@/app/components/transactions/TransactionWall";
+import { HeroSearch } from "@/app/components/home/HeroSearch";
+import { TrustBanner } from "@/app/components/home/TrustBanner";
+import { SniperRadar } from "@/app/components/home/SniperRadar";
+import { PremiumMarket } from "@/app/components/home/PremiumMarket";
+import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
+import { NewArrivals } from "@/app/components/home/NewArrivals";
+import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
+import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
+import { PwaInstallPrompt } from "./components/pwa/PwaInstallPrompt";
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch active box series from `card_series` table with live price feed
+// TODO: [database] Replace with Supabase query — fetch active box series from `card_series` table with live HKD price feed
+// TODO: [API] Connect to Mercari JP scraper for real-time box series pricing converted to HKD
 const marketSeries = [
-  { code: "sv4a", name: "Shiny Treasure ex Box", price: "¥4,500", delta: "+12%", dir: "up" as const },
-  { code: "sv2a", name: "Pokémon Card 151 Box", price: "¥12,000", delta: "-3%", dir: "down" as const },
-  { code: "s12a", name: "VSTAR Universe Box", price: "¥6,800", delta: "+8%", dir: "up" as const },
-  { code: "sv6a", name: "Night Wanderer Box", price: "¥3,200", delta: "+5%", dir: "up" as const },
+  { code: "sv4a", name: "Shiny Treasure ex Box", price: "HK$3,500", delta: "+12%", dir: "up" as const },
+  { code: "sv2a", name: "Pokémon Card 151 Box", price: "HK$9,360", delta: "-3%", dir: "down" as const },
+  { code: "s12a", name: "VSTAR Universe Box", price: "HK$5,300", delta: "+8%", dir: "up" as const },
+  { code: "sv6a", name: "Night Wanderer Box", price: "HK$2,500", delta: "+5%", dir: "up" as const },
 ];
 
 export default function HomePage() {
@@ -21,51 +31,34 @@ export default function HomePage() {
       <TopNav />
       <MobileHeader />
       <PriceTicker />
+      <PwaInstallPrompt/>
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
-        {/* Hero section — card image with gradient overlay + CTA */}
-        <section
-          className="relative mt-5 mb-8 rounded-[16px] overflow-hidden min-h-[220px] lg:min-h-[300px] flex items-end"
-          aria-labelledby="hero-heading"
-        >
-          <Image
-            src="https://picsum.photos/seed/poke-hero-charizard/800/400"
-            alt="Charizard ex SAR — 151 系列"
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* TODO [MOCK DATA]: Replace picsum placeholder with real card image from Supabase Storage or TCGdex CDN */}
-          {/* Mobile: bottom-up gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#17130f] via-[#17130f]/55 to-transparent lg:hidden" />
-          {/* Desktop: left-to-right gradient */}
-          <div className="absolute inset-0 hidden lg:block bg-gradient-to-r from-[#17130f] via-[#17130f]/70 to-transparent" />
-          <div className="relative z-10 p-6 lg:p-10 w-full lg:max-w-[560px]">
-            <span className="font-mono text-[11px] text-brand uppercase tracking-widest">
-              最新系列
-            </span>
-            <h1
-              id="hero-heading"
-              className="font-sans font-bold text-[26px] lg:text-[34px] text-text-primary leading-tight mt-1 mb-2"
-            >
-              151 系列絕版收藏
-            </h1>
-            <p className="font-sans text-[14px] text-text-secondary mb-5 max-w-[320px]">
-              精選高分鑑定卡，實時價格透明。
-            </p>
-            <Link
-              href="/search?set=sv2a"
-              className="inline-flex items-center justify-center h-11 px-6 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover"
-            >
-              立即探索
-            </Link>
-          </div>
-        </section>
+        {/* Section 1: Hero — Smart Search + Quick Filters */}
+        <HeroSearch />
 
-        {/* Asymmetric 3:2 split on desktop */}
-        <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8">
-          {/* Left: Featured Listings */}
-          <section aria-labelledby="featured-heading">
+        {/* Section 2: Trust Booster — How It Works (3-step escrow) */}
+        <TrustBanner />
+
+        {/* Section 3: 心水情報 — wishlist cards with price alerts & personal feed */}
+        <WishlistTicker />
+
+        {/* Section 4: Sniper Radar — below-market deals */}
+        <SniperRadar />
+
+        {/* Section 5: Premium Escrow Market — KYC merchant listings */}
+        <PremiumMarket />
+
+        {/* Section 6: Portfolio & Daily Rewards */}
+        <PortfolioRewards />
+
+        {/* Asymmetric 3:2 split on desktop: Featured + Market Dynamics */}
+        <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 mb-8">
+          {/* Left: Section 7 — C2C New Arrivals */}
+          <section aria-labelledby="arrivals-section">
+            <NewArrivals />
+
+            {/* Featured Listings (existing CardGrid) */}
             <div className="flex items-center justify-between mb-4">
               <h2
                 id="featured-heading"
@@ -74,7 +67,7 @@ export default function HomePage() {
                 精選拍賣
               </h2>
               <Link
-                href="/search"
+                href="/marketplace"
                 className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
               >
                 查看全部 →
@@ -97,7 +90,7 @@ export default function HomePage() {
                 {marketSeries.map((series) => (
                   <Link
                     key={series.code}
-                    href={`/search?set=${series.code}`}
+                    href={`/marketplace?set=${series.code}`}
                     className="flex items-center justify-between px-4 py-3 bg-bg-card rounded-[10px] border border-[rgba(237,232,224,0.08)] hover:bg-bg-elevated transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -146,7 +139,13 @@ export default function HomePage() {
             </section>
           </aside>
         </div>
+
+        {/* Section 8: Tokyo Market Reference Index */}
+        <TokyoMarketIndex />
       </main>
+
+      {/* E-shop style Footer */}
+      <Footer />
 
       <BottomNav />
     </div>
