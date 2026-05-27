@@ -32,7 +32,7 @@ export function PWANavbarStatus() {
         >
           <span className="w-2 h-2 rounded-full bg-[#d4a574]/60" />
           <span className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider">
-            iOS PWA HINT
+            安裝提示
           </span>
         </button>
 
