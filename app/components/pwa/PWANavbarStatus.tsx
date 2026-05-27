@@ -44,7 +44,7 @@ export function PWANavbarStatus() {
               <span className="text-brand font-medium">
                 「加入主畫面」
               </span>
-              以啟用全息終端 App
+              安裝 PokéTrade JP，快速查看即時成交與託管進度。
             </p>
           </div>
         )}

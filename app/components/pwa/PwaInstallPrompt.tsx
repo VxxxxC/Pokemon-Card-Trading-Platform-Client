@@ -1,21 +1,40 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
+
+const SNOOZE_KEY = "pwa_snooze_until";
+const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 /**
  * Floating PWA install prompt with cooling-state defense.
  * Uses the shared state machine from usePwaInstall.
+ *
+ * State A (NATIVE_READY): primary install + "稍後" snooze (3-day cooldown)
+ * State B (BROWSER_COOLING): manual install instructions + "✕" dismiss
  */
 export function PwaInstallPrompt() {
   const { promptState, onInstall } = usePwaInstall();
+  const [dismissed, setDismissed] = useState(false);
 
-  // State C: Already installed — hide completely
-  if (promptState === "ALREADY_INSTALLED") return null;
+  useEffect(() => {
+    const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
+    if (snoozeUntil && Date.now() < Number(snoozeUntil)) {
+      setDismissed(true);
+    }
+  }, []);
 
-  // State A: Native prompt ready — primary install button
+  const handleSnooze = () => {
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS));
+    setDismissed(true);
+  };
+
+  if (promptState === "ALREADY_INSTALLED" || dismissed) return null;
+
+  // State A: Native prompt ready — primary install button + snooze
   if (promptState === "NATIVE_READY") {
     return (
-      <aside className="fixed bottom-20 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-4 shadow-lg lg:bottom-6">
+      <aside className="fixed bottom-30 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
         <p className="font-sans text-[14px] font-medium text-text-primary">
           加到主畫面
         </p>
@@ -30,25 +49,34 @@ export function PwaInstallPrompt() {
           >
             ⚡ 即刻安裝 PWA
           </button>
+          <button
+            type="button"
+            onClick={handleSnooze}
+            className="flex items-center justify-center rounded-md border border-[rgba(237,232,224,0.15)] px-4 py-2.5 font-sans text-xs font-medium text-text-secondary transition-all hover:border-[rgba(237,232,224,0.3)] active:scale-[0.98] active:translate-y-px"
+          >
+            稍後
+          </button>
         </div>
       </aside>
     );
   }
 
-  // State B: Browser cooling — fallback instructional card
+  // State B: Browser cooling — fallback instructional card with close button
   return (
-    <aside className="fixed bottom-20 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-4 shadow-lg lg:bottom-6">
-      <p className="font-sans text-xs leading-relaxed text-[#d4c4b7]">
-        提示：系統偵測到安裝事件正處於瀏覽器安全冷卻期。您亦可直接點擊瀏覽器網址列右側的{" "}
-        <span className="inline-block" aria-hidden="true">
-          📥
-        </span>{" "}
-        (或{" "}
-        <span className="inline-block" aria-hidden="true">
-          🖥️
-        </span>
-        ) 圖標進行手動安裝。
-      </p>
+    <aside className="fixed bottom-30 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
+      <div className="flex items-start gap-2">
+        <p className="flex-1 font-sans text-xs leading-relaxed text-[#d4c4b7]">
+          輕觸網址列右側圖標，或點選「更多」→「加到主畫面」，即可安裝 PokéTrade JP。
+        </p>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label="關閉提示"
+          className="mt-0.5 shrink-0 text-[#d4c4b7] opacity-50 transition-opacity hover:opacity-100 active:scale-90"
+        >
+          ✕
+        </button>
+      </div>
     </aside>
   );
 }

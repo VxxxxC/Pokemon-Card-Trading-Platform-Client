@@ -14,6 +14,7 @@ import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
+import { PwaInstallPrompt } from "./components/pwa/PwaInstallPrompt";
 
 // TODO: [database] Replace with Supabase query — fetch active box series from `card_series` table with live HKD price feed
 // TODO: [API] Connect to Mercari JP scraper for real-time box series pricing converted to HKD
@@ -30,6 +31,7 @@ export default function HomePage() {
       <TopNav />
       <MobileHeader />
       <PriceTicker />
+      <PwaInstallPrompt/>
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         {/* Section 1: Hero — Smart Search + Quick Filters */}

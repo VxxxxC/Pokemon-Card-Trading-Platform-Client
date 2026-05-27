@@ -14,7 +14,7 @@ export function PwaHeroInstallButton() {
       <button
         type="button"
         onClick={onInstall}
-        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[rgba(212,165,116,0.30)] bg-[rgba(212,165,116,0.08)] font-sans text-[12px] text-brand hover:bg-[rgba(212,165,116,0.16)] hover:border-brand active:scale-[0.97] transition-all"
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[rgba(212,165,116,0.60)] bg-[rgba(212,165,116,0.22)] font-sans text-[12px] text-brand hover:bg-[rgba(212,165,116,0.34)] hover:border-[rgba(212,165,116,0.85)] hover:text-brand-hover active:scale-[0.97] transition-all"
         aria-label="加到主螢幕 — 安裝 PWA 應用程式"
       >
         <HomeScreenIcon />
