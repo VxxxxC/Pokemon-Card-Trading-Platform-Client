@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WishlistTable } from "./components/WishlistTable";
 
 export const metadata: Metadata = {
   title: "我的收藏庫 — PokéTrade JP",
@@ -170,6 +171,26 @@ export default function UserCollectionPage() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* ── Wishlist Table ─────────────────────────────────────────────── */}
+      <section aria-labelledby="wishlist-heading" className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2
+            id="wishlist-heading"
+            className="font-sans font-semibold text-[16px] text-text-primary flex items-center gap-2"
+          >
+            <span className="text-brand" aria-hidden="true">★</span>
+            願望清單
+          </h2>
+          <span className="font-mono text-[11px] text-text-disabled">
+            {/* TODO: [database] Replace with real wishlist count from Supabase */}
+            5 張追蹤中
+          </span>
+        </div>
+        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-2">
+          <WishlistTable />
         </div>
       </section>
     </>
