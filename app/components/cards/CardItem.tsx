@@ -25,7 +25,7 @@ export function CardItem({ card }: { card: CardData }) {
     <article className="group bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow duration-200 overflow-hidden">
       {/* Card Image */}
       <Link
-        href={`/listing/${card.id}`}
+        href={`/marketplace/${card.id}`}
         className="block relative w-full aspect-[5/3.5] overflow-hidden bg-bg-elevated"
       >
         <Image

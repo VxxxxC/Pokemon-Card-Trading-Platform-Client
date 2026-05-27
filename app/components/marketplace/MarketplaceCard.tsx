@@ -24,7 +24,7 @@ export function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
       className="bg-[#26211C] rounded-[16px] overflow-hidden border border-[rgba(140,115,85,0.10)] shadow-[0_2px_8px_rgba(0,0,0,0.40)]"
     >
-      <Link href={`/listing/${listing.id}`} className="block">
+      <Link href={`/marketplace/${listing.id}`} className="block">
         {/* Image area — 75% of card via aspect ratio */}
         <div className="relative w-full aspect-[5/7] overflow-hidden bg-[#1e1914]">
           <Image
