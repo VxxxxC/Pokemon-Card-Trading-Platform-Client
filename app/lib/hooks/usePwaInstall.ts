@@ -22,9 +22,16 @@ export interface UsePwaInstallReturn {
 /*  Module-level singleton store                                       */
 /*  Captures `beforeinstallprompt` immediately — even before React     */
 /*  hydrates — and shares state across every hook consumer.            */
+/*                                                                     */
+/*  Dismiss behaviour:                                                 */
+/*    "稍後" (onDismiss) → sessionStorage only (reappears next visit)  */
+/*    Actual install accepted → localStorage (permanent)               */
 /* ------------------------------------------------------------------ */
 
-const DISMISS_KEY = "poketrade:pwa-install-dismissed";
+/** localStorage key — set only when the app is actually installed */
+const INSTALLED_KEY = "poketrade:pwa-installed";
+/** sessionStorage key — set when user taps "稍後" (dismiss for this session) */
+const SESSION_DISMISS_KEY = "poketrade:pwa-install-dismissed-session";
 
 interface PwaStore {
   deferredPrompt: DeferredPromptEvent | null;
@@ -48,8 +55,15 @@ function getSnapshot(): PwaStore {
   return store;
 }
 
+/** Must return a referentially stable value to avoid infinite re-renders */
+const SERVER_SNAPSHOT: PwaStore = Object.freeze({
+  deferredPrompt: null,
+  isInstalled: false,
+  isDismissed: false,
+});
+
 function getServerSnapshot(): PwaStore {
-  return { deferredPrompt: null, isInstalled: false, isDismissed: false };
+  return SERVER_SNAPSHOT;
 }
 
 function subscribe(callback: () => void): () => void {
@@ -59,16 +73,20 @@ function subscribe(callback: () => void): () => void {
 
 /* --- Eagerly attach listeners (runs once at module load) --- */
 if (typeof window !== "undefined") {
-  // Read initial values
   const byMedia = window.matchMedia("(display-mode: standalone)").matches;
   const byNavigator =
     "standalone" in window.navigator &&
     Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
 
+  const permanentlyInstalled =
+    window.localStorage.getItem(INSTALLED_KEY) === "1";
+  const sessionDismissed =
+    window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1";
+
   store = {
     deferredPrompt: null,
-    isInstalled: byMedia || byNavigator,
-    isDismissed: window.localStorage.getItem(DISMISS_KEY) === "1",
+    isInstalled: byMedia || byNavigator || permanentlyInstalled,
+    isDismissed: sessionDismissed,
   };
 
   window.addEventListener("beforeinstallprompt", (event: Event) => {
@@ -78,8 +96,8 @@ if (typeof window !== "undefined") {
   });
 
   window.addEventListener("appinstalled", () => {
+    window.localStorage.setItem(INSTALLED_KEY, "1");
     store = { ...store, isInstalled: true, deferredPrompt: null };
-    window.localStorage.setItem(DISMISS_KEY, "1");
     emit();
   });
 }
@@ -91,24 +109,27 @@ if (typeof window !== "undefined") {
 export function usePwaInstall(): UsePwaInstallReturn {
   const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const canInstall = !snap.isInstalled && !snap.isDismissed && snap.deferredPrompt !== null;
+  const canInstall =
+    !snap.isInstalled && !snap.isDismissed && snap.deferredPrompt !== null;
 
   const onInstall = async () => {
     if (!snap.deferredPrompt) return;
     await snap.deferredPrompt.prompt();
     const choice = await snap.deferredPrompt.userChoice;
     if (choice.outcome === "accepted") {
-      window.localStorage.setItem(DISMISS_KEY, "1");
+      window.localStorage.setItem(INSTALLED_KEY, "1");
       store = { ...store, isInstalled: true, deferredPrompt: null };
     } else {
+      // User dismissed the native prompt — treat as session dismiss
+      window.sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
       store = { ...store, deferredPrompt: null, isDismissed: true };
-      window.localStorage.setItem(DISMISS_KEY, "1");
     }
     emit();
   };
 
   const onDismiss = () => {
-    window.localStorage.setItem(DISMISS_KEY, "1");
+    // "稍後" — only dismiss for this browser session
+    window.sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
     store = { ...store, isDismissed: true };
     emit();
   };
