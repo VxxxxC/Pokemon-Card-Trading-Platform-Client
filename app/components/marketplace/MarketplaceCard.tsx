@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { WishlistButton } from "@/app/components/market/WishlistButton";
 
 export type MarketplaceListing = {
   id: string;
@@ -46,6 +47,11 @@ export function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
             <span className="inline-flex px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold text-[#d4a574] bg-[#17130f]/70 backdrop-blur-sm border border-[#8c7355]/30">
               {listing.rarity}
             </span>
+          </div>
+
+          {/* Wishlist star — absolute top-right */}
+          <div className="absolute top-2.5 right-2.5">
+            <WishlistButton listingId={listing.id} />
           </div>
         </div>
 

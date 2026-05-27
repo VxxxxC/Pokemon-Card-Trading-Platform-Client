@@ -9,6 +9,9 @@ Tech Stack: Next.js (App Router), Tailwind CSS, Supabase, Stripe Connect, shadcn
 Before writing code, read these files in order:
 1. [design.md](../.stitch/designs/design.md)
 2. This archive: [docs/plan-sync-archive.md](../docs/plan-sync-archive.md)
+3. [docs/dev/server.md](../docs/dev/server.md) — Server-side TODO tracker
+4. [docs/dev/api.md](../docs/dev/api.md) — API integration TODO tracker
+5. [docs/dev/database.md](../docs/dev/database.md) — Database schema & query TODO tracker
 
 
 ## 👑 The PokéTrade Golden Workflow (Agentic UI Workflow)

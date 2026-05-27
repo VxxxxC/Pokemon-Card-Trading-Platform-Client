@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WishlistTable } from "./components/WishlistTable";
 
 export const metadata: Metadata = {
   title: "我的收藏庫 — PokéTrade JP",
@@ -18,7 +19,7 @@ interface OwnedCard {
   status: "holding" | "listed" | "grading";
 }
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch user's own card collection from `user_collections` table with JOIN `listings` for current prices
+// TODO: [database] Replace with Supabase query — fetch user's own card collection from `user_collections` table with JOIN `listings` for current prices
 const ownedCards: OwnedCard[] = [
   { id: "c-001", name: "Charizard ex SAR",     set: "151",           cardNo: "sv2a-182", grade: "PSA 10",  grader: "PSA", purchasePrice: 42_400, currentValue: 49_800, status: "holding" },
   { id: "c-002", name: "Umbreon ex SAR",        set: "Night Wanderer",cardNo: "sv6a-109", grade: "BGS 9.5", grader: "BGS", purchasePrice: 38_000, currentValue: 41_200, status: "holding" },
@@ -30,7 +31,7 @@ const ownedCards: OwnedCard[] = [
   { id: "c-008", name: "Espeon ex SAR",         set: "Eevee Heroes",  cardNo: "s6a-209",  grade: "BGS 9",   grader: "BGS", purchasePrice: 28_000, currentValue: 31_000, status: "holding" },
 ];
 
-// TODO [MOCK DATA]: Replace with Supabase aggregation — compute portfolio summary stats from `user_collections` JOIN `price_history` for current valuations
+// TODO: [database] Replace with Supabase aggregation — compute portfolio summary stats from `user_collections` JOIN `price_history` for current valuations
 const portfolioSummary = {
   totalValue:      295_300,
   totalCost:       261_400,
@@ -170,6 +171,26 @@ export default function UserCollectionPage() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* ── Wishlist Table ─────────────────────────────────────────────── */}
+      <section aria-labelledby="wishlist-heading" className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2
+            id="wishlist-heading"
+            className="font-sans font-semibold text-[16px] text-text-primary flex items-center gap-2"
+          >
+            <span className="text-brand" aria-hidden="true">★</span>
+            願望清單
+          </h2>
+          <span className="font-mono text-[11px] text-text-disabled">
+            {/* TODO: [database] Replace with real wishlist count from Supabase */}
+            5 張追蹤中
+          </span>
+        </div>
+        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-2">
+          <WishlistTable />
         </div>
       </section>
     </>

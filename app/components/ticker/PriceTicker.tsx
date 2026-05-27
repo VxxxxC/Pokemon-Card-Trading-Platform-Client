@@ -1,7 +1,7 @@
 "use client";
 
-// TODO [MOCK DATA]: Replace with live data from Supabase Realtime subscription on `price_feed` table
-// TODO [API]: Connect to Mercari JP scraper or SKUNK price API for real-time card valuations
+// TODO: [database] Replace with live data from Supabase Realtime subscription on `price_feed` table
+// TODO: [API] Connect to Mercari JP scraper or SKUNK price API for real-time card valuations in HKD
 const tickers = [
   {
     id: "sv2a-182",

@@ -18,7 +18,7 @@ interface KycApplication {
   status: KycStatus;
 }
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch KYC applications from `kyc_applications` table where status IN ('pending', 'approved', 'rejected'), ordered by submitted_at DESC
+// TODO: [database] Replace with Supabase query — fetch KYC applications from `kyc_applications` table where status IN ('pending', 'approved', 'rejected'), ordered by submitted_at DESC
 const applications: KycApplication[] = [
   { id: "KYC-2025-041", applicantName: "鈴木 Haruto",   handle: "@haruto_tcg",    shopName: "HarutoCards Premium",   submittedAt: "2025/5/21 09:14", docType: "日本護照",     totalTrades: 42, rating: 4.8, status: "pending" },
   { id: "KYC-2025-040", applicantName: "中村 Aiko",     handle: "@aiko_collector", shopName: "AikoRare Collection",   submittedAt: "2025/5/20 16:52", docType: "政府身份證",   totalTrades: 18, rating: 4.6, status: "pending" },
@@ -118,7 +118,7 @@ export default function AdminApprovalsPage() {
 
                   {/* Document + Actions */}
                   <div className="flex flex-col gap-2 shrink-0">
-                    {/* TODO [BACKEND]: Fetch and display uploaded KYC document from Supabase Storage — call supabase.storage.from('kyc-docs').createSignedUrl(app.id) */}
+                    {/* TODO: [server] Fetch and display uploaded KYC document from Supabase Storage — call supabase.storage.from('kyc-docs').createSignedUrl(app.id) */}
                     <button
                       type="button"
                       className="flex items-center gap-1.5 px-3 py-2 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-xl font-mono text-[11px] text-text-secondary hover:text-text-primary transition-colors"
@@ -132,14 +132,14 @@ export default function AdminApprovalsPage() {
 
                     {isPending && (
                       <div className="flex gap-2">
-                        {/* TODO [BACKEND]: "批准" must call server action — update kyc_applications.status = 'approved' + update profiles.role = 'MERCHANT' in Supabase, then send confirmation email */}
+                        {/* TODO: [server] "批准" must call server action — update kyc_applications.status = 'approved' + update profiles.role = 'MERCHANT' in Supabase, then send confirmation email */}
                         <button
                           type="button"
                           className="flex-1 h-9 bg-success/90 text-[#111] font-sans font-semibold text-[12px] rounded-xl hover:bg-success active:scale-[0.98] transition-all"
                         >
                           ✓ 批准
                         </button>
-                        {/* TODO [BACKEND]: "拒絕" must call server action — update kyc_applications.status = 'rejected' + send rejection email with reason */}
+                        {/* TODO: [server] "拒絕" must call server action — update kyc_applications.status = 'rejected' + send rejection email with reason */}
                         <button
                           type="button"
                           className="flex-1 h-9 bg-[rgba(239,68,68,0.10)] text-warning font-sans font-medium text-[12px] rounded-xl border border-warning/20 hover:bg-[rgba(239,68,68,0.18)] active:scale-[0.98] transition-all"

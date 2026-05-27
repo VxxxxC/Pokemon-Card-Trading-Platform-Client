@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "查看 Stripe Connect 帳戶、佣金扣減及運費補貼記錄",
 };
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch merchant's Stripe Connect payout summary via Stripe API (stripe.balance.retrieve for connected account)
+// TODO: [server] Replace with Supabase query — fetch merchant's Stripe Connect payout summary via Stripe API (stripe.balance.retrieve for connected account)
 const financeSummary = {
   pendingPayout:   18_420,
   totalEarned:    384_600,
@@ -13,7 +13,7 @@ const financeSummary = {
   shippingSubsidy:  3_600,
 };
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch merchant's transaction history from `payout_transactions` table, ordered by date DESC
+// TODO: [database] Replace with Supabase query — fetch merchant's transaction history from `payout_transactions` table, ordered by date DESC
 const transactions = [
   { id: "TXN-001", type: "payout"    as const, desc: "Stripe 提款結算",             amount: 45_000,  date: "2025/5/15", status: "completed" as const },
   { id: "TXN-002", type: "sale"      as const, desc: "Charizard ex SAR 成交",        amount: 49_800,  date: "2025/5/14", status: "completed" as const },
@@ -72,14 +72,14 @@ export default function MerchantFinancePage() {
             </div>
             <p className="font-mono text-[11px] text-text-secondary mt-1.5">
               帳戶 ID：acct_1R8xK2KojiTCGDemo · 待付款 ¥{financeSummary.pendingPayout.toLocaleString("zh-TW")}
-            {/* TODO [BACKEND]: acct_1R8xK2KojiTCGDemo is a demo Stripe account ID — replace with real connected account ID fetched from `merchant_profiles.stripe_account_id` in Supabase */}
+            {/* TODO: [server] acct_1R8xK2KojiTCGDemo is a demo Stripe account ID — replace with real connected account ID fetched from `merchant_profiles.stripe_account_id` in Supabase */}
             </p>
           </div>
           <button
             type="button"
             className="flex items-center gap-1.5 px-3 py-2 font-mono text-[12px] text-[#635bff] border border-[rgba(99,91,255,0.30)] rounded-xl hover:bg-[rgba(99,91,255,0.08)] transition-colors shrink-0"
           >
-            {/* TODO [BACKEND]: Redirect to merchant's Stripe Express Dashboard — use stripe.accounts.createLoginLink(accountId) server action */}
+            {/* TODO: [server] Redirect to merchant's Stripe Express Dashboard — use stripe.accounts.createLoginLink(accountId) server action */}
             前往 Stripe 儀表板
           </button>
         </div>

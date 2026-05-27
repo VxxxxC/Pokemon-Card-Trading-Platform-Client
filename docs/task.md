@@ -4,15 +4,15 @@
 
 ### Story 1.1: 作為一個開發者，我需要一個設定好嘅 Next.js 專案環境，以便開始開發。
 **Task 1.1.1: 初始化 Next.js 與核心套件**
-- [ ] Ticket 1: 使用 `create-next-app` 初始化 App Router 專案，設定 TypeScript、ESLint。
-- [ ] Ticket 2: 安裝及設定 Tailwind CSS，建立基礎嘅 Design Token (顏色、字體)。
-- [ ] Ticket 3: 設定 Prettier 同埋 Git Hooks (Husky) 以確保程式碼風格統一。
+- [x] Ticket 1: 使用 `create-next-app` 初始化 App Router 專案，設定 TypeScript、ESLint。✅ DONE
+- [x] Ticket 2: 安裝及設定 Tailwind CSS，建立基礎嘅 Design Token (顏色、字體)。✅ DONE (暗金色主題)
+- [x] Ticket 3: 設定 Prettier 同埋 Git Hooks (Husky) 以確保程式碼風格統一。✅ DONE
 
 **Task 1.1.2: 設定 PWA 基礎 (@serwist/next)**
-- [ ] Ticket 4: 安裝 `@serwist/next` 及相關依賴。
-- [ ] Ticket 5: 設定 `next.config.mjs` 包裝 Serwist 配置。
-- [ ] Ticket 6: 建立 `app/serwist/[path]/route.ts` 處理 Service Worker 編譯。
-- [ ] Ticket 7: 設定基本嘅 `manifest.json` 並於 `layout.tsx` 加入 Metadata。
+- [x] Ticket 4: 安裝 `@serwist/next` 及相關依賴。✅ DONE
+- [x] Ticket 5: 設定 `next.config.mjs` 包裝 Serwist 配置。✅ DONE
+- [x] Ticket 6: 建立 `app/serwist/[path]/route.ts` 處理 Service Worker 編譯。✅ DONE
+- [x] Ticket 7: 設定基本嘅 `manifest.json` 並於 `layout.tsx` 加入 Metadata。✅ DONE
 
 ### Story 1.2: 作為一個開發者，我需要利用 Supabase 建立穩定嘅資料庫與權限架構。
 **Task 1.2.1: 設定 Supabase Database 及 RLS**
@@ -66,16 +66,16 @@
 - [ ] Ticket 30: 設定 Google OAuth Provider (獲取 Client ID/Secret 並填入 Supabase)。
 
 **Task 4.1.2: 前端登入介面與 Auth 邏輯**
-- [ ] Ticket 31: 製作「登入 / 註冊」頁面 UI (包含 Google 及 Email/密碼登入)。
-- [ ] Ticket 32: 撰寫 Server Actions 處理 `signUp`、`signInWithPassword` 及登出。
-- [ ] Ticket 33: 撰寫 `middleware.ts` 攔截未登入用戶存取受保護路由 (如 `/dashboard`)。
+- [x] Ticket 31: 製作「登入 / 註冊」頁面 UI (包含 Google 及 Email/密碼登入)。✅ DONE (app/auth/page.tsx)
+- [ ] Ticket 32: 撰寫 Server Actions 處理 `signUp`、`signInWithPassword` 及登出。🔄 TODO [BACKEND]
+- [ ] Ticket 33: 撰寫 `middleware.ts` 攔截未登入用戶存取受保護路由 (如 `/dashboard`)。🔄 TODO [BACKEND]
 
 ### Story 4.2: 作為一般會員，我希望申請成為商戶 (KYC)。
 **Task 4.2.1: 商戶入駐申請 (Merchant Application)**
-- [ ] Ticket 34: 製作「我的帳號」設定頁面 UI，允許用戶修改名稱與聯絡方式。
-- [ ] Ticket 35: 撰寫 Server Action 去讀取及 `update` Supabase 嘅 `profiles` Table。
-- [ ] Ticket 36: 喺 Profile 加入「申請成為商戶」表單 (收集店名、基本 KYC 證明文件上載)。
-- [ ] Ticket 37: 撰寫 Server Action 將用戶 `role` 轉為 `PENDING_MERCHANT`，並提交 KYC 資料。
+- [x] Ticket 34: 製作「我的帳號」設定頁面 UI，允許用戶修改名稱與聯絡方式。✅ DONE (app/profile/user/settings/page.tsx)
+- [ ] Ticket 35: 撰寫 Server Action 去讀取及 `update` Supabase 嘅 `profiles` Table。🔄 TODO [BACKEND]
+- [x] Ticket 36: 喺 Profile 加入「申請成為商戶」表單 (收集店名、基本 KYC 證明文件上載)。✅ PARTIAL (UI 框架, KYC banner @ app/profile/[id]/page.tsx)
+- [ ] Ticket 37: 撰寫 Server Action 將用戶 `role` 轉為 `PENDING_MERCHANT`，並提交 KYC 資料。🔄 TODO [BACKEND]
 
 ---
 
@@ -83,10 +83,10 @@
 
 ### Story 5.1: 作為一個已審核商戶，我希望可以綁定 Stripe 戶口接收款項。
 **Task 5.1.1: Stripe Connect 賣家入駐 (僅限 MERCHANT)**
-- [ ] Ticket 38: 註冊 Stripe 帳號獲取 API Keys，安裝 `stripe-node`。
-- [ ] Ticket 39: 寫 API：幫賣家建立 Express Account 並產生 Account Link (需驗證 `role === 'MERCHANT'`)。
-- [ ] Ticket 40: 製作前端 UI：若用戶是 `MERCHANT` 但未綁定 Stripe，顯示「綁定收款戶口」按鈕。
-- [ ] Ticket 41: 處理 Stripe Return URL，更新 Supabase `profiles` 嘅 `stripe_account_id`。
+- [ ] Ticket 38: 註冊 Stripe 帳號獲取 API Keys，安裝 `stripe-node`。🔄 TODO [API]
+- [ ] Ticket 39: 寫 API：幫賣家建立 Express Account 並產生 Account Link (需驗證 `role === 'MERCHANT'`)。🔄 TODO [API]
+- [x] Ticket 40: 製作前端 UI：若用戶是 `MERCHANT` 但未綁定 Stripe，顯示「綁定收款戶口」按鈕。✅ DONE (app/profile/merchant/settings/page.tsx)
+- [ ] Ticket 41: 處理 Stripe Return URL，更新 Supabase `profiles` 嘅 `stripe_account_id`。🔄 TODO [API]
 
 ### Story 5.2: 作為一個買家，我希望可以安全地用信用卡畀錢買卡。
 **Task 5.2.1: 結帳流程與 Webhook**
@@ -116,14 +116,14 @@
 
 ### Story 7.1: 作為平台管理員，我需要監察數據、審核商戶同管理違規用戶。
 **Task 7.1.1: Admin 權限與審核系統**
-- [ ] Ticket 52: 更新 Middleware，確保 `/admin` 路由只有 `role === 'ADMIN'` 可以進入。
-- [ ] Ticket 53: 製作 Admin Dashboard UI，顯示基本總訂單數、總用戶數。
-- [ ] Ticket 54: 製作「商戶申請審核 (KYC)」頁面，列出所有 `PENDING_MERCHANT` 嘅用戶。
-- [ ] Ticket 55: 撰寫 Server Action 允許 Admin 點擊「Approve」，將該用戶 `role` 升級為 `MERCHANT`。
+- [ ] Ticket 52: 更新 Middleware，確保 `/admin` 路由只有 `role === 'ADMIN'` 可以進入。🔄 TODO [BACKEND]
+- [x] Ticket 53: 製作 Admin Dashboard UI，顯示基本總訂單數、總用戶數。✅ DONE (app/admin/page.tsx + mobile responsive)
+- [x] Ticket 54: 製作「商戶申請審核 (KYC)」頁面，列出所有 `PENDING_MERCHANT` 嘅用戶。✅ DONE (app/admin/approvals/page.tsx)
+- [ ] Ticket 55: 撰寫 Server Action 允許 Admin 點擊「Approve」，將該用戶 `role` 升級為 `MERCHANT`。🔄 TODO [BACKEND]
 
 **Task 7.1.2: 用戶管理**
-- [ ] Ticket 56: 製作「全局用戶列表」頁面。
-- [ ] Ticket 57: 撰寫 Server Action 允許 Admin 將用戶停權 (標記 `is_banned` = true)。
+- [x] Ticket 56: 製作「全局用戶列表」頁面。✅ DONE (app/admin/users/page.tsx + mobile responsive)
+- [ ] Ticket 57: 撰寫 Server Action 允許 Admin 將用戶停權 (標記 `is_banned` = true)。🔄 TODO [BACKEND]
 
 ---
 
@@ -131,10 +131,10 @@
 
 ### Story 8.1: 作為手機用戶，我希望體驗流暢而且可以裝喺主畫面。
 **Task 8.1.1: 響應式與 PWA 安裝**
-- [ ] Ticket 58: 準備並放入所有尺寸嘅 PWA App Icons (`192x192`, `512x512`, Apple Touch Icon)。
-- [ ] Ticket 59: 實作自訂「安裝到主畫面」按鈕 (監聽 `beforeinstallprompt`)。
-- [ ] Ticket 60: 調整全站 Bottom Navigation Bar，確保手機操作體驗接近原生 App。
-- [ ] Ticket 61: 修正 iOS Safari 點擊表單輸入框意外放大的問題 (`user-scalable=no`)。
+- [ ] Ticket 58: 準備並放入所有尺寸嘅 PWA App Icons (`192x192`, `512x512`, Apple Touch Icon)。🔄 TODO [ASSETS]
+- [x] Ticket 59: 實作自訂「安裝到主畫面」按鈕 (監聽 `beforeinstallprompt`)。✅ DONE (`usePwaInstall` hook + `PwaHeroInstallButton` in HeroSearch)
+- [x] Ticket 60: 調整全站 Bottom Navigation Bar，確保手機操作體驗接近原生 App。✅ DONE (浮動液體玻璃選項卡欄)
+- [x] Ticket 61: 修正 iOS Safari 點擊表單輸入框意外放大的問題 (`user-scalable=no`)。✅ DONE (app/layout.tsx)
 
 ---
 

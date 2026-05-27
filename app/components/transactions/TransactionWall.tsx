@@ -1,5 +1,5 @@
-// TODO [MOCK DATA]: Replace with Supabase Realtime stream — subscribe to `transactions` table INSERT events
-// TODO [MOCK DATA]: Relative timestamps (e.g. "2分鐘前") must be computed from real `created_at` field using date-fns or Intl.RelativeTimeFormat
+// TODO: [database] Replace with Supabase Realtime stream — subscribe to `transactions` table INSERT events
+// TODO: [server] Relative timestamps (e.g. "2分鐘前") must be computed from real `created_at` field using date-fns or Intl.RelativeTimeFormat
 const transactions = [
   {
     id: "sv2a-182",

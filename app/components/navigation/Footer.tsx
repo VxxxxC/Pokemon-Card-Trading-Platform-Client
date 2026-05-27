@@ -1,0 +1,108 @@
+import Link from "next/link";
+
+// TODO: [server] Footer links (customer service, FAQ) should be fetched from CMS or Supabase `site_config` table
+
+const footerSections = [
+  {
+    title: "交易服務",
+    links: [
+      { label: "市場瀏覽", href: "/marketplace" },
+      { label: "搜尋卡牌", href: "/search" },
+      { label: "鑑定託管流程", href: "/marketplace?info=escrow" },
+      { label: "賣家入駐", href: "/auth?role=merchant" },
+    ],
+  },
+  {
+    title: "會員中心",
+    links: [
+      { label: "我的收藏", href: "/profile/user/collection" },
+      { label: "訂單紀錄", href: "/profile/user/orders" },
+      { label: "帳戶設定", href: "/profile/user/settings" },
+      { label: "商家後台", href: "/profile/merchant" },
+    ],
+  },
+  {
+    title: "關於平台",
+    links: [
+      { label: "關於 HKcardvault", href: "#" },
+      { label: "服務條款", href: "#" },
+      { label: "私隱政策", href: "#" },
+      { label: "聯絡我們", href: "#" },
+    ],
+  },
+];
+
+const paymentMethods = ["Visa", "Mastercard", "Stripe"];
+
+export function Footer() {
+  return (
+    <footer className="w-full bg-bg-shell border-t border-[rgba(237,232,224,0.08)] mt-auto">
+      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10">
+        {/* Main footer grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+          {/* Brand column */}
+          <div className="col-span-2 sm:col-span-1">
+            <Link
+              href="/"
+              className="font-sans font-bold text-[18px] text-text-primary tracking-tight inline-block mb-3"
+            >
+              PokéTrade <span className="text-brand">JP</span>
+            </Link>
+            <p className="font-sans text-[12px] text-text-secondary leading-relaxed max-w-[220px]">
+              香港首個日版寶可夢卡牌專業交易平台。鑑定託管・安心交易・全港免運。
+            </p>
+            {/* Payment badges */}
+            <div className="flex items-center gap-2 mt-4">
+              {paymentMethods.map((method) => (
+                <span
+                  key={method}
+                  className="font-mono text-[10px] text-text-disabled border border-[rgba(237,232,224,0.08)] rounded-[4px] px-2 py-1"
+                >
+                  {method}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Link columns */}
+          {footerSections.map((section) => (
+            <div key={section.title}>
+              <h3 className="font-sans font-semibold text-[13px] text-text-primary mb-3">
+                {section.title}
+              </h3>
+              <ul className="space-y-2">
+                {section.links.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="font-sans text-[12px] text-text-secondary hover:text-brand transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-[rgba(237,232,224,0.08)] pt-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="font-sans text-[11px] text-text-disabled">
+              © {new Date().getFullYear()} PokéTrade JP (HKcardvault). All rights reserved.
+            </p>
+            <div className="flex items-center gap-4">
+              <span className="font-mono text-[10px] text-text-disabled">
+                HKD 港幣結算
+              </span>
+              <span className="font-mono text-[10px] text-text-disabled">
+                Powered by Stripe Connect
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}

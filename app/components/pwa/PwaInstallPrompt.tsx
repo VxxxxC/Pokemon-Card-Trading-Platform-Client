@@ -1,94 +1,80 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 
-type DeferredPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
-};
+const SNOOZE_KEY = "pwa_snooze_until";
+const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
-const DISMISS_KEY = "poketrade:pwa-install-dismissed";
-
+/**
+ * Floating PWA install prompt with cooling-state defense.
+ * Uses the shared state machine from usePwaInstall.
+ *
+ * State A (NATIVE_READY): primary install + "稍後" snooze (3-day cooldown)
+ * State B (BROWSER_COOLING): manual install instructions + "✕" dismiss
+ */
 export function PwaInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<DeferredPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const { promptState, onInstall } = usePwaInstall();
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const standaloneByMedia = window.matchMedia("(display-mode: standalone)").matches;
-    const standaloneByNavigator = "standalone" in window.navigator &&
-      Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
-
-    setIsInstalled(standaloneByMedia || standaloneByNavigator);
-    setIsDismissed(window.localStorage.getItem(DISMISS_KEY) === "1");
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as DeferredPromptEvent);
-    };
-
-    const onAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      window.localStorage.setItem(DISMISS_KEY, "1");
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    window.addEventListener("appinstalled", onAppInstalled);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", onAppInstalled);
-    };
+    const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
+    if (snoozeUntil && Date.now() < Number(snoozeUntil)) {
+      setDismissed(true);
+    }
   }, []);
 
-  const shouldRender = useMemo(() => {
-    return !isInstalled && !isDismissed && deferredPrompt !== null;
-  }, [deferredPrompt, isDismissed, isInstalled]);
-
-  const onDismiss = () => {
-    setIsDismissed(true);
-    window.localStorage.setItem(DISMISS_KEY, "1");
+  const handleSnooze = () => {
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS));
+    setDismissed(true);
   };
 
-  const onInstall = async () => {
-    if (!deferredPrompt) return;
+  if (promptState === "ALREADY_INSTALLED" || dismissed) return null;
 
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
+  // State A: Native prompt ready — primary install button + snooze
+  if (promptState === "NATIVE_READY") {
+    return (
+      <aside className="fixed bottom-30 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
+        <p className="font-sans text-[14px] font-medium text-text-primary">
+          加到主畫面
+        </p>
+        <p className="mt-1 font-sans text-[13px] leading-relaxed text-text-secondary">
+          安裝 PokéTrade JP，快速查看即時成交與託管進度。
+        </p>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={onInstall}
+            className="flex items-center justify-center gap-2 rounded-md bg-[#d4a574] px-4 py-2.5 font-sans text-xs font-semibold text-[#17130f] transition-all hover:brightness-110 active:scale-[0.98] active:translate-y-px"
+          >
+            ⚡ 即刻安裝 PWA
+          </button>
+          <button
+            type="button"
+            onClick={handleSnooze}
+            className="flex items-center justify-center rounded-md border border-[rgba(237,232,224,0.15)] px-4 py-2.5 font-sans text-xs font-medium text-text-secondary transition-all hover:border-[rgba(237,232,224,0.3)] active:scale-[0.98] active:translate-y-px"
+          >
+            稍後
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
-    if (choice.outcome === "accepted") {
-      setIsInstalled(true);
-      window.localStorage.setItem(DISMISS_KEY, "1");
-    }
-
-    setDeferredPrompt(null);
-  };
-
-  if (!shouldRender) return null;
-
+  // State B: Browser cooling — fallback instructional card with close button
   return (
-    <aside className="fixed bottom-20 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(226,232,240,0.6)] bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.06)] lg:bottom-6">
-      <p className="font-sans text-[14px] font-medium text-[#202124]">加到主畫面</p>
-      <p className="mt-1 font-sans text-[13px] leading-relaxed text-[#5F6368]">
-        安裝 PokéTrade JP，快速查看即時成交與託管進度。
-      </p>
-      <div className="mt-3 flex gap-2">
+    <aside className="fixed bottom-30 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
+      <div className="flex items-start gap-2">
+        <p className="flex-1 font-sans text-xs leading-relaxed text-[#d4c4b7]">
+          輕觸網址列右側圖標，或點選「更多」→「加到主畫面」，即可安裝 PokéTrade JP。
+        </p>
         <button
           type="button"
-          onClick={onDismiss}
-          className="h-10 min-h-11 rounded-lg border border-[rgba(226,232,240,0.6)] px-3 font-sans text-[13px] font-medium text-[#5F6368] active:scale-[0.98] active:translate-y-px transition-transform"
+          onClick={() => setDismissed(true)}
+          aria-label="關閉提示"
+          className="mt-0.5 shrink-0 text-[#d4c4b7] opacity-50 transition-opacity hover:opacity-100 active:scale-90"
         >
-          稍後
-        </button>
-        <button
-          type="button"
-          onClick={onInstall}
-          className="h-10 min-h-11 rounded-lg bg-[#2563EB] px-3 font-sans text-[13px] font-medium text-white active:scale-[0.98] active:translate-y-px transition-transform"
-        >
-          立即安裝
+          ✕
         </button>
       </div>
     </aside>
