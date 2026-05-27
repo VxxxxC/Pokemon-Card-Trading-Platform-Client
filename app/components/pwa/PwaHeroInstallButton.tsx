@@ -3,21 +3,34 @@
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 
 export function PwaHeroInstallButton() {
-  const { isInstalled, onInstall } = usePwaInstall();
+  const { promptState, onInstall } = usePwaInstall();
 
-  // Only hide if the app is already running in standalone / installed mode
-  if (isInstalled) return null;
+  // State C: Already installed — hide completely
+  if (promptState === "ALREADY_INSTALLED") return null;
 
+  // State A: Native prompt ready — primary install button
+  if (promptState === "NATIVE_READY") {
+    return (
+      <button
+        type="button"
+        onClick={onInstall}
+        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[rgba(212,165,116,0.30)] bg-[rgba(212,165,116,0.08)] font-sans text-[12px] text-brand hover:bg-[rgba(212,165,116,0.16)] hover:border-brand active:scale-[0.97] transition-all"
+        aria-label="加到主螢幕 — 安裝 PWA 應用程式"
+      >
+        <HomeScreenIcon />
+        加到主螢幕
+      </button>
+    );
+  }
+
+  // State B: Browser cooling — muted hint text
   return (
-    <button
-      type="button"
-      onClick={onInstall}
-      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[rgba(212,165,116,0.30)] bg-[rgba(212,165,116,0.08)] font-sans text-[12px] text-brand hover:bg-[rgba(212,165,116,0.16)] hover:border-brand active:scale-[0.97] transition-all"
-      aria-label="加到主螢幕 — 安裝 PWA 應用程式"
+    <span
+      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[rgba(237,232,224,0.08)] bg-[#26211C] font-sans text-[11px] text-[#d4c4b7]"
+      title="瀏覽器安全冷卻期 — 請使用網址列圖標手動安裝"
     >
-      <HomeScreenIcon />
-      加到主螢幕
-    </button>
+      📥 可手動安裝
+    </span>
   );
 }
 

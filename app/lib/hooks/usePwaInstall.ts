@@ -11,12 +11,26 @@ type DeferredPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+export type PwaPromptState =
+  | "NATIVE_READY"
+  | "BROWSER_COOLING"
+  | "ALREADY_INSTALLED";
+
 export interface UsePwaInstallReturn {
   /** Whether the app is already running in standalone / installed mode */
   isInstalled: boolean;
+  /** Current prompt state for UI rendering */
+  promptState: PwaPromptState;
   /** Trigger the native browser install prompt (no-op if unavailable) */
   onInstall: () => Promise<void>;
 }
+
+/* ------------------------------------------------------------------ */
+/*  localStorage keys                                                  */
+/* ------------------------------------------------------------------ */
+
+const LS_COOLING_KEY = "pwa_cooling_active";
+const LS_INSTALLED_KEY = "pwa_installed";
 
 /* ------------------------------------------------------------------ */
 /*  Module-level singleton — captures `beforeinstallprompt` eagerly    */
@@ -49,11 +63,14 @@ if (typeof window !== "undefined") {
   const byNavigator =
     "standalone" in window.navigator &&
     Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
-  isInstalled = byMedia || byNavigator;
+  isInstalled =
+    byMedia || byNavigator || localStorage.getItem(LS_INSTALLED_KEY) === "true";
 
   window.addEventListener("beforeinstallprompt", (e: Event) => {
     e.preventDefault();
     deferredPrompt = e as DeferredPromptEvent;
+    // Native prompt arrived — clear any cooling flag
+    localStorage.removeItem(LS_COOLING_KEY);
     version++;
     emit();
   });
@@ -61,9 +78,21 @@ if (typeof window !== "undefined") {
   window.addEventListener("appinstalled", () => {
     isInstalled = true;
     deferredPrompt = null;
+    localStorage.setItem(LS_INSTALLED_KEY, "true");
+    localStorage.removeItem(LS_COOLING_KEY);
     version++;
     emit();
   });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function derivePromptState(): PwaPromptState {
+  if (isInstalled) return "ALREADY_INSTALLED";
+  if (deferredPrompt) return "NATIVE_READY";
+  return "BROWSER_COOLING";
 }
 
 /* ------------------------------------------------------------------ */
@@ -79,12 +108,20 @@ export function usePwaInstall(): UsePwaInstallReturn {
     const choice = await deferredPrompt.userChoice;
     if (choice.outcome === "accepted") {
       isInstalled = true;
+      localStorage.setItem(LS_INSTALLED_KEY, "true");
+      localStorage.removeItem(LS_COOLING_KEY);
+    } else {
+      // User dismissed — enter cooling state so next refresh shows fallback UI
+      localStorage.setItem(
+        LS_COOLING_KEY,
+        JSON.stringify({ active: true, timestamp: Date.now() })
+      );
     }
     deferredPrompt = null;
     version++;
     emit();
   };
 
-  return { isInstalled, onInstall };
+  return { isInstalled, promptState: derivePromptState(), onInstall };
 }
 
