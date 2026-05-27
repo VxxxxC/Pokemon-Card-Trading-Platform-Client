@@ -13,7 +13,7 @@ const premiumListings = [
     price: "HK$3,500",
     seller: "渡邊道館",
     badge: "專業道館主",
-    image: "https://picsum.photos/seed/premium-charizard/400/280",
+    image: "https://picsum.photos/seed/premium-charizard/200/280",
     photos: 6,
   },
   {
@@ -23,7 +23,7 @@ const premiumListings = [
     price: "HK$4,050",
     seller: "京都卡牌專門店",
     badge: "殿堂收藏家",
-    image: "https://picsum.photos/seed/premium-mewtwo/400/280",
+    image: "https://picsum.photos/seed/premium-mewtwo/200/280",
     photos: 5,
   },
   {
@@ -33,7 +33,7 @@ const premiumListings = [
     price: "HK$2,960",
     seller: "大阪收藏家",
     badge: "專業道館主",
-    image: "https://picsum.photos/seed/premium-umbreon/400/280",
+    image: "https://picsum.photos/seed/premium-umbreon/200/280",
     photos: 4,
   },
   {
@@ -43,7 +43,7 @@ const premiumListings = [
     price: "HK$2,180",
     seller: "名古屋交易商",
     badge: "殿堂收藏家",
-    image: "https://picsum.photos/seed/premium-mimikyu/400/280",
+    image: "https://picsum.photos/seed/premium-mimikyu/200/280",
     photos: 6,
   },
 ];
@@ -66,65 +66,68 @@ export function PremiumMarket() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-2">
         {premiumListings.map((listing) => (
           <article
             key={listing.id}
-            className="bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow overflow-hidden"
+            className="flex gap-3 items-center bg-bg-card rounded-xl border border-[rgba(237,232,224,0.08)] p-3 hover:bg-bg-elevated transition-colors"
           >
+            {/* Portrait card thumbnail */}
             <Link
               href={`/marketplace?card=${listing.id}`}
-              className="block relative w-full aspect-[5/3.5] overflow-hidden bg-bg-elevated"
+              className="shrink-0 relative w-14 aspect-5/7 rounded-lg overflow-hidden bg-bg-elevated block"
             >
               <Image
                 src={listing.image}
                 alt={`${listing.name} — ${listing.grade}`}
                 fill
-                className="object-cover hover:scale-[1.02] transition-transform duration-300"
-                sizes="(max-width: 640px) 100vw, 50vw"
+                className="object-cover"
+                sizes="56px"
               />
-              <span className="absolute top-3 right-3 font-mono text-[11px] text-[#17130f] bg-brand px-2 py-0.5 rounded-[4px]">
-                {listing.grade}
-              </span>
-              <span className="absolute bottom-3 left-3 font-mono text-[10px] text-text-secondary bg-[rgba(23,19,15,0.75)] backdrop-blur-sm px-2 py-0.5 rounded-[4px]">
-                {listing.photos} 張實物圖
-              </span>
             </Link>
 
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="min-w-0">
-                  <h3 className="font-sans font-semibold text-[16px] text-text-primary truncate">
-                    {listing.name}
-                  </h3>
-                  <span className="font-mono text-[12px] text-text-secondary">
-                    {listing.id}
-                  </span>
-                </div>
-                <span className="shrink-0 font-mono text-[10px] text-brand bg-[rgba(212,165,116,0.12)] px-2 py-0.5 rounded-[4px]">
+            {/* Card info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                <h3 className="font-sans font-medium text-[14px] text-text-primary truncate">
+                  {listing.name}
+                </h3>
+                <span className="font-mono text-[10px] text-[#17130f] bg-brand px-1.5 py-0.5 rounded-[3px] shrink-0">
+                  {listing.grade}
+                </span>
+              </div>
+              <p className="font-mono text-[11px] text-text-secondary mb-1">
+                {listing.id} · {listing.seller}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-brand bg-[rgba(212,165,116,0.12)] px-1.5 py-0.5 rounded-[3px]">
                   🏅 {listing.badge}
                 </span>
-              </div>
-
-              <div className="flex items-center justify-between mt-3">
-                <p className="font-mono font-semibold text-[18px] text-text-primary">
-                  {listing.price}
-                </p>
-                <span className="font-sans text-[12px] text-text-secondary">
-                  {listing.seller}
+                <span className="font-mono text-[10px] text-text-disabled">
+                  {listing.photos} 張實物圖
                 </span>
               </div>
+            </div>
 
+            {/* Price + CTA */}
+            <div className="shrink-0 text-right flex flex-col items-end gap-1.5">
+              <p className="font-mono font-semibold text-[17px] text-text-primary">
+                {listing.price}
+              </p>
               {/* TODO: [server] "Escrow 購買" must create Stripe Connect PaymentIntent with platform fee split */}
               {/* TODO: [API] Lock listing status to 'escrow_locked' after deposit payment */}
-              <div className="mt-4 flex gap-2">
-                <button className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover min-h-[44px]">
-                  Escrow 購買
-                </button>
-                <button className="flex-1 h-10 border border-[rgba(237,232,224,0.12)] text-brand font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-bg-elevated min-h-[44px]">
-                  查看詳情
-                </button>
-              </div>
+              <button
+                type="button"
+                className="px-3 py-1.5 bg-brand text-[#17130f] font-sans font-semibold text-[12px] rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-transform whitespace-nowrap"
+              >
+                Escrow 購買
+              </button>
+              <Link
+                href={`/marketplace?card=${listing.id}`}
+                className="font-mono text-[11px] text-text-secondary hover:text-brand transition-colors"
+              >
+                查看詳情 →
+              </Link>
             </div>
           </article>
         ))}

@@ -8,12 +8,12 @@ import { CardGrid } from "@/app/components/cards/CardGrid";
 import { TransactionWall } from "@/app/components/transactions/TransactionWall";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
-import { FollowingFeed } from "@/app/components/home/FollowingFeed";
 import { SniperRadar } from "@/app/components/home/SniperRadar";
 import { PremiumMarket } from "@/app/components/home/PremiumMarket";
 import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
+import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 
 // TODO: [database] Replace with Supabase query — fetch active box series from `card_series` table with live HKD price feed
 // TODO: [API] Connect to Mercari JP scraper for real-time box series pricing converted to HKD
@@ -38,8 +38,8 @@ export default function HomePage() {
         {/* Section 2: Trust Booster — How It Works (3-step escrow) */}
         <TrustBanner />
 
-        {/* Section 3: Following Feed — personalized card slider */}
-        <FollowingFeed />
+        {/* Section 3: 心水情報 — wishlist cards with price alerts & personal feed */}
+        <WishlistTicker />
 
         {/* Section 4: Sniper Radar — below-market deals */}
         <SniperRadar />
