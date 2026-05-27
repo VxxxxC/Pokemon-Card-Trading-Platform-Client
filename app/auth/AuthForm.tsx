@@ -233,7 +233,7 @@ export function AuthForm() {
       if (Object.keys(errs).length) { setErrors(errs); return; }
       setErrors({});
       setLoading(true);
-      // TODO: replace with Supabase auth.signInWithPassword()
+      // TODO: [server] Replace with Supabase auth.signInWithPassword()
       await new Promise<void>((r) => setTimeout(r, 1000));
       setLoading(false);
     },
@@ -247,7 +247,7 @@ export function AuthForm() {
       if (Object.keys(errs).length) { setErrors(errs); return; }
       setErrors({});
       setLoading(true);
-      // TODO: replace with Supabase auth.signUp()
+      // TODO: [server] Replace with Supabase auth.signUp()
       await new Promise<void>((r) => setTimeout(r, 1000));
       setLoading(false);
     },

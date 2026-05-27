@@ -81,10 +81,10 @@ graph TD
 - ✅ Server Components by default — fast TTFB, SEO-friendly card pages
 
 **Cons / Known Issues**
-- ⚠️ Supabase and Stripe are not yet integrated — all data is mock/demo only (`// TODO [MOCK DATA]`, `// TODO [BACKEND]` markers throughout)
+- ⚠️ Supabase and Stripe are not yet integrated — all data is mock/demo only (`// TODO: [database]`, `// TODO: [server]` markers throughout)
 - ⚠️ Search and filter chips have no live query handlers yet
 - ⚠️ Mercari JP price scraper and TCGdex API are stubbed — no real pricing data
-- ⚠️ `PwaInstallPrompt.tsx` and `PwaNetworkBanner.tsx` have known ESLint `setState-in-effect` warnings (pre-existing)
+- ⚠️ PWA install flow is still demo-level (needs real auth + caching policies for production)
 
 ---
 

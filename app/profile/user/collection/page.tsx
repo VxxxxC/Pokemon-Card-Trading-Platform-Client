@@ -18,7 +18,7 @@ interface OwnedCard {
   status: "holding" | "listed" | "grading";
 }
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch user's own card collection from `user_collections` table with JOIN `listings` for current prices
+// TODO: [database] Replace with Supabase query — fetch user's own card collection from `user_collections` table with JOIN `listings` for current prices
 const ownedCards: OwnedCard[] = [
   { id: "c-001", name: "Charizard ex SAR",     set: "151",           cardNo: "sv2a-182", grade: "PSA 10",  grader: "PSA", purchasePrice: 42_400, currentValue: 49_800, status: "holding" },
   { id: "c-002", name: "Umbreon ex SAR",        set: "Night Wanderer",cardNo: "sv6a-109", grade: "BGS 9.5", grader: "BGS", purchasePrice: 38_000, currentValue: 41_200, status: "holding" },
@@ -30,7 +30,7 @@ const ownedCards: OwnedCard[] = [
   { id: "c-008", name: "Espeon ex SAR",         set: "Eevee Heroes",  cardNo: "s6a-209",  grade: "BGS 9",   grader: "BGS", purchasePrice: 28_000, currentValue: 31_000, status: "holding" },
 ];
 
-// TODO [MOCK DATA]: Replace with Supabase aggregation — compute portfolio summary stats from `user_collections` JOIN `price_history` for current valuations
+// TODO: [database] Replace with Supabase aggregation — compute portfolio summary stats from `user_collections` JOIN `price_history` for current valuations
 const portfolioSummary = {
   totalValue:      295_300,
   totalCost:       261_400,

@@ -1,5 +1,5 @@
 
-> ⚠️ **TODO Comments**: This codebase contains `// TODO [MOCK DATA]`, `// TODO [API]`, and `// TODO [BACKEND]` markers indicating hardcoded demo data, unconnected APIs, and features pending backend integration. Always check for and address TODO comments before shipping any feature.
+> ⚠️ **TODO Comments**: This codebase uses `// TODO: [database]`, `// TODO: [API]`, and `// TODO: [server]` markers indicating mock data, unconnected APIs, and features pending backend implementation. Always check and update these TODOs before shipping any feature.
 
 ## Project Context
 You are a Senior Full-Stack Engineer and an Artistic Director working on **PokéTrade JP**, a premium Japanese Pokémon Card trading platform for professional investors. 
@@ -32,7 +32,7 @@ When the user asks to create a new page, component, or UI feature, you MUST stri
 - `/profile/merchant` - Your own merchant dashboard (first-person, requires auth + merchant role)
 - `/profile/[id]` - View OTHER users' public profiles (third-person, e.g., `PKT-8839-44A`)
 
-**TODO [BACKEND]:** When Supabase auth is integrated:
+**TODO: [server]** When Supabase auth is integrated:
 - `/profile/user/[id]` - View user profile by database user_id (for internal admin use)
 - `/profile/merchant/[id]` - View merchant shop by database merchant_id (for internal admin use)
 - Current `/profile/[id]` uses PKT-ID format for public sharing

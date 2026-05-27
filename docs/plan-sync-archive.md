@@ -5,6 +5,9 @@ Before writing code, read these files in order:
 1. [requirement.md](./requirement.md)
 2. [task.md](./docs/task.md)
 3. [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)
+4. [dev/server.md](./dev/server.md)
+5. [dev/api.md](./dev/api.md)
+6. [dev/database.md](./dev/database.md)
 
 ## Membership Level
 - Before implement related to the membership system (such as: login / register / individual interface, sub-tab or sub-page according to the member level ) , please reference to [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)

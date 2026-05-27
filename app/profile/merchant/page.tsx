@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "查看銷售統計、待處理訂單及商戶概覽",
 };
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch merchant's revenue stats from `orders` aggregation (sum amount WHERE seller_id = current user, grouped by period)
+// TODO: [database] Replace with Supabase query — fetch merchant's revenue stats from `orders` aggregation (sum amount WHERE seller_id = current user, grouped by period)
 const revenueStats = [
   { label: "今日營收",   value: "¥28,500",   note: "▲ +18% vs 昨日",  dir: "up"   as const },
   { label: "本月營收",   value: "¥384,600",  note: "▲ +24% vs 上月",  dir: "up"   as const },
@@ -14,7 +14,7 @@ const revenueStats = [
   { label: "佣金扣減",   value: "¥19,230",   note: "約 5% 成交金額",   dir: "neutral" as const },
 ];
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch pending orders from `orders` table WHERE seller_id = current user AND status IN ('pending_confirmation', 'pending_shipment', 'grading'), ordered by created_at ASC
+// TODO: [database] Replace with Supabase query — fetch pending orders from `orders` table WHERE seller_id = current user AND status IN ('pending_confirmation', 'pending_shipment', 'grading'), ordered by created_at ASC
 const pendingActions = [
   { id: "ORD-20250519-041", buyer: "M.佐藤",   card: "Charizard ex SAR",  grade: "PSA 10",  amount: 49_800, action: "待發貨",   actionColor: "text-warning" },
   { id: "ORD-20250519-039", buyer: "K.田中",   card: "Umbreon ex SAR",    grade: "BGS 9",   amount: 38_200, action: "待確認",   actionColor: "text-brand"   },
@@ -22,7 +22,7 @@ const pendingActions = [
   { id: "ORD-20250517-030", buyer: "A.Yamamoto", card: "Gardevoir ex SAR", grade: "PSA 9",  amount: 28_000, action: "待發貨",   actionColor: "text-warning" },
 ];
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch completed sales from `orders` table WHERE seller_id = current user AND status = 'completed', ordered by created_at DESC, limit 5
+// TODO: [database] Replace with Supabase query — fetch completed sales from `orders` table WHERE seller_id = current user AND status = 'completed', ordered by created_at DESC, limit 5
 const recentSales = [
   { id: "s-001", card: "Mew ex SAR",         grade: "PSA 10", amount: 44_500, date: "2025/5/18" },
   { id: "s-002", card: "Espeon ex SAR",       grade: "BGS 9.5", amount: 31_200, date: "2025/5/17" },
