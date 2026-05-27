@@ -80,9 +80,9 @@ export function CardItem({ card }: { card: CardData }) {
         </div>
 
         {/* CTAs */}
-        {/* TODO [BACKEND]: "直接購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
-        {/* TODO [BACKEND]: "即時出價" must open bid modal and submit to `bids` table with user auth check */}
-        {/* TODO [BACKEND]: /listing/${card.id} route does not exist yet — create app/listing/[id]/page.tsx */}
+        {/* TODO: [server] "直接購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
+        {/* TODO: [API] "即時出價" must open bid modal and submit to `bids` table with user auth check */}
+        {/* TODO: [server] /listing/${card.id} route does not exist yet — create app/listing/[id]/page.tsx */}
         <div className="mt-4 flex gap-2">
           <button className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover min-h-[44px]">
             直接購買

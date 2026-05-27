@@ -9,7 +9,7 @@ export function LogoutModal() {
   const closeModal = useCallback(() => setIsOpen(false), []);
 
   const handleLogout = useCallback(() => {
-    // TODO: Supabase signOut + redirect to /login
+    // TODO: [server] Supabase signOut + redirect to /login
     setIsOpen(false);
   }, []);
 

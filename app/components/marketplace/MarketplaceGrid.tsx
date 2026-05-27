@@ -1,6 +1,6 @@
 import { MarketplaceCard, type MarketplaceListing } from "./MarketplaceCard";
 
-// TODO [MOCK DATA]: Replace this array with a Supabase query on the `listings` table,
+// TODO: [database] Replace this array with a Supabase query on the `listings` table,
 // e.g. supabase.from('listings').select('*').order('created_at', { ascending: false }).limit(20)
 const MOCK_LISTINGS: MarketplaceListing[] = [
   {

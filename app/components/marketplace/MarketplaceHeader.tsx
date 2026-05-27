@@ -46,7 +46,7 @@ export function MarketplaceHeader() {
       </div>
 
       {/* Search input */}
-      {/* TODO [BACKEND]: onChange must query Supabase `listings` table with .textSearch('card_name', query) or TCGdex API */}
+      {/* TODO: [API] onChange must query Supabase `listings` table with .textSearch('card_name', query) or TCGdex API */}
       <div className="relative">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
           <SearchIcon />
@@ -59,7 +59,7 @@ export function MarketplaceHeader() {
       </div>
 
       {/* Category pills — horizontally scrollable, no scrollbar */}
-      {/* TODO [BACKEND]: category onChange must update URL search params (?category=sar) and re-filter Supabase listings */}
+      {/* TODO: [server] category onChange must update URL search params (?category=sar) and re-filter Supabase listings */}
       <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-0.5">
         {CATEGORIES.map((cat) => {
           const isActive = activeCategory === cat.id;

@@ -18,7 +18,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* ── Shipping Subsidy ─────────────────────────────────────────── */}
-      {/* TODO [BACKEND]: "儲存運費設定" button has no handler — must call server action to upsert `platform_settings.shipping_subsidy_amount` in Supabase */}
+      {/* TODO: [server] "儲存運費設定" button has no handler — must call server action to upsert `platform_settings.shipping_subsidy_amount` in Supabase */}
       <section
         aria-labelledby="shipping-heading"
         className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5"
@@ -69,8 +69,8 @@ export default function AdminSettingsPage() {
       </section>
 
       {/* ── Scraper Settings ──────────────────────────────────────────── */}
-      {/* TODO [BACKEND]: "立即觸發" button has no handler — must call server action to trigger Mercari/SKUNK scraper job; scraper status ("上次: 2小時前") is hardcoded */}
-      {/* TODO [MOCK DATA]: Scraper last-run timestamps are hardcoded — replace with `scraper_jobs.last_run_at` from Supabase */}
+      {/* TODO: [API] "立即觸發" button has no handler — must call server action to trigger Mercari/SKUNK scraper job; scraper status ("上次: 2小時前") is hardcoded */}
+      {/* TODO: [database] Scraper last-run timestamps are hardcoded — replace with `scraper_jobs.last_run_at` from Supabase */}
       <section
         aria-labelledby="scraper-heading"
         className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5"
@@ -117,8 +117,8 @@ export default function AdminSettingsPage() {
       </section>
 
       {/* ── API Management ────────────────────────────────────────────── */}
-      {/* TODO [MOCK DATA]: API keys (sk_live_••••, tcgdex_••••, etc.) and statuses are hardcoded — replace with masked keys and live status from `api_credentials` table in Supabase */}
-      {/* TODO [BACKEND]: "更換" button has no handler — must open a modal to securely update API key via server action with encryption at rest */}
+      {/* TODO: [database] API keys (sk_live_••••, tcgdex_••••, etc.) and statuses are hardcoded — replace with masked keys and live status from `api_credentials` table in Supabase */}
+      {/* TODO: [API] "更換" button has no handler — must open a modal to securely update API key via server action with encryption at rest */}
       <section
         aria-labelledby="api-heading"
         className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5"
@@ -164,8 +164,8 @@ export default function AdminSettingsPage() {
       </section>
 
       {/* ── Commission Rate ───────────────────────────────────────────── */}
-      {/* TODO [BACKEND]: "更新費率" button has no handler — must call server action to upsert `platform_settings.commission_rate` in Supabase */}
-      {/* TODO [MOCK DATA]: Current rate (5%) is hardcoded in display text — read from `platform_settings` table */}
+      {/* TODO: [server] "更新費率" button has no handler — must call server action to upsert `platform_settings.commission_rate` in Supabase */}
+      {/* TODO: [database] Current rate (5%) is hardcoded in display text — read from `platform_settings` table */}
       <section
         aria-labelledby="commission-rate-heading"
         className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5"
@@ -199,7 +199,7 @@ export default function AdminSettingsPage() {
       </section>
 
       {/* ── Danger Zone ───────────────────────────────────────────────── */}
-      {/* TODO [BACKEND]: "暫停全平台交易" and "清除所有快取數據" buttons have no handlers — must call server actions with admin auth check before execution */}
+      {/* TODO: [server] "暫停全平台交易" and "清除所有快取數據" buttons have no handlers — must call server actions with admin auth check before execution */}
       <section
         aria-labelledby="danger-heading"
         className="bg-[rgba(239,68,68,0.04)] rounded-2xl border border-warning/20 p-5"

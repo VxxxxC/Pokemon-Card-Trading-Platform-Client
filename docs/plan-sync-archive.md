@@ -5,6 +5,9 @@ Before writing code, read these files in order:
 1. [requirement.md](./requirement.md)
 2. [task.md](./docs/task.md)
 3. [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)
+4. [server.md](./dev/server.md) — Server-side TODO tracker
+5. [api.md](./dev/api.md) — API integration TODO tracker
+6. [database.md](./dev/database.md) — Database schema & query TODO tracker
 
 ## Membership Level
 - Before implement related to the membership system (such as: login / register / individual interface, sub-tab or sub-page according to the member level ) , please reference to [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)

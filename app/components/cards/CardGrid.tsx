@@ -1,6 +1,6 @@
 import { CardItem, type CardData } from "./CardItem";
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch top-rated/featured listings from `listings` table ordered by price or view count
+// TODO: [database] Replace with Supabase query — fetch top-rated/featured listings from `listings` table ordered by price or view count
 const featuredCards: CardData[] = [
   {
     id: "sv2a-182",

@@ -6,7 +6,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CardItem, type CardData } from "@/app/components/cards/CardItem";
 
-// TODO [MOCK DATA]: Replace with Supabase query — fetch listings from `listings` table with filters applied
+// TODO: [database] Replace with Supabase query — fetch listings from `listings` table with filters applied
 const allListings: CardData[] = [
   {
     id: "sv2a-182",
@@ -124,7 +124,7 @@ type SortKey = "最新" | "價格↑" | "價格↓";
 const RARITY_FILTERS: RarityFilter[] = ["全部", "SAR", "UR", "SR", "AR", "已評級"];
 const SORT_OPTIONS: SortKey[] = ["最新", "價格↑", "價格↓"];
 
-// TODO [MOCK DATA]: Replace series list with Supabase query on `card_series` table
+// TODO: [database] Replace series list with Supabase query on `card_series` table
 const SERIES_FILTERS = [
   { code: "all", name: "所有系列" },
   { code: "sv2a", name: "151 系列" },
@@ -178,7 +178,7 @@ export default function MarketplacePage() {
   const [activeSeries, setActiveSeries] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("最新");
 
-  // TODO [BACKEND]: Replace client-side filtering with Supabase query params
+  // TODO: [database] Replace client-side filtering with Supabase query params
   const filtered = allListings
     .filter((card) => {
       const matchQuery =
@@ -214,7 +214,7 @@ export default function MarketplacePage() {
               市場
             </h1>
             <p className="font-mono text-[12px] text-text-secondary mt-0.5">
-              {/* TODO [MOCK DATA]: Replace with live count from Supabase `listings` table */}
+              {/* TODO: [database] Replace with live count from Supabase `listings` table */}
               {allListings.length} 件商品上架中
             </p>
           </div>
@@ -237,7 +237,7 @@ export default function MarketplacePage() {
         </div>
 
         {/* ── Search Bar ──────────────────────────────────────────────── */}
-        {/* TODO [BACKEND]: Connect to Supabase full-text search on `listings` table — .textSearch('name', query) */}
+        {/* TODO: [database] Connect to Supabase full-text search on `listings` table — .textSearch('name', query) */}
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <SearchIcon />
@@ -309,7 +309,7 @@ export default function MarketplacePage() {
           {/* ── Mobile Filter Chips ──────────────────────────────────── */}
           <div className="lg:hidden">
             {/* Rarity chips */}
-            {/* TODO [BACKEND]: Update URL search params on filter change for shareable links */}
+            {/* TODO: [server] Update URL search params on filter change for shareable links */}
             <div className="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
               {RARITY_FILTERS.map((r) => (
                 <button
