@@ -4,72 +4,130 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { WishlistButton } from "@/app/components/market/WishlistButton";
+import { RarityBadge } from "@/app/components/cards/RarityBadge";
+import { GradeBadge } from "@/app/components/cards/GradeBadge";
 
 export type MarketplaceListing = {
   id: string;
   name: string;
-  rarity: string;
-  price: number;
+  set: string;
+  rarity: "SAR" | "UR" | "SR" | "AR";
+  grade: { authority: string; score: string };
+  price: number; // HKD value
+  delta: number;
+  deltaDirection: "up" | "down";
   image: string;
-  badge: string;
   seller: string;
 };
 
-export function MarketplaceCard({ listing }: { listing: MarketplaceListing }) {
-  const formattedPrice = `¥${listing.price.toLocaleString("ja-JP")}`;
+interface MarketplaceCardProps {
+  listing: MarketplaceListing;
+  onBuy?: (listing: MarketplaceListing) => void;
+  onBid?: (listing: MarketplaceListing) => void;
+}
+
+export function MarketplaceCard({ listing, onBuy, onBid }: MarketplaceCardProps) {
+  const formattedPrice = `HK$ ${listing.price.toLocaleString("en-HK")}`;
+  const formattedDelta = `${listing.deltaDirection === "up" ? "▲" : "▼"} HK$ ${listing.delta.toLocaleString("en-HK")}`;
 
   return (
-    <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="bg-[#26211C] rounded-[16px] overflow-hidden border border-[rgba(140,115,85,0.10)] shadow-[0_2px_8px_rgba(0,0,0,0.40)]"
+    <motion.article
+      whileHover={{ y: -4, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="group bg-[#26211C] rounded-[16px] overflow-hidden border border-[rgba(237,232,224,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.40)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.65)] flex flex-col justify-between"
     >
-      <Link href={`/listing/${listing.id}`} className="block">
-        {/* Image area — 75% of card via aspect ratio */}
-        <div className="relative w-full aspect-[5/7] overflow-hidden bg-[#1e1914]">
-          <Image
-            src={listing.image}
-            alt={listing.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 25vw, 20vw"
-            className="object-cover"
-          />
+      <div>
+        {/* Holographic foil card cover */}
+        <div className="relative w-full aspect-[5/3.8] overflow-hidden bg-[#1A1612]">
+          <Link href={`/marketplace/${listing.id}`} className="block relative w-full h-full">
+            <Image
+              src={listing.image}
+              alt={`${listing.name} — ${listing.rarity}`}
+              fill
+              className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+            {/* Holographic Foil Hover Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[rgba(212,165,116,0.08)] to-[rgba(255,255,255,0.15)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
+            <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0)_20%,rgba(255,255,255,0.15)_40%,rgba(255,255,255,0)_60%)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+          </Link>
 
-          {/* Hype badge — absolute top-left */}
-          <div className="absolute top-2.5 left-2.5">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-mono text-[11px] font-medium text-[#eae1da] bg-black/50 backdrop-blur-sm border border-[rgba(237,225,218,0.12)]">
-              {listing.badge}
-            </span>
+          {/* Rarity tag — top left */}
+          <div className="absolute top-3 left-3 pointer-events-none">
+            <RarityBadge rarity={listing.rarity} />
           </div>
 
-          {/* Rarity tag — absolute bottom-right */}
-          <div className="absolute bottom-2.5 right-2.5">
-            <span className="inline-flex px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold text-[#d4a574] bg-[#17130f]/70 backdrop-blur-sm border border-[#8c7355]/30">
-              {listing.rarity}
-            </span>
-          </div>
-
-          {/* Wishlist star — absolute top-right */}
-          <div className="absolute top-2.5 right-2.5">
+          {/* Wishlist star — top right */}
+          <div className="absolute top-3 right-3 z-10">
             <WishlistButton listingId={listing.id} />
           </div>
         </div>
 
-        {/* Data row — below image */}
-        <div className="px-3 pt-2.5 pb-3 space-y-1">
-          <p className="font-sans text-[13px] font-medium text-[#eae1da] truncate leading-tight">
-            {listing.name}
-          </p>
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-[15px] font-semibold text-[#10b981]">
-              {formattedPrice}
-            </p>
-            <p className="font-mono text-[10px] text-[#8c7355] truncate max-w-[60px] text-right">
-              {listing.seller}
-            </p>
+        {/* Details Area */}
+        <div className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <Link href={`/marketplace/${listing.id}`}>
+                <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] leading-snug truncate hover:text-[#d4a574] transition-colors">
+                  {listing.name}
+                </h3>
+              </Link>
+              <span className="font-mono text-[11px] text-[#d4c4b7]">
+                {listing.id} · {listing.set}
+              </span>
+            </div>
+            <GradeBadge
+              authority={listing.grade.authority}
+              score={listing.grade.score}
+            />
+          </div>
+
+          <div className="flex items-end justify-between pt-1">
+            <div>
+              <p className="font-mono font-bold text-[17px] text-[#eae1da] leading-none">
+                {formattedPrice}
+              </p>
+              <span
+                className={`font-mono text-[11px] inline-flex items-center gap-0.5 mt-1 ${
+                  listing.deltaDirection === "up" ? "text-[#10b981]" : "text-[#ef4444]"
+                }`}
+              >
+                {formattedDelta}
+              </span>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">賣家</p>
+              <p className="font-sans text-[12px] text-[#d4c4b7] truncate max-w-[90px] font-medium mt-0.5">
+                {listing.seller}
+              </p>
+            </div>
           </div>
         </div>
-      </Link>
-    </motion.div>
+      </div>
+
+      {/* Grid CTA Footer */}
+      <div className="px-4 pb-4 pt-1 flex gap-2">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onBuy?.(listing);
+          }}
+          className="flex-1 h-10 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-semibold text-[13px] rounded-[8px] active:scale-[0.98] transition-transform min-h-[40px] flex items-center justify-center cursor-pointer"
+        >
+          直接購買
+        </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onBid?.(listing);
+          }}
+          className="flex-1 h-10 border border-[rgba(212,165,116,0.30)] text-[#d4a574] hover:bg-[rgba(212,165,116,0.08)] font-sans font-semibold text-[13px] rounded-[8px] active:scale-[0.98] transition-transform min-h-[40px] flex items-center justify-center cursor-pointer"
+        >
+          即時出價
+        </button>
+      </div>
+    </motion.article>
   );
 }

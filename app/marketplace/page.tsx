@@ -1,396 +1,383 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
-import { CardItem, type CardData } from "@/app/components/cards/CardItem";
+import { MarketplaceCard, type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
+import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
 
-// TODO: [database] Replace with Supabase query — fetch listings from `listings` table with filters applied
-const allListings: CardData[] = [
+// Realistic HKD pokemon listings translated from JPY for Hong Kong TCG investors
+const INITIAL_LISTINGS: MarketplaceListing[] = [
   {
     id: "sv2a-182",
-    name: "Charizard ex",
-    set: "151",
+    name: "Charizard ex SAR (噴火龍)",
+    set: "Pokémon 151",
     rarity: "SAR",
     grade: { authority: "PSA", score: "10" },
-    price: 45000,
-    delta: 2400,
+    price: 2250,
+    delta: 120,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-charizard/400/280",
     seller: "渡邊道館",
   },
   {
     id: "sv2a-189",
-    name: "Mewtwo ex",
-    set: "151",
+    name: "Mewtwo ex SAR (超夢)",
+    set: "Pokémon 151",
     rarity: "SAR",
     grade: { authority: "BGS", score: "9.5" },
-    price: 52000,
-    delta: 1000,
+    price: 2600,
+    delta: 50,
     deltaDirection: "down",
     image: "https://picsum.photos/seed/poke-mewtwo/400/280",
     seller: "京都卡牌專門店",
   },
   {
     id: "sv6a-109",
-    name: "Umbreon ex",
+    name: "Umbreon ex SAR (月亮伊布)",
     set: "Night Wanderer",
     rarity: "SAR",
     grade: { authority: "PSA", score: "10" },
-    price: 38000,
-    delta: 1500,
+    price: 1900,
+    delta: 75,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-umbreon/400/280",
     seller: "大阪收藏家",
   },
   {
     id: "sv2a-215",
-    name: "Pikachu",
-    set: "151",
+    name: "Pikachu AR (皮卡丘)",
+    set: "Pokémon 151",
     rarity: "AR",
     grade: { authority: "CGC", score: "9" },
-    price: 8500,
-    delta: 300,
+    price: 425,
+    delta: 15,
     deltaDirection: "down",
     image: "https://picsum.photos/seed/poke-pikachu/400/280",
     seller: "東京TCG市場",
   },
   {
     id: "sv2a-233",
-    name: "Mimikyu ex",
-    set: "151",
+    name: "Mimikyu ex SAR (謎擬Q)",
+    set: "Pokémon 151",
     rarity: "SAR",
     grade: { authority: "PSA", score: "9" },
-    price: 28000,
-    delta: 3200,
+    price: 1400,
+    delta: 160,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-mimikyu/400/280",
     seller: "名古屋交易商",
   },
   {
     id: "sv2a-213",
-    name: "Eevee",
-    set: "151",
+    name: "Eevee AR (伊布)",
+    set: "Pokémon 151",
     rarity: "AR",
-    grade: { authority: "RAW", score: "NM" },
-    price: 6200,
-    delta: 800,
+    grade: { authority: "Raw Card", score: "NM" },
+    price: 310,
+    delta: 40,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-eevee/400/280",
     seller: "福岡卡牌店",
   },
   {
     id: "sv4a-084",
-    name: "Garchomp ex",
+    name: "Garchomp ex UR (烈咬陸鯊)",
     set: "Shiny Treasure ex",
     rarity: "UR",
     grade: { authority: "PSA", score: "10" },
-    price: 32000,
-    delta: 1800,
+    price: 1600,
+    delta: 90,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-garchomp/400/280",
     seller: "札幌珍稀卡牌",
   },
   {
     id: "sv4a-221",
-    name: "Miraidon ex",
+    name: "Miraidon ex SR (密勒頓)",
     set: "Shiny Treasure ex",
     rarity: "SR",
     grade: { authority: "BGS", score: "9" },
-    price: 14500,
-    delta: 650,
+    price: 725,
+    delta: 32,
     deltaDirection: "down",
     image: "https://picsum.photos/seed/poke-miraidon/400/280",
     seller: "仙台收藏館",
   },
   {
     id: "s12a-086",
-    name: "Umbreon VMAX",
+    name: "Umbreon VMAX SAR (月亮伊布)",
     set: "VSTAR Universe",
     rarity: "SAR",
     grade: { authority: "PSA", score: "10" },
-    price: 68000,
-    delta: 4200,
+    price: 3400,
+    delta: 210,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-umbreon-vmax/400/280",
     seller: "東京TCG市場",
   },
 ];
 
-type RarityFilter = "全部" | "SAR" | "UR" | "SR" | "AR" | "已評級";
-type SortKey = "最新" | "價格↑" | "價格↓";
-
-const RARITY_FILTERS: RarityFilter[] = ["全部", "SAR", "UR", "SR", "AR", "已評級"];
-const SORT_OPTIONS: SortKey[] = ["最新", "價格↑", "價格↓"];
-
-// TODO: [database] Replace series list with Supabase query on `card_series` table
-const SERIES_FILTERS = [
-  { code: "all", name: "所有系列" },
-  { code: "sv2a", name: "151 系列" },
-  { code: "sv4a", name: "Shiny Treasure ex" },
-  { code: "sv6a", name: "Night Wanderer" },
-  { code: "s12a", name: "VSTAR Universe" },
-];
-
-function SearchIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#50453b"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="8" y1="12" x2="16" y2="12" />
-      <line x1="11" y1="18" x2="13" y2="18" />
-    </svg>
-  );
-}
+type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
 
 export default function MarketplacePage() {
   const [query, setQuery] = useState("");
-  const [activeRarity, setActiveRarity] = useState<RarityFilter>("全部");
-  const [activeSeries, setActiveSeries] = useState("all");
+  const [activeRarities, setActiveRarities] = useState<string[]>([]);
+  const [activeGrades, setActiveGrades] = useState<string[]>([]);
+  const [activeConditions, setActiveConditions] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("最新");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // TODO: [database] Replace client-side filtering with Supabase query params
-  const filtered = allListings
-    .filter((card) => {
-      const matchQuery =
-        query === "" ||
-        card.name.toLowerCase().includes(query.toLowerCase()) ||
-        card.id.toLowerCase().includes(query.toLowerCase());
-      const matchRarity =
-        activeRarity === "全部"
-          ? true
-          : activeRarity === "已評級"
-          ? card.grade.authority !== "RAW"
-          : card.rarity === activeRarity;
-      const matchSeries =
-        activeSeries === "all" || card.id.startsWith(activeSeries);
-      return matchQuery && matchRarity && matchSeries;
-    })
-    .sort((a, b) => {
-      if (sortKey === "價格↑") return a.price - b.price;
-      if (sortKey === "價格↓") return b.price - a.price;
-      return 0; // 最新 — keep original order (would be DB sort in prod)
-    });
+  // Global transactional slide-over states
+  const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
+  const [slideOverMode, setSlideOverMode] = useState<"buy" | "bid" | null>(null);
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleRarityToggle = (rarity: string) => {
+    setActiveRarities((prev) =>
+      prev.includes(rarity) ? prev.filter((r) => r !== rarity) : [...prev, rarity]
+    );
+  };
+
+  const handleGradeToggle = (grade: string) => {
+    setActiveGrades((prev) =>
+      prev.includes(grade) ? prev.filter((g) => g !== grade) : [...prev, grade]
+    );
+  };
+
+  const handleConditionToggle = (condition: string) => {
+    setActiveConditions((prev) =>
+      prev.includes(condition) ? prev.filter((c) => c !== condition) : [...prev, condition]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setActiveRarities([]);
+    setActiveGrades([]);
+    setActiveConditions([]);
+    setQuery("");
+  };
+
+  // Advanced client-side filtering matching high density metadata
+  const filtered = INITIAL_LISTINGS.filter((card) => {
+    const matchQuery =
+      query === "" ||
+      card.name.toLowerCase().includes(query.toLowerCase()) ||
+      card.id.toLowerCase().includes(query.toLowerCase());
+
+    const matchRarity = activeRarities.length === 0 || activeRarities.includes(card.rarity);
+
+    const isGradedCard = card.grade.authority !== "Raw Card";
+    const matchGrade =
+      activeGrades.length === 0 ||
+      activeGrades.some((g) => {
+        if (g === "Raw Card") return !isGradedCard;
+        return card.grade.authority === g.split(" ")[0] && card.grade.score === g.split(" ")[1];
+      });
+
+    // Mock match for condition rules
+    const matchCondition =
+      activeConditions.length === 0 ||
+      activeConditions.some((c) => {
+        if (c === "美品 S") return card.grade.score === "10" || card.grade.score === "9.5";
+        if (c === "微傷 A") return card.grade.score === "9" || card.grade.score === "NM";
+        return card.grade.score === "8" || card.grade.score === "EX";
+      });
+
+    return matchQuery && matchRarity && matchGrade && matchCondition;
+  }).sort((a, b) => {
+    if (sortKey === "價格：由低到高") return a.price - b.price;
+    if (sortKey === "價格：由高到低") return b.price - a.price;
+    return 0; // Default: Latest/Index Order
+  });
 
   return (
-    <div className="min-h-[100dvh] bg-bg-page flex flex-col">
+    <div className="min-h-[100dvh] bg-[#17130f] text-[#eae1da] flex flex-col font-sans">
       <TopNav />
       <MobileHeader />
 
-      <main className="flex-1 max-w-[1400px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-8">
+      <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12">
         {/* ── Page Header ─────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="font-sans font-bold text-[24px] lg:text-[28px] text-text-primary">
-              市場
+            <h1 className="font-sans font-bold text-[24px] lg:text-[28px] text-[#eae1da]">
+              交易所市場
             </h1>
-            <p className="font-mono text-[12px] text-text-secondary mt-0.5">
-              {/* TODO: [database] Replace with live count from Supabase `listings` table */}
-              {allListings.length} 件商品上架中
+            <p className="font-mono text-[12px] text-[#d4c4b7] mt-0.5">
+              {INITIAL_LISTINGS.length} 件精選實物商品上架中 · 實時更新
             </p>
           </div>
-          {/* Sort Selector */}
-          <div className="flex items-center gap-1 bg-bg-card rounded-[10px] border border-[rgba(237,232,224,0.08)] p-1">
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setSortKey(opt)}
-                className={`h-7 px-3 font-mono text-[11px] font-medium rounded-[7px] transition-colors ${
-                  sortKey === opt
-                    ? "bg-[rgba(212,165,116,0.15)] text-brand"
-                    : "text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+
+          {/* Sorting Dropdown */}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <span className="font-mono text-[11px] text-[#50453b] uppercase tracking-wider">排序</span>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-[rgba(237,232,224,0.08)] rounded-[8px] font-sans text-[12px] font-medium focus:outline-none focus:ring-1 focus:ring-[#d4a574]/40"
+            >
+              <option value="最新">上架時間：最新</option>
+              <option value="價格：由低到高">價格：由低到高</option>
+              <option value="價格：由高到低">價格：由高到低</option>
+            </select>
           </div>
         </div>
 
-        {/* ── Search Bar ──────────────────────────────────────────────── */}
-        {/* TODO: [database] Connect to Supabase full-text search on `listings` table — .textSearch('name', query) */}
-        <div className="relative mb-4">
+        {/* ── Smart Search Auto-complete Bar ─────────────────────────────────────────── */}
+        <div ref={searchContainerRef} className="relative mb-6">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-            <SearchIcon />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
           </div>
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="以卡牌名稱或序號搜尋（例：sv2a-182 · Charizard ex）"
-            className="w-full h-12 pl-11 pr-4 bg-bg-card border border-[rgba(237,232,224,0.08)] rounded-[10px] font-sans text-[14px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.30)] transition-shadow"
+            onFocus={() => setIsSearchFocused(true)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setIsSearchFocused(true);
+            }}
+            placeholder="以卡牌名稱、編號搜尋（例：sv2a-182 · Charizard ex）"
+            className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-[rgba(237,232,224,0.08)] focus:border-[#d4a574]/40 rounded-[10px] font-sans text-[14px] text-[#eae1da] placeholder:text-[#50453b] focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 transition-all"
+          />
+          {/* Autocomplete drop panel */}
+          <SmartSearch
+            query={query}
+            listings={INITIAL_LISTINGS}
+            isOpen={isSearchFocused}
+            onSelect={(name) => {
+              setQuery(name);
+              setIsSearchFocused(false);
+            }}
           />
         </div>
 
-        {/* ── Desktop Layout: Sidebar + Grid ──────────────────────────── */}
-        <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6">
-          {/* ── Sidebar Filters (desktop only) ──────────────────────── */}
-          <aside className="hidden lg:block space-y-6">
-            {/* Rarity */}
-            <section aria-labelledby="rarity-filter-heading">
-              <h2
-                id="rarity-filter-heading"
-                className="font-mono text-[11px] font-medium text-text-disabled uppercase tracking-widest mb-3"
-              >
-                稀有度
-              </h2>
-              <div className="space-y-1">
-                {RARITY_FILTERS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setActiveRarity(r)}
-                    className={`w-full text-left px-3 py-2 rounded-[8px] font-sans text-[13px] font-medium transition-colors ${
-                      activeRarity === r
-                        ? "bg-[rgba(212,165,116,0.12)] text-brand"
-                        : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {/* Series */}
-            <section aria-labelledby="series-filter-heading">
-              <h2
-                id="series-filter-heading"
-                className="font-mono text-[11px] font-medium text-text-disabled uppercase tracking-widest mb-3"
-              >
-                系列
-              </h2>
-              <div className="space-y-1">
-                {SERIES_FILTERS.map((s) => (
-                  <button
-                    key={s.code}
-                    onClick={() => setActiveSeries(s.code)}
-                    className={`w-full text-left px-3 py-2 rounded-[8px] font-sans text-[13px] font-medium transition-colors ${
-                      activeSeries === s.code
-                        ? "bg-[rgba(212,165,116,0.12)] text-brand"
-                        : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                    }`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-            </section>
+        {/* ── Layout Grid: Sticky Sidebar + Product Cards ──────────────────────────── */}
+        <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
+          
+          {/* Sticky Sidebar Filter (Desktop) */}
+          <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto pr-1 scrollbar-hide space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <span className="font-mono text-[11px] font-semibold text-[#8c7355] uppercase tracking-wider">篩選面板</span>
+              {(activeRarities.length > 0 || activeGrades.length > 0 || activeConditions.length > 0 || query) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="font-sans text-[11px] text-[#50453b] hover:text-[#d4a574] transition-colors"
+                >
+                  清除全部
+                </button>
+              )}
+            </div>
+            <AccordionFilters
+              activeRarities={activeRarities}
+              onRarityToggle={handleRarityToggle}
+              activeGrades={activeGrades}
+              onGradeToggle={handleGradeToggle}
+              activeConditions={activeConditions}
+              onConditionToggle={handleConditionToggle}
+            />
           </aside>
 
-          {/* ── Mobile Filter Chips ──────────────────────────────────── */}
-          <div className="lg:hidden">
-            {/* Rarity chips */}
-            {/* TODO: [server] Update URL search params on filter change for shareable links */}
-            <div className="flex gap-2 mb-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
-              {RARITY_FILTERS.map((r) => (
+          {/* Interactive filter toggle for Mobile only */}
+          <div className="lg:hidden flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide -mx-4 px-4">
+            <button
+              onClick={clearAllFilters}
+              className="shrink-0 h-8 px-3 rounded-[6px] font-sans text-[11px] font-medium bg-[#26211C] border border-[rgba(237,232,224,0.08)] text-[#d4c4b7]"
+            >
+              🔄 重置
+            </button>
+            {["SAR", "UR", "SR", "AR"].map((r) => {
+              const isSel = activeRarities.includes(r);
+              return (
                 <button
                   key={r}
-                  onClick={() => setActiveRarity(r)}
-                  className={`shrink-0 h-8 px-3 font-mono text-[11px] font-medium rounded-[6px] border transition-colors active:scale-[0.98] ${
-                    activeRarity === r
-                      ? "bg-[rgba(212,165,116,0.15)] text-brand border-[rgba(212,165,116,0.30)]"
-                      : "bg-bg-card text-text-secondary border-[rgba(237,232,224,0.08)] hover:border-[rgba(212,165,116,0.20)] hover:text-text-primary"
+                  onClick={() => handleRarityToggle(r)}
+                  className={`shrink-0 h-8 px-3 rounded-[6px] font-mono text-[11px] font-medium border transition-colors ${
+                    isSel
+                      ? "bg-[rgba(212,165,116,0.15)] text-[#d4a574] border-[#d4a574]/40"
+                      : "bg-[#26211C] text-[#d4c4b7] border-[rgba(237,232,224,0.08)]"
                   }`}
                 >
                   {r}
                 </button>
-              ))}
-            </div>
-
-            {/* Series chips */}
-            <div className="flex gap-2 mb-5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
-              {SERIES_FILTERS.map((s) => (
+              );
+            })}
+            {["PSA 10", "BGS 9.5", "Raw Card"].map((g) => {
+              const isSel = activeGrades.includes(g);
+              return (
                 <button
-                  key={s.code}
-                  onClick={() => setActiveSeries(s.code)}
-                  className={`shrink-0 h-8 px-3 font-sans text-[11px] font-medium rounded-[6px] border transition-colors active:scale-[0.98] ${
-                    activeSeries === s.code
-                      ? "bg-[rgba(212,165,116,0.15)] text-brand border-[rgba(212,165,116,0.30)]"
-                      : "bg-bg-card text-text-secondary border-[rgba(237,232,224,0.08)] hover:border-[rgba(212,165,116,0.20)] hover:text-text-primary"
+                  key={g}
+                  onClick={() => handleGradeToggle(g)}
+                  className={`shrink-0 h-8 px-3 rounded-[6px] font-mono text-[11px] font-medium border transition-colors ${
+                    isSel
+                      ? "bg-[rgba(212,165,116,0.15)] text-[#d4a574] border-[#d4a574]/40"
+                      : "bg-[#26211C] text-[#d4c4b7] border-[rgba(237,232,224,0.08)]"
                   }`}
                 >
-                  {s.name}
+                  {g}
                 </button>
-              ))}
-            </div>
-
-            {/* ── Mobile Sort + Result Count ─────────────────────────── */}
-            <div className="flex items-center justify-between mb-4">
-              <p className="font-mono text-[12px] text-text-secondary">
-                {filtered.length} 件結果
-              </p>
-              <div className="flex items-center gap-1" role="group" aria-label="排序選項">
-                <FilterIcon />
-                <span className="font-mono text-[11px] text-text-secondary mr-1" aria-hidden="true">排序</span>
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => setSortKey(opt)}
-                    className={`h-7 px-2.5 font-mono text-[10px] font-medium rounded-[6px] border transition-colors ${
-                      sortKey === opt
-                        ? "bg-[rgba(212,165,116,0.15)] text-brand border-[rgba(212,165,116,0.30)]"
-                        : "bg-bg-card text-text-secondary border-[rgba(237,232,224,0.08)]"
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Card grid — mobile */}
-            {filtered.length === 0 ? (
-              <EmptyState query={query} />
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filtered.map((card) => (
-                  <CardItem key={card.id} card={card} />
-                ))}
-              </div>
-            )}
+              );
+            })}
           </div>
 
-          {/* ── Card Grid (desktop) ──────────────────────────────────── */}
-          <div className="hidden lg:block">
-            {/* Desktop result count */}
-            <p className="font-mono text-[12px] text-text-secondary mb-4">
-              {filtered.length} 件結果
-            </p>
+          {/* ── Right: Main Product Stream Grid ──────────────────────────────────── */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <span className="font-mono text-[12px] text-[#d4c4b7]">
+                已篩選出 <span className="text-[#d4a574] font-semibold">{filtered.length}</span> 件商品
+              </span>
+            </div>
+
             {filtered.length === 0 ? (
-              <EmptyState query={query} />
+              <div className="flex flex-col items-center justify-center py-20 text-center bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6">
+                <div className="w-12 h-12 rounded-full bg-[#17130f] border border-[rgba(237,232,224,0.08)] flex items-center justify-center mb-4">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </div>
+                <p className="font-sans text-[15px] text-[#eae1da] font-semibold">
+                  沒有符合當前篩選條件的商品
+                </p>
+                <p className="font-mono text-[12px] text-[#d4c4b7] mt-2 max-w-sm">
+                  請嘗試清除搜尋詞或放寬稀有度、評分鑑定條件以尋找卡牌。
+                </p>
+                <button
+                  onClick={clearAllFilters}
+                  className="mt-5 h-9 px-4 bg-[#d4a574] text-[#17130f] font-sans font-semibold text-[12px] rounded-[8px] hover:bg-[#e8b896] transition-colors"
+                >
+                  重置所有篩選
+                </button>
+              </div>
             ) : (
-              <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-                {filtered.map((card) => (
-                  <CardItem key={card.id} card={card} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                {filtered.map((item) => (
+                  <MarketplaceCard
+                    key={item.id}
+                    listing={item}
+                    onBuy={(l) => {
+                      setSelectedListing(l);
+                      setSlideOverMode("buy");
+                    }}
+                    onBid={(l) => {
+                      setSelectedListing(l);
+                      setSlideOverMode("bid");
+                    }}
+                  />
                 ))}
               </div>
             )}
@@ -399,48 +386,16 @@ export default function MarketplacePage() {
       </main>
 
       <BottomNav />
-    </div>
-  );
-}
 
-function EmptyState({ query }: { query: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-12 h-12 rounded-full bg-bg-card border border-[rgba(237,232,224,0.08)] flex items-center justify-center mb-4">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#50453b"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-      </div>
-      {query ? (
-        <>
-          <p className="font-sans text-[15px] text-text-primary font-medium">
-            找不到「{query}」的相關卡牌
-          </p>
-          <p className="font-mono text-[12px] text-text-secondary mt-2">
-            請嘗試其他搜尋詞，例如：Charizard ex · sv2a-182 · SAR
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="font-sans text-[15px] text-text-primary font-medium">
-            目前沒有符合條件的上架商品
-          </p>
-          <p className="font-mono text-[12px] text-text-secondary mt-2">
-            請調整篩選條件或稍後再試
-          </p>
-        </>
-      )}
+      {/* Global Transaction Sliding Drawer */}
+      <ExecutionSlideOver
+        listing={selectedListing}
+        mode={slideOverMode}
+        onClose={() => {
+          setSelectedListing(null);
+          setSlideOverMode(null);
+        }}
+      />
     </div>
   );
 }

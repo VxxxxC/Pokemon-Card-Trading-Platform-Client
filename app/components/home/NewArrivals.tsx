@@ -55,10 +55,10 @@ const newArrivals = [
 export function NewArrivals() {
   return (
     <section className="mb-8" aria-labelledby="arrivals-heading">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2
           id="arrivals-heading"
-          className="font-sans font-semibold text-[20px] text-text-primary"
+          className="font-sans font-semibold text-[18px] text-text-primary"
         >
           最新 C2C 現貨上架
         </h2>
@@ -70,63 +70,65 @@ export function NewArrivals() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Horizontal scroll strip — 2.5 cards visible on mobile, all on desktop */}
+      <div className="flex overflow-x-auto gap-3 scrollbar-none pb-2 -mx-1 px-1">
         {newArrivals.map((item) => (
           <article
             key={item.id}
-            className="bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow overflow-hidden"
+            className="shrink-0 w-[148px] sm:w-[160px] bg-bg-card rounded-[12px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.45)] hover:border-brand/20 transition-all overflow-hidden"
           >
+            {/* Card image — portrait aspect */}
             <Link
               href={`/marketplace?card=${item.id}`}
-              className="block relative w-full aspect-[5/3.5] overflow-hidden bg-bg-elevated"
+              className="block relative w-full aspect-[3/4] overflow-hidden bg-bg-elevated"
             >
               <Image
                 src={item.image}
                 alt={`${item.name} — ${item.rarity}`}
                 fill
-                className="object-cover hover:scale-[1.02] transition-transform duration-300"
-                sizes="(max-width: 640px) 100vw, 50vw"
+                className="object-cover hover:scale-[1.03] transition-transform duration-300"
+                sizes="160px"
               />
-              <span className="absolute top-3 left-3 font-mono text-[11px] text-text-primary bg-[rgba(23,19,15,0.75)] backdrop-blur-sm px-2 py-0.5 rounded-[4px]">
+              {/* Top badges */}
+              <span className="absolute top-2 left-2 font-mono text-[9px] text-text-primary bg-[rgba(23,19,15,0.80)] backdrop-blur-sm px-1.5 py-0.5 rounded-[3px] leading-none">
                 {item.condition}
               </span>
-              <span className="absolute top-3 right-3 font-mono text-[11px] text-text-primary">
+              <span className="absolute top-2 right-2 font-mono text-[9px] font-medium text-brand bg-bg-elevated/80 backdrop-blur-sm px-1.5 py-0.5 rounded-[3px] leading-none border-l border-brand/50">
                 {item.rarity}
+              </span>
+              {/* Time overlay at bottom */}
+              <span className="absolute bottom-0 right-0 left-0 text-center font-mono text-[9px] text-text-disabled bg-[rgba(23,19,15,0.65)] backdrop-blur-sm py-0.5">
+                {item.timeAgo}
               </span>
             </Link>
 
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="min-w-0">
-                  <h3 className="font-sans font-semibold text-[14px] text-text-primary truncate">
-                    {item.name}
-                  </h3>
-                  <span className="font-mono text-[11px] text-text-secondary">
-                    {item.id} · {item.set}
-                  </span>
-                </div>
-                <span className="font-mono text-[10px] text-text-disabled shrink-0">
-                  {item.timeAgo}
-                </span>
-              </div>
+            {/* Compact info */}
+            <div className="p-2.5">
+              <h3 className="font-sans font-medium text-[12px] text-text-primary truncate leading-tight">
+                {item.name}
+              </h3>
+              <span className="font-mono text-[10px] text-text-disabled block truncate">
+                {item.set}
+              </span>
 
-              <div className="flex items-end justify-between mt-3">
-                <p className="font-mono font-semibold text-[18px] text-text-primary">
+              {/* Price + seller */}
+              <div className="flex items-center justify-between mt-1.5">
+                <p className="font-mono font-semibold text-[14px] text-text-primary leading-none">
                   {item.price}
                 </p>
-                <span className="font-sans text-[12px] text-text-secondary truncate max-w-[100px]">
+                <span className="font-sans text-[10px] text-text-secondary truncate max-w-[60px] text-right">
                   {item.seller}
                 </span>
               </div>
 
               {/* TODO: [server] "直接購買" triggers escrow flow — Stripe PaymentIntent for deposit */}
               {/* TODO: [API] "即時出價" submits to `bids` table with auth check */}
-              <div className="mt-3 flex gap-2">
-                <button className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover min-h-[44px]">
-                  直接購買
+              <div className="mt-2 flex gap-1.5">
+                <button className="flex-1 h-8 bg-brand text-[#17130f] font-sans font-semibold text-[11px] rounded-[6px] active:scale-[0.97] transition-transform hover:bg-brand-hover">
+                  購買
                 </button>
-                <button className="flex-[0.6] h-10 border border-[rgba(237,232,224,0.12)] text-brand font-sans font-medium text-[12px] rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-bg-elevated min-h-[44px]">
-                  即時出價
+                <button className="flex-1 h-8 border border-[rgba(237,232,224,0.15)] text-brand font-sans font-medium text-[11px] rounded-[6px] active:scale-[0.97] transition-transform hover:bg-bg-elevated">
+                  出價
                 </button>
               </div>
             </div>

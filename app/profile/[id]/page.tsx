@@ -6,6 +6,7 @@ import { MobileHeader } from '@/app/components/navigation/MobileHeader';
 import { BottomNav } from '@/app/components/navigation/BottomNav';
 import { CheckInWidget } from '@/app/components/profile/CheckInWidget';
 import { LogoutModal } from '@/app/components/profile/LogoutModal';
+import { InteractiveChat } from './components/InteractiveChat';
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
@@ -688,6 +689,7 @@ export default async function ProfileIdPage({ params }: ProfileIdPageProps) {
             </section>
           </div>
         </div>
+        <InteractiveChat receiverName={member.username} />
       </main>
 
       <BottomNav />
