@@ -34,7 +34,7 @@ export function MarketplaceCard({ listing, onBuy, onBid }: MarketplaceCardProps)
     <motion.article
       whileHover={{ y: -4, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group bg-[#26211C] rounded-[16px] overflow-hidden border border-[rgba(237,232,224,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.40)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.65)] flex flex-col justify-between"
+      className="group bg-[#26211C] rounded-2xl overflow-hidden border border-[rgba(237,232,224,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.40)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.65)] flex flex-col justify-between"
     >
       <div>
         {/* Holographic foil card cover */}
@@ -48,7 +48,7 @@ export function MarketplaceCard({ listing, onBuy, onBid }: MarketplaceCardProps)
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
             {/* Holographic Foil Hover Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[rgba(212,165,116,0.08)] to-[rgba(255,255,255,0.15)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
+            <div className="absolute inset-0 bg-linear-to-tr from-transparent via-[rgba(212,165,116,0.08)] to-[rgba(255,255,255,0.15)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
             <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0)_20%,rgba(255,255,255,0.15)_40%,rgba(255,255,255,0)_60%)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
           </Link>
 
@@ -97,7 +97,7 @@ export function MarketplaceCard({ listing, onBuy, onBid }: MarketplaceCardProps)
             </div>
             <div className="text-right">
               <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">賣家</p>
-              <p className="font-sans text-[12px] text-[#d4c4b7] truncate max-w-[90px] font-medium mt-0.5">
+              <p className="font-sans text-[12px] text-[#d4c4b7] truncate max-w-22.5 font-medium mt-0.5">
                 {listing.seller}
               </p>
             </div>
@@ -113,7 +113,7 @@ export function MarketplaceCard({ listing, onBuy, onBid }: MarketplaceCardProps)
             e.stopPropagation();
             onBuy?.(listing);
           }}
-          className="flex-1 h-10 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-semibold text-[13px] rounded-[8px] active:scale-[0.98] transition-transform min-h-[40px] flex items-center justify-center cursor-pointer"
+          className="flex-1 h-10 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-semibold text-[13px] rounded-lg active:scale-[0.98] transition-transform min-h-10 flex items-center justify-center cursor-pointer"
         >
           直接購買
         </button>
@@ -123,7 +123,7 @@ export function MarketplaceCard({ listing, onBuy, onBid }: MarketplaceCardProps)
             e.stopPropagation();
             onBid?.(listing);
           }}
-          className="flex-1 h-10 border border-[rgba(212,165,116,0.30)] text-[#d4a574] hover:bg-[rgba(212,165,116,0.08)] font-sans font-semibold text-[13px] rounded-[8px] active:scale-[0.98] transition-transform min-h-[40px] flex items-center justify-center cursor-pointer"
+          className="flex-1 h-10 border border-[rgba(212,165,116,0.30)] text-[#d4a574] hover:bg-[rgba(212,165,116,0.08)] font-sans font-semibold text-[13px] rounded-lg active:scale-[0.98] transition-transform min-h-10 flex items-center justify-center cursor-pointer"
         >
           即時出價
         </button>

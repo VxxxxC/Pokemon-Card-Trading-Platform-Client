@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 
 const SNOOZE_KEY = "pwa_snooze_until";
@@ -15,14 +15,11 @@ const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
  */
 export function PwaInstallPrompt() {
   const { promptState, onInstall } = usePwaInstall();
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
+  const [dismissed, setDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
     const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
-    if (snoozeUntil && Date.now() < Number(snoozeUntil)) {
-      setDismissed(true);
-    }
-  }, []);
+    return Boolean(snoozeUntil && Date.now() < Number(snoozeUntil));
+  });
 
   const handleSnooze = () => {
     localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS));

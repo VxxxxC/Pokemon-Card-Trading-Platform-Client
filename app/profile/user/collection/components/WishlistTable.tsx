@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 interface WishlistEntry {
@@ -64,19 +65,19 @@ export function WishlistTable() {
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <span className="text-[40px]" aria-hidden="true">☆</span>
         <p className="font-sans text-[15px] text-text-secondary">願望清單為空</p>
-        <a
+        <Link
           href="/marketplace"
           className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
         >
           瀏覽市場 →
-        </a>
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="overflow-x-auto -mx-4 lg:mx-0">
-      <table className="w-full min-w-[640px] border-collapse">
+      <table className="w-full min-w-160 border-collapse">
         <thead>
           <tr className="border-b border-[rgba(237,232,224,0.08)]">
             {([
@@ -109,7 +110,7 @@ export function WishlistTable() {
                 {/* Card Info */}
                 <td className="py-4 pl-4 lg:pl-0 pr-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-12 rounded-[4px] bg-bg-elevated border border-[rgba(237,232,224,0.08)] shrink-0 flex items-center justify-center">
+                    <div className="w-9 h-12 rounded-sm bg-bg-elevated border border-[rgba(237,232,224,0.08)] shrink-0 flex items-center justify-center">
                       <span className="font-mono text-[8px] text-text-disabled">{entry.rarity}</span>
                     </div>
                     <div className="min-w-0">
