@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Codex/agent skill workspaces (not part of runtime app):
+    ".agents/**",
   ]),
 ]);
 

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
+import { PwaInstallProvider } from "@/app/components/pwa/pwa-install";
 import { PwaInstallPrompt } from "@/app/components/pwa/PwaInstallPrompt";
 import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
@@ -52,9 +53,11 @@ export default function RootLayout({
     >
       <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
         <AppSerwistProvider>
-          <PwaNetworkBanner />
-          {children}
-          <PwaInstallPrompt />
+          <PwaInstallProvider>
+            <PwaNetworkBanner />
+            {children}
+            <PwaInstallPrompt />
+          </PwaInstallProvider>
         </AppSerwistProvider>
       </body>
     </html>
