@@ -1,8 +1,12 @@
 import { MarketplaceCard, type MarketplaceListing } from "./MarketplaceCard";
 
+type MarketplaceListingSeed = Pick<MarketplaceListing, "id" | "name" | "rarity" | "price" | "image" | "seller"> & {
+  badge: string;
+};
+
 // TODO: [database] Replace this array with a Supabase query on the `listings` table,
 // e.g. supabase.from('listings').select('*').order('created_at', { ascending: false }).limit(20)
-const MOCK_LISTINGS: MarketplaceListing[] = [
+const MOCK_LISTING_SEEDS: MarketplaceListingSeed[] = [
   {
     id: "sv2a-182-sar-001",
     name: "リザードン ex SAR",
@@ -130,6 +134,27 @@ const MOCK_LISTINGS: MarketplaceListing[] = [
     seller: "MythicTrade",
   },
 ];
+
+const MOCK_LISTINGS: MarketplaceListing[] = MOCK_LISTING_SEEDS.map((seed) => {
+  const isUpTrend =
+    seed.badge.includes("📈") || seed.badge.includes("🔥") || seed.badge.includes("🏆");
+
+  return {
+    id: seed.id,
+    name: seed.name,
+    set: seed.id.split("-").slice(0, 2).join("-").toUpperCase(),
+    rarity: seed.rarity,
+    grade: {
+      authority: "PSA",
+      score: seed.rarity === "SAR" || seed.rarity === "UR" ? "10" : "9",
+    },
+    price: seed.price,
+    delta: Math.max(500, Math.round(seed.price * (isUpTrend ? 0.05 : 0.03))),
+    deltaDirection: isUpTrend ? "up" : "down",
+    image: seed.image,
+    seller: seed.seller,
+  };
+});
 
 export function MarketplaceGrid() {
   return (

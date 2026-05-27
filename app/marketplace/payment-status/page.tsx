@@ -35,9 +35,10 @@ export default function PaymentStatusPage({ searchParams }: PageProps) {
     }
   }, [status, router]);
 
-  // Mock Stripe txn metadata
-  const mockStripeId = `ch_stripe_pk_${Math.random().toString(36).substring(2, 15).toUpperCase()}`;
-  const mockOrderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${id.toUpperCase()}`;
+  // Mock Stripe txn metadata (deterministic, render-safe)
+  const normalizedId = id.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const mockStripeId = `ch_stripe_pk_${normalizedId.slice(0, 14).padEnd(14, "X")}`;
+  const mockOrderId = `ORD-MOCK-${normalizedId}`;
 
   return (
     <div className="min-h-dvh bg-[#17130f] text-[#eae1da] flex flex-col font-sans">
@@ -78,13 +79,13 @@ export default function PaymentStatusPage({ searchParams }: PageProps) {
               <div className="pt-2 flex flex-col gap-2">
                 <Link
                   href="/profile/user/orders"
-                  className="h-11 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-bold text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-[44px]"
+                  className="h-11 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-bold text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-11"
                 >
                   前往訂單管理追蹤
                 </Link>
                 <Link
                   href="/marketplace"
-                  className="h-11 border border-[rgba(237,232,224,0.12)] text-[#d4c4b7] hover:bg-[#39342f] font-sans font-medium text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-[44px]"
+                  className="h-11 border border-[rgba(237,232,224,0.12)] text-[#d4c4b7] hover:bg-[#39342f] font-sans font-medium text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-11"
                 >
                   繼續瀏覽探索市場
                 </Link>
@@ -117,13 +118,13 @@ export default function PaymentStatusPage({ searchParams }: PageProps) {
               <div className="pt-2 flex flex-col gap-2">
                 <Link
                   href="/marketplace"
-                  className="h-11 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-bold text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-[44px]"
+                  className="h-11 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-bold text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-11"
                 >
                   返回 Marketplace 重新狙擊
                 </Link>
                 <button
                   onClick={() => router.back()}
-                  className="h-11 border border-[rgba(237,232,224,0.12)] text-[#d4c4b7] hover:bg-[#39342f] font-sans font-medium text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-[44px]"
+                  className="h-11 border border-[rgba(237,232,224,0.12)] text-[#d4c4b7] hover:bg-[#39342f] font-sans font-medium text-[13px] rounded-xl flex items-center justify-center transition-colors min-h-11"
                 >
                   返回重試付款
                 </button>
