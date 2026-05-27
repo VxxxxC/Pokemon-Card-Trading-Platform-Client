@@ -3,9 +3,10 @@
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 
 export function PwaHeroInstallButton() {
-  const { canInstall, onInstall } = usePwaInstall();
+  const { isInstalled, onInstall } = usePwaInstall();
 
-  if (!canInstall) return null;
+  // Only hide if the app is already running in standalone / installed mode
+  if (isInstalled) return null;
 
   return (
     <button

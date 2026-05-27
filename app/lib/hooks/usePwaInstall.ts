@@ -12,92 +12,56 @@ type DeferredPromptEvent = Event & {
 };
 
 export interface UsePwaInstallReturn {
-  canInstall: boolean;
+  /** Whether the app is already running in standalone / installed mode */
   isInstalled: boolean;
+  /** Trigger the native browser install prompt (no-op if unavailable) */
   onInstall: () => Promise<void>;
-  onDismiss: () => void;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Module-level singleton store                                       */
-/*  Captures `beforeinstallprompt` immediately — even before React     */
-/*  hydrates — and shares state across every hook consumer.            */
-/*                                                                     */
-/*  Dismiss behaviour:                                                 */
-/*    "稍後" (onDismiss) → sessionStorage only (reappears next visit)  */
-/*    Actual install accepted → localStorage (permanent)               */
+/*  Module-level singleton — captures `beforeinstallprompt` eagerly    */
 /* ------------------------------------------------------------------ */
 
-/** localStorage key — set only when the app is actually installed */
-const INSTALLED_KEY = "poketrade:pwa-installed";
-/** sessionStorage key — set when user taps "稍後" (dismiss for this session) */
-const SESSION_DISMISS_KEY = "poketrade:pwa-install-dismissed-session";
-
-interface PwaStore {
-  deferredPrompt: DeferredPromptEvent | null;
-  isInstalled: boolean;
-  isDismissed: boolean;
-}
-
-let store: PwaStore = {
-  deferredPrompt: null,
-  isInstalled: false,
-  isDismissed: false,
-};
+let deferredPrompt: DeferredPromptEvent | null = null;
+let isInstalled = false;
 
 const listeners = new Set<() => void>();
-
 function emit() {
   listeners.forEach((l) => l());
 }
 
-function getSnapshot(): PwaStore {
-  return store;
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
 }
 
-/** Must return a referentially stable value to avoid infinite re-renders */
-const SERVER_SNAPSHOT: PwaStore = Object.freeze({
-  deferredPrompt: null,
-  isInstalled: false,
-  isDismissed: false,
-});
-
-function getServerSnapshot(): PwaStore {
-  return SERVER_SNAPSHOT;
+/** Snapshot is just a version counter so React knows to re-render */
+let version = 0;
+function getSnapshot() {
+  return version;
+}
+function getServerSnapshot() {
+  return 0;
 }
 
-function subscribe(callback: () => void): () => void {
-  listeners.add(callback);
-  return () => listeners.delete(callback);
-}
-
-/* --- Eagerly attach listeners (runs once at module load) --- */
 if (typeof window !== "undefined") {
   const byMedia = window.matchMedia("(display-mode: standalone)").matches;
   const byNavigator =
     "standalone" in window.navigator &&
     Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+  isInstalled = byMedia || byNavigator;
 
-  const permanentlyInstalled =
-    window.localStorage.getItem(INSTALLED_KEY) === "1";
-  const sessionDismissed =
-    window.sessionStorage.getItem(SESSION_DISMISS_KEY) === "1";
-
-  store = {
-    deferredPrompt: null,
-    isInstalled: byMedia || byNavigator || permanentlyInstalled,
-    isDismissed: sessionDismissed,
-  };
-
-  window.addEventListener("beforeinstallprompt", (event: Event) => {
-    event.preventDefault();
-    store = { ...store, deferredPrompt: event as DeferredPromptEvent };
+  window.addEventListener("beforeinstallprompt", (e: Event) => {
+    e.preventDefault();
+    deferredPrompt = e as DeferredPromptEvent;
+    version++;
     emit();
   });
 
   window.addEventListener("appinstalled", () => {
-    window.localStorage.setItem(INSTALLED_KEY, "1");
-    store = { ...store, isInstalled: true, deferredPrompt: null };
+    isInstalled = true;
+    deferredPrompt = null;
+    version++;
     emit();
   });
 }
@@ -107,33 +71,20 @@ if (typeof window !== "undefined") {
 /* ------------------------------------------------------------------ */
 
 export function usePwaInstall(): UsePwaInstallReturn {
-  const snap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-
-  const canInstall =
-    !snap.isInstalled && !snap.isDismissed && snap.deferredPrompt !== null;
+  useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const onInstall = async () => {
-    if (!snap.deferredPrompt) return;
-    await snap.deferredPrompt.prompt();
-    const choice = await snap.deferredPrompt.userChoice;
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
     if (choice.outcome === "accepted") {
-      window.localStorage.setItem(INSTALLED_KEY, "1");
-      store = { ...store, isInstalled: true, deferredPrompt: null };
-    } else {
-      // User dismissed the native prompt — treat as session dismiss
-      window.sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
-      store = { ...store, deferredPrompt: null, isDismissed: true };
+      isInstalled = true;
     }
+    deferredPrompt = null;
+    version++;
     emit();
   };
 
-  const onDismiss = () => {
-    // "稍後" — only dismiss for this browser session
-    window.sessionStorage.setItem(SESSION_DISMISS_KEY, "1");
-    store = { ...store, isDismissed: true };
-    emit();
-  };
-
-  return { canInstall, isInstalled: snap.isInstalled, onInstall, onDismiss };
+  return { isInstalled, onInstall };
 }
 
