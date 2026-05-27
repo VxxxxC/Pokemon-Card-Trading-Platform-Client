@@ -132,7 +132,7 @@
 ### Story 8.1: 作為手機用戶，我希望體驗流暢而且可以裝喺主畫面。
 **Task 8.1.1: 響應式與 PWA 安裝**
 - [ ] Ticket 58: 準備並放入所有尺寸嘅 PWA App Icons (`192x192`, `512x512`, Apple Touch Icon)。🔄 TODO [ASSETS]
-- [ ] Ticket 59: 實作自訂「安裝到主畫面」按鈕 (監聽 `beforeinstallprompt`)。🔄 TODO [PWA]
+- [x] Ticket 59: 實作自訂「安裝到主畫面」按鈕 (監聽 `beforeinstallprompt`)。✅ DONE (`usePwaInstall` hook + `PwaHeroInstallButton` in HeroSearch)
 - [x] Ticket 60: 調整全站 Bottom Navigation Bar，確保手機操作體驗接近原生 App。✅ DONE (浮動液體玻璃選項卡欄)
 - [x] Ticket 61: 修正 iOS Safari 點擊表單輸入框意外放大的問題 (`user-scalable=no`)。✅ DONE (app/layout.tsx)
 
