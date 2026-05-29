@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useChat } from "@/app/components/chat/ChatProvider";
 import type { OrderStatus } from "@/app/lib/types/rbac";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import Link from "next/link";
@@ -74,6 +75,8 @@ export default function UserOrdersPage() {
   const [activeTab, setActiveTab] = useState<
     "active" | "checkout" | "completed"
   >("active");
+
+  const { openInbox, openDirectChat } = useChat();
 
   // SF Locker Form states
   const [phone, setPhone] = useState("");

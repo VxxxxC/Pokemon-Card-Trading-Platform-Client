@@ -200,7 +200,7 @@ export default function OrderDetailPage({ params }: PageProps) {
             </div>
 
             <Link
-              href={`/messages?chat=${order.id}`}
+              href={`/message?chat=${order.id}`}
               className="h-9 px-4 border border-[#d4a574] hover:bg-[#d4a574]/10 text-[#d4a574] font-mono text-[12px] rounded-xl flex items-center justify-center transition-all active:scale-[0.96]"
             >
               💬 進入全域安全對話

@@ -15,14 +15,42 @@ interface ChatWindowProps {
 }
 
 const INITIAL_MESSAGES: Message[] = [
-  { id: "1", sender: "system", text: "安全防禦提示：平台交易全程受 Stripe Connect 託管保護，切勿進行線下私下轉賬。", time: "[SERVER_TIME_RESOLVED]" },
-  { id: "2", sender: "them", text: "你好！我已經把那張「噴火龍 ex SAR」妥善裝入磁力卡磚保護盒了。", time: "10:15" },
-  { id: "3", sender: "me", text: "太好了！卡況是否有白邊或微小刮痕呢？", time: "10:18" },
-  { id: "4", sender: "them", text: "沒有，這張是我親自開盒後立刻雙層套卡膜進保護殼的，屬於【美品 S】級別。", time: "10:20" },
-  { id: "5", sender: "system", text: "系統提示：賣家已通過實名 KYC 及專業道館主身份授權，本次交易支援 10% 訂金託管。", time: "[SERVER_TIME_RESOLVED]" },
+  {
+    id: "1",
+    sender: "system",
+    text: "安全防禦提示：平台交易全程受 Stripe Connect 託管保護，切勿進行線下私下轉賬。",
+    time: "[SERVER_TIME_RESOLVED]",
+  },
+  {
+    id: "2",
+    sender: "them",
+    text: "你好！我已經把那張「噴火龍 ex SAR」妥善裝入磁力卡磚保護盒了。",
+    time: "10:15",
+  },
+  {
+    id: "3",
+    sender: "me",
+    text: "太好了！卡況是否有白邊或微小刮痕呢？",
+    time: "10:18",
+  },
+  {
+    id: "4",
+    sender: "them",
+    text: "沒有，這張是我親自開盒後立刻雙層套卡膜進保護殼的，屬於【美品 S】級別。",
+    time: "10:20",
+  },
+  {
+    id: "5",
+    sender: "system",
+    text: "系統提示：賣家已通過實名 KYC 及專業道館主身份授權，本次交易支援 10% 訂金託管。",
+    time: "[SERVER_TIME_RESOLVED]",
+  },
 ];
 
-export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindowProps) {
+export function ChatWindow({
+  onClose,
+  receiverName = "渡邊道館",
+}: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState("");
   const [securityWarning, setSecurityWarning] = useState("");
@@ -39,9 +67,12 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
   const handleInputChange = (val: string) => {
     setInputText(val);
 
-    const bypassRegex = /私下交易|私下轉賬|線下|轉數快|fps|payme|電話|whatsapp|wechat|聯絡方式/i;
+    const bypassRegex =
+      /私下交易|私下轉賬|線下|轉數快|fps|payme|電話|whatsapp|wechat|聯絡方式/i;
     if (bypassRegex.test(val)) {
-      setSecurityWarning("⚠️ 安全提示：偵測到敏感通訊，請使用平台 Stripe Connect 託管以保障資金安全。私下交易將喪失 Escrow 物流理賠保障。");
+      setSecurityWarning(
+        "⚠️ 安全提示：偵測到敏感通訊，請使用平台 Stripe Connect 託管以保障資金安全。私下交易將喪失 Escrow 物流理賠保障。",
+      );
     } else {
       setSecurityWarning("");
     }
@@ -81,8 +112,12 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse" />
           <div>
-            <p className="font-sans font-bold text-[14px] text-[#eae1da]">{receiverName}</p>
-            <p className="font-mono text-[9px] text-[#8c7355] uppercase tracking-wider">🔒 SECURE ENCRYPTED CHAT</p>
+            <p className="font-sans font-bold text-[14px] text-[#eae1da]">
+              {receiverName}
+            </p>
+            <p className="font-mono text-[9px] text-[#8c7355] uppercase tracking-wider">
+              🔒 SECURE ENCRYPTED CHAT
+            </p>
           </div>
         </div>
         {onClose && (
@@ -90,8 +125,16 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
             onClick={onClose}
             className="w-7 h-7 rounded-full bg-[#17130f] hover:bg-[#39342f] flex items-center justify-center text-[#d4c4b7]"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         )}
@@ -105,7 +148,10 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
       </div>
 
       {/* Messages body list */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#17130f]">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#17130f]"
+      >
         {messages.map((msg) => {
           if (msg.sender === "system") {
             return (
@@ -119,7 +165,10 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
 
           const isMe = msg.sender === "me";
           return (
-            <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+            <div
+              key={msg.id}
+              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+            >
               <div className="max-w-[75%] space-y-1">
                 <div
                   className={`px-3.5 py-2.5 rounded-[12px] text-[13px] leading-relaxed shadow-sm ${
@@ -130,7 +179,9 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
                 >
                   <p>{msg.text}</p>
                 </div>
-                <p className={`font-mono text-[9px] text-[#50453b] ${isMe ? "text-right" : "text-left"}`}>
+                <p
+                  className={`font-mono text-[9px] text-[#50453b] ${isMe ? "text-right" : "text-left"}`}
+                >
                   {msg.time}
                 </p>
               </div>
@@ -144,7 +195,9 @@ export function ChatWindow({ onClose, receiverName = "渡邊道館" }: ChatWindo
         {/* Security Warning box */}
         {securityWarning && (
           <div className="p-2.5 bg-[rgba(239,68,68,0.10)] border border-[#ef4444]/30 rounded-lg animate-fadeIn">
-            <p className="font-sans text-[11px] text-[#ef4444] leading-relaxed">{securityWarning}</p>
+            <p className="font-sans text-[11px] text-[#ef4444] leading-relaxed">
+              {securityWarning}
+            </p>
           </div>
         )}
 
