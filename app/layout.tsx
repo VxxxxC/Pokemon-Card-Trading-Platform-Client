@@ -6,10 +6,6 @@ import { AppSerwistProvider } from "@/app/components/serwist-provider";
 import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
 
-// 🏎️ 引入全域通訊組件
-import { ChatProvider } from "@/app/components/chat/ChatProvider";
-import GlobalChatSlideOver from "@/app/components/chat/GlobalChatSlideOver";
-
 const APP_NAME = "PokéTrade JP";
 const APP_DEFAULT_TITLE = "PokéTrade JP — 寶可夢卡牌專業交易平台";
 const APP_TITLE_TEMPLATE = "%s | PokéTrade JP";
@@ -54,19 +50,13 @@ export default function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
-        {/* 1. 最外層：PWA 基建環境供應商 */}
+        {/* 外層：PWA 基建環境供應商 */}
         <AppSerwistProvider>
-          {/* 2. 第二層：全域通訊業務狀態供應商 */}
-          <ChatProvider>
-            {/* 3. 網絡狀態斷網警告條 */}
-            <PwaNetworkBanner />
+          {/* 網絡狀態斷網警告條 */}
+          <PwaNetworkBanner />
 
-            {/* 4. 全站主要內容渲染區 */}
-            {children}
-
-            {/* 5. 全域側滑對話盒（隱藏在側邊，隨時聽候 Hook 召喚） */}
-            <GlobalChatSlideOver />
-          </ChatProvider>
+          {/* 全站主要內容渲染區 */}
+          {children}
         </AppSerwistProvider>
       </body>
     </html>
