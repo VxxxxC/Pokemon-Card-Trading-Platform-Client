@@ -19,10 +19,34 @@ import { PwaInstallPrompt } from "./components/pwa/PwaInstallPrompt";
 // TODO: [database] Replace with Supabase query — fetch active box series from `card_series` table with live HKD price feed
 // TODO: [API] Connect to Mercari JP scraper for real-time box series pricing converted to HKD
 const marketSeries = [
-  { code: "sv4a", name: "Shiny Treasure ex Box", price: "HK$3,500", delta: "+12%", dir: "up" as const },
-  { code: "sv2a", name: "Pokémon Card 151 Box", price: "HK$9,360", delta: "-3%", dir: "down" as const },
-  { code: "s12a", name: "VSTAR Universe Box", price: "HK$5,300", delta: "+8%", dir: "up" as const },
-  { code: "sv6a", name: "Night Wanderer Box", price: "HK$2,500", delta: "+5%", dir: "up" as const },
+  {
+    code: "sv4a",
+    name: "Shiny Treasure ex Box",
+    price: "HK$3,500",
+    delta: "+12%",
+    dir: "up" as const,
+  },
+  {
+    code: "sv2a",
+    name: "Pokémon Card 151 Box",
+    price: "HK$9,360",
+    delta: "-3%",
+    dir: "down" as const,
+  },
+  {
+    code: "s12a",
+    name: "VSTAR Universe Box",
+    price: "HK$5,300",
+    delta: "+8%",
+    dir: "up" as const,
+  },
+  {
+    code: "sv6a",
+    name: "Night Wanderer Box",
+    price: "HK$2,500",
+    delta: "+5%",
+    dir: "up" as const,
+  },
 ];
 
 export default function HomePage() {
@@ -31,7 +55,7 @@ export default function HomePage() {
       <TopNav />
       <MobileHeader />
       <PriceTicker />
-      <PwaInstallPrompt/>
+      <PwaInstallPrompt />
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         {/* Section 1: Hero — Smart Search + Quick Filters */}
