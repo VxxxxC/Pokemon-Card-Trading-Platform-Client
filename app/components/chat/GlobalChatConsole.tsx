@@ -50,9 +50,37 @@ export function GlobalChatConsole({
   // 當彈窗被打開時，即時對齊外部傳進來的視圖命令（完美直穿對話視窗）
   useEffect(() => {
     if (isOpen) {
-      setCurrentMobileView(initialMobileView);
+      // 🟢 修正：利用 setTimeout 將狀態更新順延到下一個 Event Loop Tick
+      // 繞過 React 19 對於「Synchronous setState within Effect」
+      const timer = setTimeout(() => {
+        setCurrentMobileView(initialMobileView);
+      }, 0);
+
+      return () => clearTimeout(timer); // 記得清理計時器，拒絕內存洩漏
     }
   }, [isOpen, initialMobileView]);
+
+  // 🟢 核心優化：監聽 Mouse / Touch 點擊視窗外部事件
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      // 只有喺電腦版（螢幕寬度 >= 1024px）且點擊範圍喺懸浮窗外面時，才觸發關閉
+      // 手機版因為係鋪滿全屏（Inset-0），所以不需要點擊外部關閉
+      if (
+        window.innerWidth >= 1024 &&
+        desktopConsoleRef.current &&
+        !desktopConsoleRef.current.contains(event.target as Node)
+      ) {
+        onClose();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside); // 兼顧平板與手機觸控
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [onClose]);
 
   if (!isOpen) return null;
 
@@ -90,28 +118,6 @@ export function GlobalChatConsole({
     );
     setCurrentMobileView("CHAT");
   };
-
-  // 🟢 核心優化：監聽 Mouse / Touch 點擊視窗外部事件
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
-      // 只有喺電腦版（螢幕寬度 >= 1024px）且點擊範圍喺懸浮窗外面時，才觸發關閉
-      // 手機版因為係鋪滿全屏（Inset-0），所以不需要點擊外部關閉
-      if (
-        window.innerWidth >= 1024 &&
-        desktopConsoleRef.current &&
-        !desktopConsoleRef.current.contains(event.target as Node)
-      ) {
-        onClose();
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("touchstart", handleClickOutside); // 兼顧平板與手機觸控
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [onClose]);
 
   return (
     <>
