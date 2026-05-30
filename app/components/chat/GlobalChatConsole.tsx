@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
 export interface Message {
@@ -27,6 +27,7 @@ export interface GlobalChatConsoleProps {
   setChats: React.Dispatch<React.SetStateAction<ChatRoom[]>>;
   activeRoomId: string;
   setActiveRoomId: (id: string) => void;
+  initialMobileView?: "LIST" | "CHAT"; // 允許外部決定手機版初始視圖
 }
 
 export function GlobalChatConsole({
@@ -36,11 +37,22 @@ export function GlobalChatConsole({
   setChats,
   activeRoomId,
   setActiveRoomId,
+  initialMobileView = "LIST", //  預設為 LIST
 }: GlobalChatConsoleProps) {
   const [currentMobileView, setCurrentMobileView] = useState<"LIST" | "CHAT">(
     "LIST",
   );
   const [inputText, setInputText] = useState("");
+
+  //  核心優化：建立 Desktop 視窗的專屬 Ref
+  const desktopConsoleRef = useRef<HTMLDivElement>(null);
+
+  // 當彈窗被打開時，即時對齊外部傳進來的視圖命令（完美直穿對話視窗）
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentMobileView(initialMobileView);
+    }
+  }, [isOpen, initialMobileView]);
 
   if (!isOpen) return null;
 
@@ -79,10 +91,33 @@ export function GlobalChatConsole({
     setCurrentMobileView("CHAT");
   };
 
+  // 🟢 核心優化：監聽 Mouse / Touch 點擊視窗外部事件
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      // 只有喺電腦版（螢幕寬度 >= 1024px）且點擊範圍喺懸浮窗外面時，才觸發關閉
+      // 手機版因為係鋪滿全屏（Inset-0），所以不需要點擊外部關閉
+      if (
+        window.innerWidth >= 1024 &&
+        desktopConsoleRef.current &&
+        !desktopConsoleRef.current.contains(event.target as Node)
+      ) {
+        onClose();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside); // 兼顧平板與手機觸控
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [onClose]);
+
   return (
     <>
       {/* 💻 1. 電腦端布局 (Desktop View) — 右下角精緻雙欄懸浮窗 */}
       <motion.div
+        ref={desktopConsoleRef} // 🟢 綁定 Ref 防線
         initial={{ opacity: 0, y: 40, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40, scale: 0.98 }}

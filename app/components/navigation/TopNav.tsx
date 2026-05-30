@@ -86,6 +86,54 @@ export function TopNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 網頁端廣播接收器同步升級（支援現場動態 Create 房間）
+  useEffect(() => {
+    const handleGlobalOpenChat = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        roomId: string;
+        partnerName?: string;
+      }>;
+      if (customEvent.detail?.roomId) {
+        const targetRoomId = customEvent.detail.roomId;
+        const targetName = customEvent.detail.partnerName || "未知名商戶";
+
+        setChats((prev) => {
+          const exists = prev.some((c) => c.id === targetRoomId);
+          if (exists) {
+            return prev.map((c) =>
+              c.id === targetRoomId ? { ...c, unreadCount: 0 } : c,
+            );
+          } else {
+            const newSession = {
+              id: targetRoomId,
+              partnerName: targetName,
+              partnerTier: "認證賣家",
+              lastMessage: "已開啟即時議價對話",
+              unreadCount: 0,
+              timestamp: "剛剛",
+              messages: [
+                {
+                  id: "sys-" + Date.now(),
+                  sender: "system" as const,
+                  text: `🔒 平台已成功為您建立與 ${targetName} 的安全中介託管議價通道。`,
+                  timestamp: "剛剛",
+                },
+              ],
+            };
+            return [newSession, ...prev];
+          }
+        });
+
+        setActiveRoomId(targetRoomId);
+        setIsConsoleOpen(true);
+      }
+    };
+
+    window.addEventListener("open-global-chat", handleGlobalOpenChat);
+    return () =>
+      window.removeEventListener("open-global-chat", handleGlobalOpenChat);
+  }, []);
+
   const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
 
   return (
@@ -224,20 +272,21 @@ export function TopNav() {
             </Link>
           </div>
         </div>
+
+        {/* 🔮 鋼鐵核心：Web View 右下角全域懸浮對話站 (Bloomberg Terminal Style Floating Console) */}
+        <AnimatePresence>
+          {isConsoleOpen && (
+            <GlobalChatConsole
+              isOpen={isConsoleOpen}
+              onClose={() => setIsConsoleOpen(false)}
+              chats={chats}
+              setChats={setChats}
+              activeRoomId={activeRoomId}
+              setActiveRoomId={setActiveRoomId}
+            />
+          )}
+        </AnimatePresence>
       </header>
-      {/* 🔮 鋼鐵核心：Web View 右下角全域懸浮對話站 (Bloomberg Terminal Style Floating Console) */}
-      <AnimatePresence>
-        {isConsoleOpen && (
-          <GlobalChatConsole
-            isOpen={isConsoleOpen}
-            onClose={() => setIsConsoleOpen(false)}
-            chats={chats}
-            setChats={setChats}
-            activeRoomId={activeRoomId}
-            setActiveRoomId={setActiveRoomId}
-          />
-        )}
-      </AnimatePresence>
     </>
   );
 }
