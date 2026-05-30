@@ -1,5 +1,5 @@
 ---
-name: stitch::extract-static-html
+name: extract-static-html
 description: >-
   Extract self-contained static HTML from a built web application or React components by inlining CSS and images. Use this skill whenever you need to capture a specific UI state, share a static version of a page, or prepare assets for Stitch upload, even if the user just asks to 'save the HTML' or 'mock the view'.
 allowed-tools:
@@ -18,13 +18,13 @@ Extract a self-contained static HTML file from any web application.
 
 You MUST ask the user to choose which strategy to use before proceeding. Present the options clearly, **recommend Strategy A** as the preferred default, and **provide a brief pros/cons summary** for each option to help them make an informed decision.
 
-| | Strategy A (Puppeteer) | Strategy B (Browser Subagent) |
-| :--- | :--- | :--- |
-| **When** | App runs locally, no auth wall | Need to interact with page first (click, fill forms) |
-| **Fidelity** | **Highest — computed styles resolved** | High — rendered DOM |
-| **Setup** | **Zero — no mock needed** | Zero — no mock needed |
-| **Framework** | **Any** | Any |
-| **Output** | **Writes to file — no size limit** | May truncate in agent context |
+|               | Strategy A (Puppeteer)                 | Strategy B (Browser Subagent)                        |
+| :------------ | :------------------------------------- | :--------------------------------------------------- |
+| **When**      | App runs locally, no auth wall         | Need to interact with page first (click, fill forms) |
+| **Fidelity**  | **Highest — computed styles resolved** | High — rendered DOM                                  |
+| **Setup**     | **Zero — no mock needed**              | Zero — no mock needed                                |
+| **Framework** | **Any**                                | Any                                                  |
+| **Output**    | **Writes to file — no size limit**     | May truncate in agent context                        |
 
 > [!WARNING]
 > **Checkpoint — User Confirmation Required.**
@@ -33,7 +33,7 @@ You MUST ask the user to choose which strategy to use before proceeding. Present
 > wait for explicit approval. Do **NOT** make the decision yourself or proceed
 > until the user confirms.
 
-***
+---
 
 ## Strategy A: Puppeteer Snapshot (Recommended)
 
@@ -57,6 +57,7 @@ Launches headless Chrome, captures the fully rendered DOM, and produces a self-c
     > step until the user confirms.
 
 2.  **Run the Snapshot Script**:
+
     ```bash
     npx tsx <SKILL_DIR>/scripts/snapshot.ts \
       --url http://localhost:5173 \
@@ -76,16 +77,16 @@ Launches headless Chrome, captures the fully rendered DOM, and produces a self-c
 
 ### Script Flags
 
-| Flag | Default | Description |
-| :--- | :--- | :--- |
-| `--url` | *(required)* | URL to capture |
-| `--output` | *(required)* | Output file path |
-| `--wait` | `1000` | Extra wait (ms) after network idle. Increase for lazy-loading apps. |
-| `--viewport` | `1280x800` | Viewport size as `WIDTHxHEIGHT` |
-| `--html-class` | — | Class(es) for `<html>` element (e.g., `dark`) |
-| `--remove-fixed` | `false` | Remove fixed/sticky elements (cookie banners, chat widgets) |
-| `--full-height` | `false` | Resize viewport to full scroll height |
-| `--title` | — | Override page title |
+| Flag             | Default      | Description                                                         |
+| :--------------- | :----------- | :------------------------------------------------------------------ |
+| `--url`          | _(required)_ | URL to capture                                                      |
+| `--output`       | _(required)_ | Output file path                                                    |
+| `--wait`         | `1000`       | Extra wait (ms) after network idle. Increase for lazy-loading apps. |
+| `--viewport`     | `1280x800`   | Viewport size as `WIDTHxHEIGHT`                                     |
+| `--html-class`   | —            | Class(es) for `<html>` element (e.g., `dark`)                       |
+| `--remove-fixed` | `false`      | Remove fixed/sticky elements (cookie banners, chat widgets)         |
+| `--full-height`  | `false`      | Resize viewport to full scroll height                               |
+| `--title`        | —            | Override page title                                                 |
 
 ### What It Does Automatically
 
@@ -98,28 +99,28 @@ Launches headless Chrome, captures the fully rendered DOM, and produces a self-c
 
 ### Framework Notes
 
-| Framework | Notes |
-| :--- | :--- |
-| **React + Vite** | Works out of the box. `--wait 1000`. |
-| **Next.js** | `--wait 3000` for SSR hydration. URL: `http://localhost:3000`. `<img srcset>` from `/_next/image` is auto-inlined as base64. |
-| **Vue / Nuxt** | Works out of the box. |
-| **Svelte / SvelteKit** | Works out of the box. |
-| **Storybook** | Use story URL: `--url http://localhost:6006/?path=/story/...` |
-| **SSR (Webpack)** | May need longer `--wait`. |
+| Framework              | Notes                                                                                                                        |
+| :--------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
+| **React + Vite**       | Works out of the box. `--wait 1000`.                                                                                         |
+| **Next.js**            | `--wait 3000` for SSR hydration. URL: `http://localhost:3000`. `<img srcset>` from `/_next/image` is auto-inlined as base64. |
+| **Vue / Nuxt**         | Works out of the box.                                                                                                        |
+| **Svelte / SvelteKit** | Works out of the box.                                                                                                        |
+| **Storybook**          | Use story URL: `--url http://localhost:6006/?path=/story/...`                                                                |
+| **SSR (Webpack)**      | May need longer `--wait`.                                                                                                    |
 
 ### Troubleshooting
 
-| Issue | Solution |
-| :--- | :--- |
-| Images missing | Increase `--wait` |
+| Issue                                    | Solution                                                                                                                                   |
+| :--------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| Images missing                           | Increase `--wait`                                                                                                                          |
 | Images show as broken after server stops | Verify `srcset` was inlined — check log for "Inlined N images". If `srcset` URLs failed, they are auto-removed so `src` (inlined) is used. |
-| Next.js `/_next/image` not inlined | Ensure the dev server is running when snapshot runs — the script fetches optimized images from the running server. |
-| Dark mode not applied | `--html-class dark` |
-| Cookie banner in output | `--remove-fixed` |
-| Page requires login | Use the Static Fallback (appendix below) |
-| `Cannot find module 'puppeteer'` | `npm install -g puppeteer` |
+| Next.js `/_next/image` not inlined       | Ensure the dev server is running when snapshot runs — the script fetches optimized images from the running server.                         |
+| Dark mode not applied                    | `--html-class dark`                                                                                                                        |
+| Cookie banner in output                  | `--remove-fixed`                                                                                                                           |
+| Page requires login                      | Use the Static Fallback (appendix below)                                                                                                   |
+| `Cannot find module 'puppeteer'`         | `npm install -g puppeteer`                                                                                                                 |
 
-***
+---
 
 ## Strategy B: Browser Subagent Capture
 
@@ -134,11 +135,13 @@ Use when you need to **interact with the page** (click buttons, fill forms, navi
 
     > [!WARNING]
     > Large pages may truncate. To handle this:
+    >
     > - Remove `<style>` tags before extraction: `document.querySelectorAll('style').forEach(el => el.remove())`
     > - Re-add styles statically (Tailwind CDN link, source CSS)
+
 5.  **Save** to file.
 
-***
+---
 
 ## Appendix: Static Fallback (MockPage.jsx)
 
@@ -176,6 +179,7 @@ npx tsx <SKILL_DIR>/scripts/extract_inline_html.ts \
 ### Post-Processing
 
 Inline local images:
+
 ```bash
 npx tsx <SKILL_DIR>/scripts/post_process.ts \
   .stitch/Page.html --base-dir <app-directory>

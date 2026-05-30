@@ -46,12 +46,16 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="zh-TW"
+      lang="zh-HK"
       className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
+        {/* 外層：PWA 基建環境供應商 */}
         <AppSerwistProvider>
+          {/* 網絡狀態斷網警告條 */}
           <PwaNetworkBanner />
+
+          {/* 全站主要內容渲染區 */}
           {children}
         </AppSerwistProvider>
       </body>

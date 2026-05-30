@@ -1,5 +1,5 @@
 ---
-name: stitch::code-to-design
+name: code-to-design
 description: >-
   Convert frontend code (Vite, React, etc.) to a Stitch Design by chaining
   static HTML extraction, design system extraction, and file upload. **ALWAYS** use this skill when the user's intent is to move existing web apps or React components into Stitch (e.g., requests to "save", "migrate", or "upload"). You must use this skill even for simple "save" operations, as it is the only way to ensure the design system is extracted and assets are properly linked.
@@ -16,6 +16,7 @@ allowed-tools:
 Transform your existing frontend code into a Stitch Design so you can iterate and improve it using Stitch.
 
 This skill orchestrates three other skills in sequence:
+
 1. `extract-static-html`: Extract a single self-contained HTML file from your build output.
 2. `extract-design-md`: Analyze the source code to create a design system (DESIGN.md).
 3. `upload-to-stitch`: Upload that HTML file and the design system to your Stitch project.
@@ -70,6 +71,7 @@ Use the same `upload-to-stitch` skill's script to upload the extracted HTML file
 Read [skills/upload-to-stitch/SKILL.md](../upload-to-stitch/SKILL.md) for detailed instructions and script usage.
 
 You will need:
+
 - The path to the standalone HTML file generated in Step 1.
 - Your Stitch API Key (same key used in Step 4).
 - The target `projectId`.

@@ -71,7 +71,9 @@ const STATUS_STEP_INDEX: Record<OrderStatus, number> = {
 
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [activeTab, setActiveTab] = useState<"active" | "checkout" | "completed">("active");
+  const [activeTab, setActiveTab] = useState<
+    "active" | "checkout" | "completed"
+  >("active");
 
   // SF Locker Form states
   const [phone, setPhone] = useState("");
@@ -134,7 +136,9 @@ export default function UserOrdersPage() {
         <button
           onClick={() => setActiveTab("active")}
           className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${
-            activeTab === "active" ? "text-[#d4a574]" : "text-[#d4c4b7] hover:text-[#eae1da]"
+            activeTab === "active"
+              ? "text-[#d4a574]"
+              : "text-[#d4c4b7] hover:text-[#eae1da]"
           }`}
         >
           進行中訂單 ({activeOrders.length})
@@ -145,7 +149,9 @@ export default function UserOrdersPage() {
         <button
           onClick={() => setActiveTab("checkout")}
           className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${
-            activeTab === "checkout" ? "text-[#d4a574]" : "text-[#d4c4b7] hover:text-[#eae1da]"
+            activeTab === "checkout"
+              ? "text-[#d4a574]"
+              : "text-[#d4c4b7] hover:text-[#eae1da]"
           }`}
         >
           📝 結帳明細確認
@@ -156,7 +162,9 @@ export default function UserOrdersPage() {
         <button
           onClick={() => setActiveTab("completed")}
           className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${
-            activeTab === "completed" ? "text-[#d4a574]" : "text-[#d4c4b7] hover:text-[#eae1da]"
+            activeTab === "completed"
+              ? "text-[#d4a574]"
+              : "text-[#d4c4b7] hover:text-[#eae1da]"
           }`}
         >
           歷史交易已完成 ({completedOrders.length})
@@ -170,15 +178,20 @@ export default function UserOrdersPage() {
         <div className="space-y-4">
           {/* Escrow explanation banner */}
           <div className="p-4 bg-[rgba(212,165,116,0.06)] border border-[#d4a574]/20 rounded-xl space-y-1">
-            <p className="font-mono text-[11px] text-[#d4a574] font-semibold">🔒 第三方 Escrow 託管保障</p>
+            <p className="font-mono text-[11px] text-[#d4a574] font-semibold">
+              🔒 第三方 Escrow 託管保障
+            </p>
             <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
-              高價值交易採用資金託管機制：付款後資金由平台保管，待第三方鑑定機構確認品相後，方才釋放款項至賣方。全程受 RLS 規則保護。
+              高價值交易採用資金託管機制：付款後資金由平台保管，待第三方鑑定機構確認品相後，方才釋放款項至賣方。全程受
+              RLS 規則保護。
             </p>
           </div>
 
           {activeOrders.length === 0 ? (
             <div className="py-12 text-center bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl">
-              <p className="font-sans text-[14px] text-[#d4c4b7]">目前沒有進行中的交易訂單</p>
+              <p className="font-sans text-[14px] text-[#d4c4b7]">
+                目前沒有進行中的交易訂單
+              </p>
             </div>
           ) : (
             activeOrders.map((order) => (
@@ -192,7 +205,10 @@ export default function UserOrdersPage() {
         /* INTERACTIVE CHECKOUT REVIEW FORM */
         <div className="lg:grid lg:grid-cols-12 lg:gap-6 items-start">
           {/* Form input cards */}
-          <form onSubmit={handleConfirmCheckout} className="lg:col-span-7 space-y-4">
+          <form
+            onSubmit={handleConfirmCheckout}
+            className="lg:col-span-7 space-y-4"
+          >
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-xl p-5 space-y-4">
               <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] border-b border-[rgba(237,232,224,0.06)] pb-2">
                 香港本地物流收貨人資料
@@ -201,7 +217,10 @@ export default function UserOrdersPage() {
               {/* SF phone locker validators */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="checkout-phone" className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-1.5">
+                  <label
+                    htmlFor="checkout-phone"
+                    className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-1.5"
+                  >
                     香港手提電話號碼
                   </label>
                   <input
@@ -214,11 +233,18 @@ export default function UserOrdersPage() {
                     placeholder="91234567"
                     className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[14px] text-[#eae1da] focus:outline-none focus:border-[#d4a574]/40"
                   />
-                  {phoneError && <p className="font-sans text-[10px] text-[#ef4444] mt-1.5 leading-relaxed">{phoneError}</p>}
+                  {phoneError && (
+                    <p className="font-sans text-[10px] text-[#ef4444] mt-1.5 leading-relaxed">
+                      {phoneError}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="checkout-locker" className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-1.5">
+                  <label
+                    htmlFor="checkout-locker"
+                    className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-1.5"
+                  >
                     順豐智能櫃 / 網點代碼
                   </label>
                   <select
@@ -227,7 +253,9 @@ export default function UserOrdersPage() {
                     onChange={(e) => setLockerCode(e.target.value)}
                     className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-[#eae1da] focus:outline-none focus:border-[#d4a574]/40"
                   >
-                    <option value="852-smart-locker">852-smart-locker (智能櫃)</option>
+                    <option value="852-smart-locker">
+                      852-smart-locker (智能櫃)
+                    </option>
                     <option value="SF-station">SF-station (順豐站)</option>
                     <option value="HK-pickup">HK-pickup (自提點)</option>
                   </select>
@@ -235,7 +263,10 @@ export default function UserOrdersPage() {
               </div>
 
               <div>
-                <label htmlFor="checkout-address" className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-1.5">
+                <label
+                  htmlFor="checkout-address"
+                  className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-1.5"
+                >
                   自提點詳細收件地址
                 </label>
                 <input
@@ -252,7 +283,9 @@ export default function UserOrdersPage() {
 
             <button
               type="submit"
-              disabled={isCheckoutSubmitting || !phone || !lockerAddress || !!phoneError}
+              disabled={
+                isCheckoutSubmitting || !phone || !lockerAddress || !!phoneError
+              }
               className="w-full h-12 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] disabled:opacity-50 font-sans font-bold text-[14px] rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform min-h-[48px]"
             >
               {isCheckoutSubmitting ? (
@@ -285,12 +318,15 @@ export default function UserOrdersPage() {
               </div>
               <div className="border-t border-[rgba(237,232,224,0.08)] pt-2.5 flex justify-between items-center text-[#eae1da] font-bold text-[14px]">
                 <span>本次實時應付總額 (Total)</span>
-                <span className="text-[#d4a574]">HK$ {totalDue.toLocaleString("en-HK")}</span>
+                <span className="text-[#d4a574]">
+                  HK$ {totalDue.toLocaleString("en-HK")}
+                </span>
               </div>
             </div>
 
             <div className="p-3 bg-[#17130f] rounded-lg border border-[rgba(237,232,224,0.04)] font-sans text-[11px] text-[#d4c4b7] leading-relaxed">
-              * 備註：此訂單金額已扣除港島/九龍免郵定額補貼。首期僅需繳付 10% 託管押金。
+              * 備註：此訂單金額已扣除港島/九龍免郵定額補貼。首期僅需繳付 10%
+              託管押金。
             </div>
           </section>
         </div>
@@ -300,7 +336,9 @@ export default function UserOrdersPage() {
         <div className="space-y-4">
           {completedOrders.length === 0 ? (
             <div className="py-12 text-center bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl">
-              <p className="font-sans text-[14px] text-[#d4c4b7]">目前沒有歷史交易完成訂單</p>
+              <p className="font-sans text-[14px] text-[#d4c4b7]">
+                目前沒有歷史交易完成訂單
+              </p>
             </div>
           ) : (
             completedOrders.map((order) => (
@@ -330,22 +368,35 @@ function EscrowStepper({ status }: { status: OrderStatus }) {
                     isDone
                       ? "bg-[#10b981] border-[#10b981]"
                       : isActive
-                      ? "bg-[rgba(212,165,116,0.15)] border-[#d4a574] animate-ring-pulse"
-                      : "bg-[#2e2925] border-[rgba(237,232,224,0.12)]"
+                        ? "bg-[rgba(212,165,116,0.15)] border-[#d4a574] animate-ring-pulse"
+                        : "bg-[#2e2925] border-[rgba(237,232,224,0.12)]"
                   }`}
                 >
                   {isDone ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth="3"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   ) : (
-                    <span className={`w-2 h-2 rounded-full ${isActive ? "bg-[#d4a574]" : "bg-[#39342f]"}`} />
+                    <span
+                      className={`w-2 h-2 rounded-full ${isActive ? "bg-[#d4a574]" : "bg-[#39342f]"}`}
+                    />
                   )}
                 </div>
                 {/* Labels */}
                 <p
                   className={`font-mono text-[10px] mt-1.5 text-center leading-tight px-1 ${
-                    isActive ? "text-[#d4a574] font-medium" : isDone ? "text-[#d4c4b7]" : "text-[#50453b]"
+                    isActive
+                      ? "text-[#d4a574] font-medium"
+                      : isDone
+                        ? "text-[#d4c4b7]"
+                        : "text-[#50453b]"
                   }`}
                 >
                   {step.label}
@@ -372,38 +423,58 @@ interface OrderCardProps {
 
 function OrderCard({ order, compact = false }: OrderCardProps) {
   const stepLabel = ESCROW_STEPS[STATUS_STEP_INDEX[order.status]]?.label ?? "";
+
   return (
-    <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <p className="font-sans text-[15px] font-semibold text-[#eae1da] truncate">{order.cardName}</p>
-          <p className="font-mono text-[11px] text-[#d4c4b7] mt-1">
-            序號: {order.cardNo} · 等級: {order.grade} · 賣家: {order.seller}
-          </p>
-          <p className="font-mono text-[10px] text-[#50453b] mt-0.5">#{order.id}</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="font-mono font-bold text-[17px] text-[#eae1da]">
-            HK$ {order.amount.toLocaleString("en-HK")}
-          </p>
-          <span
-            className={`font-mono text-[10px] px-2.5 py-0.5 rounded-full inline-block mt-1 ${
-              order.status === "released"
-                ? "text-[#10b981] bg-[rgba(16,185,129,0.12)] border border-[#10b981]/20"
-                : "text-[#d4a574] bg-[rgba(212,165,116,0.12)] border border-[#d4a574]/20"
-            }`}
-          >
-            {stepLabel}
-          </span>
-        </div>
-      </div>
+    <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 hover:border-[#d4a574]/30 transition-all group">
+      {/* 1. 將卡牌主要內容區包裝成 Link，點擊直接跳轉入去 [id] 動態詳情頁 */}
+      <Link
+        href={`/profile/user/orders/${order.id}`}
+        className="block space-y-4 cursor-pointer"
+      >
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            {/* Hover 時卡牌名稱會亮起品牌金棕色，提示用戶可以點擊 */}
+            <p className="font-sans text-[15px] font-semibold text-[#eae1da] group-hover:text-[#d4a574] transition-colors truncate">
+              {order.cardName}
+            </p>
+            <p className="font-mono text-[11px] text-[#d4c4b7] mt-1">
+              序號: {order.cardNo} · 等級: {order.grade} · 賣家: {order.seller}
+            </p>
+            <p className="font-mono text-[10px] text-[#50453b] mt-0.5">
+              #{order.id}
+            </p>
+          </div>
 
-      {!compact && order.isHighValue && <EscrowStepper status={order.status} />}
+          <div className="text-right shrink-0">
+            <p className="font-mono font-bold text-[17px] text-[#eae1da]">
+              HK$ {order.amount.toLocaleString("en-HK")}
+            </p>
+            <span
+              className={`font-mono text-[10px] px-2.5 py-0.5 rounded-full inline-block mt-1 ${
+                order.status === "released"
+                  ? "text-[#10b981] bg-[rgba(16,185,129,0.12)] border border-[#10b981]/20"
+                  : "text-[#d4a574] bg-[rgba(212,165,116,0.12)] border border-[#d4a574]/20"
+              }`}
+            >
+              {stepLabel}
+            </span>
+          </div>
+        </div>
 
+        {!compact && order.isHighValue && (
+          <EscrowStepper status={order.status} />
+        )}
+      </Link>
+
+      {/* 2. 底部控制列：左邊外顯詳情跳轉，右邊保留聯絡賣家 */}
       <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[rgba(237,232,224,0.06)]">
-        <p className="font-mono text-[11px] text-[#50453b]">
-          建立於 {order.createdAt} · 更新於 {order.updatedAt}
-        </p>
+        <Link
+          href={`/profile/user/orders/${order.id}`}
+          className="font-mono text-[11px] text-[#d4c4b7] hover:text-[#d4a574] transition-colors flex items-center gap-1"
+        >
+          🔍 查看交易詳情
+        </Link>
+
         {order.status !== "released" && (
           <Link
             href={`/profile/PKT-8839-44A?chat=open`}
