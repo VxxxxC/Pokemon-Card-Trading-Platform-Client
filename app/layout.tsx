@@ -5,6 +5,10 @@ import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
 import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const APP_NAME = "PokéTrade JP";
 const APP_DEFAULT_TITLE = "PokéTrade JP — 寶可夢卡牌專業交易平台";
@@ -47,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-HK"
-      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={cn("h-full", "antialiased", GeistSans.variable, GeistMono.variable, "font-sans", geist.variable)}
     >
       <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
         {/* 外層：PWA 基建環境供應商 */}

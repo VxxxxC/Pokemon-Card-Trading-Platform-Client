@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 // TODO: [database] Replace with Supabase Realtime stream — subscribe to `transactions` table INSERT events
 // TODO: [server] Relative timestamps (e.g. "2分鐘前") must be computed from real `created_at` field using date-fns or Intl.RelativeTimeFormat
 const transactions = [
@@ -9,6 +11,7 @@ const transactions = [
     deltaDir: "up" as const,
     grade: "PSA 10",
     time: "2分鐘前",
+    image: "https://picsum.photos/seed/tx-zard/100/140",
   },
   {
     id: "sv2a-189",
@@ -18,6 +21,7 @@ const transactions = [
     deltaDir: "down" as const,
     grade: "BGS 9.5",
     time: "8分鐘前",
+    image: "https://picsum.photos/seed/tx-mewtwo/100/140",
   },
   {
     id: "sv6a-109",
@@ -27,6 +31,7 @@ const transactions = [
     deltaDir: "up" as const,
     grade: "PSA 10",
     time: "15分鐘前",
+    image: "https://picsum.photos/seed/tx-umbreon/100/140",
   },
   {
     id: "sv2a-215",
@@ -36,6 +41,7 @@ const transactions = [
     deltaDir: "down" as const,
     grade: "CGC 9",
     time: "23分鐘前",
+    image: "https://picsum.photos/seed/tx-pika/100/140",
   },
   {
     id: "sv2a-233",
@@ -45,6 +51,7 @@ const transactions = [
     deltaDir: "up" as const,
     grade: "PSA 9",
     time: "31分鐘前",
+    image: "https://picsum.photos/seed/tx-mimi/100/140",
   },
   {
     id: "sv2a-213",
@@ -54,6 +61,7 @@ const transactions = [
     deltaDir: "up" as const,
     grade: "RAW NM",
     time: "45分鐘前",
+    image: "https://picsum.photos/seed/tx-eevee/100/140",
   },
   {
     id: "sv3-199",
@@ -63,6 +71,7 @@ const transactions = [
     deltaDir: "down" as const,
     grade: "BGS 9",
     time: "1小時前",
+    image: "https://picsum.photos/seed/tx-gard/100/140",
   },
   {
     id: "sv2a-197",
@@ -72,6 +81,7 @@ const transactions = [
     deltaDir: "up" as const,
     grade: "PSA 10",
     time: "1小時前",
+    image: "https://picsum.photos/seed/tx-luca/100/140",
   },
 ];
 
@@ -81,35 +91,46 @@ export function TransactionWall() {
       {transactions.map((tx, i) => (
         <div
           key={`${tx.id}-${i}`}
-          className={`flex items-center justify-between px-4 py-3 hover:bg-bg-elevated transition-colors ${
+          className={`flex items-center justify-between px-4 py-3 md:p-4 md:h-20 hover:bg-bg-elevated transition-colors ${
             i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
           }`}
         >
-          {/* Card name + metadata */}
-          <div className="flex-1 min-w-0 pr-3">
-            <p className="font-sans text-[13px] font-medium text-text-primary truncate">
-              {tx.name}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="font-mono text-[11px] text-text-secondary">
-                {tx.id}
-              </span>
-              <span className="text-text-secondary" aria-hidden="true">
-                ·
-              </span>
-              <span className="font-mono text-[11px] text-text-secondary">
-                {tx.grade}
-              </span>
+          {/* Card thumbnail + name + metadata */}
+          <div className="flex items-center gap-3 flex-1 min-w-0 pr-3">
+            <div className="relative w-10 h-14 md:w-12 md:h-16 shrink-0 rounded-[4px] overflow-hidden border border-[rgba(237,232,224,0.12)] bg-bg-elevated">
+              <Image
+                src={tx.image}
+                alt={tx.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 40px, 48px"
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="font-sans text-[13px] md:text-[15px] font-bold text-text-primary truncate">
+                {tx.name}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="font-mono text-[11px] text-text-secondary">
+                  {tx.id}
+                </span>
+                <span className="text-text-secondary" aria-hidden="true">
+                  ·
+                </span>
+                <span className="font-mono text-[11px] text-text-secondary">
+                  {tx.grade}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Price + delta */}
           <div className="text-right shrink-0">
-            <p className="font-mono font-medium text-[14px] text-text-primary">
+            <p className="font-mono font-black text-[14px] md:text-[16px] text-text-primary">
               ¥{tx.price.toLocaleString("zh-TW")}
             </p>
             <span
-              className={`font-mono text-[11px] ${
+              className={`font-mono text-[11px] font-bold ${
                 tx.deltaDir === "up" ? "text-success" : "text-warning"
               }`}
             >
@@ -119,8 +140,10 @@ export function TransactionWall() {
           </div>
 
           {/* Timestamp */}
-          <div className="text-right shrink-0 ml-3 w-[52px]">
-            <p className="font-mono text-[11px] text-text-secondary">{tx.time}</p>
+          <div className="text-right shrink-0 ml-3 w-[52px] md:w-[60px]">
+            <p className="font-mono text-[11px] text-text-secondary">
+              {tx.time}
+            </p>
           </div>
         </div>
       ))}
