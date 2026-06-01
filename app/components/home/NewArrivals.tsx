@@ -71,11 +71,11 @@ export function NewArrivals() {
       </div>
 
       {/* Horizontal scroll strip — 2.5 cards visible on mobile, all on desktop */}
-      <div className="flex overflow-x-auto gap-3 scrollbar-none pb-2 -mx-1 px-1">
+      <div className="flex overflow-x-auto gap-3 md:gap-4 scrollbar-none pb-4 -mx-1 px-1">
         {newArrivals.map((item) => (
           <article
             key={item.id}
-            className="shrink-0 w-[148px] sm:w-[160px] bg-bg-card rounded-[12px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.45)] hover:border-brand/20 transition-all overflow-hidden"
+            className="shrink-0 w-[148px] sm:w-[160px] md:w-[190px] bg-bg-card rounded-[14px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.25)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.55)] hover:border-brand/30 transition-all overflow-hidden group"
           >
             {/* Card image — portrait aspect */}
             <Link
@@ -86,48 +86,48 @@ export function NewArrivals() {
                 src={item.image}
                 alt={`${item.name} — ${item.rarity}`}
                 fill
-                className="object-cover hover:scale-[1.03] transition-transform duration-300"
-                sizes="160px"
+                className="object-cover group-hover:scale-[1.05] transition-transform duration-500"
+                sizes="(max-width: 768px) 160px, 200px"
               />
               {/* Top badges */}
-              <span className="absolute top-2 left-2 font-mono text-[9px] text-text-primary bg-[rgba(23,19,15,0.80)] backdrop-blur-sm px-1.5 py-0.5 rounded-[3px] leading-none">
+              <span className="absolute top-2.5 left-2.5 font-mono text-[10px] md:text-[11px] font-bold text-text-primary bg-[rgba(23,19,15,0.85)] backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-white/10">
                 {item.condition}
               </span>
-              <span className="absolute top-2 right-2 font-mono text-[9px] font-medium text-brand bg-bg-elevated/80 backdrop-blur-sm px-1.5 py-0.5 rounded-[3px] leading-none border-l border-brand/50">
+              <span className="absolute top-2.5 right-2.5 font-mono text-[10px] md:text-[11px] font-bold text-brand bg-bg-elevated/90 backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-brand/30">
                 {item.rarity}
               </span>
               {/* Time overlay at bottom */}
-              <span className="absolute bottom-0 right-0 left-0 text-center font-mono text-[9px] text-text-disabled bg-[rgba(23,19,15,0.65)] backdrop-blur-sm py-0.5">
+              <span className="absolute bottom-0 right-0 left-0 text-center font-mono text-[10px] text-text-disabled bg-[rgba(23,19,15,0.75)] backdrop-blur-md py-1">
                 {item.timeAgo}
               </span>
             </Link>
 
-            {/* Compact info */}
-            <div className="p-2.5">
-              <h3 className="font-sans font-medium text-[12px] text-text-primary truncate leading-tight">
+            {/* Expanded info */}
+            <div className="p-3.5">
+              <h3 className="font-sans font-bold text-[13px] md:text-[15px] text-text-primary truncate leading-tight mb-1">
                 {item.name}
               </h3>
-              <span className="font-mono text-[10px] text-text-disabled block truncate">
+              <span className="font-mono text-[10px] md:text-[11px] text-text-disabled block truncate mb-3">
                 {item.set}
               </span>
 
               {/* Price + seller */}
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="font-mono font-semibold text-[14px] text-text-primary leading-none">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-mono font-black text-[15px] md:text-[18px] text-text-primary leading-none">
                   {item.price}
                 </p>
-                <span className="font-sans text-[10px] text-text-secondary truncate max-w-[60px] text-right">
+                <span className="font-sans text-[11px] text-text-secondary truncate max-w-[70px] text-right">
                   {item.seller}
                 </span>
               </div>
 
               {/* TODO: [server] "直接購買" triggers escrow flow — Stripe PaymentIntent for deposit */}
               {/* TODO: [API] "即時出價" submits to `bids` table with auth check */}
-              <div className="mt-2 flex gap-1.5">
-                <button className="flex-1 h-8 bg-brand text-[#17130f] font-sans font-semibold text-[11px] rounded-[6px] active:scale-[0.97] transition-transform hover:bg-brand-hover">
+              <div className="flex gap-2">
+                <button className="flex-1 h-9 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg active:scale-[0.97] transition-transform hover:bg-brand-hover">
                   購買
                 </button>
-                <button className="flex-1 h-8 border border-[rgba(237,232,224,0.15)] text-brand font-sans font-medium text-[11px] rounded-[6px] active:scale-[0.97] transition-transform hover:bg-bg-elevated">
+                <button className="flex-1 h-9 border border-[rgba(237,232,224,0.15)] text-brand font-sans font-bold text-[12px] rounded-lg active:scale-[0.97] transition-transform hover:bg-bg-elevated">
                   出價
                 </button>
               </div>

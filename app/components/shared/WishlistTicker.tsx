@@ -85,7 +85,14 @@ function Sparkline({
 }) {
   const color = direction === "up" ? "#10b981" : "#ef4444";
   return (
-    <svg width="48" height="24" viewBox="0 0 64 32" fill="none" className="shrink-0" aria-hidden="true">
+    <svg
+      width="48"
+      height="24"
+      viewBox="0 0 64 32"
+      fill="none"
+      className="shrink-0"
+      aria-hidden="true"
+    >
       <polyline
         points={points}
         fill="none"
@@ -119,7 +126,7 @@ function WishlistCardItem({ card }: { card: TrackedCardProps }) {
   return (
     <Link
       href={`/marketplace?card=${card.id}`}
-      className="shrink-0 w-36 rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)] hover:border-brand/20 hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-all active:scale-[0.98] block"
+      className="shrink-0 w-36 md:w-48 rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)] hover:border-brand/30 hover:shadow-[0_8px_24px_rgba(0,0,0,0.60)] transition-all active:scale-[0.98] block"
     >
       {/* Card portrait image */}
       <div className="relative w-full aspect-5/7 overflow-hidden bg-bg-elevated">
@@ -128,38 +135,41 @@ function WishlistCardItem({ card }: { card: TrackedCardProps }) {
           alt={card.name}
           fill
           className="object-cover"
-          sizes="144px"
+          sizes="(max-width: 768px) 144px, 192px"
         />
         {card.alertTag && (
-          <span className="absolute top-2 left-2 font-mono text-[10px] text-[#17130f] bg-brand px-1.5 py-0.5 rounded-sm leading-none">
+          <span className="absolute top-2 left-2 font-mono text-[10px] md:text-[11px] font-bold text-[#17130f] bg-brand px-2 py-0.5 rounded-sm leading-none shadow-sm">
             {card.alertTag}
           </span>
         )}
       </div>
 
       {/* Info */}
-      <div className="p-2.5">
-        <p className="font-sans font-medium text-[12px] text-text-primary truncate mb-0.5">
+      <div className="p-3">
+        <p className="font-sans font-bold text-[13px] md:text-base text-text-primary truncate mb-0.5">
           {card.name}
         </p>
-        <p className="font-mono text-[10px] text-text-disabled mb-1.5">
+        <p className="font-mono text-[10px] md:text-[11px] text-text-disabled mb-2">
           {card.cardCode}
         </p>
         {/* Price + sparkline */}
         <div className="flex items-center justify-between gap-1">
           <div>
-            <p className="font-mono font-semibold text-[13px] text-text-primary leading-none">
+            <p className="font-mono font-bold text-[14px] md:text-lg text-brand leading-none">
               {formattedPrice}
             </p>
             <span
-              className={`font-mono text-[10px] font-medium mt-0.5 block ${
+              className={`font-mono text-[10px] md:text-[11px] font-bold mt-1 block ${
                 card.trend24h >= 0 ? "text-success" : "text-warning"
               }`}
             >
               {trendFormatted}
             </span>
           </div>
-          <Sparkline points={card.sparklinePoints} direction={card.sparklineDirection} />
+          <Sparkline
+            points={card.sparklinePoints}
+            direction={card.sparklineDirection}
+          />
         </div>
       </div>
     </Link>
@@ -179,7 +189,9 @@ export function WishlistTicker({ isLoading = false }: WishlistTickerProps) {
             id="wishlist-ticker-heading"
             className="font-sans font-semibold text-[20px] text-text-primary flex items-center gap-2"
           >
-            <span className="text-brand" aria-hidden="true">★</span>
+            <span className="text-brand" aria-hidden="true">
+              ★
+            </span>
             我的心水情報
           </h2>
           <p className="font-sans text-[13px] text-text-secondary mt-0.5">
@@ -195,8 +207,12 @@ export function WishlistTicker({ isLoading = false }: WishlistTickerProps) {
       </div>
       <div className="flex overflow-x-auto gap-3 scrollbar-none pb-1 -mx-1 px-1">
         {isLoading
-          ? Array.from({ length: 5 }).map((_, i) => <WishlistCardSkeleton key={i} />)
-          : MOCK_WISHLIST.map((card) => <WishlistCardItem key={card.id} card={card} />)}
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <WishlistCardSkeleton key={i} />
+            ))
+          : MOCK_WISHLIST.map((card) => (
+              <WishlistCardItem key={card.id} card={card} />
+            ))}
       </div>
     </section>
   );
