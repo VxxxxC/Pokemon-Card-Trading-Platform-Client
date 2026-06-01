@@ -56,6 +56,11 @@ That skill governs how to retrieve designs from Stitch MCP, download assets reli
 - Escrow and trading state logic MUST be isolated in dedicated Server Actions or API routes — never mixed into UI components.
 - Each component file exports exactly one primary component. Co-locate its `[ComponentName]Props` `Readonly` interface in the same file.
 
+### 6. Component Library Usage
+
+- When a UI element requires a standard component (e.g., button, dialog, card, form input), prioritize checking for a suitable shadcn/ui component.
+- If a specific shadcn/ui component is needed for the implementation and is not yet installed, explicitly state this requirement and the command `bunx --bun shadcn@latest add [component-name]`. This action will trigger the use of `.github/prompts/shadcn-ui.prompt.md` and the `shadcn-ui` skill for installation and taste customization according to PokéTrade JP standards.
+
 ---
 
 ## Execution Checklist

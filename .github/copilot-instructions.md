@@ -77,3 +77,12 @@ When the user asks to create/modify/edit/amend a page, a component, or UI featur
 
 - Before implementation starts, verify the current task list is fully traceable to section `1. 系統開發` and ordered per `開發時間表`.
 - If mismatch exists, re-plan first, then implement.
+
+## shadcn/ui Integration
+
+When implementing UI components, leverage shadcn/ui for foundational elements.
+
+- **Initialization:** If you need to initialize shadcn/ui in the project, use the command `bunx --bun shadcn@latest init`.
+- **Component Installation:** If a new shadcn/ui component is required that is not yet installed, initiate the installation using `bunx --bun shadcn@latest add [component-name]`. This command will guide the user through the setup.
+- **Customization:** All shadcn/ui components must be customized to align with the PokéTrade JP design system as defined in `.stitch/designs/DESIGN.md`. Adhere strictly to the taste overrides and component integration rules specified in `.agents/skills/shadcn-ui/SKILL.md` and `.github/prompts/shadcn-ui.prompt.md`.
+- **Triggering Actions:** When a UI implementation requires specific shadcn components, explicitly mention the need to use `bunx --bun shadcn@latest add [component-name]`. This action will automatically trigger the use of `.github/prompts/shadcn-ui.prompt.md` and the `shadcn-ui` skill for installation and taste customization.
