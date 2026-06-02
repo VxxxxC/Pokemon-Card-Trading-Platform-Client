@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { OrderLifecycleStepper } from "./_components/OrderLifecycleStepper";
 
 export type TradeType = "c2c" | "b2c";
 export type OrderSide = "buy" | "sell";
@@ -426,64 +427,22 @@ export default function UserOrdersPage() {
 }
 
 function DynamicCardStepper({ order }: { order: Order }) {
-  const steps = FLOW_STEPS_DEFINITION[order.flowType] || [];
   const isFinished =
     order.status === "completed_meetup" || order.status === "received";
-  const activeIndex = isFinished
-    ? steps.length - 1
-    : steps.findIndex((s) => s.id === order.status);
 
   return (
-    <div className="mt-4 overflow-x-auto scrollbar-none pb-1">
-      <div className="flex items-start gap-0 min-w-max">
-        {steps.map((step, i) => {
-          const isDone = isFinished ? i <= activeIndex : i < activeIndex;
-          const isActive = !isFinished && i === activeIndex;
-          return (
-            <div key={step.id} className="flex items-start">
-              <div className="flex flex-col items-center w-[78px]">
-                <div
-                  className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border-2 transition-colors ${isFinished || isDone ? "bg-[#10b981] border-[#10b981]" : isActive ? "bg-[rgba(212,165,116,0.15)] border-[#d4a574]" : "bg-[#2e2925] border-[rgba(237,232,224,0.12)]"}`}
-                >
-                  {isFinished || isDone ? (
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#fff"
-                      strokeWidth="3"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-[#d4a574]" : "bg-[#39342f]"}`}
-                    />
-                  )}
-                </div>
-                <p
-                  className={`font-mono text-[9px] mt-1 text-center leading-tight ${isActive ? "text-[#d4a574] font-medium" : isFinished || isDone ? "text-[#10b981]" : "text-[#50453b]"}`}
-                >
-                  {step.label}
-                </p>
-              </div>
-              {i < steps.length - 1 && (
-                <div
-                  className={`h-0.5 w-[18px] mt-2.5 shrink-0 ${isFinished || i < activeIndex ? "bg-[#10b981]" : "bg-[#2e2925]"}`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <OrderLifecycleStepper
+      steps={FLOW_STEPS_DEFINITION[order.flowType] || []}
+      status={order.status}
+      isFinished={isFinished}
+      variant="compact"
+      className="mt-4 pb-1"
+    />
   );
 }
 
 function OrderCard({
   order,
-  compact = false,
   onEditClick,
 }: {
   order: Order;
