@@ -235,7 +235,7 @@ export default function UserOrdersPage() {
         </button>
       </div>
 
-      {/* 條件式列表渲染 */}
+      {/* 列表 */}
       <div className="space-y-4">
         {activeTab === "active" ? (
           activeOrders.length === 0 ? (
@@ -262,7 +262,7 @@ export default function UserOrdersPage() {
         )}
       </div>
 
-      {/* ── 奢華雙欄訂單修改控制中心 (Modal) ── */}
+      {/* 修改訂單 Modal */}
       {showEditModal && editingOrder && (
         <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="w-full max-w-[640px] bg-[#26211C] border border-[rgba(237,232,224,0.12)] rounded-2xl p-6 shadow-[0_24px_48px_rgba(0,0,0,0.8)] space-y-5 overflow-y-auto max-h-[90vh] scrollbar-none">
@@ -372,16 +372,13 @@ export default function UserOrdersPage() {
                     >
                       更新手提電話
                     </label>
+                    {/* 🟢 核心修正：將錯置的 setPhone 徹底洗淨，精準套用 setEditPhone 狀態變更器，降伏 TS2552 報警！ */}
                     <input
                       id="edit-tel"
                       type="tel"
                       maxLength={8}
                       value={editPhone}
-                      onChange={(e) =>
-                        setPhone
-                          ? setEditPhone(e.target.value)
-                          : setEditPhone(e.target.value)
-                      }
+                      onChange={(e) => setEditPhone(e.target.value)}
                       placeholder="91234567"
                       className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-[#eae1da] focus:outline-none"
                     />
@@ -446,13 +443,7 @@ function DynamicCardStepper({ order }: { order: Order }) {
             <div key={step.id} className="flex items-start">
               <div className="flex flex-col items-center w-[78px]">
                 <div
-                  className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border-2 transition-colors ${
-                    isFinished || isDone
-                      ? "bg-[#10b981] border-[#10b981]"
-                      : isActive
-                        ? "bg-[rgba(212,165,116,0.15)] border-[#d4a574]"
-                        : "bg-[#2e2925] border-[rgba(237,232,224,0.12)]"
-                  }`}
+                  className={`w-5.5 h-5.5 rounded-full flex items-center justify-center border-2 transition-colors ${isFinished || isDone ? "bg-[#10b981] border-[#10b981]" : isActive ? "bg-[rgba(212,165,116,0.15)] border-[#d4a574]" : "bg-[#2e2925] border-[rgba(237,232,224,0.12)]"}`}
                 >
                   {isFinished || isDone ? (
                     <svg
@@ -534,20 +525,12 @@ function OrderCard({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <span
-                    className={`flex items-center gap-0.5 font-sans text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide border ${
-                      isBuy
-                        ? "bg-[#10b981]/20 text-[#10b981] border-[#10b981]/30"
-                        : "bg-[#ef4444]/20 text-[#ef4444] border-[#ef4444]/30"
-                    }`}
+                    className={`flex items-center gap-0.5 font-sans text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide border ${isBuy ? "bg-[#10b981]/20 text-[#10b981] border-[#10b981]/30" : "bg-[#ef4444]/20 text-[#ef4444] border-[#ef4444]/30"}`}
                   >
                     {isBuy ? "📥 買" : "📤 賣"}
                   </span>
                   <span
-                    className={`font-mono text-[8.5px] px-2 py-0.5 rounded border uppercase font-semibold tracking-wide ${
-                      order.tradeType === "b2c"
-                        ? "bg-brand/10 text-brand border-brand/20"
-                        : "bg-[#50453b]/30 text-[#d4c4b7] border-[rgba(237,232,224,0.1)]"
-                    }`}
+                    className={`font-mono text-[8.5px] px-2 py-0.5 rounded border uppercase font-semibold tracking-wide ${order.tradeType === "b2c" ? "bg-brand/10 text-brand border-brand/20" : "bg-[#50453b]/30 text-[#d4c4b7] border-[rgba(237,232,224,0.1)]"}`}
                   >
                     {order.tradeType === "b2c" ? "認證商戶" : "C2C散戶"}
                   </span>
@@ -582,11 +565,8 @@ function OrderCard({
         )}
       </Link>
 
-      {/* ── 🟢 深度細調：根據 Border 色系與雙向亮度對齊嘅次世代按鈕 ── */}
-      {/* 修正點 2：[歷史交易已完成] 狀態下，成條底部 Border 按鈕列直接徹底拔除，維持極簡與乾淨 */}
       {!isFinished && (
         <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[rgba(237,232,224,0.06)] gap-4">
-          {/* ⚙️ 修改商品 (白光/灰系次要 Action) ➔ Hover 對齊 border-white色系，亮度平穩上升 */}
           <button
             type="button"
             onClick={onEditClick}
@@ -594,8 +574,6 @@ function OrderCard({
           >
             ⚙️ 修改訂單
           </button>
-
-          {/* 💬 聯絡對方 (金光/主要 Action) ➔ Hover 對齊 border-brand金棕色，亮度與白光同步微幅加溫 */}
           <button
             type="button"
             onClick={handleContactSeller}
