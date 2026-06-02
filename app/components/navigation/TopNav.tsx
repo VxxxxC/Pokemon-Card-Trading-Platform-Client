@@ -86,7 +86,7 @@ export function TopNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 網頁端廣播接收器同步升級（支援現場動態 Create 房間）
+  // 網頁端廣播接收器同步升級
   useEffect(() => {
     const handleGlobalOpenChat = (e: Event) => {
       const customEvent = e as CustomEvent<{
@@ -151,7 +151,15 @@ export function TopNav() {
           {/* 導航 */}
           <nav className="flex items-center gap-1 ml-8">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href;
+              {
+                /* 🟢 核心修復：防止子路由斷層，引入智能路徑前綴模糊匹配 */
+              }
+              const isActive =
+                link.href === "/"
+                  ? pathname === "/"
+                  : pathname === link.href ||
+                    pathname.startsWith(link.href + "/");
+
               return (
                 <Link
                   key={link.href}
@@ -272,8 +280,7 @@ export function TopNav() {
             </Link>
           </div>
         </div>
-
-        {/* 🔮 鋼鐵核心：Web View 右下角全域懸浮對話站 (Bloomberg Terminal Style Floating Console) */}
+        {/* 全域懸浮對話站 */}
         <AnimatePresence>
           {isConsoleOpen && (
             <GlobalChatConsole
@@ -285,7 +292,7 @@ export function TopNav() {
               setActiveRoomId={setActiveRoomId}
             />
           )}
-        </AnimatePresence>
+        </AnimatePresence>{" "}
       </header>
     </>
   );
