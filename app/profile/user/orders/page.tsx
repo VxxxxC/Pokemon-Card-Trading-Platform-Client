@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 export type TradeType = "c2c" | "b2c";
+export type OrderSide = "buy" | "sell";
 export type FlowType = "meetup" | "delivery" | "escrow_auth" | "escrow_no_auth";
 
 export interface Order {
@@ -11,20 +13,19 @@ export interface Order {
   cardName: string;
   cardNo: string;
   grade: string;
-  cardImage: string; // 🟢 新增：卡牌高清原圖 / 實物圖
+  cardImage: string;
   seller: string;
   sellerId: string;
   amount: number;
   tradeType: TradeType;
   flowType: FlowType;
+  side: OrderSide;
   status: string;
   statusLabel: string;
   createdAt: string;
   isHighValue: boolean;
 }
 
-// TODO: [server/api/database]
-// 後端對接提示：`card_image` 欄位未來直接儲存儲存在 bunny.net CDN 或 Supabase Storage 嘅圖片路徑。
 const INITIAL_ORDERS: Order[] = [
   // ── ⏳ 進行中交易數據 (Active Orders) ──
   {
@@ -32,12 +33,13 @@ const INITIAL_ORDERS: Order[] = [
     cardName: "Charizard ex SAR (噴火龍)",
     cardNo: "sv2a-182",
     grade: "PSA 10",
-    cardImage: "https://picsum.photos/seed/charizard/200/280", // 🟢 豐富商品圖
+    cardImage: "https://picsum.photos/seed/charizard/200/280",
     seller: "星光收藏家 (C2C 散戶)",
     sellerId: "ROOM-MOCK-C2C-01",
     amount: 2250,
     tradeType: "c2c",
     flowType: "meetup",
+    side: "buy",
     status: "reserved",
     statusLabel: "已預留 (等待面交)",
     createdAt: "2026年 5月27日",
@@ -54,6 +56,7 @@ const INITIAL_ORDERS: Order[] = [
     amount: 1900,
     tradeType: "c2c",
     flowType: "delivery",
+    side: "sell",
     status: "shipped",
     statusLabel: "賣家已發貨 (物流中)",
     createdAt: "2026年 5月26日",
@@ -70,6 +73,7 @@ const INITIAL_ORDERS: Order[] = [
     amount: 4200,
     tradeType: "b2c",
     flowType: "escrow_auth",
+    side: "buy",
     status: "grading",
     statusLabel: "官方鑑定中",
     createdAt: "2026年 5月25日",
@@ -86,6 +90,7 @@ const INITIAL_ORDERS: Order[] = [
     amount: 425,
     tradeType: "b2c",
     flowType: "escrow_no_auth",
+    side: "buy",
     status: "paid",
     statusLabel: "已付款 (等待商戶出貨)",
     createdAt: "2026年 5月24日",
@@ -104,6 +109,7 @@ const INITIAL_ORDERS: Order[] = [
     amount: 18500,
     tradeType: "c2c",
     flowType: "meetup",
+    side: "buy",
     status: "completed_meetup",
     statusLabel: "交易完結 (當面已交收)",
     createdAt: "2026年 5月10日",
@@ -120,42 +126,11 @@ const INITIAL_ORDERS: Order[] = [
     amount: 3400,
     tradeType: "c2c",
     flowType: "delivery",
+    side: "sell",
     status: "received",
     statusLabel: "交易完結 (自提點已簽收)",
     createdAt: "2026年 5月08日",
     isHighValue: true,
-  },
-  {
-    id: "ORD-B2C-DONE-103",
-    cardName: "Rayquaza VMAX (烈空坐) SA 083/067",
-    cardNo: "s7R-083",
-    grade: "PSA 10",
-    cardImage: "https://picsum.photos/seed/rayquaza/200/280",
-    seller: "木戶卡牌旗艦店 (認證商戶)",
-    sellerId: "ROOM-MOCK-B2C-97",
-    amount: 4800,
-    tradeType: "b2c",
-    flowType: "escrow_auth",
-    status: "received",
-    statusLabel: "交易完結 (官方鑑定合格)",
-    createdAt: "2026年 5月05日",
-    isHighValue: true,
-  },
-  {
-    id: "ORD-B2C-DONE-104",
-    cardName: "Eevee (伊布) AR 210/165",
-    cardNo: "sv2a-210",
-    grade: "PSA 9",
-    cardImage: "https://picsum.photos/seed/eevee/200/280",
-    seller: "秋葉原海外直送店 (認證商戶)",
-    sellerId: "ROOM-MOCK-B2C-96",
-    amount: 180,
-    tradeType: "b2c",
-    flowType: "escrow_no_auth",
-    status: "received",
-    statusLabel: "交易完結 (商戶直發簽收)",
-    createdAt: "2026年 5月01日",
-    isHighValue: false,
   },
 ];
 
@@ -188,15 +163,16 @@ const FLOW_STEPS_DEFINITION: Record<FlowType, { id: string; label: string }[]> =
 
 export default function UserOrdersPage() {
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [activeTab, setActiveTab] = useState<
-    "active" | "checkout" | "completed"
-  >("active");
+  const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
 
-  const [phone, setPhone] = useState("");
-  const [phoneError, setPhoneError] = useState("");
-  const [lockerCode, setLockerCode] = useState("852-smart-locker");
-  const [lockerAddress, setLockerAddress] = useState("");
-  const [isCheckoutSubmitting, setIsCheckoutSubmitting] = useState(false);
+  // 訂單修改視窗專用 Form State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [editMethod, setEditMethod] = useState<FlowType>("meetup");
+  const [editLocation, setEditLocation] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
 
   const activeOrders = orders.filter(
     (o) => o.status !== "completed_meetup" && o.status !== "received",
@@ -205,51 +181,39 @@ export default function UserOrdersPage() {
     (o) => o.status === "completed_meetup" || o.status === "received",
   );
 
-  const subtotal = 1480;
-  const shippingFee = 30;
-  const subsidyAmount = 30;
-  const totalDue = subtotal + shippingFee - subsidyAmount;
-
-  const handlePhoneChange = (val: string) => {
-    setPhone(val);
-    if (val && !/^[4-9]\d{7}$/.test(val)) {
-      setPhoneError("❌ 請輸入有效的香港 8 位數手提電話號碼（例：91234567）");
-    } else {
-      setPhoneError("");
-    }
+  const handleOpenEditModal = (order: Order) => {
+    setEditingOrder(order);
+    setEditPrice(order.amount.toString());
+    setEditMethod(order.flowType);
+    setEditLocation("");
+    setEditPhone("");
+    setEditAddress("");
+    setShowEditModal(true);
   };
 
-  const handleConfirmCheckout = (e: React.FormEvent) => {
+  const handleSaveOrderEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (phoneError || !phone || !lockerAddress) return;
-    setIsCheckoutSubmitting(true);
-    setTimeout(() => {
-      const newOrder: Order = {
-        id: `ORD-C2C-DELIVERY-${Math.floor(100 + Math.random() * 900)}`,
-        cardName: "Mimikyu ex SAR (謎擬Q)",
-        cardNo: "sv2a-233",
-        grade: "PSA 9",
-        cardImage: "https://picsum.photos/seed/mimikyu/200/280",
-        seller: "名古屋交易商 (C2C)",
-        sellerId: "ROOM-MOCK-C2C-03",
-        amount: 1480,
-        tradeType: "c2c",
-        flowType: "delivery",
-        status: "payment",
-        statusLabel: "已預留 (等待付款鎖定)",
-        createdAt: "2026年 5月28日",
-        isHighValue: true,
-      };
-      setOrders((prev) => [newOrder, ...prev]);
-      setIsCheckoutSubmitting(false);
-      setActiveTab("active");
-      alert("⚡ 結帳資料已保存！交易定金託管中。");
-    }, 1200);
+    if (!editingOrder || !editPrice) return;
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === editingOrder.id
+          ? {
+              ...o,
+              amount: Number(editPrice),
+              flowType: editMethod,
+            }
+          : o,
+      ),
+    );
+
+    setShowEditModal(false);
+    alert(`💾 訂單流水 #${editingOrder.id} 交易詳情已成功變更修復！`);
   };
 
   return (
     <div className="space-y-6 p-4 lg:p-8 bg-[#17130f] min-h-screen text-[#eae1da]">
-      {/* Tab 切換導航 */}
+      {/* 雙 Tab 導航欄 */}
       <div className="flex border-b border-[rgba(237,232,224,0.08)]">
         <button
           onClick={() => setActiveTab("active")}
@@ -257,15 +221,6 @@ export default function UserOrdersPage() {
         >
           進行中訂單 ({activeOrders.length})
           {activeTab === "active" && (
-            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#d4a574]" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("checkout")}
-          className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${activeTab === "checkout" ? "text-[#d4a574]" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
-        >
-          📝 結帳明細確認
-          {activeTab === "checkout" && (
             <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#d4a574]" />
           )}
         </button>
@@ -280,138 +235,203 @@ export default function UserOrdersPage() {
         </button>
       </div>
 
-      {activeTab === "active" && (
-        <div className="space-y-4">
-          {activeOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
-      )}
+      {/* 條件式列表渲染 */}
+      <div className="space-y-4">
+        {activeTab === "active" ? (
+          activeOrders.length === 0 ? (
+            <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
+              目前沒有進行中的交易單
+            </div>
+          ) : (
+            activeOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onEditClick={() => handleOpenEditModal(order)}
+              />
+            ))
+          )
+        ) : completedOrders.length === 0 ? (
+          <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
+            目前沒有已完成的交易紀錄
+          </div>
+        ) : (
+          completedOrders.map((order) => (
+            <OrderCard key={order.id} order={order} compact />
+          ))
+        )}
+      </div>
 
-      {activeTab === "checkout" && (
-        <div className="lg:grid lg:grid-cols-12 lg:gap-6 items-start animate-fadeIn">
-          <form
-            onSubmit={handleConfirmCheckout}
-            className="lg:col-span-7 space-y-4"
-          >
-            <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-xl p-5 space-y-4">
-              <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] border-b border-[rgba(237,232,224,0.06)] pb-2">
-                香港本地物流收貨人資料
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* ── 奢華雙欄訂單修改控制中心 (Modal) ── */}
+      {showEditModal && editingOrder && (
+        <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-[640px] bg-[#26211C] border border-[rgba(237,232,224,0.12)] rounded-2xl p-6 shadow-[0_24px_48px_rgba(0,0,0,0.8)] space-y-5 overflow-y-auto max-h-[90vh] scrollbar-none">
+            <div className="border-b border-[rgba(237,232,224,0.06)] pb-3 flex justify-between items-center">
+              <div>
+                <h3 className="font-sans font-black text-[16px] md:text-[18px] text-[#eae1da]">
+                  ⚙️ 修改實時訂單交易細節
+                </h3>
+                <p className="font-mono text-[9px] text-brand uppercase tracking-widest mt-0.5">
+                  ORDER LIFECYCLE RECONFIG TERMINAL
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="w-9 h-9 rounded-full bg-[#17130f] hover:bg-[#39342f] text-text-disabled hover:text-brand flex items-center justify-center font-mono text-[18px] font-bold active:scale-90 transition-all shadow-inner border border-white/5"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex gap-3 items-center p-3 bg-[#17130f] rounded-xl border border-white/5">
+              <div className="relative w-10 h-14 rounded-lg overflow-hidden shrink-0 border border-white/10">
+                <Image
+                  src={editingOrder.cardImage}
+                  alt={editingOrder.cardName}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="font-mono text-[9px] text-[#50453b]">
+                  流水號: #{editingOrder.id}
+                </span>
+                <h4 className="font-sans font-bold text-[13px] text-[#eae1da] truncate mt-0.5">
+                  {editingOrder.cardName}
+                </h4>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveOrderEdit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label
-                    htmlFor="checkout-phone"
-                    className="font-mono text-[11px] text-[#d4c4b7] uppercase block mb-1.5"
+                    htmlFor="edit-price"
+                    className="font-mono text-[11px] text-[#d4c4b7] block mb-1.5 uppercase tracking-wide"
                   >
-                    香港手提電話號碼
+                    修改成交價格 (HK$)
                   </label>
-                  <input
-                    id="checkout-phone"
-                    type="tel"
-                    required
-                    maxLength={8}
-                    value={phone}
-                    onChange={(e) => handlePhoneChange(e.target.value)}
-                    placeholder="91234567"
-                    className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[14px] text-[#eae1da] focus:outline-none focus:border-[#d4a574]/40"
-                  />
-                  {phoneError && (
-                    <p className="font-sans text-[10px] text-[#ef4444] mt-1.5 leading-relaxed">
-                      {phoneError}
-                    </p>
-                  )}
+                  <div className="flex items-center h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden focus-within:border-brand/40 transition-colors">
+                    <span className="px-3 font-mono text-[13px] font-bold text-brand bg-[#26211C] border-r border-white/5">
+                      HK$
+                    </span>
+                    <input
+                      id="edit-price"
+                      type="number"
+                      required
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      className="flex-1 h-full bg-transparent px-4 font-mono text-[14px] text-brand focus:outline-none"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label
-                    htmlFor="checkout-locker"
-                    className="font-mono text-[11px] text-[#d4c4b7] uppercase block mb-1.5"
+                    htmlFor="edit-flow"
+                    className="font-mono text-[11px] text-[#d4c4b7] block mb-1.5 uppercase tracking-wide"
                   >
-                    順豐智能櫃網點
+                    調整交收模式流向
                   </label>
                   <select
-                    id="checkout-locker"
-                    value={lockerCode}
-                    onChange={(e) => setLockerCode(e.target.value)}
-                    className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-[#eae1da] focus:outline-none"
+                    id="edit-flow"
+                    value={editMethod}
+                    onChange={(e) => setEditMethod(e.target.value as FlowType)}
+                    className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-sans text-[13px] text-[#eae1da] focus:outline-none"
                   >
-                    <option value="852-smart-locker">
-                      852-smart-locker (智能櫃)
-                    </option>
-                    <option value="SF-station">SF-station (順豐站)</option>
-                    <option value="HK-pickup">HK-pickup (自提點)</option>
+                    <option value="meetup">🤝 [見面交易] 本地當面交收</option>
+                    <option value="delivery">📦 [送貨物流] 私人快遞直送</option>
                   </select>
                 </div>
               </div>
-              <div>
-                <label
-                  htmlFor="checkout-address"
-                  className="font-mono text-[11px] text-[#d4c4b7] uppercase block mb-1.5"
-                >
-                  自提點詳細地址
-                </label>
-                <input
-                  id="checkout-address"
-                  type="text"
-                  required
-                  value={lockerAddress}
-                  onChange={(e) => setLockerAddress(e.target.value)}
-                  className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-sans text-[13px] text-[#eae1da] focus:outline-none"
-                />
-              </div>
-            </section>
-            <button
-              type="submit"
-              className="w-full h-12 bg-[#d4a574] text-[#1A1612] font-sans font-bold text-[14px] rounded-xl flex items-center justify-center"
-            >
-              ⚡ 確認物流配送資料並鎖定訂單
-            </button>
-          </form>
-          <section className="lg:col-span-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-xl p-5 space-y-4">
-            <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] border-b border-[rgba(237,232,224,0.06)] pb-2">
-              應付結帳明細
-            </h3>
-            <div className="font-mono text-[12px] space-y-2.5">
-              <div className="flex justify-between items-center text-[#d4c4b7]">
-                <span>商品小計 (Subtotal)</span>
-                <span>HK$ {subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-[#d4c4b7]">
-                <span>順豐速遞運費 (Shipping)</span>
-                <span>HK$ {shippingFee.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center text-[#ef4444]">
-                <span>平台優惠券補貼 (Subsidy)</span>
-                <span>-HK$ {subsidyAmount.toLocaleString()}</span>
-              </div>
-              <div className="border-t border-[rgba(237,232,224,0.08)] pt-2.5 flex justify-between items-center text-[#eae1da] font-bold text-[14px]">
-                <span>本次實時應付總額</span>
-                <span className="text-[#d4a574]">
-                  HK$ {totalDue.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
 
-      {activeTab === "completed" && (
-        <div className="space-y-4">
-          {completedOrders.map((order) => (
-            <OrderCard key={order.id} order={order} compact />
-          ))}
+              {editMethod === "meetup" ? (
+                <div className="animate-fadeIn">
+                  <label
+                    htmlFor="edit-loc"
+                    className="font-mono text-[11px] text-[#d4c4b7] block mb-1.5 uppercase tracking-wide"
+                  >
+                    變更約定面交地點/時間
+                  </label>
+                  <input
+                    id="edit-loc"
+                    type="text"
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    placeholder="例：改為星期六 15:00 旺角站 B 出口"
+                    className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-[#eae1da] focus:outline-none"
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                  <div>
+                    <label
+                      htmlFor="edit-tel"
+                      className="font-mono text-[11px] text-[#d4c4b7] block mb-1.5 uppercase tracking-wide"
+                    >
+                      更新手提電話
+                    </label>
+                    <input
+                      id="edit-tel"
+                      type="tel"
+                      maxLength={8}
+                      value={editPhone}
+                      onChange={(e) =>
+                        setPhone
+                          ? setEditPhone(e.target.value)
+                          : setEditPhone(e.target.value)
+                      }
+                      placeholder="91234567"
+                      className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-[#eae1da] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="edit-addr"
+                      className="font-mono text-[11px] text-[#d4c4b7] block mb-1.5 uppercase tracking-wide"
+                    >
+                      更新自提點詳細地址
+                    </label>
+                    <input
+                      id="edit-addr"
+                      type="text"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder="例：智能櫃代碼與商場名"
+                      className="w-full h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-[#eae1da] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 h-11 font-sans text-[13px] font-medium text-text-secondary border border-white/10 rounded-xl hover:bg-[#39342f] active:scale-95 transition-transform"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 h-11 bg-brand text-[#1A1612] font-sans font-bold text-[13px] rounded-xl hover:bg-brand-hover active:scale-95 transition-transform shadow-md"
+                >
+                  💾 儲存修改
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// 🟢 智能外顯步進器：完美支援進行中狀態，或完結歷史路徑（全亮綠燈）
 function DynamicCardStepper({ order }: { order: Order }) {
   const steps = FLOW_STEPS_DEFINITION[order.flowType] || [];
   const isFinished =
     order.status === "completed_meetup" || order.status === "received";
-  // 如果已完成交易，activeIndex 設為最後一個 node 的 index，令前方全部亮綠燈！
   const activeIndex = isFinished
     ? steps.length - 1
     : steps.findIndex((s) => s.id === order.status);
@@ -473,9 +493,11 @@ function DynamicCardStepper({ order }: { order: Order }) {
 function OrderCard({
   order,
   compact = false,
+  onEditClick,
 }: {
   order: Order;
   compact?: boolean;
+  onEditClick?: () => void;
 }) {
   const handleContactSeller = () => {
     window.dispatchEvent(
@@ -487,6 +509,7 @@ function OrderCard({
 
   const isFinished =
     order.status === "completed_meetup" || order.status === "received";
+  const isBuy = order.side === "buy";
 
   return (
     <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 hover:border-[#d4a574]/30 transition-all group">
@@ -495,20 +518,30 @@ function OrderCard({
         className="block space-y-4 cursor-pointer"
       >
         <div className="flex gap-4 items-start">
-          {/* 🟢 左側：高清晰度實物防潮箱存證圖片 */}
           <div className="relative w-16 h-22 rounded-xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-md">
-            <img
+            <Image
               src={order.cardImage}
               alt={order.cardName}
-              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+              fill
+              sizes="64px"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              unoptimized
             />
           </div>
 
-          {/* 右側：商品核心數據 */}
           <div className="min-w-0 flex-1">
             <div className="flex justify-between items-start flex-wrap gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span
+                    className={`flex items-center gap-0.5 font-sans text-[10px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wide border ${
+                      isBuy
+                        ? "bg-[#10b981]/20 text-[#10b981] border-[#10b981]/30"
+                        : "bg-[#ef4444]/20 text-[#ef4444] border-[#ef4444]/30"
+                    }`}
+                  >
+                    {isBuy ? "📥 買" : "📤 賣"}
+                  </span>
                   <span
                     className={`font-mono text-[8.5px] px-2 py-0.5 rounded border uppercase font-semibold tracking-wide ${
                       order.tradeType === "b2c"
@@ -522,12 +555,12 @@ function OrderCard({
                     #{order.id}
                   </span>
                 </div>
-                <p className="font-sans text-[14.5px] font-bold text-[#eae1da] group-hover:text-[#d4a574] transition-colors mt-2 truncate">
+                <h3 className="font-sans text-[14.5px] font-bold text-[#eae1da] group-hover:text-[#d4a574] transition-colors mt-2 truncate">
                   {order.cardName}
-                </p>
+                </h3>
                 <p className="font-mono text-[11px] text-[#d4c4b7] mt-0.5 truncate">
-                  編號: {order.cardNo} · 等級: {order.grade} · 賣方:{" "}
-                  {order.seller}
+                  編號: {order.cardNo} · 等級: {order.grade} ·{" "}
+                  {isBuy ? "賣方:" : "買方:"} {order.seller}
                 </p>
               </div>
               <div className="text-right shrink-0">
@@ -544,28 +577,34 @@ function OrderCard({
           </div>
         </div>
 
-        {/* 🟢 修正：無論是進行中，還是歷史完結單，一律強制外顯歷史生命週期進度條線！ */}
         {(order.isHighValue || isFinished) && (
           <DynamicCardStepper order={order} />
         )}
       </Link>
 
-      <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[rgba(237,232,224,0.06)]">
-        <Link
-          href={`/profile/user/orders/${order.id}`}
-          className="font-mono text-[11px] text-[#d4c4b7] hover:text-[#d4a574] transition-colors"
-        >
-          🔍 查看詳細交易生命週期存證
-        </Link>
-        {!isFinished && (
+      {/* ── 🟢 深度細調：根據 Border 色系與雙向亮度對齊嘅次世代按鈕 ── */}
+      {/* 修正點 2：[歷史交易已完成] 狀態下，成條底部 Border 按鈕列直接徹底拔除，維持極簡與乾淨 */}
+      {!isFinished && (
+        <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-[rgba(237,232,224,0.06)] gap-4">
+          {/* ⚙️ 修改商品 (白光/灰系次要 Action) ➔ Hover 對齊 border-white色系，亮度平穩上升 */}
           <button
-            onClick={handleContactSeller}
-            className="font-mono text-[11px] text-[#d4a574] hover:text-[#e8b896] transition-colors bg-transparent border-none p-0 cursor-pointer"
+            type="button"
+            onClick={onEditClick}
+            className="flex-1 h-9 px-4 bg-[#26211C] border border-white/10 text-text-secondary font-mono font-bold text-[12px] rounded-xl transition-all hover:bg-white/5 hover:border-white/20 hover:text-text-primary active:scale-95 flex items-center justify-center gap-1"
           >
-            💬 聯絡賣家進行加密安全對話
+            ⚙️ 修改訂單
           </button>
-        )}
-      </div>
+
+          {/* 💬 聯絡對方 (金光/主要 Action) ➔ Hover 對齊 border-brand金棕色，亮度與白光同步微幅加溫 */}
+          <button
+            type="button"
+            onClick={handleContactSeller}
+            className="flex-1 h-9 px-4 bg-[#26211C] border border-brand/30 text-brand/80 font-mono font-bold text-[12px] rounded-xl transition-all hover:bg-brand/10 hover:border-brand hover:text-brand active:scale-95 flex items-center justify-center gap-1"
+          >
+            💬 聯絡對方
+          </button>
+        </div>
+      )}
     </div>
   );
 }

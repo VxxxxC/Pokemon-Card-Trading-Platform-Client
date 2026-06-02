@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image"; // 🟢 Next.js 官方圖像優化組件
 
 interface LocalOrder {
   id: string;
@@ -10,7 +11,7 @@ interface LocalOrder {
   cardNo: string;
   grade: string;
   cardImage: string;
-  seller: string;
+  seller: string; // 當 side 為 "sell" 時，此處語意代表交易對手（買家）
   sellerId: string;
   amount: number;
   depositAmount: number;
@@ -19,6 +20,7 @@ interface LocalOrder {
   status: string;
   statusLabel: string;
   createdAt: string;
+  side: "buy" | "sell"; // 🟢 修正：與列表頁 100% 對齊的買賣方向
   certNo?: string;
   centeringGrade?: string;
   cornersGrade?: string;
@@ -28,7 +30,6 @@ interface LocalOrder {
 }
 
 // TODO: [server/api/database]
-// 後端對接提示：未來 `orders` 資料表需完整對齊流向分類。只有 `escrow_auth` 會寫入 Stripe charge_id，其餘紀錄線下轉賬憑證。
 const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
   // ⏳ 進行中
   "ORD-C2C-MEETUP-001": {
@@ -40,12 +41,13 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     seller: "星光收藏家 (C2C 散戶)",
     sellerId: "ROOM-MOCK-C2C-01",
     amount: 2250,
-    depositAmount: 0, // 🟢 修正：面交無需預付 Stripe 訂金
+    depositAmount: 0,
     tradeType: "c2c",
     flowType: "meetup",
     status: "reserved",
     statusLabel: "已預留 (等待雙方約定時間面交)",
     createdAt: "2026年 5月27日",
+    side: "buy", // 🟢 買入方向
   },
   "ORD-C2C-DELIVERY-002": {
     id: "ORD-C2C-DELIVERY-002",
@@ -53,15 +55,16 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     cardNo: "sv6a-109",
     grade: "Raw 完美裸卡",
     cardImage: "https://picsum.photos/seed/umbreon/400/560",
-    seller: "港島執雞王 (C2C 散戶)",
+    seller: "信和執雞王 (買家散戶)",
     sellerId: "ROOM-MOCK-C2C-02",
     amount: 1900,
     depositAmount: 0,
     tradeType: "c2c",
     flowType: "delivery",
     status: "shipped",
-    statusLabel: "賣家已寄出順豐速遞 (實時物流流轉中)",
+    statusLabel: "您已寄出順豐速遞 (實時物流流轉中)",
     createdAt: "2026年 5月26日",
+    side: "sell", // 🟢 賣出方向
   },
   "ORD-B2C-AUTH-003": {
     id: "ORD-B2C-AUTH-003",
@@ -72,12 +75,13 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     seller: "渡邊道館 (官方認證金牌商戶)",
     sellerId: "PKT-8839-44A",
     amount: 4200,
-    depositAmount: 420, // 🟢 只有這個是「官方 Stripe Escrow 鑑定流」，託管 10% 訂金
+    depositAmount: 420,
     tradeType: "b2c",
     flowType: "escrow_auth",
     status: "grading",
     statusLabel: "中介鑑定中心微觀光學鑑定中",
     createdAt: "2026年 5月25日",
+    side: "buy",
   },
   "ORD-B2C-NOAUTH-004": {
     id: "ORD-B2C-NOAUTH-004",
@@ -94,6 +98,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "paid",
     statusLabel: "買家全額已付款 (等待商戶直送出貨)",
     createdAt: "2026年 5月24日",
+    side: "buy",
   },
 
   // 🏅 歷史已完成交易
@@ -112,6 +117,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "completed_meetup",
     statusLabel: "交易完結 (買賣雙方已當面完成資產核對交收)",
     createdAt: "2026年 5月10日",
+    side: "buy",
     securityHash: "HASH-SHA256-PKT-C2C-9981237",
   },
   "ORD-C2C-DONE-102": {
@@ -120,7 +126,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     cardNo: "sGG-020",
     grade: "PSA 10 完美閃卡",
     cardImage: "https://picsum.photos/seed/gengar/400/560",
-    seller: "九龍灣阿木 (C2C 散戶)",
+    seller: "元朗李生 (買家散戶)",
     sellerId: "ROOM-MOCK-C2C-98",
     amount: 3400,
     depositAmount: 0,
@@ -129,6 +135,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "received",
     statusLabel: "交易完結 (順豐自提點智能櫃買家已簽收)",
     createdAt: "2026年 5月08日",
+    side: "sell",
     securityHash: "HASH-SHA256-PKT-C2C-8874109",
   },
   "ORD-B2C-DONE-103": {
@@ -146,29 +153,13 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "received",
     statusLabel: "交易完結 (平台實物鑑定 100% 合格，買家已提貨)",
     createdAt: "2026年 5月05日",
+    side: "buy",
     certNo: "PSA-CERT-9982410",
     centeringGrade: "10 / 10",
     cornersGrade: "9.5 / 10",
     edgesGrade: "10 / 10",
     surfaceGrade: "10 / 10",
     securityHash: "HASH-SHA256-ESCROW-AUTH-20260505",
-  },
-  "ORD-B2C-DONE-104": {
-    id: "ORD-B2C-DONE-104",
-    cardName: "Eevee (七彩伊布九大家族) AR 210/165",
-    cardNo: "sv2a-210",
-    grade: "PSA 9 精選美品",
-    cardImage: "https://picsum.photos/seed/eevee/400/560",
-    seller: "秋葉原海外直送店 (日本認證商戶)",
-    sellerId: "ROOM-MOCK-B2C-96",
-    amount: 180,
-    depositAmount: 0,
-    tradeType: "b2c",
-    flowType: "escrow_no_auth",
-    status: "received",
-    statusLabel: "交易完結 (日本直發免鑑定快遞買家已簽收)",
-    createdAt: "2026年 5月01日",
-    securityHash: "HASH-SHA256-B2C-DIRECT-110294",
   },
 };
 
@@ -210,7 +201,6 @@ function GrandEscrowStepper({
     ? steps.length - 1
     : steps.findIndex((s) => s.id === order.status);
 
-  // 🟢 修正點 1：依據流向，徹底清洗進行中訂單進度條嘅標題
   let stepperTitle = "🔒 第三方 Escrow 交易資金託管實時進度 (Stripe 擔保)";
   if (order.flowType === "meetup")
     stepperTitle = "🤝 C2C 散戶當面交收與驗卡進度 (本土線下流)";
@@ -224,7 +214,7 @@ function GrandEscrowStepper({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 border-b border-[rgba(237,232,224,0.06)] pb-4">
         <div>
           <h3 className="font-sans font-black text-[15px] md:text-[17px] text-text-primary tracking-tight">
-            {isFinished ? "🏅 歷史交易安全軌跡回溯存證" : stepperTitle}
+            {isFinished ? "🏅 歷史交易安全軌跡回溯存証" : stepperTitle}
           </h3>
           <p className="font-mono text-[10px] text-brand uppercase tracking-widest mt-1">
             Flow Type: {order.flowType.toUpperCase()} SECURE TRAIL
@@ -296,6 +286,8 @@ function GrandEscrowStepper({
 }
 
 function ActiveOrderDetail({ order }: { order: LocalOrder }) {
+  const isBuy = order.side === "buy";
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
@@ -325,15 +317,18 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start shadow-md">
             <div className="relative w-44 h-60 md:w-56 md:h-76 rounded-2xl overflow-hidden bg-[#17130f] border-2 border-[rgba(237,232,224,0.12)] shrink-0 shadow-[0_8px_24px_rgba(0,0,0,0.5)] group">
-              <img
+              <Image
                 src={order.cardImage}
                 alt={order.cardName}
-                className="object-cover w-full h-full transform hover:scale-102 transition-transform duration-300"
+                fill
+                sizes="(max-w-768px) 176px, 224px"
+                className="object-cover transform hover:scale-102 transition-transform duration-300"
+                unoptimized
               />
             </div>
 
             <div className="flex-1 space-y-4 w-full">
-              <div>
+              <div className="flex items-center gap-2 flex-wrap">
                 <span
                   className={`font-mono text-[10px] px-2.5 py-0.5 rounded border font-bold uppercase tracking-wider ${
                     order.tradeType === "b2c"
@@ -343,7 +338,21 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                 >
                   {order.tradeType === "b2c" ? "認證商戶交易" : "C2C 散戶交易"}
                 </span>
-                <h2 className="font-sans font-black text-[20px] md:text-[26px] text-[#eae1da] mt-3 leading-tight tracking-tight">
+
+                {/* 🟢 修正：刪除舊 orderType 與顏色，精準對齊「綠色背景為買、紅色背景為賣」的高亮發光徽章 */}
+                <span
+                  className={`flex items-center gap-1 font-sans text-[10px] px-2.5 py-0.5 rounded border font-extrabold tracking-wide uppercase ${
+                    isBuy
+                      ? "bg-success/20 text-success border-success/30"
+                      : "bg-error/20 text-error border-error/30"
+                  }`}
+                >
+                  {isBuy ? "📥 買" : "📤 賣"}
+                </span>
+              </div>
+
+              <div>
+                <h2 className="font-sans font-black text-[20px] md:text-[26px] text-[#eae1da] mt-2 leading-tight tracking-tight">
                   {order.cardName}
                 </h2>
                 <p className="font-mono text-[13px] text-text-secondary mt-1.5">
@@ -364,7 +373,8 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                   </span>
                 </div>
                 <div className="flex justify-between md:justify-start md:gap-8">
-                  <span>🏪 交易對手:</span>
+                  {/* 🟢 依據買賣方向動態轉化交易對手文案 */}
+                  <span>{isBuy ? "🏪 賣家對手:" : "👤 買家對手:"}</span>
                   <span className="text-text-primary font-medium">
                     {order.seller}
                   </span>
@@ -377,9 +387,7 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                 </div>
               </div>
 
-              {/* 🟢 修正點 2：全線徹底清洗金流渠道文案，拒絕 Stripe 污染普通本地收付 */}
               {order.flowType === "escrow_auth" ? (
-                /* 只有做鑑定才行 Stripe Connect 託管 10-20% 定金 */
                 <div className="p-3.5 bg-[#17130f] rounded-xl border border-brand/10 flex justify-between items-center font-mono text-[13px] animate-fadeIn">
                   <span className="text-[#10b981] flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse" />
@@ -390,7 +398,6 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                   </span>
                 </div>
               ) : order.flowType === "meetup" ? (
-                /* 面交流向：純線下交收，不牽涉 Stripe */
                 <div className="p-3.5 bg-[#17130f] rounded-xl border border-[rgba(237,232,224,0.06)] flex justify-between items-center font-mono text-[13px] animate-fadeIn">
                   <span className="text-[#d4c4b7] flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#50453b]" />
@@ -401,7 +408,6 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                   </span>
                 </div>
               ) : (
-                /* 直發快遞流（C2C 順豐直送 或 B2C 商戶直發）：使用一般 PayMe/FPS/支付寶 進行 100% 線上支付 */
                 <div className="p-3.5 bg-[#17130f] rounded-xl border border-[rgba(237,232,224,0.06)] flex justify-between items-center font-mono text-[13px] animate-fadeIn">
                   <span className="text-[#10b981] flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-[#10b981]" />
@@ -422,27 +428,22 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
               💡 當前流向官方行動指南
             </h3>
 
-            {/* 🟢 修正點 3：行動指南同步精細化，注入 PayMe/FPS 等貼地付款提醒 */}
             <div className="text-[13.5px] text-text-secondary leading-relaxed font-sans space-y-3">
               {order.flowType === "meetup" && (
                 <p>
-                  🤝
-                  散戶當面面交流向：目前此卡已為您成功預留。請利用上方對講機約定香港市區面交。當場肉眼核對卡相無誤後，請使用{" "}
-                  <span className="text-brand font-semibold">
-                    現金 / 轉數快 / PayMe
-                  </span>{" "}
-                  即時過數給賣家，並於平台點擊「確認完成收貨」結單。
+                  🤝 C2C
+                  散戶當面面交流向：目前此卡已成功預留。請利用上方對講機約定香港市區面交。
+                  {isBuy
+                    ? "當場肉眼核對卡相無誤後，請使用現金/轉數快/PayMe過數給賣家，並於平台點擊「確認完成收貨」結單。"
+                    : "當面交收與驗卡完畢、並收到買家過數後，請督促買家於平台點擊確認結單，或由客服協助結束。"}
                 </p>
               )}
               {order.flowType === "delivery" && (
                 <p>
-                  📦 散戶快遞直送流向：已透過{" "}
-                  <span className="text-brand font-semibold">
-                    FPS / PayMe / 轉數快
-                  </span>{" "}
-                  完成 100%
-                  線上全額付清。賣家已上傳順豐速遞單號，請於收到順豐網點 SMS
-                  提取碼後前往簽收提貨。
+                  📦 散戶快遞直送流向：
+                  {isBuy
+                    ? "已完成 100% 線上全額付清。賣家已上傳順豐速遞單號，請於收到順豐網點 SMS 提取碼後前往簽收提貨。"
+                    : "買家已完成全額電子過數備案。請您於 24 小時內前往順豐網點寄出，並於上方對講機或訂單管理上傳快遞單號。"}
                 </p>
               )}
               {order.flowType === "escrow_auth" && (
@@ -470,6 +471,8 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
 }
 
 function CompletedOrderDetail({ order }: { order: LocalOrder }) {
+  const isBuy = order.side === "buy";
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
@@ -489,24 +492,40 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 shadow-md">
           <div className="relative w-44 h-60 md:w-56 md:h-76 rounded-2xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-lg opacity-85">
-            <img
+            <Image
               src={order.cardImage}
               alt={order.cardName}
-              className="object-cover w-full h-full filter grayscale-[10%]"
+              fill
+              sizes="(max-w-768px) 176px, 224px"
+              className="object-cover filter grayscale-[10%]"
+              unoptimized
             />
           </div>
 
           <div className="flex-1 space-y-4 w-full">
-            <h3 className="font-sans font-black text-[16px] md:text-[18px] text-[#eae1da] border-b border-[rgba(237,232,224,0.06)] pb-3">
-              🧾 交易資產最終交收電子收據清冊
-            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-sans font-black text-[16px] md:text-[18px] text-[#eae1da]">
+                🧾 交易資產最終交收電子收據清冊
+              </h3>
+              {/* 🟢 修正：歷史完結單同步改用新高亮紅綠標籤 */}
+              <span
+                className={`flex items-center gap-0.5 font-sans text-[10px] px-2 py-0.5 rounded border font-extrabold tracking-wide uppercase ${
+                  isBuy
+                    ? "bg-success/20 text-success border-success/30"
+                    : "bg-error/20 text-error border-error/30"
+                }`}
+              >
+                {isBuy ? "📥 買" : "📤 賣"}
+              </span>
+            </div>
+
             <div className="space-y-1">
               <h4 className="font-sans font-extrabold text-[16px] text-[#eae1da]">
                 {order.cardName}
               </h4>
               <p className="font-mono text-[12px] text-text-secondary">
-                序號: {order.cardNo} · 等級: {order.grade} · 賣家:{" "}
-                {order.seller}
+                序號: {order.cardNo} · 等級: {order.grade} ·{" "}
+                {isBuy ? "賣家:" : "買家:"} {order.seller}
               </p>
             </div>
             <div className="border-t border-[rgba(237,232,224,0.06)] pt-4 font-mono text-[13.5px] space-y-3 text-text-secondary">
@@ -525,7 +544,7 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
                 <span>-HK$ 30</span>
               </div>
               <div className="border-t border-[rgba(237,232,224,0.08)] pt-4 flex justify-between items-center text-[#eae1da] font-black text-[16px] md:text-[22px]">
-                <span>最終實時結算總額 (Total)</span>
+                <span>{isBuy ? "最終扣款總額" : "最終實收總額"}</span>
                 <span className="text-brand font-mono text-[22px] md:text-[32px]">
                   HK$ {order.amount.toLocaleString()}
                 </span>
