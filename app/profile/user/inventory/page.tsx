@@ -85,7 +85,7 @@ export default function UserInventoryPage() {
   );
   const [isMounted, setIsMounted] = useState(false);
 
-  // 1️⃣ 商品表單 State（新增與修改共用）
+  // 1️⃣ 商品表單 State
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingListingId, setEditingListingId] = useState<string | null>(null);
   const [newCardName, setNewCardName] = useState("");
@@ -101,9 +101,7 @@ export default function UserInventoryPage() {
   );
   const [buyerName, setBuyerName] = useState("");
   const [finalPrice, setFinalPrice] = useState("");
-  const [tradeMethod, setTradeMethod] = useState<
-    "meetup" | "delivery" | string
-  >("meetup");
+  const [tradeMethod, setTradeMethod] = useState<string>("meetup");
   const [orderPhone, setOrderPhone] = useState("");
   const [orderLockerType, setOrderLockerType] = useState("852-smart-locker");
   const [orderAddress, setOrderAddress] = useState("");
@@ -124,7 +122,7 @@ export default function UserInventoryPage() {
 
   const filteredListings = listings.filter((l) => l.status === activeTab);
 
-  // 打開新增商品視窗
+  // 打開新增商品
   const handleOpenAddModal = () => {
     setEditingListingId(null);
     setNewCardName("");
@@ -135,7 +133,7 @@ export default function UserInventoryPage() {
     setShowAddModal(true);
   };
 
-  // 打開修改商品視窗
+  // 打開修改商品
   const handleOpenEditModal = (item: UserListing) => {
     setEditingListingId(item.id);
     setNewCardName(item.cardName);
@@ -227,12 +225,14 @@ export default function UserInventoryPage() {
     );
   };
 
-  // 暫時上下架切換
+  // 🟢 核心修正：將參數型態範圍拓寬至包含 "sold"，在內部進行防禦過濾，原地解決 TS2345 報警！
   const handleToggleStatus = (
     id: string,
-    currentStatus: "active" | "unlisted",
+    currentStatus: "active" | "sold" | "unlisted",
   ) => {
-    const nextStatus = currentStatus === "active" ? "unlisted" : "active";
+    if (currentStatus === "sold") return; // 防禦防線
+    const nextStatus =
+      currentStatus === "active" ? ("unlisted" as const) : ("active" as const);
     setListings((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)),
     );
@@ -240,7 +240,7 @@ export default function UserInventoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* 頂部動作控制吧 */}
+      {/* 頂部控制吧 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[rgba(237,232,224,0.08)] pb-4">
         <div>
           <h2 className="font-sans font-bold text-[18px] md:text-[20px] text-[#eae1da]">
@@ -258,7 +258,7 @@ export default function UserInventoryPage() {
         </button>
       </div>
 
-      {/* ── 🟢 核心修復：全面對齊訂單頁面（orders/page.tsx）之平滑無彈跳 Tab 視覺設計 ── */}
+      {/* Tabs */}
       <div className="flex border-b border-[rgba(237,232,224,0.08)]">
         {(["active", "sold", "unlisted"] as const).map((tab) => {
           const labels = {
@@ -272,12 +272,9 @@ export default function UserInventoryPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${
-                isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"
-              }`}
+              className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
             >
               {labels[tab]} ({count})
-              {/* 透過絕對定位（absolute）承托高亮線，物理體積不縮放，完美消滅彈跳 bug */}
               {isActive && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
               )}
@@ -286,7 +283,7 @@ export default function UserInventoryPage() {
         })}
       </div>
 
-      {/* 商品卡片列表流 */}
+      {/* 列表 */}
       <div className="space-y-4">
         {filteredListings.length === 0 ? (
           <div className="py-16 text-center bg-[#26211C]/40 border border-[rgba(237,232,224,0.04)] rounded-2xl">
@@ -388,7 +385,7 @@ export default function UserInventoryPage() {
         )}
       </div>
 
-      {/* ── 商品表單視窗（新增/修改共用同一個高級組件） ── */}
+      {/* 新增/修改彈窗 */}
       {showAddModal && (
         <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="w-full max-w-[640px] bg-[#26211C] border border-[rgba(237,232,224,0.12)] rounded-2xl p-6 shadow-[0_24px_48px_rgba(0,0,0,0.8)] space-y-5 overflow-y-auto max-h-[90vh] scrollbar-none">
@@ -430,7 +427,7 @@ export default function UserInventoryPage() {
                       required
                       value={newCardName}
                       onChange={(e) => setNewCardName(e.target.value)}
-                      placeholder="例：sv2a-182 或 噴火龍"
+                      placeholder="例：sv2a-182"
                       className="flex-1 h-full bg-transparent px-4 font-sans text-[13px] text-[#eae1da] placeholder-text-disabled focus:outline-none"
                     />
                     <button
@@ -444,7 +441,6 @@ export default function UserInventoryPage() {
                     </button>
                   </div>
                 </div>
-
                 <div>
                   <label
                     htmlFor="ask-price"
@@ -492,7 +488,6 @@ export default function UserInventoryPage() {
                     </option>
                   </select>
                 </div>
-
                 <div>
                   <label
                     htmlFor="condition-notes"
@@ -520,11 +515,7 @@ export default function UserInventoryPage() {
                   {Array.from({ length: 6 }, (_, i) => (
                     <div
                       key={i}
-                      className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
-                        i < 2
-                          ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
-                          : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
-                      }`}
+                      className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${i < 2 ? "border-brand/40 bg-[rgba(212,165,116,0.06)]" : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"}`}
                       onClick={() => alert(`📸 模擬調用相機上傳相片`)}
                     >
                       {i < 2 ? (
@@ -576,7 +567,7 @@ export default function UserInventoryPage() {
         </div>
       )}
 
-      {/* ── 建立交易訂單彈出視窗 ── */}
+      {/* 建立交易訂單彈窗 */}
       {showOrderModal && selectedListing && (
         <div className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="w-full max-w-[640px] bg-[#26211C] border border-[rgba(237,232,224,0.12)] rounded-2xl p-6 shadow-[0_24px_48px_rgba(0,0,0,0.8)] space-y-5 overflow-y-auto max-h-[90vh] scrollbar-none">
