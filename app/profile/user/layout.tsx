@@ -7,11 +7,13 @@ import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
 
+// 🟢 修正點：將「防潮箱庫存」正式更名為「上架管理」，完美對齊 C2C 賣方交易語意
 const USER_TABS: TabItem[] = [
-  { href: "/profile/user",             label: "總覽",   icon: "👤" },
-  { href: "/profile/user/collection",  label: "收藏庫", icon: "🎁" },
-  { href: "/profile/user/orders",      label: "訂單",   icon: "📦" },
-  { href: "/profile/user/settings",    label: "帳戶設定", icon: "⚙️" },
+  { href: "/profile/user", label: "總覽", icon: "👤" },
+  { href: "/profile/user/collection", label: "收藏庫", icon: "🎁" },
+  { href: "/profile/user/inventory", label: "上架管理", icon: "🗂️" }, // 🚀 正名：上架管理
+  { href: "/profile/user/orders", label: "訂單", icon: "📦" },
+  { href: "/profile/user/settings", label: "帳戶設定", icon: "⚙️" },
 ];
 
 const mockUser = {
@@ -28,8 +30,15 @@ const mockUser = {
   reviewCount: 24,
 };
 
-export default function UserProfileLayout({ children }: { children: ReactNode }) {
-  const xpProgress = Math.min((mockUser.xpCurrent / mockUser.xpRequired) * 100, 100);
+export default function UserProfileLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const xpProgress = Math.min(
+    (mockUser.xpCurrent / mockUser.xpRequired) * 100,
+    100,
+  );
 
   return (
     <div className="min-h-dvh bg-bg-page flex flex-col">
@@ -77,12 +86,25 @@ export default function UserProfileLayout({ children }: { children: ReactNode })
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 id="user-hero-name" className="font-sans font-bold text-[22px] text-text-primary">
+              <h1
+                id="user-hero-name"
+                className="font-sans font-bold text-[22px] text-text-primary"
+              >
                 {mockUser.name}
               </h1>
               {mockUser.verifiedBuyer && (
                 <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success bg-[rgba(16,185,129,0.12)] px-2 py-0.5 rounded-full border border-success/20">
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <svg
+                    width="9"
+                    height="9"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   已驗證買家
@@ -94,7 +116,14 @@ export default function UserProfileLayout({ children }: { children: ReactNode })
             </p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="inline-flex items-center gap-1.5 font-mono text-[12px] font-medium text-brand bg-[rgba(212,165,116,0.12)] border border-brand/20 px-2.5 py-1 rounded-lg">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="#d4a574" stroke="none" aria-hidden="true">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="#d4a574"
+                  stroke="none"
+                  aria-hidden="true"
+                >
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
                 {mockUser.level}
@@ -111,7 +140,8 @@ export default function UserProfileLayout({ children }: { children: ReactNode })
                   升至 <span className="text-brand">{mockUser.nextLevel}</span>
                 </span>
                 <span className="font-mono text-[11px] text-text-secondary">
-                  {mockUser.xpCurrent.toLocaleString()} / {mockUser.xpRequired.toLocaleString()} XP
+                  {mockUser.xpCurrent.toLocaleString()} /{" "}
+                  {mockUser.xpRequired.toLocaleString()} XP
                 </span>
               </div>
               <div
