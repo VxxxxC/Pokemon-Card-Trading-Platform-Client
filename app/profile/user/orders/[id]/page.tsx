@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image"; // 🟢 Next.js 官方圖像優化組件
+import Image from "next/image";
+import { OrderLifecycleStepper } from "../_components/OrderLifecycleStepper";
 
 interface LocalOrder {
   id: string;
@@ -196,11 +197,6 @@ function GrandEscrowStepper({
   order: LocalOrder;
   isFinished: boolean;
 }) {
-  const steps = FLOW_STEPS_MATRIX[order.flowType] || [];
-  const activeIndex = isFinished
-    ? steps.length - 1
-    : steps.findIndex((s) => s.id === order.status);
-
   let stepperTitle = "🔒 第三方 Escrow 交易資金託管實時進度 (Stripe 擔保)";
   if (order.flowType === "meetup")
     stepperTitle = "🤝 C2C 散戶當面交收與驗卡進度 (本土線下流)";
@@ -210,78 +206,15 @@ function GrandEscrowStepper({
     stepperTitle = "⚡ 認證商戶直送履約進度 (一般網付流)";
 
   return (
-    <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 md:p-8 shadow-lg">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6 border-b border-[rgba(237,232,224,0.06)] pb-4">
-        <div>
-          <h3 className="font-sans font-black text-[15px] md:text-[17px] text-text-primary tracking-tight">
-            {isFinished ? "🏅 歷史交易安全軌跡回溯存証" : stepperTitle}
-          </h3>
-          <p className="font-mono text-[10px] text-brand uppercase tracking-widest mt-1">
-            Flow Type: {order.flowType.toUpperCase()} SECURE TRAIL
-          </p>
-        </div>
-        <span className="font-mono text-[12px] text-brand bg-brand/5 border border-brand/20 px-3 py-1 rounded-xl shrink-0 self-start sm:self-center">
-          {order.statusLabel}
-        </span>
-      </div>
-
-      <div className="overflow-x-auto scrollbar-none py-2">
-        <div className="flex items-start gap-0 min-w-max px-4 justify-between w-full">
-          {steps.map((step, i) => {
-            const isDone = isFinished ? i <= activeIndex : i < activeIndex;
-            const isActive = !isFinished && i === activeIndex;
-            return (
-              <div key={step.id} className="flex items-start">
-                <div className="flex flex-col items-center w-[100px] md:w-[120px]">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                      isFinished || isDone
-                        ? "bg-[#10b981] border-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.4)]"
-                        : isActive
-                          ? "bg-[rgba(212,165,116,0.15)] border-[#d4a574] shadow-[0_0_15px_#d4a574]"
-                          : "bg-[#2e2925] border-[rgba(237,232,224,0.12)]"
-                    }`}
-                  >
-                    {isFinished || isDone ? (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="3.5"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : (
-                      <span
-                        className={`w-3 h-3 rounded-full ${isActive ? "bg-[#d4a574]" : "bg-[#39342f]"}`}
-                      />
-                    )}
-                  </div>
-                  <p
-                    className={`font-sans text-[11px] md:text-[12px] mt-2.5 text-center leading-tight font-medium ${
-                      isActive
-                        ? "text-[#d4a574] font-bold scale-105"
-                        : isFinished || isDone
-                          ? "text-[#10b981]"
-                          : "text-text-disabled"
-                    }`}
-                  >
-                    {step.label}
-                  </p>
-                </div>
-                {i < steps.length - 1 && (
-                  <div
-                    className={`h-0.5 w-10 md:w-16 mt-4.5 shrink-0 transition-colors duration-300 ${isFinished || i < activeIndex ? "bg-[#10b981]" : "bg-[#2e2925]"}`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
+    <OrderLifecycleStepper
+      steps={FLOW_STEPS_MATRIX[order.flowType] || []}
+      status={order.status}
+      isFinished={isFinished}
+      title={isFinished ? "🏅 歷史交易安全軌跡回溯存証" : stepperTitle}
+      eyebrow={`Flow Type: ${order.flowType.toUpperCase()} SECURE TRAIL`}
+      statusLabel={order.statusLabel}
+      variant="grand"
+    />
   );
 }
 
