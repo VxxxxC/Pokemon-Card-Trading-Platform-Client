@@ -85,7 +85,7 @@ export default function UserInventoryPage() {
   );
   const [isMounted, setIsMounted] = useState(false);
 
-  // 1️⃣ 商品表單 State
+  // 1️⃣ 商品表單 State (新增/修改)
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingListingId, setEditingListingId] = useState<string | null>(null);
   const [newCardName, setNewCardName] = useState("");
@@ -106,6 +106,11 @@ export default function UserInventoryPage() {
   const [orderLockerType, setOrderLockerType] = useState("852-smart-locker");
   const [orderAddress, setOrderAddress] = useState("");
   const [meetupLocation, setMeetupLocation] = useState("");
+
+  // 3️⃣ 🟢 全新加碼：取消商品上架確認視窗 State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelTargetListing, setCancelTargetListing] =
+    useState<UserListing | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsMounted(true), 0);
@@ -225,17 +230,33 @@ export default function UserInventoryPage() {
     );
   };
 
-  // 🟢 核心修正：將參數型態範圍拓寬至包含 "sold"，在內部進行防禦過濾，原地解決 TS2345 報警！
+  // 暫時上下架切換
   const handleToggleStatus = (
     id: string,
     currentStatus: "active" | "sold" | "unlisted",
   ) => {
-    if (currentStatus === "sold") return; // 防禦防線
+    if (currentStatus === "sold") return;
     const nextStatus =
       currentStatus === "active" ? ("unlisted" as const) : ("active" as const);
     setListings((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)),
     );
+  };
+
+  // 🟢 打開永久取消商品上架視窗
+  const handleOpenCancelModal = (item: UserListing) => {
+    setCancelTargetListing(item);
+    setShowCancelModal(true);
+  };
+
+  // 🟢 確認執行永久移除
+  const handleConfirmCancelListing = () => {
+    if (!cancelTargetListing) return;
+    // TODO: [server/api/database] 未来对接 `supabase.from('listings').delete().eq('id', cancelTargetListing.id)`
+    setListings((prev) => prev.filter((l) => l.id !== cancelTargetListing.id));
+    setShowCancelModal(false);
+    setCancelTargetListing(null);
+    alert("🗑️ 該卡牌商品已永久取消上架，並從全盤庫存系統中完全移除。");
   };
 
   return (
@@ -283,7 +304,7 @@ export default function UserInventoryPage() {
         })}
       </div>
 
-      {/* 列表 */}
+      {/* 列表流 */}
       <div className="space-y-4">
         {filteredListings.length === 0 ? (
           <div className="py-16 text-center bg-[#26211C]/40 border border-[rgba(237,232,224,0.04)] rounded-2xl">
@@ -295,52 +316,53 @@ export default function UserInventoryPage() {
           filteredListings.map((item) => (
             <div
               key={item.id}
-              className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex gap-4 items-start hover:border-[rgba(237,232,224,0.15)] transition-colors group"
+              className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex flex-col hover:border-[rgba(237,232,224,0.15)] transition-colors group"
             >
-              <div className="relative w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-sm">
-                <Image
-                  src={item.cardImage}
-                  alt={item.cardName}
-                  fill
-                  sizes="80px"
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-[9px] text-[#50453b]">
-                    #{item.id}
-                  </span>
-                  <span className="font-mono text-[10px] text-brand font-medium">
-                    {item.grade}
-                  </span>
+              {/* 上半部：實體資訊、詳情與價格看板 */}
+              <div className="flex gap-4 items-start w-full">
+                <div className="relative w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-sm">
+                  <Image
+                    src={item.cardImage}
+                    alt={item.cardName}
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
-                <h3 className="font-sans font-bold text-[14.5px] text-[#eae1da] group-hover:text-brand transition-colors truncate">
-                  {item.cardName}
-                </h3>
-                <p className="font-mono text-[11px] text-text-secondary">
-                  官方卡號:{" "}
-                  <span className="text-[#eae1da]">
-                    {item.cardNo.toUpperCase()}
-                  </span>{" "}
-                  · 上架日期: {item.createdAt}
-                </p>
-                <div className="flex gap-1.5 flex-wrap pt-1">
-                  {item.paymentMethods.map((pm) => (
-                    <span
-                      key={pm}
-                      className="font-sans text-[9px] text-text-secondary bg-[#17130f] px-2 py-0.5 rounded-[4px] border border-[rgba(237,232,224,0.04)]"
-                    >
-                      💸 {pm}
+
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-[9px] text-[#50453b]">
+                      #{item.id}
                     </span>
-                  ))}
+                    <span className="font-mono text-[10px] text-brand font-medium">
+                      {item.grade}
+                    </span>
+                  </div>
+                  <h3 className="font-sans font-bold text-[14.5px] text-[#eae1da] group-hover:text-brand transition-colors truncate">
+                    {item.cardName}
+                  </h3>
+                  <p className="font-mono text-[11px] text-text-secondary">
+                    官方卡號:{" "}
+                    <span className="text-[#eae1da]">
+                      {item.cardNo.toUpperCase()}
+                    </span>{" "}
+                    · 上架日期: {item.createdAt}
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap pt-1">
+                    {item.paymentMethods.map((pm) => (
+                      <span
+                        key={pm}
+                        className="font-sans text-[9px] text-text-secondary bg-[#17130f] px-2 py-0.5 rounded-[4px] border border-[rgba(237,232,224,0.04)]"
+                      >
+                        💸 {pm}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="text-right shrink-0 flex flex-col justify-between h-full min-h-[85px] ml-2">
-                <div>
+                <div className="text-right shrink-0 ml-2">
                   <p className="font-mono font-bold text-[16px] text-brand">
                     HK$ {item.price.toLocaleString()}
                   </p>
@@ -348,38 +370,65 @@ export default function UserInventoryPage() {
                     👁 {item.views} 點擊 · ★ {item.watchers} 心水
                   </p>
                 </div>
+              </div>
 
-                <div className="flex flex-col gap-1.5 items-end mt-2">
-                  {item.status === "active" && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenOrderModal(item)}
-                      className="px-3 py-1 bg-transparent border border-brand/40 text-brand font-sans font-bold text-[11px] rounded-lg hover:bg-brand hover:text-[#1A1612] transition-colors active:scale-95"
-                    >
-                      ⚡ 建立交易訂單
-                    </button>
-                  )}
-
-                  {item.status !== "sold" && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditModal(item)}
-                      className="px-3 py-1 bg-transparent border border-[rgba(237,232,224,0.15)] text-[#d4c4b7] font-sans font-bold text-[11px] rounded-lg hover:border-brand/60 hover:text-brand transition-colors active:scale-95"
-                    >
-                      ⚙️ 修改商品
-                    </button>
-                  )}
-
-                  {item.status !== "sold" && (
-                    <button
-                      onClick={() => handleToggleStatus(item.id, item.status)}
-                      className="font-mono text-[11px] text-text-disabled hover:text-brand underline bg-transparent border-none p-0 cursor-pointer transition-colors"
-                    >
-                      {item.status === "active" ? "⚙ 暫時下架" : "⚡ 重新上架"}
-                    </button>
+              {/* ── 🟢 核心修復 1：按鈕下移至 Bottom Line，全面平行 Inline-Flex 排列 ── */}
+              {item.status !== "sold" && (
+                <div className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-[rgba(237,232,224,0.06)] w-full">
+                  {item.status === "active" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenOrderModal(item)}
+                        className="h-9 px-4 bg-brand text-[#1A1612] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        ⚡ 建立交易訂單
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(item)}
+                        className="h-9 px-4 bg-[#17130f] border border-[rgba(237,232,224,0.12)] text-[#d4c4b7] font-sans font-bold text-[12px] rounded-xl hover:text-brand hover:border-brand/40 hover:bg-white/5 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        ⚙️ 修改商品
+                      </button>
+                      {/* 🟢 加強版「暫時下架」：使用高亮橘紅警示色，並透過 ml-auto 推至最右側 */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(item.id, item.status)}
+                        className="h-9 px-4 bg-transparent border border-amber-500/40 text-amber-400 font-sans font-bold text-[12px] rounded-xl hover:bg-amber-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto"
+                      >
+                        ⚙ 暫時下架
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* 已暫時下架專屬按鈕流向 */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(item.id, item.status)}
+                        className="h-9 px-4 bg-[#10b981] text-white font-sans font-bold text-[12px] rounded-xl hover:bg-[#0fa573] active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        ⚡ 重新上架商品
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(item)}
+                        className="h-9 px-4 bg-[#17130f] border border-[rgba(237,232,224,0.12)] text-[#d4c4b7] font-sans font-bold text-[12px] rounded-xl hover:text-brand hover:border-brand/40 hover:bg-white/5 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        ⚙️ 修改商品
+                      </button>
+                      {/* 🟢 修正點 2：[暫時下架] 完美更名並升級為 [取消商品上架]，帶深紅高對比框 */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCancelModal(item)}
+                        className="h-9 px-4 bg-transparent border border-error/50 text-error font-sans font-bold text-[12px] rounded-xl hover:bg-error/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto"
+                      >
+                        🗑️ 取消商品上架
+                      </button>
+                    </>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           ))
         )}
@@ -775,6 +824,48 @@ export default function UserInventoryPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 🟢 全新加碼：自訂取消商品上架二次確認彈窗 ── */}
+      {showCancelModal && cancelTargetListing && (
+        <div className="fixed inset-0 z-[310] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-[440px] bg-[#26211C] border border-red-500/20 rounded-2xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.9)] space-y-4">
+            <div className="flex items-center gap-3 text-error">
+              <span className="text-[24px]">⚠️</span>
+              <h3 className="font-sans font-black text-[16px] md:text-[17px] text-[#eae1da]">
+                確認要完全下架並刪除商品？
+              </h3>
+            </div>
+
+            <p className="font-sans text-[13px] text-[#d4c4b7] leading-relaxed">
+              您正準備永久取消上架商品：
+              <span className="text-brand font-bold">
+                {cancelTargetListing.cardName}
+              </span>
+              。此動作將會清除其在大盤上累積嘅點擊率與心水紀錄，且無法復原。
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelTargetListing(null);
+                }}
+                className="flex-1 h-10 bg-[#17130f] border border-white/10 text-text-secondary font-sans font-bold text-[12px] rounded-xl hover:text-text-primary hover:bg-white/5 transition-all active:scale-95"
+              >
+                先留著
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancelListing}
+                className="flex-1 h-10 bg-error text-white font-sans font-bold text-[12px] rounded-xl hover:bg-red-600 transition-all active:scale-95 shadow-md"
+              >
+                💥 確定取消並刪除
+              </button>
+            </div>
           </div>
         </div>
       )}
