@@ -54,7 +54,8 @@
 3. **工程標準**：
    - 嚴格使用 TypeScript。
    - 行動優先 (Mobile-first) 佈局是不容談判的。
-   - 對於代管交易 (Escrow) 和交易邏輯，確保 Server 組件和 Client 組件之間的狀態分離。
+   - 對於代管交易 (Escrow) 和交易邏輯，確保 Server 組件 and Client 組件之間的狀態分離。
+   - **禁止使用 `useEffect` + `useState` + `setTimeout` 進行客戶端掛載隔離(Hydration Guard)**：此舉會造成 React 19 與 Next.js App Router 觸發同步 `setState` 的級聯渲染(Cascading Renders)效能警告。凡需要進行伺服器端(SSR)與瀏覽器端環境安全隔離的組件，**必須統一使用 React 官方原生 `useSyncExternalStore` 快照機制**（例如：`useSyncExternalStore(() => () => {}, () => true, () => false)`），以確保極致的交割性能與渲染穩定度。
 
 ## 任務管理與規劃指令
 
@@ -90,4 +91,4 @@
 - **初始化：** 如果您需要在專案中初始化 shadcn/ui，請使用命令 `bunx --bun shadcn@latest init`。
 - **組件安裝：** 如果需要尚未安裝的新 shadcn/ui 組件，請使用 `bunx --bun shadcn@latest add [component-name]` 開始安裝。此命令將引導使用者完成設定。
 - **自定義：** 所有 shadcn/ui 組件都必須進行自定義，以符合 `.stitch/designs/DESIGN.md` 中定義的 PokéTrade JP 設計系統。請嚴格遵守 `.agents/skills/shadcn-ui/SKILL.md` 和 `.github/prompts/shadcn-ui.prompt.md` 中指定的審美覆蓋和組件整合規則。
-- **觸發動作：** 當 UI 實作需要特定的 shadcn 組件時，請明確提及需要使用 `bunx --bun shadcn@latest add [component-name]`。此動作將自動觸發 `.github/prompts/shadcn-ui.prompt.md` 和 `shadcn-ui` 技能，以進行安裝和品味自定義。
+- **觸發動作：** 當 UI 實作需要特定的 shadcn 組件時，請明確提及需要使用 `bunx --bun shadcn@latest add [component-name]`。此動作將自動觸發 `.github/prompts/shadcn-ui.prompt.md` 和 `shadcn-ui` 技能，以進行安裝 and 品味自定義。
