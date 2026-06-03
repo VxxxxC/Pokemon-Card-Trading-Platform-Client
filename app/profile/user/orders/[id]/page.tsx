@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { toast } from "sonner";
 import { OrderLifecycleStepper } from "../_components/OrderLifecycleStepper";
 
 interface LocalOrder {
@@ -486,7 +487,10 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
             {order.flowType === "escrow_auth" && (
               <button
                 onClick={() =>
-                  alert("📥 官方四維微觀光學存證鑑定報告 PDF 已成功匯出！")
+                  toast.success("📥 鑑定報告已匯出", {
+                    description:
+                      "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
+                  })
                 }
                 className="w-full h-11 bg-[#39342f] border border-[rgba(237,232,224,0.12)] hover:border-brand text-text-primary text-[13px] font-bold rounded-xl transition-all mt-4 shadow-md flex items-center justify-center gap-2"
               >

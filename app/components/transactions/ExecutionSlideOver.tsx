@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
 
 export function ExecutionSlideOver() {
@@ -54,13 +55,13 @@ export function ExecutionSlideOver() {
         `/marketplace/payment-status?status=success&id=${listing.id}`,
       );
     } else if (mode === "bid") {
-      alert(
-        `📈 提交成功！您的掛單買方出價 HK$ ${Number(bidAmount).toLocaleString("en-HK")} 已成功進入市場撮合池。`,
-      );
+      toast.success("📈 撮合出價已提交", {
+        description: `您的掛單買方出價 HK$ ${Number(bidAmount).toLocaleString("en-HK")} 已成功進入市場撮合池。`,
+      });
     } else {
-      alert(
-        `🔨 競投出價成功！您已成功對該拍賣品加價至 HK$ ${Number(bidAmount).toLocaleString("en-HK")}。`,
-      );
+      toast.success("🔨 競投出價成功", {
+        description: `您已成功對該拍賣品加價至 HK$ ${Number(bidAmount).toLocaleString("en-HK")}。`,
+      });
     }
   };
 

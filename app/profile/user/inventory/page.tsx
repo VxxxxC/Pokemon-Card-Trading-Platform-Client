@@ -243,9 +243,22 @@ export default function UserInventoryPage() {
     if (currentStatus === "sold") return;
     const nextStatus =
       currentStatus === "active" ? ("unlisted" as const) : ("active" as const);
+    const targetListing = listings.find((listing) => listing.id === id);
+
     setListings((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)),
     );
+
+    if (nextStatus === "unlisted") {
+      toast.warning("⏸️ 商品已暫時下架", {
+        description: `【${targetListing?.cardName ?? "該卡牌商品"}】已暫時從現貨盤移出，可稍後重新上架。`,
+      });
+      return;
+    }
+
+    toast.success("🚀 商品已重新上架", {
+      description: `【${targetListing?.cardName ?? "該卡牌商品"}】已重新回到全港現貨大盤。`,
+    });
   };
 
   // 🟢 打開永久取消商品上架視窗
