@@ -1,8 +1,18 @@
 "use client";
 
+import { PriceTickerSkeleton } from "@/app/components/shared/MarketSkeletons";
+
+interface PriceTickerItem {
+  id: string;
+  name: string;
+  price: number;
+  delta: number;
+  direction: "up" | "down";
+}
+
 // TODO: [database] Replace with live data from Supabase Realtime subscription on `price_feed` table
 // TODO: [API] Connect to Mercari JP scraper or SKUNK price API for real-time card valuations in HKD
-const tickers = [
+const tickers: PriceTickerItem[] = [
   {
     id: "sv2a-182",
     name: "Charizard ex SAR",
@@ -61,9 +71,23 @@ const tickers = [
   },
 ];
 
-export function PriceTicker() {
+interface PriceTickerProps {
+  data?: PriceTickerItem[];
+  isLoading?: boolean;
+}
+
+export function PriceTicker({
+  data = tickers,
+  isLoading = false,
+}: PriceTickerProps) {
+  const records = data ?? [];
+
+  if (isLoading || records.length === 0) {
+    return <PriceTickerSkeleton />;
+  }
+
   // Duplicate items for seamless infinite scroll
-  const items = [...tickers, ...tickers];
+  const items = [...records, ...records];
 
   return (
     <div
