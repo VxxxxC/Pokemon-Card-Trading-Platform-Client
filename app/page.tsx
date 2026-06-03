@@ -15,6 +15,7 @@ import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { PwaInstallPrompt } from "./components/pwa/PwaInstallPrompt";
 import { FeaturedCarousel } from "@/app/components/home/FeaturedCarousel";
+import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
 
 // TODO: [database] Replace with Supabase query — fetch active box series from `card_series` table with live HKD price feed
 // TODO: [API] Connect to Mercari JP scraper for real-time box series pricing converted to HKD
@@ -132,6 +133,7 @@ export default function HomePage() {
       <Footer />
 
       <BottomNav />
+      <ExecutionSlideOver />
     </div>
   );
 }
