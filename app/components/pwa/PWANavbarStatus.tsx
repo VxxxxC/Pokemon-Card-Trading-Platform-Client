@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { usePWAEnvironment } from "@/app/lib/hooks/usePWAEnvironment";
 
 export function PWANavbarStatus() {
   const { isStandalone, isIOSBrowser, isBrowser } = usePWAEnvironment();
   const [showIOSHint, setShowIOSHint] = useState(false);
 
-  // WARN: Below is fix the Hydration issue
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsMounted(true);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+  // Safe SSR environment isolation via useSyncExternalStore
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
   if (!isMounted) {
     return (
       <div className="h-8 w-20 bg-[#26211C] rounded-md opacity-40 animate-pulse" />

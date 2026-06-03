@@ -18,6 +18,7 @@ import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
 import { FeaturedCarousel } from "@/app/components/home/FeaturedCarousel";
+import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 
 // 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件！
 // 這樣 Server 端渲染時這裡會完全保持真空，等 Client 進場水合完畢後才加載
@@ -44,6 +45,10 @@ export default function HomePage() {
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         {/* Section 1: Hero — Smart Search + Quick Filters */}
         <HeroSearch />
+
+        <div className="mb-8">
+          <CheckInCard />
+        </div>
 
         {/* Section 2: Trust Booster — How It Works (3-step escrow) */}
         <TrustBanner />

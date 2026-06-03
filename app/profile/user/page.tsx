@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CheckInWidget } from "@/app/components/profile/CheckInWidget";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
+import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 
 export const metadata: Metadata = {
   title: "我的帳號 · 總覽 — PokéTrade JP",
@@ -78,7 +78,6 @@ const badges = [
 ];
 
 // TODO: [database] Replace with Supabase query — fetch recent transactions from `orders` table for authenticated user, ordered by created_at DESC, limit 4
-// TODO: [server] Relative timestamps (e.g. "3分鐘前") must be computed from real `created_at` using date-fns relativeTimeFromNow
 const recentActivity = [
   {
     id: "txn-001",
@@ -151,7 +150,6 @@ const reviews = [
   },
 ];
 
-// TODO: [database] Replace with Supabase query — fetch streak and reward status from `user_streaks` table for authenticated user
 const streakReward = {
   hasReward: true,
   streakDays: 7,
@@ -437,8 +435,10 @@ export default function UserOverviewPage() {
 
         {/* ── Right Column ──────────────────────────────────────────────── */}
         <div className="mt-6 lg:mt-0 space-y-6">
-          <CheckInWidget initialStreak={4} />
+          {/* ── CheckInCard 組件 ── */}
+          <CheckInCard />
 
+          {/* 待領取獎勵引流 */}
           {streakReward.hasReward && (
             <section
               className="bg-bg-card border border-[rgba(212,165,116,0.20)] rounded-2xl p-4"
@@ -477,23 +477,31 @@ export default function UserOverviewPage() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="w-full h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform"
-              >
-                立即領取
-              </button>
+
+              {/* 點擊「立即領取」導流至會員折價券/任務核心專區 */}
+              <Link href="/profile/user/rewards" className="block w-full">
+                <button
+                  type="button"
+                  className="w-full h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform cursor-pointer"
+                >
+                  前往權益專區領取
+                </button>
+              </Link>
             </section>
           )}
 
-          <div className="bg-[rgba(212,165,116,0.08)] rounded-2xl border border-brand/20 p-4">
+          {/* 積分餘額指標卡 —— Link 懸停卡片，點擊引流去獎勵專區 */}
+          <Link
+            href="/profile/user/rewards"
+            className="block bg-[rgba(212,165,116,0.08)] rounded-2xl border border-brand/20 p-4 hover:border-brand/50 transition-colors group cursor-pointer"
+          >
             <div className="flex items-start gap-3">
               <span className="text-[24px] shrink-0" aria-hidden="true">
                 🎁
               </span>
-              <div>
-                <h3 className="font-sans font-semibold text-[14px] text-text-primary mb-0.5">
-                  積分餘額
+              <div className="flex-1 min-w-0">
+                <h3 className="font-sans font-semibold text-[14px] text-text-primary mb-0.5 group-hover:text-brand transition-colors">
+                  會員權益與積分餘額
                 </h3>
                 <p className="font-mono font-bold text-[22px] text-brand leading-none">
                   1,250
@@ -502,11 +510,11 @@ export default function UserOverviewPage() {
                   </span>
                 </p>
                 <p className="font-mono text-[11px] text-text-secondary mt-1">
-                  可折抵 ¥125 運費券 · 連續簽到累積更多
+                  可折抵 ¥125 運費券 · 點擊進入折價券任務中心 →
                 </p>
               </div>
             </div>
-          </div>
+          </Link>
 
           <section
             className="bg-bg-card border border-[rgba(237,232,224,0.08)] rounded-2xl p-4"

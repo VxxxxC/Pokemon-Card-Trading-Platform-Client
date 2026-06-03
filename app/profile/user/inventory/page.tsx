@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 
 interface UserListing {
@@ -83,7 +83,12 @@ export default function UserInventoryPage() {
   const [activeTab, setActiveTab] = useState<"active" | "sold" | "unlisted">(
     "active",
   );
-  const [isMounted, setIsMounted] = useState(false);
+  // Safe SSR environment isolation via useSyncExternalStore
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   // 1️⃣ 商品表單 State (新增/修改)
   const [showAddModal, setShowAddModal] = useState(false);
@@ -111,11 +116,6 @@ export default function UserInventoryPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelTargetListing, setCancelTargetListing] =
     useState<UserListing | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 0);
-    return () => clearTimeout(timer);
-  }, []);
 
   if (!isMounted) {
     return (
