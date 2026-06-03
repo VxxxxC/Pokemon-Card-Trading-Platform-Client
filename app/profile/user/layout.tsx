@@ -7,11 +7,11 @@ import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
 
-// 🟢 修正點：將「防潮箱庫存」正式更名為「上架管理」，完美對齊 C2C 賣方交易語意
 const USER_TABS: TabItem[] = [
   { href: "/profile/user", label: "總覽", icon: "👤" },
-  { href: "/profile/user/collection", label: "收藏庫", icon: "🎁" },
-  { href: "/profile/user/inventory", label: "上架管理", icon: "🗂️" }, // 🚀 正名：上架管理
+  { href: "/profile/user/collection", label: "收藏庫", icon: "💎" },
+  { href: "/profile/user/inventory", label: "上架管理", icon: "🗂️" },
+  { href: "/profile/user/rewards", label: "獎勵專區", icon: "🎟️" },
   { href: "/profile/user/orders", label: "訂單", icon: "📦" },
   { href: "/profile/user/settings", label: "帳戶設定", icon: "⚙️" },
 ];
@@ -42,6 +42,7 @@ export default function UserProfileLayout({
 
   return (
     <div className="min-h-dvh bg-bg-page flex flex-col">
+      {/* 頂部交易所導航 */}
       <TopNav />
       <MobileHeader />
 
@@ -67,7 +68,7 @@ export default function UserProfileLayout({
           </div>
         </div>
 
-        {/* ── Profile Hero ──────────────────────────────────────────────── */}
+        {/* ── Profile Hero ── */}
         <section
           className="relative mb-5 rounded-2xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
           aria-labelledby="user-hero-name"
@@ -81,6 +82,7 @@ export default function UserProfileLayout({
                   alt={`${mockUser.name} 的頭像`}
                   fill
                   className="object-cover"
+                  unoptimized
                 />
               </div>
             </div>
@@ -133,7 +135,7 @@ export default function UserProfileLayout({
               </span>
             </div>
 
-            {/* XP Progress Bar */}
+            {/* XP 進度條 */}
             <div className="mt-3">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-mono text-[11px] text-text-secondary">
@@ -160,13 +162,14 @@ export default function UserProfileLayout({
           </div>
         </section>
 
-        {/* ── Tab Navigation ────────────────────────────────────────────── */}
+        {/* ──  Tab 導航列：獎勵中心 ── */}
         <ProfileTabNav tabs={USER_TABS} />
 
-        {/* ── Page Content ──────────────────────────────────────────────── */}
+        {/* ── 渲染子頁面內容 ── */}
         {children}
       </main>
 
+      {/* 底部行動裝置功能吧 */}
       <BottomNav />
     </div>
   );

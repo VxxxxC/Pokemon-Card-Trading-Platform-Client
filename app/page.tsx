@@ -44,8 +44,9 @@ export default function HomePage() {
       {/* 主線大盤跑道 */}
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         {/* Section 1: Hero — Smart Search + Quick Filters */}
-        <div className="flex flex-row w-full">
-          <HeroSearch />
+        <HeroSearch />
+
+        <div className="mb-8">
           <CheckInCard />
         </div>
 
