@@ -13,6 +13,7 @@
 2. [docs/dev/server.md](../docs/dev/server.md) — 伺服器端 TODO 追蹤器
 3. [docs/dev/api.md](../docs/dev/api.md) — API 整合 TODO 追蹤器
 4. [docs/dev/database.md](../docs/dev/database.md) — 資料庫架構與查詢 TODO 追蹤器
+5. [docs/dev/follow-up/](../docs/dev/follow-up/) — 後期developement需要follow up
 
 ## 👑 PokéTrade 黃金工作流 (Agentic UI 工作流)
 
