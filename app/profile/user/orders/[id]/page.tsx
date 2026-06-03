@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -555,12 +555,12 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
 export default function UserOrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsMounted(true), 0);
-    return () => clearTimeout(timer);
-  }, []);
+  // Safe SSR environment isolation via useSyncExternalStore
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   if (!isMounted) {
     return (

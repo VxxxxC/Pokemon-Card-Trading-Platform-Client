@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { AnimatePresence } from "framer-motion";
@@ -57,21 +57,18 @@ const INITIAL_CHATS: ChatRoom[] = [
 ];
 
 export function MobileHeader() {
-  const [isMounted, setIsMounted] = useState(false);
+  // Safe SSR environment isolation via useSyncExternalStore
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [chats, setChats] = useState(INITIAL_CHATS);
   const [activeRoomId, setActiveRoomId] = useState(INITIAL_CHATS[0].id);
 
   // 新增狀態：用來受控控制 GlobalChatConsole 的初始視圖
   const [mobileView, setMobileView] = useState<"LIST" | "CHAT">("LIST");
-
-  useEffect(() => {
-    // 完美防止 React 19 嘅 Linter 報錯
-    const timer = setTimeout(() => {
-      setIsMounted(true);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
 
   // 廣播接收監聽器
   useEffect(() => {
