@@ -9,11 +9,10 @@
 
 在編寫程式碼之前，請按順序閱讀以下文件：
 
-1. [design.md](../.stitch/designs/design.md)
-2. 此存檔：[docs/plan-sync-archive.md](../docs/plan-sync-archive.md)
-3. [docs/dev/server.md](../docs/dev/server.md) — 伺服器端 TODO 追蹤器
-4. [docs/dev/api.md](../docs/dev/api.md) — API 整合 TODO 追蹤器
-5. [docs/dev/database.md](../docs/dev/database.md) — 資料庫架構與查詢 TODO 追蹤器
+1. [docs/plan-sync-archive.md](../docs/plan-sync-archive.md)
+2. [docs/dev/server.md](../docs/dev/server.md) — 伺服器端 TODO 追蹤器
+3. [docs/dev/api.md](../docs/dev/api.md) — API 整合 TODO 追蹤器
+4. [docs/dev/database.md](../docs/dev/database.md) — 資料庫架構與查詢 TODO 追蹤器
 
 ## 👑 PokéTrade 黃金工作流 (Agentic UI 工作流)
 
