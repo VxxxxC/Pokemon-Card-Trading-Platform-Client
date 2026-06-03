@@ -8,33 +8,41 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
+// 🟢 核心引入：載入全域監聽交易抽屜 & 原子級全域交易按鈕
 import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
+import {
+  BuyButton,
+  BidButton,
+} from "@/app/components/transactions/GlobalTxButtons";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 
-// Mock official standard databases mapped by Card ID
-const CARD_SPECS_DATABASE: Record<string, {
-  name: string;
-  jpName: string;
-  set: string;
-  rarity: "SAR" | "UR" | "SR" | "AR";
-  grade: { authority: string; score: string };
-  price: number;
-  delta: number;
-  deltaDirection: "up" | "down";
-  images: string[];
-  type: string;
-  stage: string;
-  weakness: string;
-  retreatCost: string;
-  moveDamage: string;
-  artist: string;
-  seller: string;
-  sellerRating: number;
-  sellerTrades: number;
-  sellerRank: "專業道館主" | "資深收藏家" | "傳奇卡師";
-  soldHistory: { date: string; grade: string; price: number }[];
-  chartPoints: { day: number; date: string; price: number }[];
-}> = {
+// Mock 官方標準數據庫 (透過卡牌 ID 聯查)
+const CARD_SPECS_DATABASE: Record<
+  string,
+  {
+    name: string;
+    jpName: string;
+    set: string;
+    rarity: "SAR" | "UR" | "SR" | "AR";
+    grade: { authority: string; score: string };
+    price: number;
+    delta: number;
+    deltaDirection: "up" | "down";
+    images: string[];
+    type: string;
+    stage: string;
+    weakness: string;
+    retreatCost: string;
+    moveDamage: string;
+    artist: string;
+    seller: string;
+    sellerRating: number;
+    sellerTrades: number;
+    sellerRank: "專業道館主" | "資深收藏家" | "傳奇卡師";
+    soldHistory: { date: string; grade: string; price: number }[];
+    chartPoints: { day: number; date: string; price: number }[];
+  }
+> = {
   "sv2a-182": {
     name: "Charizard ex SAR (噴火龍)",
     jpName: "リザードン ex SAR",
@@ -118,8 +126,10 @@ const CARD_SPECS_DATABASE: Record<string, {
   },
 };
 
-// Fallback template for any card search IDs not in mock database
-const getFallbackCard = (id: string): typeof CARD_SPECS_DATABASE["sv2a-182"] => {
+// 搜尋無對應 ID 嗰陣嘅降級備用範本
+const getFallbackCard = (
+  id: string,
+): (typeof CARD_SPECS_DATABASE)["sv2a-182"] => {
   return {
     name: `精選卡牌 (${id})`,
     jpName: "ポケモンカード精選",
@@ -143,9 +153,7 @@ const getFallbackCard = (id: string): typeof CARD_SPECS_DATABASE["sv2a-182"] => 
     sellerRating: 4.9,
     sellerTrades: 240,
     sellerRank: "專業道館主",
-    soldHistory: [
-      { date: "2026-05-20", grade: "PSA 10", price: 1480 },
-    ],
+    soldHistory: [{ date: "2026-05-20", grade: "PSA 10", price: 1480 }],
     chartPoints: [
       { day: 1, date: "05-01", price: 1400 },
       { day: 15, date: "05-15", price: 1450 },
@@ -163,13 +171,13 @@ export default function ProductDetailPage({ params }: PageProps) {
   const card = CARD_SPECS_DATABASE[id] || getFallbackCard(id);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [hoveredChartIndex, setHoveredChartIndex] = useState<number | null>(null);
+  const [hoveredChartIndex, setHoveredChartIndex] = useState<number | null>(
+    null,
+  );
 
-  // Slideover trigger states
-  const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
-  const [slideOverMode, setSlideOverMode] = useState<"buy" | "bid" | null>(null);
+  // 🟢 修正點 1：完全拔除冗餘嘅 Local 彈窗觸發狀態，交由全域 Window 事件全自動監聽
 
-  // SVG Sparkline dimensions
+  // SVG 走勢圖 Canvas 規格
   const chartWidth = 500;
   const chartHeight = 120;
   const padding = 20;
@@ -177,28 +185,28 @@ export default function ProductDetailPage({ params }: PageProps) {
   const minPrice = Math.min(...card.chartPoints.map((p) => p.price)) * 0.95;
   const maxPrice = Math.max(...card.chartPoints.map((p) => p.price)) * 1.05;
 
-  // Generate SVG Points mapping
+  // 映射 SVG 線性座標點
   const points = card.chartPoints.map((pt, i) => {
-    const x = padding + (i / (card.chartPoints.length - 1)) * (chartWidth - padding * 2);
+    const x =
+      padding +
+      (i / (card.chartPoints.length - 1)) * (chartWidth - padding * 2);
     const y =
       chartHeight -
       padding -
-      ((pt.price - minPrice) / (maxPrice - minPrice)) * (chartHeight - padding * 2);
+      ((pt.price - minPrice) / (maxPrice - minPrice)) *
+        (chartHeight - padding * 2);
     return { x, y, ...pt };
   });
 
   const pathD = points.reduce(
-    (acc, pt, i) => (i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`),
-    ""
+    (acc, pt, i) =>
+      i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`,
+    "",
   );
 
   const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`;
 
-  const triggerTransaction = (mode: "buy" | "bid") => {
-    setSlideOverMode(mode);
-    setIsSlideOverOpen(true);
-  };
-
+  // 封裝標準大盤數據模型
   const currentListing: MarketplaceListing = {
     id,
     name: card.name,
@@ -218,21 +226,22 @@ export default function ProductDetailPage({ params }: PageProps) {
       <MobileHeader />
 
       <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 lg:pb-12">
-        {/* Breadcrumb navigator */}
+        {/* 麵包屑導航 */}
         <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5">
-          <Link href="/marketplace" className="hover:text-[#d4a574] transition-colors">
+          <Link
+            href="/marketplace"
+            className="hover:text-[#d4a574] transition-colors"
+          >
             MARKETPLACE探索
           </Link>
           <span>/</span>
           <span className="text-[#8A8680] truncate uppercase">{id} DETAIL</span>
         </div>
 
-        {/* ── Asymmetric Layout ── */}
-        <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
-          
-          {/* Left Column (Sticky Photos Exhibit - Width: 5/12) */}
+        {/* ── 雙欄黃金不對稱版面 ── */}
+        <div className="lg:grid grid-cols-12 lg:gap-8 items-start">
+          {/* 左側大欄：實物高清相冊展台 */}
           <section className="lg:col-span-5 lg:sticky lg:top-[5.5rem] space-y-4 mb-6 lg:mb-0">
-            {/* Display Magnifier viewport */}
             <div className="relative w-full aspect-[5/3.8] bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.60)]">
               <Image
                 src={card.images[activeImageIndex]}
@@ -241,8 +250,8 @@ export default function ProductDetailPage({ params }: PageProps) {
                 priority
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 40vw"
+                unoptimized
               />
-              {/* Evidence condition seal label */}
               <div className="absolute top-3 left-3 pointer-events-none">
                 <span className="inline-flex px-2 py-1 rounded bg-[#17130f]/80 backdrop-blur-sm border border-[rgba(237,232,224,0.12)] font-mono text-[10px] font-semibold text-[#d4c4b7]">
                   【美品 S】實物品相存證
@@ -250,7 +259,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Micro thumbnail grid navigation */}
+            {/* 縮圖網格導航 */}
             <div className="grid grid-cols-5 gap-2">
               {card.images.map((img, i) => (
                 <button
@@ -264,45 +273,66 @@ export default function ProductDetailPage({ params }: PageProps) {
                   }`}
                   aria-label={`查看實物特寫相片 ${i + 1}`}
                 >
-                  <Image src={img} alt="角落細節" fill className="object-cover" sizes="80px" />
+                  <Image
+                    src={img}
+                    alt="角落細節"
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                    unoptimized
+                  />
                 </button>
               ))}
             </div>
 
             <p className="font-mono text-[10px] text-[#50453b] text-center tracking-wider leading-relaxed">
-              ⚠️ 本卡實物相片由私人賣家提交，包含卡牌四角(Corners)與微距刮痕細節。平台第三方鑑定確認品相前將進行比對鎖定。
+              ⚠️
+              本卡實物相片由私人賣家提交，包含卡牌四角(Corners)與微距刮痕細節。平台第三方鑑定確認品相前將進行比對鎖定。
             </p>
           </section>
 
-          {/* Right Column (Terminal specs transaction panel - Width: 7/12) */}
+          {/* 右側大欄：核心數據規格與全域交易面板 */}
           <section className="lg:col-span-7 space-y-6">
-            {/* Headline Details */}
+            {/* 標題與系列 */}
             <div className="space-y-1.5 pb-4 border-b border-[rgba(237,232,224,0.06)]">
-              <h1 className="font-sans font-bold text-[24px] lg:text-[28px] text-[#eae1da] leading-tight">
+              <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] leading-tight tracking-tight">
                 {card.name}
               </h1>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-[12px] text-[#d4c4b7]">{card.jpName}</span>
+                <span className="font-mono text-[12px] text-[#d4c4b7]">
+                  {card.jpName}
+                </span>
                 <span className="font-mono text-[12px] text-[#50453b]">|</span>
-                <span className="font-mono text-[12px] text-[#d4c4b7]">{card.set}</span>
+                <span className="font-mono text-[12px] text-[#d4c4b7]">
+                  {card.set}
+                </span>
               </div>
             </div>
 
-            {/* Merchant Identity Module */}
+            {/* 賣家商家卡片 */}
             <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.06)] flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0">
-                  <Image src="https://picsum.photos/seed/dealer-avatar/80/80" alt="商家頭像" fill className="object-cover" />
+                  <Image
+                    src="https://picsum.photos/seed/dealer-avatar/80/80"
+                    alt="商家頭像"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="font-sans font-semibold text-[14px] text-[#eae1da]">{card.seller}</p>
-                    <span className="inline-flex items-center gap-0.5 font-sans text-[11px] text-[#d4a574] font-semibold bg-[rgba(212,165,116,0.12)] px-1.5 py-0.2 rounded">
+                    <p className="font-sans font-semibold text-[14px] text-[#eae1da]">
+                      {card.seller}
+                    </p>
+                    <span className="inline-flex items-center gap-0.5 font-sans text-[11px] text-brand bg-[rgba(212,165,116,0.12)] px-1.5 py-0.2 rounded font-bold">
                       🏅 {card.sellerRank}
                     </span>
                   </div>
                   <p className="font-mono text-[11px] text-[#d4c4b7] mt-0.5">
-                    ⭐ {card.sellerRating} 好評率 ({card.sellerTrades}+ 筆已完成交易)
+                    ⭐ {card.sellerRating} 好評率 ({card.sellerTrades}+
+                    筆已完成交易)
                   </p>
                 </div>
               </div>
@@ -314,48 +344,47 @@ export default function ProductDetailPage({ params }: PageProps) {
               </Link>
             </div>
 
-            {/* Spot Price details */}
-            <div className="bg-[#26211C] p-5 rounded-2xl border border-[rgba(212,165,116,0.20)] flex items-end justify-between gap-4">
+            {/* 即時售價面板 */}
+            <div className="bg-[#26211C] p-5 rounded-2xl border border-[rgba(212,165,116,0.20)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-md">
               <div>
                 <span className="font-mono text-[10px] text-[#d4c4b7] uppercase tracking-wider block mb-1">
                   港幣現貨最低起價 (SPOT VALUE)
                 </span>
                 <div className="flex items-baseline gap-2">
-                  <p className="font-mono font-bold text-[32px] text-[#eae1da] leading-none">
+                  <p className="font-mono font-black text-[32px] text-[#eae1da] leading-none">
                     HK$ {card.price.toLocaleString("en-HK")}
                   </p>
                   <span
                     className={`font-mono text-[13px] font-semibold ${
-                      card.deltaDirection === "up" ? "text-[#10b981]" : "text-[#ef4444]"
+                      card.deltaDirection === "up"
+                        ? "text-success"
+                        : "text-error"
                     }`}
                   >
-                    {card.deltaDirection === "up" ? "▲" : "▼"} {card.deltaDirection === "up" ? "+" : "-"}$
-                    {card.delta} (24H)
+                    {card.deltaDirection === "up" ? "▲" : "▼"}{" "}
+                    {card.deltaDirection === "up" ? "+" : "-"}${card.delta}{" "}
+                    (24H)
                   </span>
                 </div>
                 <p className="font-mono text-[10px] text-[#50453b] mt-1.5">
-                  更新時間：[SERVER_TIME_RESOLVED]
+                  更新時間：剛剛
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                <button
-                  onClick={() => triggerTransaction("buy")}
-                  className="h-11 px-6 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-bold text-[13px] rounded-lg active:scale-[0.98] transition-transform min-h-[44px] cursor-pointer"
-                >
-                  ⚡ 直接購買
-                </button>
-                <button
-                  onClick={() => triggerTransaction("bid")}
-                  className="h-11 px-6 border border-[#d4a574] text-[#d4a574] hover:bg-[rgba(212,165,116,0.08)] font-sans font-bold text-[13px] rounded-lg active:scale-[0.98] transition-transform min-h-[44px] cursor-pointer"
-                >
-                  📈 即時出價
-                </button>
+              {/* 🟢 修正點 2：直接熔接全域一體化按鈕，帶入標準大盤資料模型，盲撳即刻全網同步彈窗！ */}
+              <div className="flex gap-2 shrink-0 self-stretch sm:self-auto">
+                <BuyButton
+                  listing={currentListing}
+                  className="flex-1 sm:flex-none h-11 px-6 text-[13px]"
+                />
+                <BidButton
+                  listing={currentListing}
+                  className="flex-1 sm:flex-none h-11 px-6 text-[13px]"
+                />
               </div>
             </div>
 
-            {/* Custom Interactive SVG Sparkline Historical Chart */}
+            {/* 互動式歷史走勢圖 */}
             <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
@@ -366,7 +395,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </span>
               </div>
 
-              {/* Sparkline Graphic Area */}
               <div className="relative w-full h-[120px]">
                 <svg
                   viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -374,21 +402,34 @@ export default function ProductDetailPage({ params }: PageProps) {
                   height="100%"
                   className="overflow-visible"
                 >
-                  {/* Linear Gradient Definitions */}
                   <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#d4a574" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#d4a574" stopOpacity="0.0" />
+                    <linearGradient
+                      id="chartGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor="#d4a574"
+                        stopOpacity="0.25"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="#d4a574"
+                        stopOpacity="0.0"
+                      />
                     </linearGradient>
                   </defs>
-
-                  {/* Gradient underlying area */}
                   <path d={areaD} fill="url(#chartGradient)" />
-
-                  {/* Main Line path */}
-                  <path d={pathD} fill="none" stroke="#d4a574" strokeWidth="2.5" strokeLinecap="round" />
-
-                  {/* Dot anchors */}
+                  <path
+                    d={pathD}
+                    fill="none"
+                    stroke="#d4a574"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
                   {points.map((pt, i) => (
                     <circle
                       key={pt.day}
@@ -405,7 +446,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                   ))}
                 </svg>
 
-                {/* Floating Glassmorphic Tooltip */}
                 {hoveredChartIndex !== null && (
                   <div
                     className="absolute z-20 bg-[#2e2925]/90 border border-[rgba(237,232,224,0.15)] rounded-lg p-2 shadow-lg backdrop-blur-xs font-mono text-[10px] pointer-events-none"
@@ -414,8 +454,10 @@ export default function ProductDetailPage({ params }: PageProps) {
                       top: `${(points[hoveredChartIndex].y / chartHeight) * 60 + 10}px`,
                     }}
                   >
-                    <p className="text-[#8A8680]">日期: {points[hoveredChartIndex].date}</p>
-                    <p className="text-[#d4a574] font-semibold mt-0.5">
+                    <p className="text-[#8A8680]">
+                      日期: {points[hoveredChartIndex].date}
+                    </p>
+                    <p className="text-brand font-semibold mt-0.5">
                       均價: HK$ {points[hoveredChartIndex].price}
                     </p>
                   </div>
@@ -423,7 +465,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Standard Specifications Grid Table */}
+            {/* 卡牌標準數據規格矩陣 */}
             <div className="bg-[#26211C] rounded-xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
               <div className="px-4 py-3 border-b border-[rgba(237,232,224,0.08)]">
                 <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
@@ -431,7 +473,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </h3>
               </div>
 
-              {/* High density spec matrix */}
               <div className="grid grid-cols-1 sm:grid-cols-2 font-sans text-[13px]">
                 {[
                   { label: "系列名稱", val: card.set },
@@ -449,27 +490,33 @@ export default function ProductDetailPage({ params }: PageProps) {
                     } border-b border-[rgba(237,232,224,0.04)]`}
                   >
                     <span className="text-[#d4c4b7]">{row.label}</span>
-                    <span className="font-semibold text-[#eae1da] text-right truncate max-w-[180px]">{row.val}</span>
+                    <span className="font-semibold text-[#eae1da] text-right truncate max-w-[180px]">
+                      {row.val}
+                    </span>
                   </div>
                 ))}
 
-                {/* Special badges rows */}
                 <div className="flex items-center justify-between p-3.5 bg-[#26211C] border-b border-[rgba(237,232,224,0.04)] sm:col-span-2">
                   <span className="text-[#d4c4b7]">鑑定等級及稀有度</span>
                   <div className="flex items-center gap-1.5">
                     <RarityBadge rarity={card.rarity} />
-                    <GradeBadge authority={card.grade.authority} score={card.grade.score} />
+                    <GradeBadge
+                      authority={card.grade.authority}
+                      score={card.grade.score}
+                    />
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between p-3.5 bg-[#2c2722] border-b border-[rgba(237,232,224,0.04)] sm:col-span-2">
                   <span className="text-[#d4c4b7]">核心招式傷害</span>
-                  <span className="font-semibold text-[#eae1da] font-mono text-[12px]">{card.moveDamage}</span>
+                  <span className="font-semibold text-[#eae1da] font-mono text-[12px]">
+                    {card.moveDamage}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Sold Transactions history ledger */}
+            {/* 歷史成交清冊 */}
             <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
               <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
                 最近平台已成交歷史
@@ -483,31 +530,23 @@ export default function ProductDetailPage({ params }: PageProps) {
                     <div className="flex items-center gap-2">
                       <span className="text-[#8A8680]">{item.date}</span>
                       <span className="text-[#50453b]">|</span>
-                      <span className="text-[#d4a574]">{item.grade}</span>
+                      <span className="text-brand">{item.grade}</span>
                     </div>
-                    <span className="font-bold text-[#10b981]">
+                    <span className="font-bold text-success">
                       HK$ {item.price.toLocaleString("en-HK")}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
-
           </section>
         </div>
       </main>
 
       <BottomNav />
 
-      {/* Slideover checkout forms */}
-      <ExecutionSlideOver
-        listing={currentListing}
-        mode={slideOverMode}
-        onClose={() => {
-          setIsSlideOverOpen(false);
-          setSlideOverMode(null);
-        }}
-      />
+      {/* ── 🟢 修正點 3：常駐全域交割監聽器，移除了所有舊 Local Props 控制，全自動捕獲事件開單 ── */}
+      <ExecutionSlideOver />
     </div>
   );
 }

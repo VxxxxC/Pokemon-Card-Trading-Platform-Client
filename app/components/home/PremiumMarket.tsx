@@ -109,7 +109,7 @@ const premiumListings = [
 export function PremiumMarket() {
   const plugin = React.useRef(
     Autoplay({
-      delay: 4000,
+      delay: 2000,
       playOnInit: true,
       stopOnInteraction: false,
       stopOnMouseEnter: true,

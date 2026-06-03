@@ -1,21 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
 
-interface ExecutionSlideOverProps {
-  listing: MarketplaceListing | null;
-  mode: "buy" | "bid" | null;
-  onClose: () => void;
-}
-
-export function ExecutionSlideOver({ listing, mode, onClose }: ExecutionSlideOverProps) {
+export function ExecutionSlideOver() {
   const router = useRouter();
+  const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [mode, setMode] = useState<"buy" | "bid" | "auction" | null>(null);
   const [bidAmount, setBidAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalTx = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        listing: MarketplaceListing;
+        mode: "buy" | "bid" | "auction";
+      }>;
+      if (customEvent.detail) {
+        setListing(customEvent.detail.listing);
+        setMode(customEvent.detail.mode);
+        setBidAmount(
+          Math.round(customEvent.detail.listing.price * 0.9).toString(),
+        );
+      }
+    };
+
+    window.addEventListener("open-global-transaction", handleGlobalTx);
+    return () =>
+      window.removeEventListener("open-global-transaction", handleGlobalTx);
+  }, []);
+
+  const handleClose = () => {
+    setListing(null);
+    setMode(null);
+  };
 
   if (!listing || !mode) return null;
 
@@ -24,33 +45,37 @@ export function ExecutionSlideOver({ listing, mode, onClose }: ExecutionSlideOve
     if (isSubmitting) return;
 
     setIsSubmitting(true);
-
-    // Simulate network transaction latency & idempotency lock
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     setIsSubmitting(false);
-    onClose();
+    handleClose();
 
     if (mode === "buy") {
-      // Direct checkout landing redirect
-      router.push(`/marketplace/payment-status?status=success&id=${listing.id}`);
+      router.push(
+        `/marketplace/payment-status?status=success&id=${listing.id}`,
+      );
+    } else if (mode === "bid") {
+      alert(
+        `📈 提交成功！您的掛單買方出價 HK$ ${Number(bidAmount).toLocaleString("en-HK")} 已成功進入市場撮合池。`,
+      );
     } else {
-      // Mock bidding success trigger
-      alert(`📈 提交成功！您的出價單 HK$ ${Number(bidAmount).toLocaleString("en-HK")} 已進入全網撮合池。`);
+      alert(
+        `🔨 競投出價成功！您已成功對該拍賣品加價至 HK$ ${Number(bidAmount).toLocaleString("en-HK")}。`,
+      );
     }
   };
 
-  const depositFee = Math.round(listing.price * 0.1);
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true">
-        {/* Backdrop Blur Overlay */}
+      <div
+        className="fixed inset-0 z-[200] overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+      >
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         />
 
@@ -59,45 +84,70 @@ export function ExecutionSlideOver({ listing, mode, onClose }: ExecutionSlideOve
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
             className="w-screen max-w-md bg-[#2e2925] border-l border-[rgba(237,232,224,0.12)] shadow-[0_0_40px_rgba(0,0,0,0.85)] flex flex-col justify-between"
           >
             {/* Header Drawer */}
             <div className="p-5 border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between">
               <div>
                 <h2 className="font-sans font-bold text-[18px] text-[#eae1da]">
-                  {mode === "buy" ? "⚡ 確認購買交易" : "📈 提交撮合出價"}
+                  {mode === "buy"
+                    ? "⚡ 確認購買商品"
+                    : mode === "bid"
+                      ? "📈 提交撮合出價"
+                      : "🔨 參與專屬拍賣競投"}
                 </h2>
                 <p className="font-mono text-[10px] text-[#8A8680] mt-0.5 uppercase tracking-wider">
                   PKT SECURE TRANSACTION PORT
                 </p>
               </div>
               <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full bg-[#17130f] hover:bg-[#39342f] flex items-center justify-center transition-colors cursor-pointer"
+                onClick={handleClose}
+                className="w-8 h-8 rounded-full bg-[#17130f] hover:bg-[#39342f] flex items-center justify-center transition-colors cursor-pointer text-text-secondary hover:text-brand"
                 aria-label="關閉交易面板"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
 
             {/* Content Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide">
-              {/* Product Card Profile */}
-              <div className="flex gap-4 p-3 bg-[#26211C] rounded-xl border border-[rgba(237,232,224,0.06)]">
-                <div className="relative w-14 h-19 bg-[#17130f] rounded overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
-                  <Image src={listing.image} alt={listing.name} fill className="object-cover" sizes="56px" />
+              {/* 大比例重磅商品頭像卡 */}
+              <div className="flex flex-col items-center p-5 bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] shadow-inner text-center space-y-4">
+                <div className="relative w-28 h-38 bg-[#17130f] rounded-xl overflow-hidden border-2 border-[rgba(237,232,224,0.15)] shrink-0 shadow-lg">
+                  <Image
+                    src={listing.image}
+                    alt={listing.name}
+                    fill
+                    className="object-cover"
+                    sizes="120px"
+                    unoptimized
+                  />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-sans font-semibold text-[14px] text-[#eae1da] truncate">{listing.name}</h3>
-                  <p className="font-mono text-[11px] text-[#d4c4b7] mt-0.5">{listing.id} · {listing.set}</p>
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-[#17130f] text-[#d4a574] border border-[#d4a574]/20">
+                <div className="w-full space-y-1">
+                  <h3 className="font-sans font-black text-[16px] md:text-[18px] text-[#eae1da] leading-tight tracking-tight px-2">
+                    {listing.name}
+                  </h3>
+                  <p className="font-mono text-[12px] text-[#d4c4b7]">
+                    流水代號:{" "}
+                    <span className="text-white font-bold">{listing.id}</span> ·{" "}
+                    {listing.set}
+                  </p>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[#17130f] text-[#d4a574] border border-[#d4a574]/20 font-bold">
                       {listing.rarity}
                     </span>
-                    <span className="font-mono text-[9px] px-1 py-0.2 rounded bg-[rgba(140,115,85,0.12)] text-[#eae1da]">
+                    <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[rgba(140,115,85,0.20)] text-[#eae1da] border border-white/5">
                       {listing.grade.authority} {listing.grade.score}
                     </span>
                   </div>
@@ -106,39 +156,32 @@ export function ExecutionSlideOver({ listing, mode, onClose }: ExecutionSlideOve
 
               <form onSubmit={handleAction} className="space-y-6">
                 {mode === "buy" ? (
-                  /* DIRECT INSTANT BUY SYSTEM */
                   <div className="space-y-4">
-                    <div className="p-4 bg-[rgba(212,165,116,0.05)] border border-[#d4a574]/20 rounded-xl space-y-3">
-                      <h4 className="font-mono text-[11px] font-semibold text-[#d4a574] uppercase tracking-wider flex items-center gap-1">
-                        🔒 第三方 Escrow 託管保障
-                      </h4>
-                      <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
-                        本項目支援分段式 Escrow 託管。針對高價值卡牌，您當前僅需支付 **10% 港幣訂金** 即可立刻啟動第三方實體鑑定流程。
-                      </p>
-                    </div>
-
-                    {/* Monetary breakdown */}
-                    <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.06)] divide-y divide-[rgba(237,232,224,0.06)] space-y-3 font-mono text-[13px]">
-                      <div className="flex items-center justify-between pb-3 text-[#d4c4b7]">
-                        <span>商品全款總額</span>
-                        <span>HK$ {listing.price.toLocaleString("en-HK")}</span>
+                    <div className="bg-[#26211C] p-5 rounded-2xl border border-[rgba(237,232,224,0.06)] shadow-inner divide-y divide-[rgba(237,232,224,0.08)] space-y-4 font-mono text-[14px]">
+                      <div className="flex items-center justify-between pb-2 text-[#d4c4b7]">
+                        <span>商品成交全款 (NET VALUE)</span>
+                        <span className="text-[#eae1da] font-bold">
+                          HK$ {listing.price.toLocaleString("en-HK")}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between py-3 text-[#d4a574] font-semibold">
-                        <span>本次應付訂金 (10%)</span>
-                        <span>HK$ {depositFee.toLocaleString("en-HK")}</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-3 text-[#d4c4b7]">
-                        <span>尾款 (收貨鑑定確認後支付)</span>
-                        <span>HK$ {(listing.price - depositFee).toLocaleString("en-HK")}</span>
+                      <div className="flex items-center justify-between pt-4 text-brand font-black text-[18px] tracking-tight">
+                        <span>應付結算總額</span>
+                        <span className="text-brand">
+                          HK$ {listing.price.toLocaleString("en-HK")}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  /* INVESTMENT MATCHING BID SYSTEM */
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="bid-input" className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-2">
-                        輸入您的出價金額 (HK$)
+                      <label
+                        htmlFor="bid-input"
+                        className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-2 font-bold"
+                      >
+                        {mode === "bid"
+                          ? "輸入您的出價金額 (HK$)"
+                          : "輸入您的競投加價 (HK$)"}
                       </label>
                       <div className="relative">
                         <span className="absolute left-4 inset-y-0 flex items-center font-mono text-[18px] text-[#d4a574] font-bold">
@@ -148,28 +191,36 @@ export function ExecutionSlideOver({ listing, mode, onClose }: ExecutionSlideOve
                           id="bid-input"
                           type="number"
                           required
-                          min={Math.round(listing.price * 0.5)}
+                          min={
+                            mode === "bid"
+                              ? Math.round(listing.price * 0.5)
+                              : listing.price + 50
+                          }
                           value={bidAmount}
                           onChange={(e) => setBidAmount(e.target.value)}
-                          placeholder={`${Math.round(listing.price * 0.9)}`}
-                          className="w-full h-13 pl-14 pr-4 bg-[#26211C] border border-[rgba(237,232,224,0.12)] focus:border-[#d4a574]/40 rounded-xl font-mono text-[18px] text-[#d4a574] font-bold focus:outline-none focus:ring-2 focus:ring-[#d4a574]/20 transition-all"
+                          className="w-full h-13 pl-14 pr-4 bg-[#26211C] border border-[rgba(237,232,224,0.12)] focus:border-[#d4a574]/40 rounded-xl font-mono text-[18px] text-[#d4a574] font-bold focus:outline-none"
                         />
                       </div>
                       <p className="font-mono text-[10px] text-[#50453b] mt-1.5">
-                        當前市場最低售價：HK$ {listing.price.toLocaleString("en-HK")}
+                        {mode === "bid"
+                          ? `當前市場最低售價：HK$ ${listing.price.toLocaleString("en-HK")}`
+                          : `當前拍賣最低競投價：HK$ ${(listing.price + 50).toLocaleString("en-HK")}`}
                       </p>
                     </div>
 
-                    <div className="p-4 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-xl space-y-2">
-                      <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
-                        📈 **股市撮合機制**：您的出價將進入平台掛單撮合池，當有賣家願意以此價匹配時，系統將自動為您成交。
-                      </p>
-                    </div>
+                    {mode === "auction" && (
+                      <div className="p-4 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-xl">
+                        <p className="font-sans text-[12.5px] text-[#d4c4b7] leading-relaxed">
+                          🔨
+                          拍賣機制：加價競投將即時鎖定份額，若拍賣倒計時結束前無更高出價，您將成功斬獲該珍稀卡牌。
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {/* Submit Container Action */}
-                <div className="pt-4 border-t border-[rgba(237,232,224,0.06)] flex gap-3">
+                {/* Submit Buttons */}
+                <div className="pt-4 flex gap-3">
                   <button
                     type="submit"
                     disabled={isSubmitting}
@@ -178,24 +229,23 @@ export function ExecutionSlideOver({ listing, mode, onClose }: ExecutionSlideOve
                     {isSubmitting ? (
                       <>
                         <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
-                        <span className="font-mono text-[12px] text-[#1A1612]">LOCKING TRANSACTION...</span>
+                        <span className="font-mono text-[11px] text-[#1A1612]">
+                          EXECUTING ORDER...
+                        </span>
                       </>
                     ) : mode === "buy" ? (
-                      "⚡ 立即支付訂金"
-                    ) : (
+                      "⚡ 確認付款並下單"
+                    ) : mode === "bid" ? (
                       "📈 確認發出買方出價"
+                    ) : (
+                      "🔨 確認加價競投"
                     )}
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Legal footer info */}
-            <div className="p-4 bg-[#26211C] border-t border-[rgba(237,232,224,0.06)] text-center">
-              <p className="font-mono text-[9px] text-[#50453b] tracking-wider leading-relaxed">
-                SECURED BY STRIPE CONNECT & HK CUSTOMS TCG ESCROW COMPLIANCE LICENSE
-              </p>
-            </div>
+            {/* 🟢 核心修正 1：刪除原本多餘且阻擋 Mobile View 的 Footer 晶片區塊，底層空間完美解壓 */}
           </motion.div>
         </div>
       </div>
