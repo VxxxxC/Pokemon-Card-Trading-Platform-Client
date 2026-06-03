@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { ChatDrawerSkeleton } from "@/app/components/shared/StreamingSkeletons";
 
 export interface Message {
   id: string;
@@ -28,6 +29,7 @@ export interface GlobalChatConsoleProps {
   activeRoomId: string;
   setActiveRoomId: (id: string) => void;
   initialMobileView?: "LIST" | "CHAT"; // 允許外部決定手機版初始視圖
+  isLoading?: boolean;
 }
 
 export function GlobalChatConsole({
@@ -38,6 +40,7 @@ export function GlobalChatConsole({
   activeRoomId,
   setActiveRoomId,
   initialMobileView = "LIST", //  預設為 LIST
+  isLoading = false,
 }: GlobalChatConsoleProps) {
   const [currentMobileView, setCurrentMobileView] = useState<"LIST" | "CHAT">(
     "LIST",
@@ -85,6 +88,32 @@ export function GlobalChatConsole({
   if (!isOpen) return null;
 
   const activeRoom = chats.find((r) => r.id === activeRoomId) || chats[0];
+
+  if (isLoading || chats.length === 0 || !activeRoom) {
+    return (
+      <>
+        <motion.div
+          ref={desktopConsoleRef}
+          initial={{ opacity: 0, y: 40, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 40, scale: 0.98 }}
+          className="hidden lg:flex fixed bottom-6 right-6 z-[200] w-[640px] h-[460px] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
+        >
+          <ChatDrawerSkeleton />
+        </motion.div>
+
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="lg:hidden fixed inset-0 z-[150]"
+        >
+          <ChatDrawerSkeleton />
+        </motion.div>
+      </>
+    );
+  }
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();

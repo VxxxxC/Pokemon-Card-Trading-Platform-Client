@@ -15,6 +15,7 @@ import {
   BidButton,
 } from "@/app/components/transactions/GlobalTxButtons";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 
 // Mock 官方標準數據庫 (透過卡牌 ID 聯查)
 const CARD_SPECS_DATABASE: Record<
@@ -181,22 +182,30 @@ export default function ProductDetailPage({ params }: PageProps) {
   const chartWidth = 500;
   const chartHeight = 120;
   const padding = 20;
+  const hasChartData = card.chartPoints.length > 0;
 
-  const minPrice = Math.min(...card.chartPoints.map((p) => p.price)) * 0.95;
-  const maxPrice = Math.max(...card.chartPoints.map((p) => p.price)) * 1.05;
+  const minPrice = hasChartData
+    ? Math.min(...card.chartPoints.map((p) => p.price)) * 0.95
+    : 0;
+  const maxPrice = hasChartData
+    ? Math.max(...card.chartPoints.map((p) => p.price)) * 1.05
+    : 0;
 
   // 映射 SVG 線性座標點
-  const points = card.chartPoints.map((pt, i) => {
-    const x =
-      padding +
-      (i / (card.chartPoints.length - 1)) * (chartWidth - padding * 2);
-    const y =
-      chartHeight -
-      padding -
-      ((pt.price - minPrice) / (maxPrice - minPrice)) *
-        (chartHeight - padding * 2);
-    return { x, y, ...pt };
-  });
+  const points = hasChartData
+    ? card.chartPoints.map((pt, i) => {
+        const x =
+          padding +
+          (i / Math.max(card.chartPoints.length - 1, 1)) *
+            (chartWidth - padding * 2);
+        const y =
+          chartHeight -
+          padding -
+          ((pt.price - minPrice) / Math.max(maxPrice - minPrice, 1)) *
+            (chartHeight - padding * 2);
+        return { x, y, ...pt };
+      })
+    : [];
 
   const pathD = points.reduce(
     (acc, pt, i) =>
@@ -204,7 +213,9 @@ export default function ProductDetailPage({ params }: PageProps) {
     "",
   );
 
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`;
+  const areaD = hasChartData
+    ? `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`
+    : "";
 
   // 封裝標準大盤數據模型
   const currentListing: MarketplaceListing = {
@@ -385,85 +396,89 @@ export default function ProductDetailPage({ params }: PageProps) {
             </div>
 
             {/* 互動式歷史走勢圖 */}
-            <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
-                  Mercari JP 30天歷史走勢圖
-                </h3>
-                <span className="font-mono text-[11px] text-[#d4c4b7]">
-                  日版已成交均價 (JPY換算HKD)
-                </span>
-              </div>
+            {hasChartData ? (
+              <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
+                    Mercari JP 30天歷史走勢圖
+                  </h3>
+                  <span className="font-mono text-[11px] text-[#d4c4b7]">
+                    日版已成交均價 (JPY換算HKD)
+                  </span>
+                </div>
 
-              <div className="relative w-full h-[120px]">
-                <svg
-                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                  width="100%"
-                  height="100%"
-                  className="overflow-visible"
-                >
-                  <defs>
-                    <linearGradient
-                      id="chartGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="0%"
-                        stopColor="#d4a574"
-                        stopOpacity="0.25"
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="#d4a574"
-                        stopOpacity="0.0"
-                      />
-                    </linearGradient>
-                  </defs>
-                  <path d={areaD} fill="url(#chartGradient)" />
-                  <path
-                    d={pathD}
-                    fill="none"
-                    stroke="#d4a574"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
-                  {points.map((pt, i) => (
-                    <circle
-                      key={pt.day}
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={hoveredChartIndex === i ? 6 : 3.5}
-                      fill={hoveredChartIndex === i ? "#eae1da" : "#26211C"}
-                      stroke="#d4a574"
-                      strokeWidth="2"
-                      className="cursor-pointer transition-all duration-150"
-                      onMouseEnter={() => setHoveredChartIndex(i)}
-                      onMouseLeave={() => setHoveredChartIndex(null)}
-                    />
-                  ))}
-                </svg>
-
-                {hoveredChartIndex !== null && (
-                  <div
-                    className="absolute z-20 bg-[#2e2925]/90 border border-[rgba(237,232,224,0.15)] rounded-lg p-2 shadow-lg backdrop-blur-xs font-mono text-[10px] pointer-events-none"
-                    style={{
-                      left: `${(points[hoveredChartIndex].x / chartWidth) * 90}%`,
-                      top: `${(points[hoveredChartIndex].y / chartHeight) * 60 + 10}px`,
-                    }}
+                <div className="relative w-full h-[120px]">
+                  <svg
+                    viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                    width="100%"
+                    height="100%"
+                    className="overflow-visible"
                   >
-                    <p className="text-[#8A8680]">
-                      日期: {points[hoveredChartIndex].date}
-                    </p>
-                    <p className="text-brand font-semibold mt-0.5">
-                      均價: HK$ {points[hoveredChartIndex].price}
-                    </p>
-                  </div>
-                )}
+                    <defs>
+                      <linearGradient
+                        id="chartGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#d4a574"
+                          stopOpacity="0.25"
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#d4a574"
+                          stopOpacity="0.0"
+                        />
+                      </linearGradient>
+                    </defs>
+                    <path d={areaD} fill="url(#chartGradient)" />
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke="#d4a574"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                    {points.map((pt, i) => (
+                      <circle
+                        key={pt.day}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={hoveredChartIndex === i ? 6 : 3.5}
+                        fill={hoveredChartIndex === i ? "#eae1da" : "#26211C"}
+                        stroke="#d4a574"
+                        strokeWidth="2"
+                        className="cursor-pointer transition-all duration-150"
+                        onMouseEnter={() => setHoveredChartIndex(i)}
+                        onMouseLeave={() => setHoveredChartIndex(null)}
+                      />
+                    ))}
+                  </svg>
+
+                  {hoveredChartIndex !== null && points[hoveredChartIndex] && (
+                    <div
+                      className="absolute z-20 bg-[#2e2925]/90 border border-[rgba(237,232,224,0.15)] rounded-lg p-2 shadow-lg backdrop-blur-xs font-mono text-[10px] pointer-events-none"
+                      style={{
+                        left: `${(points[hoveredChartIndex].x / chartWidth) * 90}%`,
+                        top: `${(points[hoveredChartIndex].y / chartHeight) * 60 + 10}px`,
+                      }}
+                    >
+                      <p className="text-[#8A8680]">
+                        日期: {points[hoveredChartIndex].date}
+                      </p>
+                      <p className="text-brand font-semibold mt-0.5">
+                        均價: HK$ {points[hoveredChartIndex].price}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <MarketChartSkeleton />
+            )}
 
             {/* 卡牌標準數據規格矩陣 */}
             <div className="bg-[#26211C] rounded-xl border border-[rgba(237,232,224,0.08)] overflow-hidden">

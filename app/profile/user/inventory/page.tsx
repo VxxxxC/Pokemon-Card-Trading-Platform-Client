@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 interface UserListing {
   id: string;
@@ -10,7 +11,7 @@ interface UserListing {
   grade: string;
   cardImage: string;
   price: number;
-  status: "active" | "sold" | "unlisted";
+  status: "active" | "sold" | "unlisted" | "pending_trade";
   paymentMethods: string[];
   shippingMethods: string[];
   createdAt: string;
@@ -80,9 +81,9 @@ const INITIAL_LISTINGS: UserListing[] = [
 
 export default function UserInventoryPage() {
   const [listings, setListings] = useState<UserListing[]>(INITIAL_LISTINGS);
-  const [activeTab, setActiveTab] = useState<"active" | "sold" | "unlisted">(
-    "active",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "active" | "sold" | "unlisted" | "pending_trade"
+  >("active");
   // Safe SSR environment isolation via useSyncExternalStore
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -172,7 +173,9 @@ export default function UserInventoryPage() {
             : l,
         ),
       );
-      alert("💾 商品資料已成功修改更新！");
+      toast.success("💾 資料已更新", {
+        description: "商品庫存資料已成功修改變更！",
+      });
     } else {
       const newObj: UserListing = {
         id: `LST-C2C-${Math.floor(100 + Math.random() * 900)}`,
@@ -190,7 +193,9 @@ export default function UserInventoryPage() {
       };
       setListings((prev) => [newObj, ...prev]);
       setActiveTab("active");
-      alert("⚡ 全新卡牌散件已成功部署至全港現貨大盤！");
+      toast.success("⚡ 部署成功", {
+        description: `【${newCardName}】已成功部署至全港現貨大盤！`,
+      });
     }
 
     setShowAddModal(false);
@@ -219,28 +224,52 @@ export default function UserInventoryPage() {
 
     setListings((prev) =>
       prev.map((l) =>
-        l.id === selectedListing.id ? { ...l, status: "sold" as const } : l,
+        l.id === selectedListing.id
+          ? { ...l, status: "pending_trade" as const }
+          : l,
       ),
     );
 
     setShowOrderModal(false);
-    setActiveTab("sold");
-    alert(
-      `🎉 成功為買家【${buyerName}】建立專屬 ${tradeMethod === "meetup" ? "見面面交" : "順豐物流"} 交易單！商品已自動轉為售出存檔。`,
-    );
+    setActiveTab("pending_trade");
+
+    const mockOrderId = `ORD-${selectedListing.id}`;
+    toast.success("🎉 交易單已建立並鎖定資產", {
+      description: `已成功為【${buyerName}】建立專屬交易單，該卡牌已暫時從現貨大盤鎖定。`,
+      duration: 5000,
+      action: {
+        label: "查看訂單明細 📦",
+        onClick: () => {
+          window.location.href = `/profile/user/orders/${mockOrderId}`;
+        },
+      },
+    });
   };
 
   // 暫時上下架切換
   const handleToggleStatus = (
     id: string,
-    currentStatus: "active" | "sold" | "unlisted",
+    currentStatus: "active" | "sold" | "unlisted" | "pending_trade",
   ) => {
-    if (currentStatus === "sold") return;
+    if (currentStatus === "sold" || currentStatus === "pending_trade") return;
     const nextStatus =
       currentStatus === "active" ? ("unlisted" as const) : ("active" as const);
+    const targetListing = listings.find((listing) => listing.id === id);
+
     setListings((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status: nextStatus } : l)),
     );
+
+    if (nextStatus === "unlisted") {
+      toast.warning("⏸️ 商品已暫時下架", {
+        description: `【${targetListing?.cardName ?? "該卡牌商品"}】已暫時從現貨盤移出，可稍後重新上架。`,
+      });
+      return;
+    }
+
+    toast.success("🚀 商品已重新上架", {
+      description: `【${targetListing?.cardName ?? "該卡牌商品"}】已重新回到全港現貨大盤。`,
+    });
   };
 
   // 🟢 打開永久取消商品上架視窗
@@ -256,7 +285,9 @@ export default function UserInventoryPage() {
     setListings((prev) => prev.filter((l) => l.id !== cancelTargetListing.id));
     setShowCancelModal(false);
     setCancelTargetListing(null);
-    alert("🗑️ 該卡牌商品已永久取消上架，並從全盤庫存系統中完全移除。");
+    toast.warning("🗑️ 商品已完全下架", {
+      description: "該卡牌商品已從全盤庫存系統中完全移除。",
+    });
   };
 
   return (
@@ -281,27 +312,30 @@ export default function UserInventoryPage() {
 
       {/* Tabs */}
       <div className="flex border-b border-[rgba(237,232,224,0.08)]">
-        {(["active", "sold", "unlisted"] as const).map((tab) => {
-          const labels = {
-            active: "出售中現貨",
-            sold: "歷史已售出",
-            unlisted: "已暫時下架",
-          };
-          const count = listings.filter((l) => l.status === tab).length;
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
-            >
-              {labels[tab]} ({count})
-              {isActive && (
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
-              )}
-            </button>
-          );
-        })}
+        {(["active", "pending_trade", "sold", "unlisted"] as const).map(
+          (tab) => {
+            const labels = {
+              active: "出售中現貨",
+              pending_trade: "交易中 / 待交收",
+              sold: "歷史已售出",
+              unlisted: "已暫時下架",
+            };
+            const count = listings.filter((l) => l.status === tab).length;
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
+              >
+                {labels[tab]} ({count})
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
+                )}
+              </button>
+            );
+          },
+        )}
       </div>
 
       {/* 列表流 */}
@@ -375,7 +409,7 @@ export default function UserInventoryPage() {
               {/* ── 🟢 核心修復 1：按鈕下移至 Bottom Line，全面平行 Inline-Flex 排列 ── */}
               {item.status !== "sold" && (
                 <div className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-[rgba(237,232,224,0.06)] w-full">
-                  {item.status === "active" ? (
+                  {item.status === "active" && (
                     <>
                       <button
                         type="button"
@@ -391,7 +425,6 @@ export default function UserInventoryPage() {
                       >
                         ⚙️ 修改商品
                       </button>
-                      {/* 🟢 加強版「暫時下架」：使用高亮橘紅警示色，並透過 ml-auto 推至最右側 */}
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(item.id, item.status)}
@@ -400,9 +433,27 @@ export default function UserInventoryPage() {
                         ⚙ 暫時下架
                       </button>
                     </>
-                  ) : (
+                  )}
+
+                  {item.status === "pending_trade" && (
                     <>
-                      {/* 已暫時下架專屬按鈕流向 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = `/profile/user/orders/ORD-${item.id}`;
+                        }}
+                        className="h-9 px-4 bg-[rgba(212,165,116,0.12)] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        📦 追蹤交割進度 (進入訂單頁) →
+                      </button>
+                      <span className="font-mono text-[11px] text-text-disabled ml-auto bg-[#17130f] px-2.5 py-1 rounded border border-white/5">
+                        🔒 資產已鎖定
+                      </span>
+                    </>
+                  )}
+
+                  {item.status === "unlisted" && (
+                    <>
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(item.id, item.status)}
@@ -417,7 +468,6 @@ export default function UserInventoryPage() {
                       >
                         ⚙️ 修改商品
                       </button>
-                      {/* 🟢 修正點 2：[暫時下架] 完美更名並升級為 [取消商品上架]，帶深紅高對比框 */}
                       <button
                         type="button"
                         onClick={() => handleOpenCancelModal(item)}
@@ -565,7 +615,12 @@ export default function UserInventoryPage() {
                     <div
                       key={i}
                       className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${i < 2 ? "border-brand/40 bg-[rgba(212,165,116,0.06)]" : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"}`}
-                      onClick={() => alert(`📸 模擬調用相機上傳相片`)}
+                      onClick={() =>
+                        toast("📸 模擬調用相機上傳相片", {
+                          description:
+                            "目前仍為前端示意流程，後續會接入真實圖片上傳。",
+                        })
+                      }
                     >
                       {i < 2 ? (
                         <span className="font-mono text-[10px] text-brand font-bold">

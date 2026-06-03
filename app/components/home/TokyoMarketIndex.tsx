@@ -1,10 +1,21 @@
 import Link from "next/link";
+import { TokyoIndexSkeleton } from "@/app/components/shared/MarketSkeletons";
+
+interface TokyoMarketRef {
+  id: string;
+  name: string;
+  hkPrice: string;
+  jpPrice: string;
+  trend: "up" | "down";
+  trendPct: string;
+  volume: string;
+}
 
 // TODO: [API] Fetch Tokyo market reference data from Apify scraper — Mercari JP sold-out prices converted to HKD
 // TODO: [server] Edge Function: daily exchange rate cache (HKD to JPY), serve via memory cache for high-concurrency reads
 // TODO: [database] Store scraped Mercari sold prices in `mercari_price_history` table with IQR-cleaned averages
 
-const marketRefs = [
+const marketRefs: TokyoMarketRef[] = [
   {
     id: "sv2a-182",
     name: "Charizard ex SAR",
@@ -52,7 +63,17 @@ const marketRefs = [
   },
 ];
 
-export function TokyoMarketIndex() {
+interface TokyoMarketIndexProps {
+  records?: TokyoMarketRef[];
+  isLoading?: boolean;
+}
+
+export function TokyoMarketIndex({
+  records = marketRefs,
+  isLoading = false,
+}: TokyoMarketIndexProps) {
+  const refs = records ?? [];
+
   return (
     <section className="mb-8" aria-labelledby="tokyo-heading">
       <div className="flex items-center justify-between mb-4">
@@ -70,65 +91,71 @@ export function TokyoMarketIndex() {
         </Link>
       </div>
 
-      <div className="bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] overflow-hidden">
-        {/* Header row */}
-        <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-[rgba(237,232,224,0.08)]">
-          <span className="font-mono text-[11px] text-text-disabled">卡牌</span>
-          <span className="font-mono text-[11px] text-text-disabled text-right w-[90px]">
-            港幣參考
-          </span>
-          <span className="font-mono text-[11px] text-text-disabled text-right w-[80px]">
-            日圓成交
-          </span>
-          <span className="font-mono text-[11px] text-text-disabled text-right w-[70px]">
-            成交量
-          </span>
+      {isLoading || refs.length === 0 ? (
+        <TokyoIndexSkeleton />
+      ) : (
+        <div className="bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] overflow-hidden">
+          {/* Header row */}
+          <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-[rgba(237,232,224,0.08)]">
+            <span className="font-mono text-[11px] text-text-disabled">
+              卡牌
+            </span>
+            <span className="font-mono text-[11px] text-text-disabled text-right w-[90px]">
+              港幣參考
+            </span>
+            <span className="font-mono text-[11px] text-text-disabled text-right w-[80px]">
+              日圓成交
+            </span>
+            <span className="font-mono text-[11px] text-text-disabled text-right w-[70px]">
+              成交量
+            </span>
+          </div>
+
+          {refs.map((ref, i) => (
+            <Link
+              key={ref.id}
+              href={`/marketplace?card=${ref.id}`}
+              className={`flex items-center justify-between sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-3 hover:bg-bg-elevated transition-colors ${
+                i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
+              }`}
+            >
+              {/* Card info */}
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-mono text-[11px] text-brand bg-[rgba(212,165,116,0.12)] px-1.5 py-0.5 rounded-[4px] shrink-0">
+                  {ref.id}
+                </span>
+                <span className="font-sans text-[13px] text-text-primary truncate">
+                  {ref.name}
+                </span>
+                <span
+                  className={`font-mono text-[11px] shrink-0 ${
+                    ref.trend === "up" ? "text-success" : "text-warning"
+                  }`}
+                >
+                  {ref.trend === "up" ? "▲" : "▼"} {ref.trendPct}
+                </span>
+              </div>
+
+              {/* Prices - visible on mobile as stacked */}
+              <div className="text-right shrink-0 sm:w-[90px]">
+                <span className="font-mono text-[14px] text-text-primary font-medium">
+                  {ref.hkPrice}
+                </span>
+              </div>
+              <div className="hidden sm:block text-right w-[80px]">
+                <span className="font-mono text-[12px] text-text-secondary">
+                  {ref.jpPrice}
+                </span>
+              </div>
+              <div className="hidden sm:block text-right w-[70px]">
+                <span className="font-mono text-[11px] text-text-disabled">
+                  {ref.volume}
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
-
-        {marketRefs.map((ref, i) => (
-          <Link
-            key={ref.id}
-            href={`/marketplace?card=${ref.id}`}
-            className={`flex items-center justify-between sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-3 hover:bg-bg-elevated transition-colors ${
-              i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
-            }`}
-          >
-            {/* Card info */}
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-mono text-[11px] text-brand bg-[rgba(212,165,116,0.12)] px-1.5 py-0.5 rounded-[4px] shrink-0">
-                {ref.id}
-              </span>
-              <span className="font-sans text-[13px] text-text-primary truncate">
-                {ref.name}
-              </span>
-              <span
-                className={`font-mono text-[11px] shrink-0 ${
-                  ref.trend === "up" ? "text-success" : "text-warning"
-                }`}
-              >
-                {ref.trend === "up" ? "▲" : "▼"} {ref.trendPct}
-              </span>
-            </div>
-
-            {/* Prices - visible on mobile as stacked */}
-            <div className="text-right shrink-0 sm:w-[90px]">
-              <span className="font-mono text-[14px] text-text-primary font-medium">
-                {ref.hkPrice}
-              </span>
-            </div>
-            <div className="hidden sm:block text-right w-[80px]">
-              <span className="font-mono text-[12px] text-text-secondary">
-                {ref.jpPrice}
-              </span>
-            </div>
-            <div className="hidden sm:block text-right w-[70px]">
-              <span className="font-mono text-[11px] text-text-disabled">
-                {ref.volume}
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
+      )}
     </section>
   );
 }

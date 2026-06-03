@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { toast } from "sonner";
 import { OrderLifecycleStepper } from "./_components/OrderLifecycleStepper";
 
 export type TradeType = "c2c" | "b2c";
@@ -209,7 +210,9 @@ export default function UserOrdersPage() {
     );
 
     setShowEditModal(false);
-    alert(`💾 訂單流水 #${editingOrder.id} 交易詳情已成功變更修復！`);
+    toast.success("💾 訂單資料已更新", {
+      description: `訂單流水 #${editingOrder.id} 交易詳情已成功變更修復！`,
+    });
   };
 
   return (

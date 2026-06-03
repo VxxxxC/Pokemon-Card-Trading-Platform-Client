@@ -7,8 +7,9 @@ import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const APP_NAME = "PokéTrade JP";
 const APP_DEFAULT_TITLE = "PokéTrade JP — 寶可夢卡牌專業交易平台";
@@ -51,7 +52,14 @@ export default function RootLayout({
   return (
     <html
       lang="zh-HK"
-      className={cn("h-full", "antialiased", GeistSans.variable, GeistMono.variable, "font-sans", geist.variable)}
+      className={cn(
+        "h-full",
+        "antialiased",
+        GeistSans.variable,
+        GeistMono.variable,
+        "font-sans",
+        geist.variable,
+      )}
     >
       <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
         {/* 外層：PWA 基建環境供應商 */}
@@ -62,6 +70,8 @@ export default function RootLayout({
           {/* 全站主要內容渲染區 */}
           {children}
         </AppSerwistProvider>
+        {/* 🟢 Global Sonner Toast Hub */}
+        <Toaster position="top-center" closeButton richColors expand={false} />
       </body>
     </html>
   );
