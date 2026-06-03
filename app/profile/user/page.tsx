@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import {
+  IdentityLevelSkeleton,
+  PortfolioStatsSkeleton,
+} from "@/app/components/shared/PortfolioSkeletons";
 
 export const metadata: Metadata = {
   title: "我的帳號 · 總覽 — PokéTrade JP",
@@ -208,6 +212,8 @@ function ActivityTypePill({ type }: { type: "sold" | "bought" | "bid" }) {
 
 export default function UserOverviewPage() {
   const currentTier = LEVEL_TIERS.find((t) => t.tier === member.levelTier);
+  const isPortfolioLoading = portfolioStats.length === 0;
+  const isIdentityLoading = !currentTier || badges.length === 0;
 
   return (
     <>
@@ -216,127 +222,135 @@ export default function UserOverviewPage() {
         <h2 id="stats-heading" className="sr-only">
           資產總覽
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {portfolioStats.map(({ label, value, note, noteDir }) => (
-            <div
-              key={label}
-              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4"
-            >
-              <p className="font-mono text-[11px] text-text-secondary mb-1.5">
-                {label}
-              </p>
-              <p className="font-mono font-semibold text-[18px] text-text-primary leading-none mb-1">
-                {value}
-              </p>
-              <p
-                className={`font-mono text-[11px] ${noteDir === "up" ? "text-success" : "text-text-disabled"}`}
+        {isPortfolioLoading ? (
+          <PortfolioStatsSkeleton />
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {portfolioStats.map(({ label, value, note, noteDir }) => (
+              <div
+                key={label}
+                className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4"
               >
-                {note}
-              </p>
-            </div>
-          ))}
-        </div>
+                <p className="font-mono text-[11px] text-text-secondary mb-1.5">
+                  {label}
+                </p>
+                <p className="font-mono font-semibold text-[18px] text-text-primary leading-none mb-1">
+                  {value}
+                </p>
+                <p
+                  className={`font-mono text-[11px] ${noteDir === "up" ? "text-success" : "text-text-disabled"}`}
+                >
+                  {note}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8">
         {/* ── Left Column ─────────────────────────────────────────────── */}
         <div className="space-y-6">
           {/* Identity Level */}
-          <section
-            aria-labelledby="level-heading"
-            className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4"
-          >
-            <h2
-              id="level-heading"
-              className="font-sans font-semibold text-[16px] text-text-primary mb-4"
+          {isIdentityLoading ? (
+            <IdentityLevelSkeleton />
+          ) : (
+            <section
+              aria-labelledby="level-heading"
+              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4"
             >
-              身份等級
-            </h2>
-            <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1 scrollbar-none">
-              {LEVEL_TIERS.map((tier, i) => {
-                const isActive = tier.tier === member.levelTier;
-                const isDone = tier.tier < member.levelTier;
-                return (
-                  <div key={tier.tier} className="flex items-center shrink-0">
-                    <div
-                      className={`flex flex-col items-center gap-1 ${isActive ? "opacity-100" : isDone ? "opacity-70" : "opacity-35"}`}
-                    >
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-[11px] font-medium border transition-colors ${
-                          isActive
-                            ? "bg-brand text-[#17130f] border-brand"
-                            : isDone
-                              ? "bg-[rgba(212,165,116,0.15)] text-brand border-brand/30"
-                              : "bg-bg-elevated text-text-disabled border-[rgba(237,232,224,0.08)]"
-                        }`}
-                      >
-                        {tier.tier}
-                      </div>
-                      <span
-                        className={`font-mono text-[9px] text-center leading-tight max-w-13 ${
-                          isActive
-                            ? "text-brand"
-                            : isDone
-                              ? "text-text-secondary"
-                              : "text-text-disabled"
-                        }`}
-                      >
-                        {tier.label}
-                      </span>
-                    </div>
-                    {i < LEVEL_TIERS.length - 1 && (
-                      <div
-                        className={`h-px w-6 mx-0.5 mb-4 ${tier.tier < member.levelTier ? "bg-brand/40" : "bg-bg-elevated"}`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mb-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-mono text-[11px] text-text-secondary">
-                  升至 <span className="text-brand">{member.nextLevel}</span>
-                </span>
-                <span className="font-mono text-[11px] text-text-secondary">
-                  {member.xpCurrent.toLocaleString("zh-TW")} /{" "}
-                  {member.xpRequired.toLocaleString("zh-TW")} XP
-                </span>
-              </div>
-              <div
-                className="w-full h-1.5 bg-bg-elevated rounded-full overflow-hidden"
-                role="progressbar"
-                aria-valuenow={member.xpCurrent}
-                aria-valuemin={currentTier?.xp ?? 0}
-                aria-valuemax={member.xpRequired}
+              <h2
+                id="level-heading"
+                className="font-sans font-semibold text-[16px] text-text-primary mb-4"
               >
-                <div
-                  className="h-full bg-brand rounded-full transition-all duration-700"
-                  style={{
-                    width: `${Math.min((member.xpCurrent / member.xpRequired) * 100, 100)}%`,
-                  }}
-                />
+                身份等級
+              </h2>
+              <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1 scrollbar-none">
+                {LEVEL_TIERS.map((tier, i) => {
+                  const isActive = tier.tier === member.levelTier;
+                  const isDone = tier.tier < member.levelTier;
+                  return (
+                    <div key={tier.tier} className="flex items-center shrink-0">
+                      <div
+                        className={`flex flex-col items-center gap-1 ${isActive ? "opacity-100" : isDone ? "opacity-70" : "opacity-35"}`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-[11px] font-medium border transition-colors ${
+                            isActive
+                              ? "bg-brand text-[#17130f] border-brand"
+                              : isDone
+                                ? "bg-[rgba(212,165,116,0.15)] text-brand border-brand/30"
+                                : "bg-bg-elevated text-text-disabled border-[rgba(237,232,224,0.08)]"
+                          }`}
+                        >
+                          {tier.tier}
+                        </div>
+                        <span
+                          className={`font-mono text-[9px] text-center leading-tight max-w-13 ${
+                            isActive
+                              ? "text-brand"
+                              : isDone
+                                ? "text-text-secondary"
+                                : "text-text-disabled"
+                          }`}
+                        >
+                          {tier.label}
+                        </span>
+                      </div>
+                      {i < LEVEL_TIERS.length - 1 && (
+                        <div
+                          className={`h-px w-6 mx-0.5 mb-4 ${tier.tier < member.levelTier ? "bg-brand/40" : "bg-bg-elevated"}`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
 
-            <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-none">
-              {badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  title={badge.desc}
-                  className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-bg-elevated border border-[rgba(237,232,224,0.08)] rounded-lg"
-                >
-                  <span className="text-[13px]" aria-hidden="true">
-                    {badge.emoji}
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-mono text-[11px] text-text-secondary">
+                    升至 <span className="text-brand">{member.nextLevel}</span>
                   </span>
-                  <span className="font-mono text-[11px] text-text-secondary whitespace-nowrap">
-                    {badge.label}
+                  <span className="font-mono text-[11px] text-text-secondary">
+                    {member.xpCurrent.toLocaleString("zh-TW")} /{" "}
+                    {member.xpRequired.toLocaleString("zh-TW")} XP
                   </span>
                 </div>
-              ))}
-            </div>
-          </section>
+                <div
+                  className="w-full h-1.5 bg-bg-elevated rounded-full overflow-hidden"
+                  role="progressbar"
+                  aria-valuenow={member.xpCurrent}
+                  aria-valuemin={currentTier?.xp ?? 0}
+                  aria-valuemax={member.xpRequired}
+                >
+                  <div
+                    className="h-full bg-brand rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.min((member.xpCurrent / member.xpRequired) * 100, 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-none">
+                {badges.map((badge) => (
+                  <div
+                    key={badge.id}
+                    title={badge.desc}
+                    className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-bg-elevated border border-[rgba(237,232,224,0.08)] rounded-lg"
+                  >
+                    <span className="text-[13px]" aria-hidden="true">
+                      {badge.emoji}
+                    </span>
+                    <span className="font-mono text-[11px] text-text-secondary whitespace-nowrap">
+                      {badge.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Recent Activity */}
           <section aria-labelledby="activity-heading">
