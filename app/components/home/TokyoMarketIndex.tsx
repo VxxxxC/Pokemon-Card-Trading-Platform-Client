@@ -74,9 +74,15 @@ export function TokyoMarketIndex() {
         {/* Header row */}
         <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2.5 border-b border-[rgba(237,232,224,0.08)]">
           <span className="font-mono text-[11px] text-text-disabled">卡牌</span>
-          <span className="font-mono text-[11px] text-text-disabled text-right w-[90px]">港幣參考</span>
-          <span className="font-mono text-[11px] text-text-disabled text-right w-[80px]">日圓成交</span>
-          <span className="font-mono text-[11px] text-text-disabled text-right w-[70px]">成交量</span>
+          <span className="font-mono text-[11px] text-text-disabled text-right w-[90px]">
+            港幣參考
+          </span>
+          <span className="font-mono text-[11px] text-text-disabled text-right w-[80px]">
+            日圓成交
+          </span>
+          <span className="font-mono text-[11px] text-text-disabled text-right w-[70px]">
+            成交量
+          </span>
         </div>
 
         {marketRefs.map((ref, i) => (

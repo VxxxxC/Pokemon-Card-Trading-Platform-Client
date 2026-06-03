@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
@@ -13,51 +16,31 @@ import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { TokyoMarketIndex } from "@/app/components/home/TokyoMarketIndex";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
-import { PwaInstallPrompt } from "./components/pwa/PwaInstallPrompt";
-import { FeaturedCarousel } from "@/app/components/home/FeaturedCarousel";
 import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
+import { FeaturedCarousel } from "@/app/components/home/FeaturedCarousel";
 
-// TODO: [database] Replace with Supabase query — fetch active box series from `card_series` table with live HKD price feed
-// TODO: [API] Connect to Mercari JP scraper for real-time box series pricing converted to HKD
-const marketSeries = [
-  {
-    code: "sv4a",
-    name: "Shiny Treasure ex Box",
-    price: "HK$3,500",
-    delta: "+12%",
-    dir: "up" as const,
-  },
-  {
-    code: "sv2a",
-    name: "Pokémon Card 151 Box",
-    price: "HK$9,360",
-    delta: "-3%",
-    dir: "down" as const,
-  },
-  {
-    code: "s12a",
-    name: "VSTAR Universe Box",
-    price: "HK$5,300",
-    delta: "+8%",
-    dir: "up" as const,
-  },
-  {
-    code: "sv6a",
-    name: "Night Wanderer Box",
-    price: "HK$2,500",
-    delta: "+5%",
-    dir: "up" as const,
-  },
-];
+// 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件！
+// 這樣 Server 端渲染時這裡會完全保持真空，等 Client 進場水合完畢後才加載
+const PwaInstallPrompt = dynamic(
+  () =>
+    import("./components/pwa/PwaInstallPrompt").then(
+      (mod) => mod.PwaInstallPrompt,
+    ),
+  { ssr: false },
+);
 
 export default function HomePage() {
   return (
     <div className="min-h-[100dvh] bg-bg-page flex flex-col">
+      {/* 頂部全域看盤元件列 */}
       <TopNav />
       <MobileHeader />
       <PriceTicker />
+
+      {/* 安全隔離後的 PWA 提示組件 */}
       <PwaInstallPrompt />
 
+      {/* 主線大盤跑道 */}
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         {/* Section 1: Hero — Smart Search + Quick Filters */}
         <HeroSearch />
@@ -81,10 +64,11 @@ export default function HomePage() {
         <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 mb-8">
           {/* Left: Section 7 — C2C New Arrivals */}
           <section aria-labelledby="arrivals-section" className="min-w-0">
+            {/* 無限平滑自動傳送帶 */}
             <NewArrivals />
 
             {/* Featured Listings (existing CardGrid) */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 mt-6">
               <h2
                 id="featured-heading"
                 className="font-sans font-semibold text-[20px] text-text-primary"
@@ -98,6 +82,7 @@ export default function HomePage() {
                 查看全部 →
               </Link>
             </div>
+            {/* 精選拍賣即時競投輪播線 */}
             <FeaturedCarousel />
           </section>
 
@@ -133,6 +118,8 @@ export default function HomePage() {
       <Footer />
 
       <BottomNav />
+
+      {/* 全域智能交割總線抽屜 */}
       <ExecutionSlideOver />
     </div>
   );
