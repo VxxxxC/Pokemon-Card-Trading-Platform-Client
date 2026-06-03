@@ -70,7 +70,7 @@ const featuredCards: MarketplaceListing[] = [
 export function FeaturedCarousel() {
   const plugin = React.useRef(
     Autoplay({
-      delay: 4000,
+      delay: 2000,
       playOnInit: true,
       stopOnInteraction: false,
       stopOnMouseEnter: true,
