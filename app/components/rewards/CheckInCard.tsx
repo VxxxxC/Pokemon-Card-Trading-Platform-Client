@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 
 interface CheckInDay {
   dayNum: number;
@@ -49,9 +50,15 @@ export function CheckInCard() {
     setConsecutiveDays((prev) => prev + 1);
     setUserPoints((prev) => prev + rewardPoints);
 
-    alert(
-      `⚡ 簽到成功！獲得今日獎勵 +${rewardPoints} 交易積分。連續簽到天數已拉伸至 ${consecutiveDays + 1} 天！`,
-    );
+    toast.success("⚡ 簽到成功！", {
+      description: `獲得今日獎勵 +${rewardPoints} 交易積分。連續簽到天數已拉伸至 ${consecutiveDays + 1} 天！`,
+      action: {
+        label: "進入專區 🎟️",
+        onClick: () => {
+          window.location.href = "/profile/user/rewards";
+        },
+      },
+    });
   };
 
   return (

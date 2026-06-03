@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 // 🟢 直接重用剛剛寫好嘅原子簽到組件
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import {
@@ -147,9 +148,9 @@ export default function MemberRewardsPage() {
     setMissions((prev) =>
       prev.map((m) => (m.id === id ? { ...m, status: "claimed" as const } : m)),
     );
-    alert(
-      `🎉 成功兌領平台活動獎勵！+${points} 積分已即時注入您嘅全域資產中心。`,
-    );
+    toast.success("🎉 任務積分兌領成功", {
+      description: `+${points} 積分已即時注入您嘅全域資產中心。`,
+    });
   };
 
   return (

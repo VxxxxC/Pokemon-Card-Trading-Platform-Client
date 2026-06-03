@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 interface UserListing {
   id: string;
@@ -172,7 +173,9 @@ export default function UserInventoryPage() {
             : l,
         ),
       );
-      alert("💾 商品資料已成功修改更新！");
+      toast.success("💾 資料已更新", {
+        description: "商品庫存資料已成功修改變更！",
+      });
     } else {
       const newObj: UserListing = {
         id: `LST-C2C-${Math.floor(100 + Math.random() * 900)}`,
@@ -190,7 +193,9 @@ export default function UserInventoryPage() {
       };
       setListings((prev) => [newObj, ...prev]);
       setActiveTab("active");
-      alert("⚡ 全新卡牌散件已成功部署至全港現貨大盤！");
+      toast.success("⚡ 部署成功", {
+        description: `【${newCardName}】已成功部署至全港現貨大盤！`,
+      });
     }
 
     setShowAddModal(false);
@@ -225,9 +230,9 @@ export default function UserInventoryPage() {
 
     setShowOrderModal(false);
     setActiveTab("sold");
-    alert(
-      `🎉 成功為買家【${buyerName}】建立專屬 ${tradeMethod === "meetup" ? "見面面交" : "順豐物流"} 交易單！商品已自動轉為售出存檔。`,
-    );
+    toast.success("🎉 交易單已建立", {
+      description: `已為買家【${buyerName}】建立專屬 ${tradeMethod === "meetup" ? "見面面交" : "順豐物流"} 交易單！`,
+    });
   };
 
   // 暫時上下架切換
@@ -256,7 +261,9 @@ export default function UserInventoryPage() {
     setListings((prev) => prev.filter((l) => l.id !== cancelTargetListing.id));
     setShowCancelModal(false);
     setCancelTargetListing(null);
-    alert("🗑️ 該卡牌商品已永久取消上架，並從全盤庫存系統中完全移除。");
+    toast.warning("🗑️ 商品已完全下架", {
+      description: "該卡牌商品已從全盤庫存系統中完全移除。",
+    });
   };
 
   return (
@@ -565,7 +572,12 @@ export default function UserInventoryPage() {
                     <div
                       key={i}
                       className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${i < 2 ? "border-brand/40 bg-[rgba(212,165,116,0.06)]" : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"}`}
-                      onClick={() => alert(`📸 模擬調用相機上傳相片`)}
+                      onClick={() =>
+                        toast("📸 模擬調用相機上傳相片", {
+                          description:
+                            "目前仍為前端示意流程，後續會接入真實圖片上傳。",
+                        })
+                      }
                     >
                       {i < 2 ? (
                         <span className="font-mono text-[10px] text-brand font-bold">
