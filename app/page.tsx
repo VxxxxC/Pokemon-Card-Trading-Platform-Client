@@ -19,6 +19,7 @@ import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
 import { FeaturedCarousel } from "@/app/components/home/FeaturedCarousel";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import { TransactionWallSkeleton } from "@/app/components/shared/StreamingSkeletons";
 
 // 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件！
 // 這樣 Server 端渲染時這裡會完全保持真空，等 Client 進場水合完畢後才加載
@@ -31,6 +32,9 @@ const PwaInstallPrompt = dynamic(
 );
 
 export default function HomePage() {
+  // TODO: [database] Replace with realtime stream connection state from Supabase channel status
+  const isTransactionWallLoading = false;
+
   return (
     <div className="min-h-[100dvh] bg-bg-page flex flex-col">
       {/* 頂部全域看盤元件列 */}
@@ -110,7 +114,11 @@ export default function HomePage() {
                   即時
                 </span>
               </div>
-              <TransactionWall />
+              {isTransactionWallLoading ? (
+                <TransactionWallSkeleton />
+              ) : (
+                <TransactionWall />
+              )}
             </section>
           </aside>
         </div>

@@ -1,8 +1,20 @@
 import Image from "next/image";
+import { TransactionWallSkeleton } from "@/app/components/shared/StreamingSkeletons";
+
+interface TransactionWallItem {
+  id: string;
+  name: string;
+  price: number;
+  delta: number;
+  deltaDir: "up" | "down";
+  grade: string;
+  time: string;
+  image: string;
+}
 
 // TODO: [database] Replace with Supabase Realtime stream — subscribe to `transactions` table INSERT events
 // TODO: [server] Relative timestamps (e.g. "2分鐘前") must be computed from real `created_at` field using date-fns or Intl.RelativeTimeFormat
-const transactions = [
+const transactions: TransactionWallItem[] = [
   {
     id: "sv2a-182",
     name: "Charizard ex SAR",
@@ -85,10 +97,24 @@ const transactions = [
   },
 ];
 
-export function TransactionWall() {
+interface TransactionWallProps {
+  records?: TransactionWallItem[];
+  isLoading?: boolean;
+}
+
+export function TransactionWall({
+  records = transactions,
+  isLoading = false,
+}: TransactionWallProps) {
+  const feed = records ?? [];
+
+  if (isLoading || feed.length === 0) {
+    return <TransactionWallSkeleton />;
+  }
+
   return (
     <div className="bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] overflow-hidden">
-      {transactions.map((tx, i) => (
+      {feed.map((tx, i) => (
         <div
           key={`${tx.id}-${i}`}
           className={`flex items-center justify-between px-4 py-3 md:p-4 md:h-20 hover:bg-bg-elevated transition-colors ${
