@@ -137,6 +137,7 @@ export function SniperRadar() {
                 </p>
                 <BuyButton
                   listing={listing}
+                  label="立即購買 ➔"
                   className="h-7 px-3 rounded-lg text-[11px]"
                 />
                 <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success">

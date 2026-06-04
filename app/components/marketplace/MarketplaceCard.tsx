@@ -7,10 +7,7 @@ import { WishlistButton } from "@/app/components/market/WishlistButton";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 🟢 引入全域原子級動作掣
-import {
-  BuyButton,
-  BidButton,
-} from "@/app/components/transactions/GlobalTxButtons";
+import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 export type MarketplaceListing = {
   id: string;
@@ -108,9 +105,8 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
       </div>
 
       {/* 🟢 核心修正 1：換上全域即時通訊按鈕，從此在大盤分頁點擊直接彈出交易 SlideOver！ */}
-      <div className="px-4 pb-4 pt-1 flex gap-2 w-full">
-        <BuyButton listing={listing} className="flex-1" />
-        <BidButton listing={listing} className="flex-1" />
+      <div className="px-4 pb-4 pt-1 w-full">
+        <BuyButton listing={listing} className="w-full" />
       </div>
     </motion.article>
   );

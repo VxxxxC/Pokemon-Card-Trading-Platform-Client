@@ -10,10 +10,7 @@ import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 🟢 核心引入：載入全域監聽交易抽屜 & 原子級全域交易按鈕
 import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
-import {
-  BuyButton,
-  BidButton,
-} from "@/app/components/transactions/GlobalTxButtons";
+import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 
@@ -383,14 +380,10 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
 
               {/* 🟢 修正點 2：直接熔接全域一體化按鈕，帶入標準大盤資料模型，盲撳即刻全網同步彈窗！ */}
-              <div className="flex gap-2 shrink-0 self-stretch sm:self-auto">
+              <div className="flex gap-2 shrink-0 self-stretch sm:self-auto w-full sm:w-auto">
                 <BuyButton
                   listing={currentListing}
-                  className="flex-1 sm:flex-none h-11 px-6 text-[13px]"
-                />
-                <BidButton
-                  listing={currentListing}
-                  className="flex-1 sm:flex-none h-11 px-6 text-[13px]"
+                  className="w-full sm:w-auto h-11 px-8 text-[14px]"
                 />
               </div>
             </div>

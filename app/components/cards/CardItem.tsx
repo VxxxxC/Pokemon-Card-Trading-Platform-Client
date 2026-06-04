@@ -3,6 +3,7 @@ import Link from "next/link";
 import { RarityBadge } from "./RarityBadge";
 import { GradeBadge } from "./GradeBadge";
 import { WishlistButton } from "@/app/components/market/WishlistButton";
+import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 export type CardData = {
   id: string;
@@ -20,6 +21,12 @@ export type CardData = {
 export function CardItem({ card }: { card: CardData }) {
   const formattedPrice = `¥${card.price.toLocaleString("zh-TW")}`;
   const formattedDelta = `${card.deltaDirection === "up" ? "▲" : "▼"} ¥${card.delta.toLocaleString("zh-TW")}`;
+
+  // Convert CardData to MarketplaceListing for BuyButton compatibility
+  const listing = {
+    ...card,
+    rarity: card.rarity as "SAR" | "UR" | "SR" | "AR",
+  };
 
   return (
     <article className="group bg-bg-card rounded-[16px] border border-[rgba(237,232,224,0.08)] shadow-[0_1px_4px_rgba(0,0,0,0.30)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.50)] transition-shadow duration-200 overflow-hidden">
@@ -68,9 +75,7 @@ export function CardItem({ card }: { card: CardData }) {
             </p>
             <span
               className={`font-mono text-[12px] ${
-                card.deltaDirection === "up"
-                  ? "text-success"
-                  : "text-warning"
+                card.deltaDirection === "up" ? "text-success" : "text-warning"
               }`}
             >
               {formattedDelta}
@@ -85,16 +90,14 @@ export function CardItem({ card }: { card: CardData }) {
         </div>
 
         {/* CTAs */}
-        {/* TODO: [server] "直接購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
-        {/* TODO: [API] "即時出價" must open bid modal and submit to `bids` table with user auth check */}
+        {/* TODO: [server] "立即購買" must trigger escrow flow — create order in Supabase, initiate Stripe Connect PaymentIntent */}
         {/* TODO: [server] /listing/${card.id} route does not exist yet — create app/listing/[id]/page.tsx */}
-        <div className="mt-4 flex gap-2">
-          <button className="flex-1 h-10 bg-brand text-[#17130f] font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-brand-hover min-h-[44px]">
-            直接購買
-          </button>
-          <button className="flex-1 h-10 border border-[rgba(237,232,224,0.12)] text-brand font-sans font-medium text-sm rounded-[8px] active:scale-[0.98] active:translate-y-[1px] transition-transform hover:bg-bg-elevated min-h-[44px]">
-            即時出價
-          </button>
+        <div className="mt-4 w-full">
+          <BuyButton
+            listing={listing}
+            label="⚡ 立即購買"
+            className="w-full h-10"
+          />
         </div>
       </div>
     </article>

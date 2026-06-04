@@ -10,8 +10,8 @@ import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
 export function ExecutionSlideOver() {
   const router = useRouter();
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
-  const [mode, setMode] = useState<"buy" | "bid" | "auction" | null>(null);
-  const [bidAmount, setBidAmount] = useState("");
+  const [isCounterOffer, setIsCounterOffer] = useState(false);
+  const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -22,10 +22,9 @@ export function ExecutionSlideOver() {
       }>;
       if (customEvent.detail) {
         setListing(customEvent.detail.listing);
-        setMode(customEvent.detail.mode);
-        setBidAmount(
-          Math.round(customEvent.detail.listing.price * 0.9).toString(),
-        );
+        // Reset states when opening
+        setIsCounterOffer(false);
+        setCustomPrice("");
       }
     };
 
@@ -36,27 +35,41 @@ export function ExecutionSlideOver() {
 
   const handleClose = () => {
     setListing(null);
-    setMode(null);
   };
 
-  if (!listing || !mode) return null;
+  if (!listing) return null;
 
-  const handleAction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+  const sellerListedPrice = listing.price;
+  const targetCardName = listing.name;
+  const targetCardId = listing.id;
+
+  const handleConfirmNegotiation = async () => {
+    const finalOfferPrice = isCounterOffer
+      ? Number(customPrice)
+      : sellerListedPrice;
+
+    if (isCounterOffer && (!customPrice || Number(customPrice) <= 0)) {
+      toast.error("⚠️ 請輸入有效的預期出價金額");
+      return;
+    }
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await new Promise((resolve) => setTimeout(resolve, 800));
     setIsSubmitting(false);
-    handleClose();
 
-    if (mode === "bid") {
-      toast.success("📈 撮合出價已提交", {
-        description: `您的掛單買方出價 HK$ ${Number(bidAmount).toLocaleString("en-HK")} 已成功進入市場撮合池。`,
+    // 1. 🟢 CRITICAL FIX: Stop route change. Keep user on current screen context.
+    handleClose(); // Close current execution drawer
+
+    // 2. 🟢 Trigger premium contextual feedback pointing to the Global Chat drawer
+    if (!isCounterOffer) {
+      toast.success("🎉 已接受賣方價格！資產已鎖定", {
+        description: `【${targetCardName}】之特殊交易要約訊息已同步發送至右下角常駐聊天室中，狀態變更為【已預留】。`,
+        duration: 6000,
       });
     } else {
-      toast.success("🔨 競投出價成功", {
-        description: `您已成功對該拍賣品加價至 HK$ ${Number(bidAmount).toLocaleString("en-HK")}。`,
+      toast.success("⚡ 議價要約已成功送出！", {
+        description: `向賣方提出 HK$ ${finalOfferPrice.toLocaleString()} 的議價訊息已發送至右下角常盤聊天流中，等待賣方確認。`,
+        duration: 6000,
       });
     }
   };
@@ -88,14 +101,10 @@ export function ExecutionSlideOver() {
             <div className="p-5 border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between">
               <div>
                 <h2 className="font-sans font-bold text-[18px] text-[#eae1da]">
-                  {mode === "buy"
-                    ? "⚡ 確認購買商品"
-                    : mode === "bid"
-                      ? "📈 提交撮合出價"
-                      : "🔨 參與專屬拍賣競投"}
+                  ⚡ 即時購買交割終端
                 </h2>
                 <p className="font-mono text-[10px] text-[#8A8680] mt-0.5 uppercase tracking-wider">
-                  PKT SECURE TRANSACTION PORT
+                  C2C PEER-TO-PEER INSTANT BARGAIN
                 </p>
               </div>
               <button
@@ -119,7 +128,7 @@ export function ExecutionSlideOver() {
 
             {/* Content Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide">
-              {/* 大比例重磅商品頭像卡 */}
+              {/* Asset Preview */}
               <div className="flex flex-col items-center p-5 bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] shadow-inner text-center space-y-4">
                 <div className="relative w-28 h-38 bg-[#17130f] rounded-xl overflow-hidden border-2 border-[rgba(237,232,224,0.15)] shrink-0 shadow-lg">
                   <Image
@@ -133,12 +142,10 @@ export function ExecutionSlideOver() {
                 </div>
                 <div className="w-full space-y-1">
                   <h3 className="font-sans font-black text-[16px] md:text-[18px] text-[#eae1da] leading-tight tracking-tight px-2">
-                    {listing.name}
+                    {targetCardName}
                   </h3>
-                  <p className="font-mono text-[12px] text-[#d4c4b7]">
-                    流水代號:{" "}
-                    <span className="text-white font-bold">{listing.id}</span> ·{" "}
-                    {listing.set}
+                  <p className="font-mono text-[12px] text-brand font-bold">
+                    當前賣方定價: HK$ {sellerListedPrice.toLocaleString()}
                   </p>
                   <div className="flex items-center justify-center gap-2 pt-1">
                     <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[#17130f] text-[#d4a574] border border-[#d4a574]/20 font-bold">
@@ -151,117 +158,67 @@ export function ExecutionSlideOver() {
                 </div>
               </div>
 
-              <form onSubmit={handleAction} className="space-y-6">
-                {mode === "buy" ? (
-                  <div className="space-y-4">
-                    <div className="bg-[#26211C] p-5 rounded-2xl border border-[rgba(237,232,224,0.06)] shadow-inner divide-y divide-[rgba(237,232,224,0.08)] space-y-4 font-mono text-[14px]">
-                      <div className="flex items-center justify-between pb-2 text-[#d4c4b7]">
-                        <span>商品成交全款 (NET VALUE)</span>
-                        <span className="text-[#eae1da] font-bold">
-                          HK$ {listing.price.toLocaleString("en-HK")}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between pt-4 text-brand font-black text-[18px] tracking-tight">
-                        <span>應付結算總額</span>
-                        <span className="text-brand">
-                          HK$ {listing.price.toLocaleString("en-HK")}
-                        </span>
-                      </div>
-                    </div>
+              <div className="space-y-4">
+                {/* Workflow Mode Selectors */}
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCounterOffer(false)}
+                    className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer ${!isCounterOffer ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/5 text-[#d4c4b7]"}`}
+                  >
+                    🤝 接受賣方原價購入
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsCounterOffer(true)}
+                    className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer ${isCounterOffer ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/5 text-[#d4c4b7]"}`}
+                  >
+                    💬 向賣家提出議價
+                  </button>
+                </div>
 
-                    <div className="bg-[#17130f] p-4 rounded-xl border border-white/5 space-y-2">
-                      <span className="font-mono text-[10px] text-brand block font-bold uppercase tracking-wider">
-                        📄 一口價現貨交易摘要
-                      </span>
-                      <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
-                        本商品支持官方中介安全託管。點擊下方按鈕將前往全域確認頁配置配送網點與平台折扣。
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleClose();
-                        window.location.href = `/checkout/${listing.id}`;
-                      }}
-                      className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                {/* Scenario B: Counter-Offer Input */}
+                {isCounterOffer && (
+                  <div className="space-y-1.5 animate-fadeIn pt-2">
+                    <label
+                      htmlFor="negotiation-price"
+                      className="font-mono text-[11px] text-[#d4c4b7] block uppercase tracking-wide"
                     >
-                      🔒 確認標的 · 進入安全結算 ➔
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label
-                          htmlFor="bid-input"
-                          className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-2 font-bold"
-                        >
-                          {mode === "bid"
-                            ? "輸入您的出價金額 (HK$)"
-                            : "輸入您的競投加價 (HK$)"}
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-4 inset-y-0 flex items-center font-mono text-[18px] text-[#d4a574] font-bold">
-                            HK$
-                          </span>
-                          <input
-                            id="bid-input"
-                            type="number"
-                            required
-                            min={
-                              mode === "bid"
-                                ? Math.round(listing.price * 0.5)
-                                : listing.price + 50
-                            }
-                            value={bidAmount}
-                            onChange={(e) => setBidAmount(e.target.value)}
-                            className="w-full h-13 pl-14 pr-4 bg-[#26211C] border border-[rgba(237,232,224,0.12)] focus:border-[#d4a574]/40 rounded-xl font-mono text-[18px] text-[#d4a574] font-bold focus:outline-none"
-                          />
-                        </div>
-                        <p className="font-mono text-[10px] text-[#50453b] mt-1.5">
-                          {mode === "bid"
-                            ? `當前市場最低售價：HK$ ${listing.price.toLocaleString("en-HK")}`
-                            : `當前拍賣最低競投價：HK$ ${(listing.price + 50).toLocaleString("en-HK")}`}
-                        </p>
-                      </div>
-
-                      {mode === "auction" && (
-                        <div className="p-4 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-xl">
-                          <p className="font-sans text-[12.5px] text-[#d4c4b7] leading-relaxed">
-                            🔨
-                            拍賣機制：加價競投將即時鎖定份額，若拍賣倒計時結束前無更高出價，您將成功斬獲該珍稀卡牌。
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-4 flex gap-3">
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="flex-1 h-12 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] disabled:opacity-50 font-sans font-bold text-[14px] rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all min-h-[48px] cursor-pointer"
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
-                            <span className="font-mono text-[11px] text-[#1A1612]">
-                              EXECUTING ORDER...
-                            </span>
-                          </>
-                        ) : mode === "bid" ? (
-                          "📈 確認發出買方出價"
-                        ) : (
-                          "🔨 確認加價競投"
-                        )}
-                      </button>
+                      您的預期購入價 (HK$) *
+                    </label>
+                    <div className="flex items-center h-10 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden focus-within:border-brand/40 transition-colors">
+                      <span className="px-3 font-mono text-[12px] font-bold text-brand bg-[#26211C] border-r border-white/5">
+                        HK$
+                      </span>
+                      <input
+                        id="negotiation-price"
+                        type="number"
+                        value={customPrice}
+                        onChange={(e) => setCustomPrice(e.target.value)}
+                        placeholder="請輸入您希望議定的金額"
+                        className="flex-1 h-full bg-transparent px-3 font-mono text-[13px] text-brand focus:outline-none"
+                      />
                     </div>
                   </div>
                 )}
-              </form>
-            </div>
 
-            {/* 🟢 核心修正 1：刪除原本多餘且阻擋 Mobile View 的 Footer 晶片區塊，底層空間完美解壓 */}
+                {/* Action CTA Trigger */}
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleConfirmNegotiation}
+                  className="w-full h-11 bg-brand text-[#1A1612] font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all mt-4 shadow-md cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
+                  ) : !isCounterOffer ? (
+                    "⚡ 確認以原價購入並預留資產"
+                  ) : (
+                    "✉️ 發送議價要約至聊天室"
+                  )}
+                </button>
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>
