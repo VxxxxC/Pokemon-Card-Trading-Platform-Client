@@ -2,184 +2,193 @@
 
 import { use, useSyncExternalStore } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useTradeStore } from "@/store/useTradeStore";
 
-interface VendorProduct {
-  id: string;
-  vendorId: string;
-  name: string;
-  cardNo: string;
-  rarity: string;
-  grade: string;
-  price: number;
-  image: string;
+interface VendorListing {
+  readonly id: string;
+  readonly name: string;
+  readonly cardNo: string;
+  readonly grade: string;
+  readonly price: number;
+  readonly image: string;
 }
 
-// 模擬全域上架庫存總庫（實際開發將與 Supabase 進行 .eq('vendorId', id) 過濾）
-const MOCK_GLOBAL_PRODUCTS: VendorProduct[] = [
-  {
-    id: "sv2a-182",
-    vendorId: "RM-MOCK-SELLER-001",
-    name: "Charizard ex SAR (噴火龍 ex)",
-    cardNo: "sv2a-182",
-    rarity: "SAR",
-    grade: "PSA 10 完美認證",
-    price: 2150,
-    image: "https://picsum.photos/seed/zard/300/420",
+interface PublicVendorData {
+  readonly id: string;
+  readonly username: string;
+  readonly handle: string;
+  readonly level: string;
+  readonly bio: string;
+  readonly rating: number;
+  readonly completedTrades: number;
+  readonly activeListings: ReadonlyArray<VendorListing>;
+}
+
+// 🟢 完美同步 profile/[id]/page.tsx 的核心公開數據源，確保 Demo 絕不穿幫
+const VENDOR_MIRROR_DATABASE: Record<string, PublicVendorData> = {
+  "PKT-8839-44A": {
+    id: "PKT-8839-44A",
+    username: "渡邊道館",
+    handle: "@watanabe_gym",
+    level: "專業道館主",
+    bio: "專注於第一世代 PSA 10 鑑定卡與稀有未開封補充包。保證 24 小時內發貨，所有高價卡均走平台 Escrow 鑑定託管。",
+    rating: 4.9,
+    completedTrades: 1204,
+    activeListings: [
+      {
+        id: "LST-001",
+        name: "Charizard ex SAR",
+        cardNo: "sv2a-182",
+        grade: "PSA 10",
+        price: 44800,
+        image: "https://picsum.photos/seed/char1/200/280",
+      },
+      {
+        id: "LST-002",
+        name: "Umbreon VMAX SA",
+        cardNo: "s6a-095",
+        grade: "BGS 9.5",
+        price: 52000,
+        image: "https://picsum.photos/seed/umb1/200/280",
+      },
+      {
+        id: "LST-003",
+        name: "Pikachu AR",
+        cardNo: "sv2a-215",
+        grade: "裸卡 (美品S)",
+        price: 1200,
+        image: "https://picsum.photos/seed/pika1/200/280",
+      },
+      {
+        id: "LST-004",
+        name: "Lillie SR",
+        cardNo: "sm4plus-119",
+        grade: "PSA 9",
+        price: 185000,
+        image: "https://picsum.photos/seed/lillie/200/280",
+      },
+    ],
   },
-  {
-    id: "sv2a-215",
-    vendorId: "RM-MOCK-SELLER-001",
-    name: "Pikachu AR (肥皮卡丘)",
-    cardNo: "sv2a-215",
-    rarity: "AR",
-    grade: "【美品 S】裸卡直送",
-    price: 620,
-    image: "https://picsum.photos/seed/pika/300/420",
-  },
-  {
-    id: "sv4a-box",
-    vendorId: "PKT-8839-44A",
-    name: "Shiny Treasure ex Box (高級擴充包)",
-    cardNo: "sv4a-box",
-    rarity: "BOX",
-    grade: "全新未拆防偽縮膜",
-    price: 3500,
-    image: "https://picsum.photos/seed/box/300/420",
-  },
-];
+};
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function IndependentMarketplacePage({ params }: PageProps) {
-  // 符合 Next.js 16 規格之 async params 解包
-  const resolvedParams = use(params);
-  const vendorId = resolvedParams.id;
+export default function MerchantStorefrontPage({ params }: PageProps) {
+  const { id } = use(params);
+  const vendor = VENDOR_MIRROR_DATABASE[id];
 
-  // SSR 安全水合防爆
+  // 強制執行說明書第 3 條：使用原生 useSyncExternalStore 快照防線，封死異步渲染 Layout Shift
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
 
-  // 訂閱 Zustand 彈出交割抽屜 Action
-  const { setChats, setIsChatOpen } = useTradeStore();
+  const setIsChatOpen = useTradeStore((state) => state.setIsChatOpen);
+  const setActiveRoomId = useTradeStore((state) => state.setActiveRoomId);
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center bg-[#17130f]">
         <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
   }
 
-  // 🟢 核心過濾：只篩選出屬於當前網址 id 標記嘅用戶或商戶產品
-  const vendorProducts = MOCK_GLOBAL_PRODUCTS.filter(
-    (p) => p.vendorId === vendorId,
-  );
-
-  // 獲取店舖名稱快報
-  const storeName =
-    vendorId === "RM-MOCK-SELLER-001"
-      ? "旺角卡店 · 專業認證商戶"
-      : vendorId === "PKT-8839-44A"
-        ? "渡邊道館 · 密室私人珍藏"
-        : `用戶 ${vendorId.slice(0, 8)} 嘅二手市集`;
+  if (!vendor) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#17130f] py-20">
+        <h1 className="text-xl font-sans font-bold text-text-disabled">
+          未找到該商戶的市集櫥窗
+        </h1>
+        <Link
+          href="/marketplace"
+          className="text-brand text-sm mt-3 hover:underline"
+        >
+          ← 返回全網大盤
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#17130f] text-[#eae1da] p-6 md:p-10">
-      <div className="max-w-[1200px] mx-auto space-y-8">
-        {/* 店舖大頂欄看板 */}
-        <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <span className="font-mono text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded font-bold border border-brand/20 uppercase tracking-widest">
-              INDEPENDENT SHOWCASE
-            </span>
+    <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
+      {/* 門面看板大牌 */}
+      <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
             <h1 className="font-sans font-black text-[22px] text-[#eae1da] tracking-tight">
-              {storeName}
+              {vendor.username}
             </h1>
-            <p className="font-mono text-[11px] text-text-secondary">
-              VENDOR CRYPTO IDENTIFIER:{" "}
-              <span className="text-[#eae1da]">{vendorId}</span>
-            </p>
+            <span className="font-sans text-[11px] font-bold text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-md">
+              🏅 {vendor.level}
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              // 模擬極速開通與商戶嘅對話
-              setIsChatOpen(true);
-            }}
-            className="h-10 px-5 bg-transparent border border-brand/40 text-brand font-sans font-bold text-[13px] rounded-xl hover:bg-brand/10 transition-colors cursor-pointer"
-          >
-            💬 聯絡賣家 / 發起議價
-          </button>
+          <p className="font-mono text-[12px] text-text-secondary">
+            {vendor.handle} · 已累計完成 {vendor.completedTrades} 筆託管交割
+          </p>
+          <p className="font-sans text-[13px] text-text-secondary max-w-[580px] pt-1.5 leading-relaxed">
+            {vendor.bio}
+          </p>
         </div>
 
-        {/* 專屬上架網格陣列 */}
-        <div className="space-y-4">
-          <h2 className="font-sans font-bold text-[16px] text-[#eae1da] border-b border-white/5 pb-2">
-            📦 該用戶目前掛牌上架現貨 ({vendorProducts.length})
-          </h2>
-
-          {vendorProducts.length === 0 ? (
-            <div className="py-20 text-center bg-[#26211C]/30 border border-dashed border-white/5 rounded-2xl">
-              <p className="font-sans text-[13.5px] text-text-disabled">
-                該賣家目前暫無公開掛盤之卡牌資產。
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {vendorProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-xl p-3 flex flex-col justify-between hover:border-brand/40 transition-colors group"
-                >
-                  <div className="space-y-2">
-                    <div className="relative aspect-[3/4] w-full bg-[#17130f] rounded-lg overflow-hidden border border-white/5">
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform"
-                        unoptimized
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-mono text-[9px] text-brand bg-brand/5 px-1 rounded block w-fit font-bold">
-                        {product.grade}
-                      </span>
-                      <h3 className="font-sans font-bold text-[13px] text-[#eae1da] line-clamp-2 min-h-[36px]">
-                        {product.name}
-                      </h3>
-                      <p className="font-mono text-[10px] text-text-disabled uppercase">
-                        {product.cardNo}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 mt-2 border-t border-white/5 flex items-center justify-between">
-                    <span className="font-mono font-bold text-[14px] text-brand">
-                      HK$ {product.price.toLocaleString()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        (window.location.href = `/marketplace/${product.vendorId}/product/${product.id}`)
-                      }
-                      className="font-sans text-[11px] text-brand hover:underline font-bold bg-transparent border-none p-0 cursor-pointer"
-                    >
-                      詳情 →
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveRoomId(vendor.id);
+            setIsChatOpen(true);
+          }}
+          className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12.5px] rounded-xl hover:bg-[#e8b896] transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+        >
+          💬 發起私域議價
+        </button>
       </div>
-    </div>
+
+      {/* 商戶個人上架網格 */}
+      <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6 space-y-4">
+        <h2 className="font-sans font-bold text-[15px] text-[#eae1da] border-b border-white/5 pb-2">
+          📦 店主公開出售中商品 ({vendor.activeListings.length})
+        </h2>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {vendor.activeListings.map((item) => (
+            <Link
+              key={item.id}
+              href={`/marketplace/${vendor.id}/product/${item.id}`}
+              className="block group bg-[#17130f] p-3 rounded-xl border border-transparent hover:border-brand/30 transition-all duration-300"
+            >
+              <div className="relative aspect-[3/4] w-full bg-[#26211C] rounded-lg overflow-hidden border border-white/5 mb-2.5">
+                <Image
+                  src={item.image}
+                  alt={item.name}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                  className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
+                  unoptimized
+                />
+              </div>
+              <h3 className="font-sans font-bold text-[13px] text-[#eae1da] truncate group-hover:text-brand transition-colors">
+                {item.name}
+              </h3>
+              <p className="font-mono text-[10px] text-text-disabled mt-0.5">
+                {item.cardNo}
+              </p>
+
+              <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-white/5">
+                <span className="font-mono text-[10.5px] text-[#10b981] font-bold">
+                  {item.grade}
+                </span>
+                <span className="font-mono font-black text-[13.5px] text-brand">
+                  HK${item.price.toLocaleString()}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }

@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+"use client";
+
+import { use, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
@@ -8,6 +10,15 @@ import { ProfileHeaderWithChat } from "./components/ProfileHeaderWithChat";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
+}
+
+interface VendorListing {
+  readonly id: string;
+  readonly name: string;
+  readonly cardNo: string;
+  readonly grade: string;
+  readonly price: number;
+  readonly image: string;
 }
 
 interface PublicMemberData {
@@ -22,22 +33,14 @@ interface PublicMemberData {
   readonly verifiedBuyer: boolean;
   readonly rating: number;
   readonly reviewCount: number;
-  readonly completedTrades: number; // 🟢 只保留公開嘅成交數，刪除所有資產金額
+  readonly completedTrades: number;
   readonly badges: ReadonlyArray<{
     readonly id: string;
     readonly label: string;
     readonly emoji: string;
     readonly desc: string;
   }>;
-  readonly activeListings: ReadonlyArray<{
-    // 🟢 新增：公開發售中嘅商品庫存
-    readonly id: string;
-    readonly name: string;
-    readonly cardNo: string;
-    readonly grade: string;
-    readonly price: number;
-    readonly image: string;
-  }>;
+  readonly activeListings: ReadonlyArray<VendorListing>;
   readonly reviews: ReadonlyArray<{
     readonly id: string;
     readonly reviewer: string;
@@ -47,7 +50,7 @@ interface PublicMemberData {
   }>;
 }
 
-// 模擬安全嘅公開數據
+// 🟢 數據源與市集櫥窗獨立前台（app/marketplace/[id]）達成 100% 同步
 const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
   "PKT-8839-44A": {
     id: "PKT-8839-44A",
@@ -135,13 +138,6 @@ const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
   },
 };
 
-async function getPublicMemberById(
-  id: string,
-): Promise<PublicMemberData | null> {
-  return MOCK_PUBLIC_MEMBERS[id] ?? null;
-}
-
-// 星星評分小組件
 function StarRating({ score, size = 14 }: { score: number; size?: number }) {
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -162,16 +158,39 @@ function StarRating({ score, size = 14 }: { score: number; size?: number }) {
   );
 }
 
-export default async function PublicProfilePage({
-  params,
-}: ProfileIdPageProps) {
-  const { id } = await params;
-  const member = await getPublicMemberById(id);
+export default function PublicProfilePage({ params }: ProfileIdPageProps) {
+  // 🟢 為了在 Client 組件內完美兼容 Next.js 16 異步參數協議，使用 React.use() 進行解包
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  const member = MOCK_PUBLIC_MEMBERS[id];
+
+  // 統一採用說明書工程標準：原生 useSyncExternalStore 客戶端鎖，徹底封鎖水合 Layout Shift
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   if (!member) {
     return (
       <div className="min-h-dvh bg-[#17130f] text-[#eae1da] flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold">找不到此商戶</h1>
+        <h1 className="text-xl font-sans font-bold text-text-disabled">
+          找不到此商戶個人檔案
+        </h1>
+        <Link
+          href="/marketplace"
+          className="text-brand text-sm mt-2 hover:underline"
+        >
+          ← 返回交易所大盤
+        </Link>
       </div>
     );
   }
@@ -181,9 +200,8 @@ export default async function PublicProfilePage({
       <TopNav />
       <MobileHeader />
 
-      {/* 🚀 佈局改為寬敞單欄置中，最大寬度 900px */}
-      <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6">
-        {/* 1. 載入 Client Component (商戶名片 + 右下角懸浮 Chatbox) */}
+      <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
+        {/* 1. 商戶名片 + 右下角懸浮 Chatbox */}
         <ProfileHeaderWithChat member={member} />
 
         {/* 2. 上架中商品 (Public Inventory) */}
@@ -192,37 +210,41 @@ export default async function PublicProfilePage({
             <h2 className="font-sans font-bold text-[16px]">
               上架中的商品 ({member.activeListings.length})
             </h2>
+            {/* 🟢 核心修正 1：將查看全部跳轉精準駁通至該商戶的專屬市集獨立櫥窗 */}
             <Link
-              href={`/search?seller=${member.id}`}
-              className="font-mono text-[12px] text-[#d4a574] hover:text-[#e8b896]"
+              href={`/marketplace/${member.id}`}
+              className="font-mono text-[12px] text-brand hover:text-[#e8b896] font-bold transition-colors"
             >
               查看全部 →
             </Link>
           </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {member.activeListings.map((item) => (
+              /* 🟢 核心修正 2：將商品卡片跳轉路徑，精準導向私域專屬商品詳情頁，消滅 404 地雷 */
               <Link
                 key={item.id}
-                href={`/marketplace/${item.id}`}
-                className="block group"
+                href={`/marketplace/${member.id}/product/${item.id}`}
+                className="block group bg-[#17130f]/40 p-2.5 rounded-xl border border-transparent hover:border-brand/20 transition-all duration-300"
               >
-                <div className="relative aspect-[3/4] bg-[#17130f] rounded-xl mb-2 overflow-hidden border border-[rgba(237,232,224,0.04)] group-hover:border-[#d4a574]/40 transition-colors">
+                <div className="relative aspect-[3/4] bg-[#17130f] rounded-lg mb-2 overflow-hidden border border-[rgba(237,232,224,0.04)] group-hover:border-brand/40 transition-colors">
                   <Image
                     src={item.image}
                     alt={item.name}
                     fill
                     sizes="(max-width: 768px) 50vw, 25vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    unoptimized
                   />
                 </div>
-                <p className="font-sans text-[12px] text-[#eae1da] truncate">
+                <h3 className="font-sans text-[12.5px] text-[#eae1da] truncate group-hover:text-brand transition-colors">
                   {item.name}
-                </p>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="font-mono text-[10px] text-[#10b981]">
+                </h3>
+                <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5">
+                  <span className="font-mono text-[10px] text-[#10b981] font-bold">
                     {item.grade}
                   </span>
-                  <span className="font-mono font-bold text-[13px] text-[#d4a574]">
+                  <span className="font-mono font-black text-[13px] text-brand">
                     HK${item.price.toLocaleString()}
                   </span>
                 </div>

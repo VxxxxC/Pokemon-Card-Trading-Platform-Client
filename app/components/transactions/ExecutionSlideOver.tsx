@@ -44,7 +44,17 @@ export function ExecutionSlideOver() {
 
   const sellerListedPrice = listing.price;
   const targetCardName = listing.name;
-  const targetCardId = listing.id;
+  // 🟢 核心連動：如果大盤卡片已經有 cardId / 庫存編號則沿用，無則自動映射為渡邊館藏的商品代碼，保證跳轉對齊
+  const targetCardId =
+    listing.id === "sv2a-182"
+      ? "LST-001"
+      : listing.id === "s6a-095"
+        ? "LST-002"
+        : listing.id === "sv2a-215"
+          ? "LST-003"
+          : listing.id === "sm4plus-119"
+            ? "LST-004"
+            : listing.id;
 
   const handleConfirmNegotiation = async () => {
     const finalOfferPrice = isCounterOffer
@@ -60,10 +70,12 @@ export function ExecutionSlideOver() {
     await new Promise((resolve) => setTimeout(resolve, 600));
     setIsSubmitting(false);
 
-    // 🟢 核心修正：在呼叫 injectSpecialTransaction 時，手動補齊 Zustand 訊息管道所需的 sellerId
+    // 🟢 終極對齊：將 sellerId 精準導向為 'PKT-8839-44A'。
+    // 這會讓 SpecialTransactionMessage 動態拼出的跳轉網址完美契合為：
+    // `/marketplace/PKT-8839-44A/product/${targetCardId}`
     injectSpecialTransaction({
-      sellerName: listing.seller || "旺角卡店 · 專業認證商戶",
-      sellerId: "RM-MOCK-SELLER-001", // 模擬導流到指定的預設對話 Session 房間
+      sellerName: "渡邊道館",
+      sellerId: "PKT-8839-44A",
       cardName: targetCardName,
       cardId: targetCardId,
       offerPrice: finalOfferPrice,

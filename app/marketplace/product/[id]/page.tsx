@@ -3,12 +3,8 @@
 import { useState, use, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { TopNav } from "@/app/components/navigation/TopNav";
-import { MobileHeader } from "@/app/components/navigation/MobileHeader";
-import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
-import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
@@ -33,7 +29,6 @@ interface ProductSpec {
   chartPoints: { day: number; date: string; price: number }[];
 }
 
-// 🟢 核心對齊：精準映射大盤目錄頁（INITIAL_LISTINGS）的 4 款熱門資產商品 ID
 const PRODUCT_POOL_DATABASE: Record<string, ProductSpec> = {
   "sv2a-182": {
     name: "Charizard ex SAR (噴火龍)",
@@ -185,7 +180,6 @@ interface PageProps {
 }
 
 export default function ProductDetailPage({ params }: PageProps) {
-  // 🟢 符合 Next.js 16 規格之 async params 異步解包
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
@@ -196,7 +190,6 @@ export default function ProductDetailPage({ params }: PageProps) {
     null,
   );
 
-  // SSR 安全防爆水合防線
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -205,13 +198,12 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center bg-[#17130f]">
         <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
   }
 
-  // SVG K 線圖 Canvas 規格演算
   const chartWidth = 500;
   const chartHeight = 120;
   const padding = 20;
@@ -248,7 +240,6 @@ export default function ProductDetailPage({ params }: PageProps) {
     ? `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`
     : "";
 
-  // 封裝標準大盤現貨數據（無固定單一賣家綁定，直到 Revamp 展開商家對戰表）
   const currentListing: MarketplaceListing = {
     id,
     name: card.name,
@@ -263,11 +254,9 @@ export default function ProductDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="min-h-dvh bg-[#17130f] text-[#eae1da] flex flex-col font-sans">
-      <TopNav />
-      <MobileHeader />
-
-      <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 lg:pb-12">
+    <div className="flex-1 w-full flex flex-col">
+      {/* 🟢 完美淨化：移除了手動重複掛載的四件套，改由外圍 Layout 自動無痛包裹 */}
+      <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 lg:pb-12 animate-fadeIn">
         <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5">
           <Link
             href="/marketplace"
@@ -327,7 +316,7 @@ export default function ProductDetailPage({ params }: PageProps) {
           <section className="lg:col-span-7 space-y-6">
             <div className="space-y-1.5 pb-4 border-b border-[rgba(237,232,224,0.06)]">
               <span className="inline-flex font-mono text-[9px] bg-brand/10 text-brand px-2 py-0.5 rounded font-black tracking-widest uppercase border border-brand/20">
-                Aggregated Commodity Pool
+                Item Commodity Index
               </span>
               <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] leading-tight tracking-tight mt-1">
                 {card.name}
@@ -339,7 +328,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* 💡 大盤價格與交易按鈕區塊 */}
+            {/* 大盤價格與交易按鈕區塊 */}
             <div className="bg-[#26211C] p-5 rounded-2xl border border-[rgba(212,165,116,0.15)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-md">
               <div>
                 <span className="font-mono text-[10px] text-[#d4c4b7] uppercase tracking-wider block mb-1">
@@ -360,7 +349,6 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
 
               <div className="flex gap-2 shrink-0 self-stretch sm:self-auto w-full sm:w-auto">
-                {/* 🟢 呼叫全域無參數 Zustand 總線抽屜 */}
                 <BuyButton
                   listing={currentListing}
                   className="w-full sm:w-auto h-11 px-8 text-[13.5px] font-bold"
@@ -451,7 +439,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               <MarketChartSkeleton />
             )}
 
-            {/* 📝 預留 Revamp 大展拳腳的區塊提示 */}
+            {/* 預留 Revamp 大展拳腳的區塊提示 */}
             <div className="p-3 bg-brand/5 border border-dashed border-brand/20 rounded-xl space-y-1">
               <p className="font-sans font-bold text-[11.5px] text-brand">
                 📌 交易所大盤機制排班預告
@@ -459,7 +447,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               <p className="font-sans text-[11px] text-[#d4c4b7] leading-relaxed">
                 本頁面為標準卡牌大盤頁面。接下來 Revamp
                 將在此處注入【全網認證賣家現貨即時叫價矩陣表】，供買家自由挑選最合適的品相、定價進行
-                Deal 媒合，敬請期待！
+                Deal 媒合，老兄敬請期待！
               </p>
             </div>
 
@@ -535,9 +523,6 @@ export default function ProductDetailPage({ params }: PageProps) {
           </section>
         </div>
       </main>
-
-      <BottomNav />
-      <ExecutionSlideOver />
     </div>
   );
 }
