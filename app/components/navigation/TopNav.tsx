@@ -5,58 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
-import {
-  GlobalChatConsole,
-  ChatRoom,
-  Message,
-} from "@/app/components/chat/GlobalChatConsole";
-
-const INITIAL_CHATS: ChatRoom[] = [
-  {
-    id: "PKT-8839-44A",
-    partnerName: "渡邊道館",
-    partnerTier: "道館主",
-    lastMessage: "✨ 平台鑑定師已確認卡角完好，稍後會上傳官方報告。",
-    unreadCount: 2,
-    timestamp: "14:32",
-    messages: [
-      {
-        id: "1",
-        sender: "me",
-        text: "你好，請問呢張噴火龍幾時可以送到平台鑑定？",
-        timestamp: "10:15",
-      },
-      {
-        id: "2",
-        sender: "system",
-        text: "✈ 交易提醒：賣家已發貨，實物已抵達中介中心。",
-        timestamp: "11:30",
-      },
-      {
-        id: "3",
-        sender: "them",
-        text: "師兄放心，卡牌已經交咗畀平台。剛才收到通知，鑑定進行中。",
-        timestamp: "14:30",
-      },
-    ],
-  },
-  {
-    id: "ROOM-MOCK-002",
-    partnerName: "大阪收藏家",
-    partnerTier: "收藏家",
-    lastMessage: "唔好意思啊師兄，不如我哋私下用 PayMe 轉賬？",
-    unreadCount: 0,
-    timestamp: "昨日",
-    messages: [
-      {
-        id: "1",
-        sender: "them",
-        text: "唔好意思啊師兄，不如我哋私下用 PayMe 轉賬？",
-        timestamp: "昨日",
-      },
-    ],
-  },
-];
+import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
+// 🟢 引入全域中央大腦
+import { useTradeStore } from "@/store/useTradeStore";
 
 const navLinks = [
   { href: "/", label: "首頁" },
@@ -67,10 +18,11 @@ const navLinks = [
 export function TopNav() {
   const pathname = usePathname();
   const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
-  const [chats, setChats] = useState(INITIAL_CHATS);
-  const [activeRoomId, setActiveRoomId] = useState(INITIAL_CHATS[0].id);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // 🟢 從 Zustand 接入受控雷達狀態
+  const { chats, isChatOpen, setIsChatOpen, setActiveRoomId, openGlobalChat } =
+    useTradeStore();
 
   // 點擊外面收起下拉選單
   useEffect(() => {
@@ -86,7 +38,7 @@ export function TopNav() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 網頁端廣播接收器同步升級
+  // 網頁端廣播接收器同步升級 ➔ 轉化為 Zustand Action
   useEffect(() => {
     const handleGlobalOpenChat = (e: Event) => {
       const customEvent = e as CustomEvent<{
@@ -94,45 +46,17 @@ export function TopNav() {
         partnerName?: string;
       }>;
       if (customEvent.detail?.roomId) {
-        const targetRoomId = customEvent.detail.roomId;
-        const targetName = customEvent.detail.partnerName || "未知名商戶";
-
-        setChats((prev) => {
-          const exists = prev.some((c) => c.id === targetRoomId);
-          if (exists) {
-            return prev.map((c) =>
-              c.id === targetRoomId ? { ...c, unreadCount: 0 } : c,
-            );
-          } else {
-            const newSession = {
-              id: targetRoomId,
-              partnerName: targetName,
-              partnerTier: "認證賣家",
-              lastMessage: "已開啟即時議價對話",
-              unreadCount: 0,
-              timestamp: "剛剛",
-              messages: [
-                {
-                  id: "sys-" + Date.now(),
-                  sender: "system" as const,
-                  text: `🔒 平台已成功為您建立與 ${targetName} 的安全中介託管議價通道。`,
-                  timestamp: "剛剛",
-                },
-              ],
-            };
-            return [newSession, ...prev];
-          }
-        });
-
-        setActiveRoomId(targetRoomId);
-        setIsConsoleOpen(true);
+        openGlobalChat(
+          customEvent.detail.roomId,
+          customEvent.detail.partnerName || "未知名商戶",
+        );
       }
     };
 
     window.addEventListener("open-global-chat", handleGlobalOpenChat);
     return () =>
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
-  }, []);
+  }, [openGlobalChat]);
 
   const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
 
@@ -151,9 +75,6 @@ export function TopNav() {
           {/* 導航 */}
           <nav className="flex items-center gap-1 ml-8">
             {navLinks.map((link) => {
-              {
-                /* 🟢 核心修復：防止子路由斷層，引入智能路徑前綴模糊匹配 */
-              }
               const isActive =
                 link.href === "/"
                   ? pathname === "/"
@@ -185,9 +106,7 @@ export function TopNav() {
               <button
                 type="button"
                 onClick={() => setIsInboxOpen(!isInboxOpen)}
-                className={`relative p-2 text-text-secondary hover:text-brand transition-colors rounded-xl hover:bg-[#26211C] active:scale-[0.95] ${
-                  isInboxOpen ? "text-brand bg-[#26211C]" : ""
-                }`}
+                className={`relative p-2 text-text-secondary hover:text-brand transition-colors rounded-xl hover:bg-[#26211C] active:scale-[0.95] ${isInboxOpen ? "text-brand bg-[#26211C]" : ""}`}
               >
                 <svg
                   width="20"
@@ -196,8 +115,6 @@ export function TopNav() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
                 >
                   <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
                   <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
@@ -221,7 +138,7 @@ export function TopNav() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setIsConsoleOpen(true)}
+                        onClick={() => setIsChatOpen(true)}
                         className="font-sans text-[11px] text-brand hover:underline"
                       >
                         展開面板
@@ -233,14 +150,9 @@ export function TopNav() {
                         <button
                           key={room.id}
                           onClick={() => {
-                            setIsConsoleOpen(true);
+                            setIsChatOpen(true);
                             setIsInboxOpen(false);
                             setActiveRoomId(room.id);
-                            setChats((prev) =>
-                              prev.map((c) =>
-                                c.id === room.id ? { ...c, unreadCount: 0 } : c,
-                              ),
-                            );
                           }}
                           className="w-full text-left p-2.5 rounded-xl hover:bg-[#26211C] transition-all flex items-start gap-2.5 group border border-transparent"
                         >
@@ -271,7 +183,7 @@ export function TopNav() {
               </AnimatePresence>
             </div>
 
-            {/* 登入 / 註冊按鈕 */}
+            {/* 登入按鈕 */}
             <Link
               href="/auth"
               className="h-9 px-4 font-sans text-sm font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover inline-flex items-center justify-center"
@@ -280,19 +192,9 @@ export function TopNav() {
             </Link>
           </div>
         </div>
-        {/* 全域懸浮對話站 */}
-        <AnimatePresence>
-          {isConsoleOpen && (
-            <GlobalChatConsole
-              isOpen={isConsoleOpen}
-              onClose={() => setIsConsoleOpen(false)}
-              chats={chats}
-              setChats={setChats}
-              activeRoomId={activeRoomId}
-              setActiveRoomId={setActiveRoomId}
-            />
-          )}
-        </AnimatePresence>{" "}
+
+        {/* 🟢 頂級改良：免傳遞參數，自動實時追隨 Zustand 雷達 */}
+        <AnimatePresence>{isChatOpen && <GlobalChatConsole />}</AnimatePresence>
       </header>
     </>
   );
