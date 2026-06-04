@@ -10,16 +10,24 @@ interface SmartSearchProps {
   isOpen: boolean;
 }
 
-export function SmartSearch({ query, onSelect, listings, isOpen }: SmartSearchProps) {
+export function SmartSearch({
+  query,
+  onSelect,
+  listings,
+  isOpen,
+}: SmartSearchProps) {
   if (!isOpen || !query) return null;
 
   // Filter listings based on card name or code/id matching the query
+  const normalizedQuery = query.toLowerCase();
   const suggestions = listings
-    .filter(
-      (item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.id.toLowerCase().includes(query.toLowerCase())
-    )
+    .filter((item) => {
+      const searchableCardNo = (item.cardNo ?? item.id).toLowerCase();
+      return (
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        searchableCardNo.includes(normalizedQuery)
+      );
+    })
     .slice(0, 5);
 
   if (suggestions.length === 0) return null;
@@ -54,7 +62,7 @@ export function SmartSearch({ query, onSelect, listings, isOpen }: SmartSearchPr
                     {item.name}
                   </p>
                   <p className="font-mono text-[10px] text-[#d4c4b7] mt-0.5">
-                    {item.id} · {item.set}
+                    {item.cardNo ?? item.id} · {item.set}
                   </p>
                 </div>
               </div>

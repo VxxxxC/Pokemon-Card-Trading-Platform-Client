@@ -11,15 +11,19 @@ import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 export type MarketplaceListing = {
   id: string;
+  cardNo?: string;
   name: string;
   set: string;
   rarity: "SAR" | "UR" | "SR" | "AR";
   grade: { authority: string; score: string };
+  conditionLabel?: "美品 S" | "微傷 A" | "傷 B";
   price: number; // HKD value
   delta: number;
   deltaDirection: "up" | "down";
   image: string;
   seller: string;
+  sellerId?: string;
+  detailHref?: string;
 };
 
 interface MarketplaceCardProps {
@@ -29,6 +33,8 @@ interface MarketplaceCardProps {
 export function MarketplaceCard({ listing }: MarketplaceCardProps) {
   const formattedPrice = `HK$ ${listing.price.toLocaleString("en-HK")}`;
   const formattedDelta = `${listing.deltaDirection === "up" ? "▲" : "▼"} HK$ ${listing.delta.toLocaleString("en-HK")}`;
+  const detailHref = listing.detailHref ?? `/marketplace/product/${listing.id}`;
+  const displayCardNo = listing.cardNo ?? listing.id;
 
   return (
     <motion.article
@@ -39,10 +45,7 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
       <div>
         <div className="relative w-full aspect-[5/3.8] overflow-hidden bg-[#1A1612]">
           {/* 🟢 核心修正 1：將卡片封面的 Link，精準正名並導向 /marketplace/product/[id] 公共大盤頁 */}
-          <Link
-            href={`/marketplace/product/${listing.id}`}
-            className="block relative w-full h-full"
-          >
+          <Link href={detailHref} className="block relative w-full h-full">
             <Image
               src={listing.image}
               alt={`${listing.name} — ${listing.rarity}`}
@@ -68,13 +71,13 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               {/* 🟢 核心修正 2：將卡片標題的 Link，同步精準導向 /marketplace/product/[id] */}
-              <Link href={`/marketplace/product/${listing.id}`}>
+              <Link href={detailHref}>
                 <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] leading-snug truncate hover:text-[#d4a574] transition-colors">
                   {listing.name}
                 </h3>
               </Link>
               <span className="font-mono text-[11px] text-[#d4c4b7]">
-                {listing.id} · {listing.set}
+                {displayCardNo} · {listing.set}
               </span>
             </div>
             <GradeBadge

@@ -1,86 +1,53 @@
 "use client";
 
-import { use, useSyncExternalStore } from "react";
-import Image from "next/image";
+import {
+  use,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import Link from "next/link";
+import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
+import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
+import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import {
+  getPublicMemberById,
+  getStorefrontListingsByMember,
+} from "@/app/lib/mock-public-members";
 import { useTradeStore } from "@/store/useTradeStore";
-
-interface VendorListing {
-  readonly id: string;
-  readonly name: string;
-  readonly cardNo: string;
-  readonly grade: string;
-  readonly price: number;
-  readonly image: string;
-}
-
-interface PublicVendorData {
-  readonly id: string;
-  readonly username: string;
-  readonly handle: string;
-  readonly level: string;
-  readonly bio: string;
-  readonly rating: number;
-  readonly completedTrades: number;
-  readonly activeListings: ReadonlyArray<VendorListing>;
-}
-
-// 🟢 完美同步 profile/[id]/page.tsx 的核心公開數據源，確保 Demo 絕不穿幫
-const VENDOR_MIRROR_DATABASE: Record<string, PublicVendorData> = {
-  "PKT-8839-44A": {
-    id: "PKT-8839-44A",
-    username: "渡邊道館",
-    handle: "@watanabe_gym",
-    level: "專業道館主",
-    bio: "專注於第一世代 PSA 10 鑑定卡與稀有未開封補充包。保證 24 小時內發貨，所有高價卡均走平台 Escrow 鑑定託管。",
-    rating: 4.9,
-    completedTrades: 1204,
-    activeListings: [
-      {
-        id: "LST-001",
-        name: "Charizard ex SAR",
-        cardNo: "sv2a-182",
-        grade: "PSA 10",
-        price: 44800,
-        image: "https://picsum.photos/seed/char1/200/280",
-      },
-      {
-        id: "LST-002",
-        name: "Umbreon VMAX SA",
-        cardNo: "s6a-095",
-        grade: "BGS 9.5",
-        price: 52000,
-        image: "https://picsum.photos/seed/umb1/200/280",
-      },
-      {
-        id: "LST-003",
-        name: "Pikachu AR",
-        cardNo: "sv2a-215",
-        grade: "裸卡 (美品S)",
-        price: 1200,
-        image: "https://picsum.photos/seed/pika1/200/280",
-      },
-      {
-        id: "LST-004",
-        name: "Lillie SR",
-        cardNo: "sm4plus-119",
-        grade: "PSA 9",
-        price: 185000,
-        image: "https://picsum.photos/seed/lillie/200/280",
-      },
-    ],
-  },
-};
+import type { SortKey } from "@/store/useMarketStore";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+function matchesCondition(
+  condition: "美品 S" | "微傷 A" | "傷 B",
+  listing: ReturnType<typeof getStorefrontListingsByMember>[number],
+) {
+  if (listing.conditionLabel) {
+    return listing.conditionLabel === condition;
+  }
+
+  if (condition === "美品 S") {
+    return listing.grade.score === "10" || listing.grade.score === "9.5";
+  }
+
+  if (condition === "微傷 A") {
+    return listing.grade.score === "9" || listing.grade.score === "NM";
+  }
+
+  return listing.grade.score === "8" || listing.grade.score === "EX";
+}
+
 export default function MerchantStorefrontPage({ params }: PageProps) {
   const { id } = use(params);
-  const vendor = VENDOR_MIRROR_DATABASE[id];
+  const vendor = getPublicMemberById(id);
 
-  // 強制執行說明書第 3 條：使用原生 useSyncExternalStore 快照防線，封死異步渲染 Layout Shift
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -89,6 +56,97 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
 
   const setIsChatOpen = useTradeStore((state) => state.setIsChatOpen);
   const setActiveRoomId = useTradeStore((state) => state.setActiveRoomId);
+
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("最新");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [activeRarities, setActiveRarities] = useState<string[]>([]);
+  const [activeGrades, setActiveGrades] = useState<string[]>([]);
+  const [activeConditions, setActiveConditions] = useState<string[]>([]);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  const storefrontListings = useMemo(
+    () => (vendor ? getStorefrontListingsByMember(vendor) : []),
+    [vendor],
+  );
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsSearchFocused(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredListings = useMemo(() => {
+    return storefrontListings
+      .filter((listing) => {
+        const searchableCardNo = (listing.cardNo ?? listing.id).toLowerCase();
+        const normalizedQuery = query.trim().toLowerCase();
+
+        const matchQuery =
+          normalizedQuery.length === 0 ||
+          listing.name.toLowerCase().includes(normalizedQuery) ||
+          searchableCardNo.includes(normalizedQuery);
+
+        const matchRarity =
+          activeRarities.length === 0 ||
+          activeRarities.includes(listing.rarity);
+
+        const isGradedCard = listing.grade.authority !== "Raw Card";
+        const matchGrade =
+          activeGrades.length === 0 ||
+          activeGrades.some((grade) => {
+            if (grade === "Raw Card") return !isGradedCard;
+
+            const [authority, score] = grade.split(" ");
+            return (
+              listing.grade.authority === authority &&
+              listing.grade.score === score
+            );
+          });
+
+        const matchCondition =
+          activeConditions.length === 0 ||
+          activeConditions.some((condition) =>
+            matchesCondition(
+              condition as "美品 S" | "微傷 A" | "傷 B",
+              listing,
+            ),
+          );
+
+        return matchQuery && matchRarity && matchGrade && matchCondition;
+      })
+      .sort((a, b) => {
+        if (sortKey === "價格：由低到高") return a.price - b.price;
+        if (sortKey === "價格：由高到低") return b.price - a.price;
+        return 0;
+      });
+  }, [
+    storefrontListings,
+    query,
+    activeRarities,
+    activeGrades,
+    activeConditions,
+    sortKey,
+  ]);
+
+  const toggleFilterValue = (
+    value: string,
+    setState: Dispatch<SetStateAction<string[]>>,
+  ) => {
+    setState((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
+  };
 
   if (!isMounted) {
     return (
@@ -115,80 +173,167 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
   }
 
   return (
-    <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
-      {/* 門面看板大牌 */}
-      <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans font-black text-[22px] text-[#eae1da] tracking-tight">
-              {vendor.username}
-            </h1>
-            <span className="font-sans text-[11px] font-bold text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-md">
-              🏅 {vendor.level}
-            </span>
-          </div>
-          <p className="font-mono text-[12px] text-text-secondary">
-            {vendor.handle} · 已累計完成 {vendor.completedTrades} 筆託管交割
-          </p>
-          <p className="font-sans text-[13px] text-text-secondary max-w-[580px] pt-1.5 leading-relaxed">
-            {vendor.bio}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setActiveRoomId(vendor.id);
-            setIsChatOpen(true);
-          }}
-          className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12.5px] rounded-xl hover:bg-[#e8b896] transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
-        >
-          💬 發起私域議價
-        </button>
-      </div>
-
-      {/* 商戶個人上架網格 */}
-      <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6 space-y-4">
-        <h2 className="font-sans font-bold text-[15px] text-[#eae1da] border-b border-white/5 pb-2">
-          📦 店主公開出售中商品 ({vendor.activeListings.length})
-        </h2>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {vendor.activeListings.map((item) => (
-            <Link
-              key={item.id}
-              href={`/marketplace/${vendor.id}/product/${item.id}`}
-              className="block group bg-[#17130f] p-3 rounded-xl border border-transparent hover:border-brand/30 transition-all duration-300"
-            >
-              <div className="relative aspect-[3/4] w-full bg-[#26211C] rounded-lg overflow-hidden border border-white/5 mb-2.5">
-                <Image
-                  src={item.image}
-                  alt={item.name}
-                  fill
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                  className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                  unoptimized
-                />
+    <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
+      <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-6">
+        <section className="flex-1 rounded-2xl border border-[rgba(212,165,116,0.18)] bg-[#26211C] p-5 lg:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
+          <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+            <div className="space-y-3 min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] tracking-tight">
+                  {vendor.username}
+                </h1>
+                <span className="font-mono text-[10px] bg-brand/10 text-brand px-2.5 py-1 rounded-full border border-brand/20 uppercase tracking-[0.18em] font-bold">
+                  🏅 {vendor.level}
+                </span>
+                {vendor.verifiedBuyer ? (
+                  <span className="font-mono text-[10px] bg-[#17130f] text-[#d4c4b7] px-2.5 py-1 rounded-full border border-white/10 uppercase tracking-[0.16em] font-bold">
+                    已驗證交易身份
+                  </span>
+                ) : null}
               </div>
-              <h3 className="font-sans font-bold text-[13px] text-[#eae1da] truncate group-hover:text-brand transition-colors">
-                {item.name}
-              </h3>
-              <p className="font-mono text-[10px] text-text-disabled mt-0.5">
-                {item.cardNo}
+
+              <p className="font-mono text-[11.5px] text-[#d4c4b7] leading-relaxed">
+                {vendor.handle} · {vendor.joinDate} · 累計完成{" "}
+                {vendor.completedTrades.toLocaleString()} 筆託管交割 · 目前公開{" "}
+                {storefrontListings.length} 件私域現貨標的
               </p>
 
-              <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-white/5">
-                <span className="font-mono text-[10.5px] text-[#10b981] font-bold">
-                  {item.grade}
-                </span>
-                <span className="font-mono font-black text-[13.5px] text-brand">
-                  HK${item.price.toLocaleString()}
-                </span>
+              <p className="max-w-[760px] font-sans text-[13.5px] text-[#d4c4b7] leading-relaxed">
+                {vendor.bio}
+              </p>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                {vendor.badges.map((badge) => (
+                  <div
+                    key={badge.id}
+                    title={badge.desc}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/6 bg-[#17130f] px-3 py-1.5"
+                  >
+                    <span className="text-[13px]">{badge.emoji}</span>
+                    <span className="font-mono text-[10.5px] text-[#d4c4b7]">
+                      {badge.label}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </Link>
-          ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row xl:flex-col items-stretch sm:items-end xl:items-end gap-3 shrink-0">
+              <div className="grid grid-cols-2 gap-2 min-w-[220px]">
+                <div className="rounded-xl border border-white/6 bg-[#17130f] px-3 py-2.5 text-right">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#50453b]">
+                    評級
+                  </p>
+                  <p className="font-mono text-[18px] font-black text-[#eae1da]">
+                    {vendor.rating.toFixed(1)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/6 bg-[#17130f] px-3 py-2.5 text-right">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#50453b]">
+                    評價數
+                  </p>
+                  <p className="font-mono text-[18px] font-black text-[#eae1da]">
+                    {vendor.reviewCount}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRoomId(vendor.id);
+                  setIsChatOpen(true);
+                }}
+                className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12.5px] rounded-xl hover:bg-[#e8b896] transition-colors cursor-pointer shadow-md"
+              >
+                💬 發起私域議價
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <div className="flex items-center gap-2 self-end xl:self-start">
+          <span className="font-mono text-[10px] text-[#50453b] uppercase tracking-wider font-bold">
+            排序
+          </span>
+          <select
+            value={sortKey}
+            onChange={(event) => setSortKey(event.target.value as SortKey)}
+            className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-white/5 rounded-[8px] font-sans text-[12px] focus:outline-none cursor-pointer"
+          >
+            <option value="最新">上架時間：最新</option>
+            <option value="價格：由低到高">價格：由低到高</option>
+            <option value="價格：由高到低">價格：由高到低</option>
+          </select>
         </div>
-      </section>
+      </div>
+
+      <div ref={searchContainerRef} className="relative mb-6">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#d4c4b7"
+            strokeWidth="2.5"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
+        <input
+          type="search"
+          value={query}
+          onFocus={() => setIsSearchFocused(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setIsSearchFocused(true);
+          }}
+          placeholder="搜尋官方卡牌名稱、編號、稀有度..."
+          className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[13.5px] text-[#eae1da] focus:outline-none"
+        />
+        <SmartSearch
+          query={query}
+          listings={storefrontListings}
+          isOpen={isSearchFocused}
+          onSelect={(name) => {
+            setQuery(name);
+            setIsSearchFocused(false);
+          }}
+        />
+      </div>
+
+      <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
+        <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
+          <AccordionFilters
+            activeRarities={activeRarities}
+            onRarityToggle={(rarity) =>
+              toggleFilterValue(rarity, setActiveRarities)
+            }
+            activeGrades={activeGrades}
+            onGradeToggle={(grade) => toggleFilterValue(grade, setActiveGrades)}
+            activeConditions={activeConditions}
+            onConditionToggle={(condition) =>
+              toggleFilterValue(condition, setActiveConditions)
+            }
+          />
+        </aside>
+
+        <div className="flex-1">
+          {filteredListings.length === 0 ? (
+            <div className="py-20 text-center bg-[#26211C] border border-dashed border-white/5 rounded-2xl font-sans text-[13.5px] text-text-disabled">
+              此商戶私域櫥窗暫時沒有符合篩選條件的商品
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+              {filteredListings.map((listing) => (
+                <MarketplaceCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 }

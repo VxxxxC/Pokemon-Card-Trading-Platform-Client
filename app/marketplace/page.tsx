@@ -4,7 +4,11 @@ import { useRef, useEffect, useSyncExternalStore, useMemo } from "react";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
-import { useMarketStore, INITIAL_LISTINGS } from "@/store/useMarketStore";
+import {
+  useMarketStore,
+  INITIAL_LISTINGS,
+  type SortKey,
+} from "@/store/useMarketStore";
 
 export default function MarketplacePage() {
   // 金融級 SSR 環境安全隔離
@@ -116,7 +120,7 @@ export default function MarketplacePage() {
           </span>
           <select
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as any)}
+            onChange={(e) => setSortKey(e.target.value as SortKey)}
             className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-white/5 rounded-[8px] font-sans text-[12px] focus:outline-none cursor-pointer"
           >
             <option value="最新">上架時間：最新</option>

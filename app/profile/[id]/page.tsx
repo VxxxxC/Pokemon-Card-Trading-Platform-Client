@@ -7,136 +7,11 @@ import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileHeaderWithChat } from "./components/ProfileHeaderWithChat";
+import { getPublicMemberById } from "@/app/lib/mock-public-members";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
 }
-
-interface VendorListing {
-  readonly id: string;
-  readonly name: string;
-  readonly cardNo: string;
-  readonly grade: string;
-  readonly price: number;
-  readonly image: string;
-}
-
-interface PublicMemberData {
-  readonly id: string;
-  readonly username: string;
-  readonly handle: string;
-  readonly joinDate: string;
-  readonly avatarSeed: string;
-  readonly level: string;
-  readonly levelTier: number;
-  readonly bio: string;
-  readonly verifiedBuyer: boolean;
-  readonly rating: number;
-  readonly reviewCount: number;
-  readonly completedTrades: number;
-  readonly badges: ReadonlyArray<{
-    readonly id: string;
-    readonly label: string;
-    readonly emoji: string;
-    readonly desc: string;
-  }>;
-  readonly activeListings: ReadonlyArray<VendorListing>;
-  readonly reviews: ReadonlyArray<{
-    readonly id: string;
-    readonly reviewer: string;
-    readonly rating: number;
-    readonly comment: string;
-    readonly date: string;
-  }>;
-}
-
-// 🟢 數據源與市集櫥窗獨立前台（app/marketplace/[id]）達成 100% 同步
-const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
-  "PKT-8839-44A": {
-    id: "PKT-8839-44A",
-    username: "渡邊道館",
-    handle: "@watanabe_gym",
-    joinDate: "2024年 8月加入",
-    avatarSeed: "watanabe-gym-tcg",
-    level: "專業道館主",
-    levelTier: 4,
-    bio: "專注於第一世代 PSA 10 鑑定卡與稀有未開封補充包。保證 24 小時內發貨，所有高價卡均走平台 Escrow 鑑定託管。",
-    verifiedBuyer: true,
-    rating: 4.9,
-    reviewCount: 124,
-    completedTrades: 1204,
-    badges: [
-      {
-        id: "top-rated",
-        label: "高評分賣家",
-        emoji: "⭐",
-        desc: "評分維持 4.8+ 滿 30 天",
-      },
-      {
-        id: "1000trades",
-        label: "千筆交易",
-        emoji: "🏆",
-        desc: "累計完成 1000 筆交易",
-      },
-      {
-        id: "fast-shipper",
-        label: "閃電發貨",
-        emoji: "⚡",
-        desc: "平均發貨時間小於 12 小時",
-      },
-    ],
-    activeListings: [
-      {
-        id: "LST-001",
-        name: "Charizard ex SAR",
-        cardNo: "sv2a-182",
-        grade: "PSA 10",
-        price: 44800,
-        image: "https://picsum.photos/seed/char1/200/280",
-      },
-      {
-        id: "LST-002",
-        name: "Umbreon VMAX SA",
-        cardNo: "s6a-095",
-        grade: "BGS 9.5",
-        price: 52000,
-        image: "https://picsum.photos/seed/umb1/200/280",
-      },
-      {
-        id: "LST-003",
-        name: "Pikachu AR",
-        cardNo: "sv2a-215",
-        grade: "裸卡 (美品S)",
-        price: 1200,
-        image: "https://picsum.photos/seed/pika1/200/280",
-      },
-      {
-        id: "LST-004",
-        name: "Lillie SR",
-        cardNo: "sm4plus-119",
-        grade: "PSA 9",
-        price: 185000,
-        image: "https://picsum.photos/seed/lillie/200/280",
-      },
-    ],
-    reviews: [
-      {
-        id: "rev-001",
-        reviewer: "K.田中",
-        rating: 5,
-        comment: "包裝非常謹慎，卡況與描述完全一致，快速發貨，強力推薦！",
-        date: "2026年 5月",
-      },
-      {
-        id: "rev-002",
-        reviewer: "C.Lin",
-        rating: 5,
-        comment: "專業賣家，溝通回應快，第三次購買同一位賣家，值得信賴。",
-        date: "2026年 4月",
-      },
-    ],
-  },
-};
 
 function StarRating({ score, size = 14 }: { score: number; size?: number }) {
   return (
@@ -162,7 +37,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   // 🟢 為了在 Client 組件內完美兼容 Next.js 16 異步參數協議，使用 React.use() 進行解包
   const resolvedParams = use(params);
   const id = resolvedParams.id;
-  const member = MOCK_PUBLIC_MEMBERS[id];
+  const member = getPublicMemberById(id);
 
   // 統一採用說明書工程標準：原生 useSyncExternalStore 客戶端鎖，徹底封鎖水合 Layout Shift
   const isMounted = useSyncExternalStore(
@@ -242,7 +117,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
                 </h3>
                 <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5">
                   <span className="font-mono text-[10px] text-[#10b981] font-bold">
-                    {item.grade}
+                    {item.grade.label}
                   </span>
                   <span className="font-mono font-black text-[13px] text-brand">
                     HK${item.price.toLocaleString()}

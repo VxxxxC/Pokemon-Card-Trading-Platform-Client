@@ -64,7 +64,7 @@
 - [ ] Ticket 24: 撰寫邏輯使用 Supabase Client (`supabase.storage`) 將圖片上傳至 Bucket 並獲取 URLs。🔄 TODO [BACKEND]
 - [ ] Ticket 25: 撰寫 Server Action 接收表單資料，**驗證用戶是否具備 MERCHANT 權限**，然後 `insert` 入 `listings`。🔄 TODO [BACKEND]
 - [ ] Ticket 26: 撰寫前端提交表單後的成功與失敗提示 (Toast) 及跳轉邏輯。🔄 TODO [FRONTEND] (2026-06-03：成功提交 toast 已於 `app/profile/user/inventory/page.tsx` 接入 Sonner；失敗提示與 redirect handler 仍待補完)
-- [x] Ticket 27: 開發平台首頁與商品詳情頁，讀取 `listings` 表格並展示商品。✅ DONE (`app/marketplace/page.tsx` + `app/marketplace/[id]/page.tsx`，現接 mock 資料)
+- [x] Ticket 27: 開發平台首頁與商品詳情頁，讀取 `listings` 表格並展示商品。✅ DONE (`app/marketplace/page.tsx` + `app/marketplace/[id]/page.tsx`，現接 mock 資料；2026-06-05 補完私域 storefront 與公共 marketplace 100% parity、私域篩選隔離及 `/marketplace/[id]/product/[productId]` 路由閉環)
 
 ---
 

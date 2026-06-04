@@ -44,6 +44,8 @@ export function ExecutionSlideOver() {
 
   const sellerListedPrice = listing.price;
   const targetCardName = listing.name;
+  const targetSellerId = listing.sellerId ?? "PKT-8839-44A";
+  const targetSellerName = listing.seller ?? "渡邊道館";
   // 🟢 核心連動：如果大盤卡片已經有 cardId / 庫存編號則沿用，無則自動映射為渡邊館藏的商品代碼，保證跳轉對齊
   const targetCardId =
     listing.id === "sv2a-182"
@@ -70,12 +72,9 @@ export function ExecutionSlideOver() {
     await new Promise((resolve) => setTimeout(resolve, 600));
     setIsSubmitting(false);
 
-    // 🟢 終極對齊：將 sellerId 精準導向為 'PKT-8839-44A'。
-    // 這會讓 SpecialTransactionMessage 動態拼出的跳轉網址完美契合為：
-    // `/marketplace/PKT-8839-44A/product/${targetCardId}`
     injectSpecialTransaction({
-      sellerName: "渡邊道館",
-      sellerId: "PKT-8839-44A",
+      sellerName: targetSellerName,
+      sellerId: targetSellerId,
       cardName: targetCardName,
       cardId: targetCardId,
       offerPrice: finalOfferPrice,
