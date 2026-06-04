@@ -6,7 +6,7 @@ import Link from "next/link";
 import { WishlistButton } from "@/app/components/market/WishlistButton";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
-// 🟢 引入全域原子級動作掣
+// 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 export type MarketplaceListing = {
@@ -38,8 +38,9 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
     >
       <div>
         <div className="relative w-full aspect-[5/3.8] overflow-hidden bg-[#1A1612]">
+          {/* 🟢 核心修正 1：將卡片封面的 Link，精準正名並導向 /marketplace/product/[id] 公共大盤頁 */}
           <Link
-            href={`/marketplace/${listing.id}`}
+            href={`/marketplace/product/${listing.id}`}
             className="block relative w-full h-full"
           >
             <Image
@@ -66,7 +67,8 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
         <div className="p-4 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <Link href={`/marketplace/${listing.id}`}>
+              {/* 🟢 核心修正 2：將卡片標題的 Link，同步精準導向 /marketplace/product/[id] */}
+              <Link href={`/marketplace/product/${listing.id}`}>
                 <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] leading-snug truncate hover:text-[#d4a574] transition-colors">
                   {listing.name}
                 </h3>
@@ -104,7 +106,7 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
         </div>
       </div>
 
-      {/* 🟢 核心修正 1：換上全域即時通訊按鈕，從此在大盤分頁點擊直接彈出交易 SlideOver！ */}
+      {/* 換上全域即時通訊按鈕，從此在大盤分頁點擊直接彈出交易 SlideOver！ */}
       <div className="px-4 pb-4 pt-1 w-full">
         <BuyButton listing={listing} className="w-full" />
       </div>

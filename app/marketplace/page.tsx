@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
@@ -10,8 +10,9 @@ import {
 } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
-import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver"; // 🟢 全域抽屜常駐
+import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
 
+// 🟢 核心修正：商品大盤不綁定 sellerId，完全回歸標準 MarketplaceListing 規格
 const INITIAL_LISTINGS: MarketplaceListing[] = [
   {
     id: "sv2a-182",
@@ -23,7 +24,7 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
     delta: 120,
     deltaDirection: "up",
     image: "https://picsum.photos/seed/poke-charizard/400/280",
-    seller: "渡邊道館",
+    seller: "旺角卡店 · 專業認證商戶",
   },
   {
     id: "sv2a-189",
@@ -35,7 +36,7 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
     delta: 50,
     deltaDirection: "down",
     image: "https://picsum.photos/seed/poke-mewtwo/400/280",
-    seller: "京都卡牌專門店",
+    seller: "渡邊道館",
   },
   {
     id: "sv6a-109",
@@ -66,6 +67,12 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
 type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
 
 export default function MarketplacePage() {
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
   const [query, setQuery] = useState("");
   const [activeRarities, setActiveRarities] = useState<string[]>([]);
   const [activeGrades, setActiveGrades] = useState<string[]>([]);
@@ -87,6 +94,14 @@ export default function MarketplacePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   const handleRarityToggle = (rarity: string) => {
     setActiveRarities((prev) =>
       prev.includes(rarity)
@@ -107,13 +122,6 @@ export default function MarketplacePage() {
         ? prev.filter((c) => c !== condition)
         : [...prev, condition],
     );
-  };
-
-  const clearAllFilters = () => {
-    setActiveRarities([]);
-    setActiveGrades([]);
-    setActiveConditions([]);
-    setQuery("");
   };
 
   const filtered = INITIAL_LISTINGS.filter((card) => {
@@ -154,25 +162,25 @@ export default function MarketplacePage() {
       <TopNav />
       <MobileHeader />
 
-      <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12">
+      <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="font-sans font-bold text-[24px] lg:text-[28px] text-[#eae1da]">
-              交易所市場
+            <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] tracking-tight">
+              交易所大盤市場
             </h1>
-            <p className="font-mono text-[12px] text-[#d4c4b7] mt-0.5">
-              {INITIAL_LISTINGS.length} 件精選商品上架中
+            <p className="font-mono text-[11.5px] text-[#d4c4b7] mt-0.5">
+              🚀 {filtered.length} 件全網聚合現貨標的在庫
             </p>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
-            <span className="font-mono text-[11px] text-[#50453b] uppercase tracking-wider">
+            <span className="font-mono text-[10px] text-[#50453b] uppercase tracking-wider font-bold">
               排序
             </span>
             <select
               value={sortKey}
               onChange={(e) => setSortKey(e.target.value as SortKey)}
-              className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-white/5 rounded-[8px] font-sans text-[12px] focus:outline-none"
+              className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-white/5 rounded-[8px] font-sans text-[12px] focus:outline-none cursor-pointer"
             >
               <option value="最新">上架時間：最新</option>
               <option value="價格：由低到高">價格：由低到高</option>
@@ -188,7 +196,7 @@ export default function MarketplacePage() {
               height="16"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#50453b"
+              stroke="#d4c4b7"
               strokeWidth="2.5"
             >
               <circle cx="11" cy="11" r="8" />
@@ -203,8 +211,8 @@ export default function MarketplacePage() {
               setQuery(e.target.value);
               setIsSearchFocused(true);
             }}
-            placeholder="以卡牌名稱、編號搜尋..."
-            className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[14px] focus:outline-none"
+            placeholder="搜尋官方卡牌名稱、編號、稀要度..."
+            className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[13.5px] text-[#eae1da] focus:outline-none"
           />
           <SmartSearch
             query={query}
@@ -218,7 +226,7 @@ export default function MarketplacePage() {
         </div>
 
         <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
-          <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4">
+          <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
             <AccordionFilters
               activeRarities={activeRarities}
               onRarityToggle={handleRarityToggle}
@@ -231,18 +239,13 @@ export default function MarketplacePage() {
 
           <div className="flex-1">
             {filtered.length === 0 ? (
-              <div className="py-20 text-center bg-[#26211C] rounded-2xl">
+              <div className="py-20 text-center bg-[#26211C] border border-dashed border-white/5 rounded-2xl font-sans text-[13.5px] text-text-disabled">
                 沒有符合篩選條件的商品
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {filtered.map((item) => (
-                  <MarketplaceCard
-                    key={item.id}
-                    listing={item}
-                    /* 🟢 提示：MarketplaceCard 內可以直接引入我們剛寫好嘅 BuyButton 同 BidButton
-                       完全不需要在 page.tsx 裡面層層傳遞回呼函數！ */
-                  />
+                  <MarketplaceCard key={item.id} listing={item} />
                 ))}
               </div>
             )}
@@ -251,8 +254,6 @@ export default function MarketplacePage() {
       </main>
 
       <BottomNav />
-
-      {/* 🟢 常駐全域監聽交易抽屜：不需要任何 Local Props 控制，全自動捕獲事件 */}
       <ExecutionSlideOver />
     </div>
   );

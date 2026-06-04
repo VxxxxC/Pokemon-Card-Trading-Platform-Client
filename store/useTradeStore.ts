@@ -1,28 +1,44 @@
 import { create } from "zustand";
-import {
-  type Message,
-  type ChatRoom,
-} from "@/app/components/chat/GlobalChatConsole";
+
+export interface Message {
+  id: string;
+  sender: "me" | "them" | "system";
+  text: string;
+  timestamp: string;
+  type?: "text" | "special_transaction";
+  specialData?: {
+    cardName: string;
+    cardId: string;
+    offerPrice: number;
+    buyerName: string;
+    sellerId: string; // 🟢 全新加碼：綁定賣家/店鋪唯一識別碼
+  };
+}
+
+export interface ChatRoom {
+  id: string;
+  partnerName: string;
+  partnerTier: string;
+  lastMessage: string;
+  unreadCount: number;
+  timestamp: string;
+  messages: Message[];
+}
 
 interface TradeStore {
-  // UI 狀態
   isChatOpen: boolean;
   activeRoomId: string;
   mobileView: "LIST" | "CHAT";
   chats: ChatRoom[];
 
-  // 基礎變更器 Actions
   setIsChatOpen: (open: boolean) => void;
   setActiveRoomId: (id: string) => void;
   setMobileView: (view: "LIST" | "CHAT") => void;
   setChats: (updater: ChatRoom[] | ((prev: ChatRoom[]) => ChatRoom[])) => void;
-
-  // 🟢 頻道 1：大盤/普通商戶喚醒對話流 (相容舊有 open-global-chat 機制)
   openGlobalChat: (roomId: string, partnerName: string) => void;
-
-  // 🟢 頻道 2：C2C 特殊交易要約極速注入 (相容新版 ExecutionSlideOver 議價機制)
   injectSpecialTransaction: (payload: {
     sellerName: string;
+    sellerId: string; // 🟢 傳入賣家 ID
     cardName: string;
     cardId: string;
     offerPrice: number;
@@ -31,11 +47,26 @@ interface TradeStore {
 }
 
 export const useTradeStore = create<TradeStore>((set) => ({
-  // 1. 合流初始化數據 (完整保留你原有的 渡邊道館 與 大阪收藏家 歷史紀錄)
   isChatOpen: false,
-  activeRoomId: "PKT-8839-44A",
+  activeRoomId: "RM-MOCK-SELLER-001",
   mobileView: "LIST",
   chats: [
+    {
+      id: "RM-MOCK-SELLER-001",
+      partnerName: "旺角卡店 · 專業認證商戶",
+      partnerTier: "專業認證商戶",
+      lastMessage: "你好！請問對哪張現貨有興趣？",
+      unreadCount: 0,
+      timestamp: "10:30",
+      messages: [
+        {
+          id: "m1",
+          sender: "them",
+          text: "你好！請問對哪張現貨有興趣？",
+          timestamp: "10:30",
+        },
+      ],
+    },
     {
       id: "PKT-8839-44A",
       partnerName: "渡邊道館",
@@ -51,32 +82,10 @@ export const useTradeStore = create<TradeStore>((set) => ({
           timestamp: "10:15",
         },
         {
-          id: "2",
-          sender: "system",
-          text: "✈ 交易提醒：賣家已發貨，實物已抵達中介中心。",
-          timestamp: "11:30",
-        },
-        {
           id: "3",
           sender: "them",
           text: "師兄放心，卡牌已經交咗畀平台。剛才收到通知，鑑定進行中。",
           timestamp: "14:30",
-        },
-      ],
-    },
-    {
-      id: "ROOM-MOCK-002",
-      partnerName: "大阪收藏家",
-      partnerTier: "收藏家",
-      lastMessage: "唔好意思啊師兄，不如我哋私下用 PayMe 轉賬？",
-      unreadCount: 0,
-      timestamp: "昨日",
-      messages: [
-        {
-          id: "1",
-          sender: "them",
-          text: "唔好意思啊師兄，不如我哋私下用 PayMe 轉賬？",
-          timestamp: "昨日",
         },
       ],
     },
@@ -90,7 +99,6 @@ export const useTradeStore = create<TradeStore>((set) => ({
       chats: typeof updater === "function" ? updater(state.chats) : updater,
     })),
 
-  // 🟢 處理商戶一般通訊流 (自動防重疊)
   openGlobalChat: (roomId, partnerName) =>
     set((state) => {
       const exists = state.chats.some((c) => c.id === roomId);
@@ -112,7 +120,7 @@ export const useTradeStore = create<TradeStore>((set) => ({
             {
               id: "sys-" + Date.now(),
               sender: "system",
-              text: `🔒 平台已成功為您建立與 ${partnerName} 的安全中介託管議價通道。`,
+              text: `🔒 已建立與 ${partnerName} 的安全中介託管議價通道。`,
               timestamp: "剛剛",
             },
           ],
@@ -124,14 +132,13 @@ export const useTradeStore = create<TradeStore>((set) => ({
         chats: updatedChats,
         activeRoomId: roomId,
         isChatOpen: true,
-        mobileView: "CHAT", // 手機端直接擊穿進入聊天視窗
+        mobileView: "CHAT",
       };
     }),
 
-  // 🟢 處理 C2C 特殊議價組件就地空降
   injectSpecialTransaction: (payload) =>
     set((state) => {
-      const mockRoomId = "PKT-8839-44A"; // 自動與目前活躍的交易對象合流
+      const targetRoomId = payload.sellerId;
 
       const specialMsg: Message = {
         id: `MSG-TXN-${Date.now()}`,
@@ -144,11 +151,12 @@ export const useTradeStore = create<TradeStore>((set) => ({
           cardId: payload.cardId,
           offerPrice: payload.offerPrice,
           buyerName: payload.buyerName,
+          sellerId: payload.sellerId, // 🟢 注入全域
         },
       };
 
       const updatedChats = state.chats.map((room) => {
-        if (room.id === mockRoomId || room.partnerName === payload.sellerName) {
+        if (room.id === targetRoomId) {
           return {
             ...room,
             lastMessage: specialMsg.text,
@@ -160,7 +168,7 @@ export const useTradeStore = create<TradeStore>((set) => ({
 
       return {
         chats: updatedChats,
-        activeRoomId: mockRoomId,
+        activeRoomId: targetRoomId,
         isChatOpen: true,
         mobileView: "CHAT",
       };

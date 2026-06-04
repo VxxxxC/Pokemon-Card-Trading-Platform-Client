@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { toast } from "sonner";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
-// 🟢 引入全域中央大腦
 import { useTradeStore } from "@/store/useTradeStore";
 
 export function ExecutionSlideOver() {
@@ -14,7 +13,7 @@ export function ExecutionSlideOver() {
   const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🟢 訂閱 Zustand 核心交割 Action
+  // 訂閱 Zustand 核心 Action
   const injectSpecialTransaction = useTradeStore(
     (state) => state.injectSpecialTransaction,
   );
@@ -61,9 +60,10 @@ export function ExecutionSlideOver() {
     await new Promise((resolve) => setTimeout(resolve, 600));
     setIsSubmitting(false);
 
-    // 🟢 核心熔接：一鍵引爆全域狀態流，直接操作內存 Store，消滅 CustomEvent 異步盲區
+    // 🟢 核心修正：在呼叫 injectSpecialTransaction 時，手動補齊 Zustand 訊息管道所需的 sellerId
     injectSpecialTransaction({
-      sellerName: "旺角卡店 · 專業認證商戶",
+      sellerName: listing.seller || "旺角卡店 · 專業認證商戶",
+      sellerId: "RM-MOCK-SELLER-001", // 模擬導流到指定的預設對話 Session 房間
       cardName: targetCardName,
       cardId: targetCardId,
       offerPrice: finalOfferPrice,
@@ -76,7 +76,7 @@ export function ExecutionSlideOver() {
     toast.success(
       isCounterOffer ? "✉️ 議價要約已成功送出" : "🎉 已接受原價並鎖定資產",
       {
-        description: `交易協定已實時注入右下角與【旺角卡店】的對話串流中！`,
+        description: `交易協定已實時注入右下角與賣方的對話串流中！`,
         duration: 5000,
       },
     );
@@ -84,7 +84,6 @@ export function ExecutionSlideOver() {
 
   return (
     <AnimatePresence>
-      {/* 這裡完全保留你原版 100% 完美的 JSX 與 Framer-motion 排版，不作任何改動 */}
       <div
         className="fixed inset-0 z-[200] overflow-hidden"
         role="dialog"
@@ -97,6 +96,7 @@ export function ExecutionSlideOver() {
           onClick={handleClose}
           className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         />
+
         <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
           <motion.div
             initial={{ x: "100%" }}
@@ -105,6 +105,7 @@ export function ExecutionSlideOver() {
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
             className="w-screen max-w-md bg-[#2e2925] border-l border-[rgba(237,232,224,0.12)] shadow-[0_0_40px_rgba(0,0,0,0.85)] flex flex-col justify-between"
           >
+            {/* Header */}
             <div className="p-5 border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between">
               <div>
                 <h2 className="font-sans font-bold text-[18px] text-[#eae1da]">
@@ -117,6 +118,7 @@ export function ExecutionSlideOver() {
               <button
                 onClick={handleClose}
                 className="w-8 h-8 rounded-full bg-[#17130f] hover:bg-[#39342f] flex items-center justify-center transition-colors cursor-pointer text-text-secondary hover:text-brand"
+                aria-label="關閉交易面板"
               >
                 <svg
                   width="14"
@@ -131,6 +133,8 @@ export function ExecutionSlideOver() {
                 </svg>
               </button>
             </div>
+
+            {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide">
               <div className="flex flex-col items-center p-5 bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] shadow-inner text-center space-y-4">
                 <div className="relative w-28 h-38 bg-[#17130f] rounded-xl overflow-hidden border-2 border-[rgba(237,232,224,0.15)] shrink-0 shadow-lg">
@@ -160,6 +164,7 @@ export function ExecutionSlideOver() {
                   </div>
                 </div>
               </div>
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 pt-2">
                   <button
@@ -177,6 +182,8 @@ export function ExecutionSlideOver() {
                     💬 向賣家提出議價
                   </button>
                 </div>
+
+                {/* 🟢 Counter-Offer Input */}
                 {isCounterOffer && (
                   <div className="space-y-1.5 animate-fadeIn pt-2">
                     <label
@@ -200,6 +207,7 @@ export function ExecutionSlideOver() {
                     </div>
                   </div>
                 )}
+
                 <button
                   type="button"
                   disabled={isSubmitting}
