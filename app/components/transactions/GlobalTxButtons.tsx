@@ -31,7 +31,6 @@ export function BuyButton({ listing, className = "" }: GlobalButtonProps) {
 }
 
 // 📈 提交出價按鈕
-// 🟢 核心修復：強制對齊 font-sans 同字體粗細，並加入手機端 text-[11px] 與 truncate 防爆防漏字線路
 export function BidButton({ listing, className = "" }: GlobalButtonProps) {
   return (
     <button

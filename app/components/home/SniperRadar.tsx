@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 // TODO: [API] Fetch sniper radar data from backend — compare HK seller prices vs Mercari JP sold prices via Apify scraper
 // TODO: [server] Backend Edge Function must run IQR algorithm to filter outlier prices every hour
@@ -13,6 +16,10 @@ const sniperDeals = [
     discount: "低於日本市價 18%",
     condition: "【美品 S】",
     seller: "渡邊道館",
+    set: "151",
+    rarity: "SAR" as const,
+    grade: { authority: "PSA", score: "10" },
+    image: "https://picsum.photos/seed/poke-charizard/400/560",
   },
   {
     id: "sv6a-109",
@@ -22,6 +29,10 @@ const sniperDeals = [
     discount: "低於日本市價 12%",
     condition: "【美品 S】",
     seller: "京都卡牌專門店",
+    set: "Night Wanderer",
+    rarity: "SAR" as const,
+    grade: { authority: "PSA", score: "10" },
+    image: "https://picsum.photos/seed/poke-umbreon/400/560",
   },
   {
     id: "sv2a-233",
@@ -31,6 +42,10 @@ const sniperDeals = [
     discount: "低於日本市價 15%",
     condition: "【微傷 A】",
     seller: "大阪收藏家",
+    set: "151",
+    rarity: "SAR" as const,
+    grade: { authority: "PSA", score: "9" },
+    image: "https://picsum.photos/seed/poke-mimikyu/400/560",
   },
   {
     id: "sv2a-197",
@@ -40,6 +55,10 @@ const sniperDeals = [
     discount: "低於日本市價 11%",
     condition: "【美品 S】",
     seller: "東京TCG市場",
+    set: "151",
+    rarity: "SAR" as const,
+    grade: { authority: "PSA", score: "10" },
+    image: "https://picsum.photos/seed/poke-lucario/400/560",
   },
 ];
 
@@ -68,44 +87,65 @@ export function SniperRadar() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {sniperDeals.map((deal) => (
-          <Link
-            key={deal.id}
-            href={`/marketplace?card=${deal.id}`}
-            className="flex items-center gap-4 px-4 py-3.5 bg-bg-card rounded-[12px] border border-[rgba(237,232,224,0.08)] hover:bg-bg-elevated transition-colors active:scale-[0.99]"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-sans text-[14px] font-medium text-text-primary truncate">
-                  {deal.name}
-                </span>
-                <span className="font-mono text-[10px] text-text-secondary shrink-0">
-                  {deal.condition}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-text-disabled">
-                  {deal.id}
-                </span>
-                <span className="text-text-disabled" aria-hidden="true">·</span>
-                <span className="font-sans text-[11px] text-text-secondary truncate">
-                  {deal.seller}
+        {sniperDeals.map((deal) => {
+          // Convert local deal to MarketplaceListing type for the button
+          const listing = {
+            id: deal.id,
+            name: deal.name,
+            set: deal.set,
+            rarity: deal.rarity,
+            grade: deal.grade,
+            price: parseInt(deal.hkPrice.replace(/[^0-9]/g, ""), 10),
+            delta: 0,
+            deltaDirection: "up" as const,
+            image: deal.image,
+            seller: deal.seller,
+          };
+
+          return (
+            <div
+              key={deal.id}
+              className="flex items-center gap-4 px-4 py-3.5 bg-bg-card rounded-[12px] border border-[rgba(237,232,224,0.08)] hover:bg-bg-elevated transition-colors"
+            >
+              <Link
+                href={`/marketplace?card=${deal.id}`}
+                className="flex-1 min-w-0"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-sans text-[14px] font-medium text-text-primary truncate">
+                    {deal.name}
+                  </span>
+                  <span className="font-mono text-[10px] text-text-secondary shrink-0">
+                    {deal.condition}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-text-disabled">
+                    {deal.id}
+                  </span>
+                  <span className="text-text-disabled" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="font-sans text-[11px] text-text-secondary truncate">
+                    {deal.seller}
+                  </span>
+                </div>
+              </Link>
+              <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                <p className="font-mono font-semibold text-[16px] text-text-primary leading-none">
+                  {deal.hkPrice}
+                </p>
+                <BuyButton
+                  listing={listing}
+                  className="h-7 px-3 rounded-lg text-[11px]"
+                />
+                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success">
+                  📉 {deal.discount}
                 </span>
               </div>
             </div>
-            <div className="text-right shrink-0">
-              <p className="font-mono font-semibold text-[16px] text-text-primary">
-                {deal.hkPrice}
-              </p>
-              <p className="font-mono text-[10px] text-text-secondary">
-                {deal.jpRef}
-              </p>
-              <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success mt-0.5">
-                📉 {deal.discount}
-              </span>
-            </div>
-          </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

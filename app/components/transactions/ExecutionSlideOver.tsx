@@ -50,11 +50,7 @@ export function ExecutionSlideOver() {
     setIsSubmitting(false);
     handleClose();
 
-    if (mode === "buy") {
-      router.push(
-        `/marketplace/payment-status?status=success&id=${listing.id}`,
-      );
-    } else if (mode === "bid") {
+    if (mode === "bid") {
       toast.success("📈 撮合出價已提交", {
         description: `您的掛單買方出價 HK$ ${Number(bidAmount).toLocaleString("en-HK")} 已成功進入市場撮合池。`,
       });
@@ -172,77 +168,96 @@ export function ExecutionSlideOver() {
                         </span>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="bid-input"
-                        className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-2 font-bold"
-                      >
-                        {mode === "bid"
-                          ? "輸入您的出價金額 (HK$)"
-                          : "輸入您的競投加價 (HK$)"}
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-4 inset-y-0 flex items-center font-mono text-[18px] text-[#d4a574] font-bold">
-                          HK$
-                        </span>
-                        <input
-                          id="bid-input"
-                          type="number"
-                          required
-                          min={
-                            mode === "bid"
-                              ? Math.round(listing.price * 0.5)
-                              : listing.price + 50
-                          }
-                          value={bidAmount}
-                          onChange={(e) => setBidAmount(e.target.value)}
-                          className="w-full h-13 pl-14 pr-4 bg-[#26211C] border border-[rgba(237,232,224,0.12)] focus:border-[#d4a574]/40 rounded-xl font-mono text-[18px] text-[#d4a574] font-bold focus:outline-none"
-                        />
-                      </div>
-                      <p className="font-mono text-[10px] text-[#50453b] mt-1.5">
-                        {mode === "bid"
-                          ? `當前市場最低售價：HK$ ${listing.price.toLocaleString("en-HK")}`
-                          : `當前拍賣最低競投價：HK$ ${(listing.price + 50).toLocaleString("en-HK")}`}
+
+                    <div className="bg-[#17130f] p-4 rounded-xl border border-white/5 space-y-2">
+                      <span className="font-mono text-[10px] text-brand block font-bold uppercase tracking-wider">
+                        📄 一口價現貨交易摘要
+                      </span>
+                      <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
+                        本商品支持官方中介安全託管。點擊下方按鈕將前往全域確認頁配置配送網點與平台折扣。
                       </p>
                     </div>
 
-                    {mode === "auction" && (
-                      <div className="p-4 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-xl">
-                        <p className="font-sans text-[12.5px] text-[#d4c4b7] leading-relaxed">
-                          🔨
-                          拍賣機制：加價競投將即時鎖定份額，若拍賣倒計時結束前無更高出價，您將成功斬獲該珍稀卡牌。
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleClose();
+                        window.location.href = `/checkout/${listing.id}`;
+                      }}
+                      className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                    >
+                      🔒 確認標的 · 進入安全結算 ➔
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label
+                          htmlFor="bid-input"
+                          className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wider block mb-2 font-bold"
+                        >
+                          {mode === "bid"
+                            ? "輸入您的出價金額 (HK$)"
+                            : "輸入您的競投加價 (HK$)"}
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-4 inset-y-0 flex items-center font-mono text-[18px] text-[#d4a574] font-bold">
+                            HK$
+                          </span>
+                          <input
+                            id="bid-input"
+                            type="number"
+                            required
+                            min={
+                              mode === "bid"
+                                ? Math.round(listing.price * 0.5)
+                                : listing.price + 50
+                            }
+                            value={bidAmount}
+                            onChange={(e) => setBidAmount(e.target.value)}
+                            className="w-full h-13 pl-14 pr-4 bg-[#26211C] border border-[rgba(237,232,224,0.12)] focus:border-[#d4a574]/40 rounded-xl font-mono text-[18px] text-[#d4a574] font-bold focus:outline-none"
+                          />
+                        </div>
+                        <p className="font-mono text-[10px] text-[#50453b] mt-1.5">
+                          {mode === "bid"
+                            ? `當前市場最低售價：HK$ ${listing.price.toLocaleString("en-HK")}`
+                            : `當前拍賣最低競投價：HK$ ${(listing.price + 50).toLocaleString("en-HK")}`}
                         </p>
                       </div>
-                    )}
+
+                      {mode === "auction" && (
+                        <div className="p-4 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-xl">
+                          <p className="font-sans text-[12.5px] text-[#d4c4b7] leading-relaxed">
+                            🔨
+                            拍賣機制：加價競投將即時鎖定份額，若拍賣倒計時結束前無更高出價，您將成功斬獲該珍稀卡牌。
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 h-12 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] disabled:opacity-50 font-sans font-bold text-[14px] rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all min-h-[48px] cursor-pointer"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
+                            <span className="font-mono text-[11px] text-[#1A1612]">
+                              EXECUTING ORDER...
+                            </span>
+                          </>
+                        ) : mode === "bid" ? (
+                          "📈 確認發出買方出價"
+                        ) : (
+                          "🔨 確認加價競投"
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
-
-                {/* Submit Buttons */}
-                <div className="pt-4 flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 h-12 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] disabled:opacity-50 font-sans font-bold text-[14px] rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all min-h-[48px] cursor-pointer"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
-                        <span className="font-mono text-[11px] text-[#1A1612]">
-                          EXECUTING ORDER...
-                        </span>
-                      </>
-                    ) : mode === "buy" ? (
-                      "⚡ 確認付款並下單"
-                    ) : mode === "bid" ? (
-                      "📈 確認發出買方出價"
-                    ) : (
-                      "🔨 確認加價競投"
-                    )}
-                  </button>
-                </div>
               </form>
             </div>
 

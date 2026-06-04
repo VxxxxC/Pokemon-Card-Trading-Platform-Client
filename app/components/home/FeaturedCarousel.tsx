@@ -12,8 +12,8 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
-// 🟢 載入全域拍賣按鈕
-import { AuctionButton } from "@/app/components/transactions/GlobalTxButtons";
+// 🟢 載入全域購買按鈕
+import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 // 🟢 核心修正 2：全線清洗首頁拍賣數據模型，百分之百對齊大盤型態
 const featuredCards: MarketplaceListing[] = [
@@ -144,8 +144,8 @@ export function FeaturedCarousel() {
                         {card.seller}
                       </span>
                     </div>
-                    {/* 🟢 核心修正 3：換上全域 AuctionButton，首頁拍賣即可實時點擊競投！ */}
-                    <AuctionButton listing={card} className="w-full py-1.5" />
+                    {/* 🟢 核心修正 3：換上全域 BuyButton，點擊後會彈出交易抽屜並支持跳轉至全域 Checkout */}
+                    <BuyButton listing={card} className="w-full py-1.5" />
                   </div>
                 </div>
               </article>
