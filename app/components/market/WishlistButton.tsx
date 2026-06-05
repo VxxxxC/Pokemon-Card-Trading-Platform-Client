@@ -15,6 +15,7 @@ export function WishlistButton({
 }: WishlistButtonProps) {
   // TODO: [API] Replace local toggle with Supabase mutation — insert/delete from `wishlists` table with user auth check
   const [isFavored, setIsFavored] = useState(initialIsFavored);
+  void _listingId;
 
   return (
     <button
