@@ -218,7 +218,7 @@ export default function UserCollectionPage() {
       </section>
 
       {/* Grid containing checklists and sign-in cards side-by-side */}
-      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 items-start">
+      <div className="items-start">
         {/* Left Side: Cards Portfolio List */}
         <section aria-labelledby="cards-heading" className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -291,21 +291,6 @@ export default function UserCollectionPage() {
             })}
           </div>
         </section>
-
-        {/* Right Side: Continuous check-in milestone */}
-        <div className="space-y-4 mt-6 lg:mt-0">
-          <CheckInWidget initialStreak={5} />
-
-          <div className="p-4 bg-[rgba(212,165,116,0.06)] border border-[#d4a574]/20 rounded-2xl space-y-1.5 font-sans">
-            <h4 className="text-[12px] font-semibold text-[#d4a574]">
-              💡 關於簽到防作弊防線
-            </h4>
-            <p className="text-[11px] text-[#d4c4b7] leading-relaxed">
-              簽到系統時間戳一律標記為
-              `[SERVER_TIME_RESOLVED]`，禁止由客端本地時間提交以防止竄改時區刷積分。
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* ── Wishlist Table ─────────────────────────────────────────────── */}
@@ -318,9 +303,6 @@ export default function UserCollectionPage() {
             <span className="text-[#d4a574]">★</span>
             追蹤願望清單
           </h2>
-          <span className="font-mono text-[11px] text-[#50453b]">
-            實時價格追蹤開啟中
-          </span>
         </div>
         <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-2">
           <WishlistTable />
