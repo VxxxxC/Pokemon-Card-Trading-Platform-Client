@@ -14,8 +14,6 @@ import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
-import { CheckInCard } from "@/app/components/rewards/CheckInCard";
-// 🟢 引入全新頂部高轉化 Inline 提示條
 import { PwaInlineBanner } from "./components/pwa/PwaInlineBanner";
 
 // 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件
@@ -30,26 +28,22 @@ const PwaInstallPrompt = dynamic(
 export default function HomePage() {
   return (
     <div className="min-h-[100dvh] bg-bg-page text-text-primary flex flex-col font-sans">
-      {/* 頂部全域看盤元件外框鏈 */}
+      {/* 頂部全域看盤元件列 */}
       <TopNav />
       <MobileHeader />
 
-      {/* 🟢 核心對齊位置：黏貼在 Navbar 的 Bottom line 下面，無痛融合進看盤排版 */}
+      {/* 奢華常駐看盤提示條 */}
       <PwaInlineBanner />
 
       <PriceTicker />
 
-      {/* 安全隔離後的 PWA 右下角浮動窗提示 */}
+      {/* 安全隔離後的 PWA 提示組件 */}
       <PwaInstallPrompt />
 
       {/* 主線大盤跑道 */}
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
-        {/* Section 1: Hero — Smart Search + Quick Filters */}
+        {/* 🟢 頂級整合：Hero看板自帶右翼每日簽到控制台，視覺合流 */}
         <HeroSearch />
-
-        <div className="mb-8">
-          <CheckInCard />
-        </div>
 
         {/* Section 2: Trust Booster — How It Works (3-step escrow) */}
         <TrustBanner />
