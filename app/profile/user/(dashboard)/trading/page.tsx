@@ -230,10 +230,11 @@ const FLOW_STEPS_DEFINITION: Record<FlowType, { id: string; label: string }[]> =
     ],
   };
 
+// 🟢 核心優化 1：完美更名為 [歷史交易]
 const TAB_LABELS: Record<ListingStatus, string> = {
   active: "出售中現貨",
   pending_trade: "交易中 / 待交收",
-  sold: "歷史已售出",
+  sold: "歷史交易",
   unlisted: "已暫時下架",
 };
 
@@ -245,7 +246,7 @@ function getProductNavigationHref(item: UserListing, order?: Order) {
   if (item.status === "pending_trade" || item.status === "sold") {
     return `/profile/user/trading/${order?.id ?? item.linkedOrderId ?? item.id}`;
   }
-  return `/marketplace/${item.marketplaceOwnerId ?? "PKT-8839-44A"}/product/${item.marketplaceProductId ?? item.id}`;
+  return "";
 }
 
 function DynamicProductStepper({ order }: { order: Order }) {
@@ -275,12 +276,17 @@ function ProductRowItem({
   onToggleStatus: (id: string, currentStatus: ListingStatus) => void;
   onCancelListing: (item: UserListing) => void;
 }) {
-  const href = getProductNavigationHref(item, order);
+  // 🟢 智能交互控盤：只有交易中與已售出才具備點擊穿透權利
+  const isClickable = item.status === "pending_trade" || item.status === "sold";
+  const href = isClickable ? getProductNavigationHref(item, order) : "";
   const shouldRenderStepper = Boolean(
     order && (item.status === "pending_trade" || item.status === "sold"),
   );
 
-  // 🟢 Zustand 按需選取器：精準抽取出價與開啟全域對話 Action
+  // 🟢 獲取當前卡片的買賣方向（預設為賣出）
+  const tradeSide = order?.side || "sell";
+
+  // Zustand 按需選取器
   const openGlobalChat = useTradeStore((state) => state.openGlobalChat);
 
   const handleContactCounterparty = (
@@ -288,34 +294,45 @@ function ProductRowItem({
   ) => {
     event.stopPropagation(); // 斬斷冒泡
     if (!order) return;
-    // 使用 Zustand 直發 Action 取代舊有 window.dispatchEvent
     openGlobalChat(order.sellerId, order.seller);
   };
 
   const handlePriceOfferChat = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation(); // 🌟 核心防線：阻止事件冒泡，防止誤觸卡片整體 href 跳轉
+    event.stopPropagation(); // 阻止冒泡
     if (!order) return;
 
-    // ⚡ 完美接通數據鏈：開房時同步傳入完整的出價與資產上下文 Payload，解決 Context Loss 漏洞！
     openGlobalChat(order.sellerId, order.seller, {
       cardName: item.cardName,
       cardId: item.marketplaceProductId || item.id,
-      offerPrice: order.amount, // 買家真實的 Price Offer 出價金額
-      buyerName: order.seller, // 買家名稱
-      sellerId: order.sellerId, // 買家會話 ID
+      offerPrice: order.amount,
+      buyerName: order.seller,
+      sellerId: order.sellerId,
     });
   };
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onNavigate(href)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") onNavigate(href);
-      }}
-      className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex flex-col hover:border-[rgba(237,232,224,0.15)] transition-colors group cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/35"
-      aria-label={`查看 ${item.cardName} 的${item.status === "pending_trade" || item.status === "sold" ? "交易履約詳情" : "市場商品詳情"}`}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={isClickable ? () => onNavigate(href) : undefined}
+      onKeyDown={
+        isClickable
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") onNavigate(href);
+            }
+          : undefined
+      }
+      // 🟢 智能外殼分流：非 Clickable 狀態時移除高亮 Hover 邊框，強行降維至靜態展示
+      className={`bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex flex-col transition-colors group focus:outline-none ${
+        isClickable
+          ? "hover:border-[rgba(237,232,224,0.15)] cursor-pointer focus:ring-2 focus:ring-brand/35"
+          : "cursor-default"
+      }`}
+      aria-label={
+        isClickable
+          ? `查看 ${item.cardName} 的交易履約詳情`
+          : `${item.cardName} 的資產管理項目卡片`
+      }
     >
       <div className="flex gap-4 items-start w-full">
         <div className="relative w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-sm">
@@ -331,6 +348,19 @@ function ProductRowItem({
 
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
+            {/* 🟢 核心優化 2：大大個高亮買賣身份分辨標示 */}
+            {isClickable && (
+              <span
+                className={`font-sans text-[11px] font-black tracking-wide uppercase px-2 py-0.5 rounded border ${
+                  tradeSide === "buy"
+                    ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]"
+                    : "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                }`}
+              >
+                {tradeSide === "buy" ? "📥 買入" : "📤 賣出"}
+              </span>
+            )}
+
             <span className="font-mono text-[9px] text-[#50453b]">
               #{item.id}
             </span>
@@ -347,7 +377,10 @@ function ProductRowItem({
               </button>
             )}
           </div>
-          <h3 className="font-sans font-bold text-[14.5px] text-[#eae1da] group-hover:text-brand transition-colors truncate">
+          {/* 🟢 文字高亮流動對齊：只有可點擊狀態才賦予 group-hover 金色轉向提示 */}
+          <h3
+            className={`font-sans font-bold text-[14.5px] text-[#eae1da] transition-colors truncate ${isClickable ? "group-hover:text-brand" : ""}`}
+          >
             {item.cardName}
           </h3>
           <p className="font-mono text-[11px] text-text-secondary">

@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
 import { OrderLifecycleStepper } from "../components/OrderLifecycleStepper";
+// 🟢 核心引入：全域狀態真理源，徹底淘汰舊 CustomEvent
+import { useTradeStore } from "@/store/useTradeStore";
 
 interface LocalOrder {
   id: string;
@@ -22,7 +24,7 @@ interface LocalOrder {
   status: string;
   statusLabel: string;
   createdAt: string;
-  side: "buy" | "sell"; // 🟢 修正：與列表頁 100% 對齊的買賣方向
+  side: "buy" | "sell"; // 與列表頁 100% 對齊的買賣方向
   certNo?: string;
   centeringGrade?: string;
   cornersGrade?: string;
@@ -49,7 +51,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "reserved",
     statusLabel: "已預留 (等待雙方約定時間面交)",
     createdAt: "2026年 5月27日",
-    side: "buy", // 🟢 買入方向
+    side: "buy", // 買入方向
   },
   "ORD-C2C-DELIVERY-002": {
     id: "ORD-C2C-DELIVERY-002",
@@ -66,7 +68,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "shipped",
     statusLabel: "您已寄出順豐速遞 (實時物流流轉中)",
     createdAt: "2026年 5月26日",
-    side: "sell", // 🟢 賣出方向
+    side: "sell", // 賣出方向
   },
   "ORD-B2C-AUTH-003": {
     id: "ORD-B2C-AUTH-003",
@@ -222,6 +224,9 @@ function GrandEscrowStepper({
 function ActiveOrderDetail({ order }: { order: LocalOrder }) {
   const isBuy = order.side === "buy";
 
+  // 🟢 Zustand Selector: 精準調用全域對話開關，徹底清洗舊 CustomEvent 廣播
+  const openGlobalChat = useTradeStore((state) => state.openGlobalChat);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
@@ -232,14 +237,8 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
           ← 返回交易管理資產大盤
         </Link>
         <button
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent("open-global-chat", {
-                detail: { roomId: order.sellerId, partnerName: order.seller },
-              }),
-            )
-          }
-          className="h-11 px-6 bg-[#26211C] border border-brand/30 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-95 transition-all shadow-md"
+          onClick={() => openGlobalChat(order.sellerId, order.seller)}
+          className="h-11 px-6 bg-[#26211C] border border-brand/30 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-[0.95] transition-all shadow-md cursor-pointer"
         >
           💬 呼叫全域加密對講機
         </button>
@@ -273,15 +272,15 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                   {order.tradeType === "b2c" ? "認證商戶交易" : "C2C 散戶交易"}
                 </span>
 
-                {/* 🟢 修正：刪除舊 orderType 與顏色，精準對齊「綠色背景為買、紅色背景為賣」的高亮發光徽章 */}
+                {/* 🟢 完美對齊：同步為與列表頁 100% 嚙合的大字高亮霓虹紅綠方向徽章 */}
                 <span
-                  className={`flex items-center gap-1 font-sans text-[10px] px-2.5 py-0.5 rounded border font-extrabold tracking-wide uppercase ${
+                  className={`font-sans text-[11px] font-black tracking-wide uppercase px-2.5 py-0.5 rounded border ${
                     isBuy
-                      ? "bg-success/20 text-success border-success/30"
-                      : "bg-error/20 text-error border-error/30"
+                      ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]"
+                      : "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                   }`}
                 >
-                  {isBuy ? "📥 買" : "📤 賣"}
+                  {isBuy ? "📥 買入" : "📤 賣出"}
                 </span>
               </div>
 
@@ -307,7 +306,6 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
                   </span>
                 </div>
                 <div className="flex justify-between md:justify-start md:gap-8">
-                  {/* 🟢 依據買賣方向動態轉化交易對手文案 */}
                   <span>{isBuy ? "🏪 賣家對手:" : "👤 買家對手:"}</span>
                   <span className="text-text-primary font-medium">
                     {order.seller}
@@ -416,7 +414,7 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
         >
           ← 返回交易管理資產大盤
         </Link>
-        <span className="font-mono text-[12px] bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-4 py-1 rounded-full uppercase font-bold tracking-wider shadow-sm">
+        <span className="font-mono text-[12px] bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-4 py-1 rounded-full uppercase font-bold tracking-wider shadow-sm select-none">
           ✓ 平台官方存證已完結
         </span>
       </div>
@@ -438,18 +436,19 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
 
           <div className="flex-1 space-y-4 w-full">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-sans font-black text-[16px] md:text-[18px] text-[#eae1da]">
+              <h3 className="font-sans font-extrabold text-[16px] md:text-[18px] text-[#eae1da]">
                 🧾 交易資產最終交收電子收據清冊
               </h3>
-              {/* 🟢 修正：歷史完結單同步改用新高亮紅綠標籤 */}
+
+              {/* 🟢 完美對齊：完結單同步改用全新大字高亮霓虹紅綠標籤 */}
               <span
-                className={`flex items-center gap-0.5 font-sans text-[10px] px-2 py-0.5 rounded border font-extrabold tracking-wide uppercase ${
+                className={`font-sans text-[11px] font-black tracking-wide uppercase px-2.5 py-0.5 rounded border ${
                   isBuy
-                    ? "bg-success/20 text-success border-success/30"
-                    : "bg-error/20 text-error border-error/30"
+                    ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]"
+                    : "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
                 }`}
               >
-                {isBuy ? "📥 買" : "📤 賣"}
+                {isBuy ? "📥 買入" : "📤 賣出"}
               </span>
             </div>
 
@@ -492,7 +491,7 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
                       "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
                   })
                 }
-                className="w-full h-11 bg-[#39342f] border border-[rgba(237,232,224,0.12)] hover:border-brand text-text-primary text-[13px] font-bold rounded-xl transition-all mt-4 shadow-md flex items-center justify-center gap-2"
+                className="w-full h-11 bg-[#39342f] border border-[rgba(237,232,224,0.12)] hover:border-brand text-text-primary text-[13px] font-bold rounded-xl transition-all mt-4 shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 📥 下載官方實物高精細度鑑定存證報告 (PDF)
               </button>
@@ -579,7 +578,7 @@ export default function UserOrderDetailPage() {
     order.status === "completed_meetup" || order.status === "received";
 
   return (
-    <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-4 lg:p-8">
+    <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans">
       <div className="max-w-[1240px] mx-auto">
         {isCompleted ? (
           <CompletedOrderDetail order={order} />
