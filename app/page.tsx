@@ -15,9 +15,10 @@ import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+// 🟢 引入全新頂部高轉化 Inline 提示條
+import { PwaInlineBanner } from "./components/pwa/PwaInlineBanner";
 
-// 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件！
-// 這樣 Server 端渲染時這裡會完全保持真空，等 Client 進場水合完畢後才加載
+// 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件
 const PwaInstallPrompt = dynamic(
   () =>
     import("./components/pwa/PwaInstallPrompt").then(
@@ -28,13 +29,17 @@ const PwaInstallPrompt = dynamic(
 
 export default function HomePage() {
   return (
-    <div className="min-h-[100dvh] bg-bg-page flex flex-col">
-      {/* 頂部全域看盤元件列 */}
+    <div className="min-h-[100dvh] bg-bg-page text-text-primary flex flex-col font-sans">
+      {/* 頂部全域看盤元件外框鏈 */}
       <TopNav />
       <MobileHeader />
+
+      {/* 🟢 核心對齊位置：黏貼在 Navbar 的 Bottom line 下面，無痛融合進看盤排版 */}
+      <PwaInlineBanner />
+
       <PriceTicker />
 
-      {/* 安全隔離後的 PWA 提示組件 */}
+      {/* 安全隔離後的 PWA 右下角浮動窗提示 */}
       <PwaInstallPrompt />
 
       {/* 主線大盤跑道 */}
