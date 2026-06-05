@@ -16,7 +16,7 @@ const footerSections = [
     title: "會員中心",
     links: [
       { label: "我的收藏", href: "/profile/user/collection" },
-      { label: "訂單紀錄", href: "/profile/user/orders" },
+      { label: "交易管理", href: "/profile/user/trading" },
       { label: "帳戶設定", href: "/profile/user/settings" },
       { label: "商家後台", href: "/profile/merchant" },
     ],
@@ -90,7 +90,8 @@ export function Footer() {
         <div className="border-t border-[rgba(237,232,224,0.08)] pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="font-sans text-[11px] text-text-disabled">
-              © {new Date().getFullYear()} PokéTrade JP (HKcardvault). All rights reserved.
+              © {new Date().getFullYear()} PokéTrade JP (HKcardvault). All
+              rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <span className="font-mono text-[10px] text-text-disabled">

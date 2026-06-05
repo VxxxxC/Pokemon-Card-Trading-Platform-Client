@@ -131,7 +131,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
           toast.success("🎉 支付成功！", {
             description: `商品 [${currentItem.name}] 已成功進入安全交割程序。`,
           });
-          window.location.href = "/profile/user/orders";
+          window.location.href = "/profile/user/trading";
         },
       },
     });
