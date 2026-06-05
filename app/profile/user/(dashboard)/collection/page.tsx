@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { WishlistTable } from "./components/WishlistTable";
-import { CheckInWidget } from "@/app/components/profile/CheckInWidget";
 
 interface OwnedCard {
   id: string;

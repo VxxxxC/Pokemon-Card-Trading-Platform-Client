@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";

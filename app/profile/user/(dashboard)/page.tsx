@@ -150,6 +150,32 @@ function ActivityTypePill({ type }: { type: "sold" | "bought" | "bid" }) {
   );
 }
 
+// 🟢 完美修復：將高亮 Ticket 動作按鈕徹底移出 Render 核心體外，變為獨立靜態組件，徹底封死 React 19 崩潰地雷
+function RewardsTicketButton() {
+  return (
+    <Link href="/profile/user/rewards" className="block w-full group">
+      <div className="w-full h-14 bg-gradient-to-r from-[#d4a574] via-[#e2b98f] to-[#d4a574] p-[1px] rounded-2xl shadow-[0_4px_20px_rgba(212,165,116,0.18)] transition-all active:scale-[0.99] cursor-pointer">
+        <div className="w-full h-full bg-[#26211C] rounded-[15px] px-4 flex items-center justify-between group-hover:bg-[#2c2722] transition-colors">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-[18px] shrink-0">🎟️</span>
+            <div className="text-left min-w-0">
+              <p className="font-sans font-black text-[13.5px] text-brand tracking-tight">
+                進入專屬獎勵特權專區
+              </p>
+              <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider truncate">
+                兌換運費券與限量特典周邊
+              </p>
+            </div>
+          </div>
+          <span className="text-brand group-hover:translate-x-0.5 transition-transform font-mono text-[14px] font-bold shrink-0">
+            →
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function UserOverviewPage() {
   const isPortfolioLoading = portfolioStats.length === 0;
 
@@ -186,9 +212,15 @@ export default function UserOverviewPage() {
         )}
       </section>
 
-      <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] lg:gap-8 items-start gap-6 lg:gap-0">
         {/* ── 左分欄：核心交易紀錄與評價矩陣 ── */}
         <div className="space-y-6">
+          {/* 手機端專屬：簽到與獎勵 Ticket 置頂 */}
+          <div className="block lg:hidden space-y-4">
+            <CheckInCard />
+            <RewardsTicketButton />
+          </div>
+
           {/* 近期交易紀錄 */}
           <section aria-labelledby="activity-heading">
             <div className="flex items-center justify-between mb-3">
@@ -199,7 +231,7 @@ export default function UserOverviewPage() {
                 近期交易紀錄
               </h2>
               <Link
-                href="/profile/user/orders"
+                href="/profile/user/trading"
                 className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"
               >
                 查看全部 →
@@ -284,32 +316,10 @@ export default function UserOverviewPage() {
           </section>
         </div>
 
-        {/* ── 右分欄：常駐簽到與 Ticket 高亮導流鍵 ── */}
-        <div className="mt-6 lg:mt-0 space-y-4">
-          {/* 每日靈魂簽到卡 */}
+        {/* 電腦端專屬右分欄 */}
+        <div className="hidden lg:block space-y-4">
           <CheckInCard />
-
-          {/* 奢華金邊流光 Ticket 動作鈕，直通獎勵專區 Full Page */}
-          <Link href="/profile/user/rewards" className="block w-full group">
-            <div className="w-full h-14 bg-gradient-to-r from-[#d4a574] via-[#e2b98f] to-[#d4a574] p-[1px] rounded-2xl shadow-[0_4px_20px_rgba(212,165,116,0.18)] transition-all active:scale-[0.99] cursor-pointer">
-              <div className="w-full h-full bg-[#26211C] rounded-[15px] px-4 flex items-center justify-between group-hover:bg-[#2c2722] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[18px] shrink-0">🎟️</span>
-                  <div className="text-left min-w-0">
-                    <p className="font-sans font-black text-[13.5px] text-brand tracking-tight">
-                      進入專屬獎勵特權專區
-                    </p>
-                    <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider truncate">
-                      兌換運費券與限量特典周邊
-                    </p>
-                  </div>
-                </div>
-                <span className="text-brand group-hover:translate-x-0.5 transition-transform font-mono text-[14px] font-bold shrink-0">
-                  →
-                </span>
-              </div>
-            </div>
-          </Link>
+          <RewardsTicketButton />
         </div>
       </div>
     </>

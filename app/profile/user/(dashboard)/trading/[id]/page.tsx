@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
-import { OrderLifecycleStepper } from "../_components/OrderLifecycleStepper";
+import { OrderLifecycleStepper } from "../components/OrderLifecycleStepper";
 
 interface LocalOrder {
   id: string;
@@ -226,10 +226,10 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <Link
-          href="/profile/user/orders"
+          href="/profile/user/trading"
           className="font-sans text-[14px] font-semibold text-[#d4c4b7] hover:text-brand flex items-center gap-1 transition-colors"
         >
-          ← 返回買家訂單資產大盤
+          ← 返回交易管理資產大盤
         </Link>
         <button
           onClick={() =>
@@ -411,10 +411,10 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
     <div className="space-y-6 animate-fadeIn">
       <div className="flex items-center justify-between">
         <Link
-          href="/profile/user/orders"
+          href="/profile/user/trading"
           className="font-sans text-[14px] font-semibold text-[#d4c4b7] hover:text-brand"
         >
-          ← 返回買家訂單資產大盤
+          ← 返回交易管理資產大盤
         </Link>
         <span className="font-mono text-[12px] bg-[#10b981]/10 text-[#10b981] border border-[#10b981]/20 px-4 py-1 rounded-full uppercase font-bold tracking-wider shadow-sm">
           ✓ 平台官方存證已完結
