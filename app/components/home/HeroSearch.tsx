@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { PwaHeroInstallButton } from "@/app/components/pwa/PwaHeroInstallButton";
 
 // TODO: [API] Connect search to Supabase `card_catalog` table for real-time card lookup by set number (e.g. SV8a-123)
 // TODO: [database] Query `card_catalog` with indexed search on `card_number` column for millisecond autocomplete
@@ -31,7 +30,6 @@ export function HeroSearch() {
           <span className="font-mono text-[11px] text-brand uppercase tracking-widest">
             HKcardvault
           </span>
-          <PwaHeroInstallButton />
         </div>
         <h1
           id="hero-search-heading"
