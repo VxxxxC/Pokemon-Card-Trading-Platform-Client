@@ -35,7 +35,20 @@ interface TradeStore {
   setActiveRoomId: (id: string) => void;
   setMobileView: (view: "LIST" | "CHAT") => void;
   setChats: (updater: ChatRoom[] | ((prev: ChatRoom[]) => ChatRoom[])) => void;
-  openGlobalChat: (roomId: string, partnerName: string) => void;
+
+  // 🟢 核心升格：允許傳入選填的第三參數 injectOffer，達成一鍵開房、切換視窗、動態防重注入
+  openGlobalChat: (
+    roomId: string,
+    partnerName: string,
+    injectOffer?: {
+      cardName: string;
+      cardId: string;
+      offerPrice: number;
+      buyerName: string;
+      sellerId: string;
+    },
+  ) => void;
+
   injectSpecialTransaction: (payload: {
     sellerName: string;
     sellerId: string; // 🟢 傳入賣家 ID
@@ -99,20 +112,55 @@ export const useTradeStore = create<TradeStore>((set) => ({
       chats: typeof updater === "function" ? updater(state.chats) : updater,
     })),
 
-  openGlobalChat: (roomId, partnerName) =>
+  openGlobalChat: (roomId, partnerName, injectOffer) =>
     set((state) => {
       const exists = state.chats.some((c) => c.id === roomId);
       let updatedChats = [...state.chats];
 
       if (exists) {
-        updatedChats = state.chats.map((c) =>
-          c.id === roomId ? { ...c, unreadCount: 0 } : c,
-        );
+        // 情況 A：會話房間早已存在
+        updatedChats = state.chats.map((room) => {
+          if (room.id !== roomId) return room;
+
+          let currentMessages = [...room.messages];
+          let currentLastMessage = room.lastMessage;
+
+          // 如果帶有出價上下文，啟動智能動態去重注入
+          if (injectOffer) {
+            const hasOfferAlready = currentMessages.some(
+              (m) =>
+                m.type === "special_transaction" &&
+                m.specialData?.cardId === injectOffer.cardId,
+            );
+
+            // 只有不存在同張卡的議價卡時，才執行啪一聲原地塞入
+            if (!hasOfferAlready) {
+              const specialMsg: Message = {
+                id: `MSG-TXN-INJECT-${Date.now()}`,
+                sender: "them", // 🟢 強制立為 "them" (代表買家發出)，確保賣家視角看得到「接受/拒絕」按鈕
+                text: `${injectOffer.buyerName} offer price HK$ ${injectOffer.offerPrice} - ${injectOffer.cardName} (${injectOffer.cardId})`,
+                timestamp: "剛剛",
+                type: "special_transaction",
+                specialData: injectOffer,
+              };
+              currentMessages = [...currentMessages, specialMsg];
+              currentLastMessage = specialMsg.text;
+            }
+          }
+
+          return {
+            ...room,
+            messages: currentMessages,
+            lastMessage: currentLastMessage,
+            unreadCount: 0, // 點擊時強制消除紅點未讀
+          };
+        });
       } else {
+        // 情況 B：該出價買家是全新用戶，尚未建立過對話會話，原地構造一個乾淨的安全通道
         const newSession: ChatRoom = {
           id: roomId,
           partnerName,
-          partnerTier: "認證賣家",
+          partnerTier: "認證買家",
           lastMessage: "已開啟即時議價對話",
           unreadCount: 0,
           timestamp: "剛剛",
@@ -125,14 +173,29 @@ export const useTradeStore = create<TradeStore>((set) => ({
             },
           ],
         };
+
+        // 新建房間若有出價上下文，直接作爲首發訊息打包進去
+        if (injectOffer) {
+          const specialMsg: Message = {
+            id: `MSG-TXN-INJECT-${Date.now()}`,
+            sender: "them",
+            text: `${injectOffer.buyerName} offer price HK$ ${injectOffer.offerPrice} - ${injectOffer.cardName} (${injectOffer.cardId})`,
+            timestamp: "剛剛",
+            type: "special_transaction",
+            specialData: injectOffer,
+          };
+          newSession.messages.push(specialMsg);
+          newSession.lastMessage = specialMsg.text;
+        }
+
         updatedChats = [newSession, ...state.chats];
       }
 
       return {
         chats: updatedChats,
         activeRoomId: roomId,
-        isChatOpen: true,
-        mobileView: "CHAT",
+        isChatOpen: true, // 瞬間拉起對話彈窗
+        mobileView: "CHAT", // 移動端直穿對話戰場
       };
     }),
 
@@ -151,7 +214,7 @@ export const useTradeStore = create<TradeStore>((set) => ({
           cardId: payload.cardId,
           offerPrice: payload.offerPrice,
           buyerName: payload.buyerName,
-          sellerId: payload.sellerId, // 🟢 注入全域
+          sellerId: payload.sellerId,
         },
       };
 

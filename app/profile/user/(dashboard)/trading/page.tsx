@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { OrderLifecycleStepper } from "./components/OrderLifecycleStepper";
+// 🟢 核心引入：全域狀態真理源
+import { useTradeStore } from "@/store/useTradeStore";
 
 type ListingStatus = "active" | "sold" | "unlisted" | "pending_trade";
 type TradeType = "c2c" | "b2c";
@@ -243,7 +245,6 @@ function getProductNavigationHref(item: UserListing, order?: Order) {
   if (item.status === "pending_trade" || item.status === "sold") {
     return `/profile/user/trading/${order?.id ?? item.linkedOrderId ?? item.id}`;
   }
-
   return `/marketplace/${item.marketplaceOwnerId ?? "PKT-8839-44A"}/product/${item.marketplaceProductId ?? item.id}`;
 }
 
@@ -260,6 +261,7 @@ function DynamicProductStepper({ order }: { order: Order }) {
   );
 }
 
+// 🟢 完美合規：ProductRowItem 完整保持宣告在主 Render 體外，徹底封死 React 19 級聯重繪硬崩潰
 function ProductRowItem({
   item,
   order,
@@ -278,17 +280,30 @@ function ProductRowItem({
     order && (item.status === "pending_trade" || item.status === "sold"),
   );
 
+  // 🟢 Zustand 按需選取器：精準抽取出價與開啟全域對話 Action
+  const openGlobalChat = useTradeStore((state) => state.openGlobalChat);
+
   const handleContactCounterparty = (
     event: React.MouseEvent<HTMLButtonElement>,
   ) => {
-    event.stopPropagation();
+    event.stopPropagation(); // 斬斷冒泡
+    if (!order) return;
+    // 使用 Zustand 直發 Action 取代舊有 window.dispatchEvent
+    openGlobalChat(order.sellerId, order.seller);
+  };
+
+  const handlePriceOfferChat = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation(); // 🌟 核心防線：阻止事件冒泡，防止誤觸卡片整體 href 跳轉
     if (!order) return;
 
-    window.dispatchEvent(
-      new CustomEvent("open-global-chat", {
-        detail: { roomId: order.sellerId, partnerName: order.seller },
-      }),
-    );
+    // ⚡ 完美接通數據鏈：開房時同步傳入完整的出價與資產上下文 Payload，解決 Context Loss 漏洞！
+    openGlobalChat(order.sellerId, order.seller, {
+      cardName: item.cardName,
+      cardId: item.marketplaceProductId || item.id,
+      offerPrice: order.amount, // 買家真實的 Price Offer 出價金額
+      buyerName: order.seller, // 買家名稱
+      sellerId: order.sellerId, // 買家會話 ID
+    });
   };
 
   return (
@@ -323,9 +338,13 @@ function ProductRowItem({
               {item.grade}
             </span>
             {item.hasPriceOffer && (
-              <span className="font-mono text-[9px] text-[#10b981] bg-[#10b981]/10 border border-[#10b981]/20 px-2 py-0.5 rounded uppercase tracking-wider">
-                PRICE OFFER
-              </span>
+              <button
+                type="button"
+                onClick={handlePriceOfferChat}
+                className="font-mono text-[11px] sm:text-[11.5px] font-black tracking-wide uppercase text-[#00ff9d] bg-[#00ff9d]/10 border border-[#00ff9d]/30 hover:bg-[#00ff9d]/20 hover:border-[#00ff9d]/50 px-2.5 py-0.5 rounded shadow-[0_0_14px_rgba(0,255,157,0.15)] transition-colors cursor-pointer"
+              >
+                📩 PRICE OFFER →
+              </button>
             )}
           </div>
           <h3 className="font-sans font-bold text-[14.5px] text-[#eae1da] group-hover:text-brand transition-colors truncate">
@@ -369,7 +388,7 @@ function ProductRowItem({
                 event.stopPropagation();
                 onToggleStatus(item.id, item.status);
               }}
-              className="h-9 px-4 bg-transparent border border-amber-500/40 text-amber-400 font-sans font-bold text-[12px] rounded-xl hover:bg-amber-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto"
+              className="h-9 px-4 bg-transparent border border-amber-500/40 text-amber-400 font-sans font-bold text-[12px] rounded-xl hover:bg-amber-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
             >
               ⚙ 暫時下架
             </button>
@@ -380,11 +399,11 @@ function ProductRowItem({
               <button
                 type="button"
                 onClick={handleContactCounterparty}
-                className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 💬 聯絡對方
               </button>
-              <span className="font-mono text-[11px] text-text-disabled ml-auto bg-[#17130f] px-2.5 py-1 rounded border border-white/5">
+              <span className="font-mono text-[11px] text-text-disabled ml-auto bg-[#17130f] px-2.5 py-1 rounded border border-white/5 select-none">
                 🔒 資產已鎖定
               </span>
             </>
@@ -398,7 +417,7 @@ function ProductRowItem({
                   event.stopPropagation();
                   onToggleStatus(item.id, item.status);
                 }}
-                className="h-9 px-4 bg-[#10b981] text-white font-sans font-bold text-[12px] rounded-xl hover:bg-[#0fa573] active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                className="h-9 px-4 bg-[#10b981] text-white font-sans font-bold text-[12px] rounded-xl hover:bg-[#0fa573] active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 ⚡ 重新上架商品
               </button>
@@ -408,7 +427,7 @@ function ProductRowItem({
                   event.stopPropagation();
                   onCancelListing(item);
                 }}
-                className="h-9 px-4 bg-transparent border border-[#ef4444]/50 text-[#ef4444] font-sans font-bold text-[12px] rounded-xl hover:bg-[#ef4444]/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto"
+                className="h-9 px-4 bg-transparent border border-[#ef4444]/50 text-[#ef4444] font-sans font-bold text-[12px] rounded-xl hover:bg-[#ef4444]/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
               >
                 🗑️ 取消商品上架
               </button>
@@ -422,11 +441,11 @@ function ProductRowItem({
           <button
             type="button"
             onClick={handleContactCounterparty}
-            className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/10 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             💬 聯絡對方
           </button>
-          <span className="font-mono text-[11px] text-[#10b981] ml-auto bg-[#10b981]/10 px-2.5 py-1 rounded border border-[#10b981]/20">
+          <span className="font-mono text-[11px] text-[#10b981] ml-auto bg-[#10b981]/10 px-2.5 py-1 rounded border border-[#10b981]/20 select-none">
             ✓ 平台存證已完成
           </span>
         </div>
@@ -439,6 +458,7 @@ export default function UserTradingPage() {
   const router = useRouter();
   const [listings, setListings] = useState<UserListing[]>(INITIAL_LISTINGS);
   const [activeTab, setActiveTab] = useState<ListingStatus>("active");
+
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -502,7 +522,7 @@ export default function UserTradingPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative shrink-0 ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
+                className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative shrink-0 cursor-pointer ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
               >
                 {TAB_LABELS[tab]} ({count})
                 {isActive && (
@@ -517,7 +537,7 @@ export default function UserTradingPage() {
       <div className="space-y-4">
         {filteredListings.length === 0 ? (
           <div className="py-16 text-center bg-[#26211C]/40 border border-[rgba(237,232,224,0.04)] rounded-2xl">
-            <p className="font-sans text-[13.5px] text-text-disabled">
+            <p className="font-sans text-[13.5px] text-text-disabled select-none">
               該分類下目前沒有卡牌資產紀錄
             </p>
           </div>
