@@ -42,6 +42,18 @@ export interface ChatRoom {
   messages: Message[];
 }
 
+// 🟢 完美修復：將安全聲明組件徹底移出 Render 核心體外，變為獨立靜態組件，徹底封死 React 19 崩潰地雷
+function AntiScamDisclaimer() {
+  return (
+    <div className="bg-[#1A1612] px-4 py-2 border-t border-[rgba(237,232,224,0.05)] text-left shrink-0 select-none">
+      <p className="font-sans text-[10.5px] leading-normal text-[#8A8680] tracking-tight">
+        <span className="text-brand font-black mr-1">🛡️ 安全聲明：</span>
+        本平台所有交易行為均屬用戶雙方自願與同意之契約。凡涉及之任何形式資產損失，平台概不承擔任何法律責任、資金追償或經濟賠償義務。
+      </p>
+    </div>
+  );
+}
+
 export function GlobalChatConsole() {
   const {
     isChatOpen,
@@ -68,6 +80,8 @@ export function GlobalChatConsole() {
   const [inputText, setInputText] = useState("");
   const desktopConsoleRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 響應式 Touch 優化常駐警告按鈕樣式
   const reportButtonClass =
     "flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:px-2 lg:py-1 lg:text-[11px] lg:font-medium lg:text-text-disabled/70 lg:hover:text-red-500 lg:hover:bg-red-500/10";
 
@@ -77,6 +91,7 @@ export function GlobalChatConsole() {
       if (!target || !document.body.contains(target)) return;
       if (target.closest('[data-chat-console="true"]')) return;
 
+      // Portal 傳送門防線：點擊確認彈窗內部時，絕對不要誤觸外圍關閉聊天室邏輯
       if (
         target.closest('[role="alertdialog"]') ||
         target.closest("[data-radix-portal]")
@@ -146,7 +161,7 @@ export function GlobalChatConsole() {
           exit={{ opacity: 0, y: 40, scale: 0.98 }}
           className="hidden lg:flex fixed bottom-6 right-6 z-[200] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
         >
-          {/* 左欄：列表 */}
+          {/* 左欄：商戶列表選單 */}
           <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
             <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0">
               <span className="font-mono text-[9px] text-brand tracking-widest uppercase font-bold">
@@ -184,12 +199,11 @@ export function GlobalChatConsole() {
             </div>
           </div>
 
-          {/* 右欄：對話區 */}
+          {/* 右欄：對話歷史主戰區 */}
           <div className="flex-1 flex flex-col bg-[#17130f]">
             <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                {/* 🟢 核心修復 3: 點擊名稱直通 User/Merchant Profile 頁面面 */}
                 <button
                   type="button"
                   onClick={() =>
@@ -232,7 +246,7 @@ export function GlobalChatConsole() {
                       <SpecialTransactionMessage
                         msgId={msg.id}
                         buyerName={msg.specialData.buyerName}
-                        sellerId={msg.specialData.sellerId} // 🟢 傳入資料鏈
+                        sellerId={msg.specialData.sellerId}
                         cardName={msg.specialData.cardName}
                         cardId={msg.specialData.cardId}
                         offerPrice={msg.specialData.offerPrice}
@@ -260,6 +274,9 @@ export function GlobalChatConsole() {
               })}
             </div>
 
+            {/* 常駐安全免責法律防護線 */}
+            <AntiScamDisclaimer />
+
             <form
               onSubmit={handleSendMessage}
               className="p-2.5 bg-[#26211C] border-t border-[rgba(237,232,224,0.08)] shrink-0 flex gap-2"
@@ -274,7 +291,7 @@ export function GlobalChatConsole() {
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg"
+                className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg cursor-pointer"
               >
                 發送 ⚡
               </button>
@@ -343,7 +360,6 @@ export function GlobalChatConsole() {
                   >
                     ← 返回
                   </button>
-                  {/* 🟢 核心修復 3: 手機版點擊名稱直通 Profile 頁面面 */}
                   <button
                     type="button"
                     onClick={() =>
@@ -386,7 +402,7 @@ export function GlobalChatConsole() {
                         <SpecialTransactionMessage
                           msgId={msg.id}
                           buyerName={msg.specialData.buyerName}
-                          sellerId={msg.specialData.sellerId} // 🟢 傳入資料鏈
+                          sellerId={msg.specialData.sellerId}
                           cardName={msg.specialData.cardName}
                           cardId={msg.specialData.cardId}
                           offerPrice={msg.specialData.offerPrice}
@@ -411,6 +427,10 @@ export function GlobalChatConsole() {
                   );
                 })}
               </div>
+
+              {/* 手機端常駐免責安全線 */}
+              <AntiScamDisclaimer />
+
               <form
                 onSubmit={handleSendMessage}
                 className="p-3 bg-[#26211C] border-t border-[rgba(237,232,224,0.08)] shrink-0 flex gap-2"
@@ -425,7 +445,7 @@ export function GlobalChatConsole() {
                 <button
                   type="submit"
                   disabled={!inputText.trim()}
-                  className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl"
+                  className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl cursor-pointer"
                 >
                   發送
                 </button>
@@ -434,6 +454,7 @@ export function GlobalChatConsole() {
           )}
         </motion.div>
 
+        {/* 彈窗內容維持不變 */}
         <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_0_24px_rgba(239,68,68,0.18)]">
           <AlertDialogHeader className="text-left place-items-start gap-2">
             <AlertDialogTitle className="text-[15px] font-semibold text-[#eae1da]">
