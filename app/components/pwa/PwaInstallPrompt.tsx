@@ -30,7 +30,7 @@ export function PwaInstallPrompt() {
   // State A: Native prompt ready — primary install button + snooze
   if (promptState === "NATIVE_READY") {
     return (
-      <aside className="fixed bottom-30 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
+      <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
         <p className="font-sans text-[14px] font-medium text-text-primary">
           加到主畫面
         </p>
@@ -59,7 +59,7 @@ export function PwaInstallPrompt() {
 
   // State B: Browser cooling — fallback instructional card with close button
   return (
-    <aside className="fixed bottom-30 right-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
+    <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
       <div className="flex items-start gap-2">
         <p className="flex-1 font-sans text-xs leading-relaxed text-[#d4c4b7]">
           輕觸網址列右側圖標，或點選「更多」→「加到主畫面」，即可安裝 PokéTrade
