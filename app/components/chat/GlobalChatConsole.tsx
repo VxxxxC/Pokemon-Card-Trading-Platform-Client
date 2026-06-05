@@ -1,8 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChatDrawerSkeleton } from "@/app/components/shared/StreamingSkeletons";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
 import { useTradeStore } from "@/store/useTradeStore";
 
@@ -43,16 +54,35 @@ export function GlobalChatConsole() {
     setMobileView,
   } = useTradeStore();
 
-  const onClose = () => setIsChatOpen(false);
+  const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+
+  const handleReportConfirm = () => {
+    toast.error("⚠️ 舉報信號已受理", {
+      description:
+        "已對該交易會話啟動存證機制，平台合約風控官將於 15 分鐘內介入審查。",
+    });
+    setIsReportOpen(false);
+  };
+
   const [inputText, setInputText] = useState("");
   const desktopConsoleRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const reportButtonClass =
+    "flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:px-2 lg:py-1 lg:text-[11px] lg:font-medium lg:text-text-disabled/70 lg:hover:text-red-500 lg:hover:bg-red-500/10";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       const target = event.target as HTMLElement;
       if (!target || !document.body.contains(target)) return;
       if (target.closest('[data-chat-console="true"]')) return;
+
+      if (
+        target.closest('[role="alertdialog"]') ||
+        target.closest("[data-radix-portal]")
+      ) {
+        return;
+      }
 
       if (
         window.innerWidth >= 1024 &&
@@ -68,7 +98,7 @@ export function GlobalChatConsole() {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
     };
-  }, [isChatOpen]);
+  }, [isChatOpen, onClose]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -105,222 +135,87 @@ export function GlobalChatConsole() {
   };
 
   return (
-    <>
-      {/* 💻 1. 電腦端布局 (Desktop View) */}
-      <motion.div
-        ref={desktopConsoleRef}
-        data-chat-console="true"
-        initial={{ opacity: 0, y: 40, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.98 }}
-        className="hidden lg:flex fixed bottom-6 right-6 z-[200] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
-      >
-        {/* 左欄：列表 */}
-        <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
-          <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0">
-            <span className="font-mono text-[9px] text-brand tracking-widest uppercase font-bold">
-              Trading Station
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto p-1.5 space-y-1 scrollbar-none">
-            {chats.map((room) => (
-              <button
-                key={room.id}
-                type="button"
-                onClick={() => {
-                  setActiveRoomId(room.id);
-                  setChats((prev) =>
-                    prev.map((c) =>
-                      c.id === room.id ? { ...c, unreadCount: 0 } : c,
-                    ),
-                  );
-                }}
-                className={`w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all ${room.id === activeRoomId ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md" : "hover:bg-[#26211C]/40 border border-transparent"}`}
-              >
-                <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
-                  {room.partnerName[0]}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-sans font-medium text-[12px] text-text-primary truncate">
-                    {room.partnerName}
-                  </div>
-                  <div className="font-mono text-[9px] text-text-disabled truncate">
-                    {room.id.slice(0, 8)}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 右欄：對話區 */}
-        <div className="flex-1 flex flex-col bg-[#17130f]">
-          <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-              {/* 🟢 核心修復 3: 點擊名稱直通 User/Merchant Profile 頁面面 */}
-              <button
-                type="button"
-                onClick={() =>
-                  (window.location.href = `/profile/${activeRoom.id}`)
-                }
-                className="font-sans font-bold text-[13px] text-text-primary hover:text-brand transition-colors cursor-pointer bg-transparent border-none p-0 text-left"
-              >
-                {activeRoom.partnerName}
-              </button>
+    <AlertDialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+      <>
+        {/* 💻 1. 電腦端布局 (Desktop View) */}
+        <motion.div
+          ref={desktopConsoleRef}
+          data-chat-console="true"
+          initial={{ opacity: 0, y: 40, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 40, scale: 0.98 }}
+          className="hidden lg:flex fixed bottom-6 right-6 z-[200] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
+        >
+          {/* 左欄：列表 */}
+          <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
+            <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0">
+              <span className="font-mono text-[9px] text-brand tracking-widest uppercase font-bold">
+                Trading Station
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-6 h-6 rounded-md bg-[#1A1612] hover:bg-[#39342f] text-text-secondary hover:text-[#eae1da] flex items-center justify-center font-sans text-[11px]"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
-          >
-            {activeRoom.messages.map((msg) => {
-              if (msg.type === "special_transaction" && msg.specialData) {
-                return (
-                  <div
-                    key={msg.id}
-                    className="w-full flex justify-start max-w-[90%] animate-fadeIn"
-                  >
-                    <SpecialTransactionMessage
-                      msgId={msg.id}
-                      buyerName={msg.specialData.buyerName}
-                      sellerId={msg.specialData.sellerId} // 🟢 傳入資料鏈
-                      cardName={msg.specialData.cardName}
-                      cardId={msg.specialData.cardId}
-                      offerPrice={msg.specialData.offerPrice}
-                      initialStatus="pending"
-                      isMe={msg.sender === "me"}
-                    />
-                  </div>
-                );
-              }
-              const isMe = msg.sender === "me";
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
-                >
-                  <div className="max-w-[75%]">
-                    <div
-                      className={`px-3 py-1.5 rounded-xl font-sans text-[12.5px] inline-block shadow-sm leading-snug ${isMe ? "bg-brand text-[#17130f] font-medium" : "bg-[#26211C] text-text-primary border border-[rgba(237,232,224,0.04)]"}`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <form
-            onSubmit={handleSendMessage}
-            className="p-2.5 bg-[#26211C] border-t border-[rgba(237,232,224,0.08)] shrink-0 flex gap-2"
-          >
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={`回覆給 ${activeRoom.partnerName}...`}
-              className="flex-1 h-9 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-lg px-3 text-[12px] text-text-primary focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!inputText.trim()}
-              className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg"
-            >
-              發送 ⚡
-            </button>
-          </form>
-        </div>
-      </motion.div>
-
-      {/* 📱 2. 手機端布局 (Mobile View) */}
-      <motion.div
-        data-chat-console="true"
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="lg:hidden fixed inset-0 z-[150] bg-[#17130f] flex flex-col"
-      >
-        {mobileView === "LIST" ? (
-          <div className="flex flex-col h-full">
-            <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
-              <div>
-                <h3 className="font-sans font-bold text-[14px] text-text-primary">
-                  即時交易通知中心
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-8 h-8 rounded-full bg-[#1A1612] flex items-center justify-center font-sans text-sm text-text-secondary"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#17130f] scrollbar-none">
+            <div className="flex-1 overflow-y-auto p-1.5 space-y-1 scrollbar-none">
               {chats.map((room) => (
                 <button
                   key={room.id}
+                  type="button"
                   onClick={() => {
                     setActiveRoomId(room.id);
-                    setMobileView("CHAT");
+                    setChats((prev) =>
+                      prev.map((c) =>
+                        c.id === room.id ? { ...c, unreadCount: 0 } : c,
+                      ),
+                    );
                   }}
-                  className="w-full text-left p-3.5 rounded-2xl bg-[#26211C] border border-[rgba(237,232,224,0.04)] flex items-start gap-3.5 relative"
+                  className={`w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all ${room.id === activeRoomId ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md" : "hover:bg-[#26211C]/40 border border-transparent"}`}
                 >
-                  <div className="w-9 h-9 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center font-bold text-brand text-[13px] shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                     {room.partnerName[0]}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-sans font-semibold text-[13px] text-text-primary">
+                    <div className="font-sans font-medium text-[12px] text-text-primary truncate">
                       {room.partnerName}
-                    </span>
-                    <p className="font-sans text-[12px] text-text-secondary truncate mt-1">
-                      {room.lastMessage}
-                    </p>
+                    </div>
+                    <div className="font-mono text-[9px] text-text-disabled truncate">
+                      {room.id.slice(0, 8)}
+                    </div>
                   </div>
                 </button>
               ))}
             </div>
           </div>
-        ) : (
-          <div className="flex flex-col h-full">
-            <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-3 shrink-0">
+
+          {/* 右欄：對話區 */}
+          <div className="flex-1 flex flex-col bg-[#17130f]">
+            <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMobileView("LIST")}
-                  className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand"
-                >
-                  ← 返回
-                </button>
-                {/* 🟢 核心修復 3: 手機版點擊名稱直通 Profile 頁面面 */}
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                {/* 🟢 核心修復 3: 點擊名稱直通 User/Merchant Profile 頁面面 */}
                 <button
                   type="button"
                   onClick={() =>
                     (window.location.href = `/profile/${activeRoom.id}`)
                   }
-                  className="font-sans font-bold text-[13.5px] text-text-primary truncate max-w-[130px] cursor-pointer bg-transparent border-none p-0 text-left"
+                  className="font-sans font-bold text-[13px] text-text-primary hover:text-brand transition-colors cursor-pointer bg-transparent border-none p-0 text-left"
                 >
                   {activeRoom.partnerName}
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-8 h-8 rounded-full bg-[#1A1612] flex items-center justify-center font-sans text-sm text-text-secondary"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <AlertDialogTrigger
+                  render={
+                    <button type="button" className={reportButtonClass}>
+                      舉報
+                    </button>
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-6 h-6 rounded-md bg-[#1A1612] hover:bg-[#39342f] text-text-secondary hover:text-[#eae1da] flex items-center justify-center font-sans text-[11px]"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div
@@ -332,7 +227,7 @@ export function GlobalChatConsole() {
                   return (
                     <div
                       key={msg.id}
-                      className="w-full flex justify-start max-w-[95%] animate-fadeIn"
+                      className="w-full flex justify-start max-w-[90%] animate-fadeIn"
                     >
                       <SpecialTransactionMessage
                         msgId={msg.id}
@@ -353,37 +248,219 @@ export function GlobalChatConsole() {
                     key={msg.id}
                     className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
                   >
-                    <div
-                      className={`px-4 py-2 rounded-2xl font-sans text-[13px] ${isMe ? "bg-brand text-[#17130f]" : "bg-[#26211C] text-text-primary"}`}
-                    >
-                      {msg.text}
+                    <div className="max-w-[75%]">
+                      <div
+                        className={`px-3 py-1.5 rounded-xl font-sans text-[12.5px] inline-block shadow-sm leading-snug ${isMe ? "bg-brand text-[#17130f] font-medium" : "bg-[#26211C] text-text-primary border border-[rgba(237,232,224,0.04)]"}`}
+                      >
+                        {msg.text}
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+
             <form
               onSubmit={handleSendMessage}
-              className="p-3 bg-[#26211C] border-t border-[rgba(237,232,224,0.08)] shrink-0 flex gap-2"
+              className="p-2.5 bg-[#26211C] border-t border-[rgba(237,232,224,0.08)] shrink-0 flex gap-2"
             >
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`回覆 ${activeRoom.partnerName}...`}
-                className="flex-1 h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-text-primary"
+                placeholder={`回覆給 ${activeRoom.partnerName}...`}
+                className="flex-1 h-9 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-lg px-3 text-[12px] text-text-primary focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl"
+                className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg"
               >
-                發送
+                發送 ⚡
               </button>
             </form>
           </div>
-        )}
-      </motion.div>
-    </>
+        </motion.div>
+
+        {/* 📱 2. 手機端布局 (Mobile View) */}
+        <motion.div
+          data-chat-console="true"
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="lg:hidden fixed inset-0 z-[150] bg-[#17130f] flex flex-col"
+        >
+          {mobileView === "LIST" ? (
+            <div className="flex flex-col h-full">
+              <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
+                <div>
+                  <h3 className="font-sans font-bold text-[14px] text-text-primary">
+                    即時交易通知中心
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-[#1A1612] flex items-center justify-center font-sans text-sm text-text-secondary"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#17130f] scrollbar-none">
+                {chats.map((room) => (
+                  <button
+                    key={room.id}
+                    onClick={() => {
+                      setActiveRoomId(room.id);
+                      setMobileView("CHAT");
+                    }}
+                    className="w-full text-left p-3.5 rounded-2xl bg-[#26211C] border border-[rgba(237,232,224,0.04)] flex items-start gap-3.5 relative"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center font-bold text-brand text-[13px] shrink-0">
+                      {room.partnerName[0]}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-sans font-semibold text-[13px] text-text-primary">
+                        {room.partnerName}
+                      </span>
+                      <p className="font-sans text-[12px] text-text-secondary truncate mt-1">
+                        {room.lastMessage}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col h-full">
+              <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMobileView("LIST")}
+                    className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand"
+                  >
+                    ← 返回
+                  </button>
+                  {/* 🟢 核心修復 3: 手機版點擊名稱直通 Profile 頁面面 */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      (window.location.href = `/profile/${activeRoom.id}`)
+                    }
+                    className="font-sans font-bold text-[13.5px] text-text-primary truncate max-w-[130px] cursor-pointer bg-transparent border-none p-0 text-left"
+                  >
+                    {activeRoom.partnerName}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertDialogTrigger
+                    render={
+                      <button type="button" className={reportButtonClass}>
+                        舉報
+                      </button>
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-8 h-8 rounded-full bg-[#1A1612] flex items-center justify-center font-sans text-sm text-text-secondary"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
+              >
+                {activeRoom.messages.map((msg) => {
+                  if (msg.type === "special_transaction" && msg.specialData) {
+                    return (
+                      <div
+                        key={msg.id}
+                        className="w-full flex justify-start max-w-[95%] animate-fadeIn"
+                      >
+                        <SpecialTransactionMessage
+                          msgId={msg.id}
+                          buyerName={msg.specialData.buyerName}
+                          sellerId={msg.specialData.sellerId} // 🟢 傳入資料鏈
+                          cardName={msg.specialData.cardName}
+                          cardId={msg.specialData.cardId}
+                          offerPrice={msg.specialData.offerPrice}
+                          initialStatus="pending"
+                          isMe={msg.sender === "me"}
+                        />
+                      </div>
+                    );
+                  }
+                  const isMe = msg.sender === "me";
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`px-4 py-2 rounded-2xl font-sans text-[13px] ${isMe ? "bg-brand text-[#17130f]" : "bg-[#26211C] text-text-primary"}`}
+                      >
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <form
+                onSubmit={handleSendMessage}
+                className="p-3 bg-[#26211C] border-t border-[rgba(237,232,224,0.08)] shrink-0 flex gap-2"
+              >
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={`回覆 ${activeRoom.partnerName}...`}
+                  className="flex-1 h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-text-primary"
+                />
+                <button
+                  type="submit"
+                  disabled={!inputText.trim()}
+                  className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl"
+                >
+                  發送
+                </button>
+              </form>
+            </div>
+          )}
+        </motion.div>
+
+        <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_0_24px_rgba(239,68,68,0.18)]">
+          <AlertDialogHeader className="text-left place-items-start gap-2">
+            <AlertDialogTitle className="text-[15px] font-semibold text-[#eae1da]">
+              確認要提交舉報嗎？
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[12.5px] leading-relaxed text-[#d4c4b7]">
+              請注意：PokéTrade JP
+              嚴格禁止惡意惡作劇或虛假舉報。一經查實，平台將扣除您的交易積分，情節嚴重者將面臨賬戶風控限制。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="border-t border-white/10 bg-[#1A1612]/60">
+            <AlertDialogCancel
+              variant="outline"
+              className="border border-white/10 text-[#d4c4b7] hover:bg-white/5"
+            >
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              onClick={handleReportConfirm}
+              className="bg-[#ef4444] text-[#1A1612] hover:bg-[#ef4444]/90 shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+            >
+              確認提交
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </>
+    </AlertDialog>
   );
 }

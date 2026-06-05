@@ -2,7 +2,6 @@
 
 import { useState, useSyncExternalStore, use } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { toast } from "sonner";
 
 interface CheckoutItem {
