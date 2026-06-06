@@ -2,59 +2,20 @@
 
 import { create } from "zustand";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+import {
+  MOCK_PUBLIC_MEMBERS,
+  getStorefrontListingsByMember,
+} from "@/app/lib/mock-public-members";
 
 export type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
 
-export const INITIAL_LISTINGS: MarketplaceListing[] = [
-  {
-    id: "sv2a-182",
-    name: "Charizard ex SAR (噴火龍)",
-    set: "Pokémon 151",
-    rarity: "SAR",
-    grade: { authority: "PSA", score: "10" },
-    price: 2250,
-    delta: 120,
-    deltaDirection: "up",
-    image: "https://picsum.photos/seed/poke-charizard/400/280",
-    seller: "旺角卡店 · 專業認證商戶",
-  },
-  {
-    id: "sv2a-189",
-    name: "Mewtwo ex SAR (超夢)",
-    set: "Pokémon 151",
-    rarity: "SAR",
-    grade: { authority: "BGS", score: "9.5" },
-    price: 2600,
-    delta: 50,
-    deltaDirection: "down",
-    image: "https://picsum.photos/seed/poke-mewtwo/400/280",
-    seller: "渡邊道館",
-  },
-  {
-    id: "sv6a-109",
-    name: "Umbreon ex SAR (月亮伊布)",
-    set: "Night Wanderer",
-    rarity: "SAR",
-    grade: { authority: "PSA", score: "10" },
-    price: 1900,
-    delta: 75,
-    deltaDirection: "up",
-    image: "https://picsum.photos/seed/poke-umbreon/400/280",
-    seller: "大阪收藏家",
-  },
-  {
-    id: "sv2a-215",
-    name: "Pikachu AR (皮卡丘)",
-    set: "Pokémon 151",
-    rarity: "AR",
-    grade: { authority: "CGC", score: "9" },
-    price: 425,
-    delta: 15,
-    deltaDirection: "down",
-    image: "https://picsum.photos/seed/poke-pikachu/400/280",
-    seller: "東京TCG市場",
-  },
-];
+const MARKETPLACE_MEMBER_IDS = ["PKT-8839-44A"] as const;
+
+export const INITIAL_LISTINGS: MarketplaceListing[] =
+  MARKETPLACE_MEMBER_IDS.flatMap((memberId) => {
+    const member = MOCK_PUBLIC_MEMBERS[memberId];
+    return member ? getStorefrontListingsByMember(member) : [];
+  });
 
 interface MarketState {
   query: string;

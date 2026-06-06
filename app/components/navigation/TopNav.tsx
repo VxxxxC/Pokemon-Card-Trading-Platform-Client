@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 引入全域中央大腦
-import { useTradeStore } from "@/store/useTradeStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 
 const navLinks = [
   { href: "/", label: "首頁" },

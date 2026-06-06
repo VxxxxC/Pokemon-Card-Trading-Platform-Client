@@ -18,8 +18,8 @@ import {
   getPublicMemberById,
   getStorefrontListingsByMember,
 } from "@/app/lib/mock-public-members";
-import { useTradeStore } from "@/store/useTradeStore";
-import type { SortKey } from "@/store/useMarketStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
+import type { SortKey } from "@/app/store/useMarketStore";
 
 interface PageProps {
   params: Promise<{ id: string }>;

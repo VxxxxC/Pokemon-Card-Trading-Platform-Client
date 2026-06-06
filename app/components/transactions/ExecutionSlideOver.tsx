@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { toast } from "sonner";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
-import { useTradeStore } from "@/store/useTradeStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 
 export function ExecutionSlideOver() {
   const [listing, setListing] = useState<MarketplaceListing | null>(null);

@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
-import { useTradeStore } from "@/store/useTradeStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 
 export interface Message {
   id: string;
@@ -43,6 +43,18 @@ export interface ChatRoom {
 }
 
 // 🟢 完美修復：將安全聲明組件徹底移出 Render 核心體外，變為獨立靜態組件，徹底封死 React 19 崩潰地雷
+function hasRenderableSpecialData(
+  specialData: Message["specialData"],
+): specialData is NonNullable<Message["specialData"]> {
+  return Boolean(
+    specialData?.cardName &&
+    specialData.cardId &&
+    specialData.buyerName &&
+    specialData.sellerId &&
+    Number.isFinite(specialData.offerPrice),
+  );
+}
+
 function AntiScamDisclaimer() {
   return (
     <div className="bg-[#1A1612] px-4 py-2 border-t border-[rgba(237,232,224,0.05)] text-left shrink-0 select-none">
@@ -237,7 +249,10 @@ export function GlobalChatConsole() {
               className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
             >
               {activeRoom.messages.map((msg) => {
-                if (msg.type === "special_transaction" && msg.specialData) {
+                if (
+                  msg.type === "special_transaction" &&
+                  hasRenderableSpecialData(msg.specialData)
+                ) {
                   return (
                     <div
                       key={msg.id}
@@ -393,7 +408,10 @@ export function GlobalChatConsole() {
                 className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
               >
                 {activeRoom.messages.map((msg) => {
-                  if (msg.type === "special_transaction" && msg.specialData) {
+                  if (
+                    msg.type === "special_transaction" &&
+                    hasRenderableSpecialData(msg.specialData)
+                  ) {
                     return (
                       <div
                         key={msg.id}

@@ -6,7 +6,7 @@ import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 接入 Zustand 全域控制中樞
-import { useTradeStore } from "@/store/useTradeStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(

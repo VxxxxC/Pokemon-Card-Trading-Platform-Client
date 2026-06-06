@@ -8,7 +8,7 @@ import {
   useMarketStore,
   INITIAL_LISTINGS,
   type SortKey,
-} from "@/store/useMarketStore";
+} from "@/app/store/useMarketStore";
 
 export default function MarketplacePage() {
   // 金融級 SSR 環境安全隔離
@@ -56,10 +56,12 @@ export default function MarketplacePage() {
   // 當且僅當依賴項字串或陣列元素有實質改變時，才會生成新引用，秒殺重繪死循環！
   const filteredListings = useMemo(() => {
     return INITIAL_LISTINGS.filter((card) => {
+      const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
+      const normalizedQuery = query.toLowerCase();
       const matchQuery =
-        query === "" ||
-        card.name.toLowerCase().includes(query.toLowerCase()) ||
-        card.id.toLowerCase().includes(query.toLowerCase());
+        normalizedQuery === "" ||
+        card.name.toLowerCase().includes(normalizedQuery) ||
+        searchableCardNo.includes(normalizedQuery);
 
       const matchRarity =
         activeRarities.length === 0 || activeRarities.includes(card.rarity);

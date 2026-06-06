@@ -24,6 +24,14 @@ export interface PublicMemberListingGrade {
   readonly label: string;
 }
 
+export interface PublicMemberPriceOfferContext {
+  readonly roomId: string;
+  readonly partnerName: string;
+  readonly buyerName: string;
+  readonly offerPrice: number;
+  readonly sellerId: string;
+}
+
 // 🟢 完美融合：大一統強型態定義，徹底消滅前台與後台的欄位對抗
 export interface PublicMemberListing {
   readonly id: string;
@@ -46,6 +54,7 @@ export interface PublicMemberListing {
   readonly watchers: number;
   readonly linkedOrderId?: string;
   readonly hasPriceOffer?: boolean;
+  readonly priceOfferContext?: PublicMemberPriceOfferContext;
 }
 
 export interface PublicMemberData {
@@ -141,6 +150,13 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         watchers: 5,
         linkedOrderId: "ORD-B2C-NOAUTH-004",
         hasPriceOffer: true, // ⚡ 自帶買家高亮 Price Offer 的指標資產
+        priceOfferContext: {
+          roomId: "ROOM-BUYER-KOWLOON-001",
+          partnerName: "九龍灣卡王",
+          buyerName: "九龍灣卡王",
+          offerPrice: 425,
+          sellerId: "PKT-8839-44A",
+        },
       },
       {
         id: "LST-C2C-003",

@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
-import { OrderLifecycleStepper } from "../components/OrderLifecycleStepper";
+import { OrderLifecycleStepper } from "@/app/components/transactions/OrderLifecycleStepper";
 // 🟢 核心引入：全域狀態真理源，徹底淘汰舊 CustomEvent
-import { useTradeStore } from "@/store/useTradeStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 
 interface LocalOrder {
   id: string;

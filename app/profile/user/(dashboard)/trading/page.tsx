@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, type MouseEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { OrderLifecycleStepper } from "./components/OrderLifecycleStepper";
+import { OrderLifecycleStepper } from "@/app/components/transactions/OrderLifecycleStepper";
+import {
+  MOCK_PUBLIC_MEMBERS,
+  type ListingStatus,
+  type PublicMemberListing,
+} from "@/app/lib/mock-public-members";
 // 🟢 核心引入：全域狀態真理源
-import { useTradeStore } from "@/store/useTradeStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 
-type ListingStatus = "active" | "sold" | "unlisted" | "pending_trade";
 type TradeType = "c2c" | "b2c";
 type OrderSide = "buy" | "sell";
 type FlowType = "meetup" | "delivery" | "escrow_auth" | "escrow_no_auth";
@@ -28,8 +32,15 @@ interface UserListing {
   watchers: number;
   linkedOrderId?: string;
   hasPriceOffer?: boolean;
-  marketplaceOwnerId?: string;
-  marketplaceProductId?: string;
+  marketplaceOwnerId: string;
+  marketplaceProductId: string;
+  priceOfferContext?: {
+    roomId: string;
+    partnerName: string;
+    buyerName: string;
+    offerPrice: number;
+    sellerId: string;
+  };
 }
 
 interface Order {
@@ -50,86 +61,43 @@ interface Order {
   isHighValue: boolean;
 }
 
-const INITIAL_LISTINGS: UserListing[] = [
-  {
-    id: "LST-C2C-001",
-    cardName: "Charizard ex SAR (噴火龍 ex)",
-    cardNo: "sv2a-182",
-    grade: "【美品 S】裸卡直送",
-    cardImage: "https://picsum.photos/seed/user-zard/200/280",
-    price: 2150,
-    status: "active",
-    paymentMethods: ["PayMe", "轉數快 (FPS)", "現金面交"],
-    shippingMethods: ["順豐到付", "市區面交"],
-    createdAt: "2026/05/28",
-    views: 142,
-    watchers: 18,
-    marketplaceOwnerId: "PKT-8839-44A",
-    marketplaceProductId: "LST-001",
-  },
-  {
-    id: "LST-C2C-002",
-    cardName: "Pikachu AR (經典肥皮卡丘)",
-    cardNo: "sv2a-215",
-    grade: "【微傷 A】卡盒割愛",
-    cardImage: "https://picsum.photos/seed/user-pika/200/280",
-    price: 620,
-    status: "active",
-    paymentMethods: ["轉數快 (FPS)", "現金面交"],
-    shippingMethods: ["市區面交"],
-    createdAt: "2026/05/25",
-    views: 89,
-    watchers: 5,
-    linkedOrderId: "ORD-B2C-NOAUTH-004",
-    hasPriceOffer: true,
-    marketplaceOwnerId: "PKT-8839-44A",
-    marketplaceProductId: "LST-003",
-  },
-  {
-    id: "LST-C2C-003",
-    cardName: "Mew ex SAR (復刻夢幻)",
-    cardNo: "sv2a-205",
-    grade: "【美品 S】剛拆封即入套",
-    cardImage: "https://picsum.photos/seed/user-mew/200/280",
-    price: 900,
-    status: "sold",
-    paymentMethods: ["PayMe"],
-    shippingMethods: ["順豐速遞"],
-    createdAt: "2026/05/10",
-    views: 310,
-    watchers: 24,
-    linkedOrderId: "ORD-C2C-DONE-101",
-  },
-  {
-    id: "LST-C2C-004",
-    cardName: "Ting-Lu ex SR (古鼎鹿)",
-    cardNo: "sv3-155",
-    grade: "【傷あり B】打牌實用打法卡",
-    cardImage: "https://picsum.photos/seed/user-tinglu/200/280",
-    price: 180,
-    status: "unlisted",
-    paymentMethods: ["現金面交"],
-    shippingMethods: ["市區面交"],
-    createdAt: "2026/05/01",
-    views: 45,
-    watchers: 1,
-  },
-  {
-    id: "LST-C2C-005",
-    cardName: "Umbreon ex SAR (月亮伊布)",
-    cardNo: "sv6a-109",
-    grade: "Raw 完美裸卡",
-    cardImage: "https://picsum.photos/seed/umbreon/200/280",
-    price: 1900,
-    status: "pending_trade",
-    paymentMethods: ["轉數快 (FPS)"],
-    shippingMethods: ["順豐速遞"],
-    createdAt: "2026/05/26",
-    views: 238,
-    watchers: 31,
-    linkedOrderId: "ORD-C2C-DELIVERY-002",
-  },
-];
+const TRADING_MEMBER_ID = "PKT-8839-44A";
+
+function formatTradingGrade(listing: PublicMemberListing) {
+  if (listing.grade.authority === "Raw Card") {
+    return `【${listing.conditionLabel}】${listing.grade.label}`;
+  }
+
+  return `${listing.grade.authority} ${listing.grade.score} · ${listing.grade.label}`;
+}
+
+function mapCentralListingToUserListing(
+  listing: PublicMemberListing,
+): UserListing {
+  return {
+    id: listing.id,
+    cardName: listing.name,
+    cardNo: listing.cardNo,
+    grade: formatTradingGrade(listing),
+    cardImage: listing.image,
+    price: listing.price,
+    status: listing.status,
+    paymentMethods: listing.paymentMethods,
+    shippingMethods: listing.shippingMethods,
+    createdAt: listing.createdAt,
+    views: listing.views,
+    watchers: listing.watchers,
+    linkedOrderId: listing.linkedOrderId,
+    hasPriceOffer: Boolean(listing.priceOfferContext ?? listing.hasPriceOffer),
+    marketplaceOwnerId: TRADING_MEMBER_ID,
+    marketplaceProductId: listing.id,
+    priceOfferContext: listing.priceOfferContext,
+  };
+}
+
+const CENTRAL_TRADING_LISTINGS: UserListing[] = (
+  MOCK_PUBLIC_MEMBERS[TRADING_MEMBER_ID]?.activeListings ?? []
+).map(mapCentralListingToUserListing);
 
 const INITIAL_ORDERS: Order[] = [
   {
@@ -297,17 +265,21 @@ function ProductRowItem({
     openGlobalChat(order.sellerId, order.seller);
   };
 
-  const handlePriceOfferChat = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handlePriceOfferChat = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation(); // 阻止冒泡
-    if (!order) return;
+    if (!item.priceOfferContext) return;
 
-    openGlobalChat(order.sellerId, order.seller, {
-      cardName: item.cardName,
-      cardId: item.marketplaceProductId || item.id,
-      offerPrice: order.amount,
-      buyerName: order.seller,
-      sellerId: order.sellerId,
-    });
+    openGlobalChat(
+      item.priceOfferContext.roomId,
+      item.priceOfferContext.partnerName,
+      {
+        cardName: item.cardName,
+        cardId: item.marketplaceProductId,
+        offerPrice: item.priceOfferContext.offerPrice,
+        buyerName: item.priceOfferContext.buyerName,
+        sellerId: item.priceOfferContext.sellerId,
+      },
+    );
   };
 
   return (
@@ -367,7 +339,7 @@ function ProductRowItem({
             <span className="font-mono text-[10px] text-brand font-medium">
               {item.grade}
             </span>
-            {item.hasPriceOffer && (
+            {item.hasPriceOffer && item.priceOfferContext && (
               <button
                 type="button"
                 onClick={handlePriceOfferChat}
@@ -489,7 +461,9 @@ function ProductRowItem({
 
 export default function UserTradingPage() {
   const router = useRouter();
-  const [listings, setListings] = useState<UserListing[]>(INITIAL_LISTINGS);
+  const [listings, setListings] = useState<UserListing[]>(() => [
+    ...CENTRAL_TRADING_LISTINGS,
+  ]);
   const [activeTab, setActiveTab] = useState<ListingStatus>("active");
 
   const isMounted = useSyncExternalStore(

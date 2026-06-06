@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { WishlistTable } from "./components/WishlistTable";
+import { WishlistTable } from "@/app/components/market/WishlistTable";
 
 interface OwnedCard {
   id: string;

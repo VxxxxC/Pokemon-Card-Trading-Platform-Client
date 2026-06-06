@@ -6,8 +6,11 @@ import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
-import { ProfileHeaderWithChat } from "./components/ProfileHeaderWithChat";
-import { getPublicMemberById } from "@/app/lib/mock-public-members";
+import { ProfileHeaderWithChat } from "@/app/components/profile/ProfileHeaderWithChat";
+import {
+  getPublicMemberById,
+  getStorefrontListingsByMember,
+} from "@/app/lib/mock-public-members";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
@@ -38,6 +41,9 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const member = getPublicMemberById(id);
+  const storefrontListings = member
+    ? getStorefrontListingsByMember(member)
+    : [];
 
   // 統一採用說明書工程標準：原生 useSyncExternalStore 客戶端鎖，徹底封鎖水合 Layout Shift
   const isMounted = useSyncExternalStore(
@@ -83,7 +89,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-sans font-bold text-[16px]">
-              上架中的商品 ({member.activeListings.length})
+              上架中的商品 ({storefrontListings.length})
             </h2>
             {/* 🟢 核心修正 1：將查看全部跳轉精準駁通至該商戶的專屬市集獨立櫥窗 */}
             <Link
@@ -95,7 +101,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {member.activeListings.map((item) => (
+            {storefrontListings.map((item) => (
               /* 🟢 核心修正 2：將商品卡片跳轉路徑，精準導向私域專屬商品詳情頁，消滅 404 地雷 */
               <Link
                 key={item.id}
@@ -117,7 +123,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
                 </h3>
                 <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5">
                   <span className="font-mono text-[10px] text-[#10b981] font-bold">
-                    {item.grade.label}
+                    {item.grade.authority} {item.grade.score}
                   </span>
                   <span className="font-mono font-black text-[13px] text-brand">
                     HK${item.price.toLocaleString()}
