@@ -6,7 +6,8 @@ export interface SpecialTransactionData {
   cardId: string;
   offerPrice: number;
   buyerName: string;
-  sellerId: string; // 🟢 全新加碼：綁定賣家/店鋪唯一識別碼
+  sellerId: string; // 綁定賣家/店鋪唯一識別碼
+  initialStatus?: "pending" | "accepted" | "rejected"; // 🟢 新增：同步投餵給 SpecialTransactionMessage 的初始狀態
 }
 
 export interface Message {
@@ -40,14 +41,18 @@ function isValidSpecialTransactionData(
   );
 }
 
+// 🟢 升格輔助函數：支持自訂文字訊息內容
 function createSpecialTransactionMessage(
   sender: Message["sender"],
   payload: SpecialTransactionData,
+  customText?: string,
 ): Message {
   return {
     id: `MSG-TXN-${Date.now()}`,
     sender,
-    text: `${payload.buyerName} offer price HK$ ${payload.offerPrice} - ${payload.cardName} (${payload.cardId})`,
+    text:
+      customText ||
+      `${payload.buyerName} offer price HK$ ${payload.offerPrice} - ${payload.cardName} (${payload.cardId})`,
     timestamp: "剛剛",
     type: "special_transaction",
     specialData: payload,
@@ -65,20 +70,21 @@ interface TradeStore {
   setMobileView: (view: "LIST" | "CHAT") => void;
   setChats: (updater: ChatRoom[] | ((prev: ChatRoom[]) => ChatRoom[])) => void;
 
-  // 🟢 核心升格：允許傳入選填的第三參數 injectOffer，達成一鍵開房、切換視窗、動態防重注入
   openGlobalChat: (
     roomId: string,
     partnerName: string,
     injectOffer?: SpecialTransactionData,
   ) => void;
 
+  // 🟢 核心修改點 1：傳入參數追加 isInstantTake 標誌，用以切分一口價與議價流向
   injectSpecialTransaction: (payload: {
     sellerName: string;
-    sellerId: string; // 🟢 傳入賣家 ID
+    sellerId: string;
     cardName: string;
     cardId: string;
     offerPrice: number;
     buyerName: string;
+    isInstantTake: boolean;
   }) => void;
 }
 
@@ -102,14 +108,12 @@ export const useTradeStore = create<TradeStore>((set) => ({
       let updatedChats = [...state.chats];
 
       if (exists) {
-        // 情況 A：會話房間早已存在
         updatedChats = state.chats.map((room) => {
           if (room.id !== roomId) return room;
 
           let currentMessages = [...room.messages];
           let currentLastMessage = room.lastMessage;
 
-          // 如果帶有出價上下文，啟動智能動態去重注入
           if (isValidSpecialTransactionData(injectOffer)) {
             const hasOfferAlready = currentMessages.some(
               (m) =>
@@ -117,12 +121,11 @@ export const useTradeStore = create<TradeStore>((set) => ({
                 m.specialData?.cardId === injectOffer.cardId,
             );
 
-            // 只有不存在同張卡的議價卡時，才執行啪一聲原地塞入
             if (!hasOfferAlready) {
-              const specialMsg = createSpecialTransactionMessage(
-                "them", // 🟢 強制立為 "them" (代表買家發出)，確保賣家視角看得到「接受/拒絕」按鈕
-                injectOffer,
-              );
+              const specialMsg = createSpecialTransactionMessage("them", {
+                ...injectOffer,
+                initialStatus: injectOffer.initialStatus || "pending",
+              });
               currentMessages = [...currentMessages, specialMsg];
               currentLastMessage = specialMsg.text;
             }
@@ -132,11 +135,10 @@ export const useTradeStore = create<TradeStore>((set) => ({
             ...room,
             messages: currentMessages,
             lastMessage: currentLastMessage,
-            unreadCount: 0, // 點擊時強制消除紅點未讀
+            unreadCount: 0,
           };
         });
       } else {
-        // 情況 B：該出價買家是全新用戶，尚未建立過對話會話，原地構造一個乾淨的安全通道
         const newSession: ChatRoom = {
           id: roomId,
           partnerName,
@@ -154,12 +156,11 @@ export const useTradeStore = create<TradeStore>((set) => ({
           ],
         };
 
-        // 新建房間若有出價上下文，直接作爲首發訊息打包進去
         if (isValidSpecialTransactionData(injectOffer)) {
-          const specialMsg = createSpecialTransactionMessage(
-            "them",
-            injectOffer,
-          );
+          const specialMsg = createSpecialTransactionMessage("them", {
+            ...injectOffer,
+            initialStatus: injectOffer.initialStatus || "pending",
+          });
           newSession.messages.push(specialMsg);
           newSession.lastMessage = specialMsg.text;
         }
@@ -170,34 +171,74 @@ export const useTradeStore = create<TradeStore>((set) => ({
       return {
         chats: updatedChats,
         activeRoomId: roomId,
-        isChatOpen: true, // 瞬間拉起對話彈窗
-        mobileView: "CHAT", // 移動端直穿對話戰場
+        isChatOpen: true,
+        mobileView: "CHAT",
       };
     }),
 
+  // 🟢 核心修改點 2：完全體雙軌分流與盲開房守衛實作
   injectSpecialTransaction: (payload) =>
     set((state) => {
       const targetRoomId = payload.sellerId;
 
-      const specialMsg = createSpecialTransactionMessage("me", {
-        cardName: payload.cardName,
-        cardId: payload.cardId,
-        offerPrice: payload.offerPrice,
-        buyerName: payload.buyerName,
-        sellerId: payload.sellerId,
-      });
+      // 根據買家點擊，決定交割文字語意與特殊要約卡的初使狀態碼
+      const status = payload.isInstantTake ? "accepted" : "pending";
+      const msgText = payload.isInstantTake
+        ? `⚡【立即購買】${payload.buyerName} 已接受一口價購入並成功預留資產！`
+        : `📩【議價要約】${payload.buyerName} 向您提報了 HK$ ${payload.offerPrice.toLocaleString()} 的預期出價。`;
 
-      const updatedChats = state.chats.map((room) => {
-        if (room.id === targetRoomId) {
-          return {
-            ...room,
-            lastMessage: specialMsg.text,
-            messages: [...room.messages, specialMsg],
-          };
-        }
-        return room;
-      });
+      const specialMsg = createSpecialTransactionMessage(
+        "me",
+        {
+          cardName: payload.cardName,
+          cardId: payload.cardId,
+          offerPrice: payload.offerPrice,
+          buyerName: payload.buyerName,
+          sellerId: payload.sellerId,
+          initialStatus: status, // 精準塞入交割狀態
+        },
+        msgText,
+      );
 
+      const exists = state.chats.some((c) => c.id === targetRoomId);
+      let updatedChats = [...state.chats];
+
+      if (exists) {
+        // 情況 A：房間早已存在，直接塞入訊息並清理未讀數
+        updatedChats = state.chats.map((room) => {
+          if (room.id === targetRoomId) {
+            return {
+              ...room,
+              lastMessage: specialMsg.text,
+              messages: [...room.messages, specialMsg],
+              unreadCount: 0,
+            };
+          }
+          return room;
+        });
+      } else {
+        // 情況 B（關鍵修復）：全新交易會話，原地生出一個帶有系統歡迎詞的 ChatRoom
+        const newRoom: ChatRoom = {
+          id: targetRoomId,
+          partnerName: payload.sellerName,
+          partnerTier: "認證賣家",
+          lastMessage: specialMsg.text,
+          unreadCount: 0,
+          timestamp: "剛剛",
+          messages: [
+            {
+              id: "sys-" + Date.now(),
+              sender: "system",
+              text: `🔒 已建立與 ${payload.sellerName} 的安全中介託管交易通道。`,
+              timestamp: "剛剛",
+            },
+            specialMsg,
+          ],
+        };
+        updatedChats = [newRoom, ...state.chats];
+      }
+
+      // 瞬間拉起全域 Chat 控制艙
       return {
         chats: updatedChats,
         activeRoomId: targetRoomId,

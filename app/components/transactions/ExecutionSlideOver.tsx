@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { toast } from "sonner";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
+// 🟢 確保路徑對齊全新大掃除後的中央 Store
 import { useTradeStore } from "@/app/store/useTradeStore";
 
 export function ExecutionSlideOver() {
@@ -46,17 +47,22 @@ export function ExecutionSlideOver() {
   const targetCardName = listing.name;
   const targetSellerId = listing.sellerId ?? "PKT-8839-44A";
   const targetSellerName = listing.seller ?? "渡邊道館";
-  // 🟢 核心連動：如果大盤卡片已經有 cardId / 庫存編號則沿用，無則自動映射為渡邊館藏的商品代碼，保證跳轉對齊
+
+  // 🟢 核心連動：對齊中央數據銀行資產編碼
   const targetCardId =
     listing.id === "sv2a-182"
-      ? "LST-001"
-      : listing.id === "s6a-095"
-        ? "LST-002"
-        : listing.id === "sv2a-215"
-          ? "LST-003"
-          : listing.id === "sm4plus-119"
-            ? "LST-004"
-            : listing.id;
+      ? "LST-C2C-001"
+      : listing.id === "sv2a-215"
+        ? "LST-C2C-002"
+        : listing.id === "sv2a-205"
+          ? "LST-C2C-003"
+          : listing.id === "sv3-155"
+            ? "LST-C2C-004"
+            : listing.id === "sv6a-109"
+              ? "LST-C2C-005"
+              : listing.id === "s5a-070"
+                ? "LST-C2C-006"
+                : listing.id;
 
   const handleConfirmNegotiation = async () => {
     const finalOfferPrice = isCounterOffer
@@ -69,9 +75,10 @@ export function ExecutionSlideOver() {
     }
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 500));
     setIsSubmitting(false);
 
+    // ⚡ 滿血透傳：將是否為立即購買 (!isCounterOffer) 的核心交割標誌灌入 Zustand
     injectSpecialTransaction({
       sellerName: targetSellerName,
       sellerId: targetSellerId,
@@ -79,16 +86,19 @@ export function ExecutionSlideOver() {
       cardId: targetCardId,
       offerPrice: finalOfferPrice,
       buyerName: "九龍灣卡王",
+      isInstantTake: !isCounterOffer, // 🟢 雙軌分流關鍵：一口價秒殺為 true，提出議價為 false
     });
 
     // 關閉當成交割操作抽屜
     handleClose();
 
     toast.success(
-      isCounterOffer ? "✉️ 議價要約已成功送出" : "🎉 已接受原價並鎖定資產",
+      !isCounterOffer
+        ? "🎉 已接受原價！資產已成功扣鎖預留"
+        : "✉️ 議價要約已成功送出",
       {
-        description: `交易協定已實時注入右下角與賣方的對話串流中！`,
-        duration: 5000,
+        description: `交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！`,
+        duration: 4000,
       },
     );
   };
@@ -146,7 +156,7 @@ export function ExecutionSlideOver() {
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 scrollbar-none">
               <div className="flex flex-col items-center p-5 bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] shadow-inner text-center space-y-4">
                 <div className="relative w-28 h-38 bg-[#17130f] rounded-xl overflow-hidden border-2 border-[rgba(237,232,224,0.15)] shrink-0 shadow-lg">
                   <Image
@@ -181,20 +191,20 @@ export function ExecutionSlideOver() {
                   <button
                     type="button"
                     onClick={() => setIsCounterOffer(false)}
-                    className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer ${!isCounterOffer ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/5 text-[#d4c4b7]"}`}
+                    className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer focus:outline-none ${!isCounterOffer ? "bg-brand/10 border-brand text-brand font-black" : "bg-[#17130f] border-white/5 text-[#d4c4b7]"}`}
                   >
                     🤝 接受賣方原價購入
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsCounterOffer(true)}
-                    className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer ${isCounterOffer ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/5 text-[#d4c4b7]"}`}
+                    className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer focus:outline-none ${isCounterOffer ? "bg-brand/10 border-brand text-brand font-black" : "bg-[#17130f] border-white/5 text-[#d4c4b7]"}`}
                   >
                     💬 向賣家提出議價
                   </button>
                 </div>
 
-                {/* 🟢 Counter-Offer Input */}
+                {/* Counter-Offer Input */}
                 {isCounterOffer && (
                   <div className="space-y-1.5 animate-fadeIn pt-2">
                     <label
@@ -223,7 +233,7 @@ export function ExecutionSlideOver() {
                   type="button"
                   disabled={isSubmitting}
                   onClick={handleConfirmNegotiation}
-                  className="w-full h-11 bg-brand text-[#1A1612] font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all mt-4 shadow-md cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full h-11 bg-brand text-[#1A1612] font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all mt-4 shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none"
                 >
                   {isSubmitting ? (
                     <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />

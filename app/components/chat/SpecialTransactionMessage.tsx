@@ -6,7 +6,7 @@ import { toast } from "sonner";
 export interface SpecialTransactionProps {
   msgId: string;
   buyerName: string;
-  sellerId: string; // 🟢 接入賣家 ID 參數
+  sellerId: string;
   cardName: string;
   cardId: string;
   offerPrice: number;
@@ -16,7 +16,6 @@ export interface SpecialTransactionProps {
 
 export function SpecialTransactionMessage({
   buyerName,
-  sellerId,
   cardName,
   cardId,
   offerPrice,
@@ -73,13 +72,14 @@ export function SpecialTransactionMessage({
         <span className="font-mono text-brand font-black underline decoration-brand/40">
           HK$ {offerPrice.toLocaleString()}
         </span>{" "}
-        - {/* 🟢 核心修復 2：金色粗體底線 Text Button，直穿獨立商品詳情頁面 */}
+        -{" "}
+        {/* 🟢 終極修復點：點擊卡牌名稱，百分之百回流大一統撮合盤口，徹底消滅繞過大盤的死鏈 */}
         <button
           type="button"
           onClick={() =>
-            (window.location.href = `/marketplace/${sellerId}/product/${cardId}`)
+            (window.location.href = `/marketplace/product/${cardId}`)
           }
-          className="font-sans font-bold text-brand underline underline-offset-2 decoration-brand/60 hover:text-[#e8b896] transition-colors cursor-pointer bg-transparent border-none p-0 inline text-left"
+          className="font-sans font-black text-brand underline underline-offset-2 decoration-brand/60 hover:text-[#e8b896] transition-colors cursor-pointer bg-transparent border-none p-0 inline text-left focus:outline-none"
         >
           {cardName}
         </button>
@@ -92,14 +92,14 @@ export function SpecialTransactionMessage({
               <button
                 type="button"
                 onClick={handleAccept}
-                className="h-7 px-3 bg-[#10b981] text-white font-bold text-[11px] rounded-lg hover:bg-[#0fa573] cursor-pointer"
+                className="h-7 px-3 bg-[#10b981] text-white font-bold text-[11px] rounded-lg hover:bg-[#0fa573] cursor-pointer focus:outline-none"
               >
                 接受要約 (預留資產)
               </button>
               <button
                 type="button"
                 onClick={handleReject}
-                className="h-7 px-3 bg-transparent border border-error/40 text-error font-bold text-[11px] rounded-lg hover:bg-error/10 cursor-pointer"
+                className="h-7 px-3 bg-transparent border border-error/40 text-error font-bold text-[11px] rounded-lg hover:bg-error/10 cursor-pointer focus:outline-none"
               >
                 拒絕
               </button>
@@ -114,7 +114,7 @@ export function SpecialTransactionMessage({
             onClick={() =>
               toast.info("⚙️ 提示", { description: "修改功能待後端接口解鎖。" })
             }
-            className="h-7 px-3 bg-[#17130f] border border-white/10 text-[#d4c4b7] font-bold text-[11px] rounded-lg hover:text-brand transition-colors ml-auto cursor-pointer"
+            className="h-7 px-3 bg-[#17130f] border border-white/10 text-[#d4c4b7] font-bold text-[11px] rounded-lg hover:text-brand transition-colors ml-auto cursor-pointer focus:outline-none"
           >
             修改出價 ⚙️
           </button>
