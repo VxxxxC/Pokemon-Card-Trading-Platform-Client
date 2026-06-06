@@ -395,7 +395,7 @@ export default function ProductDetailPage({ params }: PageProps) {
 
             {/* 30天歷史走勢圖 */}
             {hasChartData ? (
-              <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+              <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3 overflow-hidden">
                 <div className="flex items-center justify-between">
                   <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
                     全網 30 天已成交均價走勢
@@ -404,12 +404,13 @@ export default function ProductDetailPage({ params }: PageProps) {
                     Live Index
                   </span>
                 </div>
-                <div className="relative w-full h-[140px]">
+
+                <div className="relative w-full h-[145px] overflow-hidden">
                   <CChart16
                     data={card.chartPoints}
                     xKey="date"
                     yKey="price"
-                    height={140}
+                    height={115}
                     color="#d4a574"
                   />
                 </div>
