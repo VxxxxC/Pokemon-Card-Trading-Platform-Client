@@ -17,7 +17,7 @@ import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import {
   getPublicMemberById,
   getStorefrontListingsByMember,
-} from "@/app/lib/mock-public-members";
+} from "@/app/lib/mock-data/members";
 import { useTradeStore } from "@/app/store/useTradeStore";
 import type { SortKey } from "@/app/store/useMarketStore";
 
@@ -194,8 +194,8 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
 
               <p className="font-mono text-[11.5px] text-[#d4c4b7] leading-relaxed">
                 {vendor.handle} · {vendor.joinDate} · 累計完成{" "}
-                {vendor.completedTrades.toLocaleString()} 筆託管交割 · 目前公開{" "}
-                {storefrontListings.length} 件私域現貨標的
+                {(vendor.completedTrades ?? 0).toLocaleString()} 筆託管交割 ·
+                目前公開 {storefrontListings.length} 件私域現貨標的
               </p>
 
               <p className="max-w-[760px] font-sans text-[13.5px] text-[#d4c4b7] leading-relaxed">
@@ -225,7 +225,7 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
                     評級
                   </p>
                   <p className="font-mono text-[18px] font-black text-[#eae1da]">
-                    {vendor.rating.toFixed(1)}
+                    {(vendor.rating ?? 0).toFixed(1)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-white/6 bg-[#17130f] px-3 py-2.5 text-right">

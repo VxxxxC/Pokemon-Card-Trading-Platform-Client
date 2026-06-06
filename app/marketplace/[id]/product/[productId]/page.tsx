@@ -9,7 +9,7 @@ import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import {
   getPublicMemberById,
   getStorefrontListingsByMember,
-} from "@/app/lib/mock-public-members";
+} from "@/app/lib/mock-data/members";
 
 interface PageProps {
   params: Promise<{ id: string; productId: string }>;
@@ -152,8 +152,8 @@ export default function MerchantProductDetailPage({ params }: PageProps) {
             <div className="flex justify-between p-3.5 bg-[#26211C]">
               <span className="text-[#d4c4b7]">賣家識別</span>
               <span className="font-mono text-[#eae1da]">
-                {member.handle} · {member.completedTrades.toLocaleString()}{" "}
-                trades
+                {member.handle} ·{" "}
+                {(member.completedTrades ?? 0).toLocaleString()} trades
               </span>
             </div>
           </div>

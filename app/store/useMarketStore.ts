@@ -2,20 +2,12 @@
 
 import { create } from "zustand";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
-import {
-  MOCK_PUBLIC_MEMBERS,
-  getStorefrontListingsByMember,
-} from "@/app/lib/mock-public-members";
+import { INITIAL_LISTINGS as CENTRAL_INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
 
 export type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
 
-const MARKETPLACE_MEMBER_IDS = ["PKT-8839-44A"] as const;
-
-export const INITIAL_LISTINGS: MarketplaceListing[] =
-  MARKETPLACE_MEMBER_IDS.flatMap((memberId) => {
-    const member = MOCK_PUBLIC_MEMBERS[memberId];
-    return member ? getStorefrontListingsByMember(member) : [];
-  });
+// Bridge: expose a project-level INITIAL_LISTINGS that is fed from the central mock-data bank
+export const INITIAL_LISTINGS: MarketplaceListing[] = CENTRAL_INITIAL_LISTINGS;
 
 interface MarketState {
   query: string;

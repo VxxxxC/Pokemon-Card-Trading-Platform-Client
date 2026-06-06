@@ -4,11 +4,8 @@ import { useRef, useEffect, useSyncExternalStore, useMemo } from "react";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
-import {
-  useMarketStore,
-  INITIAL_LISTINGS,
-  type SortKey,
-} from "@/app/store/useMarketStore";
+import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
+import { INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
 
 export default function MarketplacePage() {
   // 金融級 SSR 環境安全隔離

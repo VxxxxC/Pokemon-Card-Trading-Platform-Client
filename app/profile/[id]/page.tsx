@@ -10,7 +10,7 @@ import { ProfileHeaderWithChat } from "@/app/components/profile/ProfileHeaderWit
 import {
   getPublicMemberById,
   getStorefrontListingsByMember,
-} from "@/app/lib/mock-public-members";
+} from "@/app/lib/mock-data/members";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
@@ -139,7 +139,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-sans font-bold text-[16px]">買家評價</h2>
             <div className="flex items-center gap-1.5">
-              <StarRating score={member.rating} size={15} />
+              <StarRating score={member.rating ?? 0} size={15} />
               <span className="font-mono text-[14px] font-bold">
                 {member.rating}
               </span>
