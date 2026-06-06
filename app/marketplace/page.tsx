@@ -18,7 +18,7 @@ export default function MarketplacePage() {
     () => false,
   );
 
-  // 🟢 按需原子級狀態訂閱（完全是穩定的 Primitives 型態，絕不產生引用死鎖）
+  // 按需原子級狀態訂閱
   const query = useMarketStore((state) => state.query);
   const setQuery = useMarketStore((state) => state.setQuery);
   const sortKey = useMarketStore((state) => state.sortKey);
@@ -52,8 +52,7 @@ export default function MarketplacePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setIsSearchFocused]);
 
-  // 🟢 終極核心修復：使用原生 useMemo 進行本地快照引用緩存
-  // 當且僅當依賴項字串或陣列元素有實質改變時，才會生成新引用，秒殺重繪死循環！
+  // 使用原生 useMemo 進行本地快照引用緩存
   const filteredListings = useMemo(() => {
     return INITIAL_LISTINGS.filter((card) => {
       const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
@@ -191,9 +190,20 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-              {filteredListings.map((item) => (
-                <MarketplaceCard key={item.id} listing={item} />
-              ))}
+              {filteredListings.map((item) => {
+                // 🟢 終極無痛修復：將單一商家私有路徑，優雅覆寫校準為大一統聚合盤口路由
+                // 這樣做既能 100% 修正點擊跳轉錯位，又絕對不會對組件外殼造成樣式污染或動畫癱瘓
+                const calibratedCommodityItem = {
+                  ...item,
+                  detailHref: `/marketplace/product/${item.id}`,
+                };
+                return (
+                  <MarketplaceCard
+                    key={item.id}
+                    listing={calibratedCommodityItem}
+                  />
+                );
+              })}
             </div>
           )}
         </div>
