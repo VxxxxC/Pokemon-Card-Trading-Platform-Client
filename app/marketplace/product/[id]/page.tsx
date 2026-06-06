@@ -7,6 +7,7 @@ import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
+import { CChart16 } from "@/components/reui/c-chart-16";
 
 // 🟢 純淨版盤口：回歸實物交割，只保留最核心的賣家與叫價三要素
 interface SellOrder {
@@ -245,9 +246,6 @@ export default function ProductDetailPage({ params }: PageProps) {
   const card = PRODUCT_POOL_DATABASE[id] || getFallbackProduct(id);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [hoveredChartIndex, setHoveredChartIndex] = useState<number | null>(
-    null,
-  );
 
   // 盤口交割控制窗狀態
   const [selectedAskOrder, setSelectedAskOrder] = useState<SellOrder | null>(
@@ -271,41 +269,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   // 🟢 規格 3：賣盤由上至下垂直堆疊（價低者排在最前面）
   const sortedOrders = [...card.sellOrders].sort((a, b) => a.price - b.price);
 
-  const chartWidth = 500;
-  const chartHeight = 120;
-  const padding = 20;
   const hasChartData = card.chartPoints.length > 0;
-
-  const minPrice = hasChartData
-    ? Math.min(...card.chartPoints.map((p) => p.price)) * 0.95
-    : 0;
-  const maxPrice = hasChartData
-    ? Math.max(...card.chartPoints.map((p) => p.price)) * 1.05
-    : 0;
-
-  const points = hasChartData
-    ? card.chartPoints.map((pt, i) => {
-        const x =
-          padding +
-          (i / Math.max(card.chartPoints.length - 1, 1)) *
-            (chartWidth - padding * 2);
-        const y =
-          chartHeight -
-          padding -
-          ((pt.price - minPrice) / Math.max(maxPrice - minPrice, 1)) *
-            (chartHeight - padding * 2);
-        return { x, y, ...pt };
-      })
-    : [];
-
-  const pathD = points.reduce(
-    (acc, pt, i) =>
-      i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`,
-    "",
-  );
-  const areaD = hasChartData
-    ? `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`
-    : "";
 
   // 🟢 規格 5：點擊購買，一鍵包裝商戶資訊直發 open-global-transaction 喚醒右側 ExecutionSlideOver 終端
   const handleTriggerInstantBuy = () => {
@@ -440,72 +404,14 @@ export default function ProductDetailPage({ params }: PageProps) {
                     Live Index
                   </span>
                 </div>
-                <div className="relative w-full h-[120px]">
-                  <svg
-                    viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                    width="100%"
-                    height="100%"
-                    className="overflow-visible"
-                  >
-                    <defs>
-                      <linearGradient
-                        id="chartGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="#d4a574"
-                          stopOpacity="0.25"
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="#d4a574"
-                          stopOpacity="0.0"
-                        />
-                      </linearGradient>
-                    </defs>
-                    <path d={areaD} fill="url(#chartGradient)" />
-                    <path
-                      d={pathD}
-                      fill="none"
-                      stroke="#d4a574"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                    {points.map((pt, i) => (
-                      <circle
-                        key={pt.day}
-                        cx={pt.x}
-                        cy={pt.y}
-                        r={hoveredChartIndex === i ? 6 : 3.5}
-                        fill={hoveredChartIndex === i ? "#eae1da" : "#26211C"}
-                        stroke="#d4a574"
-                        strokeWidth="2"
-                        className="cursor-pointer transition-all duration-150"
-                        onMouseEnter={() => setHoveredChartIndex(i)}
-                        onMouseLeave={() => setHoveredChartIndex(null)}
-                      />
-                    ))}
-                  </svg>
-                  {hoveredChartIndex !== null && points[hoveredChartIndex] && (
-                    <div
-                      className="absolute z-20 bg-[#2e2925]/90 border border-[rgba(237,232,224,0.15)] rounded-lg p-2 shadow-lg backdrop-blur-xs font-mono text-[10px] pointer-events-none"
-                      style={{
-                        left: `${(points[hoveredChartIndex].x / chartWidth) * 90}%`,
-                        top: `${(points[hoveredChartIndex].y / chartHeight) * 60 + 10}px`,
-                      }}
-                    >
-                      <p className="text-[#8A8680]">
-                        日期: {points[hoveredChartIndex].date}
-                      </p>
-                      <p className="text-brand font-semibold mt-0.5">
-                        價格: HK$ {points[hoveredChartIndex].price}
-                      </p>
-                    </div>
-                  )}
+                <div className="relative w-full h-[140px]">
+                  <CChart16
+                    data={card.chartPoints}
+                    xKey="date"
+                    yKey="price"
+                    height={140}
+                    color="#d4a574"
+                  />
                 </div>
               </div>
             ) : (
