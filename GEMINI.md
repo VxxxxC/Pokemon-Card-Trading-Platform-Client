@@ -101,6 +101,19 @@ export default async function OrdersGatewayPage() {
 - `/profile/merchant/[id]` ➔ 根據 `merchant_id` 穿透調閱商戶賬目。
 - 散戶對外分享線繼續維持目前的 PKT-ID 格式（`/profile/[id]`）。
 
+### 4. 雙端導航欄登入狀態 UI 動態分流規範 (Navbar Auth State Branching Rules)
+
+**TODO [BACKEND / AUTH / NAV_OPTIMIZATION]:** 當後端身份驗證（Authentication）管線與 Session 對接完畢後，網頁端頂部導航欄（Web Top Nav）與手機端懸浮底欄（Mobile Bottom Nav）必須全面實施動態狀態分流。此處必須強制遵循「方案 A：Server-side / Layout 預判定」或全域 Zustand Auth 狀態守衛，嚴禁在客戶端產生骨架閃爍（Layout Flashing）。
+
+- **網頁版頂部導航欄 (Web View Top Navbar) 分流規則**：
+  - **未登入狀態 (Unauthenticated)** ➔ 導航欄右側顯著渲染高冷黑金風格的 **`[登入／註冊]`** 核心分流按鈕（Primary Auth Button）。
+  - **已登入狀態 (Authenticated)** ➔ 自動隱藏登入按鈕，原地解鎖激活高對比實心黑金的 **`[＋]` 新增商品上架** 快捷動作按鈕。
+
+- **手機端懸浮底欄 (Mobile View Bottom Navbar) 對稱性分流規則**：
+  - **已登入狀態 (Authenticated)** ➔ 滿血活化完美的 **5 欄對稱黃金矩陣**，正中央鎖死 Action 掣：
+    `[首頁]` | `[大盤市場]` | **正中央 `[＋]` 新增商品 Action 掣** | `[交易管理]` | `[會員中心]`
+  - **未登入狀態 (Unauthenticated)** ➔ 為了避免功能失效導致用家強迫症破位，必須將底欄結構重新分流調校：隱藏中央 `+` 號、交易管理與會員中心，改為顯著引流的 **`[首頁]`**、**`[大盤市場]`** 組合，並在核心槽位渲染特製高對比的 **`[登入／註冊]`** 導流按鈕，確保未登入散戶在行動端的極致引流閉環。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
