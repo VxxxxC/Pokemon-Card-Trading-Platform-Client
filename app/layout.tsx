@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
 import { DemoRoleSwitcher } from "@/app/components/shared/DemoRoleSwitcher";
+import { IosPwaModal } from "./components/pwa/IosPwaModal";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -17,7 +18,7 @@ const APP_NAME = "PokéTrade JP";
 const APP_DEFAULT_TITLE = "PokéTrade JP — 寶可夢卡牌專業交易平台";
 const APP_TITLE_TEMPLATE = "%s | PokéTrade JP";
 const APP_DESCRIPTION =
-  "寶可夢卡牌專業交易平台。即時市場數據、安全的第三方託管付款、收藏家及專業投資者服務。";
+    "寶可夢卡牌專業交易平台。即時市場數據、安全的第三方託管付款、收藏家及專業投資者服務。";
 
 /* TODO: Import Hanken Grotesk and JetBrains Mono when available
    Currently: Geist (Headline), Geist (Body fallback)
@@ -26,59 +27,66 @@ const APP_DESCRIPTION =
  */
 
 export const metadata: Metadata = {
-  applicationName: APP_NAME,
-  title: {
-    default: APP_DEFAULT_TITLE,
-    template: APP_TITLE_TEMPLATE,
-  },
-  description: APP_DESCRIPTION,
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: APP_DEFAULT_TITLE,
-  },
-  formatDetection: {
-    telephone: false,
-  },
+    applicationName: APP_NAME,
+    title: {
+        default: APP_DEFAULT_TITLE,
+        template: APP_TITLE_TEMPLATE,
+    },
+    description: APP_DESCRIPTION,
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "default",
+        title: APP_DEFAULT_TITLE,
+    },
+    formatDetection: {
+        telephone: false,
+    },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#17130f",
+    themeColor: "#17130f",
 };
 
 export default function RootLayout({
-  children,
+    children,
 }: Readonly<{
-  children: ReactNode;
+    children: ReactNode;
 }>) {
-  return (
-    <html
-      lang="zh-HK"
-      className={cn(
-        "h-full",
-        "antialiased",
-        GeistSans.variable,
-        GeistMono.variable,
-        "font-sans",
-        geist.variable,
-      )}
-    >
-      <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
-        {/* Sticky Navbar Demo controller */}
-        <DemoRoleSwitcher />
-        {/* 外層：PWA 基建環境供應商 */}
-        <AppSerwistProvider>
-          {/* 網絡狀態斷網警告條 */}
-          <PwaNetworkBanner />
+    return (
+        <html
+            lang="zh-HK"
+            className={cn(
+                "h-full",
+                "antialiased",
+                GeistSans.variable,
+                GeistMono.variable,
+                "font-sans",
+                geist.variable,
+            )}
+        >
+            <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
+                {/* iOS PWA 安裝提示 */}
+                <IosPwaModal />
+                {/* Sticky Navbar Demo controller */}
+                <DemoRoleSwitcher />
+                {/* 外層：PWA 基建環境供應商 */}
+                <AppSerwistProvider>
+                    {/* 網絡狀態斷網警告條 */}
+                    <PwaNetworkBanner />
 
-          {/* 全站主要內容渲染區 */}
-          {children}
-        </AppSerwistProvider>
-        {/* Global Sonner Toast */}
-        <Toaster position="top-center" closeButton richColors expand={false} />
-        {/* Global Add Asset Modal */}
-        <AddAssetModal />
-      </body>
-    </html>
-  );
+                    {/* 全站主要內容渲染區 */}
+                    {children}
+                </AppSerwistProvider>
+                {/* Global Sonner Toast */}
+                <Toaster
+                    position="top-center"
+                    closeButton
+                    richColors
+                    expand={false}
+                />
+                {/* Global Add Asset Modal */}
+                <AddAssetModal />
+            </body>
+        </html>
+    );
 }

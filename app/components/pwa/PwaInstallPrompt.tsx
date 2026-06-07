@@ -6,29 +6,26 @@ import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 const SNOOZE_KEY = "pwa_snooze_until";
 const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
-/**
- * Floating PWA install prompt with cooling-state defense.
- * Uses the shared state machine from usePwaInstall.
- */
 export function PwaInstallPrompt() {
   const { promptState, onInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
-    return Boolean(snoozeUntil && Date.now() < Number(snoozeUntil));
+    if (typeof window === "undefined") return false; //
+    const snoozeUntil = localStorage.getItem(SNOOZE_KEY); //
+    return Boolean(snoozeUntil && Date.now() < Number(snoozeUntil)); //
   });
 
   const handleSnooze = () => {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS));
-    // 🟢 核心連動：發射同視窗自訂廣播，通知頂部 Inline Banner 即時同步外顯
-    window.dispatchEvent(new Event("poketrade:pwa-snooze-changed"));
-    setDismissed(true);
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS)); //
+    // 🟢 核心連動：發射同視窗自訂廣播，通知頂部 Inline Banner 即時同步外顯接力！
+    window.dispatchEvent(new Event("poketrade:pwa-snooze-changed")); //
+    setDismissed(true); //
   };
 
-  if (promptState === "ALREADY_INSTALLED" || dismissed) return null;
+  if (promptState === "ALREADY_INSTALLED" || dismissed) return null; //
 
-  // State A: Native prompt ready — primary install button + snooze
+  // State A: Native prompt ready
   if (promptState === "NATIVE_READY") {
+    //
     return (
       <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
         <p className="font-sans text-[14px] font-medium text-text-primary">
@@ -57,7 +54,7 @@ export function PwaInstallPrompt() {
     );
   }
 
-  // State B: Browser cooling — fallback instructional card with close button
+  // State B: Browser cooling
   return (
     <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
       <div className="flex items-start gap-2">
@@ -67,7 +64,7 @@ export function PwaInstallPrompt() {
         </p>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={handleSnooze} // 🟢 點擊交叉時，同樣觸發 handleSnooze 讓頂部 Banner 完美接力！
           aria-label="關閉提示"
           className="mt-0.5 shrink-0 text-[#d4c4b7] opacity-50 transition-opacity hover:opacity-100 active:scale-90 cursor-pointer"
         >
