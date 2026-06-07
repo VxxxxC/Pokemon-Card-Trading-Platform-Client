@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 從全域中央大腦引入狀態
 import { useTradeStore } from "@/app/store/useTradeStore";
@@ -106,8 +105,6 @@ export function TopNav() {
 
           {/* 右側：狀態、收件匣、登入 */}
           <div className="flex items-center gap-4 shrink-0 ml-auto">
-            <PWANavbarStatus />
-
             {/* 📥 收件匣下拉選單入口 */}
             <div className="relative" ref={popoverRef}>
               <button

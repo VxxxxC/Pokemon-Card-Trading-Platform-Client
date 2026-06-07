@@ -2,7 +2,6 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 接入 Zustand 全域控制中樞
@@ -58,8 +57,6 @@ export function MobileHeader() {
           </Link>
 
           <div className="flex items-center gap-2">
-            <PWANavbarStatus />
-
             {/* 右側：Inbox 入口 */}
             <button
               type="button"
