@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
-// 🟢 引入全域中央大腦
+// 🟢 從全域中央大腦引入狀態
 import { useTradeStore } from "@/app/store/useTradeStore";
 import { useUIStore } from "@/app/store/useUIStore";
 
@@ -22,8 +22,12 @@ export function TopNav() {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
+  // 🟢 注入全域 mockRole 身份真理源
+  const mockRole = useUIStore((state) => state.mockRole);
 
-  // 🟢 從 Zustand 接入受控雷達狀態
+  const isGuest = mockRole === "GUEST";
+
+  // 從 Zustand 接入受控雷達狀態
   const { chats, isChatOpen, setIsChatOpen, setActiveRoomId, openGlobalChat } =
     useTradeStore();
 
@@ -186,38 +190,44 @@ export function TopNav() {
               </AnimatePresence>
             </div>
 
-            {/* 網頁版頂部 Navbar 渲染體內：*/}
-            <button
-              type="button"
-              onClick={() => openAddAssetModal("merch")} // 🟢 點擊直穿「新增商品」模式
-              className="h-9 w-9 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] rounded-xl flex items-center justify-center shadow-md active:scale-[0.95] transition-all cursor-pointer focus:outline-none group"
-              title="快捷新增商品上架"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="group-hover:rotate-90 transition-transform duration-200"
+            {/* 🟢 權限動態控制分流區 */}
+            {!isGuest ? (
+              /* 情況 A: 已登入 ➔ 顯示快捷新增商品上架 [+] 掣 */
+              <button
+                type="button"
+                onClick={() => openAddAssetModal("merch")}
+                className="flex-row h-9 w-28 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] rounded-xl flex items-center justify-center shadow-md active:scale-[0.95] transition-all cursor-pointer focus:outline-none group animate-fadeIn"
+                title="新增商品"
               >
-                <line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round" />
-                <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
-              </svg>
-            </button>
-
-            {/* 登入按鈕 */}
-            <Link
-              href="/auth"
-              className="h-9 px-4 font-sans text-sm font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover inline-flex items-center justify-center"
-            >
-              登入 / 註冊
-            </Link>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  className="group-hover:rotate-90 transition-transform duration-200"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round" />
+                  <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
+                </svg>
+                <span className="text-sm font-medium text-[#17130f] p-2">
+                  新增商品
+                </span>
+              </button>
+            ) : (
+              /* 情況 B: 未登入 ➔ 顯示高冷 [登入 / 註冊] 按鈕 */
+              <Link
+                href="/auth"
+                className="h-9 px-4 font-sans text-sm font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover inline-flex items-center justify-center active:scale-[0.97] transition-all animate-fadeIn"
+              >
+                登入 / 註冊
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* 🟢 頂級改良：免傳遞參數，自動實時追隨 Zustand 雷達 */}
+        {/* 頂級改良：免傳遞參數，自動實時追隨 Zustand 雷達 */}
         <AnimatePresence>{isChatOpen && <GlobalChatConsole />}</AnimatePresence>
       </header>
     </>
