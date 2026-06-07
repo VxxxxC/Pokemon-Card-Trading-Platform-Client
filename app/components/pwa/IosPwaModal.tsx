@@ -9,7 +9,7 @@ interface TutorialSlide {
   title: string;
   desc: string;
   imgSrc: string;
-  // 🟢 核心戰術指針：定義小箭頭在 4:3 畫布體內的 absolute 定位與旋轉角度
+  // 🟢 核心校準：精準對齊 Gemini 實體圖片結構的絕對定位與跳動修正
   arrowStyle: string;
 }
 
@@ -17,20 +17,23 @@ const IOS_PWA_SLIDES: TutorialSlide[] = [
   {
     title: "第一步：點擊分享按鈕",
     desc: "在 Safari 瀏覽器正底部的工具欄中，點擊「分享」核心圖標（一個帶有向上箭頭的正方形）。",
-    imgSrc: "https://picsum.photos/seed/pwa-step1/600/450", // 👈 請手動替換為你的 step1 清淨底片
-    arrowStyle: "bottom-[8%] left-1/2 -translate-x-1/2 rotate-180", // 正下方，箭頭向下跳動指住分享掣
+    imgSrc: "/asset/01.png", // 👈 對齊你放置在 public/asset/01.png 嘅實體圖
+    // 🎯 像素級對齊：Gemini 實體圖的分享掣大約位於整張 4:3 畫布下方的 21% 腹地，箭頭向下指 (rotate-180)
+    arrowStyle: "bottom-[25%] left-1/2 -translate-x-1/2 rotate-180",
   },
   {
     title: "第二步：選擇「加入主畫面」",
     desc: "在彈出的系統功能選單中向下捲動，找到並點擊帶有方形加號的「加入主畫面」選項。",
-    imgSrc: "https://picsum.photos/seed/pwa-step2/600/450", // 👈 請手動替換為你的 step2 清淨底片
-    arrowStyle: "top-[54%] right-[10%] -translate-y-1/2 -rotate-90", // 中右側，箭頭向左跳動指住選單行
+    imgSrc: "/asset/02.png", // 👈 請確保第二張圖也放進了 public/asset/02.png
+    // 🎯 像素級對齊：Add to Home Screen 框正好位於畫布中下腹 (59% 處)，箭頭向上指 (rotate-0) 完美咬合
+    arrowStyle: "top-[66%] left-1/2 -translate-x-1/2 rotate-0",
   },
   {
-    title: "第三步：確認發佈交割",
+    title: "第三步：確認把程式加入到主畫面",
     desc: "看向最後彈出窗的右上方，點擊金色高亮的「新增」按鈕，大盤傳送門即刻安全降落至您的主畫面！",
-    imgSrc: "https://picsum.photos/seed/pwa-step3/600/450", // 👈 請手動替換為你的 step3 清淨底片
-    arrowStyle: "top-[11%] right-[22%] rotate-45", // 右上方，斜向右上跳動指住新增掣
+    imgSrc: "/asset/03.png", // 👈 請確保第三張圖也放進了 public/asset/03.png
+    // 🎯 像素級對齊：右上方「Add」掣位於全體畫布的 top-24% right-24% 內縮視域，斜向右上指 (rotate-45)
+    arrowStyle: "top-[29%] right-[29%] rotate-45",
   },
 ];
 
@@ -47,7 +50,6 @@ export function IosPwaModal() {
     if (currentStep < IOS_PWA_SLIDES.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      // 走到最後一步點擊關閉
       handleClose();
     }
   };
@@ -76,7 +78,7 @@ export function IosPwaModal() {
         {/* 頂部 Header 欄 */}
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
           <div>
-            <p className="font-geist-sans  text-xs text-brand font-black tracking-widest block">
+            <p className="font-sans text-xs text-brand font-black tracking-widest block uppercase">
               [macOS/iOS/iPadOS] Safari
             </p>
             <h3 className="font-sans font-black text-[15px] text-[#eae1da] mt-0.5">
@@ -94,7 +96,7 @@ export function IosPwaModal() {
 
         {/* 核心 Carousel 視窗 */}
         <div className="space-y-4 flex-1">
-          {/* 🟢 方案 B 的靈魂：4:3 獨立高純淨度畫布容器 */}
+          {/* 4:3 獨立高純淨度畫布容器 */}
           <div className="relative w-full aspect-[4/3] bg-[#17130f] rounded-xl border border-white/5 overflow-hidden shadow-inner group">
             <AnimatePresence mode="wait">
               <motion.div
@@ -112,13 +114,14 @@ export function IosPwaModal() {
                   src={currentSlide.imgSrc}
                   alt={currentSlide.title}
                   fill
-                  className="object-cover"
+                  // 🟢 核心修正：改用 object-contain，防止 4:3 圖片在極端窄屏被切邊，鎖死幾何坐標軸
+                  className="object-contain"
                   unoptimized
                 />
               </motion.div>
             </AnimatePresence>
 
-            {/* 🟢 CSS 物理跳動小箭頭防線：自動讀取配置，100% 精準直擊 */}
+            {/* 🟢 CSS 幾何跳動小箭頭：100% 鎖死 Gemini 實體按鈕位 */}
             <div
               className={`absolute z-30 pointer-events-none transition-all duration-300 ${currentSlide.arrowStyle}`}
             >
@@ -144,7 +147,7 @@ export function IosPwaModal() {
             </div>
           </div>
 
-          {/* 銳利文字排版區 —— 由前端受控，絕不模糊變形 */}
+          {/* 銳利文字排版區 */}
           <div className="space-y-1.5 min-h-[76px] px-1 text-center sm:text-left">
             <div className="flex items-center justify-between">
               <h4 className="font-sans font-extrabold text-[14px] text-brand">
@@ -193,7 +196,6 @@ export function IosPwaModal() {
   );
 }
 
-// 快捷外部單例召喚器
 export const triggerIosPwaModal = () => {
   useUIStore.getState().openIosPwaModal();
 };

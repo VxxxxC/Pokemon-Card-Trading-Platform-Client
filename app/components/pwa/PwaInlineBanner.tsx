@@ -66,9 +66,9 @@ export function PwaInlineBanner() {
           <button
             type="button"
             onClick={openIosPwaModal}
-            className="h-6 px-2.5 bg-transparent hover:bg-[#17130f]/10 border border-[#17130f]/20 text-[#17130f] font-sans font-extrabold text-[10.5px] rounded-md transition-all active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1 focus:outline-none"
+            className="h-6 px-2.5 bg-transparent hover:bg-[#17130f]/10 border border-[#17130f]/20 text-[#17130f] font-sans font-medium text-[10.5px] rounded-md transition-all active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1 focus:outline-none"
           >
-            📖 安裝教學
+            📖 Safari 安裝教學
           </button>
 
           <button
