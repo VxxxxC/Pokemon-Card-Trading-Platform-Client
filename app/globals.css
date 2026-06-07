@@ -6,276 +6,297 @@
 
 /* PokéTrade JP — 暗金色設計系統 (Dark Golden Theme Only) */
 @layer base {
-  :root {
-    /* 背景層次 */
-    --bg-shell:          #1A1612;
-    --bg-page:           #17130f;
-    --bg-card:           #26211C;
-    --bg-elevated:       #2e2925;
-    --bg-hover:          #39342f;
-    /* 文字 */
-    --text-primary:      #eae1da;
-    --text-secondary:    #d4c4b7;
-    --text-disabled:     #50453b;
-    /* 邊框 */
-    --border:            rgba(237, 232, 224, 0.08);
-    --border-strong:     rgba(237, 232, 224, 0.12);
-    /* 品牌 */
-    --brand:             #d4a574;
-    --brand-hover:       #e8b896;
-    /* 語義色 */
-    --success:           #10b981;
-    --warning:           #ef4444;
-  }
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+    :root {
+        /* 背景層次 */
+        --bg-shell: #1a1612;
+        --bg-page: #17130f;
+        --bg-card: #26211c;
+        --bg-elevated: #2e2925;
+        --bg-hover: #39342f;
+        /* 文字 */
+        --text-primary: #eae1da;
+        --text-secondary: #d4c4b7;
+        --text-disabled: #50453b;
+        /* 邊框 */
+        --border: rgba(237, 232, 224, 0.08);
+        --border-strong: rgba(237, 232, 224, 0.12);
+        /* 品牌 */
+        --brand: #d4a574;
+        --brand-hover: #e8b896;
+        /* 語義色 */
+        --success: #10b981;
+        --error: #ef4444; /* 🟢 修正點 1：獨立開闢正宗金融級別大盤跌幅紅色 */
+        --warning: #f59e0b; /* 🟢 修正點 2：回歸標準警示橙黃色，消滅命名混亂 */
+    }
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+    html {
+        @apply font-sans;
+    }
 }
 
 @theme inline {
-  /* 背景層次 */
-  --color-bg-shell:        var(--bg-shell);
-  --color-bg-page:         var(--bg-page);
-  --color-bg-card:         var(--bg-card);
-  --color-bg-elevated:     var(--bg-elevated);
-  --color-bg-hover:        var(--bg-hover);
-  /* 文字 */
-  --color-text-primary:    var(--text-primary);
-  --color-text-secondary:  var(--text-secondary);
-  --color-text-disabled:   var(--text-disabled);
-  /* 品牌 */
-  --color-brand:           var(--brand);
-  --color-brand-hover:     var(--brand-hover);
-  /* 語義色 */
-  --color-success:         var(--success);
-  --color-warning:         var(--warning);
-  /* 字體 — Geist + Hanken Grotesk (Body) + JetBrains Mono (Data) */
-  --font-sans:          var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  /* TODO: Add Hanken Grotesk and JetBrains Mono CSS variables when fonts are imported */
-  --font-heading:          var(--font-sans);
-  --color-sidebar-ring:          var(--sidebar-ring);
-  --color-sidebar-border:          var(--sidebar-border);
-  --color-sidebar-accent-foreground:          var(--sidebar-accent-foreground);
-  --color-sidebar-accent:          var(--sidebar-accent);
-  --color-sidebar-primary-foreground:          var(--sidebar-primary-foreground);
-  --color-sidebar-primary:          var(--sidebar-primary);
-  --color-sidebar-foreground:          var(--sidebar-foreground);
-  --color-sidebar:          var(--sidebar);
-  --color-chart-5:          var(--chart-5);
-  --color-chart-4:          var(--chart-4);
-  --color-chart-3:          var(--chart-3);
-  --color-chart-2:          var(--chart-2);
-  --color-chart-1:          var(--chart-1);
-  --color-ring:          var(--ring);
-  --color-input:          var(--input);
-  --color-border:          var(--border);
-  --color-destructive:          var(--destructive);
-  --color-accent-foreground:          var(--accent-foreground);
-  --color-accent:          var(--accent);
-  --color-muted-foreground:          var(--muted-foreground);
-  --color-muted:          var(--muted);
-  --color-secondary-foreground:          var(--secondary-foreground);
-  --color-secondary:          var(--secondary);
-  --color-primary-foreground:          var(--primary-foreground);
-  --color-primary:          var(--primary);
-  --color-popover-foreground:          var(--popover-foreground);
-  --color-popover:          var(--popover);
-  --color-card-foreground:          var(--card-foreground);
-  --color-card:          var(--card);
-  --color-foreground:          var(--foreground);
-  --color-background:          var(--background);
-  --radius-sm:          calc(var(--radius) * 0.6);
-  --radius-md:          calc(var(--radius) * 0.8);
-  --radius-lg:          var(--radius);
-  --radius-xl:          calc(var(--radius) * 1.4);
-  --radius-2xl:          calc(var(--radius) * 1.8);
-  --radius-3xl:          calc(var(--radius) * 2.2);
-  --radius-4xl:          calc(var(--radius) * 2.6);
-  --color-invert-foreground:          var(--invert-foreground);
-  --color-invert:          var(--invert);
-  --color-warning-foreground:          var(--warning-foreground);
-  --color-info-foreground:          var(--info-foreground);
-  --color-info:          var(--info);
-  --color-success-foreground:          var(--success-foreground);
-  --color-destructive-foreground:          var(--destructive-foreground);
+    /* 背景層次 */
+    --color-bg-shell: var(--bg-shell);
+    --color-bg-page: var(--bg-page);
+    --color-bg-card: var(--bg-card);
+    --color-bg-elevated: var(--bg-elevated);
+    --color-bg-hover: var(--bg-hover);
+    /* 文字 */
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-disabled: var(--text-disabled);
+    /* 品牌 */
+    --color-brand: var(--brand);
+    --color-brand-hover: var(--brand-hover);
+
+    /* 🟢 修正點 3：在 Tailwind v4 核心引擎實體註冊語意通道！
+      有了這三條線，全站的 text-error / bg-error / text-success 馬上滿血復活，再無死鏈！ */
+    --color-success: var(--success);
+    --color-error: var(--error);
+    --color-warning: var(--warning);
+
+    /* 字體 — Geist + Hanken Grotesk (Body) + JetBrains Mono (Data) */
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-geist-mono);
+    /* TODO: Add Hanken Grotesk and JetBrains Mono CSS variables when fonts are imported */
+    --font-heading: var(--font-sans);
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+    --color-invert-foreground: var(--invert-foreground);
+    --color-invert: var(--invert);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-info-foreground: var(--info-foreground);
+    --color-info: var(--info);
+    --color-success-foreground: var(--success-foreground);
+    --color-destructive-foreground: var(--destructive-foreground);
 }
 
 body {
-  background: var(--bg-page);
-  color: var(--text-primary);
-  font-family: var(--font-geist-sans), 'Chiron GoRound TC', sans-serif;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: var(--font-geist-sans), "Chiron GoRound TC", sans-serif;
 }
 
 /* Live ticker tape — hardware-accelerated translateX only */
 @keyframes ticker-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
 }
 
 .animate-ticker {
-  animation: ticker-scroll 45s linear infinite;
-  will-change: transform;
+    animation: ticker-scroll 45s linear infinite;
+    will-change: transform;
 }
 
 /* Active escrow node ring pulse — warm gold (Stitch #d4a574) */
 @keyframes ring-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.50);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(212, 165, 116, 0);
-  }
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(212, 165, 116, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(212, 165, 116, 0);
+    }
 }
 
 .animate-ring-pulse {
-  animation: ring-pulse 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+    animation: ring-pulse 2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
 }
 
 /* Skeleton shimmer for loading states */
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }
 
 .skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    #26211C 0%,
-    #2e2925 50%,
-    #26211C 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+    background: linear-gradient(90deg, #26211c 0%, #2e2925 50%, #26211c 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
 }
 
 /* Floating relic card animations — Auth page */
 @keyframes float-a {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-14px); }
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-14px);
+    }
 }
 
 @keyframes float-b {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-9px); }
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-9px);
+    }
 }
 
 @keyframes float-c {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-18px); }
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-18px);
+    }
 }
 
-.animate-float-a { animation: float-a 5s ease-in-out infinite; }
-.animate-float-b { animation: float-b 4s ease-in-out infinite; }
-.animate-float-c { animation: float-c 6s ease-in-out infinite; }
+.animate-float-a {
+    animation: float-a 5s ease-in-out infinite;
+}
+.animate-float-b {
+    animation: float-b 4s ease-in-out infinite;
+}
+.animate-float-c {
+    animation: float-c 6s ease-in-out infinite;
+}
 
 /* Hide scrollbar for horizontal slider (Following Feed, etc.) */
 .scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 :root {
-  --card:          oklch(1 0 0);
-  --card-foreground:          oklch(0.145 0 0);
-  --popover:          oklch(1 0 0);
-  --popover-foreground:          oklch(0.145 0 0);
-  --primary:          oklch(0.205 0 0);
-  --primary-foreground:          oklch(0.985 0 0);
-  --secondary:          oklch(0.97 0 0);
-  --secondary-foreground:          oklch(0.205 0 0);
-  --muted:          oklch(0.97 0 0);
-  --muted-foreground:          oklch(0.556 0 0);
-  --accent:          oklch(0.97 0 0);
-  --accent-foreground:          oklch(0.205 0 0);
-  --destructive:          oklch(0.577 0.245 27.325);
-  --border:          oklch(0.922 0 0);
-  --input:          oklch(0.922 0 0);
-  --ring:          oklch(0.708 0 0);
-  --chart-1:          oklch(0.87 0 0);
-  --chart-2:          oklch(0.556 0 0);
-  --chart-3:          oklch(0.439 0 0);
-  --chart-4:          oklch(0.371 0 0);
-  --chart-5:          oklch(0.269 0 0);
-  --radius:          0.625rem;
-  --sidebar:          oklch(0.985 0 0);
-  --sidebar-foreground:          oklch(0.145 0 0);
-  --sidebar-primary:          oklch(0.205 0 0);
-  --sidebar-primary-foreground:          oklch(0.985 0 0);
-  --sidebar-accent:          oklch(0.97 0 0);
-  --sidebar-accent-foreground:          oklch(0.205 0 0);
-  --sidebar-border:          oklch(0.922 0 0);
-  --sidebar-ring:          oklch(0.708 0 0);
-  --background:          oklch(1 0 0);
-  --foreground:          oklch(0.145 0 0);
-  --destructive-foreground:          var(--color-red-800);
-  --success:          var(--color-emerald-500);
-  --success-foreground:          var(--color-emerald-900);
-  --info:          var(--color-violet-500);
-  --info-foreground:          var(--color-violet-900);
-  --warning:          var(--color-yellow-500);
-  --warning-foreground:          var(--color-yellow-900);
-  --invert:          var(--color-zinc-900);
-  --invert-foreground:          var(--color-zinc-50);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --destructive-foreground: var(--color-red-800);
+    --success-foreground: var(--color-emerald-900);
+    --info-foreground: var(--color-violet-900);
+    --warning-foreground: var(--color-yellow-900);
+    --invert: var(--color-zinc-900);
+    --invert-foreground: var(--color-zinc-50);
+
+    /* 🟢 修正點 4：將底部覆蓋鏈的變數進行解耦，確保全站真理源完全一致 */
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
 }
 
 .dark {
-  --background:          oklch(0.145 0 0);
-  --foreground:          oklch(0.985 0 0);
-  --card:          oklch(0.205 0 0);
-  --card-foreground:          oklch(0.985 0 0);
-  --popover:          oklch(0.205 0 0);
-  --popover-foreground:          oklch(0.985 0 0);
-  --primary:          oklch(0.922 0 0);
-  --primary-foreground:          oklch(0.205 0 0);
-  --secondary:          oklch(0.269 0 0);
-  --secondary-foreground:          oklch(0.985 0 0);
-  --muted:          oklch(0.269 0 0);
-  --muted-foreground:          oklch(0.708 0 0);
-  --accent:          oklch(0.269 0 0);
-  --accent-foreground:          oklch(0.985 0 0);
-  --destructive:          oklch(0.704 0.191 22.216);
-  --border:          oklch(1 0 0 / 10%);
-  --input:          oklch(1 0 0 / 15%);
-  --ring:          oklch(0.556 0 0);
-  --chart-1:          oklch(0.87 0 0);
-  --chart-2:          oklch(0.556 0 0);
-  --chart-3:          oklch(0.439 0 0);
-  --chart-4:          oklch(0.371 0 0);
-  --chart-5:          oklch(0.269 0 0);
-  --sidebar:          oklch(0.205 0 0);
-  --sidebar-foreground:          oklch(0.985 0 0);
-  --sidebar-primary:          oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground:          oklch(0.985 0 0);
-  --sidebar-accent:          oklch(0.269 0 0);
-  --sidebar-accent-foreground:          oklch(0.985 0 0);
-  --sidebar-border:          oklch(1 0 0 / 10%);
-  --sidebar-ring:          oklch(0.556 0 0);
-  --destructive-foreground:          var(--color-red-600);
-  --success:          var(--color-emerald-500);
-  --success-foreground:          var(--color-emerald-600);
-  --info:          var(--color-violet-500);
-  --info-foreground:          var(--color-violet-600);
-  --warning:          var(--color-yellow-500);
-  --warning-foreground:          var(--color-yellow-600);
-  --invert:          var(--color-zinc-700);
-  --invert-foreground:          var(--color-zinc-50);
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --destructive-foreground: var(--color-red-600);
+    --destructive-foreground: var(--color-red-600);
+    --success-foreground: var(--color-emerald-600);
+    --info-foreground: var(--color-violet-600);
+    --warning-foreground: var(--color-yellow-600);
+    --invert: var(--color-zinc-700);
+    --invert-foreground: var(--color-zinc-50);
 }
