@@ -5,10 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, useAnimationControls, PanInfo } from "framer-motion";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
-import {
-  BuyButton,
-  BidButton,
-} from "@/app/components/transactions/GlobalTxButtons";
+import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 const newArrivals: MarketplaceListing[] = [
   {
@@ -208,9 +205,8 @@ export function NewArrivals() {
               </div>
 
               {/* 原子交易按鈕列 */}
-              <div className="px-3.5 pb-4 pt-1 flex flex-col sm:flex-row gap-2 w-full">
+              <div className="px-3.5 pb-4 pt-1 w-full">
                 <BuyButton listing={item} className="w-full py-1.5 h-8.5" />
-                <BidButton listing={item} className="w-full py-1.5 h-8.5" />
               </div>
             </article>
           ))}

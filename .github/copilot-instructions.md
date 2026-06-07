@@ -30,23 +30,93 @@
 - **步驟 3：程式碼實作 (`react:components` & `shadcn-ui`)**
   一旦 Stitch 原型獲得批准，請使用 `.github/prompts/react-components.prompt.md` 和 `.github/prompts/shadcn-ui.prompt.md` 技能將其轉換為模組化的 Next.js Server/Client 組件。
 
-## 個人檔案路由架構
+## 👑 個人檔案路由架構與 Route Groups 隔離防線
 
-**關鍵：** 三種不同的個人檔案路由模式及其用途：
+**關鍵：** 系統現已採用 Next.js App Router 頂級的 **Route Groups (路由分組)** 隔離傘機制，將第一人稱控制艙與獨立 Full Page 進行完美解耦。
 
-- `/profile/user` - 您自己的使用者個人檔案（第一人稱，需要身分驗證）
-- `/profile/merchant` - 您自己的商家儀表板（第一人稱，需要身分驗證 + 商家角色）
-- `/profile/[id]` - 查看其他使用者的公開個人檔案（第三人稱，例如：`PKT-8839-44A`）
+### 1. 物理資料夾結構與 Layout 繼承規則
 
-**TODO [BACKEND]:** 當 Supabase 身分驗證整合後：
+為了防止 Next.js 的巢狀佈局（Nested Layouts）對全版頁面造成污染，`/profile/user` 的物理結構已重構如下：
 
-- `/profile/user/[id]` - 根據資料庫 user_id 查看使用者個人檔案（供內部管理員使用）
-- `/profile/merchant/[id]` - 根據資料庫 merchant_id 查看商家店鋪（供內部管理員使用）
-- 目前的 `/profile/[id]` 使用 PKT-ID 格式進行公開分享
+- `app/profile/user/(dashboard)/` ➔ **路由分組隔離傘**。網址列會自動忽略 `(dashboard)` 欄位。
+  - `layout.tsx` ➔ 承載高冷黑金風格的 `[Profile Hero 身分看板大橫幅]`（內含 5 階 Stepper 與勳章牆）以及 4 大交易核心 Tab 導航。
+  - `page.tsx` ➔ 帳號總覽首頁（提純版資產估值與近期流水）。
+  - `collection/page.tsx`, `inventory/page.tsx`, `orders/page.tsx` ➔ 核心交易子頁，**100% 繼承大橫幅外殼**。
+- `app/profile/user/rewards/page.tsx` ➔ **全版獨立頁 (Full Page)**。置於括號外圍，徹底繞過大橫幅殼，自主承載麵包屑與全域大盤導航。
+- `app/profile/user/settings/page.tsx` ➔ **全版獨立頁 (Full Page)**。置於括號外圍，由 Hero 右上角齒輪 ⚙️ 導流直穿。
+
+---
+
+## 🚀 Future Optimization: 後端整合期路由與權限優化方案 (鎖定：全端方案 A)
+
+**TODO [BACKEND / SUPABASE INTEGRATION]:** 當 Supabase Auth 與資料庫權限（User Roles）正式對接後，所有雙端權限分流與路由優化**必須強制執行「方案 A：Server Component 動態開關」**，嚴禁在客戶端使用 `useEffect` 進行閃爍跳轉。
+
+### 1. 同址不同面 (Single URL, Multi-Role Views) 實作鐵律
+
+針對如 `/orders`（訂單中心）或需要根據用戶身份（買家 `BUYER` / 商家 `MERCHANT`）渲染截然不同介面的核心路由，必須保持單一 URL 語意清爽化：
+
+- **禁止規則**：嚴禁在同層級建立兩個 Route Groups（例如同時存在 `(buyer-switches)/orders` 與 `(merchant-switches)/orders`），此舉會引發 Next.js 編譯時的路由衝突報錯（Duplicate Routes）。
+- **黃金執行標準**：必須將該路由建立為單一的物理路徑（例如 `app/orders/page.tsx`），並確立為 **Async Server Component (異步伺服器端組件，移除 "use client")**。
+
+### 2. 伺服器端動態分流範本
+
+未來實作權限切換時，必須嚴格對齊以下架構閉環：
+
+```tsx
+// app/orders/page.tsx (未來後端接入時的標準 Server Component 範本)
+import { redirect } from "next/navigation";
+import { createServerClient } from "@/utils/supabase/server";
+import { BuyerOrderView } from "@/app/components/orders/BuyerOrderView";
+import { MerchantOrderView } from "@/app/components/orders/MerchantOrderView";
+
+export default async function OrdersGatewayPage() {
+  const supabase = createServerClient();
+
+  // 1. 在 Edge/Server 端極速獲取真實身份 Session，0 延遲，無前端閃爍
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const userRole = user.user_metadata.role; // 'BUYER' | 'MERCHANT'
+
+  // 2. 網址維持原汁原味的 /orders，在伺服器端直接動態吐出對應的佈局組件
+  return (
+    <div className="min-h-screen bg-bg-page">
+      {userRole === "MERCHANT" ? (
+        <MerchantOrderView userId={user.id} />
+      ) : (
+        <BuyerOrderView userId={user.id} />
+      )}
+    </div>
+  );
+}
+```
+
+### 3. 全域管理員穿透路由
+
+當 Supabase RLS 策略與管理員角色佈署完畢後，開啟以下內部審查管線：
+
+- `/profile/user/[id]` ➔ 根據 `user_id` 穿透審查特定會員。
+- `/profile/merchant/[id]` ➔ 根據 `merchant_id` 穿透調閱商戶賬目。
+- 散戶對外分享線繼續維持目前的 PKT-ID 格式（`/profile/[id]`）。
+
+### 4. 雙端導航欄登入狀態 UI 動態分流規範 (Navbar Auth State Branching Rules)
+
+**TODO [BACKEND / AUTH / NAV_OPTIMIZATION]:** 當後端身份驗證（Authentication）管線與 Session 對接完畢後，網頁端頂部導航欄（Web Top Nav）與手機端懸浮底欄（Mobile Bottom Nav）必須全面實施動態狀態分流。此處必須強制遵循「方案 A：Server-side / Layout 預判定」或全域 Zustand Auth 狀態守衛，嚴禁在客戶端產生骨架閃爍（Layout Flashing）。
+
+- **網頁版頂部導航欄 (Web View Top Navbar) 分流規則**：
+  - **未登入狀態 (Unauthenticated)** ➔ 導航欄右側顯著渲染高冷黑金風格的 **`[登入／註冊]`** 核心分流按鈕（Primary Auth Button）。
+  - **已登入狀態 (Authenticated)** ➔ 自動隱藏登入按鈕，原地解鎖激活高對比實心黑金的 **`[＋]` 新增商品上架** 快捷動作按鈕。
+
+- **手機端懸浮底欄 (Mobile View Bottom Navbar) 對稱性分流規則**：
+  - **已登入狀態 (Authenticated)** ➔ 滿血活化完美的 **5 欄對稱黃金矩陣**，正中央鎖死 Action 掣：
+    `[首頁]` | `[大盤市場]` | **正中央 `[＋]` 新增商品 Action 掣** | `[交易管理]` | `[會員中心]`
+  - **未登入狀態 (Unauthenticated)** ➔ 為了避免功能失效導致用家強迫症破位，必須將底欄結構重新分流調校：隱藏中央 `+` 號、交易管理與會員中心，改為顯著引流的 **`[首頁]`**、**`[大盤市場]`** 組合，並在核心槽位渲染特製高對比的 **`[登入／註冊]`** 導流按鈕，確保未登入散戶在行動端的極致引流閉環。
 
 ## 核心指令
 
-1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體和間距。嚴禁發明隨意的 Tailwind 數值。
+1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
 2. **強制執行「反劣化」 (Anti-Slop Enforcement)**：
    - 絕不使用預設的藍色/紫色發光按鈕。
    - 絕不使用 "Lorem Ipsum" 或通用的 AI 填充文本（如 "Elevate your experience"）。請使用真實的日本寶可夢卡牌數據（例如："Pikachu AR", "Charizard ex SAR"）。
@@ -56,6 +126,12 @@
    - 行動優先 (Mobile-first) 佈局是不容談判的。
    - 對於代管交易 (Escrow) 和交易邏輯，確保 Server 組件 and Client 組件之間的狀態分離。
    - **禁止使用 `useEffect` + `useState` + `setTimeout` 進行客戶端掛載隔離(Hydration Guard)**：此舉會造成 React 19 與 Next.js App Router 觸發同步 `setState` 的級聯渲染(Cascading Renders)效能警告。凡需要進行伺服器端(SSR)與瀏覽器端環境安全隔離的組件，**必須統一使用 React 官方原生 `useSyncExternalStore` 快照機制**（例如：`useSyncExternalStore(() => () => {}, () => true, () => false)`），以確保極致的交割性能與渲染穩定度。
+4. **全域狀態管理與 Zustand 領域驅動鐵律 (Zustand State Architecture Enforcement)**：
+   - **全域狀態唯一真理源**：專案已全面轉型為 Zustand 全域狀態控盤，逐步 Revamp 淘汰舊有的 Prop Drilling 以及無人接收的全域 `CustomEvent` 廣播。
+   - **分佈式目錄解耦規範**：所有全域狀態 Store 必須嚴格起在 `$PROJECT_ROOT/store/` 目錄下。
+   - **嚴禁巨石 Store (Anti-Monolithic Store)**：嚴禁將所有不同模組、業務領域的狀態無腦塞入單一的 `useTradeStore.ts` 裡面。
+   - **架構擴充命名規範**：開發新功能或拓展全新業務領域（如接下來的 Merchant 後台、Stripe Connect 託管狀態、會員資產包等）時，**必須單獨建立一個相對應名稱的 Store 檔案**（例如：商戶模組使用 `store/useMerchantStore.ts`、市場篩選使用 `store/useMarketStore.ts`）。
+   - **按需動態訂閱**：組件在引入全域 Store 時，必須使用精準動態解構（例如 `const isChatOpen = useTradeStore(state => state.isChatOpen)`），嚴禁無腦全量引入（例如 `const state = useTradeStore()`），以防止單一狀態微幅更新觸發全網頁集體連鎖重繪。
 
 ## 任務管理與規劃指令
 

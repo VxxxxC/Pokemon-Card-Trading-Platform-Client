@@ -8,6 +8,8 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
+import { DemoRoleSwitcher } from "@/app/components/shared/DemoRoleSwitcher";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -62,6 +64,8 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-dvh bg-bg-page text-text-primary font-sans">
+        {/* Sticky Navbar Demo controller */}
+        <DemoRoleSwitcher />
         {/* 外層：PWA 基建環境供應商 */}
         <AppSerwistProvider>
           {/* 網絡狀態斷網警告條 */}
@@ -70,8 +74,10 @@ export default function RootLayout({
           {/* 全站主要內容渲染區 */}
           {children}
         </AppSerwistProvider>
-        {/* 🟢 Global Sonner Toast Hub */}
+        {/* Global Sonner Toast */}
         <Toaster position="top-center" closeButton richColors expand={false} />
+        {/* Global Add Asset Modal */}
+        <AddAssetModal />
       </body>
     </html>
   );

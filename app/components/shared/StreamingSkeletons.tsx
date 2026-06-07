@@ -20,7 +20,9 @@ export function TransactionWallSkeleton() {
 
             {/* Main card info item block stub */}
             <div className="flex-1 space-y-1.5 min-w-0">
-              <Skeleton className={`h-3.5 bg-[#17130f] rounded ${widths[i % 4]}`} />
+              <Skeleton
+                className={`h-3.5 bg-[#17130f] rounded ${widths[i % 4]}`}
+              />
               <Skeleton className="h-2.5 bg-[#17130f] rounded w-1/3" />
             </div>
 

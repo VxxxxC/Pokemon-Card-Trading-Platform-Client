@@ -8,55 +8,38 @@ import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
 
 const MERCHANT_TABS: TabItem[] = [
-  { href: "/profile/merchant",           label: "儀表板",   icon: "📊" },
+  { href: "/profile/merchant", label: "儀表板", icon: "📊" },
   { href: "/profile/merchant/inventory", label: "商品管理", icon: "🗂️" },
-  { href: "/profile/merchant/sales",     label: "銷售訂單", icon: "🤝" },
-  { href: "/profile/merchant/finance",   label: "資金金流", icon: "💰" },
-  { href: "/profile/merchant/settings",  label: "店舖設定", icon: "⚙️" },
+  { href: "/profile/merchant/sales", label: "銷售訂單", icon: "🤝" },
+  { href: "/profile/merchant/finance", label: "資金金流", icon: "💰" },
+  { href: "/profile/merchant/settings", label: "店舖設定", icon: "⚙️" },
 ];
 
 const mockMerchant = {
-  name:           "田中 Koji",
-  shopName:       "KojiTCG Premium",
-  handle:         "@koji_tcg",
-  avatarSeed:     "merchant-koji-tcg",
-  joinDate:       "2023年 11月加入",
-  kycVerified:    true,
+  name: "田中 Koji",
+  shopName: "KojiTCG Premium",
+  handle: "@koji_tcg",
+  avatarSeed: "merchant-koji-tcg",
+  joinDate: "2023年 11月加入",
+  kycVerified: true,
   stripeConnected: true,
-  rating:         4.95,
-  reviewCount:    187,
-  totalListings:  34,
+  rating: 4.95,
+  reviewCount: 187,
+  totalListings: 34,
   monthlyRevenue: 384_600,
 };
 
-export default function MerchantProfileLayout({ children }: { children: ReactNode }) {
+export default function MerchantProfileLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <div className="min-h-dvh bg-bg-page flex flex-col">
       <TopNav />
       <MobileHeader />
 
       <main className="flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
-        {/* ── Demo Role Banner ──────────────────────────────────────────── */}
-        <div className="mt-4 mb-4 flex items-center justify-between px-3 py-2 bg-[rgba(212,165,116,0.06)] border border-brand/20 rounded-xl">
-          <span className="font-mono text-[11px] text-brand">
-            Demo 模式：商戶 (MERCHANT)
-          </span>
-          <div className="flex gap-2">
-            <Link
-              href="/profile/user"
-              className="font-mono text-[11px] text-text-secondary hover:text-text-primary border border-[rgba(237,232,224,0.12)] px-2 py-0.5 rounded-md transition-colors"
-            >
-              一般會員
-            </Link>
-            <Link
-              href="/admin"
-              className="font-mono text-[11px] text-text-secondary hover:text-text-primary border border-[rgba(237,232,224,0.12)] px-2 py-0.5 rounded-md transition-colors"
-            >
-              管理員
-            </Link>
-          </div>
-        </div>
-
         {/* ── Merchant Hero ─────────────────────────────────────────────── */}
         <section
           className="relative mb-5 rounded-2xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
@@ -77,7 +60,17 @@ export default function MerchantProfileLayout({ children }: { children: ReactNod
               <div className="flex gap-2 flex-wrap justify-end">
                 {mockMerchant.kycVerified && (
                   <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success bg-[rgba(16,185,129,0.12)] px-2 py-1 rounded-lg border border-success/20">
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg
+                      width="9"
+                      height="9"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                     KYC 已驗證
@@ -85,7 +78,13 @@ export default function MerchantProfileLayout({ children }: { children: ReactNod
                 )}
                 {mockMerchant.stripeConnected && (
                   <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#635bff] bg-[rgba(99,91,255,0.12)] px-2 py-1 rounded-lg border border-[rgba(99,91,255,0.25)]">
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <svg
+                      width="9"
+                      height="9"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
                       <circle cx="12" cy="12" r="10" />
                     </svg>
                     Stripe 已連結
@@ -94,7 +93,10 @@ export default function MerchantProfileLayout({ children }: { children: ReactNod
               </div>
             </div>
 
-            <h1 id="merchant-hero-name" className="font-sans font-bold text-[22px] text-text-primary">
+            <h1
+              id="merchant-hero-name"
+              className="font-sans font-bold text-[22px] text-text-primary"
+            >
               {mockMerchant.shopName}
             </h1>
             <p className="font-mono text-[12px] text-text-secondary mt-0.5">

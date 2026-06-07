@@ -1,8 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Badge {
   id: string;
@@ -28,6 +40,7 @@ interface ProfileHeaderProps {
 export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
   const searchParams = useSearchParams();
   const chatParam = searchParams.get("chat");
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   //  智能導流：一偵測到網址有 ?chat=open，一掛載即刻自動向全站發射廣播訊號
   // 完美承接你之前由通知中心點擊跳轉過嚟嘅「原地開片」邏輯！
@@ -51,6 +64,14 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
         detail: { roomId: member.id, partnerName: member.username },
       }),
     );
+  };
+
+  const handleReportConfirm = () => {
+    toast.error("⚠️ 舉報信號已受理", {
+      description:
+        "已對該用戶啟動存證機制，平台合約風控官將於 15 分鐘內介入審查。",
+    });
+    setIsReportOpen(false);
   };
 
   return (
@@ -103,20 +124,60 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
             {member.bio}
           </p>
 
-          {/* 徽章區 */}
-          <div className="flex gap-2 mt-5 overflow-x-auto pb-2 scrollbar-none">
-            {member.badges.map((badge) => (
-              <div
-                key={badge.id}
-                title={badge.desc}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-lg"
-              >
-                <span className="text-[14px]">{badge.emoji}</span>
-                <span className="font-mono text-[11px] text-[#d4c4b7]">
-                  {badge.label}
-                </span>
-              </div>
-            ))}
+          {/* 徽章與舉報區 */}
+          <div className="flex flex-wrap items-center justify-between mt-5 gap-4">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none flex-1">
+              {member.badges.map((badge) => (
+                <div
+                  key={badge.id}
+                  title={badge.desc}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-lg"
+                >
+                  <span className="text-[14px]">{badge.emoji}</span>
+                  <span className="font-mono text-[11px] text-[#d4c4b7]">
+                    {badge.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <AlertDialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+              <AlertDialogTrigger
+                render={
+                  <button
+                    type="button"
+                    className="shrink-0 flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:text-text-disabled/70 lg:hover:text-red-500"
+                  >
+                    🚩 舉報用戶
+                  </button>
+                }
+              />
+              <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_0_24px_rgba(239,68,68,0.18)]">
+                <AlertDialogHeader className="text-left place-items-start gap-2">
+                  <AlertDialogTitle className="text-[15px] font-semibold text-[#eae1da]">
+                    確認要提交舉報嗎？
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-[12.5px] leading-relaxed text-[#d4c4b7]">
+                    請注意：PokéTrade JP
+                    嚴格禁止惡意惡作劇或虛假舉報。一經查實，平台將扣除您的交易積分，情節嚴重者將面臨賬戶風控限制。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="border-t border-white/10 bg-[#1A1612]/60">
+                  <AlertDialogCancel
+                    variant="outline"
+                    className="border border-white/10 text-[#d4c4b7] hover:bg-white/5"
+                  >
+                    取消
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    type="button"
+                    onClick={handleReportConfirm}
+                    className="bg-[#ef4444] text-[#1A1612] hover:bg-[#ef4444]/90 shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+                  >
+                    確認提交
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

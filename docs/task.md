@@ -42,7 +42,7 @@
 
 **Task 2.1.2: 實作 Supabase 快取機制與搜尋**
 
-- [ ] Ticket 17: 撰寫 API Route：搜尋卡牌時，先查詢自家 `cards` Table (Cache)。🔄 TODO [BACKEND]
+- [ ] Ticket 17: 搜尋卡牌時，先查詢自家 `cards` Table (Cache)。🔄 TODO [BACKEND]
 - [ ] Ticket 18: 若自家無資料，Call 外部 API，並將結果 `insert` 落自家 `cards` Table 後回傳。🔄 TODO [BACKEND]
 - [x] Ticket 19: 建立前端「卡牌搜尋框」UI Component (包含輸入防抖 Debounce)。✅ DONE (`app/components/marketplace/filters/SmartSearch.tsx`)
 - [x] Ticket 20: 將搜尋結果以列表形式 (Dropdown) 呈現於前端，供表單選取。✅ DONE (`SmartSearch.tsx` 內含 Dropdown 展示邏輯，現接 mock 資料)
@@ -57,14 +57,14 @@
 
 - [ ] Ticket 21: 使用 `react-hook-form` + `zod` 建立上架表單（價格、卡牌狀態、備註）。🔄 TODO [FRONTEND] (UI 視覺存在於 `app/profile/merchant/inventory/page.tsx`，但未接 react-hook-form/zod)
 - [ ] Ticket 22: 將「卡牌搜尋組件」整合入表單中，讓賣家綁定卡牌。🔄 TODO [FRONTEND] (視覺搜尋欄存在，但未真正綁定卡牌數據)
-- [ ] Ticket 23: 開發前端圖片選擇 Component（限制 4-6 張，支援預覽）。🔄 TODO [FRONTEND] (上載槽 UI 存在但為純裝飾，缺 `<input type="file">` 及預覽邏輯)
+- [x] Ticket 23: 開發前端圖片選擇 Component（限制 0-6 張，新增商品強制最少上載 2 張，支援原生多圖預覽及一鍵刪除）。✅ DONE (`app/components/shared/AddAssetModal.tsx` 已內建完成，滿足收藏與上架圖片分流校準)
 
 **Task 3.1.2: 處理商品發佈邏輯**
 
 - [ ] Ticket 24: 撰寫邏輯使用 Supabase Client (`supabase.storage`) 將圖片上傳至 Bucket 並獲取 URLs。🔄 TODO [BACKEND]
 - [ ] Ticket 25: 撰寫 Server Action 接收表單資料，**驗證用戶是否具備 MERCHANT 權限**，然後 `insert` 入 `listings`。🔄 TODO [BACKEND]
 - [ ] Ticket 26: 撰寫前端提交表單後的成功與失敗提示 (Toast) 及跳轉邏輯。🔄 TODO [FRONTEND] (2026-06-03：成功提交 toast 已於 `app/profile/user/inventory/page.tsx` 接入 Sonner；失敗提示與 redirect handler 仍待補完)
-- [x] Ticket 27: 開發平台首頁與商品詳情頁，讀取 `listings` 表格並展示商品。✅ DONE (`app/marketplace/page.tsx` + `app/marketplace/[id]/page.tsx`，現接 mock 資料)
+- [x] Ticket 27: 開發平台首頁與商品詳情頁，讀取 `listings` 表格並展示商品。✅ DONE (`app/marketplace/page.tsx` + `app/marketplace/[id]/page.tsx`，現接 mock 資料；2026-06-05 補完私域 storefront 與公共 marketplace 100% parity、私域篩選隔離及 `/marketplace/[id]/product/[productId]` 路由閉環)
 
 ---
 
@@ -114,7 +114,7 @@
 
 **Task 5.2.1: 結帳流程與 Webhook**
 
-- [x] Ticket 42a [前端]: 製作結帳流程 UI，包含商品確認 Slide-over、價格明細展示、付款跳轉觸發按鈕。✅ DONE (`app/components/transactions/ExecutionSlideOver.tsx` + `app/marketplace/payment-status/page.tsx`)
+- [x] Ticket 42a [前端]: 製作結帳流程 UI，包含商品確認 Slide-over、價格明細展示、付款跳轉觸發按鈕。✅ DONE (`app/components/transactions/ExecutionSlideOver.tsx` + `app/marketplace/payment-status/page.tsx`；2026-06-07 已補強自動盲開房與實時交割狀態卡片追蹤技術)
 - [ ] Ticket 42b [後端]: 於結帳頁整合真實 Stripe Payment Element，替換現有 mock 跳轉邏輯。🔄 TODO [API]
 - [ ] Ticket 43: 寫 API 產生 PaymentIntent，計算平台抽佣，指定轉帳去賣家嘅 Stripe Account。🔄 TODO [API]
 - [ ] Ticket 44: 建立 API Endpoint 接收 Stripe Webhook (設定 Raw Body 解析及驗證 Signature)。🔄 TODO [API]
@@ -170,7 +170,7 @@
 - [x] Ticket 58a [前端]: 準備並放入 `192x192` 及 `512x512` PWA App Icons。✅ DONE (`public/icons/icon-192.svg` + `icon-512.svg` 已存在)
 - [ ] Ticket 58b [資源]: 補充 Apple Touch Icon (`apple-touch-icon.png`) 並更新 `manifest.json` 加入所有圖示路徑。🔄 TODO [ASSETS]
 - [x] Ticket 59: 實作自訂「安裝到主畫面」按鈕 (監聽 `beforeinstallprompt`)。✅ DONE (`app/lib/hooks/usePwaInstall.ts` singleton hook + `app/components/pwa/PwaHeroInstallButton.tsx`)
-- [x] Ticket 60: 調整全站 Bottom Navigation Bar，確保手機操作體驗接近原生 App。✅ DONE (`app/components/navigation/BottomNav.tsx`，浮動液體玻璃選項卡欄)
+- [x] Ticket 60: 調整全站 Bottom Navigation Bar，確保手機操作體驗接近原生 App。✅ DONE (重構為黃金 5 欄位對稱大底座，正中央高亮實心錨定「＋」號上架快捷掣，並加入「交易管理」導航完美對齊比例)
 - [x] Ticket 61: 修正 iOS Safari 點擊表單輸入框意外放大的問題 (`user-scalable=no`)。✅ DONE (`app/layout.tsx`)
 
 ---

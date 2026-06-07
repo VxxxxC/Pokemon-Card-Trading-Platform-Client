@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { WishlistTable } from "./components/WishlistTable";
-import { CheckInWidget } from "@/app/components/profile/CheckInWidget";
+import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { WishlistTable } from "@/app/components/market/WishlistTable";
+import { useUIStore } from "@/app/store/useUIStore";
 
 interface OwnedCard {
   id: string;
@@ -75,16 +74,6 @@ const INITIAL_OWNED_CARDS: OwnedCard[] = [
   },
 ];
 
-const portfolioSummary = {
-  totalValue: 6285, // HK$ Total Valuation
-  totalCost: 5840,
-  unrealizedPnl: 445,
-  pnlPercent: 7.62,
-  cardCount: 5,
-  gradedCount: 4,
-  rawCount: 1,
-};
-
 function GraderBadge({ grader }: { grader: OwnedCard["grader"] }) {
   const map = {
     PSA: "text-[#3b9eff] bg-[rgba(59,158,255,0.12)] border-[rgba(59,158,255,0.20)]",
@@ -124,14 +113,59 @@ function StatusPill({ status }: { status: OwnedCard["status"] }) {
 }
 
 export default function UserCollectionPage() {
+  // 🟢 數據驅動中心：保持 ownedCards 動態響應
+  const [ownedCards, setOwnedCards] =
+    useState<OwnedCard[]>(INITIAL_OWNED_CARDS);
   const [odometerValue, setOdometerValue] = useState(0);
   const [activeFilter, setActiveFilter] = useState("全部");
 
-  // Rolling odometer animation loop upon component mount
+  const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
+
+  // 金融級安全水合守衛
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  // 動態實時微觀衍生全網總估值 (Computed State)
+  const computedSummary = useMemo(() => {
+    let totalValue = 0;
+    let totalCost = 0;
+    let gradedCount = 0;
+    let rawCount = 0;
+
+    ownedCards.forEach((c) => {
+      totalValue += c.currentValue;
+      totalCost += c.purchasePrice;
+      if (c.grader === "RAW") {
+        rawCount += 1;
+      } else {
+        gradedCount += 1;
+      }
+    });
+
+    const unrealizedPnl = totalValue - totalCost;
+    const pnlPercent =
+      totalCost > 0
+        ? Number(((unrealizedPnl / totalCost) * 100).toFixed(2))
+        : 0;
+
+    return {
+      totalValue,
+      unrealizedPnl,
+      pnlPercent,
+      cardCount: ownedCards.length,
+      gradedCount,
+      rawCount,
+    };
+  }, [ownedCards]);
+
+  // 動態滾動數字里程錶
   useEffect(() => {
     let start = 0;
-    const end = portfolioSummary.totalValue;
-    const duration = 1200; // ms
+    const end = computedSummary.totalValue;
+    const duration = 1000;
     const increment = Math.ceil(end / (duration / 16));
 
     const timer = setInterval(() => {
@@ -145,9 +179,38 @@ export default function UserCollectionPage() {
     }, 16);
 
     return () => clearInterval(timer);
+  }, [computedSummary.totalValue]);
+
+  // 🟢 全域事件廣播接收器：當用家在任何端點（頂導航、底導航、本頁面）成功收錄資產，此處即時捕獲
+  useEffect(() => {
+    const handleAssetAdded = (e: Event) => {
+      const customEvent = e as CustomEvent<OwnedCard>;
+      if (customEvent.detail) {
+        setOwnedCards((prev) => [customEvent.detail, ...prev]);
+      }
+    };
+
+    window.addEventListener(
+      "global-asset-successfully-added",
+      handleAssetAdded,
+    );
+    return () =>
+      window.removeEventListener(
+        "global-asset-successfully-added",
+        handleAssetAdded,
+      );
   }, []);
 
-  const filteredOwned = INITIAL_OWNED_CARDS.filter((card) => {
+  if (!isMounted) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#17130f]">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  // 篩選過濾器
+  const filteredOwned = ownedCards.filter((card) => {
     if (activeFilter === "已上架") return card.status === "listed";
     if (activeFilter === "已鑑定") return card.grader !== "RAW";
     if (activeFilter === "未鑑定") return card.grader === "RAW";
@@ -164,18 +227,26 @@ export default function UserCollectionPage() {
               <p className="font-mono text-[11px] text-[#d4c4b7] uppercase tracking-widest mb-1.5">
                 AI 總身家估值 (PORTFOLIO VALUE)
               </p>
-              {/* Animated rolling number */}
               <p className="font-mono font-bold text-[32px] text-[#eae1da] leading-none transition-all">
                 HK$ {odometerValue.toLocaleString("en-HK")}
               </p>
-              <p className="font-mono text-[13px] text-[#10b981] mt-2 inline-flex items-center gap-1 font-semibold">
-                ▲ HK$ {portfolioSummary.unrealizedPnl.toLocaleString("en-HK")}{" "}
-                (+{portfolioSummary.pnlPercent}% 未實現損益)
+              <p
+                className={`font-mono text-[13px] mt-2 inline-flex items-center gap-1 font-semibold ${computedSummary.unrealizedPnl >= 0 ? "text-[#10b981]" : "text-error"}`}
+              >
+                {computedSummary.unrealizedPnl >= 0 ? "▲" : "▼"} HK${" "}
+                {Math.abs(computedSummary.unrealizedPnl).toLocaleString(
+                  "en-HK",
+                )}{" "}
+                ({computedSummary.unrealizedPnl >= 0 ? "+" : ""}
+                {computedSummary.pnlPercent}% 未實現損益)
               </p>
             </div>
-            <Link
-              href="/marketplace"
-              className="flex items-center gap-1.5 px-4 h-10 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans text-[13px] font-semibold rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform shrink-0 min-h-[40px] cursor-pointer"
+
+            {/* [收錄新卡] 按鈕 */}
+            <button
+              type="button"
+              onClick={() => openAddAssetModal("hobby")} // 🟢 點擊直穿「收藏愛好」
+              className="flex items-center gap-1.5 px-4 h-10 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans text-[13px] font-semibold rounded-xl active:scale-[0.98] transition-all shrink-0 min-h-[40px] cursor-pointer focus:outline-none"
             >
               <svg
                 width="14"
@@ -189,21 +260,21 @@ export default function UserCollectionPage() {
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               收錄新卡
-            </Link>
+            </button>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "持有卡牌", value: `${portfolioSummary.cardCount} 張` },
+              { label: "持有卡牌", value: `${computedSummary.cardCount} 張` },
               {
                 label: "已鑑定規格",
-                value: `${portfolioSummary.gradedCount} 張`,
+                value: `${computedSummary.gradedCount} 張`,
               },
-              { label: "未鑑定 Raw", value: `${portfolioSummary.rawCount} 張` },
+              { label: "未鑑定 Raw", value: `${computedSummary.rawCount} 張` },
             ].map(({ label, value }) => (
               <div
                 key={label}
-                className="bg-[#17130f] rounded-xl px-3 py-2.5 border border-[rgba(237,232,224,0.04)]"
+                className="bg-[#17130f] rounded-xl px-3 py-2.5 border border-white/[0.02]"
               >
                 <p className="font-mono text-[10px] text-[#d4c4b7] mb-0.5">
                   {label}
@@ -217,9 +288,8 @@ export default function UserCollectionPage() {
         </div>
       </section>
 
-      {/* Grid containing checklists and sign-in cards side-by-side */}
-      <div className="lg:grid lg:grid-cols-[1fr_320px] lg:gap-6 items-start">
-        {/* Left Side: Cards Portfolio List */}
+      {/* 列表看板區 */}
+      <div className="items-start">
         <section aria-labelledby="cards-heading" className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h2
@@ -253,9 +323,8 @@ export default function UserCollectionPage() {
               return (
                 <div
                   key={card.id}
-                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#39342f]/30 transition-colors"
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#39342f]/30 transition-colors animate-fadeIn"
                 >
-                  {/* Card placeholder thumbnail */}
                   <div className="w-9 h-12 rounded-md bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 flex items-center justify-center">
                     <span className="font-mono text-[8px] text-[#50453b] font-bold">
                       {card.grader}
@@ -291,36 +360,17 @@ export default function UserCollectionPage() {
             })}
           </div>
         </section>
-
-        {/* Right Side: Continuous check-in milestone */}
-        <div className="space-y-4 mt-6 lg:mt-0">
-          <CheckInWidget initialStreak={5} />
-
-          <div className="p-4 bg-[rgba(212,165,116,0.06)] border border-[#d4a574]/20 rounded-2xl space-y-1.5 font-sans">
-            <h4 className="text-[12px] font-semibold text-[#d4a574]">
-              💡 關於簽到防作弊防線
-            </h4>
-            <p className="text-[11px] text-[#d4c4b7] leading-relaxed">
-              簽到系統時間戳一律標記為
-              `[SERVER_TIME_RESOLVED]`，禁止由客端本地時間提交以防止竄改時區刷積分。
-            </p>
-          </div>
-        </div>
       </div>
 
-      {/* ── Wishlist Table ─────────────────────────────────────────────── */}
+      {/* ── Wishlist Table ── */}
       <section aria-labelledby="wishlist-heading" className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2
             id="wishlist-heading"
             className="font-sans font-semibold text-[16px] text-[#eae1da] flex items-center gap-2"
           >
-            <span className="text-[#d4a574]">★</span>
-            追蹤願望清單
+            <span className="text-[#d4a574]">★</span> 追蹤願望清單
           </h2>
-          <span className="font-mono text-[11px] text-[#50453b]">
-            實時價格追蹤開啟中
-          </span>
         </div>
         <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-2">
           <WishlistTable />
