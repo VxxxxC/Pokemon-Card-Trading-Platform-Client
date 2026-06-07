@@ -8,6 +8,7 @@ import { PWANavbarStatus } from "@/app/components/pwa/PWANavbarStatus";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 引入全域中央大腦
 import { useTradeStore } from "@/app/store/useTradeStore";
+import { useUIStore } from "@/app/store/useUIStore";
 
 const navLinks = [
   { href: "/", label: "首頁" },
@@ -19,6 +20,8 @@ export function TopNav() {
   const pathname = usePathname();
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
 
   // 🟢 從 Zustand 接入受控雷達狀態
   const { chats, isChatOpen, setIsChatOpen, setActiveRoomId, openGlobalChat } =
@@ -182,6 +185,27 @@ export function TopNav() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* 網頁版頂部 Navbar 渲染體內：*/}
+            <button
+              type="button"
+              onClick={() => openAddAssetModal("merch")} // 🟢 點擊直穿「新增商品」模式
+              className="h-9 w-9 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] rounded-xl flex items-center justify-center shadow-md active:scale-[0.95] transition-all cursor-pointer focus:outline-none group"
+              title="快捷新增商品上架"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                className="group-hover:rotate-90 transition-transform duration-200"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round" />
+                <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
+              </svg>
+            </button>
 
             {/* 登入按鈕 */}
             <Link

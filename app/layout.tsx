@@ -8,6 +8,7 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -70,8 +71,10 @@ export default function RootLayout({
           {/* 全站主要內容渲染區 */}
           {children}
         </AppSerwistProvider>
-        {/* 🟢 Global Sonner Toast Hub */}
+        {/* Global Sonner Toast */}
         <Toaster position="top-center" closeButton richColors expand={false} />
+        {/* Global Add Asset Modal */}
+        <AddAssetModal />
       </body>
     </html>
   );
