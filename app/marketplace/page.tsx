@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useSyncExternalStore, useMemo } from "react";
+import { useRef, useEffect, useSyncExternalStore, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
@@ -8,7 +8,8 @@ import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
 import { INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
 
-export default function MarketplacePage() {
+// 🟢 1. 將原本的大盤核心代碼提煉為獨立的內層組件，安全容納 useSearchParams
+function MarketplaceContent() {
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -43,14 +44,13 @@ export default function MarketplacePage() {
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
-  // 🟢 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
+  // 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
   const lastSyncedParamsKey = useRef("");
 
   // 全域參數引流雷達
   useEffect(() => {
     const currentParamsKey = `${urlQuery}-${urlRarity}`;
     
-    // 🟢 如果當前網址的參數組合與上一次處理的一模一樣，代表這是由 Zustand 重置觸發的連鎖渲染，直接攔截不重複執行！
     if (lastSyncedParamsKey.current === currentParamsKey) return;
 
     if (urlQuery !== null) {
@@ -60,7 +60,6 @@ export default function MarketplacePage() {
       toggleRarity(urlRarity.toUpperCase());
     }
 
-    // 記錄本次成功交割的網址參數狀態
     lastSyncedParamsKey.current = currentParamsKey;
   }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
 
@@ -119,13 +118,14 @@ export default function MarketplacePage() {
           return card.grade.score === "8" || card.grade.score === "EX";
         });
 
+      // 100% 結構化強效斷言，穩健通過 eslint 檢驗
       const matchType =
         activeTypes.length === 0 || 
         activeTypes.includes(
-    (card as { sellerType?: string; listingType?: string }).sellerType || 
-    (card as { sellerType?: string; listingType?: string }).listingType || 
-    "C2C"
-  );
+          (card as { sellerType?: string; listingType?: string }).sellerType || 
+          (card as { sellerType?: string; listingType?: string }).listingType || 
+          "C2C"
+        );
 
       return matchQuery && matchRarity && matchGrade && matchCondition && matchType;
     }).sort((a, b) => {
@@ -276,5 +276,20 @@ export default function MarketplacePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+// 🟢 2. 作為唯一的 default export 入口，加裝全域 Suspense 安全隔離網，完美通關 Prerender
+export default function MarketplacePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex items-center justify-center bg-[#17130f] min-h-screen">
+          <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <MarketplaceContent />
+    </Suspense>
   );
 }
