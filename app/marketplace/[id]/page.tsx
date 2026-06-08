@@ -20,6 +20,7 @@ import {
 } from "@/app/lib/mock-data/members";
 import { useTradeStore } from "@/app/store/useTradeStore";
 import type { SortKey } from "@/app/store/useMarketStore";
+import { useMarketStore } from "@/app/store/useMarketStore";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -56,6 +57,9 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
 
   const setIsChatOpen = useTradeStore((state) => state.setIsChatOpen);
   const setActiveRoomId = useTradeStore((state) => state.setActiveRoomId);
+
+  const activeTypes = useMarketStore((state) => state.activeTypes);
+  const toggleType = useMarketStore((state) => state.toggleType);
 
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("最新");
@@ -317,6 +321,8 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
             onConditionToggle={(condition) =>
               toggleFilterValue(condition, setActiveConditions)
             }
+            activeTypes={activeTypes}
+            onTypeToggle={toggleType}
           />
         </aside>
 

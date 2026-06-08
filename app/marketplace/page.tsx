@@ -121,7 +121,11 @@ export default function MarketplacePage() {
 
       const matchType =
         activeTypes.length === 0 || 
-        activeTypes.includes((card as any).sellerType || (card as any).listingType || "C2C");
+        activeTypes.includes(
+    (card as { sellerType?: string; listingType?: string }).sellerType || 
+    (card as { sellerType?: string; listingType?: string }).listingType || 
+    "C2C"
+  );
 
       return matchQuery && matchRarity && matchGrade && matchCondition && matchType;
     }).sort((a, b) => {
