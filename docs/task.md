@@ -41,11 +41,14 @@
 - [ ] Ticket 16: 撰寫資料 mapping 邏輯，將外部 API 格式轉換為自家 Supabase `cards` Table 格式。
 
 **Task 2.1.2: 實作 Supabase 快取機制與搜尋**
-
-- [ ] Ticket 17: 搜尋卡牌時，先查詢自家 `cards` Table (Cache)。🔄 TODO [BACKEND]
-- [ ] Ticket 18: 若自家無資料，Call 外部 API，並將結果 `insert` 落自家 `cards` Table 後回傳。🔄 TODO [BACKEND]
-- [x] Ticket 19: 建立前端「卡牌搜尋框」UI Component (包含輸入防抖 Debounce)。✅ DONE (`app/components/marketplace/filters/SmartSearch.tsx`)
-- [x] Ticket 20: 將搜尋結果以列表形式 (Dropdown) 呈現於前端，供表單選取。✅ DONE (`SmartSearch.tsx` 內含 Dropdown 展示邏輯，現接 mock 資料)
+- [ ] Ticket 17: 搜尋卡牌時，先查詢自家 `cards` Table (Cache) 🔄 TODO [BACKEND]。
+- [ ] Ticket 18: 若自家無資料，Call 外部 API，並將結果 `insert` 落自家 `cards` Table 後回傳 🔄 TODO [BACKEND]。
+- [x] Ticket 19: 建立前端「卡牌搜尋框」UI Component (包含輸入防抖 Debounce) ✅ DONE。
+- [x] Ticket 20: 將搜尋結果以列表形式 (Dropdown) 呈現於前端，供表單選取 ✅ DONE。
+- [x] **Ticket 20a [架構優化]: 實作大盤「模糊搜尋」與「結構化篩選」徹底解耦線** ✅ DONE
+  - *驗收標準：* 點擊首頁晶片或大盤側邊欄時，Filter 的 `query` 參數（如 `rarity=SAR`）直接與 Supabase 欄位映射對齊，**嚴禁污染或覆寫**前端全域輸入框字串 `query`。
+- [x] **Ticket 20b [架構優化]: 實作全維度一鍵滿血重置（Reset All Filters）按鈕** ✅ DONE
+  - *驗收標準：* 點擊重置按鈕時，同步抹平前端文字框、清空多維 Checkbox 陣列矩陣、還原 URL 參數，使大盤秒速重回純淨 baseline 狀態。
 
 ---
 
