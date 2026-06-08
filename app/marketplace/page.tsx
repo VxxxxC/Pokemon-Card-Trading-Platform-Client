@@ -18,7 +18,7 @@ export default function MarketplacePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // 🟢 核心解耦：精準分流捕捉網址列不同的業務意圖參數
+  // 精準分流捕捉網址列不同的業務意圖參數
   const urlQuery = searchParams.get("q");
   const urlRarity = searchParams.get("rarity");
 
@@ -33,23 +33,35 @@ export default function MarketplacePage() {
   const activeRarities = useMarketStore((state) => state.activeRarities);
   const activeGrades = useMarketStore((state) => state.activeGrades);
   const activeConditions = useMarketStore((state) => state.activeConditions);
+  const activeTypes = useMarketStore((state) => state.activeTypes);
 
   const toggleRarity = useMarketStore((state) => state.toggleRarity);
   const toggleGrade = useMarketStore((state) => state.toggleGrade);
   const toggleCondition = useMarketStore((state) => state.toggleCondition);
+  const toggleType = useMarketStore((state) => state.toggleType);
+  const resetAll = useMarketStore((state) => state.resetAll);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  
+  // 🟢 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
+  const lastSyncedParamsKey = useRef("");
 
-  // 全域參數引流雷達：負責處理從首頁跳轉過來的初始狀態映射
+  // 全域參數引流雷達
   useEffect(() => {
-    // 1. 如果是純關鍵字搜尋字串，填入輸入框
+    const currentParamsKey = `${urlQuery}-${urlRarity}`;
+    
+    // 🟢 如果當前網址的參數組合與上一次處理的一模一樣，代表這是由 Zustand 重置觸發的連鎖渲染，直接攔截不重複執行！
+    if (lastSyncedParamsKey.current === currentParamsKey) return;
+
     if (urlQuery !== null) {
       setQuery(urlQuery);
     }
-    // 2. 🟢 核心解耦：如果是結構化稀有度過濾，直接激活側邊欄勾選狀態，絕對不污染關鍵字輸入框！
     if (urlRarity !== null && !activeRarities.includes(urlRarity.toUpperCase())) {
       toggleRarity(urlRarity.toUpperCase());
     }
+
+    // 記錄本次成功交割的網址參數狀態
+    lastSyncedParamsKey.current = currentParamsKey;
   }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
 
   // 點擊搜尋框外部自動失去焦點
@@ -66,13 +78,9 @@ export default function MarketplacePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setIsSearchFocused]);
 
-  // 一鍵還原重置線
+  // 本地重置打包線
   const handleResetAllFilters = () => {
-    setQuery("");
-    activeRarities.forEach((r) => toggleRarity(r));
-    activeGrades.forEach((g) => toggleGrade(g));
-    activeConditions.forEach((c) => toggleCondition(c));
-    setSortKey("最新");
+    resetAll();
     router.push("/marketplace");
   };
 
@@ -82,13 +90,11 @@ export default function MarketplacePage() {
       const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
       const normalizedQuery = query.toLowerCase();
       
-      // 模糊文字搜尋框（query）專注於尋找卡名與卡號
       const matchQuery =
         normalizedQuery === "" ||
         card.name.toLowerCase().includes(normalizedQuery) ||
         searchableCardNo.includes(normalizedQuery);
 
-      // 🟢 結構化數據過濾（與模糊搜尋互不干涉，達成相乘級別的複合看盤交叉過濾）
       const matchRarity =
         activeRarities.length === 0 || activeRarities.includes(card.rarity);
 
@@ -113,13 +119,17 @@ export default function MarketplacePage() {
           return card.grade.score === "8" || card.grade.score === "EX";
         });
 
-      return matchQuery && matchRarity && matchGrade && matchCondition;
+      const matchType =
+        activeTypes.length === 0 || 
+        activeTypes.includes((card as any).sellerType || (card as any).listingType || "C2C");
+
+      return matchQuery && matchRarity && matchGrade && matchCondition && matchType;
     }).sort((a, b) => {
       if (sortKey === "價格：由低到高") return a.price - b.price;
       if (sortKey === "價格：由高到低") return b.price - a.price;
       return 0;
     });
-  }, [query, activeRarities, activeGrades, activeConditions, sortKey]);
+  }, [query, activeRarities, activeGrades, activeConditions, activeTypes, sortKey]);
 
   if (!isMounted) {
     return (
@@ -129,7 +139,12 @@ export default function MarketplacePage() {
     );
   }
 
-  const hasActiveFilters = query !== "" || activeRarities.length > 0 || activeGrades.length > 0 || activeConditions.length > 0;
+  const hasActiveFilters = 
+    query !== "" || 
+    activeRarities.length > 0 || 
+    activeGrades.length > 0 || 
+    activeConditions.length > 0 ||
+    activeTypes.length > 0;
 
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
@@ -220,7 +235,6 @@ export default function MarketplacePage() {
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
         {/* 左欄：手風琴 */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
-          {/* 🟢 核心解耦：回歸純淨的狀態切換，按鈕絕對不污染關鍵字輸入框 */}
           <AccordionFilters
             activeRarities={activeRarities}
             onRarityToggle={toggleRarity}
@@ -228,6 +242,8 @@ export default function MarketplacePage() {
             onGradeToggle={toggleGrade}
             activeConditions={activeConditions}
             onConditionToggle={toggleCondition}
+            activeTypes={activeTypes}
+            onTypeToggle={toggleType}
           />
         </aside>
 

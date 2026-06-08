@@ -41,6 +41,9 @@ interface AccordionFiltersProps {
   onGradeToggle: (grade: string) => void;
   activeConditions: string[];
   onConditionToggle: (condition: string) => void;
+  // 🟢 核心擴充：引入刊登模式全域多維矩陣與切換控制線
+  activeTypes: string[];
+  onTypeToggle: (type: string) => void;
 }
 
 export function AccordionFilters({
@@ -50,11 +53,14 @@ export function AccordionFilters({
   onGradeToggle,
   activeConditions,
   onConditionToggle,
+  activeTypes,
+  onTypeToggle,
 }: AccordionFiltersProps) {
   const [openSections, setOpenSections] = useState({
     rarity: true,
     condition: true,
     grade: true,
+    type: true, // 🟢 註冊全新手風琴夾層的開關狀態
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -68,9 +74,58 @@ export function AccordionFilters({
     { key: "傷 B", label: "【傷 B】" },
   ];
   const grades = ["Raw Card", "PSA 10", "BGS 9.5", "CGC 9"];
+  
+  // 🟢 定義與數據庫未來對接的結構化來源標籤
+  const listingTypes = [
+    { key: "MERCHANT", label: "🏪 商戶特約現貨" },
+    { key: "C2C", label: "🏛️ C2C 玩家市集" },
+    { key: "P2P", label: "⚡ P2P 擔保交易" },
+  ];
 
   return (
     <div className="space-y-1 bg-[#26211C] p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+      
+      {/* 🟢 全新 Section：刊登來源 / 交易模式 */}
+      <AccordionSection
+        title="刊登來源與模式"
+        isOpen={openSections.type}
+        onToggle={() => toggleSection("type")}
+      >
+        <div className="space-y-2">
+          {listingTypes.map(({ key, label }) => {
+            const isActive = activeTypes.includes(key);
+            return (
+              <button
+                key={key}
+                onClick={() => onTypeToggle(key)}
+                className="flex items-center gap-2.5 w-full text-left py-1 group/item"
+              >
+                <div
+                  className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                    isActive
+                      ? "bg-[#d4a574] border-[#d4a574]"
+                      : "border-[rgba(237,232,224,0.20)] group-hover/item:border-[#d4a574]/50"
+                  }`}
+                >
+                  {isActive && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1A1612" strokeWidth="3.5">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span
+                  className={`font-sans text-[13px] transition-colors ${
+                    isActive ? "text-[#eae1da] font-medium" : "text-[#d4c4b7] group-hover/item:text-[#eae1da]"
+                  }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </AccordionSection>
+
       {/* Rarity Section */}
       <AccordionSection
         title="日版特有稀有度"
