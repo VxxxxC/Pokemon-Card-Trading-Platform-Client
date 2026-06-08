@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-// 🟢 跨模組安全引入簽到卡片元件
+// 跨模組安全引入簽到卡片元件
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 
-// TODO: [API] Connect search to Supabase `card_catalog` table for real-time card lookup by set number (e.g. SV8a-123)
-// TODO: [database] Query `card_catalog` with indexed search on `card_number` column for millisecond autocomplete
-
 const quickFilters = [
-  { label: "🐉 噴火龍系列", query: "charizard" },
+  { label: "🐉 噴火龍系列", query: "q=charizard" },
   { label: "✨ SAR", query: "rarity=SAR" },
   { label: "UR", query: "rarity=UR" },
   { label: "SR", query: "rarity=SR" },
@@ -18,6 +16,17 @@ const quickFilters = [
 
 export function HeroSearch() {
   const [searchValue, setSearchValue] = useState("");
+  const router = useRouter();
+
+  // 🟢 核心優化：提煉唯一的編程搜尋路由發射器
+  const executeSearch = () => {
+    const trimmed = searchValue.trim();
+    if (trimmed) {
+      router.push(`/marketplace?q=${encodeURIComponent(trimmed)}`);
+    } else {
+      router.push("/marketplace");
+    }
+  };
 
   return (
     <section
@@ -27,8 +36,9 @@ export function HeroSearch() {
       {/* Background 金屬感奢華漸變底色 */}
       <div className="absolute inset-0 bg-gradient-to-br from-[rgba(212,165,116,0.06)] via-transparent to-[rgba(212,165,116,0.03)]" />
 
-      {/* 🟢 核心修正 1：利用 flex-col lg:flex-row 達成完美的手機端縱向堆疊、電腦端橫向左右分欄 */}
+      {/* 核心排版：利用 flex-col lg:flex-row 達成完美的手機端縱向堆疊、電腦端橫向左右分欄 */}
       <div className="relative z-10 px-5 py-6 lg:px-8 lg:py-8 flex flex-col lg:flex-row lg:items-stretch lg:justify-between gap-8">
+        
         {/* 左側分欄：大盤核心搜尋中樞 */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-start justify-between gap-4">
@@ -54,17 +64,26 @@ export function HeroSearch() {
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
+                /* 🟢 核心修正：捕獲 Enter 鍵盤事件，按下的瞬間直接導流發射 */
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    executeSearch();
+                  }
+                }}
                 placeholder="輸入卡牌編號 (例: SV8a-123)"
                 className="w-full h-11 pl-10 pr-4 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-[8px] font-sans text-[13.5px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(140,115,85,0.40)]"
                 aria-label="搜尋卡牌編號"
               />
             </div>
-            <Link
-              href={`/search?q=${encodeURIComponent(searchValue)}`}
-              className="inline-flex items-center justify-center h-11 px-6 bg-brand text-[#17130f] font-sans font-semibold text-[13.5px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover shrink-0 cursor-pointer"
+            
+            {/* 點擊搜尋按鈕 */}
+            <button
+              type="button"
+              onClick={executeSearch}
+              className="inline-flex items-center justify-center h-11 px-6 bg-brand text-[#17130f] font-sans font-semibold text-[13.5px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover shrink-0 cursor-pointer focus:outline-none"
             >
               搜尋
-            </Link>
+            </button>
           </div>
 
           {/* 快捷篩選晶片 */}
@@ -72,7 +91,7 @@ export function HeroSearch() {
             {quickFilters.map((filter) => (
               <Link
                 key={filter.query}
-                href={`/search?${filter.query}`}
+                href={`/marketplace?${filter.query}`}
                 className="inline-flex items-center h-8 px-3 bg-[rgba(212,165,116,0.08)] border border-[rgba(212,165,116,0.15)] rounded-full font-sans text-[12px] text-text-secondary hover:text-brand hover:border-brand transition-colors active:scale-[0.97]"
               >
                 {filter.label}
@@ -81,7 +100,7 @@ export function HeroSearch() {
           </div>
         </div>
 
-        {/* 🟢 核心修正 2：右側分欄。固定電腦端最完美看盤寬度，融入 Hero 看板之內 */}
+        {/* 右側分欄：固定電腦端最完美看盤寬度，融入 Hero 看板之內 */}
         <div className="w-full lg:w-[550px] shrink-0">
           <CheckInCard />
         </div>

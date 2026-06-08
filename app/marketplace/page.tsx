@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useSyncExternalStore, useMemo } from "react";
+// 🟢 引入 Next.js 原生 URL 雷達探針
+import { useSearchParams } from "next/navigation";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
@@ -15,15 +17,18 @@ export default function MarketplacePage() {
     () => false,
   );
 
+  // 🟢 激活網址參數監聽探針
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q");
+  const urlRarity = searchParams.get("rarity");
+
   // 按需原子級狀態訂閱
   const query = useMarketStore((state) => state.query);
   const setQuery = useMarketStore((state) => state.setQuery);
   const sortKey = useMarketStore((state) => state.sortKey);
   const setSortKey = useMarketStore((state) => state.setSortKey);
   const isSearchFocused = useMarketStore((state) => state.isSearchFocused);
-  const setIsSearchFocused = useMarketStore(
-    (state) => state.setIsSearchFocused,
-  );
+  const setIsSearchFocused = useMarketStore((state) => state.setIsSearchFocused);
 
   const activeRarities = useMarketStore((state) => state.activeRarities);
   const activeGrades = useMarketStore((state) => state.activeGrades);
@@ -34,6 +39,19 @@ export default function MarketplacePage() {
   const toggleCondition = useMarketStore((state) => state.toggleCondition);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // 🟢 核心引流管線：當頁面 Mount 或者網址變更時，自動將 URL 參數無縫灌入 Zustand Store！
+  useEffect(() => {
+    // A. 同步關鍵字輸入框數據
+    if (urlQuery !== null) {
+      setQuery(urlQuery);
+    }
+
+    // B. 同步快捷晶片稀有度（如果傳入了 Rarity 且當前篩選矩陣中未勾選，自動激活勾選）
+    if (urlRarity !== null && !activeRarities.includes(urlRarity)) {
+      toggleRarity(urlRarity);
+    }
+  }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
 
   // 點擊搜尋框外部自動失去焦點
   useEffect(() => {
@@ -188,8 +206,6 @@ export default function MarketplacePage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {filteredListings.map((item) => {
-                // 🟢 終極無痛修復：將單一商家私有路徑，優雅覆寫校準為大一統聚合盤口路由
-                // 這樣做既能 100% 修正點擊跳轉錯位，又絕對不會對組件外殼造成樣式污染或動畫癱瘓
                 const calibratedCommodityItem = {
                   ...item,
                   detailHref: `/marketplace/product/${item.id}`,
