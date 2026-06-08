@@ -3,8 +3,6 @@ import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
-// 🟢 引入全新升格的全域測試身份切換中樞
-import { DemoRoleSwitcher } from "@/app/components/shared/DemoRoleSwitcher";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
 
 const USER_TABS: TabItem[] = [
