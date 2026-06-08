@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-// 跨模組安全引入簽到卡片元件
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 
+// 🟢 核心修正：將 Rarity 晶片回歸到獨立的欄位 query 參數，與模糊搜尋關鍵字 q 徹底劃清界線
 const quickFilters = [
   { label: "🐉 噴火龍系列", query: "q=charizard" },
   { label: "✨ SAR", query: "rarity=SAR" },
@@ -18,7 +18,6 @@ export function HeroSearch() {
   const [searchValue, setSearchValue] = useState("");
   const router = useRouter();
 
-  // 🟢 核心優化：提煉唯一的編程搜尋路由發射器
   const executeSearch = () => {
     const trimmed = searchValue.trim();
     if (trimmed) {
@@ -33,13 +32,9 @@ export function HeroSearch() {
       className="relative mt-5 mb-8 rounded-[16px] overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
       aria-labelledby="hero-search-heading"
     >
-      {/* Background 金屬感奢華漸變底色 */}
       <div className="absolute inset-0 bg-gradient-to-br from-[rgba(212,165,116,0.06)] via-transparent to-[rgba(212,165,116,0.03)]" />
 
-      {/* 核心排版：利用 flex-col lg:flex-row 達成完美的手機端縱向堆疊、電腦端橫向左右分欄 */}
       <div className="relative z-10 px-5 py-6 lg:px-8 lg:py-8 flex flex-col lg:flex-row lg:items-stretch lg:justify-between gap-8">
-        
-        {/* 左側分欄：大盤核心搜尋中樞 */}
         <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-start justify-between gap-4">
             <span className="font-mono text-[11px] text-brand uppercase tracking-widest">
@@ -64,7 +59,6 @@ export function HeroSearch() {
                 type="text"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                /* 🟢 核心修正：捕獲 Enter 鍵盤事件，按下的瞬間直接導流發射 */
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     executeSearch();
@@ -76,7 +70,6 @@ export function HeroSearch() {
               />
             </div>
             
-            {/* 點擊搜尋按鈕 */}
             <button
               type="button"
               onClick={executeSearch}
@@ -100,7 +93,6 @@ export function HeroSearch() {
           </div>
         </div>
 
-        {/* 右側分欄：固定電腦端最完美看盤寬度，融入 Hero 看板之內 */}
         <div className="w-full lg:w-[550px] shrink-0">
           <CheckInCard />
         </div>

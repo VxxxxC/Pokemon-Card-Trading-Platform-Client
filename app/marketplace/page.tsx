@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useSyncExternalStore, useMemo } from "react";
-// 🟢 引入 Next.js 原生 URL 雷達探針
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
@@ -10,15 +9,16 @@ import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
 import { INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
 
 export default function MarketplacePage() {
-  // 金融級 SSR 環境安全隔離
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
 
-  // 🟢 激活網址參數監聽探針
   const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // 🟢 核心解耦：精準分流捕捉網址列不同的業務意圖參數
   const urlQuery = searchParams.get("q");
   const urlRarity = searchParams.get("rarity");
 
@@ -40,16 +40,15 @@ export default function MarketplacePage() {
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // 🟢 核心引流管線：當頁面 Mount 或者網址變更時，自動將 URL 參數無縫灌入 Zustand Store！
+  // 全域參數引流雷達：負責處理從首頁跳轉過來的初始狀態映射
   useEffect(() => {
-    // A. 同步關鍵字輸入框數據
+    // 1. 如果是純關鍵字搜尋字串，填入輸入框
     if (urlQuery !== null) {
       setQuery(urlQuery);
     }
-
-    // B. 同步快捷晶片稀有度（如果傳入了 Rarity 且當前篩選矩陣中未勾選，自動激活勾選）
-    if (urlRarity !== null && !activeRarities.includes(urlRarity)) {
-      toggleRarity(urlRarity);
+    // 2. 🟢 核心解耦：如果是結構化稀有度過濾，直接激活側邊欄勾選狀態，絕對不污染關鍵字輸入框！
+    if (urlRarity !== null && !activeRarities.includes(urlRarity.toUpperCase())) {
+      toggleRarity(urlRarity.toUpperCase());
     }
   }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
 
@@ -67,16 +66,29 @@ export default function MarketplacePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setIsSearchFocused]);
 
+  // 一鍵還原重置線
+  const handleResetAllFilters = () => {
+    setQuery("");
+    activeRarities.forEach((r) => toggleRarity(r));
+    activeGrades.forEach((g) => toggleGrade(g));
+    activeConditions.forEach((c) => toggleCondition(c));
+    setSortKey("最新");
+    router.push("/marketplace");
+  };
+
   // 使用原生 useMemo 進行本地快照引用緩存
   const filteredListings = useMemo(() => {
     return INITIAL_LISTINGS.filter((card) => {
       const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
       const normalizedQuery = query.toLowerCase();
+      
+      // 模糊文字搜尋框（query）專注於尋找卡名與卡號
       const matchQuery =
         normalizedQuery === "" ||
         card.name.toLowerCase().includes(normalizedQuery) ||
         searchableCardNo.includes(normalizedQuery);
 
+      // 🟢 結構化數據過濾（與模糊搜尋互不干涉，達成相乘級別的複合看盤交叉過濾）
       const matchRarity =
         activeRarities.length === 0 || activeRarities.includes(card.rarity);
 
@@ -117,6 +129,8 @@ export default function MarketplacePage() {
     );
   }
 
+  const hasActiveFilters = query !== "" || activeRarities.length > 0 || activeGrades.length > 0 || activeConditions.length > 0;
+
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
       {/* 標題欄 */}
@@ -146,47 +160,67 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* 搜尋吧 */}
-      <div ref={searchContainerRef} className="relative mb-6">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#d4c4b7"
-            strokeWidth="2.5"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+      {/* 搜尋欄位 + 一鍵還原重置按鈕 */}
+      <div ref={searchContainerRef} className="relative mb-6 flex gap-2 items-center">
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#d4c4b7"
+              strokeWidth="2.5"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+          <input
+            type="search"
+            value={query}
+            onFocus={() => setIsSearchFocused(true)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setIsSearchFocused(true);
+            }}
+            placeholder="搜尋官方卡牌名稱、編號..."
+            className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[13.5px] text-[#eae1da] focus:outline-none"
+          />
+          <SmartSearch
+            query={query}
+            listings={INITIAL_LISTINGS}
+            isOpen={isSearchFocused}
+            onSelect={(name) => {
+              setQuery(name);
+              setIsSearchFocused(false);
+            }}
+          />
         </div>
-        <input
-          type="search"
-          value={query}
-          onFocus={() => setIsSearchFocused(true)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsSearchFocused(true);
-          }}
-          placeholder="搜尋官方卡牌名稱、編號、稀要度..."
-          className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[13.5px] text-[#eae1da] focus:outline-none"
-        />
-        <SmartSearch
-          query={query}
-          listings={INITIAL_LISTINGS}
-          isOpen={isSearchFocused}
-          onSelect={(name) => {
-            setQuery(name);
-            setIsSearchFocused(false);
-          }}
-        />
+
+        <button
+          type="button"
+          onClick={handleResetAllFilters}
+          disabled={!hasActiveFilters}
+          className={`h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border transition-all flex items-center gap-1.5 shrink-0 select-none focus:outline-none ${
+            hasActiveFilters
+              ? "border-brand/40 text-brand bg-[rgba(212,165,116,0.06)] hover:border-brand hover:bg-[rgba(212,165,116,0.1)] cursor-pointer active:scale-[0.97]"
+              : "border-white/5 text-text-disabled bg-[#26211C]/40 opacity-40 cursor-not-allowed"
+          }`}
+          title="清除所有搜尋關鍵字與複選矩陣"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
+          重置全部
+        </button>
       </div>
 
       {/* 佈局雙欄 */}
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
         {/* 左欄：手風琴 */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
+          {/* 🟢 核心解耦：回歸純淨的狀態切換，按鈕絕對不污染關鍵字輸入框 */}
           <AccordionFilters
             activeRarities={activeRarities}
             onRarityToggle={toggleRarity}
