@@ -6,7 +6,6 @@ import { INITIAL_LISTINGS as CENTRAL_INITIAL_LISTINGS } from "@/app/lib/mock-dat
 
 export type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
 
-// Bridge: expose a project-level INITIAL_LISTINGS that is fed from the central mock-data bank
 export const INITIAL_LISTINGS: MarketplaceListing[] = CENTRAL_INITIAL_LISTINGS;
 
 interface MarketState {
@@ -14,6 +13,8 @@ interface MarketState {
   activeRarities: string[];
   activeGrades: string[];
   activeConditions: string[];
+  // 🟢 新增：刊登模式（MERCHANT | C2C | P2P）全域多維陣列
+  activeTypes: string[]; 
   sortKey: SortKey;
   isSearchFocused: boolean;
 
@@ -24,6 +25,10 @@ interface MarketState {
   toggleRarity: (rarity: string) => void;
   toggleGrade: (grade: string) => void;
   toggleCondition: (condition: string) => void;
+  // 🟢 新增：切換刊登模式狀態控制線
+  toggleType: (type: string) => void; 
+  // 🟢 新增：全域一鍵滿血重置還原 Action 
+  resetAll: () => void; 
 }
 
 export const useMarketStore = create<MarketState>((set) => ({
@@ -31,6 +36,7 @@ export const useMarketStore = create<MarketState>((set) => ({
   activeRarities: [],
   activeGrades: [],
   activeConditions: [],
+  activeTypes: [], // 預設清空
   sortKey: "最新",
   isSearchFocused: false,
 
@@ -58,4 +64,24 @@ export const useMarketStore = create<MarketState>((set) => ({
         ? state.activeConditions.filter((c) => c !== condition)
         : [...state.activeConditions, condition],
     })),
+
+  // 🟢 實作：刊登來源模式的多維切換開關
+  toggleType: (type) =>
+    set((state) => ({
+      activeTypes: state.activeTypes.includes(type)
+        ? state.activeTypes.filter((t) => t !== type)
+        : [...state.activeTypes, type],
+    })),
+
+  // 🟢 實作：原子級一鍵大抹平，只發動一次 set 徹底避免網頁集體連鎖重繪技術債
+  resetAll: () =>
+    set({
+      query: "",
+      activeRarities: [],
+      activeGrades: [],
+      activeConditions: [],
+      activeTypes: [],
+      sortKey: "最新",
+      isSearchFocused: false,
+    }),
 }));
