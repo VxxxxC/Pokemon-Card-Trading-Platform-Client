@@ -439,6 +439,30 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
+            {/* 已成交歷史 */}
+            <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+              <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
+                最近全網已成交歷史紀錄
+              </h3>
+              <div className="space-y-2">
+                {card.soldHistory.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between font-mono text-[12px] p-2.5 bg-[#17130f] rounded-lg border border-white/[0.04]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#8A8680]">{item.date}</span>
+                      <span className="text-[#50453b]">|</span>
+                      <span className="text-brand">{item.grade}</span>
+                    </div>
+                    <span className="font-bold text-success">
+                      HK$ {item.price.toLocaleString("en-HK")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* 卡牌基本數值規格矩陣 */}
             <div className="bg-[#26211C] rounded-xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
               <div className="px-4 py-3 border-b border-[rgba(237,232,224,0.08)]">
@@ -482,30 +506,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                     {card.moveDamage}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            {/* 已成交歷史 */}
-            <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
-              <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
-                最近全網已成交歷史紀錄
-              </h3>
-              <div className="space-y-2">
-                {card.soldHistory.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between font-mono text-[12px] p-2.5 bg-[#17130f] rounded-lg border border-white/[0.04]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#8A8680]">{item.date}</span>
-                      <span className="text-[#50453b]">|</span>
-                      <span className="text-brand">{item.grade}</span>
-                    </div>
-                    <span className="font-bold text-success">
-                      HK$ {item.price.toLocaleString("en-HK")}
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           </section>
