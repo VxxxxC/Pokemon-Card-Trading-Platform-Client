@@ -231,9 +231,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
                 <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] tracking-tight">
                   {vendor.username}
                 </h1>
-                <span className="font-mono text-[10px] bg-brand/10 text-brand px-2.5 py-1 rounded-full border border-brand/20 uppercase tracking-[0.18em] font-bold">
-                  🏅 {vendor.level}
-                </span>
                 {vendor.verifiedBuyer ? (
                   <span className="font-mono text-[10px] bg-[#17130f] text-[#d4c4b7] px-2.5 py-1 rounded-full border border-white/10 uppercase tracking-[0.16em] font-bold">
                     已驗證交易身份
@@ -265,6 +262,12 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
               <p className="max-w-[760px] font-sans text-[13.5px] text-[#d4c4b7] leading-relaxed">
                 {vendor.bio}
               </p>
+
+              <div className="mb-3">
+                <span className="font-mono text-[10px] bg-brand/10 text-brand px-2.5 py-1 rounded-full border border-brand/20 uppercase tracking-[0.18em] font-bold">
+                  🏅 {vendor.level}
+                </span>
+              </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
                 {vendor.badges.map((badge) => (
