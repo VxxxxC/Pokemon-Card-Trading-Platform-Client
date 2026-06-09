@@ -29,7 +29,7 @@ import Link from "next/link";
 // 定義完整的三軌複合排序 SubSortKey
 type SubSortKey = "price_asc" | "grade_desc" | "rating_desc";
 
-// 🟢 SSOT 午備實用函數：継承自 UnifiedProductSpec 的局部安全備用生成器
+// 🟢 SSOT 局部安全備用生成器
 const getFallbackProduct = (id: string): UnifiedProductSpec => ({
   id,
   name: `公共大盤標準商品 (${id})`,
@@ -76,7 +76,7 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
   const [onlyGraded, setOnlyGraded] = useState(false);
-  // 🟢 訂單簿分頁狀態：複合狀態模式防止 ESLint set-state-in-effect 警告
+  // 🟢 訂單簿分頁狀態
   const [orderPageState, setOrderPageState] = useState({ page: 1, forKey: "" });
 
   const isMounted = useSyncExternalStore(
@@ -135,30 +135,41 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const hasChartData = card.chartPoints.length > 0;
 
-  // 🟢 訂單簿分頁計算引擎：檢視窗含 5 筆訂單
-  // 篩選指紋 Hash 防線：排序或 Switch 改變即自動返回第 1 頁
+  // 🟢 訂單簿分頁計算引擎
   const orderFilterKey = `${subSortKey}|${String(onlyGraded)}`;
   const orderPage =
     orderPageState.forKey === orderFilterKey ? orderPageState.page : 1;
-  const setOrderPage = (page: number) =>
+
+  const setOrderPage = (page: number) => {
     setOrderPageState({ page, forKey: orderFilterKey });
+    // 🟢 PWA 行動體驗優化：盤口翻頁時平滑鎖焦回盤口頂部，防止視野斷線
+    const orderBookPanel = document.getElementById("live-order-book-panel");
+    if (orderBookPanel) {
+      orderBookPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  };
 
   const ordersPerPage = 5;
   const totalOrderPages = Math.ceil(
     filteredAndSortedOrders.length / ordersPerPage,
   );
+
+  // 當前頁切片數據
   const paginatedOrders = filteredAndSortedOrders.slice(
     (orderPage - 1) * ordersPerPage,
     orderPage * ordersPerPage,
   );
 
-  // 🟢 動態大盤均價計算 (Dynamic Market Price — absolute lowest active ask)
+  // 🟢 演算法核心提純：提取「全網絕對最優掛單」，保證頂部橫幅在任何分頁都鎖定全網最低價真理值
+  const globalBestAskOrder = filteredAndSortedOrders[0];
+
+  // 🟢 動態大盤均價計算
   const marketPrice =
     card.sellOrders.length > 0
       ? Math.min(...card.sellOrders.map((o) => o.price))
       : 999_999;
 
-  // 🟢 大盤展示參考等級：取訂單簿中第一個非 Raw Card 的鑑定等級作展示基準
+  // 🟢 大盤展示參考等級
   const referenceGrade = card.sellOrders.find(
     (o) => o.customGrade.authority !== "Raw Card",
   )?.customGrade ?? { authority: "PSA", score: "10" };
@@ -171,9 +182,7 @@ export default function ProductDetailPage({ params }: PageProps) {
       name: card.name,
       set: card.set,
       rarity: card.rarity,
-      // 第三個交割尊守：精準綁定所選賣單的實際鑑定等級
       grade: selectedAskOrder.customGrade,
-      // 圓滽結謁價格尊守：簿内實際可成交掛賣價
       price: selectedAskOrder.price,
       delta: card.delta,
       deltaDirection: card.deltaDirection,
@@ -309,8 +318,11 @@ export default function ProductDetailPage({ params }: PageProps) {
               <MarketChartSkeleton />
             )}
 
-            {/* 盤口即時掛單 */}
-            <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 md:p-6 space-y-4 shadow-lg">
+            {/* 🟢 盤口即時掛單艙體容器 (加裝 ID 用作翻頁對焦) */}
+            <div
+              id="live-order-book-panel"
+              className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 md:p-6 space-y-4 shadow-lg scroll-mt-24"
+            >
               <div className="flex items-center justify-between border-b border-white/5 pb-3 font-mono text-[11px] text-[#8A8680] uppercase tracking-wider select-none gap-2">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold shrink-0">
@@ -322,7 +334,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                       setSubSortKey(value as SubSortKey)
                     }
                   >
-                    {/* 🟢 頂級修正：加裝明確的繁體中文語意映射防禦線，徹底消滅英文 Key 裸露漏洞 */}
                     <SelectTrigger className="w-44 min-w-[176px] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11.5px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
                       <span className="truncate">
                         {subSortKey === "price_asc" && "最平售價優先"}
@@ -370,6 +381,18 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
+              {/* 🟢 演算法大修正 1：金色最優價 Banner 從分頁 map 中安全抽離獨立掛載！不論在第幾頁都死死錨定全網最平價！ */}
+              {globalBestAskOrder && (
+                <div className="mb-1 text-left animate-fadeIn">
+                  <span className="font-mono text-[10px] text-brand uppercase font-black tracking-widest block mb-1">
+                    最優現貨掛牌價
+                  </span>
+                  <p className="font-mono font-black text-[34px] md:text-[42px] text-[#d4a574] tracking-tight leading-none">
+                    HK$ {globalBestAskOrder.price.toLocaleString("en-HK")}
+                  </p>
+                </div>
+              )}
+
               {/* 盤口動態掛單隊列 */}
               <div className="space-y-1">
                 {filteredAndSortedOrders.length === 0 ? (
@@ -377,23 +400,25 @@ export default function ProductDetailPage({ params }: PageProps) {
                     沒有符合當前快篩條件的賣盤掛單
                   </div>
                 ) : (
-                  paginatedOrders.map((order, idx) => (
-                    <div key={order.sellerId}>
+                  paginatedOrders.map((order, idx) => {
+                    // 🟢 演算法大修正 2：計算其在「全量總隊列」中的真實絕對索引（Global Absolute Index）
+                    const globalIdx = (orderPage - 1) * ordersPerPage + idx;
+
+                    return (
                       <AskOrderBookRow
+                        key={order.sellerId}
                         order={order}
-                        idx={idx}
+                        idx={globalIdx} // 傳入全域絕對索引，精準解鎖只有 globalIdx === 0 才有金色高亮外殼
                         productId={id}
                         onOpenGate={setSelectedAskOrder}
                         grade={order.customGrade}
                         rarity={card.rarity}
                       />
-                      {idx < paginatedOrders.length - 1 ? (
-                        <Separator className="bg-white/5 my-1" />
-                      ) : null}
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
+
               {/* 訂單簿分頁控制器 */}
               <MarketPagination
                 currentPage={orderPage}

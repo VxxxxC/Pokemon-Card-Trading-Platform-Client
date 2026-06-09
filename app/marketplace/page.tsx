@@ -22,7 +22,7 @@ import {
 } from "@/app/lib/mock-data/cards";
 import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 
-// 🟢 核心引入：使用底層 Base UI 拋光後的奢華 Select 組件群
+// 使用底層 Base UI 拋光後的奢華 Select 組件群
 import {
   Select,
   SelectContent,
@@ -31,10 +31,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// 🟢 核心引入：使用底層 Base UI 雙軸價格區間滑桿
+// 使用底層 Base UI 雙軸價格區間滑桿
 import { Slider } from "@/components/ui/slider";
 
-// 1. 將原本的大盤核心代碼提煉為獨立的內層組件，安全容納 useSearchParams
 function MarketplaceContent() {
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -45,11 +44,9 @@ function MarketplaceContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // 精準分流捕捉網址列不同的業務意圖參數
   const urlQuery = searchParams.get("q");
   const urlRarity = searchParams.get("rarity");
 
-  // 按需原子級狀態訂閱
   const query = useMarketStore((state) => state.query);
   const setQuery = useMarketStore((state) => state.setQuery);
   const sortKey = useMarketStore((state) => state.sortKey);
@@ -71,15 +68,25 @@ function MarketplaceContent() {
   const resetAll = useMarketStore((state) => state.resetAll);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
-
-  // Mobile Filter Panel State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // 🟢 大盤商品網格分頁狀態 (Global Grid Pagination State)
-  // 使用複合狀態模式：如選別指紋改變，自動返回第 1 頁——完全無需 useEffect
+  // 響應式視窗寬度檢測（用於動態計算 Mobile 5 Rows vs Web 3 Rows）
+  const [isMobileViewport, setIsMobileViewport] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkViewport = () => {
+      setIsMobileViewport(window.innerWidth < 1280); // xl Breakpoint 之前視爲 Mobile/Tablet 雙列流
+    };
+    checkViewport();
+    window.addEventListener("resize", checkViewport);
+    return () => window.removeEventListener("resize", checkViewport);
+  }, []);
+
+  // 大盤商品網格分頁狀態
   const [pageState, setPageState] = useState({ page: 1, forKey: "" });
 
-  // 🟢 SSOT 動態衍生層：從 UnifiedProductSpec 計算每項商品的有效最低掛牌數據
+  // SSOT 動態衍生層
   const derivedListings = useMemo<MarketplaceListing[]>(
     () =>
       INITIAL_LISTINGS.map((spec) => {
@@ -90,9 +97,7 @@ function MarketplaceContent() {
           name: spec.name,
           set: spec.set,
           rarity: spec.rarity,
-          // 動態有效價格 = 訂單簿最低叫賣價
           price: bestAsk?.price ?? 999_999,
-          // 大盤展示等級以最優掛盤賣家的鑑定為基準
           grade: bestAsk?.customGrade ?? { authority: "Raw Card", score: "" },
           delta: spec.delta,
           deltaDirection: spec.deltaDirection,
@@ -106,7 +111,7 @@ function MarketplaceContent() {
     [],
   );
 
-  // 🟢 智能動態價格邊界提取引擎 (Dynamic Price Boundary Extraction)
+  // 智能動態價格邊界提取引擎
   const { absoluteMinPrice, absoluteMaxPrice } = useMemo(() => {
     if (INITIAL_LISTINGS.length === 0) {
       return { absoluteMinPrice: 0, absoluteMaxPrice: 100000 };
@@ -118,36 +123,26 @@ function MarketplaceContent() {
     };
   }, []);
 
-  // 🟢 雙軸價格區間滑桿狀態 (Dual-Thumb Price Range State)
-  // 使用惰性初始化 (Lazy Initialization) 避免 useEffect 直接調用 setState
   const [priceRange, setPriceRange] = useState<[number, number]>(() => [
     absoluteMinPrice,
     absoluteMaxPrice,
   ]);
 
-  // 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
   const lastSyncedParamsKey = useRef("");
 
-  // 全域參數引流雷達
   useEffect(() => {
     const currentParamsKey = `${urlQuery}-${urlRarity}`;
-
     if (lastSyncedParamsKey.current === currentParamsKey) return;
-
-    if (urlQuery !== null) {
-      setQuery(urlQuery);
-    }
+    if (urlQuery !== null) setQuery(urlQuery);
     if (
       urlRarity !== null &&
       !activeRarities.includes(urlRarity.toUpperCase())
     ) {
       toggleRarity(urlRarity.toUpperCase());
     }
-
     lastSyncedParamsKey.current = currentParamsKey;
   }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
 
-  // 點擊搜尋框外部自動失去焦點
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -161,14 +156,12 @@ function MarketplaceContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setIsSearchFocused]);
 
-  // 🟢 本地重置打包線 (增強版：包含價格區間同步重置)
   const handleResetAllFilters = () => {
     resetAll();
     setPriceRange([absoluteMinPrice, absoluteMaxPrice]);
     router.push("/marketplace");
   };
 
-  // 🟢 使用原生 useMemo 進行本地快照引用緩存 (增強版：注入有效最低價斷言)
   const filteredListings = useMemo(() => {
     return derivedListings
       .filter((card) => {
@@ -204,19 +197,10 @@ function MarketplaceContent() {
             return card.grade.score === "8" || card.grade.score === "EX";
           });
 
-        // 100% 結構化強效斷言，穩健通過 eslint 檢驗
         const matchType =
           activeTypes.length === 0 ||
-          activeTypes.includes(
-            (card as { sellerType?: string; listingType?: string })
-              .sellerType ||
-              (card as { sellerType?: string; listingType?: string })
-                .listingType ||
-              "C2C",
-          );
+          activeTypes.includes(card.sellerId ? "MERCHANT" : "C2C");
 
-        // 🟢 有效最低叫賣價區間智能匹配斷言 (Best-Ask Price Range Assertion)
-        // card.price is already the computed effective (lowest ask) price from derivedListings
         const matchPrice =
           card.price >= priceRange[0] && card.price <= priceRange[1];
 
@@ -245,28 +229,31 @@ function MarketplaceContent() {
     sortKey,
   ]);
 
-  if (!isMounted) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-[#17130f]">
-        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  // 🟢 分頁計算引擎 (Pagination Computation Pipeline — 5 items per slice)
-  // 笻選指紋 Hash 防線：選別指紋改變即自動返回第 1 頁
+  // 🟢 零 useEffect 狀態指紋分頁引擎 (完全防禦級別)
   const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeConditions.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
   const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
-  const setCurrentPage = (page: number) =>
+
+  const setCurrentPage = (page: number) => {
     setPageState({ page, forKey: filterKey });
+    if (typeof window !== "undefined") {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  };
 
-  const itemsPerPage = 5;
+  // Mobile (雙列流): 5 Rows × 2 Items = 10
+  // Web (三列流): 3 Rows × 3 Items = 9
+  const itemsPerPage = isMobileViewport ? 10 : 9;
+
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
-  const paginatedListings = filteredListings.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const paginatedListings = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredListings.slice(start, start + itemsPerPage);
+  }, [filteredListings, currentPage, itemsPerPage]);
 
+  // 🟢 頂級修正：將 hasActiveFilters 宣告提前至分頁計算之後、return 區塊之前，徹底解決 ReferenceError 盲區
   const hasActiveFilters =
     query !== "" ||
     activeRarities.length > 0 ||
@@ -289,7 +276,6 @@ function MarketplaceContent() {
           </p>
         </div>
 
-        {/* 🟢 排序控制區：使用 shadcn/base-ui Select 組件拋光 */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold select-none">
             排序
@@ -298,11 +284,9 @@ function MarketplaceContent() {
             value={sortKey}
             onValueChange={(value) => setSortKey(value as SortKey)}
           >
-            {/* 調整寬度與黑金背景相契合，並確保字體大小一致不變形 */}
             <SelectTrigger className="w-40 min-w-40 h-9 bg-[#26211C] border border-white/5 rounded-[8px] text-[#eae1da] font-sans text-[12px] hover:bg-[#322a24] hover:border-white/10 transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
               <SelectValue placeholder="選擇排序規則" />
             </SelectTrigger>
-            {/* 彈出層黑金風格塗層，確保層級 z-50 不會被下方卡片擊穿 */}
             <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
               <SelectItem
                 value="最新"
@@ -327,16 +311,15 @@ function MarketplaceContent() {
         </div>
       </div>
 
-      {/* 搜尋欄位 + 行動篩選按鈕 + 一鍵還原重置按鈕 (Tri-partite Responsive System) */}
+      {/* 搜尋欄位系統 */}
       <div
         ref={searchContainerRef}
         className="relative mb-6 flex gap-2 items-center"
       >
-        {/* Slot A: Mobile-Only Filter Toggle Button */}
         <button
           type="button"
           onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-          className="lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
+          className="lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none"
           title="開啟或關閉行動篩選面板"
         >
           <svg
@@ -361,7 +344,6 @@ function MarketplaceContent() {
           </svg>
         </button>
 
-        {/* Slot B: Main Search Input */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <svg
@@ -398,7 +380,7 @@ function MarketplaceContent() {
           />
         </div>
 
-        {/* Slot C: Reset All Button */}
+        {/* 🟢 案發現場：現在 hasActiveFilters 已經安全在上方初始化完毕，完美通關 */}
         <button
           type="button"
           onClick={handleResetAllFilters}
@@ -432,7 +414,6 @@ function MarketplaceContent() {
         title="📊 篩選"
         subtitle="ADVANCED FILTER"
       >
-        {/* 🟢 價格區間滑桿模組 (Mobile Drawer 版) */}
         <div className="mb-6 rounded-xl border border-white/8 bg-[#26211C] p-5">
           <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
             市場現貨價格區間 (HK$)
@@ -458,7 +439,6 @@ function MarketplaceContent() {
             className="w-full"
           />
         </div>
-
         <AccordionFilters
           activeRarities={activeRarities}
           onRarityToggle={toggleRarity}
@@ -474,9 +454,7 @@ function MarketplaceContent() {
 
       {/* 佈局雙欄 */}
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
-        {/* 左欄：手風琴 (Desktop Only) */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
-          {/* 🟢 價格區間滑桿模組 (Desktop Sidebar 版) */}
           <div className="rounded-xl border border-white/8 bg-[#26211C] p-4">
             <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
               市場現貨價格區間 (HK$)
@@ -502,7 +480,6 @@ function MarketplaceContent() {
               className="w-full"
             />
           </div>
-
           <AccordionFilters
             activeRarities={activeRarities}
             onRarityToggle={toggleRarity}
@@ -516,37 +493,30 @@ function MarketplaceContent() {
           />
         </aside>
 
-        {/* 🟢 右欄：網格 (強制改為 Mobile 雙欄佈局) */}
-        <div className="flex-1">
-          {filteredListings.length === 0 ? (
-            <div className="py-20 text-center bg-[#26211C] border border-dashed border-white/5 rounded-2xl font-sans text-[13.5px] text-text-disabled">
-              沒有符合篩選條件的商品
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
-                {paginatedListings.map((item) => (
-                  <MarketplaceCard key={item.id} listing={item} />
-                ))}
-              </div>
-              <MarketPagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                itemLabel="件商品"
-                totalItems={filteredListings.length}
-                itemsPerPage={itemsPerPage}
-                className="mt-6"
-              />
-            </>
-          )}
+        {/* 右欄商品流 */}
+        <div className="flex-1 space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
+            {paginatedListings.map((item) => (
+              <MarketplaceCard key={item.id} listing={item} />
+            ))}
+          </div>
+
+          <MarketPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemLabel="件商品"
+            totalItems={filteredListings.length}
+            itemsPerPage={itemsPerPage}
+            hideControls={true} // 🟢 核心加裝：在大盤主頁面直接隱藏 Prev/Next 控制鍵，100% 規避衝突！
+            className="mt-6"
+          />
         </div>
       </div>
     </main>
   );
 }
 
-// 🟢 2. 作為唯一的 default export 入口，加裝全域 Suspense 安全隔離網，完美通關 Prerender
 export default function MarketplacePage() {
   return (
     <Suspense
