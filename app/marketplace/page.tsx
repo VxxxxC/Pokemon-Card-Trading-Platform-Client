@@ -12,10 +12,20 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import { SlideOver } from "@/app/components/ui/SlideOver";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
 import { INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
 
-// 🟢 1. 將原本的大盤核心代碼提煉為獨立的內層組件，安全容納 useSearchParams
+// 🟢 核心引入：使用底層 Base UI 拋光後的奢華 Select 組件群
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// 1. 將原本的大盤核心代碼提煉為獨立的內層組件，安全容納 useSearchParams
 function MarketplaceContent() {
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -53,7 +63,7 @@ function MarketplaceContent() {
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // 🟢 Mobile Filter Panel State
+  // Mobile Filter Panel State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
@@ -181,26 +191,48 @@ function MarketplaceContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] tracking-tight">
-            交易所大盤市場
+            大盤市場
           </h1>
           <p className="font-mono text-[11.5px] text-[#d4c4b7] mt-0.5">
             🚀 {filteredListings.length} 件全網聚合現貨標的在庫
           </p>
         </div>
 
+        {/* 🟢 排序控制區：使用 shadcn/base-ui Select 組件拋光 */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="font-mono text-[10px] text-[#50453b] uppercase tracking-wider font-bold">
+          <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold select-none">
             排序
           </span>
-          <select
+          <Select
             value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-white/5 rounded-[8px] font-sans text-[12px] focus:outline-none cursor-pointer"
+            onValueChange={(value) => setSortKey(value as SortKey)}
           >
-            <option value="最新">上架時間：最新</option>
-            <option value="價格：由低到高">價格：由低到高</option>
-            <option value="價格：由高到低">價格：由高到低</option>
-          </select>
+            {/* 調整寬度與黑金背景相契合，並確保字體大小一致不變形 */}
+            <SelectTrigger className="w-40 min-w-40 h-9 bg-[#26211C] border border-white/5 rounded-[8px] text-[#eae1da] font-sans text-[12px] hover:bg-[#322a24] hover:border-white/10 transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
+              <SelectValue placeholder="選擇排序規則" />
+            </SelectTrigger>
+            {/* 彈出層黑金風格塗層，確保層級 z-50 不會被下方卡片擊穿 */}
+            <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
+              <SelectItem
+                value="最新"
+                className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+              >
+                上架時間：最新
+              </SelectItem>
+              <SelectItem
+                value="價格：由低到高"
+                className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+              >
+                價格：由低到高
+              </SelectItem>
+              <SelectItem
+                value="價格：由高到低"
+                className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+              >
+                價格：由高到低
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -209,11 +241,11 @@ function MarketplaceContent() {
         ref={searchContainerRef}
         className="relative mb-6 flex gap-2 items-center"
       >
-        {/* Slot A: Mobile-Only Filter Toggle Button (Center-Right, Visible on Mobile/Tablet Only) */}
+        {/* Slot A: Mobile-Only Filter Toggle Button */}
         <button
           type="button"
           onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-          className="block lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
+          className="lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
           title="開啟或關閉行動篩選面板"
         >
           <svg
@@ -238,7 +270,7 @@ function MarketplaceContent() {
           </svg>
         </button>
 
-        {/* Slot B: Main Search Input (Left/Center Flex-1) */}
+        {/* Slot B: Main Search Input */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <svg
@@ -275,7 +307,7 @@ function MarketplaceContent() {
           />
         </div>
 
-        {/* Slot C: Reset All Button (Right-most Fixed Shrunk) */}
+        {/* Slot C: Reset All Button */}
         <button
           type="button"
           onClick={handleResetAllFilters}
@@ -302,21 +334,24 @@ function MarketplaceContent() {
         </button>
       </div>
 
-      {/* 🟢 Mobile Filter Panel: Collapsible Luxury Bordered Block (Mobile/Tablet Only) */}
-      {isMobileFilterOpen && (
-        <div className="lg:hidden border border-[rgba(212,165,116,0.15)] bg-[#1e1a17] rounded-xl p-4 mb-6 shadow-xl animate-fadeIn">
-          <AccordionFilters
-            activeRarities={activeRarities}
-            onRarityToggle={toggleRarity}
-            activeGrades={activeGrades}
-            onGradeToggle={toggleGrade}
-            activeConditions={activeConditions}
-            onConditionToggle={toggleCondition}
-            activeTypes={activeTypes}
-            onTypeToggle={toggleType}
-          />
-        </div>
-      )}
+      {/* Mobile Filter SlideOver */}
+      <SlideOver
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
+        title="📊 篩選"
+        subtitle="ADVANCED FILTER"
+      >
+        <AccordionFilters
+          activeRarities={activeRarities}
+          onRarityToggle={toggleRarity}
+          activeGrades={activeGrades}
+          onGradeToggle={toggleGrade}
+          activeConditions={activeConditions}
+          onConditionToggle={toggleCondition}
+          activeTypes={activeTypes}
+          onTypeToggle={toggleType}
+        />
+      </SlideOver>
 
       {/* 佈局雙欄 */}
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
