@@ -41,14 +41,15 @@
 - [ ] Ticket 16: 撰寫資料 mapping 邏輯，將外部 API 格式轉換為自家 Supabase `cards` Table 格式。
 
 **Task 2.1.2: 實作 Supabase 快取機制與搜尋**
+
 - [ ] Ticket 17: 搜尋卡牌時，先查詢自家 `cards` Table (Cache) 🔄 TODO [BACKEND]。
 - [ ] Ticket 18: 若自家無資料，Call 外部 API，並將結果 `insert` 落自家 `cards` Table 後回傳 🔄 TODO [BACKEND]。
 - [x] Ticket 19: 建立前端「卡牌搜尋框」UI Component (包含輸入防抖 Debounce) ✅ DONE。
 - [x] Ticket 20: 將搜尋結果以列表形式 (Dropdown) 呈現於前端，供表單選取 ✅ DONE。
 - [x] **Ticket 20a [架構優化]: 實作大盤「模糊搜尋」與「結構化篩選」徹底解耦線** ✅ DONE
-  - *驗收標準：* 點擊首頁晶片或大盤側邊欄時，Filter 的 `query` 參數（如 `rarity=SAR`）直接與 Supabase 欄位映射對齊，**嚴禁污染或覆寫**前端全域輸入框字串 `query`。
+  - _驗收標準：_ 點擊首頁晶片或大盤側邊欄時，Filter 的 `query` 參數（如 `rarity=SAR`）直接與 Supabase 欄位映射對齊，**嚴禁污染或覆寫**前端全域輸入框字串 `query`。
 - [x] **Ticket 20b [架構優化]: 實作全維度一鍵滿血重置（Reset All Filters）按鈕** ✅ DONE
-  - *驗收標準：* 點擊重置按鈕時，同步抹平前端文字框、清空多維 Checkbox 陣列矩陣、還原 URL 參數，使大盤秒速重回純淨 baseline 狀態。
+  - _驗收標準：_ 點擊重置按鈕時，同步抹平前端文字框、清空多維 Checkbox 陣列矩陣、還原 URL 參數，使大盤秒速重回純淨 baseline 狀態。
 
 ---
 
@@ -118,6 +119,18 @@
 **Task 5.2.1: 結帳流程與 Webhook**
 
 - [x] Ticket 42a [前端]: 製作結帳流程 UI，包含商品確認 Slide-over、價格明細展示、付款跳轉觸發按鈕。✅ DONE (`app/components/transactions/ExecutionSlideOver.tsx` + `app/marketplace/payment-status/page.tsx`；2026-06-07 已補強自動盲開房與實時交割狀態卡片追蹤技術)
+- [x] **Ticket 42a-1 [前端]: Pre-Checkout 流程重大改版 — 啟用鑑定服務與多優惠券系統** ✅ DONE (2026-06-09)
+  - _驗收標準：_
+    - ✅ 安裝 shadcn/base UI `select` 與 `switch` 組件
+    - ✅ 重新排序並重新編號 Pre-Checkout 表單左側 5 大步驟：(1) 核對現貨資產品相, (2) 選擇配送渠道, (3) 啟用鑑定服務 [NEW - Switch Toggle], (4) 使用優惠券 [NEW - Multi-Select Dropdown + Badge Tags], (5) 給賣家的特殊交割備註
+    - ✅ 實作鑑定服務開關：開啟時自動加入 HK$150 鑑定費，並於訂單明細中單獨顯示「官方第三方鑑定費」行項目
+    - ✅ 實作優惠券多選系統：從 3 張可用券證庫（`WELCOME-TCG-50`, `SF-FREE-DUANWU`, `VIP-DISCOUNT-100`）中選擇，已選券證以高對比黃金邊框 Badge Pills 形式渲染於下拉框下方，每張 Badge 配有 X 移除按鈕，並支援動態累加折扣總額
+    - ✅ 右側財務明細動態同步：新增「官方第三方鑑定費」行、「券證及優惠碼折扣扣減」行精準反映當前選擇，最終總額公式更新為：`Math.max(itemSubtotal + shippingFee + authFee - totalDiscount, 0)`
+    - ✅ 移除舊的單一優惠券輸入框（原右側 `套用全域平台優惠券` 區塊已完全移除並遷移至左側流程）
+    - ✅ TypeScript 嚴格模式編譯通過：`bunx tsc --noEmit` 無 error
+    - ✅ ESLint 審核通過：`bun run lint` 無 warning
+  - _核心技術棧：_ shadcn/ui Base UI primitives (Select, Switch), React 19 controlled components, TypeScript strict mode
+  - _檔案路徑：_ `app/checkout/[id]/page.tsx` (完整重寫 +204 lines)
 - [ ] Ticket 42b [後端]: 於結帳頁整合真實 Stripe Payment Element，替換現有 mock 跳轉邏輯。🔄 TODO [API]
 - [ ] Ticket 43: 寫 API 產生 PaymentIntent，計算平台抽佣，指定轉帳去賣家嘅 Stripe Account。🔄 TODO [API]
 - [ ] Ticket 44: 建立 API Endpoint 接收 Stripe Webhook (設定 Raw Body 解析及驗證 Signature)。🔄 TODO [API]
