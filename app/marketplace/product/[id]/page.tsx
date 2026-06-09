@@ -24,6 +24,7 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+// 🟢 核心對齊：引入 Next.js 官方原生頂級聲明式導航組件
 import Link from "next/link";
 
 // 定義完整的三軌複合排序 SubSortKey
@@ -154,7 +155,7 @@ export default function ProductDetailPage({ params }: PageProps) {
     filteredAndSortedOrders.length / ordersPerPage,
   );
 
-  // 當前頁切片數據
+  // 当当前页切片数据
   const paginatedOrders = filteredAndSortedOrders.slice(
     (orderPage - 1) * ordersPerPage,
     orderPage * ordersPerPage,
@@ -203,13 +204,16 @@ export default function ProductDetailPage({ params }: PageProps) {
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
       <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 lg:pb-12 animate-fadeIn">
-        {/* 麵包屑導航 */}
-        <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5">
-          <span className="text-[#8A8680] cursor-default">
+        {/* 🟢 頂級修正：活化 Breadcrumb 導航鏈條，全面注入高級黑金 hover 微光質感，100% 規避 PWA 閃爍 Loading 債 */}
+        <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
+          <Link
+            href="/marketplace"
+            className="text-[#eae1da] hover:text-brand transition-colors duration-200 font-bold tracking-wide cursor-pointer"
+          >
             MARKETPLACE 交易所大盤
-          </span>
-          <span>/</span>
-          <span className="text-[#8A8680] truncate uppercase">
+          </Link>
+          <span className="text-[#50453b] font-sans font-normal">/</span>
+          <span className="text-[#8A8680] truncate uppercase cursor-default">
             {id} AGGREGATED PRODUCT
           </span>
         </div>
@@ -228,7 +232,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 unoptimized
               />
               <div className="absolute top-3 left-3 pointer-events-none">
-                <span className="inline-flex px-2 py-1 rounded bg-[#17130f]/80 backdrop-blur-sm border border-[rgba(237,232,224,0.12)] font-mono text-[10px] font-semibold text-brand">
+                <span className="inline-flex px-2 py-1 rounded bg-[#17130f]/80 backdrop-blur-sm border border border-[rgba(237,232,224,0.12)] font-mono text-[10px] font-semibold text-brand">
                   🏛️ 官方標準合約圖鑑
                 </span>
               </div>
@@ -318,7 +322,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               <MarketChartSkeleton />
             )}
 
-            {/* 🟢 盤口即時掛單艙體容器 (加裝 ID 用作翻頁對焦) */}
+            {/* 盤口即時掛單艙體容器 */}
             <div
               id="live-order-book-panel"
               className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 md:p-6 space-y-4 shadow-lg scroll-mt-24"
@@ -381,7 +385,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              {/* 🟢 演算法大修正 1：金色最優價 Banner 從分頁 map 中安全抽離獨立掛載！不論在第幾頁都死死錨定全網最平價！ */}
+              {/* 金色最優價 Banner */}
               {globalBestAskOrder && (
                 <div className="mb-1 text-left animate-fadeIn">
                   <span className="font-mono text-[10px] text-brand uppercase font-black tracking-widest block mb-1">
@@ -401,14 +405,13 @@ export default function ProductDetailPage({ params }: PageProps) {
                   </div>
                 ) : (
                   paginatedOrders.map((order, idx) => {
-                    // 🟢 演算法大修正 2：計算其在「全量總隊列」中的真實絕對索引（Global Absolute Index）
                     const globalIdx = (orderPage - 1) * ordersPerPage + idx;
 
                     return (
                       <AskOrderBookRow
                         key={order.sellerId}
                         order={order}
-                        idx={globalIdx} // 傳入全域絕對索引，精準解鎖只有 globalIdx === 0 才有金色高亮外殼
+                        idx={globalIdx}
                         productId={id}
                         onOpenGate={setSelectedAskOrder}
                         grade={order.customGrade}
