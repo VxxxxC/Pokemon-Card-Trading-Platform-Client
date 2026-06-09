@@ -188,7 +188,7 @@ function MarketplaceContent() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <span className="font-mono text-[10px] text-[#50453b] uppercase tracking-wider font-bold">
             排序
           </span>
@@ -209,7 +209,36 @@ function MarketplaceContent() {
         ref={searchContainerRef}
         className="relative mb-6 flex gap-2 items-center"
       >
-        {/* Slot A: Main Search Input (Left/Center Flex-1) */}
+        {/* Slot A: Mobile-Only Filter Toggle Button (Center-Right, Visible on Mobile/Tablet Only) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+          className="block lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
+          title="開啟或關閉行動篩選面板"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
+        </button>
+
+        {/* Slot B: Main Search Input (Left/Center Flex-1) */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <svg
@@ -246,36 +275,6 @@ function MarketplaceContent() {
           />
         </div>
 
-        {/* Slot B: Mobile-Only Filter Toggle Button (Center-Right, Visible on Mobile/Tablet Only) */}
-        <button
-          type="button"
-          onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-          className="block lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
-          title="開啟或關閉行動篩選面板"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="4" y1="21" x2="4" y2="14" />
-            <line x1="4" y1="10" x2="4" y2="3" />
-            <line x1="12" y1="21" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12" y2="3" />
-            <line x1="20" y1="21" x2="20" y2="16" />
-            <line x1="20" y1="12" x2="20" y2="3" />
-            <line x1="1" y1="14" x2="7" y2="14" />
-            <line x1="9" y1="8" x2="15" y2="8" />
-            <line x1="17" y1="16" x2="23" y2="16" />
-          </svg>
-          篩選
-        </button>
-
         {/* Slot C: Reset All Button (Right-most Fixed Shrunk) */}
         <button
           type="button"
@@ -300,7 +299,6 @@ function MarketplaceContent() {
           >
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
           </svg>
-          重置全部
         </button>
       </div>
 
