@@ -6,6 +6,7 @@ import Link from "next/link";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 import { CChart16 } from "@/components/reui/c-chart-16";
 
@@ -183,60 +184,6 @@ const getFallbackProduct = (id: string): ProductSpec => ({
 
 interface PageProps {
   params: Promise<{ id: string }>;
-}
-
-// 完美合規：將 AskOrderBookRow 抽離出主頁面 Render 體外，徹底封死 React 19 級聯重繪硬崩潰
-function AskOrderBookRow({
-  order,
-  idx,
-  onOpenGate,
-}: {
-  order: SellOrder;
-  idx: number;
-  onOpenGate: (order: SellOrder) => void;
-}) {
-  return (
-    <div className="space-y-2 w-full">
-      {/* 規格 4：第一個最平賣盤 container 上方，以特大金色字體高亮標示大盤最甜售價 */}
-      {idx === 0 && (
-        <div className="mb-1 text-left animate-fadeIn">
-          <span className="font-mono text-[10px] text-brand uppercase font-black tracking-widest block mb-1">
-            🔥 全網最優現貨掛牌價 (MARKET BEST ASK INDEX)
-          </span>
-          <p className="font-mono font-black text-[34px] md:text-[42px] text-[#d4a574] tracking-tight leading-none">
-            HK$ {order.price.toLocaleString("en-HK")}
-          </p>
-        </div>
-      )}
-
-      {/* 規格 2：清爽純淨的橫向長方形 container，完美封裝賣家名稱、ID 與一口價 */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onOpenGate(order)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onOpenGate(order);
-        }}
-        className={`w-full bg-[#1A1612] hover:bg-[#2c2722] border ${idx === 0 ? "border-brand/40 shadow-[0_0_15px_rgba(212,165,116,0.08)]" : "border-white/5"} rounded-xl p-4 flex items-center justify-between transition-all cursor-pointer group focus:outline-none focus:ring-1 focus:ring-brand/40`}
-      >
-        <div className="flex flex-col text-left min-w-0">
-          <span className="font-sans font-extrabold text-[14.5px] text-[#eae1da] group-hover:text-brand transition-colors truncate">
-            {order.sellerName}
-          </span>
-          <span className="font-mono text-[10.5px] text-[#8A8680] mt-0.5 tracking-wider uppercase">
-            UID: {order.sellerId}
-          </span>
-        </div>
-        <div className="text-right shrink-0">
-          <span
-            className={`font-mono font-black text-[16px] ${idx === 0 ? "text-brand" : "text-[#eae1da]"}`}
-          >
-            HK$ {order.price.toLocaleString("en-HK")}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function ProductDetailPage({ params }: PageProps) {
@@ -433,7 +380,10 @@ export default function ProductDetailPage({ params }: PageProps) {
                     key={order.sellerId}
                     order={order}
                     idx={idx}
+                    productId={id}
                     onOpenGate={setSelectedAskOrder}
+                    grade={card.grade}
+                    rarity={card.rarity}
                   />
                 ))}
               </div>
