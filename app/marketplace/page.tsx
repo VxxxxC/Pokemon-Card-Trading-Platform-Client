@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useEffect, useSyncExternalStore, useMemo, Suspense } from "react";
+import {
+  useRef,
+  useEffect,
+  useSyncExternalStore,
+  useMemo,
+  Suspense,
+  useState,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
@@ -18,7 +25,7 @@ function MarketplaceContent() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   // 精準分流捕捉網址列不同的業務意圖參數
   const urlQuery = searchParams.get("q");
   const urlRarity = searchParams.get("rarity");
@@ -29,7 +36,9 @@ function MarketplaceContent() {
   const sortKey = useMarketStore((state) => state.sortKey);
   const setSortKey = useMarketStore((state) => state.setSortKey);
   const isSearchFocused = useMarketStore((state) => state.isSearchFocused);
-  const setIsSearchFocused = useMarketStore((state) => state.setIsSearchFocused);
+  const setIsSearchFocused = useMarketStore(
+    (state) => state.setIsSearchFocused,
+  );
 
   const activeRarities = useMarketStore((state) => state.activeRarities);
   const activeGrades = useMarketStore((state) => state.activeGrades);
@@ -43,20 +52,26 @@ function MarketplaceContent() {
   const resetAll = useMarketStore((state) => state.resetAll);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  
+
+  // 🟢 Mobile Filter Panel State
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
   // 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
   const lastSyncedParamsKey = useRef("");
 
   // 全域參數引流雷達
   useEffect(() => {
     const currentParamsKey = `${urlQuery}-${urlRarity}`;
-    
+
     if (lastSyncedParamsKey.current === currentParamsKey) return;
 
     if (urlQuery !== null) {
       setQuery(urlQuery);
     }
-    if (urlRarity !== null && !activeRarities.includes(urlRarity.toUpperCase())) {
+    if (
+      urlRarity !== null &&
+      !activeRarities.includes(urlRarity.toUpperCase())
+    ) {
       toggleRarity(urlRarity.toUpperCase());
     }
 
@@ -88,7 +103,7 @@ function MarketplaceContent() {
     return INITIAL_LISTINGS.filter((card) => {
       const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
       const normalizedQuery = query.toLowerCase();
-      
+
       const matchQuery =
         normalizedQuery === "" ||
         card.name.toLowerCase().includes(normalizedQuery) ||
@@ -120,20 +135,30 @@ function MarketplaceContent() {
 
       // 100% 結構化強效斷言，穩健通過 eslint 檢驗
       const matchType =
-        activeTypes.length === 0 || 
+        activeTypes.length === 0 ||
         activeTypes.includes(
-          (card as { sellerType?: string; listingType?: string }).sellerType || 
-          (card as { sellerType?: string; listingType?: string }).listingType || 
-          "C2C"
+          (card as { sellerType?: string; listingType?: string }).sellerType ||
+            (card as { sellerType?: string; listingType?: string })
+              .listingType ||
+            "C2C",
         );
 
-      return matchQuery && matchRarity && matchGrade && matchCondition && matchType;
+      return (
+        matchQuery && matchRarity && matchGrade && matchCondition && matchType
+      );
     }).sort((a, b) => {
       if (sortKey === "價格：由低到高") return a.price - b.price;
       if (sortKey === "價格：由高到低") return b.price - a.price;
       return 0;
     });
-  }, [query, activeRarities, activeGrades, activeConditions, activeTypes, sortKey]);
+  }, [
+    query,
+    activeRarities,
+    activeGrades,
+    activeConditions,
+    activeTypes,
+    sortKey,
+  ]);
 
   if (!isMounted) {
     return (
@@ -143,10 +168,10 @@ function MarketplaceContent() {
     );
   }
 
-  const hasActiveFilters = 
-    query !== "" || 
-    activeRarities.length > 0 || 
-    activeGrades.length > 0 || 
+  const hasActiveFilters =
+    query !== "" ||
+    activeRarities.length > 0 ||
+    activeGrades.length > 0 ||
     activeConditions.length > 0 ||
     activeTypes.length > 0;
 
@@ -179,8 +204,12 @@ function MarketplaceContent() {
         </div>
       </div>
 
-      {/* 搜尋欄位 + 一鍵還原重置按鈕 */}
-      <div ref={searchContainerRef} className="relative mb-6 flex gap-2 items-center">
+      {/* 搜尋欄位 + 行動篩選按鈕 + 一鍵還原重置按鈕 (Tri-partite Responsive System) */}
+      <div
+        ref={searchContainerRef}
+        className="relative mb-6 flex gap-2 items-center"
+      >
+        {/* Slot A: Main Search Input (Left/Center Flex-1) */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
             <svg
@@ -217,6 +246,37 @@ function MarketplaceContent() {
           />
         </div>
 
+        {/* Slot B: Mobile-Only Filter Toggle Button (Center-Right, Visible on Mobile/Tablet Only) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+          className="block lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
+          title="開啟或關閉行動篩選面板"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
+          </svg>
+          篩選
+        </button>
+
+        {/* Slot C: Reset All Button (Right-most Fixed Shrunk) */}
         <button
           type="button"
           onClick={handleResetAllFilters}
@@ -228,16 +288,41 @@ function MarketplaceContent() {
           }`}
           title="清除所有搜尋關鍵字與複選矩陣"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
           </svg>
           重置全部
         </button>
       </div>
 
+      {/* 🟢 Mobile Filter Panel: Collapsible Luxury Bordered Block (Mobile/Tablet Only) */}
+      {isMobileFilterOpen && (
+        <div className="lg:hidden border border-[rgba(212,165,116,0.15)] bg-[#1e1a17] rounded-xl p-4 mb-6 shadow-xl animate-fadeIn">
+          <AccordionFilters
+            activeRarities={activeRarities}
+            onRarityToggle={toggleRarity}
+            activeGrades={activeGrades}
+            onGradeToggle={toggleGrade}
+            activeConditions={activeConditions}
+            onConditionToggle={toggleCondition}
+            activeTypes={activeTypes}
+            onTypeToggle={toggleType}
+          />
+        </div>
+      )}
+
       {/* 佈局雙欄 */}
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
-        {/* 左欄：手風琴 */}
+        {/* 左欄：手風琴 (Desktop Only) */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
           <AccordionFilters
             activeRarities={activeRarities}
