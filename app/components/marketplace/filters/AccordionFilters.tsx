@@ -10,8 +10,11 @@ interface AccordionFiltersProps {
   onGradeToggle: (grade: string) => void;
   activeConditions: string[];
   onConditionToggle: (condition: string) => void;
-  activeTypes: string[];
-  onTypeToggle: (type: string) => void;
+  // 🟢 調整為可選屬性：如果 hideTypeSection 爲 true，這裏連引流都不用傳
+  activeTypes?: string[];
+  onTypeToggle?: (type: string) => void;
+  // 🟢 核心戰術指針：加入物理隔離控制開關
+  hideTypeSection?: boolean;
 }
 
 export function AccordionFilters({
@@ -21,8 +24,9 @@ export function AccordionFilters({
   onGradeToggle,
   activeConditions,
   onConditionToggle,
-  activeTypes,
+  activeTypes = [],
   onTypeToggle,
+  hideTypeSection = false, // 預設不隱藏
 }: AccordionFiltersProps) {
   const [openSections, setOpenSections] = useState({
     rarity: true,
@@ -51,56 +55,58 @@ export function AccordionFilters({
 
   return (
     <div className="space-y-1 bg-[#26211C] p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-      {/* 刊登來源與模式 Section */}
-      <Accordion
-        title="刊登來源與模式"
-        isOpen={openSections.type}
-        onToggle={() => toggleSection("type")}
-      >
-        <div className="space-y-2">
-          {listingTypes.map(({ key, label }) => {
-            const isActive = activeTypes.includes(key);
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onTypeToggle(key)}
-                className="flex items-center gap-2.5 w-full text-left py-1 group/item"
-              >
-                <div
-                  className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                    isActive
-                      ? "bg-[#d4a574] border-[#d4a574]"
-                      : "border-[rgba(237,232,224,0.20)] group-hover/item:border-[#d4a574]/50"
-                  }`}
+      {/* 🟢 核心修正：底層物理防線。一旦開關啟動，這段代碼直接原地蒸發，絕不佔用任何渲染和內存效能 */}
+      {!hideTypeSection && (
+        <Accordion
+          title="刊登來源與模式"
+          isOpen={openSections.type}
+          onToggle={() => toggleSection("type")}
+        >
+          <div className="space-y-2">
+            {listingTypes.map(({ key, label }) => {
+              const isActive = activeTypes.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onTypeToggle?.(key)}
+                  className="flex items-center gap-2.5 w-full text-left py-1 group/item"
                 >
-                  {isActive && (
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#1A1612"
-                      strokeWidth="3.5"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </div>
-                <span
-                  className={`font-sans text-[13px] transition-colors ${
-                    isActive
-                      ? "text-[#eae1da] font-medium"
-                      : "text-[#d4c4b7] group-hover/item:text-[#eae1da]"
-                  }`}
-                >
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Accordion>
+                  <div
+                    className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                      isActive
+                        ? "bg-[#d4a574] border-[#d4a574]"
+                        : "border-[rgba(237,232,224,0.20)] group-hover/item:border-[#d4a574]/50"
+                    }`}
+                  >
+                    {isActive && (
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#1A1612"
+                        strokeWidth="3.5"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  <span
+                    className={`font-sans text-[13px] transition-colors ${
+                      isActive
+                        ? "text-[#eae1da] font-medium"
+                        : "text-[#d4c4b7] group-hover/item:text-[#eae1da]"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </Accordion>
+      )}
 
       {/* Rarity Section */}
       <Accordion

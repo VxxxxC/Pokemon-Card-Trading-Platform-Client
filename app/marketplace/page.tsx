@@ -350,6 +350,7 @@ function MarketplaceContent() {
           onConditionToggle={toggleCondition}
           activeTypes={activeTypes}
           onTypeToggle={toggleType}
+          hideTypeSection={false}
         />
       </SlideOver>
 
@@ -366,6 +367,7 @@ function MarketplaceContent() {
             onConditionToggle={toggleCondition}
             activeTypes={activeTypes}
             onTypeToggle={toggleType}
+            hideTypeSection={false}
           />
         </aside>
 

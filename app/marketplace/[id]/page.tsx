@@ -1,26 +1,33 @@
 "use client";
 
 import {
-  use,
-  useEffect,
-  useMemo,
   useRef,
-  useState,
+  useEffect,
   useSyncExternalStore,
-  type Dispatch,
-  type SetStateAction,
+  useMemo,
+  useState,
+  use,
 } from "react";
 import Link from "next/link";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import { SlideOver } from "@/app/components/ui/SlideOver";
 import {
   getPublicMemberById,
   getStorefrontListingsByMember,
 } from "@/app/lib/mock-data/members";
 import { useTradeStore } from "@/app/store/useTradeStore";
-import type { SortKey } from "@/app/store/useMarketStore";
-import { useMarketStore } from "@/app/store/useMarketStore";
+import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
+
+// 🟢 核心引入：使用底層 Base UI 拋光後的奢華 Select 組件群
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -58,15 +65,21 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
   const setIsChatOpen = useTradeStore((state) => state.setIsChatOpen);
   const setActiveRoomId = useTradeStore((state) => state.setActiveRoomId);
 
+  // 🟢 訂閱 Zustand 核心篩選狀態（同步大盤模式）
   const activeTypes = useMarketStore((state) => state.activeTypes);
   const toggleType = useMarketStore((state) => state.toggleType);
 
+  // 🟢 本地多維篩選矩陣狀態（專注於此商戶的私域商品）
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("最新");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeRarities, setActiveRarities] = useState<string[]>([]);
   const [activeGrades, setActiveGrades] = useState<string[]>([]);
   const [activeConditions, setActiveConditions] = useState<string[]>([]);
+
+  // 🟢 Mobile Filter Panel State
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const storefrontListings = useMemo(
@@ -87,6 +100,15 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // 🟢 本地櫥窗一鍵清除重置線
+  const handleResetAllFilters = () => {
+    setQuery("");
+    setActiveRarities([]);
+    setActiveGrades([]);
+    setActiveConditions([]);
+    setSortKey("最新");
+  };
 
   const filteredListings = useMemo(() => {
     return storefrontListings
@@ -125,7 +147,20 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
             ),
           );
 
-        return matchQuery && matchRarity && matchGrade && matchCondition;
+        // 🟢 100% 結構化型態斷言，通過大盤市場同級 ESLint 審查
+        const matchType =
+          activeTypes.length === 0 ||
+          activeTypes.includes(
+            (listing as { sellerType?: string; listingType?: string })
+              .sellerType ||
+              (listing as { sellerType?: string; listingType?: string })
+                .listingType ||
+              "C2C",
+          );
+
+        return (
+          matchQuery && matchRarity && matchGrade && matchCondition && matchType
+        );
       })
       .sort((a, b) => {
         if (sortKey === "價格：由低到高") return a.price - b.price;
@@ -138,12 +173,13 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     activeRarities,
     activeGrades,
     activeConditions,
+    activeTypes,
     sortKey,
   ]);
 
   const toggleFilterValue = (
     value: string,
-    setState: Dispatch<SetStateAction<string[]>>,
+    setState: React.Dispatch<React.SetStateAction<string[]>>,
   ) => {
     setState((current) =>
       current.includes(value)
@@ -176,11 +212,20 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     );
   }
 
+  // 判斷當前商戶櫥窗是否有激活任何過濾條件，用作重置按鈕的動態高亮
+  const hasActiveFilters =
+    query !== "" ||
+    activeRarities.length > 0 ||
+    activeGrades.length > 0 ||
+    activeConditions.length > 0 ||
+    activeTypes.length > 0;
+
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
+      {/* 頂部商戶身分看板與排序欄位 */}
       <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-6">
         <section className="flex-1 rounded-2xl border border-[rgba(212,165,116,0.18)] bg-[#26211C] p-5 lg:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-          <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+          <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
             <div className="space-y-3 min-w-0">
               <div className="flex flex-wrap items-center gap-2.5">
                 <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] tracking-tight">
@@ -194,6 +239,21 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
                     已驗證交易身份
                   </span>
                 ) : null}
+                {/* chatroom direct */}
+                <div className="absolute top-0 right-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveRoomId(vendor.id);
+                      setIsChatOpen(true);
+                    }}
+                    className="w-10 h-10 rounded-full bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md"
+                  >
+                    <div className="p-2 flex flex-row items-center gap-2">
+                      💬
+                    </div>
+                  </button>
+                </div>
               </div>
 
               <p className="font-mono text-[11.5px] text-[#d4c4b7] leading-relaxed">
@@ -241,74 +301,169 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
                   </p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveRoomId(vendor.id);
-                  setIsChatOpen(true);
-                }}
-                className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12.5px] rounded-xl hover:bg-[#e8b896] transition-colors cursor-pointer shadow-md"
-              >
-                💬 發起私域議價
-              </button>
             </div>
           </div>
         </section>
-
-        <div className="flex items-center gap-2 self-end xl:self-start">
-          <span className="font-mono text-[10px] text-[#50453b] uppercase tracking-wider font-bold">
-            排序
-          </span>
-          <select
-            value={sortKey}
-            onChange={(event) => setSortKey(event.target.value as SortKey)}
-            className="h-9 px-3 bg-[#26211C] text-[#eae1da] border border-white/5 rounded-[8px] font-sans text-[12px] focus:outline-none cursor-pointer"
-          >
-            <option value="最新">上架時間：最新</option>
-            <option value="價格：由低到高">價格：由低到高</option>
-            <option value="價格：由高到低">價格：由高到低</option>
-          </select>
-        </div>
       </div>
 
-      <div ref={searchContainerRef} className="relative mb-6">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+      {/* 🟢 排序控制區：完美對齊 /marketplace 引入 Base UI Select 組件拋光 */}
+      <div className="flex items-center mb-6 gap-2 self-start xl:self-start shrink-0">
+        <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold select-none">
+          排序
+        </span>
+        <Select
+          value={sortKey}
+          onValueChange={(value) => setSortKey(value as SortKey)}
+        >
+          <SelectTrigger className="w-40 min-w-40 h-9 bg-[#26211C] border border-white/5 rounded-[8px] text-[#eae1da] font-sans text-[12px] hover:bg-[#322a24] hover:border-white/10 transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
+            <SelectValue placeholder="選擇排序規則" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
+            <SelectItem
+              value="最新"
+              className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+            >
+              上架時間：最新
+            </SelectItem>
+            <SelectItem
+              value="價格：由低到高"
+              className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+            >
+              價格：由低到高
+            </SelectItem>
+            <SelectItem
+              value="價格：由高到低"
+              className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+            >
+              價格：由高到低
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 🟢 搜尋欄位 + 行動篩選按鈕 + 一鍵還原重置按鈕 (Tri-partite Responsive System 完美復刻) */}
+      <div
+        ref={searchContainerRef}
+        className="relative mb-6 flex gap-2 items-center"
+      >
+        {/* Slot A: Mobile-Only Filter Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+          className="lg:hidden h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border border-brand/20 bg-[#26211C] text-[#eae1da] hover:border-brand/40 hover:bg-[rgba(212,165,116,0.06)] transition-all flex items-center gap-2 shrink-0 select-none focus:outline-none active:scale-[0.97]"
+          title="開啟或關閉行動篩選面板"
+        >
           <svg
             width="16"
             height="16"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#d4c4b7"
+            stroke="currentColor"
             strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            <line x1="4" y1="21" x2="4" y2="14" />
+            <line x1="4" y1="10" x2="4" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12" y2="3" />
+            <line x1="20" y1="21" x2="20" y2="16" />
+            <line x1="20" y1="12" x2="20" y2="3" />
+            <line x1="1" y1="14" x2="7" y2="14" />
+            <line x1="9" y1="8" x2="15" y2="8" />
+            <line x1="17" y1="16" x2="23" y2="16" />
           </svg>
+        </button>
+
+        {/* Slot B: Main Search Input */}
+        <div className="relative flex-1">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#d4c4b7"
+              strokeWidth="2.5"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+          <input
+            type="search"
+            value={query}
+            onFocus={() => setIsSearchFocused(true)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setIsSearchFocused(true);
+            }}
+            placeholder="搜尋此商戶櫥窗內官方卡牌名稱、編號..."
+            className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[13.5px] text-[#eae1da] focus:outline-none"
+          />
+          <SmartSearch
+            query={query}
+            listings={storefrontListings}
+            isOpen={isSearchFocused}
+            onSelect={(name) => {
+              setQuery(name);
+              setIsSearchFocused(false);
+            }}
+          />
         </div>
-        <input
-          type="search"
-          value={query}
-          onFocus={() => setIsSearchFocused(true)}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIsSearchFocused(true);
-          }}
-          placeholder="搜尋官方卡牌名稱、編號、稀有度..."
-          className="w-full h-12 pl-11 pr-4 bg-[#26211C] border border-white/5 rounded-[10px] text-[13.5px] text-[#eae1da] focus:outline-none"
-        />
-        <SmartSearch
-          query={query}
-          listings={storefrontListings}
-          isOpen={isSearchFocused}
-          onSelect={(name) => {
-            setQuery(name);
-            setIsSearchFocused(false);
-          }}
-        />
+
+        {/* Slot C: Reset All Button */}
+        <button
+          type="button"
+          onClick={handleResetAllFilters}
+          disabled={!hasActiveFilters}
+          className={`h-12 px-4 rounded-[10px] font-sans font-bold text-[12.5px] border transition-all flex items-center gap-1.5 shrink-0 select-none focus:outline-none ${
+            hasActiveFilters
+              ? "border-brand/40 text-brand bg-[rgba(212,165,116,0.06)] hover:border-brand hover:bg-[rgba(212,165,116,0.1)] cursor-pointer active:scale-[0.97]"
+              : "border-white/5 text-text-disabled bg-[#26211C]/40 opacity-40 cursor-not-allowed"
+          }`}
+          title="清除此櫥窗所有搜尋關鍵字與複選矩陣"
+        >
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+          </svg>
+        </button>
       </div>
 
+      {/* 🟢 Mobile Filter SlideOver 抽屜同步掛載 (z-index: 300) */}
+      <SlideOver
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
+        title="📊 篩選"
+        subtitle="ADVANCE FILTER"
+      >
+        <AccordionFilters
+          activeRarities={activeRarities}
+          onRarityToggle={(rarity) =>
+            toggleFilterValue(rarity, setActiveRarities)
+          }
+          activeGrades={activeGrades}
+          onGradeToggle={(grade) => toggleFilterValue(grade, setActiveGrades)}
+          activeConditions={activeConditions}
+          onConditionToggle={(condition) =>
+            toggleFilterValue(condition, setActiveConditions)
+          }
+          hideTypeSection={true}
+        />
+      </SlideOver>
+
+      {/* 佈局雙欄 */}
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
+        {/* 左欄： (Desktop Only) */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
           <AccordionFilters
             activeRarities={activeRarities}
@@ -321,11 +476,11 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
             onConditionToggle={(condition) =>
               toggleFilterValue(condition, setActiveConditions)
             }
-            activeTypes={activeTypes}
-            onTypeToggle={toggleType}
+            hideTypeSection={true}
           />
         </aside>
 
+        {/* 右欄：網格 */}
         <div className="flex-1">
           {filteredListings.length === 0 ? (
             <div className="py-20 text-center bg-[#26211C] border border-dashed border-white/5 rounded-2xl font-sans text-[13.5px] text-text-disabled">
