@@ -25,6 +25,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// 🟢 核心引入：使用底層 Base UI 雙軸價格區間滑桿
+import { Slider } from "@/components/ui/slider";
+
 // 1. 將原本的大盤核心代碼提煉為獨立的內層組件，安全容納 useSearchParams
 function MarketplaceContent() {
   const isMounted = useSyncExternalStore(
@@ -66,6 +69,25 @@ function MarketplaceContent() {
   // Mobile Filter Panel State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // 🟢 智能動態價格邊界提取引擎 (Dynamic Price Boundary Extraction)
+  const { absoluteMinPrice, absoluteMaxPrice } = useMemo(() => {
+    if (INITIAL_LISTINGS.length === 0) {
+      return { absoluteMinPrice: 0, absoluteMaxPrice: 100000 };
+    }
+    const fallbackPrices = INITIAL_LISTINGS.map((l) => l.price);
+    return {
+      absoluteMinPrice: Math.min(...fallbackPrices),
+      absoluteMaxPrice: Math.max(...fallbackPrices),
+    };
+  }, []);
+
+  // 🟢 雙軸價格區間滑桿狀態 (Dual-Thumb Price Range State)
+  // 使用惰性初始化 (Lazy Initialization) 避免 useEffect 直接調用 setState
+  const [priceRange, setPriceRange] = useState<[number, number]>(() => [
+    absoluteMinPrice,
+    absoluteMaxPrice,
+  ]);
+
   // 核心防禦：建立網址參數歷史同步鎖，徹底封殺異步路由回流 Bug
   const lastSyncedParamsKey = useRef("");
 
@@ -102,13 +124,14 @@ function MarketplaceContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [setIsSearchFocused]);
 
-  // 本地重置打包線
+  // 🟢 本地重置打包線 (增強版：包含價格區間同步重置)
   const handleResetAllFilters = () => {
     resetAll();
+    setPriceRange([absoluteMinPrice, absoluteMaxPrice]);
     router.push("/marketplace");
   };
 
-  // 使用原生 useMemo 進行本地快照引用緩存
+  // 🟢 使用原生 useMemo 進行本地快照引用緩存 (增強版：注入價格區間斷言)
   const filteredListings = useMemo(() => {
     return INITIAL_LISTINGS.filter((card) => {
       const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
@@ -153,8 +176,17 @@ function MarketplaceContent() {
             "C2C",
         );
 
+      // 🟢 價格區間智能匹配斷言 (Price Range Intelligent Matching Assertion)
+      const matchPrice =
+        card.price >= priceRange[0] && card.price <= priceRange[1];
+
       return (
-        matchQuery && matchRarity && matchGrade && matchCondition && matchType
+        matchQuery &&
+        matchRarity &&
+        matchGrade &&
+        matchCondition &&
+        matchType &&
+        matchPrice
       );
     }).sort((a, b) => {
       if (sortKey === "價格：由低到高") return a.price - b.price;
@@ -167,6 +199,7 @@ function MarketplaceContent() {
     activeGrades,
     activeConditions,
     activeTypes,
+    priceRange,
     sortKey,
   ]);
 
@@ -183,7 +216,9 @@ function MarketplaceContent() {
     activeRarities.length > 0 ||
     activeGrades.length > 0 ||
     activeConditions.length > 0 ||
-    activeTypes.length > 0;
+    activeTypes.length > 0 ||
+    priceRange[0] !== absoluteMinPrice ||
+    priceRange[1] !== absoluteMaxPrice;
 
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
@@ -341,6 +376,33 @@ function MarketplaceContent() {
         title="📊 篩選"
         subtitle="ADVANCED FILTER"
       >
+        {/* 🟢 價格區間滑桿模組 (Mobile Drawer 版) */}
+        <div className="mb-6 rounded-xl border border-white/8 bg-[#26211C] p-5">
+          <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
+            市場現貨價格區間 (HK$)
+          </h3>
+          <p className="font-mono text-[10.5px] text-[#8A8680] mb-4 uppercase tracking-wider">
+            PRICE RANGE FILTER
+          </p>
+          <div className="flex items-center justify-between mb-4">
+            <span className="font-mono text-[13px] text-brand font-bold">
+              HK$ {priceRange[0].toLocaleString()}
+            </span>
+            <span className="font-mono text-[11px] text-[#8A8680]">—</span>
+            <span className="font-mono text-[13px] text-brand font-bold">
+              HK$ {priceRange[1].toLocaleString()}
+            </span>
+          </div>
+          <Slider
+            value={priceRange}
+            onValueChange={(val) => setPriceRange(val as [number, number])}
+            min={absoluteMinPrice}
+            max={absoluteMaxPrice}
+            step={50}
+            className="w-full"
+          />
+        </div>
+
         <AccordionFilters
           activeRarities={activeRarities}
           onRarityToggle={toggleRarity}
@@ -358,6 +420,33 @@ function MarketplaceContent() {
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
         {/* 左欄：手風琴 (Desktop Only) */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
+          {/* 🟢 價格區間滑桿模組 (Desktop Sidebar 版) */}
+          <div className="rounded-xl border border-white/8 bg-[#26211C] p-4">
+            <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
+              市場現貨價格區間 (HK$)
+            </h3>
+            <p className="font-mono text-[10.5px] text-[#8A8680] mb-4 uppercase tracking-wider">
+              PRICE RANGE FILTER
+            </p>
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-mono text-[13px] text-brand font-bold">
+                HK$ {priceRange[0].toLocaleString()}
+              </span>
+              <span className="font-mono text-[11px] text-[#8A8680]">—</span>
+              <span className="font-mono text-[13px] text-brand font-bold">
+                HK$ {priceRange[1].toLocaleString()}
+              </span>
+            </div>
+            <Slider
+              value={priceRange}
+              onValueChange={(val) => setPriceRange(val as [number, number])}
+              min={absoluteMinPrice}
+              max={absoluteMaxPrice}
+              step={50}
+              className="w-full"
+            />
+          </div>
+
           <AccordionFilters
             activeRarities={activeRarities}
             onRarityToggle={toggleRarity}
@@ -371,14 +460,14 @@ function MarketplaceContent() {
           />
         </aside>
 
-        {/* 右欄：網格 */}
+        {/* 🟢 右欄：網格 (強制改為 Mobile 雙欄佈局) */}
         <div className="flex-1">
           {filteredListings.length === 0 ? (
             <div className="py-20 text-center bg-[#26211C] border border-dashed border-white/5 rounded-2xl font-sans text-[13.5px] text-text-disabled">
               沒有符合篩選條件的商品
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
               {filteredListings.map((item) => {
                 const calibratedCommodityItem = {
                   ...item,

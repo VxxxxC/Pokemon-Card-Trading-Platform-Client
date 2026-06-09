@@ -29,6 +29,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// 🟢 核心引入：使用底層 Base UI 雙軸價格區間滑桿
+import { Slider } from "@/components/ui/slider";
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -67,7 +70,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
 
   // 🟢 訂閱 Zustand 核心篩選狀態（同步大盤模式）
   const activeTypes = useMarketStore((state) => state.activeTypes);
-  const toggleType = useMarketStore((state) => state.toggleType);
 
   // 🟢 本地多維篩選矩陣狀態（專注於此商戶的私域商品）
   const [query, setQuery] = useState("");
@@ -87,6 +89,25 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     [vendor],
   );
 
+  // 🟢 智能動態價格邊界提取引擎 (Dynamic Price Boundary Extraction)
+  const { absoluteMinPrice, absoluteMaxPrice } = useMemo(() => {
+    if (storefrontListings.length === 0) {
+      return { absoluteMinPrice: 0, absoluteMaxPrice: 100000 };
+    }
+    const fallbackPrices = storefrontListings.map((l) => l.price);
+    return {
+      absoluteMinPrice: Math.min(...fallbackPrices),
+      absoluteMaxPrice: Math.max(...fallbackPrices),
+    };
+  }, [storefrontListings]);
+
+  // 🟢 雙軸價格區間滑桿狀態 (Dual-Thumb Price Range State)
+  // 使用惰性初始化 (Lazy Initialization) 避免 useEffect 直接調用 setState
+  const [priceRange, setPriceRange] = useState<[number, number]>(() => [
+    absoluteMinPrice,
+    absoluteMaxPrice,
+  ]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -101,15 +122,17 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🟢 本地櫥窗一鍵清除重置線
+  // 🟢 本地櫥窗一鍵清除重置線 (增強版：包含價格區間同步重置)
   const handleResetAllFilters = () => {
     setQuery("");
     setActiveRarities([]);
     setActiveGrades([]);
     setActiveConditions([]);
     setSortKey("最新");
+    setPriceRange([absoluteMinPrice, absoluteMaxPrice]);
   };
 
+  // 🟢 使用原生 useMemo 進行本地快照引用緩存 (增強版：注入價格區間斷言)
   const filteredListings = useMemo(() => {
     return storefrontListings
       .filter((listing) => {
@@ -158,8 +181,17 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
               "C2C",
           );
 
+        // 🟢 價格區間智能匹配斷言 (Price Range Intelligent Matching Assertion)
+        const matchPrice =
+          listing.price >= priceRange[0] && listing.price <= priceRange[1];
+
         return (
-          matchQuery && matchRarity && matchGrade && matchCondition && matchType
+          matchQuery &&
+          matchRarity &&
+          matchGrade &&
+          matchCondition &&
+          matchType &&
+          matchPrice
         );
       })
       .sort((a, b) => {
@@ -174,6 +206,7 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     activeGrades,
     activeConditions,
     activeTypes,
+    priceRange,
     sortKey,
   ]);
 
@@ -218,7 +251,9 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     activeRarities.length > 0 ||
     activeGrades.length > 0 ||
     activeConditions.length > 0 ||
-    activeTypes.length > 0;
+    activeTypes.length > 0 ||
+    priceRange[0] !== absoluteMinPrice ||
+    priceRange[1] !== absoluteMaxPrice;
 
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
@@ -449,6 +484,33 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
         title="📊 篩選"
         subtitle="ADVANCE FILTER"
       >
+        {/* 🟢 價格區間滑桿模組 (Mobile Drawer 版) */}
+        <div className="mb-6 rounded-xl border border-white/8 bg-[#26211C] p-5">
+          <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
+            市場現貨價格區間 (HK$)
+          </h3>
+          <p className="font-mono text-[10.5px] text-[#8A8680] mb-4 uppercase tracking-wider">
+            PRICE RANGE FILTER
+          </p>
+          <div className="flex items-center justify-between mb-4">
+            <span className="font-mono text-[13px] text-brand font-bold">
+              HK$ {priceRange[0].toLocaleString()}
+            </span>
+            <span className="font-mono text-[11px] text-[#8A8680]">—</span>
+            <span className="font-mono text-[13px] text-brand font-bold">
+              HK$ {priceRange[1].toLocaleString()}
+            </span>
+          </div>
+          <Slider
+            value={priceRange}
+            onValueChange={(val) => setPriceRange(val as [number, number])}
+            min={absoluteMinPrice}
+            max={absoluteMaxPrice}
+            step={50}
+            className="w-full"
+          />
+        </div>
+
         <AccordionFilters
           activeRarities={activeRarities}
           onRarityToggle={(rarity) =>
@@ -468,6 +530,33 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
       <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-8 items-start">
         {/* 左欄： (Desktop Only) */}
         <aside className="hidden lg:block lg:sticky lg:top-[5.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto space-y-4 scrollbar-none">
+          {/* 🟢 價格區間滑桿模組 (Desktop Sidebar 版) */}
+          <div className="rounded-xl border border-white/8 bg-[#26211C] p-4">
+            <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
+              市場現貨價格區間 (HK$)
+            </h3>
+            <p className="font-mono text-[10.5px] text-[#8A8680] mb-4 uppercase tracking-wider">
+              PRICE RANGE FILTER
+            </p>
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-mono text-[13px] text-brand font-bold">
+                HK$ {priceRange[0].toLocaleString()}
+              </span>
+              <span className="font-mono text-[11px] text-[#8A8680]">—</span>
+              <span className="font-mono text-[13px] text-brand font-bold">
+                HK$ {priceRange[1].toLocaleString()}
+              </span>
+            </div>
+            <Slider
+              value={priceRange}
+              onValueChange={(val) => setPriceRange(val as [number, number])}
+              min={absoluteMinPrice}
+              max={absoluteMaxPrice}
+              step={50}
+              className="w-full"
+            />
+          </div>
+
           <AccordionFilters
             activeRarities={activeRarities}
             onRarityToggle={(rarity) =>
@@ -483,14 +572,14 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
           />
         </aside>
 
-        {/* 右欄：網格 */}
+        {/* 🟢 右欄：網格 (強制改為 Mobile 雙欄佈局) */}
         <div className="flex-1">
           {filteredListings.length === 0 ? (
             <div className="py-20 text-center bg-[#26211C] border border-dashed border-white/5 rounded-2xl font-sans text-[13.5px] text-text-disabled">
               此商戶私域櫥窗暫時沒有符合篩選條件的商品
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
               {filteredListings.map((listing) => (
                 <MarketplaceCard key={listing.id} listing={listing} />
               ))}
