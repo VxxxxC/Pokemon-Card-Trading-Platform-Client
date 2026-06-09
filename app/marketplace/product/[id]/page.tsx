@@ -9,6 +9,7 @@ import { type MarketplaceListing } from "@/app/components/marketplace/Marketplac
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 import { CChart16 } from "@/components/reui/c-chart-16";
+import { Separator } from "@/components/ui/separator";
 
 // 🟢 純淨版盤口：回歸實物交割，只保留最核心的賣家與叫價三要素
 interface SellOrder {
@@ -374,17 +375,22 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
 
               {/* 盤口垂直隊列由上至下排列 */}
-              <div className="space-y-3">
+              <div>
                 {sortedOrders.map((order, idx) => (
-                  <AskOrderBookRow
-                    key={order.sellerId}
-                    order={order}
-                    idx={idx}
-                    productId={id}
-                    onOpenGate={setSelectedAskOrder}
-                    grade={card.grade}
-                    rarity={card.rarity}
-                  />
+                  <>
+                    <AskOrderBookRow
+                      key={order.sellerId}
+                      order={order}
+                      idx={idx}
+                      productId={id}
+                      onOpenGate={setSelectedAskOrder}
+                      grade={card.grade}
+                      rarity={card.rarity}
+                    />
+                    {idx < sortedOrders.length - 1 ? (
+                      <Separator className="bg-gray-700" />
+                    ) : null}
+                  </>
                 ))}
               </div>
             </div>

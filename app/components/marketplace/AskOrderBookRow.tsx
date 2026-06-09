@@ -50,7 +50,7 @@ export function AskOrderBookRow({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onOpenGate(order);
         }}
-        className={`w-full bg-[#1A1612] hover:bg-[#2c2722] border ${idx === 0 ? "border-brand/40 shadow-[0_0_15px_rgba(212,165,116,0.08)]" : "border-white/5"} rounded-xl p-4 flex items-center justify-between gap-4 transition-all cursor-pointer group focus:outline-none focus:ring-1 focus:ring-brand/40`}
+        className={`w-full bg-[#1A1612] hover:bg-[#2c2722] ${idx === 0 ? "border-brand/40 shadow-[0_0_15px_rgba(212,165,116,0.08)]" : "border-white/5"} py-2 px-4 flex items-center justify-between gap-4 transition-all cursor-pointer group focus:outline-none focus:ring-1 focus:ring-brand/40`}
       >
         {/* Left Hand Container (Avatar + Identity Stack) - NOW COMPLETELY INERT */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
