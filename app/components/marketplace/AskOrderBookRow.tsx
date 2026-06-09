@@ -5,12 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { StarIcon } from "lucide-react";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
-
-interface SellOrder {
-  readonly sellerName: string;
-  readonly sellerId: string;
-  readonly price: number;
-}
+import { type SellOrder } from "@/app/lib/mock-data/cards";
 
 interface AskOrderBookRowProps {
   order: SellOrder;

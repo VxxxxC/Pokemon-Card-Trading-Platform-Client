@@ -10,6 +10,11 @@ import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 import { CChart16 } from "@/components/reui/c-chart-16";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  INITIAL_LISTINGS,
+  type UnifiedProductSpec,
+  type SellOrder,
+} from "@/app/lib/mock-data/cards";
 
 // 使用底層 Base UI 拋光後的奢華 Select 組件群
 import {
@@ -17,158 +22,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
 
 // 定義完整的三軌複合排序 SubSortKey
 type SubSortKey = "price_asc" | "grade_desc" | "rating_desc";
 
-interface SellOrder {
-  readonly sellerName: string;
-  readonly sellerId: string;
-  readonly price: number;
-  readonly sellerRating?: number;
-  readonly customGrade?: { authority: string; score: string };
-}
-
-interface ProductSpec {
-  name: string;
-  jpName: string;
-  set: string;
-  rarity: "SAR" | "UR" | "SR" | "AR";
-  grade: { authority: string; score: string };
-  price: number;
-  delta: number;
-  deltaDirection: "up" | "down";
-  images: string[];
-  type: string;
-  stage: string;
-  weakness: string;
-  retreatCost: string;
-  moveDamage: string;
-  artist: string;
-  soldHistory: { date: string; grade: string; price: number }[];
-  chartPoints: { day: number; date: string; price: number }[];
-  sellOrders: SellOrder[];
-}
-
-const PRODUCT_POOL_DATABASE: Record<string, ProductSpec> = {
-  "sv2a-182": {
-    name: "Charizard ex SAR (噴火龍)",
-    jpName: "リザードン ex SAR",
-    set: "Pokémon 151",
-    rarity: "SAR",
-    grade: { authority: "PSA", score: "10" },
-    price: 2250,
-    delta: 120,
-    deltaDirection: "up",
-    images: [
-      "https://picsum.photos/seed/poke-charizard/600/420",
-      "https://picsum.photos/seed/char-corner1/600/420",
-      "https://picsum.photos/seed/char-back/600/420",
-    ],
-    type: "火 (Fire)",
-    stage: "Stage 2 (二階進化)",
-    weakness: "水 x2",
-    retreatCost: "◆◆",
-    moveDamage: "爆裂燃燒 330 (Crimson Storm)",
-    artist: "AKIRA EGAWA",
-    soldHistory: [
-      { date: "2026-06-03", grade: "PSA 10", price: 2250 },
-      { date: "2026-05-26", grade: "PSA 10", price: 2210 },
-      { date: "2026-05-24", grade: "PSA 10", price: 2180 },
-    ],
-    chartPoints: [
-      { day: 1, date: "05-01", price: 2000 },
-      { day: 10, date: "05-10", price: 2100 },
-      { day: 20, date: "05-20", price: 2150 },
-      { day: 30, date: "06-03", price: 2250 },
-    ],
-    sellOrders: [
-      {
-        sellerName: "渡邊道館",
-        sellerId: "PKT-8839-44A",
-        price: 2250,
-        sellerRating: 5.0,
-        customGrade: { authority: "PSA", score: "10" },
-      },
-      {
-        sellerName: "旺角天線卡王",
-        sellerId: "PKT-1122-33B",
-        price: 2150,
-        sellerRating: 4.8,
-        customGrade: { authority: "PSA", score: "9" },
-      },
-      {
-        sellerName: "秋葉原海外直送店",
-        sellerId: "PKT-4455-66C",
-        price: 2400,
-        sellerRating: 4.9,
-        customGrade: { authority: "Raw Card", score: "" },
-      },
-      {
-        sellerName: "信和執雞大師",
-        sellerId: "PKT-7788-99D",
-        price: 2100,
-        sellerRating: 4.5,
-        customGrade: { authority: "BGS", score: "9.5" },
-      },
-    ],
-  },
-  "sv2a-189": {
-    name: "Mewtwo ex SAR (超夢)",
-    jpName: "ミュウツー ex SAR",
-    set: "Pokémon 151",
-    rarity: "SAR",
-    grade: { authority: "BGS", score: "9.5" },
-    price: 2600,
-    delta: 50,
-    deltaDirection: "down",
-    images: ["https://picsum.photos/seed/poke-mewtwo/600/420"],
-    type: "超能力 (Psychic)",
-    stage: "Basic (基礎)",
-    weakness: "惡 x2",
-    retreatCost: "◆",
-    moveDamage: "心靈震撼 220",
-    artist: "GIDORA",
-    soldHistory: [{ date: "2026-06-02", grade: "BGS 9.5", price: 2600 }],
-    chartPoints: [
-      { day: 1, date: "05-01", price: 2700 },
-      { day: 30, date: "06-02", price: 2600 },
-    ],
-    sellOrders: [
-      {
-        sellerName: "尖沙咀卡神",
-        sellerId: "PKT-9900-11A",
-        price: 2600,
-        sellerRating: 4.9,
-        customGrade: { authority: "BGS", score: "9.5" },
-      },
-      {
-        sellerName: "元朗李生精品",
-        sellerId: "PKT-2233-44B",
-        price: 2450,
-        sellerRating: 4.7,
-        customGrade: { authority: "Raw Card", score: "" },
-      },
-      {
-        sellerName: "銅鑼灣收藏家",
-        sellerId: "PKT-5566-77C",
-        price: 2750,
-        sellerRating: 5.0,
-        customGrade: { authority: "PSA", score: "10" },
-      },
-    ],
-  },
-};
-
-const getFallbackProduct = (id: string): ProductSpec => ({
+// 🟢 SSOT 午備實用函數：継承自 UnifiedProductSpec 的局部安全備用生成器
+const getFallbackProduct = (id: string): UnifiedProductSpec => ({
+  id,
   name: `公共大盤標準商品 (${id})`,
   jpName: "未登記項目",
   set: "Pokémon TCG Base",
   rarity: "SAR",
-  grade: { authority: "PSA", score: "10" },
-  price: 1000,
   delta: 0,
   deltaDirection: "up",
   images: ["https://picsum.photos/seed/fallback/600/420"],
@@ -199,7 +65,8 @@ export default function ProductDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
-  const card = PRODUCT_POOL_DATABASE[id] || getFallbackProduct(id);
+  const card: UnifiedProductSpec =
+    INITIAL_LISTINGS.find((l) => l.id === id) ?? getFallbackProduct(id);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedAskOrder, setSelectedAskOrder] = useState<SellOrder | null>(
@@ -221,23 +88,23 @@ export default function ProductDetailPage({ params }: PageProps) {
 
     // 1. 已鑑定現貨 Switch 快篩防線
     if (onlyGraded) {
-      orders = orders.filter((order) => {
-        const itemGrade = order.customGrade || card.grade;
-        return itemGrade.authority !== "Raw Card";
-      });
+      orders = orders.filter(
+        (order) => order.customGrade.authority !== "Raw Card",
+      );
     }
 
     // 2. 執行複合權重三軌排序
     return orders.sort((a, b) => {
       // 軌道 A：PSA / BGS 鑑定等級最高權重優先
       if (subSortKey === "grade_desc") {
-        const gradeA = a.customGrade || card.grade;
-        const gradeB = b.customGrade || card.grade;
-
         const scoreA =
-          gradeA.authority === "Raw Card" ? 0 : parseFloat(gradeA.score) || 0;
+          a.customGrade.authority === "Raw Card"
+            ? 0
+            : parseFloat(a.customGrade.score) || 0;
         const scoreB =
-          gradeB.authority === "Raw Card" ? 0 : parseFloat(gradeB.score) || 0;
+          b.customGrade.authority === "Raw Card"
+            ? 0
+            : parseFloat(b.customGrade.score) || 0;
 
         if (scoreB !== scoreA) return scoreB - scoreA;
         return a.price - b.price; // 同分服從價格最低鐵律
@@ -245,17 +112,15 @@ export default function ProductDetailPage({ params }: PageProps) {
 
       // 軌道 B：賣家信譽評級最高權重優先
       if (subSortKey === "rating_desc") {
-        const ratingA = a.sellerRating ?? 0;
-        const ratingB = b.sellerRating ?? 0;
-
-        if (ratingB !== ratingA) return ratingB - ratingA;
+        if (b.sellerRating !== a.sellerRating)
+          return b.sellerRating - a.sellerRating;
         return a.price - b.price; // 同星級服從價格最低鐵律
       }
 
       // 軌道 C：純淨定價由低到高秒殺排盤
       return a.price - b.price;
     });
-  }, [card.sellOrders, card.grade, subSortKey, onlyGraded]);
+  }, [card.sellOrders, subSortKey, onlyGraded]);
 
   if (!isMounted) {
     return (
@@ -267,6 +132,17 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const hasChartData = card.chartPoints.length > 0;
 
+  // 🟢 動態大盤均價計算 (Dynamic Market Price — absolute lowest active ask)
+  const marketPrice =
+    card.sellOrders.length > 0
+      ? Math.min(...card.sellOrders.map((o) => o.price))
+      : 999_999;
+
+  // 🟢 大盤展示參考等級：取訂單簿中第一個非 Raw Card 的鑑定等級作展示基準
+  const referenceGrade = card.sellOrders.find(
+    (o) => o.customGrade.authority !== "Raw Card",
+  )?.customGrade ?? { authority: "PSA", score: "10" };
+
   const handleTriggerInstantBuy = () => {
     if (!selectedAskOrder) return;
 
@@ -275,7 +151,9 @@ export default function ProductDetailPage({ params }: PageProps) {
       name: card.name,
       set: card.set,
       rarity: card.rarity,
-      grade: selectedAskOrder.customGrade || card.grade,
+      // 第三個交割尊守：精準綁定所選賣單的實際鑑定等級
+      grade: selectedAskOrder.customGrade,
+      // 圓滽結謁價格尊守：簿内實際可成交掛賣價
       price: selectedAskOrder.price,
       delta: card.delta,
       deltaDirection: card.deltaDirection,
@@ -373,7 +251,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </span>
                 <div className="flex items-baseline gap-2">
                   <p className="font-mono font-black text-[30px] text-[#eae1da] leading-none">
-                    HK$ {card.price.toLocaleString("en-HK")}
+                    HK$ {marketPrice.toLocaleString("en-HK")}
                   </p>
                   <span
                     className={`font-mono text-[13px] font-semibold ${card.deltaDirection === "up" ? "text-[#22c55e]" : "text-[#ef4444]"}`}
@@ -486,7 +364,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                         idx={idx}
                         productId={id}
                         onOpenGate={setSelectedAskOrder}
-                        grade={order.customGrade || card.grade}
+                        grade={order.customGrade}
                         rarity={card.rarity}
                       />
                       {idx < filteredAndSortedOrders.length - 1 ? (
@@ -554,8 +432,8 @@ export default function ProductDetailPage({ params }: PageProps) {
                   <div className="flex items-center gap-1.5">
                     <RarityBadge rarity={card.rarity} />
                     <GradeBadge
-                      authority={card.grade.authority}
-                      score={card.grade.score}
+                      authority={referenceGrade.authority}
+                      score={referenceGrade.score}
                     />
                   </div>
                 </div>
@@ -594,15 +472,12 @@ export default function ProductDetailPage({ params }: PageProps) {
                 <span className="font-mono text-[10px] text-[#8A8680] uppercase">
                   對接賣家商號
                 </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    (window.location.href = `/profile/${selectedAskOrder.sellerId}`)
-                  }
+                <Link
+                  href={`/profile/${selectedAskOrder.sellerId}`}
                   className="font-sans font-black text-[14px] text-brand underline cursor-pointer bg-transparent border-none text-left focus:outline-none"
                 >
                   {selectedAskOrder.sellerName} (@{selectedAskOrder.sellerId}) →
-                </button>
+                </Link>
               </div>
 
               <div className="flex flex-col text-left border-t border-white/5 pt-2.5">
@@ -616,12 +491,8 @@ export default function ProductDetailPage({ params }: PageProps) {
             </div>
 
             {/* 安全下放的私域現貨引流導航卡 */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedAskOrder(null);
-                window.location.href = `/marketplace/${selectedAskOrder.sellerId}/product/${id}`;
-              }}
+            <Link
+              href={`/marketplace/${selectedAskOrder.sellerId}/product/${id}`}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer text-left focus:outline-none"
             >
               <span>
@@ -638,7 +509,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               >
                 <polyline points="9 18 15 12 9 6" />
               </svg>
-            </button>
+            </Link>
 
             <div className="flex flex-col gap-2 pt-1">
               <button

@@ -14,7 +14,12 @@ import { AccordionFilters } from "@/app/components/marketplace/filters/Accordion
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import { SlideOver } from "@/app/components/ui/SlideOver";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
-import { INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
+import {
+  INITIAL_LISTINGS,
+  getEffectivePrice,
+  getBestAsk,
+} from "@/app/lib/mock-data/cards";
+import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 
 // 🟢 核心引入：使用底層 Base UI 拋光後的奢華 Select 組件群
 import {
@@ -69,15 +74,42 @@ function MarketplaceContent() {
   // Mobile Filter Panel State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // 🟢 SSOT 動態衍生層：從 UnifiedProductSpec 計算每項商品的有效最低掛牌數據
+  const derivedListings = useMemo<MarketplaceListing[]>(
+    () =>
+      INITIAL_LISTINGS.map((spec) => {
+        const bestAsk = getBestAsk(spec);
+        return {
+          id: spec.id,
+          cardNo: spec.cardNo,
+          name: spec.name,
+          set: spec.set,
+          rarity: spec.rarity,
+          // 動態有效價格 = 訂單簿最低叫賣價
+          price: bestAsk?.price ?? 999_999,
+          // 大盤展示等級以最優掛盤賣家的鑑定為基準
+          grade: bestAsk?.customGrade ?? { authority: "Raw Card", score: "" },
+          delta: spec.delta,
+          deltaDirection: spec.deltaDirection,
+          image:
+            spec.images[0] ?? "https://picsum.photos/seed/fallback/600/420",
+          seller: bestAsk?.sellerName ?? "— 暫無賣家 —",
+          sellerId: bestAsk?.sellerId,
+          detailHref: `/marketplace/product/${spec.id}`,
+        };
+      }),
+    [],
+  );
+
   // 🟢 智能動態價格邊界提取引擎 (Dynamic Price Boundary Extraction)
   const { absoluteMinPrice, absoluteMaxPrice } = useMemo(() => {
     if (INITIAL_LISTINGS.length === 0) {
       return { absoluteMinPrice: 0, absoluteMaxPrice: 100000 };
     }
-    const fallbackPrices = INITIAL_LISTINGS.map((l) => l.price);
+    const effectivePrices = INITIAL_LISTINGS.map((l) => getEffectivePrice(l));
     return {
-      absoluteMinPrice: Math.min(...fallbackPrices),
-      absoluteMaxPrice: Math.max(...fallbackPrices),
+      absoluteMinPrice: Math.min(...effectivePrices),
+      absoluteMaxPrice: Math.max(...effectivePrices),
     };
   }, []);
 
@@ -131,69 +163,74 @@ function MarketplaceContent() {
     router.push("/marketplace");
   };
 
-  // 🟢 使用原生 useMemo 進行本地快照引用緩存 (增強版：注入價格區間斷言)
+  // 🟢 使用原生 useMemo 進行本地快照引用緩存 (增強版：注入有效最低價斷言)
   const filteredListings = useMemo(() => {
-    return INITIAL_LISTINGS.filter((card) => {
-      const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
-      const normalizedQuery = query.toLowerCase();
+    return derivedListings
+      .filter((card) => {
+        const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
+        const normalizedQuery = query.toLowerCase();
 
-      const matchQuery =
-        normalizedQuery === "" ||
-        card.name.toLowerCase().includes(normalizedQuery) ||
-        searchableCardNo.includes(normalizedQuery);
+        const matchQuery =
+          normalizedQuery === "" ||
+          card.name.toLowerCase().includes(normalizedQuery) ||
+          searchableCardNo.includes(normalizedQuery);
 
-      const matchRarity =
-        activeRarities.length === 0 || activeRarities.includes(card.rarity);
+        const matchRarity =
+          activeRarities.length === 0 || activeRarities.includes(card.rarity);
 
-      const isGradedCard = card.grade.authority !== "Raw Card";
-      const matchGrade =
-        activeGrades.length === 0 ||
-        activeGrades.some((g) => {
-          if (g === "Raw Card") return !isGradedCard;
-          return (
-            card.grade.authority === g.split(" ")[0] &&
-            card.grade.score === g.split(" ")[1]
-          );
-        });
+        const isGradedCard = card.grade.authority !== "Raw Card";
+        const matchGrade =
+          activeGrades.length === 0 ||
+          activeGrades.some((g) => {
+            if (g === "Raw Card") return !isGradedCard;
+            return (
+              card.grade.authority === g.split(" ")[0] &&
+              card.grade.score === g.split(" ")[1]
+            );
+          });
 
-      const matchCondition =
-        activeConditions.length === 0 ||
-        activeConditions.some((c) => {
-          if (c === "美品 S")
-            return card.grade.score === "10" || card.grade.score === "9.5";
-          if (c === "微傷 A")
-            return card.grade.score === "9" || card.grade.score === "NM";
-          return card.grade.score === "8" || card.grade.score === "EX";
-        });
+        const matchCondition =
+          activeConditions.length === 0 ||
+          activeConditions.some((c) => {
+            if (c === "美品 S")
+              return card.grade.score === "10" || card.grade.score === "9.5";
+            if (c === "微傷 A")
+              return card.grade.score === "9" || card.grade.score === "NM";
+            return card.grade.score === "8" || card.grade.score === "EX";
+          });
 
-      // 100% 結構化強效斷言，穩健通過 eslint 檢驗
-      const matchType =
-        activeTypes.length === 0 ||
-        activeTypes.includes(
-          (card as { sellerType?: string; listingType?: string }).sellerType ||
+        // 100% 結構化強效斷言，穩健通過 eslint 檢驗
+        const matchType =
+          activeTypes.length === 0 ||
+          activeTypes.includes(
             (card as { sellerType?: string; listingType?: string })
-              .listingType ||
-            "C2C",
+              .sellerType ||
+              (card as { sellerType?: string; listingType?: string })
+                .listingType ||
+              "C2C",
+          );
+
+        // 🟢 有效最低叫賣價區間智能匹配斷言 (Best-Ask Price Range Assertion)
+        // card.price is already the computed effective (lowest ask) price from derivedListings
+        const matchPrice =
+          card.price >= priceRange[0] && card.price <= priceRange[1];
+
+        return (
+          matchQuery &&
+          matchRarity &&
+          matchGrade &&
+          matchCondition &&
+          matchType &&
+          matchPrice
         );
-
-      // 🟢 價格區間智能匹配斷言 (Price Range Intelligent Matching Assertion)
-      const matchPrice =
-        card.price >= priceRange[0] && card.price <= priceRange[1];
-
-      return (
-        matchQuery &&
-        matchRarity &&
-        matchGrade &&
-        matchCondition &&
-        matchType &&
-        matchPrice
-      );
-    }).sort((a, b) => {
-      if (sortKey === "價格：由低到高") return a.price - b.price;
-      if (sortKey === "價格：由高到低") return b.price - a.price;
-      return 0;
-    });
+      })
+      .sort((a, b) => {
+        if (sortKey === "價格：由低到高") return a.price - b.price;
+        if (sortKey === "價格：由高到低") return b.price - a.price;
+        return 0;
+      });
   }, [
+    derivedListings,
     query,
     activeRarities,
     activeGrades,
@@ -333,7 +370,7 @@ function MarketplaceContent() {
           />
           <SmartSearch
             query={query}
-            listings={INITIAL_LISTINGS}
+            listings={derivedListings}
             isOpen={isSearchFocused}
             onSelect={(name) => {
               setQuery(name);
@@ -468,18 +505,9 @@ function MarketplaceContent() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
-              {filteredListings.map((item) => {
-                const calibratedCommodityItem = {
-                  ...item,
-                  detailHref: `/marketplace/product/${item.id}`,
-                };
-                return (
-                  <MarketplaceCard
-                    key={item.id}
-                    listing={calibratedCommodityItem}
-                  />
-                );
-              })}
+              {filteredListings.map((item) => (
+                <MarketplaceCard key={item.id} listing={item} />
+              ))}
             </div>
           )}
         </div>
