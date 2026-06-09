@@ -34,7 +34,7 @@ export function AskOrderBookRow({
       {idx === 0 && (
         <div className="mb-1 text-left animate-fadeIn">
           <span className="font-mono text-[10px] text-brand uppercase font-black tracking-widest block mb-1">
-            🔥 全網最優現貨掛牌價 (MARKET BEST ASK INDEX)
+            🔥 列表排行最優現貨掛牌價
           </span>
           <p className="font-mono font-black text-[34px] md:text-[42px] text-[#d4a574] tracking-tight leading-none">
             HK$ {order.price.toLocaleString("en-HK")}

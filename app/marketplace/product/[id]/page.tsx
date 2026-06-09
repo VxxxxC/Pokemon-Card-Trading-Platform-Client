@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, use, useSyncExternalStore } from "react";
+import { useState, use, useSyncExternalStore, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
@@ -10,12 +9,26 @@ import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 import { CChart16 } from "@/components/reui/c-chart-16";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 
-// 🟢 純淨版盤口：回歸實物交割，只保留最核心的賣家與叫價三要素
+// 使用底層 Base UI 拋光後的奢華 Select 組件群
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// 定義完整的三軌複合排序 SubSortKey
+type SubSortKey = "price_asc" | "grade_desc" | "rating_desc";
+
 interface SellOrder {
   readonly sellerName: string;
   readonly sellerId: string;
   readonly price: number;
+  readonly sellerRating?: number;
+  readonly customGrade?: { authority: string; score: string };
 }
 
 interface ProductSpec {
@@ -36,7 +49,7 @@ interface ProductSpec {
   artist: string;
   soldHistory: { date: string; grade: string; price: number }[];
   chartPoints: { day: number; date: string; price: number }[];
-  sellOrders: SellOrder[]; // 該型號卡牌全網認證商戶的掛牌賣盤
+  sellOrders: SellOrder[];
 }
 
 const PRODUCT_POOL_DATABASE: Record<string, ProductSpec> = {
@@ -71,12 +84,35 @@ const PRODUCT_POOL_DATABASE: Record<string, ProductSpec> = {
       { day: 20, date: "05-20", price: 2150 },
       { day: 30, date: "06-03", price: 2250 },
     ],
-    // 🟢 擺盤數據：化繁為簡，由上至下價格便宜到貴垂直堆疊
     sellOrders: [
-      { sellerName: "渡邊道館", sellerId: "PKT-8839-44A", price: 2250 },
-      { sellerName: "旺角天線卡王", sellerId: "PKT-1122-33B", price: 2320 },
-      { sellerName: "秋葉原海外直送店", sellerId: "PKT-4455-66C", price: 2400 },
-      { sellerName: "信和執雞大師", sellerId: "PKT-7788-99D", price: 2550 },
+      {
+        sellerName: "渡邊道館",
+        sellerId: "PKT-8839-44A",
+        price: 2250,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "旺角天線卡王",
+        sellerId: "PKT-1122-33B",
+        price: 2150,
+        sellerRating: 4.8,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "秋葉原海外直送店",
+        sellerId: "PKT-4455-66C",
+        price: 2400,
+        sellerRating: 4.9,
+        customGrade: { authority: "Raw Card", score: "" },
+      },
+      {
+        sellerName: "信和執雞大師",
+        sellerId: "PKT-7788-99D",
+        price: 2100,
+        sellerRating: 4.5,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
     ],
   },
   "sv2a-189": {
@@ -101,61 +137,27 @@ const PRODUCT_POOL_DATABASE: Record<string, ProductSpec> = {
       { day: 30, date: "06-02", price: 2600 },
     ],
     sellOrders: [
-      { sellerName: "尖沙咀卡神", sellerId: "PKT-9900-11A", price: 2600 },
-      { sellerName: "元朗李生精品", sellerId: "PKT-2233-44B", price: 2680 },
-      { sellerName: "銅鑼灣收藏家", sellerId: "PKT-5566-77C", price: 2750 },
-    ],
-  },
-  "sv6a-109": {
-    name: "Umbreon ex SAR (月亮伊布)",
-    jpName: "ブラッキー ex SAR",
-    set: "Night Wanderer",
-    rarity: "SAR",
-    grade: { authority: "PSA", score: "10" },
-    price: 1900,
-    delta: 75,
-    deltaDirection: "up",
-    images: ["https://picsum.photos/seed/poke-umbreon/600/420"],
-    type: "惡 (Darkness)",
-    stage: "Stage 1 (一階進化)",
-    weakness: "草 x2",
-    retreatCost: "◆◆",
-    moveDamage: "月下暗殺 160",
-    artist: "5ban Graphics",
-    soldHistory: [{ date: "2026-06-01", grade: "PSA 10", price: 1900 }],
-    chartPoints: [
-      { day: 1, date: "05-01", price: 1800 },
-      { day: 30, date: "06-01", price: 1900 },
-    ],
-    sellOrders: [
-      { sellerName: "港島執雞王", sellerId: "PKT-1234-56A", price: 1900 },
-      { sellerName: "將軍澳道館", sellerId: "PKT-7890-12B", price: 1950 },
-    ],
-  },
-  "sv2a-215": {
-    name: "Pikachu AR (皮卡丘)",
-    jpName: "ピカチュウ AR",
-    set: "Pokémon 151",
-    rarity: "AR",
-    grade: { authority: "CGC", score: "9" },
-    price: 425,
-    delta: 15,
-    deltaDirection: "down",
-    images: ["https://picsum.photos/seed/poke-pikachu/600/420"],
-    type: "雷 (Lightning)",
-    stage: "Basic (基礎)",
-    weakness: "鬥 x2",
-    retreatCost: "◆",
-    moveDamage: "十萬伏特 120",
-    artist: "Kouki Saitou",
-    soldHistory: [{ date: "2026-06-02", grade: "CGC 9", price: 425 }],
-    chartPoints: [
-      { day: 1, date: "05-01", price: 450 },
-      { day: 30, date: "06-02", price: 425 },
-    ],
-    sellOrders: [
-      { sellerName: "星光收藏家", sellerId: "PKT-3344-55M", price: 425 },
-      { sellerName: "葵涌卡牌基地", sellerId: "PKT-6677-88N", price: 440 },
+      {
+        sellerName: "尖沙咀卡神",
+        sellerId: "PKT-9900-11A",
+        price: 2600,
+        sellerRating: 4.9,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "元朗李生精品",
+        sellerId: "PKT-2233-44B",
+        price: 2450,
+        sellerRating: 4.7,
+        customGrade: { authority: "Raw Card", score: "" },
+      },
+      {
+        sellerName: "銅鑼灣收藏家",
+        sellerId: "PKT-5566-77C",
+        price: 2750,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
     ],
   },
 };
@@ -179,7 +181,13 @@ const getFallbackProduct = (id: string): ProductSpec => ({
   soldHistory: [],
   chartPoints: [{ day: 1, date: "05-01", price: 1000 }],
   sellOrders: [
-    { sellerName: "官方流動池", sellerId: "PKT-0000-00A", price: 1000 },
+    {
+      sellerName: "官方流動池",
+      sellerId: "PKT-0000-00A",
+      price: 1000,
+      sellerRating: 5.0,
+      customGrade: { authority: "PSA", score: "10" },
+    },
   ],
 });
 
@@ -194,17 +202,60 @@ export default function ProductDetailPage({ params }: PageProps) {
   const card = PRODUCT_POOL_DATABASE[id] || getFallbackProduct(id);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-
-  // 盤口交割控制窗狀態
   const [selectedAskOrder, setSelectedAskOrder] = useState<SellOrder | null>(
     null,
   );
+
+  const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
+  const [onlyGraded, setOnlyGraded] = useState(false);
 
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
+
+  // 執行複合權重三軌排序
+  const filteredAndSortedOrders = useMemo(() => {
+    let orders = [...card.sellOrders];
+
+    // 1. 已鑑定現貨 Switch 快篩防線
+    if (onlyGraded) {
+      orders = orders.filter((order) => {
+        const itemGrade = order.customGrade || card.grade;
+        return itemGrade.authority !== "Raw Card";
+      });
+    }
+
+    // 2. 執行複合權重三軌排序
+    return orders.sort((a, b) => {
+      // 軌道 A：PSA / BGS 鑑定等級最高權重優先
+      if (subSortKey === "grade_desc") {
+        const gradeA = a.customGrade || card.grade;
+        const gradeB = b.customGrade || card.grade;
+
+        const scoreA =
+          gradeA.authority === "Raw Card" ? 0 : parseFloat(gradeA.score) || 0;
+        const scoreB =
+          gradeB.authority === "Raw Card" ? 0 : parseFloat(gradeB.score) || 0;
+
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return a.price - b.price; // 同分服從價格最低鐵律
+      }
+
+      // 軌道 B：賣家信譽評級最高權重優先
+      if (subSortKey === "rating_desc") {
+        const ratingA = a.sellerRating ?? 0;
+        const ratingB = b.sellerRating ?? 0;
+
+        if (ratingB !== ratingA) return ratingB - ratingA;
+        return a.price - b.price; // 同星級服從價格最低鐵律
+      }
+
+      // 軌道 C：純淨定價由低到高秒殺排盤
+      return a.price - b.price;
+    });
+  }, [card.sellOrders, card.grade, subSortKey, onlyGraded]);
 
   if (!isMounted) {
     return (
@@ -214,12 +265,8 @@ export default function ProductDetailPage({ params }: PageProps) {
     );
   }
 
-  // 🟢 規格 3：賣盤由上至下垂直堆疊（價低者排在最前面）
-  const sortedOrders = [...card.sellOrders].sort((a, b) => a.price - b.price);
-
   const hasChartData = card.chartPoints.length > 0;
 
-  // 🟢 規格 5：點擊購買，一鍵包裝商戶資訊直發 open-global-transaction 喚醒右側 ExecutionSlideOver 終端
   const handleTriggerInstantBuy = () => {
     if (!selectedAskOrder) return;
 
@@ -228,8 +275,8 @@ export default function ProductDetailPage({ params }: PageProps) {
       name: card.name,
       set: card.set,
       rarity: card.rarity,
-      grade: card.grade,
-      price: selectedAskOrder.price, // 帶入該賣盤指定的一口價
+      grade: selectedAskOrder.customGrade || card.grade,
+      price: selectedAskOrder.price,
       delta: card.delta,
       deltaDirection: card.deltaDirection,
       image: card.images[0],
@@ -237,7 +284,7 @@ export default function ProductDetailPage({ params }: PageProps) {
       sellerId: selectedAskOrder.sellerId,
     };
 
-    setSelectedAskOrder(null); // 關閉中轉對話彈窗
+    setSelectedAskOrder(null);
 
     window.dispatchEvent(
       new CustomEvent("open-global-transaction", {
@@ -249,13 +296,11 @@ export default function ProductDetailPage({ params }: PageProps) {
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
       <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 lg:pb-12 animate-fadeIn">
+        {/* 麵包屑導航 */}
         <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5">
-          <Link
-            href="/marketplace"
-            className="hover:text-[#d4a574] transition-colors"
-          >
+          <span className="text-[#8A8680] cursor-default">
             MARKETPLACE 交易所大盤
-          </Link>
+          </span>
           <span>/</span>
           <span className="text-[#8A8680] truncate uppercase">
             {id} AGGREGATED PRODUCT
@@ -263,7 +308,7 @@ export default function ProductDetailPage({ params }: PageProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 items-start">
-          {/* 左側：大盤高畫質圖庫 */}
+          {/* 左側：大盤圖庫 */}
           <section className="lg:col-span-5 lg:sticky lg:top-[5.5rem] space-y-4 mb-6 lg:mb-0">
             <div className="relative w-full aspect-[5/3.8] bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden shadow-lg">
               <Image
@@ -320,7 +365,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* 大盤均價區塊 */}
+            {/* 大盤均價 */}
             <div className="bg-[#26211C] p-5 rounded-2xl border border-white/5 flex items-center justify-between shadow-md">
               <div>
                 <span className="font-mono text-[10px] text-[#d4c4b7] uppercase tracking-wider block mb-1">
@@ -331,7 +376,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                     HK$ {card.price.toLocaleString("en-HK")}
                   </p>
                   <span
-                    className={`font-mono text-[13px] font-semibold ${card.deltaDirection === "up" ? "text-success" : "text-error"}`}
+                    className={`font-mono text-[13px] font-semibold ${card.deltaDirection === "up" ? "text-[#22c55e]" : "text-[#ef4444]"}`}
                   >
                     {card.deltaDirection === "up" ? "▲" : "▼"}{" "}
                     {card.deltaDirection === "up" ? "+" : "-"}${card.delta}{" "}
@@ -352,7 +397,6 @@ export default function ProductDetailPage({ params }: PageProps) {
                     Live Index
                   </span>
                 </div>
-
                 <div className="relative w-full h-[145px] overflow-hidden">
                   <CChart16
                     data={card.chartPoints}
@@ -367,35 +411,94 @@ export default function ProductDetailPage({ params }: PageProps) {
               <MarketChartSkeleton />
             )}
 
-            {/* 🟢 正宗【全網認證賣家現貨即時叫價矩陣表】純淨版 */}
-            <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-5 md:p-6 space-y-4 shadow-lg">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2.5 font-mono text-[10.5px] text-[#50453b] uppercase tracking-wider font-bold">
-                <span>認證賣家商號 / 唯一代碼</span>
-                <span>實時掛牌售價</span>
+            {/* 盤口即時掛單 */}
+            <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 md:p-6 space-y-4 shadow-lg">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3 font-mono text-[11px] text-[#8A8680] uppercase tracking-wider select-none gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold shrink-0">
+                    排序
+                  </span>
+                  <Select
+                    value={subSortKey}
+                    onValueChange={(value) =>
+                      setSubSortKey(value as SubSortKey)
+                    }
+                  >
+                    {/* 🟢 頂級修正：加裝明確的繁體中文語意映射防禦線，徹底消滅英文 Key 裸露漏洞 */}
+                    <SelectTrigger className="w-44 min-w-[176px] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11.5px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
+                      <span className="truncate">
+                        {subSortKey === "price_asc" && "最平售價優先"}
+                        {subSortKey === "grade_desc" && "PSA 等級最高"}
+                        {subSortKey === "rating_desc" && "賣家評級最高"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
+                      <SelectItem
+                        value="price_asc"
+                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                      >
+                        最平售價優先
+                      </SelectItem>
+                      <SelectItem
+                        value="grade_desc"
+                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                      >
+                        PSA 等級最高
+                      </SelectItem>
+                      <SelectItem
+                        value="rating_desc"
+                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                      >
+                        賣家評級最高
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 右側已鑑定快篩 Switch */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <label
+                    htmlFor="graded-only-switch"
+                    className="text-[10px] font-bold text-[#8A8680] cursor-pointer"
+                  >
+                    只顯示已鑑定現貨
+                  </label>
+                  <Switch
+                    id="graded-only-switch"
+                    checked={onlyGraded}
+                    onCheckedChange={setOnlyGraded}
+                    className="scale-90 data-[state=checked]:bg-brand"
+                  />
+                </div>
               </div>
 
-              {/* 盤口垂直隊列由上至下排列 */}
-              <div>
-                {sortedOrders.map((order, idx) => (
-                  <>
-                    <AskOrderBookRow
-                      key={order.sellerId}
-                      order={order}
-                      idx={idx}
-                      productId={id}
-                      onOpenGate={setSelectedAskOrder}
-                      grade={card.grade}
-                      rarity={card.rarity}
-                    />
-                    {idx < sortedOrders.length - 1 ? (
-                      <Separator className="bg-gray-700" />
-                    ) : null}
-                  </>
-                ))}
+              {/* 盤口動態掛單隊列 */}
+              <div className="space-y-1">
+                {filteredAndSortedOrders.length === 0 ? (
+                  <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
+                    沒有符合當前快篩條件的賣盤掛單
+                  </div>
+                ) : (
+                  filteredAndSortedOrders.map((order, idx) => (
+                    <div key={order.sellerId}>
+                      <AskOrderBookRow
+                        order={order}
+                        idx={idx}
+                        productId={id}
+                        onOpenGate={setSelectedAskOrder}
+                        grade={order.customGrade || card.grade}
+                        rarity={card.rarity}
+                      />
+                      {idx < filteredAndSortedOrders.length - 1 ? (
+                        <Separator className="bg-white/5 my-1" />
+                      ) : null}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
-            {/* 已成交歷史 */}
+            {/* 最近成交紀錄 */}
             <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
               <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
                 最近全網已成交歷史紀錄
@@ -411,7 +514,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                       <span className="text-[#50453b]">|</span>
                       <span className="text-brand">{item.grade}</span>
                     </div>
-                    <span className="font-bold text-success">
+                    <span className="font-bold text-[#22c55e]">
                       HK$ {item.price.toLocaleString("en-HK")}
                     </span>
                   </div>
@@ -419,7 +522,7 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* 卡牌基本數值規格矩陣 */}
+            {/* 屬性規格矩陣 */}
             <div className="bg-[#26211C] rounded-xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
               <div className="px-4 py-3 border-b border-[rgba(237,232,224,0.08)]">
                 <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
@@ -512,11 +615,14 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* 🟢 全新高能加裝：安全下放的私域現貨引流導航卡（防誤觸核心） */}
-            <Link
-              href={`/marketplace/${selectedAskOrder.sellerId}/product/${id}`}
-              onClick={() => setSelectedAskOrder(null)} // 離開時清洗彈窗狀態
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer"
+            {/* 安全下放的私域現貨引流導航卡 */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedAskOrder(null);
+                window.location.href = `/marketplace/${selectedAskOrder.sellerId}/product/${id}`;
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer text-left focus:outline-none"
             >
               <span>
                 🏪 查看 {selectedAskOrder.sellerName} 的{" "}
@@ -532,20 +638,20 @@ export default function ProductDetailPage({ params }: PageProps) {
               >
                 <polyline points="9 18 15 12 9 6" />
               </svg>
-            </Link>
+            </button>
 
             <div className="flex flex-col gap-2 pt-1">
               <button
                 type="button"
                 onClick={handleTriggerInstantBuy}
-                className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-md"
+                className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-md focus:outline-none"
               >
                 ⚡ 進入交割端 / 立即購買
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedAskOrder(null)}
-                className="w-full h-10 bg-transparent border border-white/10 text-text-secondary font-sans font-bold text-[12px] rounded-xl cursor-pointer"
+                className="w-full h-10 bg-transparent border border-white/10 text-[#8A8680] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
               >
                 取消返回大盤
               </button>
