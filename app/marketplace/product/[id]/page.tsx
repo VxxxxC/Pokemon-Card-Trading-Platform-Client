@@ -506,6 +506,28 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
+            {/* 🟢 全新高能加裝：安全下放的私域現貨引流導航卡（防誤觸核心） */}
+            <Link
+              href={`/marketplace/${selectedAskOrder.sellerId}/product/${id}`}
+              onClick={() => setSelectedAskOrder(null)} // 離開時清洗彈窗狀態
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer"
+            >
+              <span>
+                🏪 查看 {selectedAskOrder.sellerName} 的{" "}
+                <span className="font-black underline">{card.name}</span>
+              </span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
+
             <div className="flex flex-col gap-2 pt-1">
               <button
                 type="button"
