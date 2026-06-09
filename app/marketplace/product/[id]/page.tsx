@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, use, useSyncExternalStore, useMemo } from "react";
+import { MarketPagination } from "@/app/components/ui/MarketPagination";
 import Image from "next/image";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
@@ -75,6 +76,8 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
   const [onlyGraded, setOnlyGraded] = useState(false);
+  // 🟢 訂單簿分頁狀態：複合狀態模式防止 ESLint set-state-in-effect 警告
+  const [orderPageState, setOrderPageState] = useState({ page: 1, forKey: "" });
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -131,6 +134,23 @@ export default function ProductDetailPage({ params }: PageProps) {
   }
 
   const hasChartData = card.chartPoints.length > 0;
+
+  // 🟢 訂單簿分頁計算引擎：檢視窗含 5 筆訂單
+  // 篩選指紋 Hash 防線：排序或 Switch 改變即自動返回第 1 頁
+  const orderFilterKey = `${subSortKey}|${String(onlyGraded)}`;
+  const orderPage =
+    orderPageState.forKey === orderFilterKey ? orderPageState.page : 1;
+  const setOrderPage = (page: number) =>
+    setOrderPageState({ page, forKey: orderFilterKey });
+
+  const ordersPerPage = 5;
+  const totalOrderPages = Math.ceil(
+    filteredAndSortedOrders.length / ordersPerPage,
+  );
+  const paginatedOrders = filteredAndSortedOrders.slice(
+    (orderPage - 1) * ordersPerPage,
+    orderPage * ordersPerPage,
+  );
 
   // 🟢 動態大盤均價計算 (Dynamic Market Price — absolute lowest active ask)
   const marketPrice =
@@ -357,7 +377,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                     沒有符合當前快篩條件的賣盤掛單
                   </div>
                 ) : (
-                  filteredAndSortedOrders.map((order, idx) => (
+                  paginatedOrders.map((order, idx) => (
                     <div key={order.sellerId}>
                       <AskOrderBookRow
                         order={order}
@@ -367,13 +387,23 @@ export default function ProductDetailPage({ params }: PageProps) {
                         grade={order.customGrade}
                         rarity={card.rarity}
                       />
-                      {idx < filteredAndSortedOrders.length - 1 ? (
+                      {idx < paginatedOrders.length - 1 ? (
                         <Separator className="bg-white/5 my-1" />
                       ) : null}
                     </div>
                   ))
                 )}
               </div>
+              {/* 訂單簿分頁控制器 */}
+              <MarketPagination
+                currentPage={orderPage}
+                totalPages={totalOrderPages}
+                onPageChange={setOrderPage}
+                itemLabel="筆掛單"
+                totalItems={filteredAndSortedOrders.length}
+                itemsPerPage={ordersPerPage}
+                className="mt-2 pb-1"
+              />
             </div>
 
             {/* 最近成交紀錄 */}

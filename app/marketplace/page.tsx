@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { MarketPagination } from "@/app/components/ui/MarketPagination";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
@@ -73,6 +74,10 @@ function MarketplaceContent() {
 
   // Mobile Filter Panel State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  // 🟢 大盤商品網格分頁狀態 (Global Grid Pagination State)
+  // 使用複合狀態模式：如選別指紋改變，自動返回第 1 頁——完全無需 useEffect
+  const [pageState, setPageState] = useState({ page: 1, forKey: "" });
 
   // 🟢 SSOT 動態衍生層：從 UnifiedProductSpec 計算每項商品的有效最低掛牌數據
   const derivedListings = useMemo<MarketplaceListing[]>(
@@ -247,6 +252,20 @@ function MarketplaceContent() {
       </div>
     );
   }
+
+  // 🟢 分頁計算引擎 (Pagination Computation Pipeline — 5 items per slice)
+  // 笻選指紋 Hash 防線：選別指紋改變即自動返回第 1 頁
+  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeConditions.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
+  const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
+  const setCurrentPage = (page: number) =>
+    setPageState({ page, forKey: filterKey });
+
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
+  const paginatedListings = filteredListings.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   const hasActiveFilters =
     query !== "" ||
@@ -504,11 +523,22 @@ function MarketplaceContent() {
               沒有符合篩選條件的商品
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
-              {filteredListings.map((item) => (
-                <MarketplaceCard key={item.id} listing={item} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
+                {paginatedListings.map((item) => (
+                  <MarketplaceCard key={item.id} listing={item} />
+                ))}
+              </div>
+              <MarketPagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemLabel="件商品"
+                totalItems={filteredListings.length}
+                itemsPerPage={itemsPerPage}
+                className="mt-6"
+              />
+            </>
           )}
         </div>
       </div>
