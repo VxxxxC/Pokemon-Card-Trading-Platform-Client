@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUIStore } from "@/app/store/useUIStore";
+import { useSyncExternalStore } from "react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -10,8 +11,11 @@ export function BottomNav() {
 
   // 🟢 訂閱沙盒身份
   const mockRole = useUIStore((state) => state.mockRole);
-  const isGuest = mockRole === "GUEST";
-
+  const isGuest = useSyncExternalStore(
+    () => () => {}, // 訂閱監聽清理回調
+    () => mockRole === "GUEST", // 客戶端快照（讀取真實狀態）
+    () => true, // 伺服器端快照（強制對齊預設為 Guest，防止 HTML 結構錯位）
+  );
   return (
     <nav
       className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md"
@@ -63,11 +67,11 @@ export function BottomNav() {
           /* 【已登入模式】解鎖正中央「＋」開倉掣及後續雙子星槽位 */
           <>
             {/* Slot 3: 正中央「＋」按鈕 */}
-            <div className="flex items-center justify-center animate-fadeIn">
+            <div className="flex flex-col items-center justify-center animate-fadeIn">
               <button
                 type="button"
                 onClick={() => openAddAssetModal("merch")}
-                className="w-11 h-11 bg-[#d4a574] text-[#1A1612] rounded-[14px] flex items-center justify-center shadow-lg active:scale-[0.90] transition-all cursor-pointer focus:outline-none"
+                className="w-8 h-8 bg-[#d4a574] text-[#1A1612] my-1 rounded-lg flex items-center justify-center shadow-lg active:scale-[0.90] transition-all cursor-pointer focus:outline-none"
               >
                 <svg
                   width="20"
@@ -81,6 +85,9 @@ export function BottomNav() {
                   <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
                 </svg>
               </button>
+              <span className="text-xs font-medium text-brand my-1">
+                新增商品
+              </span>
             </div>
 
             {/* Slot 4: 交易管理 */}

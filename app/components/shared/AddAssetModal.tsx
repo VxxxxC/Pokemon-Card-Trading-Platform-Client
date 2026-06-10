@@ -52,6 +52,8 @@ export function AddAssetModal() {
   // 🟢 記憶體時空守衛：儲存上一次的開窗狀態，用作 Render 階段比對基準
   const [prevIsOpen, setPrevIsOpen] = useState(false);
 
+  const displayMode = mode === "hobby" ? "收藏愛好" : "新增商品";
+
   // 🟢 核心修正：消滅 useEffect！直接在 Render 體內執行時空同步與表單大掃除
   // 這屬於 React 官方首推的「 stashed render pattern」，能將兩次重繪壓縮為單次高性能重繪
   if (isOpen !== prevIsOpen) {
@@ -113,9 +115,9 @@ export function AddAssetModal() {
         toast.error("⚠️ 請輸入有效的商品放售售價！");
         return;
       }
-      if (images.length < 2) {
+      if (images.length < 4) {
         toast.error(
-          "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 2 張卡牌相片（正面與背面）。",
+          "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。",
         );
         return;
       }
@@ -164,24 +166,9 @@ export function AddAssetModal() {
       />
 
       <div className="relative bg-[#2e2925] border border-[rgba(237,232,224,0.15)] rounded-2xl p-6 w-full max-w-md shadow-2xl text-left flex flex-col max-h-[92vh] overflow-hidden animate-scaleUp">
-        {/* Toggle 模式雙夾選單 */}
-        <div className="bg-[#17130f] p-1 rounded-xl grid grid-cols-2 gap-1 mb-4 shrink-0 border border-white/5">
-          <button
-            type="button"
-            onClick={() => setMode("hobby")}
-            className={`h-9 rounded-lg font-sans font-black text-[12.5px] transition-all cursor-pointer ${mode === "hobby" ? "bg-[#d4a574] text-[#1A1612] shadow-md" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
-          >
-            ★ 收藏愛好
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("merch")}
-            className={`h-9 rounded-lg font-sans font-black text-[12.5px] transition-all cursor-pointer ${mode === "merch" ? "bg-[#d4a574] text-[#1A1612] shadow-md" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
-          >
-            🏪 新增商品
-          </button>
+        <div className="font-sans font-bold text-xl text-brand mb-4">
+          {displayMode}
         </div>
-
         <form
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-none pb-1 text-[13px]"
@@ -192,7 +179,7 @@ export function AddAssetModal() {
               <label className="font-sans font-bold text-[#d4c4b7]">
                 實體品相相片 ({images.length}/6){" "}
                 {mode === "merch" && (
-                  <span className="text-brand">* (最少2張)</span>
+                  <span className="text-brand">* (最少4張)</span>
                 )}
               </label>
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
