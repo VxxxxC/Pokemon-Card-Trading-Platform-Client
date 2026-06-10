@@ -8,8 +8,18 @@ import { OrderLifecycleStepper } from "@/app/components/transactions/OrderLifecy
 import { type ListingStatus } from "@/app/lib/mock-data/members";
 import { useTradeStore } from "@/app/store/useTradeStore";
 import { INITIAL_ORDERS } from "@/app/lib/mock-data/transactions";
-// 🟢 核心對接：引入中央模擬數據庫與強型態
+// 核心對接：引入中央模擬數據庫與強型態
 import { useMockDbStore, type UserListing } from "@/app/store/useMockDbStore";
+
+// 🟢 核心引入：補裝全域統一的奢華黑金對話框組件群
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Order {
   id: string;
@@ -98,7 +108,8 @@ function ProductRowItem({
   order?: Order;
   onNavigate: (href: string) => void;
   onToggleStatus: (id: string) => void;
-  onCancelListing: (id: string, name: string) => void;
+  // 🟢 頂級語意對齊：操作回調改為傳送完整 item 物件，方便 Dialog 安全渲染商品特寫
+  onCancelListing: (item: UserListing) => void;
 }) {
   const isClickable = item.status === "pending_trade" || item.status === "sold";
   const href = isClickable ? getProductNavigationHref(item, order) : "";
@@ -198,8 +209,8 @@ function ProductRowItem({
           {item.status === "active" && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 onToggleStatus(item.id);
               }}
               className="h-9 px-4 bg-transparent border border-amber-500/40 text-amber-400 font-sans font-bold text-[12px] rounded-xl hover:bg-amber-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
@@ -233,11 +244,12 @@ function ProductRowItem({
               >
                 ⚡ 重新上架商品
               </button>
+              {/* 🟢 頂級修正：點擊後不再直接執行刪除，而是將當前 item 送進攔截鎖 */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onCancelListing(item.id, item.cardName);
+                  onCancelListing(item);
                 }}
                 className="h-9 px-4 bg-transparent border border-[#ef4444]/50 text-[#ef4444] font-sans font-bold text-[12px] rounded-xl hover:bg-[#ef4444]/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
               >
@@ -269,7 +281,7 @@ function ProductRowItem({
 export default function UserTradingPage() {
   const router = useRouter();
 
-  // 🟢 核心改動：直接對接全域持久化 Mock 資料庫，完美接收來自卡牌庫嘅上架數據
+  // 直接對接全域持久化 Mock 資料庫
   const tradingListings = useMockDbStore((state) => state.tradingListings);
   const toggleListingStatus = useMockDbStore(
     (state) => state.toggleListingStatus,
@@ -279,6 +291,10 @@ export default function UserTradingPage() {
   );
 
   const [activeTab, setActiveTab] = useState<ListingStatus>("active");
+
+  // ── 🟢 核心加裝：取消上架的 Dialog 安全狀態鎖 ──
+  const [cancelTargetListing, setCancelTargetListing] =
+    useState<UserListing | null>(null);
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -316,11 +332,24 @@ export default function UserTradingPage() {
     }
   };
 
-  const handleCancelListing = (id: string, name: string) => {
-    cancelListingAndRemove(id);
+  // 🟢 核心修正：觸發「取消上架」時，先彈出 Dialog 阻斷點擊
+  const handleTriggerCancelWorkflow = (item: UserListing) => {
+    setCancelTargetListing(item);
+  };
+
+  // 🟢 核心修正：用家在 Dialog 內點擊紅掣，才正式執行 DB.ALTER 徹底銷毀
+  const handleConfirmCancelListing = () => {
+    if (!cancelTargetListing) return;
+
+    cancelListingAndRemove(cancelTargetListing.id);
+
     toast.warning("🗑️ 商品已完全下架", {
-      description: `【${name}】已從交易管理資產大盤移除。`,
+      description: `【${cancelTargetListing.cardName}】已從交易管理資產大盤徹底移除。`,
+      className:
+        "bg-[#26211C] border border-brand/30 text-[#eae1da] font-sans shadow-2xl",
     });
+
+    setCancelTargetListing(null);
   };
 
   return (
@@ -367,11 +396,87 @@ export default function UserTradingPage() {
               }
               onNavigate={(href) => router.push(href)}
               onToggleStatus={handleToggleStatus}
-              onCancelListing={handleCancelListing}
+              onCancelListing={handleTriggerCancelWorkflow}
             />
           ))
         )}
       </div>
+
+      {/* ── 🟢 全新高能加裝：Shadcn UI 奢華黑曜石商品完全下架確認對話框 (Listing Revocation Dialog) ── */}
+      <Dialog
+        open={cancelTargetListing !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTargetListing(null);
+        }}
+      >
+        <DialogContent className="bg-[#26211C] border border-white/10 rounded-2xl text-[#eae1da] max-w-sm p-6 shadow-2xl animate-scaleUp">
+          <DialogHeader className="text-left space-y-1">
+            <DialogTitle className="font-sans font-black text-[17px] text-[#ef4444] flex items-center gap-2">
+              ⚠️ 確認完全下架商品？
+            </DialogTitle>
+            <DialogDescription className="font-mono text-[10.5px] text-[#8A8680] uppercase tracking-wider">
+              Permanent Listing Revocation Guard
+            </DialogDescription>
+          </DialogHeader>
+
+          {cancelTargetListing && (
+            <div className="space-y-3.5 py-2 font-sans text-[13.2px] text-[#d4c4b7] leading-relaxed">
+              <p>
+                你正準備將此資產要約從公開交易大盤中
+                <span className="text-[#ef4444] font-bold">
+                  徹底撤單並完全下架
+                </span>
+                。此操作不可逆，商品的心水追蹤、點擊數據與歷史快照將會被完全銷毀。
+              </p>
+
+              {/* 精準對焦的下架資產規格卡 */}
+              <div className="p-3 bg-[#17130f] rounded-xl border border-white/5 flex items-center gap-3">
+                <div className="relative w-10 h-14 rounded overflow-hidden bg-[#2c2722] border border-white/10 shrink-0">
+                  <Image
+                    src={cancelTargetListing.cardImage}
+                    alt={cancelTargetListing.cardName}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <p className="font-bold text-[#eae1da] truncate">
+                    {cancelTargetListing.cardName}
+                  </p>
+                  <p className="font-mono text-[11px] text-[#8A8680]">
+                    一口價:{" "}
+                    <span className="text-brand font-bold">
+                      HK$ {cancelTargetListing.price.toLocaleString()}
+                    </span>
+                  </p>
+                  <p className="font-mono text-[10px] text-[#8A8680] truncate">
+                    {cancelTargetListing.grade}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 奢華黑曜石按鈕深色優化（Obsidian Slate Accent） */}
+          <DialogFooter className="flex flex-col gap-2 pt-2 sm:space-x-0">
+            <button
+              type="button"
+              onClick={handleConfirmCancelListing}
+              className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13.5px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
+            >
+              🚨 確認完全下架 · 徹底刪除
+            </button>
+            <button
+              type="button"
+              onClick={() => setCancelTargetListing(null)}
+              className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
+            >
+              取消返回
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
