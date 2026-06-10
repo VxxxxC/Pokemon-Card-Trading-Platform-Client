@@ -487,16 +487,16 @@ export default function UserCollectionPage() {
                                 <p className="font-mono text-[10px] text-[#d4c4b7]">
                                   {card.cardNo} · {card.set}
                                 </p>
+                                <GraderBadge grader={card.grader} />
                               </div>
                             </div>
                           </td>
                           <td className="py-4 px-3 text-center">
                             <div className="flex flex-col items-center gap-1.5">
-                              <GraderBadge grader={card.grader} />
-                              <StatusPill status={card.status} />
                               <span className="font-mono text-[9.5px] text-[#8A8680]">
                                 {card.grade}
                               </span>
+                              <StatusPill status={card.status} />
                             </div>
                           </td>
                           <td className="py-4 px-3 text-right">
