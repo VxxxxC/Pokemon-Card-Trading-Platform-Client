@@ -75,7 +75,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
   };
 
   return (
-    <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
+    <section className="relative bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
       <div className="h-24 bg-gradient-to-r from-[#2e2925] via-[rgba(140,115,85,0.15)] to-[#2e2925]" />
       <div className="px-6 pb-6">
         <div className="flex items-end justify-between -mt-10 mb-4">
@@ -111,9 +111,9 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
             {/* 🎯 改裝完成：一鍵觸發全域廣播事件 */}
             <button
               onClick={handleActionChat}
-              className="h-10 px-5 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-bold text-[13px] rounded-xl flex items-center justify-center gap-2 active:scale-[0.96] transition-all shadow-md"
+              className="absolute top-4 right-4 z-12 w-12 h-12 rounded-full bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md"
             >
-              💬 聯絡商戶議價
+              💬
             </button>
           </div>
 
