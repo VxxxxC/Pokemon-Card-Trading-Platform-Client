@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, use, useSyncExternalStore, useMemo } from "react";
-import { MarketPagination } from "@/app/components/ui/MarketPagination";
+import { Pagination } from "@/app/components/ui/Pagination";
 import Image from "next/image";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
@@ -9,7 +9,7 @@ import { type MarketplaceListing } from "@/app/components/marketplace/Marketplac
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 import { CChart16 } from "@/components/reui/c-chart-16";
-import { Separator } from "@/components/ui/separator";
+
 import { Switch } from "@/components/ui/switch";
 import {
   INITIAL_LISTINGS,
@@ -423,13 +423,14 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
 
               {/* 訂單簿分頁控制器 */}
-              <MarketPagination
+              <Pagination
                 currentPage={orderPage}
                 totalPages={totalOrderPages}
                 onPageChange={setOrderPage}
                 itemLabel="筆掛單"
                 totalItems={filteredAndSortedOrders.length}
                 itemsPerPage={ordersPerPage}
+                enableScroll={true}
                 className="mt-2 pb-1"
               />
             </div>

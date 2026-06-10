@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { MarketPagination } from "@/app/components/ui/MarketPagination";
+import { Pagination } from "@/app/components/ui/Pagination";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
@@ -35,7 +35,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 
 function MarketplaceContent() {
-  const isMounted = useSyncExternalStore(
+  const _isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
@@ -501,7 +501,7 @@ function MarketplaceContent() {
             ))}
           </div>
 
-          <MarketPagination
+          <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
@@ -509,6 +509,7 @@ function MarketplaceContent() {
             totalItems={filteredListings.length}
             itemsPerPage={itemsPerPage}
             hideControls={true} // 🟢 核心加裝：在大盤主頁面直接隱藏 Prev/Next 控制鍵，100% 規避衝突！
+            enableScroll={true}
             className="mt-6"
           />
         </div>

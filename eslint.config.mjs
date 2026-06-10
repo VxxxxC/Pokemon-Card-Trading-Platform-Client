@@ -15,6 +15,20 @@ const eslintConfig = defineConfig([
     ".agents/**",
     "public/sw.js",
   ]),
+  {
+    rules: {
+      // Allow variables prefixed with _ to be intentionally unused
+      // (e.g. useSyncExternalStore hooks called for side-effects, not return value)
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          varsIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
