@@ -262,7 +262,13 @@ export function GlobalChatConsole() {
           <div className="flex-1 flex flex-col bg-[#17130f]">
             <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
               <div className="flex items-center gap-2">
+                {/* User online status */}
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                {/* User Avatar */}
+                <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
+                  {activeRoom.partnerName[0]}
+                </div>
+                {/* User name */}
                 <span className="font-sans font-bold text-[13px] text-text-primary cursor-default">
                   {activeRoom.partnerName}
                 </span>
@@ -413,9 +419,18 @@ export function GlobalChatConsole() {
                   >
                     <IoChevronBack />
                   </button>
-                  <span className="font-sans font-bold text-[13.5px] text-text-primary truncate max-w-[130px] cursor-default">
-                    {activeRoom.partnerName}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {/* User online status */}
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                    {/* User Avatar */}
+                    <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
+                      {activeRoom.partnerName[0]}
+                    </div>
+                    {/* User name */}
+                    <span className="font-sans font-bold text-[13px] text-text-primary cursor-default">
+                      {activeRoom.partnerName}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* 🟢 頂級修正 B（手機端）：同步砍掉 asChild 與內嵌 button 結構，拒絕 nested 按鈕殘留 */}
