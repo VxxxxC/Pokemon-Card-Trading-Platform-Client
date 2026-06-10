@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { motion } from "framer-motion";
+import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -410,7 +411,7 @@ export function GlobalChatConsole() {
                     onClick={() => setMobileView("LIST")}
                     className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
                   >
-                    ←
+                    <IoChevronBack />
                   </button>
                   <span className="font-sans font-bold text-[13.5px] text-text-primary truncate max-w-[130px] cursor-default">
                     {activeRoom.partnerName}
