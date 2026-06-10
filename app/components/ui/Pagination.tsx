@@ -1,20 +1,23 @@
 "use client";
 
 /**
- * MarketPagination — 全站統一奢華分頁控制器（提純選配按鈕版）
+ * Pagination — 全站統一奢華分頁控制器（提純選配按鈕版）
  * Uses shadcn/ui Pagination primitives wrapped in luxury dark-golden design tokens.
  * Purely client-side (onClick + state) — NO window.location.href or anchor navigation.
+ *
+ * Renamed from MarketPagination → Pagination (global registry unification).
+ * New: `enableScroll` boolean property gate controls window/container scroll side-effects.
  */
 
 import React from "react";
 import {
-  Pagination,
+  Pagination as PaginationPrimitive,
   PaginationContent,
   PaginationItem,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 
-interface MarketPaginationProps {
+interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -26,6 +29,10 @@ interface MarketPaginationProps {
   itemsPerPage?: number;
   /** 🟢 全新高能加裝：是否隱藏 [上一頁] / [下一頁] 按鈕，用於規避局部滾動條衝突 */
   hideControls?: boolean;
+  /** 🟢 Scroll Gate: Controls window/container automatic scroll-recenter mechanics.
+   *  Defaults to `true`. Pass `false` to bypass ALL scroll side-effects — pure
+   *  in-place client-side data state slicing with zero viewport displacement. */
+  enableScroll?: boolean;
   className?: string;
 }
 
@@ -67,16 +74,17 @@ function buildPageWindow(
   return pages;
 }
 
-export function MarketPagination({
+export function Pagination({
   currentPage,
   totalPages,
   onPageChange,
   itemLabel = "筆記錄",
   totalItems,
   itemsPerPage,
-  hideControls = false, // 預設不隱藏
+  hideControls = false,
+  enableScroll = true, // 🟢 預設開啟：保持全站原有平滑回頂行為不變
   className,
-}: MarketPaginationProps) {
+}: PaginationProps) {
   // Do not render when there's nothing to paginate
   if (totalPages <= 1) return null;
 
@@ -96,20 +104,17 @@ export function MarketPagination({
   const handlePageAction = (targetPage: number) => {
     onPageChange(targetPage);
 
+    // 🟢 Scroll Gate 防線：如果傳入 false，全面切斷滾動副作用，原地就地切片
+    if (!enableScroll) return;
+
     if (typeof window !== "undefined") {
       const orderBookPanel = document.getElementById("live-order-book-panel");
       if (orderBookPanel) {
         // 🎯 盤口詳情頁專屬：精準平滑對焦回盤口頂部
-        orderBookPanel.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
+        orderBookPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
       } else {
         // 🎯 大盤市場專屬：回歸標準全域置頂
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     }
   };
@@ -128,7 +133,7 @@ export function MarketPagination({
         </p>
       )}
 
-      <Pagination>
+      <PaginationPrimitive>
         <PaginationContent className="gap-1">
           {/* ← Prev (🟢 根據開關動態隱藏) */}
           {!hideControls && (
@@ -186,7 +191,7 @@ export function MarketPagination({
             </PaginationItem>
           )}
         </PaginationContent>
-      </Pagination>
+      </PaginationPrimitive>
     </div>
   );
 }
