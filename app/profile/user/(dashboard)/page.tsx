@@ -240,12 +240,11 @@ export default function UserOverviewPage() {
       >
         <Link
           href="/profile/user/settings"
-          className="absolute top-4 right-4 z-12 w-20 h-8 rounded-xl bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md"
+          className="absolute top-4 right-4 z-12 w-12 h-12 rounded-full bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md"
           title="設定"
         >
           <div className="p-2 flex flex-row items-center gap-2">
             <GrUserSettings size={18} aria-hidden="true" />
-            <span className="text-sm text-nowrap font-medium">設定</span>
           </div>
         </Link>
 
