@@ -28,10 +28,12 @@ import { toast } from "sonner";
 // 🟢 核心對接：引流中央倉庫
 import { useMockDbStore, type OwnedCard } from "@/app/store/useMockDbStore";
 
+type ChartPoint = OwnedCard["chartPoints"][number];
+
 const ITEMS_PER_PAGE = 5;
 
 function getSparklinePoints(
-  chartPoints: any[],
+  chartPoints: ChartPoint[],
   width = 60,
   height = 24,
 ): string {
