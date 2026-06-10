@@ -4,10 +4,6 @@ import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { WishlistTable } from "@/app/components/market/WishlistTable";
 import { useUIStore } from "@/app/store/useUIStore";
-import {
-  INITIAL_LISTINGS,
-  type UnifiedProductSpec,
-} from "@/app/lib/mock-data/cards";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import { Pagination } from "@/app/components/ui/Pagination";
@@ -19,140 +15,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// ── Type Aliases ───────────────────────────────────────────────────────────────
-// Derived from the canonical SSOT — zero interface duplication (copilot-instructions.md §2)
-type ChartPoint = UnifiedProductSpec["chartPoints"][number];
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-// ── Core Data Model ────────────────────────────────────────────────────────────
-// TODO [MOCK DATA]: Replace PORTFOLIO_REGISTRY + INITIAL_LISTINGS join with
-//                  Supabase query on `user_collection` JOIN `card_catalog` tables
-// TODO [API]:      Connect to grading service API to fetch live grade/status updates
+import { toast } from "sonner";
+// 🟢 核心對接：引流中央倉庫
+import { useMockDbStore, type OwnedCard } from "@/app/store/useMockDbStore";
 
-interface OwnedCard {
-  id: string;
-  name: string;
-  set: string;
-  cardNo: string;
-  grade: string;
-  grader: "PSA" | "BGS" | "CGC" | "RAW";
-  purchasePrice: number; // HKD
-  currentValue: number; // HKD
-  status: "holding" | "listed" | "grading";
-  /** 30-day price history from INITIAL_LISTINGS SSOT — powers the sparkline engine */
-  chartPoints: ChartPoint[];
-}
-
-// Portfolio metadata registry — only portfolio-specific fields (grade, pricing, status).
-// All base card data (name, set, cardNo, chartPoints) is joined from INITIAL_LISTINGS at runtime.
-type PortfolioMeta = {
-  id: string;
-  grade: string;
-  grader: OwnedCard["grader"];
-  purchasePrice: number;
-  currentValue: number;
-  status: OwnedCard["status"];
-};
-
-const PORTFOLIO_REGISTRY: PortfolioMeta[] = [
-  {
-    id: "sv2a-182",
-    grade: "PSA 10",
-    grader: "PSA",
-    purchasePrice: 2100,
-    currentValue: 2250,
-    status: "holding",
-  },
-  {
-    id: "sv6a-109",
-    grade: "BGS 9.5",
-    grader: "BGS",
-    purchasePrice: 1800,
-    currentValue: 1900,
-    status: "holding",
-  },
-  {
-    id: "sv2a-215",
-    grade: "CGC 9",
-    grader: "CGC",
-    purchasePrice: 410,
-    currentValue: 425,
-    status: "holding",
-  },
-  {
-    id: "sv2a-189",
-    grade: "PSA 10",
-    grader: "PSA",
-    purchasePrice: 2480,
-    currentValue: 2350,
-    status: "listed",
-  },
-  {
-    id: "sv2a-205",
-    grade: "PSA 9",
-    grader: "PSA",
-    purchasePrice: 880,
-    currentValue: 950,
-    status: "holding",
-  },
-  {
-    id: "sv3pt5-067",
-    grade: "BGS 9.5",
-    grader: "BGS",
-    purchasePrice: 1300,
-    currentValue: 1380,
-    status: "holding",
-  },
-  {
-    id: "sv3w-085",
-    grade: "PSA 10",
-    grader: "PSA",
-    purchasePrice: 2650,
-    currentValue: 2950,
-    status: "holding",
-  },
-  {
-    id: "sv4pt5-086",
-    grade: "PSA 9",
-    grader: "PSA",
-    purchasePrice: 2400,
-    currentValue: 2550,
-    status: "grading",
-  },
-];
-
-/** Hydrates OwnedCard[] by joining PORTFOLIO_REGISTRY with INITIAL_LISTINGS SSOT */
-function buildInitialOwnedCards(): OwnedCard[] {
-  return PORTFOLIO_REGISTRY.flatMap<OwnedCard>((meta) => {
-    const card = INITIAL_LISTINGS.find((c) => c.id === meta.id);
-    if (!card) return [];
-    return [
-      {
-        id: meta.id,
-        name: card.name,
-        set: card.set,
-        cardNo: card.cardNo ?? meta.id,
-        grade: meta.grade,
-        grader: meta.grader,
-        purchasePrice: meta.purchasePrice,
-        currentValue: meta.currentValue,
-        status: meta.status,
-        chartPoints: card.chartPoints,
-      },
-    ];
-  });
-}
-
-/** Max cards displayed per table page — compound pagination guard threshold */
 const ITEMS_PER_PAGE = 5;
 
-// ── Sparkline Math Projection Engine ──────────────────────────────────────────
-/**
- * Dynamically maps a chartPoints price array into SVG polyline coordinates.
- * Inverts the Y axis (SVG 0,0 = top-left) and normalises to a fixed viewport.
- * Returns a flat line if chartPoints has fewer than 2 entries.
- */
 function getSparklinePoints(
-  chartPoints: ChartPoint[],
+  chartPoints: any[],
   width = 60,
   height = 24,
 ): string {
@@ -165,14 +44,11 @@ function getSparklinePoints(
   return chartPoints
     .map((point, index) => {
       const x = (index / (chartPoints.length - 1)) * width;
-      // Invert Y axis: SVG 0,0 starts from top-left corner
       const y = height - ((point.price - min) / range) * (height - 4) - 2;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
 }
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
 
 function GraderBadge({ grader }: { grader: OwnedCard["grader"] }) {
   const map: Record<OwnedCard["grader"], string> = {
@@ -213,34 +89,35 @@ function StatusPill({ status }: { status: OwnedCard["status"] }) {
   );
 }
 
-// ── Main Page Component ────────────────────────────────────────────────────────
-
 export default function UserCollectionPage() {
   const router = useRouter();
 
-  // ── Core state ──────────────────────────────────────────────────────────────
-  // Function form of useState: buildInitialOwnedCards() runs once at mount only
-  const [ownedCards, setOwnedCards] = useState<OwnedCard[]>(() =>
-    buildInitialOwnedCards(),
+  // 🟢 核心改動：直接從全域外掛數據庫進行 QUERY 與 ALTER 聯動
+  const ownedCards = useMockDbStore((state) => state.ownedCards);
+  const removeCard = useMockDbStore((state) => state.removeCardFromCollection);
+  const publishCardToTradingMarket = useMockDbStore(
+    (state) => state.publishCardToTradingMarket,
   );
+
   const [odometerValue, setOdometerValue] = useState(0);
   const [activeFilter, setActiveFilter] = useState("全部");
   const [query, setQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // React 19 compound state bucket — zero-useEffect pagination synchronization
-  const [pageState, setPageState] = useState({ page: 1, forKey: "" });
+  const [sellTargetCard, setSellTargetCard] = useState<OwnedCard | null>(null);
+  const [inputPrice, setInputPrice] = useState<string>("");
+  const [selectedShipping] = useState<string[]>(["順豐到付"]);
+  const [selectedPayment] = useState<string[]>(["FPS", "PayMe"]);
 
+  const [pageState, setPageState] = useState({ page: 1, forKey: "" });
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
 
-  // 金融級安全水合守衛 — React 19 官方 useSyncExternalStore 快照機制
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
 
-  // ── Computed summary ─────────────────────────────────────────────────────────
   const computedSummary = useMemo(() => {
     let totalValue = 0;
     let totalCost = 0;
@@ -250,11 +127,8 @@ export default function UserCollectionPage() {
     ownedCards.forEach((c) => {
       totalValue += c.currentValue;
       totalCost += c.purchasePrice;
-      if (c.grader === "RAW") {
-        rawCount += 1;
-      } else {
-        gradedCount += 1;
-      }
+      if (c.grader === "RAW") rawCount += 1;
+      else gradedCount += 1;
     });
 
     const unrealizedPnl = totalValue - totalCost;
@@ -273,7 +147,6 @@ export default function UserCollectionPage() {
     };
   }, [ownedCards]);
 
-  // 動態滾動數字里程錶 (legitimate side-effect: manages setInterval)
   useEffect(() => {
     let start = 0;
     const end = computedSummary.totalValue;
@@ -293,37 +166,6 @@ export default function UserCollectionPage() {
     return () => clearInterval(timer);
   }, [computedSummary.totalValue]);
 
-  // 全域事件廣播接收器 — captures asset additions from any entry point
-  // TODO [BACKEND]: Replace CustomEvent with Supabase real-time subscription
-  useEffect(() => {
-    const handleAssetAdded = (e: Event) => {
-      const customEvent = e as CustomEvent<OwnedCard>;
-      if (customEvent.detail) {
-        setOwnedCards((prev) => [
-          {
-            ...customEvent.detail,
-            // Guard: new cards dispatched pre-chartPoints may arrive without it
-            chartPoints: customEvent.detail.chartPoints ?? [],
-          },
-          ...prev,
-        ]);
-      }
-    };
-
-    window.addEventListener(
-      "global-asset-successfully-added",
-      handleAssetAdded,
-    );
-    return () =>
-      window.removeEventListener(
-        "global-asset-successfully-added",
-        handleAssetAdded,
-      );
-  }, []);
-
-  // ── Smart Search Suggestions ──────────────────────────────────────────────
-  // DRY TypeScript: derives MarketplaceListing[] from OwnedCard[] via runtime mapping.
-  // Uses existing canonical type — zero interface duplication.
   const searchSuggestions = useMemo<MarketplaceListing[]>(() => {
     return ownedCards.map((c) => ({
       id: c.id,
@@ -340,7 +182,6 @@ export default function UserCollectionPage() {
     }));
   }, [ownedCards]);
 
-  // ── Hydration guard ──────────────────────────────────────────────────────────
   if (!isMounted) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#17130f]">
@@ -349,23 +190,35 @@ export default function UserCollectionPage() {
     );
   }
 
-  // ── React 19 Zero-useEffect Pagination Fingerprint Engine ──────────────────
   const activeFingerprint = `${activeFilter}|${query}`;
   const currentPage =
     pageState.forKey === activeFingerprint ? pageState.page : 1;
   const setCurrentPage = (page: number) =>
     setPageState({ page, forKey: activeFingerprint });
 
-  // ── Action handlers ──────────────────────────────────────────────────────────
-  const removeCard = (id: string) =>
-    setOwnedCards((prev) => prev.filter((c) => c.id !== id));
+  const handleTriggerSellWorkflow = (card: OwnedCard) => {
+    setSellTargetCard(card);
+    setInputPrice(card.currentValue.toString());
+  };
 
-  const listCard = (id: string) =>
-    setOwnedCards((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "listed" as const } : c)),
-    );
+  const handleConfirmPublishToListing = () => {
+    if (!sellTargetCard) return;
 
-  // ── Dual-axis filter engine ──────────────────────────────────────────────────
+    const targetPrice = parseFloat(inputPrice) || sellTargetCard.currentValue;
+
+    // 🟢 核心交割：向中央全局資料庫遞交出售要約配置，一鍵原子化剔除持倉並新增至出售中
+    publishCardToTradingMarket(sellTargetCard, targetPrice);
+
+    const savedCardName = sellTargetCard.name;
+    setSellTargetCard(null);
+
+    toast.success("🏛️ 商品成功發布上架！", {
+      description: `【${savedCardName}】已從個人持倉移出，並以 HK$ ${targetPrice.toLocaleString()} 正式推入交易管理大盤。`,
+      className:
+        "bg-[#26211C] border border-brand/30 text-[#eae1da] font-sans shadow-2xl",
+    });
+  };
+
   const filteredOwned = ownedCards.filter((card) => {
     if (activeFilter === "已上架" && card.status !== "listed") return false;
     if (activeFilter === "已鑑定" && card.grader === "RAW") return false;
@@ -380,7 +233,6 @@ export default function UserCollectionPage() {
     return true;
   });
 
-  // ── Pagination slice ──────────────────────────────────────────────────────────
   const totalPages = Math.ceil(filteredOwned.length / ITEMS_PER_PAGE);
   const paginatedListings = filteredOwned.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
@@ -389,7 +241,7 @@ export default function UserCollectionPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Portfolio Odometer Summary ─────────────────────────────────────── */}
+      {/* Odometer Header */}
       <section aria-labelledby="portfolio-heading">
         <div className="bg-[#26211C] rounded-2xl border border-[rgba(212,165,116,0.20)] p-5 shadow-[0_2px_8px_rgba(0,0,0,0.40)]">
           <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
@@ -401,11 +253,7 @@ export default function UserCollectionPage() {
                 HK$ {odometerValue.toLocaleString("en-HK")}
               </p>
               <p
-                className={`font-mono text-[13px] mt-2 inline-flex items-center gap-1 font-semibold ${
-                  computedSummary.unrealizedPnl >= 0
-                    ? "text-[#10b981]"
-                    : "text-error"
-                }`}
+                className={`font-mono text-[13px] mt-2 inline-flex items-center gap-1 font-semibold ${computedSummary.unrealizedPnl >= 0 ? "text-[#10b981]" : "text-error"}`}
               >
                 {computedSummary.unrealizedPnl >= 0 ? "▲" : "▼"} HK${" "}
                 {Math.abs(computedSummary.unrealizedPnl).toLocaleString(
@@ -415,8 +263,6 @@ export default function UserCollectionPage() {
                 {computedSummary.pnlPercent}% 未實現損益)
               </p>
             </div>
-
-            {/* [收錄新卡] 按鈕 */}
             <button
               type="button"
               onClick={() => openAddAssetModal("hobby")}
@@ -437,7 +283,6 @@ export default function UserCollectionPage() {
               收錄新卡
             </button>
           </div>
-
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "持有卡牌", value: `${computedSummary.cardCount} 張` },
@@ -463,7 +308,7 @@ export default function UserCollectionPage() {
         </div>
       </section>
 
-      {/* ── 智慧搜尋欄 — between odometer stats and filter tab menu ───────────── */}
+      {/* Search Engine */}
       <div className="relative">
         <div className="relative flex items-center">
           <svg
@@ -518,10 +363,9 @@ export default function UserCollectionPage() {
         />
       </div>
 
-      {/* ── 卡牌庫看板區 ──────────────────────────────────────────────────────── */}
+      {/* Ledger Table */}
       <div>
         <section aria-labelledby="cards-heading" className="space-y-4">
-          {/* Section Heading + Filter Tabs */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h2
               id="cards-heading"
@@ -538,11 +382,7 @@ export default function UserCollectionPage() {
                   key={f}
                   onClick={() => setActiveFilter(f)}
                   type="button"
-                  className={`font-mono text-[10.5px] px-2.5 py-1 rounded-lg border transition-colors ${
-                    activeFilter === f
-                      ? "text-[#d4a574] border-[#d4a574]/40 bg-[rgba(212,165,116,0.08)]"
-                      : "text-[#d4c4b7] border-[rgba(237,232,224,0.08)] hover:text-[#eae1da]"
-                  }`}
+                  className={`font-mono text-[10.5px] px-2.5 py-1 rounded-lg border transition-colors ${activeFilter === f ? "text-[#d4a574] border-[#d4a574]/40 bg-[rgba(212,165,116,0.08)]" : "text-[#d4c4b7] border-[rgba(237,232,224,0.08)] hover:text-[#eae1da]"}`}
                 >
                   {f}
                 </button>
@@ -550,7 +390,6 @@ export default function UserCollectionPage() {
             </div>
           </div>
 
-          {/* ── Portfolio Ledger Table Matrix ────────────────────────────────── */}
           <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-2 overflow-hidden">
             <div className="overflow-x-auto -mx-4 lg:mx-0">
               <table className="w-full min-w-[660px] border-collapse">
@@ -614,8 +453,6 @@ export default function UserCollectionPage() {
                     paginatedListings.map((card) => {
                       const pnl = card.currentValue - card.purchasePrice;
                       const pnlDir = pnl >= 0 ? "up" : "down";
-
-                      // 30D trend derived from canonical chartPoints
                       const firstChartPrice =
                         card.chartPoints[0]?.price ?? card.purchasePrice;
                       const lastChartPrice =
@@ -634,7 +471,6 @@ export default function UserCollectionPage() {
                           key={card.id}
                           className="border-b border-[rgba(237,232,224,0.04)] hover:bg-[#39342f]/30 transition-colors animate-fadeIn"
                         >
-                          {/* Col 1: 卡牧資料 */}
                           <td className="py-4 pl-4 lg:pl-0 pr-3">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-12 rounded-md bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 flex items-center justify-center">
@@ -652,8 +488,6 @@ export default function UserCollectionPage() {
                               </div>
                             </div>
                           </td>
-
-                          {/* Col 2: 鑑定規格 / 狀態 */}
                           <td className="py-4 px-3 text-center">
                             <div className="flex flex-col items-center gap-1.5">
                               <GraderBadge grader={card.grader} />
@@ -663,33 +497,23 @@ export default function UserCollectionPage() {
                               </span>
                             </div>
                           </td>
-
-                          {/* Col 3: 收錄價格 */}
                           <td className="py-4 px-3 text-right">
                             <p className="font-mono text-[13px] text-[#d4c4b7]">
                               HK$ {card.purchasePrice.toLocaleString("en-HK")}
                             </p>
                           </td>
-
-                          {/* Col 4: 現市價格 — mirrors WishlistTable Col 4 structure */}
                           <td className="py-4 px-3 text-right">
                             <p className="font-mono font-semibold text-[14px] text-[#eae1da]">
                               HK$ {card.currentValue.toLocaleString("en-HK")}
                             </p>
                             <p
-                              className={`font-mono text-[10px] ${
-                                pnlDir === "up"
-                                  ? "text-[#10b981]"
-                                  : "text-[#ef4444]"
-                              }`}
+                              className={`font-mono text-[10px] ${pnlDir === "up" ? "text-[#10b981]" : "text-[#ef4444]"}`}
                             >
                               {pnl >= 0 ? "+" : ""}HK${" "}
                               {Math.abs(pnl).toLocaleString("en-HK")}
                             </p>
                           </td>
-
-                          {/* Col 5: 30D 走勢 — dynamic sparkline from INITIAL_LISTINGS chartPoints */}
-                          <td className="py-4 px-3">
+                          <td className="py-4 px-3 text-center">
                             <div className="flex flex-col items-center gap-0.5">
                               <svg
                                 width="60"
@@ -710,11 +534,7 @@ export default function UserCollectionPage() {
                                 />
                               </svg>
                               <span
-                                className={`font-mono text-[10px] ${
-                                  trendDir === "up"
-                                    ? "text-[#10b981]"
-                                    : "text-[#ef4444]"
-                                }`}
+                                className={`font-mono text-[10px] ${trendDir === "up" ? "text-[#10b981]" : "text-[#ef4444]"}`}
                               >
                                 {trendDir === "up" ? "▲" : "▼"}{" "}
                                 {Math.abs(trend30d).toFixed(1)}%
@@ -722,7 +542,6 @@ export default function UserCollectionPage() {
                             </div>
                           </td>
 
-                          {/* Col 6: 操作 */}
                           <td className="py-4 pl-3 pr-4 lg:pr-0 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger className="inline-flex w-8 h-8 items-center justify-center rounded-lg border border-transparent hover:bg-[#322a24] hover:border-[rgba(237,232,224,0.10)] text-[#d4c4b7] hover:text-[#eae1da] transition-all font-mono text-[15px] focus:outline-none cursor-pointer select-none">
@@ -743,9 +562,12 @@ export default function UserCollectionPage() {
                                   📈 查看全網大盤走勢
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => listCard(card.id)}
+                                  onClick={() =>
+                                    handleTriggerSellWorkflow(card)
+                                  }
+                                  className="text-brand focus:bg-[#322a24] focus:text-brand font-bold"
                                 >
-                                  🏪 上架交易市場
+                                  💰 出售收藏品
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -764,7 +586,6 @@ export default function UserCollectionPage() {
                 </tbody>
               </table>
             </div>
-            {/* ── Pagination — React 19-compliant compound state ─────────────────── */}
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -773,13 +594,13 @@ export default function UserCollectionPage() {
               totalItems={filteredOwned.length}
               itemsPerPage={ITEMS_PER_PAGE}
               hideControls={false}
-              enableScroll={true} // 🟢 Enable smooth automatic back-to-top on asset page switch
+              enableScroll={true}
             />
           </div>
         </section>
       </div>
 
-      {/* ── Wishlist Table ─────────────────────────────────────────────────── */}
+      {/* Wishlist Table */}
       <section aria-labelledby="wishlist-heading" className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2
@@ -793,6 +614,119 @@ export default function UserCollectionPage() {
           <WishlistTable />
         </div>
       </section>
+
+      {/* Setup Form Dialog */}
+      <Dialog
+        open={sellTargetCard !== null}
+        onOpenChange={(open) => {
+          if (!open) setSellTargetCard(null);
+        }}
+      >
+        <DialogContent className="bg-[#26211C] border border-white/10 rounded-2xl text-[#eae1da] max-w-sm p-6 shadow-2xl animate-scaleUp">
+          <DialogHeader className="text-left space-y-1">
+            <DialogTitle className="font-sans font-black text-[17px] text-[#eae1da] flex items-center gap-2">
+              🏷️ 建立資產出售要約
+            </DialogTitle>
+            <DialogDescription className="font-mono text-[10.5px] text-[#8A8680] uppercase tracking-wider">
+              Setup Listing Selling Specifications
+            </DialogDescription>
+          </DialogHeader>
+
+          {sellTargetCard && (
+            <div className="space-y-4 py-2 font-sans text-[13px]">
+              <div className="p-3 bg-[#17130f] rounded-xl border border-white/5 flex items-center gap-3">
+                <div className="w-8 h-10 rounded bg-[#2c2722] border border-white/10 flex items-center justify-center font-mono text-[9px] font-bold text-brand shrink-0">
+                  {sellTargetCard.grader}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-[#eae1da] truncate">
+                    {sellTargetCard.name}
+                  </p>
+                  <p className="font-mono text-[11px] text-[#8A8680] mt-0.5">
+                    {sellTargetCard.cardNo} · {sellTargetCard.grade}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="sell-price-input"
+                  className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide"
+                >
+                  設定出讓一口價 (HK$)
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 font-mono text-[13px] font-bold text-brand pointer-events-none">
+                    HK$
+                  </span>
+                  <input
+                    id="sell-price-input"
+                    type="number"
+                    value={inputPrice}
+                    onChange={(e) => setInputPrice(e.target.value)}
+                    placeholder="輸入預期成交價格"
+                    className="w-full h-11 pl-12 pr-4 bg-[#17130f] border border-white/5 rounded-xl text-[14px] font-mono font-bold text-brand focus:outline-none focus:border-brand/40 transition-colors"
+                  />
+                </div>
+                <p className="font-mono text-[10px] text-[#8A8680]">
+                  💡 建議參考全網當前估值：HK${" "}
+                  {sellTargetCard.currentValue.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="space-y-2 border-t border-white/5 pt-3">
+                <div>
+                  <span className="block font-mono text-[10px] text-[#8A8680] uppercase">
+                    預設支援交收物流
+                  </span>
+                  <div className="flex gap-1.5 mt-1">
+                    {selectedShipping.map((s) => (
+                      <span
+                        key={s}
+                        className="px-2 py-0.5 bg-[#2c2722] rounded text-[11px] text-[#d4c4b7] border border-white/[0.04]"
+                      >
+                        📦 {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="block font-mono text-[10px] text-[#8A8680] uppercase">
+                    預設收受付款方式
+                  </span>
+                  <div className="flex gap-1.5 mt-1">
+                    {selectedPayment.map((p) => (
+                      <span
+                        key={p}
+                        className="px-2 py-0.5 bg-[#2c2722] rounded text-[11px] text-[#d4c4b7] border border-white/[0.04]"
+                      >
+                        ⚡ {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex flex-col gap-2 pt-2 sm:space-x-0">
+            <button
+              type="button"
+              onClick={handleConfirmPublishToListing}
+              className="w-full h-11 bg-brand hover:bg-[#e8b896] text-[#1A1612] font-sans font-black text-[13.5px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(212,165,116,0.18)] active:scale-[0.97] transition-all focus:outline-none"
+            >
+              🚀 確認無誤 · 正式上架發售
+            </button>
+            <button
+              type="button"
+              onClick={() => setSellTargetCard(null)}
+              className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
+            >
+              取消返回
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

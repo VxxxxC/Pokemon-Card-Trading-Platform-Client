@@ -5,44 +5,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { OrderLifecycleStepper } from "@/app/components/transactions/OrderLifecycleStepper";
-import {
-  MOCK_PUBLIC_MEMBERS,
-  type ListingStatus,
-  type PublicMemberListing,
-} from "@/app/lib/mock-data/members";
-// 🟢 核心引入：全域狀態真理源
+import { type ListingStatus } from "@/app/lib/mock-data/members";
 import { useTradeStore } from "@/app/store/useTradeStore";
 import { INITIAL_ORDERS } from "@/app/lib/mock-data/transactions";
-
-type TradeType = "c2c" | "b2c";
-type OrderSide = "buy" | "sell";
-type FlowType = "meetup" | "delivery" | "escrow_auth" | "escrow_no_auth";
-
-interface UserListing {
-  id: string;
-  cardName: string;
-  cardNo: string;
-  grade: string;
-  cardImage: string;
-  price: number;
-  status: ListingStatus;
-  paymentMethods: string[];
-  shippingMethods: string[];
-  createdAt: string;
-  views: number;
-  watchers: number;
-  linkedOrderId?: string;
-  hasPriceOffer?: boolean;
-  marketplaceOwnerId: string;
-  marketplaceProductId: string;
-  priceOfferContext?: {
-    roomId: string;
-    partnerName: string;
-    buyerName: string;
-    offerPrice: number;
-    sellerId: string;
-  };
-}
+// 🟢 核心對接：引入中央模擬數據庫與強型態
+import { useMockDbStore, type UserListing } from "@/app/store/useMockDbStore";
 
 interface Order {
   id: string;
@@ -53,82 +20,42 @@ interface Order {
   seller: string;
   sellerId: string;
   amount: number;
-  tradeType: TradeType;
-  flowType: FlowType;
-  side: OrderSide;
+  tradeType: "c2c" | "b2c";
+  flowType: "meetup" | "delivery" | "escrow_auth" | "escrow_no_auth";
+  side: "buy" | "sell";
   status: string;
   statusLabel: string;
   createdAt: string;
   isHighValue: boolean;
 }
 
-const TRADING_MEMBER_ID = "PKT-8839-44A";
+const FLOW_STEPS_DEFINITION: Record<string, { id: string; label: string }[]> = {
+  meetup: [
+    { id: "reserved", label: "已預留" },
+    { id: "completed_meetup", label: "已面交結單" },
+  ],
+  delivery: [
+    { id: "reserved", label: "已預留" },
+    { id: "paid", label: "已付款" },
+    { id: "shipped", label: "已發貨" },
+    { id: "received", label: "已簽收" },
+  ],
+  escrow_auth: [
+    { id: "paid", label: "已付款" },
+    { id: "custody", label: "保管中" },
+    { id: "grading", label: "鑑定中" },
+    { id: "released", label: "已釋放" },
+    { id: "shipped", label: "已發貨" },
+    { id: "received", label: "已簽收" },
+  ],
+  escrow_no_auth: [
+    { id: "reserved", label: "Price Offer" },
+    { id: "paid", label: "已付款" },
+    { id: "shipped", label: "已發貨" },
+    { id: "received", label: "已簽收" },
+  ],
+};
 
-function formatTradingGrade(listing: PublicMemberListing) {
-  if (listing.grade.authority === "Raw Card") {
-    return `【${listing.conditionLabel}】${listing.grade.label}`;
-  }
-
-  return `${listing.grade.authority} ${listing.grade.score} · ${listing.grade.label}`;
-}
-
-function mapCentralListingToUserListing(
-  listing: PublicMemberListing,
-): UserListing {
-  return {
-    id: listing.id,
-    cardName: listing.name,
-    cardNo: listing.cardNo ?? listing.id,
-    grade: formatTradingGrade(listing),
-    cardImage: listing.image,
-    price: listing.price,
-    status: listing.status,
-    paymentMethods: listing.paymentMethods ?? [],
-    shippingMethods: listing.shippingMethods ?? [],
-    createdAt: listing.createdAt ?? "",
-    views: listing.views ?? 0,
-    watchers: listing.watchers ?? 0,
-    linkedOrderId: listing.linkedOrderId,
-    hasPriceOffer: Boolean(listing.priceOfferContext ?? listing.hasPriceOffer),
-    marketplaceOwnerId: TRADING_MEMBER_ID,
-    marketplaceProductId: listing.id,
-    priceOfferContext: listing.priceOfferContext,
-  };
-}
-
-const CENTRAL_TRADING_LISTINGS: UserListing[] = (
-  MOCK_PUBLIC_MEMBERS[TRADING_MEMBER_ID]?.activeListings ?? []
-).map(mapCentralListingToUserListing);
-
-const FLOW_STEPS_DEFINITION: Record<FlowType, { id: string; label: string }[]> =
-  {
-    meetup: [
-      { id: "reserved", label: "已預留" },
-      { id: "completed_meetup", label: "已面交結單" },
-    ],
-    delivery: [
-      { id: "reserved", label: "已預留" },
-      { id: "paid", label: "已付款" },
-      { id: "shipped", label: "已發貨" },
-      { id: "received", label: "已簽收" },
-    ],
-    escrow_auth: [
-      { id: "paid", label: "已付款" },
-      { id: "custody", label: "保管中" },
-      { id: "grading", label: "鑑定中" },
-      { id: "released", label: "已釋放" },
-      { id: "shipped", label: "已發貨" },
-      { id: "received", label: "已簽收" },
-    ],
-    escrow_no_auth: [
-      { id: "reserved", label: "Price Offer" },
-      { id: "paid", label: "已付款" },
-      { id: "shipped", label: "已發貨" },
-      { id: "received", label: "已簽收" },
-    ],
-  };
-
-// 🟢 核心優化 1：完美更名為 [歷史交易]
 const TAB_LABELS: Record<ListingStatus, string> = {
   active: "出售中現貨",
   pending_trade: "交易中 / 待交收",
@@ -160,7 +87,6 @@ function DynamicProductStepper({ order }: { order: Order }) {
   );
 }
 
-// 🟢 完美合規：ProductRowItem 完整保持宣告在主 Render 體外，徹底封死 React 19 級聯重繪硬崩潰
 function ProductRowItem({
   item,
   order,
@@ -171,45 +97,24 @@ function ProductRowItem({
   item: UserListing;
   order?: Order;
   onNavigate: (href: string) => void;
-  onToggleStatus: (id: string, currentStatus: ListingStatus) => void;
-  onCancelListing: (item: UserListing) => void;
+  onToggleStatus: (id: string) => void;
+  onCancelListing: (id: string, name: string) => void;
 }) {
-  // 🟢 智能交互控盤：只有交易中與已售出才具備點擊穿透權利
   const isClickable = item.status === "pending_trade" || item.status === "sold";
   const href = isClickable ? getProductNavigationHref(item, order) : "";
   const shouldRenderStepper = Boolean(
     order && (item.status === "pending_trade" || item.status === "sold"),
   );
 
-  // 🟢 獲取當前卡片的買賣方向（預設為賣出）
   const tradeSide = order?.side || "sell";
-
-  // Zustand 按需選取器
   const openGlobalChat = useTradeStore((state) => state.openGlobalChat);
 
   const handleContactCounterparty = (
     event: React.MouseEvent<HTMLButtonElement>,
   ) => {
-    event.stopPropagation(); // 斬斷冒泡
+    event.stopPropagation();
     if (!order) return;
     openGlobalChat(order.sellerId, order.seller);
-  };
-
-  const handlePriceOfferChat = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation(); // 阻止冒泡
-    if (!item.priceOfferContext) return;
-
-    openGlobalChat(
-      item.priceOfferContext.roomId,
-      item.priceOfferContext.partnerName,
-      {
-        cardName: item.cardName,
-        cardId: item.marketplaceProductId,
-        offerPrice: item.priceOfferContext.offerPrice,
-        buyerName: item.priceOfferContext.buyerName,
-        sellerId: item.priceOfferContext.sellerId,
-      },
-    );
   };
 
   return (
@@ -219,22 +124,12 @@ function ProductRowItem({
       onClick={isClickable ? () => onNavigate(href) : undefined}
       onKeyDown={
         isClickable
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") onNavigate(href);
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") onNavigate(href);
             }
           : undefined
       }
-      // 🟢 智能外殼分流：非 Clickable 狀態時移除高亮 Hover 邊框，強行降維至靜態展示
-      className={`bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex flex-col transition-colors group focus:outline-none ${
-        isClickable
-          ? "hover:border-[rgba(237,232,224,0.15)] cursor-pointer focus:ring-2 focus:ring-brand/35"
-          : "cursor-default"
-      }`}
-      aria-label={
-        isClickable
-          ? `查看 ${item.cardName} 的交易履約詳情`
-          : `${item.cardName} 的資產管理項目卡片`
-      }
+      className={`bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex flex-col transition-colors group focus:outline-none ${isClickable ? "hover:border-[rgba(237,232,224,0.15)] cursor-pointer focus:ring-2 focus:ring-brand/35" : "cursor-default"}`}
     >
       <div className="flex gap-4 items-start w-full">
         <div className="relative w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-sm">
@@ -250,36 +145,20 @@ function ProductRowItem({
 
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 🟢 核心優化 2：大大個高亮買賣身份分辨標示 */}
             {isClickable && (
               <span
-                className={`font-sans text-[11px] font-black tracking-wide uppercase px-2 py-0.5 rounded border ${
-                  tradeSide === "buy"
-                    ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]"
-                    : "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                }`}
+                className={`font-sans text-[11px] font-black tracking-wide uppercase px-2 py-0.5 rounded border ${tradeSide === "buy" ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]" : "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"}`}
               >
                 {tradeSide === "buy" ? "📥 買入" : "📤 賣出"}
               </span>
             )}
-
             <span className="font-mono text-[9px] text-[#50453b]">
               #{item.id}
             </span>
             <span className="font-mono text-[10px] text-brand font-medium">
               {item.grade}
             </span>
-            {item.hasPriceOffer && item.priceOfferContext && (
-              <button
-                type="button"
-                onClick={handlePriceOfferChat}
-                className="font-mono text-[11px] sm:text-[11.5px] font-black tracking-wide uppercase text-[#00ff9d] bg-[#00ff9d]/10 border border-[#00ff9d]/30 hover:bg-[#00ff9d]/20 hover:border-[#00ff9d]/50 px-2.5 py-0.5 rounded shadow-[0_0_14px_rgba(0,255,157,0.15)] transition-colors cursor-pointer"
-              >
-                📩 PRICE OFFER →
-              </button>
-            )}
           </div>
-          {/* 🟢 文字高亮流動對齊：只有可點擊狀態才賦予 group-hover 金色轉向提示 */}
           <h3
             className={`font-sans font-bold text-[14.5px] text-[#eae1da] transition-colors truncate ${isClickable ? "group-hover:text-brand" : ""}`}
           >
@@ -319,16 +198,15 @@ function ProductRowItem({
           {item.status === "active" && (
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleStatus(item.id, item.status);
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleStatus(item.id);
               }}
               className="h-9 px-4 bg-transparent border border-amber-500/40 text-amber-400 font-sans font-bold text-[12px] rounded-xl hover:bg-amber-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
             >
               ⚙ 暫時下架
             </button>
           )}
-
           {item.status === "pending_trade" && (
             <>
               <button
@@ -343,14 +221,13 @@ function ProductRowItem({
               </span>
             </>
           )}
-
           {item.status === "unlisted" && (
             <>
               <button
                 type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleStatus(item.id, item.status);
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleStatus(item.id);
                 }}
                 className="h-9 px-4 bg-[#10b981] text-white font-sans font-bold text-[12px] rounded-xl hover:bg-[#0fa573] active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
@@ -358,9 +235,9 @@ function ProductRowItem({
               </button>
               <button
                 type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onCancelListing(item);
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCancelListing(item.id, item.cardName);
                 }}
                 className="h-9 px-4 bg-transparent border border-[#ef4444]/50 text-[#ef4444] font-sans font-bold text-[12px] rounded-xl hover:bg-[#ef4444]/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
               >
@@ -391,9 +268,16 @@ function ProductRowItem({
 
 export default function UserTradingPage() {
   const router = useRouter();
-  const [listings, setListings] = useState<UserListing[]>(() => [
-    ...CENTRAL_TRADING_LISTINGS,
-  ]);
+
+  // 🟢 核心改動：直接對接全域持久化 Mock 資料庫，完美接收來自卡牌庫嘅上架數據
+  const tradingListings = useMockDbStore((state) => state.tradingListings);
+  const toggleListingStatus = useMockDbStore(
+    (state) => state.toggleListingStatus,
+  );
+  const cancelListingAndRemove = useMockDbStore(
+    (state) => state.cancelListingAndRemove,
+  );
+
   const [activeTab, setActiveTab] = useState<ListingStatus>("active");
 
   const isMounted = useSyncExternalStore(
@@ -411,38 +295,31 @@ export default function UserTradingPage() {
   }
 
   const orderById = new Map(INITIAL_ORDERS.map((order) => [order.id, order]));
-  const filteredListings = listings.filter(
+  const filteredListings = tradingListings.filter(
     (listing) => listing.status === activeTab,
   );
 
-  const handleToggleStatus = (id: string, currentStatus: ListingStatus) => {
-    if (currentStatus === "sold" || currentStatus === "pending_trade") return;
+  const handleToggleStatus = (id: string) => {
+    const targetListing = tradingListings.find((l) => l.id === id);
+    if (!targetListing) return;
 
-    const nextStatus = currentStatus === "active" ? "unlisted" : "active";
-    const targetListing = listings.find((listing) => listing.id === id);
+    toggleListingStatus(id);
 
-    setListings((prev) =>
-      prev.map((listing) =>
-        listing.id === id ? { ...listing, status: nextStatus } : listing,
-      ),
-    );
-
-    if (nextStatus === "unlisted") {
+    if (targetListing.status === "active") {
       toast.warning("⏸️ 商品已暫時下架", {
-        description: `【${targetListing?.cardName ?? "該卡牌商品"}】已暫時從現貨盤移出，可稍後重新上架。`,
+        description: `【${targetListing.cardName}】已暫時從現貨盤移出，可稍後重新上架。`,
       });
-      return;
+    } else {
+      toast.success("🚀 商品已重新上架", {
+        description: `【${targetListing.cardName}】已重新回到全港現貨大盤。`,
+      });
     }
-
-    toast.success("🚀 商品已重新上架", {
-      description: `【${targetListing?.cardName ?? "該卡牌商品"}】已重新回到全港現貨大盤。`,
-    });
   };
 
-  const handleCancelListing = (item: UserListing) => {
-    setListings((prev) => prev.filter((listing) => listing.id !== item.id));
+  const handleCancelListing = (id: string, name: string) => {
+    cancelListingAndRemove(id);
     toast.warning("🗑️ 商品已完全下架", {
-      description: `【${item.cardName}】已從交易管理資產大盤移除。`,
+      description: `【${name}】已從交易管理資產大盤移除。`,
     });
   };
 
@@ -451,8 +328,8 @@ export default function UserTradingPage() {
       <div className="flex border-b border-[rgba(237,232,224,0.08)] overflow-x-auto scrollbar-none">
         {(["active", "pending_trade", "sold", "unlisted"] as const).map(
           (tab) => {
-            const count = listings.filter(
-              (listing) => listing.status === tab,
+            const count = tradingListings.filter(
+              (l) => l.status === tab,
             ).length;
             const isActive = activeTab === tab;
             return (
