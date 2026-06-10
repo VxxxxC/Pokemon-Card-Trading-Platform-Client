@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -10,11 +10,19 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// 引入 Shadcn UI 頂級黑金 Select 組件群
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Badge {
   id: string;
@@ -42,8 +50,10 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
   const chatParam = searchParams.get("chat");
   const [isReportOpen, setIsReportOpen] = useState(false);
 
-  //  智能導流：一偵測到網址有 ?chat=open，一掛載即刻自動向全站發射廣播訊號
-  // 完美承接你之前由通知中心點擊跳轉過嚟嘅「原地開片」邏輯！
+  // 核心狀態欄位：舉報類別與詳細內文說明
+  const [reportCategory, setReportCategory] = useState<string>("");
+  const [reportDetails, setReportDetails] = useState<string>("");
+
   useEffect(() => {
     if (chatParam === "open") {
       window.dispatchEvent(
@@ -57,7 +67,6 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
     }
   }, [chatParam, member.id, member.username]);
 
-  //  按鈕事件：點擊聯絡商戶，直接廣播給頂層組件，拒絕路由轉頁或本地渲染
   const handleActionChat = () => {
     window.dispatchEvent(
       new CustomEvent("open-global-chat", {
@@ -66,13 +75,31 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
     );
   };
 
-  const handleReportConfirm = () => {
+  const handleReportConfirm = (e: React.MouseEvent) => {
+    if (!reportCategory) {
+      e.preventDefault(); // 強行攔截關閉行為，留在對話框內
+      toast.error("❌ 請選擇舉報事項類別");
+      return;
+    }
+
     toast.error("⚠️ 舉報信號已受理", {
-      description:
-        "已對該用戶啟動存證機制，平台合約風控官將於 15 分鐘內介入審查。",
+      description: `【${reportCategory}】商戶風控隊列已啟動。已對該用戶實施鏈上行為快照，合約風控官將於 15 分鐘內介入審查。`,
+      className:
+        "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
     });
+
     setIsReportOpen(false);
+    setReportCategory("");
+    setReportDetails("");
   };
+
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  if (!isMounted) return null;
 
   return (
     <section className="relative bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
@@ -85,6 +112,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
               alt="Avatar"
               fill
               className="object-cover"
+              unoptimized
             />
           </div>
           <div className="text-right">
@@ -108,10 +136,10 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
               </span>
             </div>
 
-            {/* 🎯 改裝完成：一鍵觸發全域廣播事件 */}
             <button
               onClick={handleActionChat}
-              className="absolute top-4 right-4 z-12 w-12 h-12 rounded-full bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md"
+              className="absolute top-4 right-4 z-12 w-12 h-12 rounded-full bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md focus:outline-none"
+              type="button"
             >
               💬
             </button>
@@ -140,42 +168,116 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
                 </div>
               ))}
             </div>
-            <AlertDialog open={isReportOpen} onOpenChange={setIsReportOpen}>
-              <AlertDialogTrigger
-                render={
-                  <button
-                    type="button"
-                    className="shrink-0 flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:text-text-disabled/70 lg:hover:text-red-500"
-                  >
-                    🚩 舉報用戶
-                  </button>
+
+            <AlertDialog
+              open={isReportOpen}
+              onOpenChange={(open) => {
+                setIsReportOpen(open);
+                if (!open) {
+                  setReportCategory("");
+                  setReportDetails("");
                 }
-              />
-              <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_0_24px_rgba(239,68,68,0.18)]">
-                <AlertDialogHeader className="text-left place-items-start gap-2">
-                  <AlertDialogTitle className="text-[15px] font-semibold text-[#eae1da]">
-                    確認要提交舉報嗎？
+              }}
+            >
+              <AlertDialogTrigger className="shrink-0 flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:text-text-disabled/70 lg:hover:text-red-500 cursor-pointer select-none focus:outline-none">
+                🚩 舉報用戶
+              </AlertDialogTrigger>
+
+              <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_12px_40px_rgba(239,68,68,0.15)] rounded-2xl max-w-sm p-6 animate-scaleUp">
+                <AlertDialogHeader className="text-left place-items-start gap-1">
+                  <AlertDialogTitle className="text-[16px] font-black text-[#eae1da] flex items-center gap-2">
+                    🚩 舉報該商戶用戶
                   </AlertDialogTitle>
-                  <AlertDialogDescription className="text-[12.5px] leading-relaxed text-[#d4c4b7]">
-                    請注意：PokéTrade JP
-                    嚴格禁止惡意惡作劇或虛假舉報。一經查實，平台將扣除您的交易積分，情節嚴重者將面臨賬戶風控限制。
+                  <AlertDialogDescription className="text-[11px] font-mono leading-normal text-[#8A8680] uppercase tracking-wider">
+                    Merchant Compliance Audit Protocol
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="border-t border-white/10 bg-[#1A1612]/60">
-                  <AlertDialogCancel
-                    variant="outline"
-                    className="border border-white/10 text-[#d4c4b7] hover:bg-white/5"
-                  >
-                    取消
-                  </AlertDialogCancel>
+
+                {/* 下拉配置及詳情表單 */}
+                <div className="space-y-4 py-3 font-sans text-[13px] w-full">
+                  <div className="space-y-1.5">
+                    <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
+                      選擇舉報事項類別
+                    </label>
+                    <Select
+                      value={reportCategory}
+                      onValueChange={setReportCategory}
+                    >
+                      <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-xl text-[#eae1da] font-sans text-[12px] hover:bg-[#2c2722] transition-colors focus:ring-0 focus:border-brand/40">
+                        <SelectValue placeholder="點擊展開違規類別" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
+                        <SelectItem
+                          value="惡意欺詐 / 虛假交易"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          🛑 惡意欺詐 / 虛假交易 (FRAUD)
+                        </SelectItem>
+                        <SelectItem
+                          value="言語辱罵 / 不當言論"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          💬 言語辱罵 / 不當言論 (HARASS)
+                        </SelectItem>
+                        <SelectItem
+                          value="誘導私下交易"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          🔒 誘導私下交易 / 逃避中介 (OFFLINE)
+                        </SelectItem>
+                        <SelectItem
+                          value="其他違規行為"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          ⚙️ 其他違規行為 (OTHER)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="profile-report-details"
+                      className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide"
+                    >
+                      舉報或投訴之詳細事實敘述
+                    </label>
+                    <textarea
+                      id="profile-report-details"
+                      value={reportDetails}
+                      onChange={(e) => setReportDetails(e.target.value)}
+                      placeholder="請具體描述該用戶的違規事實（例如：收到貨件與敘述嚴重不符、在其他渠道進行詐騙等）。"
+                      rows={3}
+                      className="w-full bg-[#17130f] border border-white/5 rounded-xl text-[12.5px] font-sans text-[#eae1da] placeholder:text-[#50453b] p-3 focus:outline-none focus:border-brand/40 transition-colors resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
+                    ⚠️
+                    聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨賬戶風控扣分限制。
+                  </p>
+                </div>
+
+                {/* 🟢 終極破局：徹底拋棄會引發橫向碰撞的 <AlertDialogFooter>
+                    直接手造垂直流式佈局原生 HTML <div> 容器，徹底封死 w-full 按鈕溢出 */}
+                <div className="flex flex-col gap-2 pt-1 w-full">
                   <AlertDialogAction
                     type="button"
                     onClick={handleReportConfirm}
-                    className="bg-[#ef4444] text-[#1A1612] hover:bg-[#ef4444]/90 shadow-[0_0_12px_rgba(239,68,68,0.35)]"
+                    className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13.5px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
                   >
-                    確認提交
+                    🚀 確認提交安全審查
                   </AlertDialogAction>
-                </AlertDialogFooter>
+                  <AlertDialogCancel
+                    onClick={() => {
+                      setReportCategory("");
+                      setReportDetails("");
+                    }}
+                    className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
+                  >
+                    取消返回
+                  </AlertDialogCancel>
+                </div>
               </AlertDialogContent>
             </AlertDialog>
           </div>
