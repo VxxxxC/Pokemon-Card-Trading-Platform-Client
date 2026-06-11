@@ -84,6 +84,7 @@ export function ExecutionSlideOver() {
       cardId: targetCardId,
       offerPrice: finalOfferPrice,
       buyerName: "九龍灣卡王",
+      buyerId: "USR-BUYER-MOCK-001", // TODO [BACKEND]: replace with authed session user.id
       isInstantTake: !isCounterOffer, // 🟢 雙軌分流關鍵：一口價秒殺為 true，提出議價為 false
     });
 

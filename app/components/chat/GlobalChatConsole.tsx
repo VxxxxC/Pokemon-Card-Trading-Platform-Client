@@ -43,7 +43,9 @@ export interface Message {
     cardId: string;
     offerPrice: number;
     buyerName: string;
+    buyerId: string; // 🟢 Added
     sellerId: string;
+    sellerName: string; // 🟢 Added
   };
 }
 
@@ -64,7 +66,9 @@ function hasRenderableSpecialData(
     specialData?.cardName &&
     specialData.cardId &&
     specialData.buyerName &&
+    specialData.buyerId &&
     specialData.sellerId &&
+    specialData.sellerName &&
     Number.isFinite(specialData.offerPrice),
   );
 }
@@ -306,7 +310,9 @@ export function GlobalChatConsole() {
                       <SpecialTransactionMessage
                         msgId={msg.id}
                         buyerName={msg.specialData.buyerName}
+                        buyerId={msg.specialData.buyerId}
                         sellerId={msg.specialData.sellerId}
+                        sellerName={msg.specialData.sellerName}
                         cardName={msg.specialData.cardName}
                         cardId={msg.specialData.cardId}
                         offerPrice={msg.specialData.offerPrice}
@@ -464,7 +470,9 @@ export function GlobalChatConsole() {
                         <SpecialTransactionMessage
                           msgId={msg.id}
                           buyerName={msg.specialData.buyerName}
+                          buyerId={msg.specialData.buyerId}
                           sellerId={msg.specialData.sellerId}
+                          sellerName={msg.specialData.sellerName}
                           cardName={msg.specialData.cardName}
                           cardId={msg.specialData.cardId}
                           offerPrice={msg.specialData.offerPrice}
@@ -533,7 +541,10 @@ export function GlobalChatConsole() {
             <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
               選擇舉報事項類別
             </label>
-            <Select value={reportCategory} onValueChange={setReportCategory}>
+            <Select
+              value={reportCategory}
+              onValueChange={(value) => setReportCategory(value ?? "")}
+            >
               <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-xl text-[#eae1da] font-sans text-[12px] hover:bg-[#2c2722] transition-colors focus:ring-0 focus:border-brand/40">
                 <SelectValue placeholder="點擊展開合約違規類別" />
               </SelectTrigger>

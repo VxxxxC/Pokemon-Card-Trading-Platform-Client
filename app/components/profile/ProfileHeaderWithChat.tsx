@@ -201,7 +201,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
                     </label>
                     <Select
                       value={reportCategory}
-                      onValueChange={setReportCategory}
+                      onValueChange={(value) => setReportCategory(value ?? "")}
                     >
                       <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-xl text-[#eae1da] font-sans text-[12px] hover:bg-[#2c2722] transition-colors focus:ring-0 focus:border-brand/40">
                         <SelectValue placeholder="點擊展開違規類別" />
