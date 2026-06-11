@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { AuthForm } from "./AuthForm";
 
@@ -94,7 +95,9 @@ function RelicCard({
         >
           {spec.name}
         </p>
-        <p className={`font-mono text-brand ${small ? "text-[9px]" : "text-[10px]"}`}>
+        <p
+          className={`font-mono text-brand ${small ? "text-[9px]" : "text-[10px]"}`}
+        >
           {spec.price}
         </p>
         <span
@@ -181,7 +184,8 @@ export default function AuthPage() {
         {/* ── Bottom tagline + trust stats ─────────────────────────────── */}
         <div className="relative z-10">
           <p className="font-sans text-[30px] font-bold text-text-primary leading-tight">
-            精選日版卡牌<br />
+            精選日版卡牌
+            <br />
             <span className="text-brand">每筆交易均受保障</span>
           </p>
           <p className="mt-3 font-sans text-[14px] text-text-secondary">
@@ -192,18 +196,30 @@ export default function AuthPage() {
           {/* TODO: [database] ¥2.4億+, 12,800+, 99.8% are placeholder metrics — replace with real aggregation from Supabase: sum(orders.amount), count(listings), avg(user_ratings.score) */}
           <div className="mt-6 flex items-center gap-5">
             <div>
-              <p className="font-mono text-[20px] font-semibold text-brand">¥2.4億+</p>
-              <p className="font-sans text-[12px] text-text-secondary mt-0.5">累計交易額</p>
+              <p className="font-mono text-[20px] font-semibold text-brand">
+                ¥2.4億+
+              </p>
+              <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+                累計交易額
+              </p>
             </div>
             <div className="w-px h-9 bg-[rgba(237,232,224,0.10)]" />
             <div>
-              <p className="font-mono text-[20px] font-semibold text-brand">12,800+</p>
-              <p className="font-sans text-[12px] text-text-secondary mt-0.5">已認證卡牌</p>
+              <p className="font-mono text-[20px] font-semibold text-brand">
+                12,800+
+              </p>
+              <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+                已認證卡牌
+              </p>
             </div>
             <div className="w-px h-9 bg-[rgba(237,232,224,0.10)]" />
             <div>
-              <p className="font-mono text-[20px] font-semibold text-success">99.8%</p>
-              <p className="font-sans text-[12px] text-text-secondary mt-0.5">交易成功率</p>
+              <p className="font-mono text-[20px] font-semibold text-success">
+                99.8%
+              </p>
+              <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+                交易成功率
+              </p>
             </div>
           </div>
         </div>
@@ -241,7 +257,10 @@ export default function AuthPage() {
         </div>
 
         {/* Mobile logo */}
-        <Link href="/" className="lg:hidden mb-10 self-start relative z-10 inline-block">
+        <Link
+          href="/"
+          className="lg:hidden mb-10 self-start relative z-10 inline-block"
+        >
           <span className="font-sans font-bold text-[20px] text-text-primary tracking-tight hover:text-brand transition-colors">
             PokéTrade <span className="text-brand">JP</span>
           </span>
@@ -249,7 +268,9 @@ export default function AuthPage() {
 
         {/* Form card */}
         <div className="w-full max-w-100 relative z-10">
-          <AuthForm />
+          <Suspense fallback={null}>
+            <AuthForm />
+          </Suspense>
         </div>
       </div>
     </div>

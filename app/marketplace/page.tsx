@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+// 全域黑金奢華分頁組件
 import { Pagination } from "@/app/components/ui/Pagination";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
@@ -70,7 +71,7 @@ function MarketplaceContent() {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  // 響應式視窗寬度檢測（用於動態計算 Mobile 5 Rows vs Web 3 Rows）
+  // 響應式視窗寬度檢測（用於動態計算 Mobile 5 Rows vs Web 4 Rows）
   const [isMobileViewport, setIsMobileViewport] = useState(true);
 
   useEffect(() => {
@@ -229,7 +230,7 @@ function MarketplaceContent() {
     sortKey,
   ]);
 
-  // 🟢 零 useEffect 狀態指紋分頁引擎 (完全防禦級別)
+  // 零 useEffect 狀態指紋分頁引擎 (完全防禦級別)
   const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeConditions.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
   const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
 
@@ -243,9 +244,10 @@ function MarketplaceContent() {
     }
   };
 
-  // Mobile (雙列流): 5 Rows × 2 Items = 10
-  // Web (三列流): 3 Rows × 3 Items = 9
-  const itemsPerPage = isMobileViewport ? 10 : 9;
+  // ── 🟢 絕殺修正：逆向計算商品切片，將 itemsPerPage 讓出 1 格給廣告卡 ──
+  // Mobile (雙列流): 撈 9 個商品 + 1 個廣告 = 10 個滿格 (完美 5 整行)
+  // Web (三列流): 撈 11 個商品 + 1 個廣告 = 12 個滿格 (完美 4 整行)
+  const itemsPerPage = isMobileViewport ? 9 : 11;
 
   const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
   const paginatedListings = useMemo(() => {
@@ -253,7 +255,6 @@ function MarketplaceContent() {
     return filteredListings.slice(start, start + itemsPerPage);
   }, [filteredListings, currentPage, itemsPerPage]);
 
-  // 🟢 頂級修正：將 hasActiveFilters 宣告提前至分頁計算之後、return 區塊之前，徹底解決 ReferenceError 盲區
   const hasActiveFilters =
     query !== "" ||
     activeRarities.length > 0 ||
@@ -380,7 +381,6 @@ function MarketplaceContent() {
           />
         </div>
 
-        {/* 🟢 案發現場：現在 hasActiveFilters 已經安全在上方初始化完毕，完美通關 */}
         <button
           type="button"
           onClick={handleResetAllFilters}
@@ -487,7 +487,7 @@ function MarketplaceContent() {
             onGradeToggle={toggleGrade}
             activeConditions={activeConditions}
             onConditionToggle={toggleCondition}
-            activeTypes={activeTypes}
+            activeTypes={useMarketStore.getState().activeTypes}
             onTypeToggle={toggleType}
             hideTypeSection={false}
           />
@@ -496,11 +496,49 @@ function MarketplaceContent() {
         {/* 右欄商品流 */}
         <div className="flex-1 space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
-            {paginatedListings.map((item) => (
-              <MarketplaceCard key={item.id} listing={item} />
-            ))}
+            {paginatedListings.flatMap((item, idx) => {
+              const card = <MarketplaceCard key={item.id} listing={item} />;
+
+              if ((idx + 1) % 8 !== 0) return [card];
+              return [
+                card,
+                <div
+                  key={`merchant-promo-${item.id}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push("/auth?role=merchant")}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      router.push("/auth?role=merchant");
+                  }}
+                  className="bg-gradient-to-br from-[#d4a574] via-[#eae1da] to-[#b88751] text-[#17130f] border border-[#d4a574]/40 rounded-2xl p-5 flex flex-col justify-between shadow-[0_8px_24px_rgba(212,165,116,0.18)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 select-none cursor-pointer relative overflow-hidden group min-h-[220px]"
+                >
+                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+
+                  <div className="relative flex items-center justify-between">
+                    <span className="font-sans font-black text-[10px] tracking-widest uppercase text-[#17130f]/80">
+                      🏪 申請註冊成為認證商戶
+                    </span>
+                  </div>
+
+                  <div className="relative flex-1 flex flex-col justify-center gap-2 py-4">
+                    <h3 className="font-sans font-black text-[17px] leading-snug text-[#17130f] tracking-tight">
+                      解鎖專業商家席位
+                    </h3>
+                    <p className="font-sans text-[11px] text-[#17130f]/65 leading-relaxed">
+                      享受專業商戶交易體驗，秒變千筆成交頂級牌組道館。
+                    </p>
+                  </div>
+
+                  <div className="relative w-full h-9 bg-[#17130f] text-brand font-sans text-[12.5px] font-black rounded-xl flex items-center justify-center gap-1.5">
+                    申請商戶入駐 🚀
+                  </div>
+                </div>,
+              ];
+            })}
           </div>
 
+          {/* 🟢 完美分頁交割：100% 抹平任何語法雜質，極致純淨，完美控局 */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -508,7 +546,7 @@ function MarketplaceContent() {
             itemLabel="件商品"
             totalItems={filteredListings.length}
             itemsPerPage={itemsPerPage}
-            hideControls={true} // 🟢 核心加裝：在大盤主頁面直接隱藏 Prev/Next 控制鍵，100% 規避衝突！
+            hideControls={true}
             enableScroll={true}
             className="mt-6"
           />

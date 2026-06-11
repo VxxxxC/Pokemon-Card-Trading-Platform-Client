@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, type FormEvent } from "react";
 import Link from "next/link";
 // 🟢 核心引入：加裝 useSearchParams 捕捉大盤外部跳轉載荷
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 type Tab = "login" | "register";
 
@@ -339,7 +340,9 @@ export function AuthForm() {
             Merchant Account Approved
           </span>{" "}
           核准認證電郵，並附加一串加密的
-          <span className="text-[#eae1da] font-semibold">一次性憑證 URL</span>{" "}
+          <span className="text-[#eae1da] font-semibold">
+            一次性憑證 URL
+          </span>{" "}
           供您直接進行首次安全登入。
         </div>
         <button
@@ -481,9 +484,6 @@ export function AuthForm() {
             <div className="space-y-0.5 max-w-[80%]">
               <span className="block font-sans font-bold text-[13px] text-[#eae1da]">
                 🏪 申請註冊成為認證商戶
-              </span>
-              <span className="block font-sans text-[11px] text-[#8A8680]">
-                開啟大盤出讓特權、私域高級櫥窗與免交易手續費
               </span>
             </div>
             <Checkbox
