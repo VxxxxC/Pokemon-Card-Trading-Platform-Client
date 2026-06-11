@@ -133,8 +133,8 @@ const recentActivity = [
   },
 ];
 
-// 🟢 Use centralized mock data — display only 5 most recent reviews on overview
-const reviews = MOCK_MEMBER_REVIEWS.slice(0, 5);
+// 🟢 Use centralized mock data — display only 3 most recent reviews on overview
+const reviews = MOCK_MEMBER_REVIEWS.slice(0, 3);
 
 function ActivityTypePill({ type }: { type: "sold" | "bought" | "bid" }) {
   const map = {
@@ -248,7 +248,7 @@ export default function UserOverviewPage() {
             )}
           </div>
 
-          <p className="font-mono text-[12px] text-text-secondary mt-0.5">
+          <p className="font-mono text-[12px] text-brand mt-0.5">
             {mockUser.handle} · {mockUser.joinDate}
           </p>
 

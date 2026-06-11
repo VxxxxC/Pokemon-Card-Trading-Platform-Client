@@ -1,7 +1,8 @@
 "use client";
 
-import React, { use, useState, useSyncExternalStore, useCallback } from "react";
-import Link from "next/link";
+import React, { use, useState, useSyncExternalStore, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { IoChevronBack } from "react-icons/io5";
 import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { getPublicMemberById } from "@/app/lib/mock-data/members";
@@ -9,9 +10,27 @@ import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 
+// 引入 Shadcn UI 頂級黑金 Select 組件群
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 interface PublicRatingPageProps {
   params: Promise<{ id: string }>;
 }
+
+type ReviewSortKey = "rating-desc" | "rating-asc" | "date-desc" | "date-asc";
+
+const SORT_LABELS: Record<ReviewSortKey, string> = {
+  "date-desc": "📅 日期：最新 → 最舊",
+  "date-asc": "⏳ 日期：最舊 → 最新",
+  "rating-desc": "🔥 評分：最高 → 最低",
+  "rating-asc": "❄️ 評分：最低 → 最高",
+};
 
 // ── 🟢 Hydration-safe viewport width snapshot via useSyncExternalStore ──────
 function getSnapshot() {
@@ -31,6 +50,8 @@ function subscribe(cb: () => void) {
 const totalReviews = MOCK_MEMBER_REVIEWS.length;
 
 export default function PublicRatingPage({ params }: PublicRatingPageProps) {
+  const router = useRouter();
+
   // 🟢 Next.js 16 async params contract: unwrap via React.use() in Client Components
   const resolvedParams = use(params);
   const id = resolvedParams.id;
@@ -48,7 +69,7 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
     );
 
   const displayReviewCount = member?.reviewCount ?? totalReviews;
-  const displayName = member?.username ?? id;
+  const _displayName = member?.username ?? id;
 
   // ── Responsive items per page via useSyncExternalStore ────────────────────
   const viewportWidth = useSyncExternalStore(
@@ -61,6 +82,45 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
   const itemsPerPage = viewportWidth < 1280 ? 5 : 10;
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<ReviewSortKey>("date-desc");
+
+  // Reset pagination index on sortKey mutation to prevent out-of-bound errors
+  const handleSortChange = useCallback((value: string | null) => {
+    if (value) {
+      setSortKey(value as ReviewSortKey);
+    }
+    setCurrentPage(1);
+  }, []);
+
+  // Intercept the baseline dataset inside high-performance useMemo
+  const processedReviews = useMemo(() => {
+    return [...MOCK_MEMBER_REVIEWS].sort((a, b) => {
+      if (sortKey === "rating-desc") return b.rating - a.rating;
+      if (sortKey === "rating-asc") return a.rating - b.rating;
+      if (sortKey === "date-desc") {
+        // Parse "YYYY年 M月" formats cleanly for deterministic numerical sorting comparison
+        const parseDate = (dStr: string) => {
+          const match = dStr.match(/(\d+)年\s*(\d+)月/);
+          if (match) {
+            return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+          }
+          return 0;
+        };
+        return parseDate(b.date) - parseDate(a.date);
+      }
+      if (sortKey === "date-asc") {
+        const parseDate = (dStr: string) => {
+          const match = dStr.match(/(\d+)年\s*(\d+)月/);
+          if (match) {
+            return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+          }
+          return 0;
+        };
+        return parseDate(a.date) - parseDate(b.date);
+      }
+      return 0;
+    });
+  }, [sortKey]);
 
   const totalPages = Math.ceil(totalReviews / itemsPerPage);
 
@@ -69,7 +129,7 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
 
   const startIdx = (safeCurrentPage - 1) * itemsPerPage;
   const endIdx = Math.min(startIdx + itemsPerPage, totalReviews);
-  const visibleReviews = MOCK_MEMBER_REVIEWS.slice(startIdx, endIdx);
+  const visibleReviews = processedReviews.slice(startIdx, endIdx);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -86,32 +146,52 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6">
         {/* ── Back navigation ──────────────────────────────────────────── */}
         <div className="mb-6">
-          <Link
-            href={`/profile/${id}`}
-            className="inline-flex items-center gap-1.5 font-mono text-[12px] text-text-secondary hover:text-brand transition-colors"
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="返回上一頁"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-card border border-white/5 transition-all cursor-pointer"
           >
-            <span aria-hidden="true">←</span>
-            <span>返回 {displayName} 的個人主頁</span>
-          </Link>
+            <IoChevronBack className="w-5 h-5" />
+          </button>
         </div>
 
         {/* ── Page header ──────────────────────────────────────────────── */}
-        <div className="mb-8">
-          <h1 className="font-sans font-bold text-[22px] text-text-primary tracking-tight mb-3">
-            全量信用評價歷史
-          </h1>
-          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 shadow-sm inline-block">
-            <p className="font-mono text-[13px] text-text-primary">
-              <span className="text-[18px] mr-1.5">⭐</span>
-              <span className="font-bold text-brand text-[20px]">
-                {displayRating}
-              </span>
-              <span className="text-text-secondary mx-1.5">/ 5.0</span>
-              <span className="text-text-secondary">總體滿意度</span>
-              <span className="text-text-disabled ml-2 text-[11px]">
-                (共計 {displayReviewCount} 筆真實認證評價)
-              </span>
-            </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <h1 className="font-sans font-bold text-[22px] text-text-primary tracking-tight mb-3">
+              全量信用評價歷史
+            </h1>
+            <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 shadow-sm inline-block">
+              <p className="font-mono text-[13px] text-text-primary">
+                <span className="text-[18px] mr-1.5">⭐</span>
+                <span className="font-bold text-brand text-[20px]">
+                  {displayRating}
+                </span>
+                <span className="text-text-secondary mx-1.5">/ 5.0</span>
+                <span className="text-text-secondary">總體滿意度</span>
+                <span className="text-text-disabled ml-2 text-[11px]">
+                  (共計 {displayReviewCount} 筆真實認證評價)
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* 🟢 Shadcn UI Premium Dark-Golden Sorting Engine */}
+          <div className="shrink-0">
+            <Select value={sortKey} onValueChange={handleSortChange}>
+              <SelectTrigger className="w-48 h-9 bg-[#26211C] border border-white/5 rounded-lg text-[#eae1da] text-[12px] focus:ring-0 focus:ring-offset-0 focus:border-brand/40">
+                <SelectValue placeholder="選擇排序方式">
+                  {SORT_LABELS[sortKey]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da]">
+                <SelectItem value="date-desc">📅 日期：最新 → 最舊</SelectItem>
+                <SelectItem value="date-asc">⏳ 日期：最舊 → 最新</SelectItem>
+                <SelectItem value="rating-desc">🔥 評分：最高 → 最低</SelectItem>
+                <SelectItem value="rating-asc">❄️ 評分：最低 → 最高</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

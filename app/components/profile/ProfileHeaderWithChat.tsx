@@ -42,6 +42,8 @@ interface ProfileHeaderProps {
     completedTrades: number;
     bio: string;
     badges: readonly Badge[];
+    rating: number;       // 🟢 Added for metrics encapsulation
+    reviewCount: number;  // 🟢 Added for metrics encapsulation
   };
 }
 
@@ -131,9 +133,6 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
               <h1 className="font-sans font-bold text-[24px] text-[#eae1da]">
                 {member.username}
               </h1>
-              <span className="font-mono text-[10px] bg-gradient-to-r from-[#d4a574]/20 to-[#e8b896]/20 text-[#d4a574] border border-[#d4a574]/30 px-2.5 py-0.5 rounded-full font-medium">
-                🏅 {member.level}
-              </span>
             </div>
 
             <button
@@ -145,9 +144,34 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
             </button>
           </div>
 
-          <p className="font-mono text-[12px] text-[#50453b] mb-4">
+          <p className="font-mono text-[12px] text-brand mb-4">
             {member.handle} · {member.joinDate}
           </p>
+
+          {/* Encapsulated Identity Level + Reputation Score Metrics Box */}
+          <div className="flex items-center gap-5 mt-2 mb-4 pt-3 border-t border-white/5 flex-wrap">
+            <div className="flex flex-col">
+              <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
+                身分級別
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-mono text-[12.5px] font-bold text-brand mt-1 bg-[rgba(212,165,116,0.08)] border border-brand/20 px-2 py-0.5 rounded-md">
+                {member.level}
+              </span>
+            </div>
+            <div className="w-px h-7 bg-white/5 self-end hidden sm:block" />
+            <div className="flex flex-col">
+              <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
+                信用評分
+              </span>
+              <span className="font-mono text-[13px] text-[#eae1da] font-bold mt-1">
+                ⭐ {member.rating}{" "}
+                <span className="text-[#8A8680] font-normal text-[11px]">
+                  ({member.reviewCount} 評)
+                </span>
+              </span>
+            </div>
+          </div>
+
           <p className="font-sans text-[14px] text-[#d4c4b7] leading-relaxed max-w-2xl">
             {member.bio}
           </p>
@@ -179,7 +203,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
                 }
               }}
             >
-              <AlertDialogTrigger className="shrink-0 flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:text-text-disabled/70 lg:hover:text-red-500 cursor-pointer select-none focus:outline-none">
+              <AlertDialogTrigger className="absolute top-2 left-2 shrink-0 flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:text-text-disabled/70 lg:hover:text-red-500 cursor-pointer select-none focus:outline-none">
                 🚩 舉報用戶
               </AlertDialogTrigger>
 

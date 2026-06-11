@@ -1,12 +1,13 @@
 "use client";
 
-import { use, useSyncExternalStore } from "react";
+import { use, useSyncExternalStore, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileHeaderWithChat } from "@/app/components/profile/ProfileHeaderWithChat";
+import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
 import {
   getPublicMemberById,
   getStorefrontListingsByMember,
@@ -24,6 +25,20 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   const storefrontListings = member
     ? getStorefrontListingsByMember(member)
     : [];
+
+  // 🟢 核心優化：從 centralized reviews module 讀取，按日期排序並嚴格切片為 3 筆最新評價
+  const recentPublicReviews = useMemo(() => {
+    const parseDate = (dStr: string) => {
+      const match = dStr.match(/(\d+)年\s*(\d+)月/);
+      if (match) {
+        return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+      }
+      return 0;
+    };
+    return [...MOCK_MEMBER_REVIEWS]
+      .sort((a, b) => parseDate(b.date) - parseDate(a.date))
+      .slice(0, 3);
+  }, []);
 
   // 統一採用說明書工程標準：原生 useSyncExternalStore 客戶端鎖，徹底封鎖水合 Layout Shift
   const isMounted = useSyncExternalStore(
@@ -64,30 +79,6 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
       <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
         {/* 1. 商戶名片 + 右下角懸浮 Chatbox */}
         <ProfileHeaderWithChat member={member} />
-
-        {/* 1b. 身分級別 + 信用評分 指標列 */}
-        <div className="flex items-center gap-5 pt-3 flex-wrap bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] px-5 py-4">
-          <div className="flex flex-col">
-            <span className="font-mono text-[9px] text-text-disabled uppercase tracking-wider">
-              身分級別
-            </span>
-            <span className="inline-flex items-center gap-1.5 font-mono text-[12.5px] font-bold text-brand mt-1 bg-[rgba(212,165,116,0.08)] border border-brand/20 px-2 py-0.5 rounded-md">
-              {member.level ?? "認證會員"}
-            </span>
-          </div>
-          <div className="w-px h-7 bg-white/5 self-end hidden sm:block" />
-          <div className="flex flex-col">
-            <span className="font-mono text-[9px] text-text-disabled uppercase tracking-wider">
-              信用評分
-            </span>
-            <span className="font-mono text-[13px] text-text-primary font-bold mt-1">
-              ⭐ {member.rating}{" "}
-              <span className="text-text-disabled font-normal text-[11px]">
-                ({member.reviewCount} 評)
-              </span>
-            </span>
-          </div>
-        </div>
 
         {/* 2. 上架中商品 (Public Inventory) */}
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
@@ -141,7 +132,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
         {/* 3. 買家評價 */}
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-sans font-bold text-[16px]">買家評價</h2>
+            <h2 className="font-sans font-bold text-[16px]">最近收到的信用評價</h2>
             <Link
               href={`/profile/${member.id}/rating`}
               className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"
@@ -150,15 +141,20 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
             </Link>
           </div>
           <div className="space-y-3">
-            {member.reviews.map((review) => (
+            {recentPublicReviews.map((review) => (
               <div
                 key={review.id}
                 className="bg-[#17130f] rounded-xl p-4 border border-[rgba(237,232,224,0.04)]"
               >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-sans text-[13px] font-medium">
-                    {review.reviewer}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-sans text-[13px] font-bold text-text-primary">
+                      {review.reviewer}
+                    </span>
+                    <span className="font-mono text-[12px] text-brand font-bold shrink-0">
+                      ⭐ {review.rating}
+                    </span>
+                  </div>
                   <span className="font-mono text-[10px] text-[#50453b]">
                     {review.date}
                   </span>
