@@ -269,15 +269,15 @@ export function GlobalChatConsole() {
               <div className="flex items-center gap-2">
                 {/* User online status */}
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                <Link href={`/profile/user/${activeRoom}`}>
-                {/* User Avatar */}
-                <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
-                  {activeRoom.partnerName[0]}
-                </div>
-                {/* User name */}
-                <span className="font-sans font-bold text-[13px] text-text-primary cursor-default">
-                  {activeRoom.partnerName}
-                </span>
+                <Link href={`/profile/${activeRoom.id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  {/* User Avatar */}
+                  <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
+                    {activeRoom.partnerName[0]}
+                  </div>
+                  {/* User name */}
+                  <span className="font-sans font-bold text-[13px] text-text-primary">
+                    {activeRoom.partnerName}
+                  </span>
                 </Link>
               </div>
               <div className="flex items-center gap-2">
@@ -431,15 +431,15 @@ export function GlobalChatConsole() {
                   <div className="flex items-center gap-2">
                     {/* User online status */}
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                    <Link href={`/profile/user/${activeRoom}`}>
-                    {/* User Avatar */}
-                    <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
-                      {activeRoom.partnerName[0]}
-                    </div>
-                    {/* User name */}
-                    <span className="font-sans font-bold text-[13px] text-text-primary cursor-default">
-                      {activeRoom.partnerName}
-                    </span>
+                    <Link href={`/profile/${activeRoom.id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                      {/* User Avatar */}
+                      <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
+                        {activeRoom.partnerName[0]}
+                      </div>
+                      {/* User name */}
+                      <span className="font-sans font-bold text-[13px] text-text-primary">
+                        {activeRoom.partnerName}
+                      </span>
                     </Link>
                   </div>
                 </div>
