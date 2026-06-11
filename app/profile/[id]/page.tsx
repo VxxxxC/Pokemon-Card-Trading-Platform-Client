@@ -16,26 +16,6 @@ interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
 }
 
-function StarRating({ score, size = 14 }: { score: number; size?: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <svg
-          key={i}
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill={i <= Math.round(score) ? "#d4a574" : "none"}
-          stroke="#d4a574"
-          strokeWidth="1.5"
-        >
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
-      ))}
-    </span>
-  );
-}
-
 export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   // 🟢 為了在 Client 組件內完美兼容 Next.js 16 異步參數協議，使用 React.use() 進行解包
   const resolvedParams = use(params);
@@ -84,6 +64,30 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
       <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
         {/* 1. 商戶名片 + 右下角懸浮 Chatbox */}
         <ProfileHeaderWithChat member={member} />
+
+        {/* 1b. 身分級別 + 信用評分 指標列 */}
+        <div className="flex items-center gap-5 pt-3 flex-wrap bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] px-5 py-4">
+          <div className="flex flex-col">
+            <span className="font-mono text-[9px] text-text-disabled uppercase tracking-wider">
+              身分級別
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-mono text-[12.5px] font-bold text-brand mt-1 bg-[rgba(212,165,116,0.08)] border border-brand/20 px-2 py-0.5 rounded-md">
+              {member.level ?? "認證會員"}
+            </span>
+          </div>
+          <div className="w-px h-7 bg-white/5 self-end hidden sm:block" />
+          <div className="flex flex-col">
+            <span className="font-mono text-[9px] text-text-disabled uppercase tracking-wider">
+              信用評分
+            </span>
+            <span className="font-mono text-[13px] text-text-primary font-bold mt-1">
+              ⭐ {member.rating}{" "}
+              <span className="text-text-disabled font-normal text-[11px]">
+                ({member.reviewCount} 評)
+              </span>
+            </span>
+          </div>
+        </div>
 
         {/* 2. 上架中商品 (Public Inventory) */}
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
@@ -138,15 +142,12 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-sans font-bold text-[16px]">買家評價</h2>
-            <div className="flex items-center gap-1.5">
-              <StarRating score={member.rating ?? 0} size={15} />
-              <span className="font-mono text-[14px] font-bold">
-                {member.rating}
-              </span>
-              <span className="font-mono text-[12px] text-[#50453b]">
-                ({member.reviewCount})
-              </span>
-            </div>
+            <Link
+              href={`/profile/${member.id}/rating`}
+              className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"
+            >
+              查看更多評價 →
+            </Link>
           </div>
           <div className="space-y-3">
             {member.reviews.map((review) => (

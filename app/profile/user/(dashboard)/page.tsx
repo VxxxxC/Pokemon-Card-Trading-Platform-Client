@@ -43,6 +43,7 @@ const BADGES = [
 ];
 
 const mockUser = {
+  id: "PKT-USER-001",
   name: "山田レン",
   handle: "@yamada_ren",
   avatarSeed: "user-yamada-ren-tcg",
@@ -455,7 +456,7 @@ export default function UserOverviewPage() {
                 最近收到的信用評價
               </h2>
               <Link
-                href="/profile/user/rating"
+                href={`/profile/${mockUser.id}/rating`}
                 className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"
               >
                 查看更多評價 →
