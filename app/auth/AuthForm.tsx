@@ -5,7 +5,7 @@ import {
   useEffect,
   useCallback,
   startTransition,
-  type FormEvent,
+  useActionState,
 } from "react";
 import Link from "next/link";
 // 🟢 核心引入：加裝 useSearchParams 捕捉大盤外部跳轉載荷
@@ -13,21 +13,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 type Tab = "login" | "register";
-
-interface LoginFields {
-  email: string;
-  password: string;
-  remember: boolean;
-}
-
-interface RegisterFields {
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  agreeTerms: boolean;
-  isMerchant: boolean; // 🟢 補齊強型態：商戶身份分流旗標
-}
 
 type FormErrors = Record<string, string>;
 
@@ -153,16 +138,14 @@ function Field({
 }
 
 function PasswordInput({
-  value,
-  onChange,
+  name,
   placeholder,
   autoComplete,
   hasError,
   showPassword,
   onToggleShow,
 }: {
-  value: string;
-  onChange: (v: string) => void;
+  name: string;
   placeholder?: string;
   autoComplete: string;
   hasError: boolean;
@@ -173,10 +156,9 @@ function PasswordInput({
     <div className="relative">
       <input
         type={showPassword ? "text" : "password"}
+        name={name}
         autoComplete={autoComplete}
         placeholder={placeholder ?? "••••••••"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
         className={inputClass(hasError) + " pr-11"}
       />
       <button
@@ -197,27 +179,15 @@ export function AuthForm() {
   const searchParams = useSearchParams();
 
   const [tab, setTab] = useState<Tab>("login");
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
+
+  // ── 🟢 React 19 原生表單動作架構：本地僅保留純 UI 互動旗標，文字載荷全數交由原生 FormData 託管 ──
+  const [remember, setRemember] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [isMerchant, setIsMerchant] = useState(false);
 
   // ── 🟢 核心狀態加裝：商戶審批成功攔截看板 ──
   const [isMerchantSubmitted, setIsMerchantSubmitted] = useState(false);
-
-  const [loginFields, setLoginFields] = useState<LoginFields>({
-    email: "",
-    password: "",
-    remember: false,
-  });
-
-  const [registerFields, setRegisterFields] = useState<RegisterFields>({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeTerms: false,
-    isMerchant: false, // 初始旗標
-  });
 
   // ── 🟢 終極破局：網址參數雷達自動追蹤與切換 ──
   useEffect(() => {
@@ -228,101 +198,92 @@ export function AuthForm() {
     if (role === "merchant") {
       startTransition(() => {
         setTab("register");
-        setRegisterFields((f) => ({ ...f, isMerchant: true }));
+        setIsMerchant(true);
       });
     }
   }, [searchParams]);
 
-  const validateLogin = useCallback((): FormErrors => {
-    const e: FormErrors = {};
-    if (!loginFields.email) e.email = "請輸入電子郵件";
-    if (!loginFields.password) e.password = "請輸入密碼";
-    return e;
-  }, [loginFields]);
+  // ── 🟢 React 19 useActionState：登入提交管線（原生 FormData 讀取，零受控狀態微突變）──
+  const [loginErrors, loginAction, isLoginPending] = useActionState<
+    FormErrors | null,
+    FormData
+  >(async (_prev, formData) => {
+    const email = ((formData.get("email") as string | null) ?? "").trim();
+    const password = (formData.get("password") as string | null) ?? "";
 
-  // ── 🟢 核心優化：鋼鐵Regex邊界與複雜度校驗 ──
-  const validateRegister = useCallback((): FormErrors => {
+    const e: FormErrors = {};
+    if (!email) e.email = "請輸入電子郵件";
+    if (!password) e.password = "請輸入密碼";
+    if (Object.keys(e).length) return e;
+
+    // 模擬後端 Auth 握手
+    await new Promise<void>((r) => setTimeout(r, 1000));
+    router.push("/profile/user/collection");
+    return null;
+  }, null);
+
+  // ── 🟢 React 19 useActionState：註冊提交分流管線（含鋼鐵 Regex 邊界與商戶分流攔截）──
+  const [registerErrors, registerAction, isRegisterPending] = useActionState<
+    FormErrors | null,
+    FormData
+  >(async (_prev, formData) => {
+    const username = ((formData.get("username") as string | null) ?? "").trim();
+    const email = ((formData.get("email") as string | null) ?? "").trim();
+    const password = (formData.get("password") as string | null) ?? "";
+    const confirmPassword =
+      (formData.get("confirmPassword") as string | null) ?? "";
+
     const e: FormErrors = {};
 
-    // 1. 用戶名稱：限英文、數字、底線、連字號，限 24 字元長度
+    // 1. 用戶名稱：限英文、數字、底線、連字號，限 3-24 字元長度
     const usernameRegex = /^[A-Za-z0-9_\-]{3,24}$/;
-    if (!registerFields.username) {
+    if (!username) {
       e.username = "請輸入用戶名稱";
-    } else if (!usernameRegex.test(registerFields.username)) {
+    } else if (!usernameRegex.test(username)) {
       e.username =
         "用戶名稱限 3-24 字元，且只可包含英文、數字、底線(_)或連字號(-)";
     }
 
-    if (!registerFields.email) e.email = "請輸入電子郵件";
-    else if (!/\S+@\S+\.\S+/.test(registerFields.email))
-      e.email = "電子郵件格式不正確";
+    if (!email) e.email = "請輸入電子郵件";
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = "電子郵件格式不正確";
 
     // 2. 密碼複雜度：大階、小階、數字、特殊符號，限 8-32 字元
     const passwordComplexityRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/])[A-Za-z\d!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/]{8,32}$/;
-    if (!registerFields.password) {
+    if (!password) {
       e.password = "請輸入密碼";
-    } else if (!passwordComplexityRegex.test(registerFields.password)) {
+    } else if (!passwordComplexityRegex.test(password)) {
       e.password =
         "密碼限 8-32 字元，且必須同時包含大寫英文、小寫英文、數字及特殊符號";
     }
 
-    if (registerFields.password !== registerFields.confirmPassword)
+    if (password !== confirmPassword)
       e.confirmPassword = "兩次輸入的密碼不一致";
-    if (!registerFields.agreeTerms) e.agreeTerms = "請同意服務條款及私隱政策";
-    return e;
-  }, [registerFields]);
+    if (!agreeTerms) e.agreeTerms = "請同意服務條款及私隱政策";
+    if (Object.keys(e).length) return e;
 
-  const handleLoginSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      const errs = validateLogin();
-      if (Object.keys(errs).length) {
-        setErrors(errs);
-        return;
-      }
-      setErrors({});
-      setLoading(true);
-      await new Promise<void>((r) => setTimeout(r, 1000));
-      setLoading(false);
-      router.push("/profile/user/collection");
-    },
-    [validateLogin, router],
-  );
+    // 模擬後端 DB QUERY & ALTER
+    await new Promise<void>((r) => setTimeout(r, 1200));
 
-  // ── 🟢 核心優化：註冊提交分流攔截流 ──
-  const handleRegisterSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      const errs = validateRegister();
-      if (Object.keys(errs).length) {
-        setErrors(errs);
-        return;
-      }
-      setErrors({});
-      setLoading(true);
+    // 如果是用家剔選咗認證商戶，直接攔截成功畫面，切換至高冷黑金提示看板
+    if (isMerchant) {
+      setIsMerchantSubmitted(true);
+      return null;
+    }
 
-      // 模擬後端 DB QUERY & ALTER
-      await new Promise<void>((r) => setTimeout(r, 1200));
-      setLoading(false);
+    toast.success("🎉 帳戶建立成功！");
+    router.push("/profile/user/collection");
+    return null;
+  }, null);
 
-      // 如果是用家剔選咗認證商戶，直接攔截成功畫面，切換至高冷黑金提示看板
-      if (registerFields.isMerchant) {
-        setIsMerchantSubmitted(true);
-        return;
-      }
-
-      toast.success("🎉 帳戶建立成功！");
-      router.push("/profile/user/collection");
-    },
-    [validateRegister, registerFields.isMerchant, router],
-  );
+  // 派生錯誤源：依當前分頁直接讀取對應 Action 回傳的錯誤快照
+  const errors: FormErrors =
+    (tab === "login" ? loginErrors : registerErrors) ?? {};
 
   const handleTabChange = useCallback((next: Tab) => {
     setTab(next);
-    setErrors({});
     setShowPassword(false);
-    setRegisterFields((f) => ({ ...f, isMerchant: false }));
+    setIsMerchant(false);
   }, []);
 
   const toggleShow = useCallback(() => setShowPassword((v) => !v), []);
@@ -429,16 +390,13 @@ export function AuthForm() {
 
       {/* ── Login form ─────────────────────────────────────────────────────── */}
       {tab === "login" && (
-        <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+        <form action={loginAction} noValidate className="space-y-4">
           <Field label="電子郵件" error={errors.email}>
             <input
               type="email"
+              name="email"
               autoComplete="email"
               placeholder="your@email.com"
-              value={loginFields.email}
-              onChange={(e) =>
-                setLoginFields((f) => ({ ...f, email: e.target.value }))
-              }
               className={inputClass(!!errors.email)}
             />
           </Field>
@@ -455,8 +413,7 @@ export function AuthForm() {
             }
           >
             <PasswordInput
-              value={loginFields.password}
-              onChange={(v) => setLoginFields((f) => ({ ...f, password: v }))}
+              name="password"
               autoComplete="current-password"
               hasError={!!errors.password}
               showPassword={showPassword}
@@ -465,10 +422,8 @@ export function AuthForm() {
           </Field>
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={loginFields.remember}
-              onChange={() =>
-                setLoginFields((f) => ({ ...f, remember: !f.remember }))
-              }
+              checked={remember}
+              onChange={() => setRemember((v) => !v)}
             />
             <span className="font-sans text-[13px] text-text-secondary select-none">
               記住我
@@ -476,17 +431,17 @@ export function AuthForm() {
           </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={isLoginPending}
             className="w-full h-11 mt-2 rounded-lg bg-brand font-sans text-[15px] font-semibold text-[#17130f] hover:bg-brand-hover active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "登入中…" : "登入"}
+            {isLoginPending ? "登入中…" : "登入"}
           </button>
         </form>
       )}
 
       {/* ── Register form ──────────────────────────────────────────────────── */}
       {tab === "register" && (
-        <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
+        <form action={registerAction} noValidate className="space-y-4">
           {/* 🟢 頂級加裝：奢華商戶註冊身份分流 Toggle */}
           <div className="flex items-center justify-between p-3.5 bg-[#17130f] rounded-xl border border-white/5 mb-2">
             <div className="space-y-0.5 max-w-[80%]">
@@ -495,43 +450,32 @@ export function AuthForm() {
               </span>
             </div>
             <Checkbox
-              checked={registerFields.isMerchant}
-              onChange={() =>
-                setRegisterFields((f) => ({ ...f, isMerchant: !f.isMerchant }))
-              }
+              checked={isMerchant}
+              onChange={() => setIsMerchant((v) => !v)}
             />
           </div>
 
           <Field label="用戶名稱" error={errors.username}>
             <input
               type="text"
+              name="username"
               autoComplete="username"
               placeholder="poketrader_jp"
-              value={registerFields.username}
-              onChange={(e) =>
-                setRegisterFields((f) => ({ ...f, username: e.target.value }))
-              }
               className={inputClass(!!errors.username)}
             />
           </Field>
           <Field label="電子郵件" error={errors.email}>
             <input
               type="email"
+              name="email"
               autoComplete="email"
               placeholder="your@email.com"
-              value={registerFields.email}
-              onChange={(e) =>
-                setRegisterFields((f) => ({ ...f, email: e.target.value }))
-              }
               className={inputClass(!!errors.email)}
             />
           </Field>
           <Field label="密碼" error={errors.password}>
             <PasswordInput
-              value={registerFields.password}
-              onChange={(v) =>
-                setRegisterFields((f) => ({ ...f, password: v }))
-              }
+              name="password"
               autoComplete="new-password"
               placeholder="••••••••（必須包含大小寫英數及符號）"
               hasError={!!errors.password}
@@ -541,10 +485,7 @@ export function AuthForm() {
           </Field>
           <Field label="確認密碼" error={errors.confirmPassword}>
             <PasswordInput
-              value={registerFields.confirmPassword}
-              onChange={(v) =>
-                setRegisterFields((f) => ({ ...f, confirmPassword: v }))
-              }
+              name="confirmPassword"
               autoComplete="new-password"
               hasError={!!errors.confirmPassword}
               showPassword={showPassword}
@@ -555,14 +496,9 @@ export function AuthForm() {
             <div className="flex items-start gap-2">
               <div className="mt-0.5">
                 <Checkbox
-                  checked={registerFields.agreeTerms}
+                  checked={agreeTerms}
                   hasError={!!errors.agreeTerms}
-                  onChange={() =>
-                    setRegisterFields((f) => ({
-                      ...f,
-                      agreeTerms: !f.agreeTerms,
-                    }))
-                  }
+                  onChange={() => setAgreeTerms((v) => !v)}
                 />
               </div>
               <span className="font-sans text-[13px] text-text-secondary leading-relaxed">
@@ -590,12 +526,12 @@ export function AuthForm() {
           </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={isRegisterPending}
             className="w-full h-11 mt-2 rounded-lg bg-brand font-sans text-[15px] font-semibold text-[#17130f] hover:bg-brand-hover active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading
+            {isRegisterPending
               ? "建立中…"
-              : registerFields.isMerchant
+              : isMerchant
                 ? "提交商戶入駐申請 🚀"
                 : "免費建立帳戶"}
           </button>

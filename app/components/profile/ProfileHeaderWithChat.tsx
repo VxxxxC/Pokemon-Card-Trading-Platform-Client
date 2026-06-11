@@ -75,7 +75,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
     );
   };
 
-  const handleReportConfirm = (e: React.MouseEvent) => {
+  const handleReportConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!reportCategory) {
       e.preventDefault(); // 強行攔截關閉行為，留在對話框內
       toast.error("❌ 請選擇舉報事項類別");

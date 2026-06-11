@@ -106,7 +106,7 @@ export function GlobalChatConsole() {
   const [reportDetails, setReportDetails] = useState<string>("");
 
   // 帶有結構化載荷（Payload）的風控提交處理器
-  const handleReportConfirm = (e: React.MouseEvent) => {
+  const handleReportConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!reportCategory) {
       e.preventDefault(); // 攔截關閉行為
       toast.error("❌ 請選擇舉報事項類別");
