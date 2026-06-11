@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
 
 export interface Message {
   id: string;
@@ -268,6 +269,7 @@ export function GlobalChatConsole() {
               <div className="flex items-center gap-2">
                 {/* User online status */}
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                <Link href={`/profile/user/${activeRoom}`}>
                 {/* User Avatar */}
                 <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                   {activeRoom.partnerName[0]}
@@ -276,6 +278,7 @@ export function GlobalChatConsole() {
                 <span className="font-sans font-bold text-[13px] text-text-primary cursor-default">
                   {activeRoom.partnerName}
                 </span>
+                </Link>
               </div>
               <div className="flex items-center gap-2">
                 {/* 🟢 頂級修正 A（電腦端）：徹底砍掉 asChild 與內嵌 button！
@@ -428,6 +431,7 @@ export function GlobalChatConsole() {
                   <div className="flex items-center gap-2">
                     {/* User online status */}
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
+                    <Link href={`/profile/user/${activeRoom}`}>
                     {/* User Avatar */}
                     <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                       {activeRoom.partnerName[0]}
@@ -436,6 +440,7 @@ export function GlobalChatConsole() {
                     <span className="font-sans font-bold text-[13px] text-text-primary cursor-default">
                       {activeRoom.partnerName}
                     </span>
+                    </Link>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
