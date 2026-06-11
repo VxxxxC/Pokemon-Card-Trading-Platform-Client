@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  startTransition,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 // 🟢 核心引入：加裝 useSearchParams 捕捉大盤外部跳轉載荷
 import { useRouter, useSearchParams } from "next/navigation";
@@ -220,8 +226,10 @@ export function AuthForm() {
 
     // 如果帶有商戶標記，直接阻斷 Login 預設，滑動切換去 Register 並自動剔選 Toggle
     if (role === "merchant") {
-      setTab("register");
-      setRegisterFields((f) => ({ ...f, isMerchant: true }));
+      startTransition(() => {
+        setTab("register");
+        setRegisterFields((f) => ({ ...f, isMerchant: true }));
+      });
     }
   }, [searchParams]);
 

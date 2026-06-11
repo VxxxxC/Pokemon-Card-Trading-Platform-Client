@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore, type MouseEvent } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";

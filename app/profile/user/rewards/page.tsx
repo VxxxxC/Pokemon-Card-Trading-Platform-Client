@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
+
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
@@ -298,7 +298,7 @@ const MOCK_COUPONS: Record<
 const ITEMS_PER_PAGE = 6;
 
 export default function MemberRewardsPage() {
-  const [missions] = useState<PlatformMission[]>(INITIAL_MISSIONS);
+  const [_missions] = useState<PlatformMission[]>(INITIAL_MISSIONS);
   const [activeTab, setActiveTab] = useState<
     "redeemable" | "redeemed" | "expired"
   >("redeemable");
