@@ -39,6 +39,8 @@
 | File | Description |
 |------|-------------|
 | `app/components/marketplace/MarketplaceHeader.tsx` | Category filter onChange must update URL params and re-filter listings |
+| `app/profile/merchant/analytics/page.tsx` | Fetch per-SKU analytics aggregation from `listing_analytics` (views, watchers, price history) + Supabase Realtime live stream |
+| `app/components/merchant/NewListingForm.tsx` | "搜尋" must query card catalog API (`cards` full-text search) and autofill set/cardNo |
 | `app/admin/users/page.tsx` | Search input and role filter — connect to Supabase `.ilike()` and `.eq()` queries |
 | `app/marketplace/page.tsx` | Update URL search params on filter change for shareable links |
 

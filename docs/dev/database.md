@@ -30,7 +30,7 @@
 | File | Description |
 |------|-------------|
 | `app/components/transactions/TransactionWall.tsx` | Subscribe to `transactions` table INSERT events via Supabase Realtime |
-| `app/profile/merchant/sales/page.tsx` | Fetch merchant's sales orders WHERE `seller_id = current user` |
+| `app/profile/merchant/trading/page.tsx` | Fetch merchant's sales orders WHERE `seller_id = current user` |
 | `app/profile/user/orders/page.tsx` | Fetch buyer's active orders WHERE `buyer_id = current user` AND status NOT IN ('released', 'cancelled') |
 | `app/profile/user/orders/page.tsx` | Fetch completed orders WHERE status = 'released' |
 | `app/admin/page.tsx` | Supabase Realtime subscription on `orders` JOIN `users` and `listings` |
