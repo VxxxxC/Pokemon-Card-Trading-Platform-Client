@@ -6,7 +6,6 @@ import {
   InventoryAccordion,
   type SKUGroup,
 } from "@/app/components/merchant/InventoryAccordion";
-import { Accordion } from "@/app/components/ui/Accordion";
 
 // TODO [MOCK DATA]: Replace with Supabase query —
 // SELECT skus.*, json_agg(listings.*) AS items
@@ -195,22 +194,56 @@ export default function MerchantInventoryPage() {
         ))}
       </div>
 
-      {/* ── 新增商品上架 Accordion ─────────────────────────────────────── */}
-      <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-5 py-2.5 shadow-md">
-        <Accordion
-          title={
-            <div className="flex items-center gap-2 font-sans text-[14.5px] md:text-[15.5px] font-black text-brand normal-case tracking-tight">
-              <span>新增商品上架登記</span>
-            </div>
-          }
-          isOpen={isFormOpen}
-          onToggle={() => setIsFormOpen((prev) => !prev)}
-          className="border-none py-2"
+      {/* ── 🟢 HIGH-PERFORMANCE GRID ACCORDION SHIELD FOR CREATION CABINET ── */}
+      <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-5 py-3.5 shadow-md">
+        {/* Trigger Interactive Header Bar */}
+        <button
+          type="button"
+          onClick={() => setIsFormOpen((prev) => !prev)}
+          aria-expanded={isFormOpen}
+          aria-controls="new-listing-form-panel"
+          className="w-full flex items-center justify-between font-sans text-[14.5px] md:text-[15.5px] font-black text-brand normal-case tracking-tight group focus:outline-none cursor-pointer"
         >
-          <div className="pt-3 pb-3 border-t border-white/5">
-            <NewListingForm />
+          <div className="flex items-center gap-2">
+            <span className={`inline-block transition-transform duration-300 ${isFormOpen ? "rotate-45 scale-125" : "group-hover:scale-125"}`}>
+              ✨
+            </span>
+            <span>🏪 進入商戶安全庫存：新增商品上架登記</span>
+            <span className="font-mono text-[11px] text-text-disabled font-normal tracking-wide lowercase opacity-50 hidden sm:inline">
+              (click to toggle cabinet form)
+            </span>
           </div>
-        </Accordion>
+
+          {/* Animated Chevron Arrow Node */}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#a89888"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className={`shrink-0 transition-transform duration-300 ${isFormOpen ? "rotate-180" : ""}`}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+
+        {/* Pure CSS Grid Track Transition Mechanism (Zero Unmount Stutter) */}
+        <div
+          id="new-listing-form-panel"
+          className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+            isFormOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="pt-4 mt-3 border-t border-white/5">
+              <NewListingForm />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── SKU Grouped Inventory Accordion ───────────────────────────── */}
