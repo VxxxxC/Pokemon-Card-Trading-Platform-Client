@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { GrUserSettings } from "react-icons/gr";
 import { CiSettings } from "react-icons/ci";
 
 
@@ -155,7 +154,7 @@ export default function MerchantOverviewPage() {
           {/* 1b. 商戶等級步進器 (Stepper) */}
           <div className="pt-4 max-w-xl">
             <div className="relative flex justify-between items-center">
-              <div className="absolute top-[13px] left-2 right-2 h-[1px] bg-white/5 z-0" />
+              <div className="absolute top-3.25 left-2 right-2 h-px bg-white/5 z-0" />
               {merchantSteps.map((step) => (
                 <div key={step.levelNum} className="relative flex flex-col items-center z-10 flex-1">
                   <div
@@ -193,7 +192,7 @@ export default function MerchantOverviewPage() {
             </div>
             <div className="w-full h-1.5 bg-[#17130f] rounded-full overflow-hidden border border-white/5">
               <div
-                className="h-full bg-gradient-to-r from-[#d4a574] to-[#e8b896] rounded-full transition-all duration-500"
+                className="h-full bg-linear-to-r from-[#d4a574] to-[#e8b896] rounded-full transition-all duration-500"
                 style={{ width: `${(mockMerchant.xp / mockMerchant.maxXp) * 100}%` }}
               />
             </div>
@@ -215,11 +214,11 @@ export default function MerchantOverviewPage() {
           {/* ── 🟢 頂級增強點：加裝右下角高貴暗金漸變色「業績分析控制台」入口 ── */}
           <div className="md:absolute md:bottom-5 md:right-5 mt-4 md:mt-0">
             <Link
-              href="/profile/merchant/analytics"
-              className="inline-flex items-center justify-center gap-1.5 w-full md:w-auto px-4 h-9 bg-gradient-to-r from-[#d4a574] to-[#e8b896] hover:from-[#e8b896] hover:to-[#d4a574] text-[#17130f] font-sans text-[12.5px] font-black rounded-xl transition-all duration-300 shadow-[0_4px_15px_rgba(212,165,116,0.22)] active:scale-[0.98] cursor-pointer"
+              href="/profile/merchant/performance"
+              className="inline-flex items-center justify-center gap-1.5 w-full md:w-auto px-4 h-9 bg-linear-to-r from-[#d4a574] to-[#e8b896] hover:from-[#e8b896] hover:to-[#d4a574] text-[#17130f] font-sans text-[12.5px] font-black rounded-xl transition-all duration-300 shadow-[0_4px_15px_rgba(212,165,116,0.22)] active:scale-[0.98] cursor-pointer"
               title="進入商戶數據與業績分析控制艙"
             >
-              <span>統計分析 📈</span>
+              <span>經營分析 📈</span>
             </Link>
           </div>
 
