@@ -14,9 +14,24 @@ const monthlyPerformanceData = [
 
 // TODO [MOCK DATA]: Replace with real category breakdown from Supabase order aggregation
 const categoryBreakdown = [
-  { category: "單卡現貨 (Singles)", percentage: 65, value: "HK$ 249,990", color: "bg-brand" },
-  { category: "密封盒/補充包 (Sealed Boxes)", percentage: 20, value: "HK$ 76,920", color: "bg-amber-600" },
-  { category: "鑑定代辦服務 (Grading)", percentage: 15, value: "HK$ 57,690", color: "bg-emerald-500" },
+  {
+    category: "單卡現貨 (Singles)",
+    percentage: 65,
+    value: "HK$ 249,990",
+    color: "bg-brand",
+  },
+  {
+    category: "密封盒/補充包 (Sealed Boxes)",
+    percentage: 20,
+    value: "HK$ 76,920",
+    color: "bg-amber-600",
+  },
+  {
+    category: "鑑定代辦服務 (Grading)",
+    percentage: 15,
+    value: "HK$ 57,690",
+    color: "bg-emerald-500",
+  },
 ];
 
 export default function MerchantPerformancePage() {
@@ -42,7 +57,7 @@ export default function MerchantPerformancePage() {
             id="performance-heading"
             className="font-sans font-black text-[22px] lg:text-[26px] text-text-primary tracking-tight"
           >
-            店舖經營與業績分析控制艙
+            店舖經營與業績分析
           </h1>
           <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
             Macro Storefront Business Intelligence Terminal
@@ -66,7 +81,9 @@ export default function MerchantPerformancePage() {
               <span className="font-mono text-[10px] text-success bg-[rgba(16,185,129,0.1)] px-1.5 py-0.5 rounded font-bold">
                 ▲ +18.5%
               </span>
-              <span className="font-sans text-[10.5px] text-text-disabled">累計全期總體營收</span>
+              <span className="font-sans text-[10.5px] text-text-disabled">
+                累計全期總體營收
+              </span>
             </div>
           </div>
         </div>
@@ -85,7 +102,9 @@ export default function MerchantPerformancePage() {
               <span className="font-mono text-[10px] text-success bg-[rgba(16,185,129,0.1)] px-1.5 py-0.5 rounded font-bold">
                 ● 營運穩健
               </span>
-              <span className="font-sans text-[10.5px] text-text-disabled">扣除平台佣金與金流成本</span>
+              <span className="font-sans text-[10.5px] text-text-disabled">
+                扣除平台佣金與金流成本
+              </span>
             </div>
           </div>
         </div>
@@ -104,7 +123,9 @@ export default function MerchantPerformancePage() {
               <span className="font-mono text-[10px] text-brand bg-brand/10 px-1.5 py-0.5 rounded font-bold">
                 ★ 高價值型店舖
               </span>
-              <span className="font-sans text-[10.5px] text-text-disabled">反映高單價鑑定精選卡熱銷</span>
+              <span className="font-sans text-[10.5px] text-text-disabled">
+                反映高單價鑑定精選卡熱銷
+              </span>
             </div>
           </div>
         </div>
@@ -205,7 +226,9 @@ export default function MerchantPerformancePage() {
               className="p-3 rounded-xl bg-[#17130f]/40 border border-white/[0.03] flex items-center justify-between"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <div className={`w-2 h-2 rounded-full shrink-0 ${item.color}`} />
+                <div
+                  className={`w-2 h-2 rounded-full shrink-0 ${item.color}`}
+                />
                 <span className="font-sans text-[12.5px] text-text-secondary truncate">
                   {item.category}
                 </span>
