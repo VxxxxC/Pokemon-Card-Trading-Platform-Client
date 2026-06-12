@@ -3,7 +3,8 @@
 import React from "react";
 
 interface AccordionProps {
-  title: string;
+  // 🟢 核心修正：將 string 解封為 ReactNode，解鎖 JSX 自定義黑金樣式特權，且 100% 向下相容舊元件
+  title: React.ReactNode; 
   isOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export function Accordion({ title, isOpen, onToggle, children, className = "" }:
         onClick={onToggle}
         className="w-full flex items-center justify-between font-mono text-[11px] font-medium text-[#eae1da] uppercase tracking-wider text-left py-1 hover:text-[#d4a574] transition-colors focus:outline-none"
       >
+        {/* 內層 span 會被我們傳入的自定義字體、顏色、大小完美覆蓋 */}
         <span>{title}</span>
         <svg
           width="12"

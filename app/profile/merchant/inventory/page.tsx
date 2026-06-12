@@ -1,17 +1,16 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import { NewListingForm } from "@/app/components/merchant/NewListingForm";
 import {
   InventoryAccordion,
   type MerchantListing,
 } from "@/app/components/merchant/InventoryAccordion";
 
-export const metadata: Metadata = {
-  title: "商品管理 — PokéTrade JP",
-  description: "管理庫存卡牌，建立及編輯商品上架",
-};
+// 完美引入專案自帶的奢華黑金手風琴元件
+import { Accordion } from "@/app/components/ui/Accordion";
 
 // TODO: [database] Replace with Supabase query — fetch merchant's listings from `listings` table WHERE seller_id = current user, ordered by created_at DESC
-// TODO: [database] conditionDesc / edgeWear / thumbnailSeeds / viewTrail are mock expansion-layer data — hydrate from `listing_details` + `listing_view_events` aggregation
 const listings: MerchantListing[] = [
   {
     id: "LST-001", cardName: "Charizard ex SAR", cardNo: "sv2a-182", set: "151",
@@ -43,7 +42,7 @@ const listings: MerchantListing[] = [
     id: "LST-003", cardName: "Gardevoir ex SAR", cardNo: "sv4a-237", set: "Shiny Treasure",
     grade: "PSA 10", grader: "PSA", askPrice: 38_000, photos: 6, views: 176,
     status: "active", createdAt: "2025/5/13",
-    conditionDesc: "閃膜均勻無霧化，卡面壓紋立體飽滿。",
+    conditionDesc: "閃膜均勻無霧化，卡面壓紋立體飽飽滿。",
     edgeWear: "邊緣切割平整，無任何白邊或毛邊。",
     thumbnailSeeds: ["lst003-front", "lst003-back", "lst003-corner", "lst003-edge"],
     viewTrail: [
@@ -97,32 +96,49 @@ export default function MerchantInventoryPage() {
   const activeCount = listings.filter((l) => l.status === "active").length;
   const draftCount  = listings.filter((l) => l.status === "draft").length;
 
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
   return (
-    <>
-      {/* ── Summary ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+    <div className="space-y-6 animate-fadeIn">
+      {/* ── Summary 數據統計卡 ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
         {[
           { label: "上架中", value: `${activeCount} 件` },
           { label: "草稿",   value: `${draftCount} 件`  },
           { label: "已售出", value: `${listings.filter((l) => l.status === "sold").length} 件` },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-3">
+          <div key={label} className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-3 shadow-sm">
             <p className="font-mono text-[11px] text-text-secondary mb-1">{label}</p>
             <p className="font-mono font-bold text-[18px] text-text-primary">{value}</p>
           </div>
         ))}
       </div>
 
-      {/* ── New Listing Form（React 19 原生非受控 Form Actions） ────────── */}
-      <NewListingForm />
+      {/* ── 🟢 終極優化點：傳入大隻、高飽和、主題金色的 JSX Node 標題 ── */}
+      <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-5 py-2.5 shadow-md">
+        <Accordion
+          title={
+            <div className="flex items-center gap-2 font-sans text-[14.5px] md:text-[15.5px] font-black text-brand normal-case tracking-tight group">
+              <span>新增商品上架登記</span>
+            </div>
+          }
+          isOpen={isFormOpen}
+          onToggle={() => setIsFormOpen((prev) => !prev)}
+          className="border-none py-2"
+        >
+          <div className="pt-3 pb-3 border-t border-white/5">
+            <NewListingForm />
+          </div>
+        </Accordion>
+      </div>
 
       {/* ── Listings Accordion（SKU 深度檢視容器系統） ───────────────────── */}
-      <section aria-labelledby="listings-heading">
+      <section aria-labelledby="listings-heading" className="pt-1">
         <h2 id="listings-heading" className="font-sans font-semibold text-[16px] text-text-primary mb-4">
           所有商品 ({listings.length})
         </h2>
         <InventoryAccordion listings={listings} />
       </section>
-    </>
+    </div>
   );
 }
