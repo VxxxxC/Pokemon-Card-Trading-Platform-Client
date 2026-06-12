@@ -1,12 +1,13 @@
 "use client";
 
-import { use, useSyncExternalStore } from "react";
+import { use, useSyncExternalStore, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileHeaderWithChat } from "@/app/components/profile/ProfileHeaderWithChat";
+import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
 import {
   getPublicMemberById,
   getStorefrontListingsByMember,
@@ -14,26 +15,6 @@ import {
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
-}
-
-function StarRating({ score, size = 14 }: { score: number; size?: number }) {
-  return (
-    <span className="inline-flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <svg
-          key={i}
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill={i <= Math.round(score) ? "#d4a574" : "none"}
-          stroke="#d4a574"
-          strokeWidth="1.5"
-        >
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
-      ))}
-    </span>
-  );
 }
 
 export default function PublicProfilePage({ params }: ProfileIdPageProps) {
@@ -44,6 +25,20 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   const storefrontListings = member
     ? getStorefrontListingsByMember(member)
     : [];
+
+  // 🟢 核心優化：從 centralized reviews module 讀取，按日期排序並嚴格切片為 3 筆最新評價
+  const recentPublicReviews = useMemo(() => {
+    const parseDate = (dStr: string) => {
+      const match = dStr.match(/(\d+)年\s*(\d+)月/);
+      if (match) {
+        return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+      }
+      return 0;
+    };
+    return [...MOCK_MEMBER_REVIEWS]
+      .sort((a, b) => parseDate(b.date) - parseDate(a.date))
+      .slice(0, 3);
+  }, []);
 
   // 統一採用說明書工程標準：原生 useSyncExternalStore 客戶端鎖，徹底封鎖水合 Layout Shift
   const isMounted = useSyncExternalStore(
@@ -137,27 +132,29 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
         {/* 3. 買家評價 */}
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-sans font-bold text-[16px]">買家評價</h2>
-            <div className="flex items-center gap-1.5">
-              <StarRating score={member.rating ?? 0} size={15} />
-              <span className="font-mono text-[14px] font-bold">
-                {member.rating}
-              </span>
-              <span className="font-mono text-[12px] text-[#50453b]">
-                ({member.reviewCount})
-              </span>
-            </div>
+            <h2 className="font-sans font-bold text-[16px]">最近收到的信用評價</h2>
+            <Link
+              href={`/profile/${member.id}/rating`}
+              className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"
+            >
+              查看更多評價 →
+            </Link>
           </div>
           <div className="space-y-3">
-            {member.reviews.map((review) => (
+            {recentPublicReviews.map((review) => (
               <div
                 key={review.id}
                 className="bg-[#17130f] rounded-xl p-4 border border-[rgba(237,232,224,0.04)]"
               >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-sans text-[13px] font-medium">
-                    {review.reviewer}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-sans text-[13px] font-bold text-text-primary">
+                      {review.reviewer}
+                    </span>
+                    <span className="font-mono text-[12px] text-brand font-bold shrink-0">
+                      ⭐ {review.rating}
+                    </span>
+                  </div>
                   <span className="font-mono text-[10px] text-[#50453b]">
                     {review.date}
                   </span>

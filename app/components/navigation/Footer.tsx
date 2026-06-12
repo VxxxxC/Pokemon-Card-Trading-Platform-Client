@@ -41,7 +41,7 @@ export function Footer() {
         {/* Main footer grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
           {/* Brand column */}
-          <div className="col-span-2 sm:col-span-1">
+          <div className="col-span-2 sm:col-span-1 flex flex-col items-start">
             <Link
               href="/"
               className="font-sans font-bold text-[18px] text-text-primary tracking-tight inline-block mb-3"
@@ -51,6 +51,15 @@ export function Footer() {
             <p className="font-sans text-[12px] text-text-secondary leading-relaxed max-w-[220px]">
               香港首個日版寶可夢卡牌專業交易平台。鑑定託管・安心交易・全港免運。
             </p>
+
+            {/* 🟢 頂級優化：大幅放大 Web View 網頁端按鈕體積，升格為中大型黑金控局 Button */}
+            <Link
+              href="/auth?role=merchant"
+              className="inline-flex items-center justify-center px-5 h-10 md:px-6 md:h-12 mt-4 bg-brand hover:bg-brand-hover text-[#17130f] font-sans text-[13px] md:text-[14.5px] font-black rounded-xl transition-colors shadow-[0_6px_20px_rgba(212,165,116,0.22)] active:scale-[0.98] select-none cursor-pointer focus:outline-none"
+            >
+              🏪 申請商戶入駐
+            </Link>
+
             {/* Payment badges */}
             <div className="flex items-center gap-2 mt-4">
               {paymentMethods.map((method) => (

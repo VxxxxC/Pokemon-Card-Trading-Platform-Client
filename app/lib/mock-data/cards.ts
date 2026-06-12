@@ -1,71 +1,1139 @@
-// Centralized mock card asset bank for the marketplace
-import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+// TODO [MOCK DATA]: Unified Single Source of Truth (SSOT) — PokéTrade JP Card Asset Registry
+// Replace with real-time Supabase queries upon backend integration.
 
-export const INITIAL_LISTINGS: MarketplaceListing[] = [
+export interface SellOrder {
+  readonly sellerName: string;
+  readonly sellerId: string;
+  readonly price: number;
+  readonly sellerRating: number;
+  readonly customGrade: { authority: string; score: string };
+}
+
+export interface UnifiedProductSpec {
+  id: string;
+  cardNo?: string;
+  name: string;
+  jpName: string;
+  set: string;
+  rarity: "SAR" | "UR" | "SR" | "AR";
+  // The global price field is now DEPRECATED in source data; computed dynamically downstream
+  delta: number;
+  deltaDirection: "up" | "down";
+  images: string[];
+  type: string;
+  stage: string;
+  weakness: string;
+  retreatCost: string;
+  moveDamage: string;
+  artist: string;
+  soldHistory: { date: string; grade: string; price: number }[];
+  chartPoints: { day: number; date: string; price: number }[];
+  sellOrders: SellOrder[];
+}
+
+export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
+  // ── sv2a-182 ─────────────────────────────────────────────────────────────
   {
     id: "sv2a-182",
     cardNo: "sv2a-182",
     name: "Charizard ex SAR (噴火龍)",
+    jpName: "リザードン ex SAR",
     set: "Pokémon 151",
     rarity: "SAR",
-    grade: { authority: "PSA", score: "10" },
-    conditionLabel: "美品 S",
-    price: 2250,
     delta: 120,
     deltaDirection: "up",
-    image: "https://picsum.photos/seed/poke-charizard/600/420",
-    seller: "大盤最優定價資產",
-    sellerId: "PKT-AGG-001",
+    images: [
+      "https://picsum.photos/seed/poke-charizard/600/420",
+      "https://picsum.photos/seed/char-corner1/600/420",
+      "https://picsum.photos/seed/char-back/600/420",
+    ],
+    type: "火 (Fire)",
+    stage: "Stage 2 (二階進化)",
+    weakness: "水 x2",
+    retreatCost: "◆◆",
+    moveDamage: "爆裂燃燒 330 (Crimson Storm)",
+    artist: "AKIRA EGAWA",
+    soldHistory: [
+      { date: "2026-06-03", grade: "PSA 10", price: 2250 },
+      { date: "2026-05-26", grade: "PSA 10", price: 2210 },
+      { date: "2026-05-24", grade: "PSA 10", price: 2180 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 2000 },
+      { day: 10, date: "05-10", price: 2100 },
+      { day: 20, date: "05-20", price: 2150 },
+      { day: 30, date: "06-03", price: 2250 },
+    ],
+    // Prices deliberately out-of-order to validate dynamic sort
+    sellOrders: [
+      {
+        sellerName: "渡邊道館",
+        sellerId: "PKT-8839-44A",
+        price: 2250,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "旺角天線卡王",
+        sellerId: "PKT-1122-33B",
+        price: 2150,
+        sellerRating: 4.8,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "秋葉原海外直送店",
+        sellerId: "PKT-4455-66C",
+        price: 2400,
+        sellerRating: 4.9,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+      {
+        sellerName: "信和執雞大師",
+        sellerId: "PKT-7788-99D",
+        price: 2100,
+        sellerRating: 4.5,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "深水埗精品角落",
+        sellerId: "PKT-2210-55E",
+        price: 1980, // ← lowest ask — this becomes the effective market price
+        sellerRating: 4.3,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+      // ── 擴展掛單 Order 6–13：確保訂單簿跨越 3 頁分頁視窗 ────────────────
+      {
+        sellerName: "北角高層收藏所",
+        sellerId: "PKT-3366-88F",
+        price: 2350,
+        sellerRating: 4.7,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "大坑珍品屋",
+        sellerId: "PKT-5577-22G",
+        price: 2200,
+        sellerRating: 4.8,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "灣仔潮流卡舖",
+        sellerId: "PKT-6622-11H",
+        price: 1900,
+        sellerRating: 4.4,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+      {
+        sellerName: "天水圍拍賣商",
+        sellerId: "PKT-9911-33I",
+        price: 2050,
+        sellerRating: 4.6,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "東涌海外代購",
+        sellerId: "PKT-4477-66J",
+        price: 1970,
+        sellerRating: 4.5,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "屯門古稀精品",
+        sellerId: "PKT-7733-55K",
+        price: 2080,
+        sellerRating: 4.3,
+        customGrade: { authority: "BGS", score: "9" },
+      },
+      {
+        sellerName: "荃灣TCG Gallery",
+        sellerId: "PKT-1199-44L",
+        price: 2420,
+        sellerRating: 4.9,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "沙田競技商城",
+        sellerId: "PKT-8844-77M",
+        price: 1860,
+        sellerRating: 4.2,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+    ],
   },
+
+  // ── sv2a-189 ─────────────────────────────────────────────────────────────
   {
     id: "sv2a-189",
     cardNo: "sv2a-189",
     name: "Mewtwo ex SAR (超夢)",
+    jpName: "ミュウツー ex SAR",
     set: "Pokémon 151",
     rarity: "SAR",
-    grade: { authority: "BGS", score: "9.5" },
-    conditionLabel: "美品 S",
-    price: 2600,
     delta: 50,
     deltaDirection: "down",
-    image: "https://picsum.photos/seed/poke-mewtwo/600/420",
-    seller: "大盤最優定價資產",
-    sellerId: "PKT-AGG-001",
+    images: [
+      "https://picsum.photos/seed/poke-mewtwo/600/420",
+      "https://picsum.photos/seed/mewtwo-alt/600/420",
+    ],
+    type: "超能力 (Psychic)",
+    stage: "Basic (基礎)",
+    weakness: "惡 x2",
+    retreatCost: "◆",
+    moveDamage: "心靈震撼 220",
+    artist: "GIDORA",
+    soldHistory: [
+      { date: "2026-06-02", grade: "BGS 9.5", price: 2600 },
+      { date: "2026-05-30", grade: "PSA 9", price: 2480 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 2700 },
+      { day: 15, date: "05-15", price: 2640 },
+      { day: 30, date: "06-02", price: 2600 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "銅鑼灣收藏家",
+        sellerId: "PKT-5566-77C",
+        price: 2750,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "尖沙咀卡神",
+        sellerId: "PKT-9900-11A",
+        price: 2600,
+        sellerRating: 4.9,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "荔枝角大師傅",
+        sellerId: "PKT-3311-22D",
+        price: 2380,
+        sellerRating: 4.6,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "元朗李生精品",
+        sellerId: "PKT-2233-44B",
+        price: 2450,
+        sellerRating: 4.7,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+    ],
   },
+
+  // ── sv6a-109 ─────────────────────────────────────────────────────────────
   {
     id: "sv6a-109",
     cardNo: "sv6a-109",
     name: "Umbreon ex SAR (月亮伊布)",
+    jpName: "ブラッキー ex SAR",
     set: "Night Wanderer",
     rarity: "SAR",
-    grade: { authority: "PSA", score: "10" },
-    conditionLabel: "美品 S",
-    price: 1900,
     delta: 75,
     deltaDirection: "up",
-    image: "https://picsum.photos/seed/poke-umbreon/600/420",
-    seller: "大盤最優定價資產",
-    sellerId: "PKT-AGG-001",
+    images: [
+      "https://picsum.photos/seed/poke-umbreon/600/420",
+      "https://picsum.photos/seed/umbreon-alt/600/420",
+      "https://picsum.photos/seed/umbreon-back/600/420",
+    ],
+    type: "惡 (Dark)",
+    stage: "Stage 1 (一階進化)",
+    weakness: "格鬥 x2",
+    retreatCost: "◆◆",
+    moveDamage: "暗夜崩潰 180 + 40 (Midnight Zone)",
+    artist: "RYUTA FUSE",
+    soldHistory: [
+      { date: "2026-06-04", grade: "PSA 10", price: 1900 },
+      { date: "2026-05-29", grade: "PSA 10", price: 1850 },
+      { date: "2026-05-22", grade: "BGS 9.5", price: 1780 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1700 },
+      { day: 10, date: "05-10", price: 1780 },
+      { day: 20, date: "05-20", price: 1850 },
+      { day: 30, date: "06-04", price: 1900 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "觀塘夜市收藏王",
+        sellerId: "PKT-8866-00C",
+        price: 2050,
+        sellerRating: 4.6,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "新宿夜行商",
+        sellerId: "PKT-6644-88A",
+        price: 1900,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "石籬二手精品鋪",
+        sellerId: "PKT-1188-22E",
+        price: 1820,
+        sellerRating: 4.7,
+        customGrade: { authority: "CGC", score: "9.5" },
+      },
+      {
+        sellerName: "大阪神秘珍品室",
+        sellerId: "PKT-7755-99B",
+        price: 1750,
+        sellerRating: 4.8,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "九龍城無框生品",
+        sellerId: "PKT-9977-11D",
+        price: 1650, // ← lowest ask
+        sellerRating: 4.4,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+    ],
   },
+
+  // ── sv2a-215 ─────────────────────────────────────────────────────────────
   {
     id: "sv2a-215",
     cardNo: "sv2a-215",
     name: "Pikachu AR (皮卡丘)",
+    jpName: "ピカチュウ AR",
     set: "Pokémon 151",
     rarity: "AR",
-    grade: { authority: "CGC", score: "9" },
-    conditionLabel: "美品 S",
-    price: 425,
     delta: 15,
     deltaDirection: "down",
-    image: "https://picsum.photos/seed/poke-pikachu/600/420",
-    seller: "大盤最優定價資產",
-    sellerId: "PKT-AGG-001",
+    images: [
+      "https://picsum.photos/seed/poke-pikachu/600/420",
+      "https://picsum.photos/seed/pikachu-alt/600/420",
+    ],
+    type: "電 (Lightning)",
+    stage: "Basic (基礎)",
+    weakness: "格鬥 x2",
+    retreatCost: "◆",
+    moveDamage: "十萬伏特 90",
+    artist: "KAWAYOO",
+    soldHistory: [
+      { date: "2026-06-01", grade: "CGC 9", price: 425 },
+      { date: "2026-05-28", grade: "Raw Card", price: 380 },
+      { date: "2026-05-20", grade: "PSA 9", price: 440 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 450 },
+      { day: 10, date: "05-10", price: 440 },
+      { day: 20, date: "05-20", price: 430 },
+      { day: 30, date: "06-01", price: 425 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "元朗動漫城",
+        sellerId: "PKT-5544-77C",
+        price: 460,
+        sellerRating: 4.9,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "西環電力站",
+        sellerId: "PKT-3322-55A",
+        price: 425,
+        sellerRating: 4.8,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "藍田玩具商",
+        sellerId: "PKT-4433-66B",
+        price: 380,
+        sellerRating: 4.5,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+      {
+        sellerName: "將軍澳小卡鋪",
+        sellerId: "PKT-6655-88D",
+        price: 350, // ← lowest ask
+        sellerRating: 4.2,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
+      },
+    ],
+  },
+
+  // ── sv2a-205 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv2a-205",
+    cardNo: "sv2a-205",
+    name: "Mew ex SAR (夢幻 ex)",
+    jpName: "ミュウ ex SAR",
+    set: "Pokémon 151",
+    rarity: "SAR",
+    delta: 85,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-mew/600/420",
+      "https://picsum.photos/seed/mew-alt/600/420",
+    ],
+    type: "超能力 (Psychic)",
+    stage: "Basic (基礎)",
+    weakness: "惡 x2",
+    retreatCost: "◆",
+    moveDamage: "遺傳技巧 (Gene Copy) 110",
+    artist: "ATSUSHI FURUSAWA",
+    soldHistory: [
+      { date: "2026-06-05", grade: "PSA 10", price: 1100 },
+      { date: "2026-05-31", grade: "BGS 9.5", price: 1050 },
+      { date: "2026-05-25", grade: "PSA 9", price: 980 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 900 },
+      { day: 10, date: "05-10", price: 950 },
+      { day: 20, date: "05-20", price: 1020 },
+      { day: 30, date: "06-05", price: 1100 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "渡邊道館",
+        sellerId: "PKT-8839-44A",
+        price: 1120,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "尖沙咀卡神",
+        sellerId: "PKT-9900-11A",
+        price: 1080,
+        sellerRating: 4.9,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "銅鑼灣收藏家",
+        sellerId: "PKT-5566-77C",
+        price: 1050,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "荔枝角大師傅",
+        sellerId: "PKT-3311-22D",
+        price: 980,
+        sellerRating: 4.6,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+    ],
+  },
+
+  // ── sv3pt5-067 ────────────────────────────────────────────────────────────
+  {
+    id: "sv3pt5-067",
+    cardNo: "sv3pt5-067",
+    name: "Gardevoir ex SAR (沙奈朵 ex)",
+    jpName: "サーナイト ex SAR",
+    set: "Ruler of the Black Flame",
+    rarity: "SAR",
+    delta: 60,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-gardevoir/600/420",
+      "https://picsum.photos/seed/gardevoir-alt/600/420",
+    ],
+    type: "超能力 (Psychic)",
+    stage: "Stage 2 (二階進化)",
+    weakness: "金屬 x2",
+    retreatCost: "◆◆",
+    moveDamage: "超能回路 (Psychic Embrace) 220",
+    artist: "RYOTA MURAYAMA",
+    soldHistory: [
+      { date: "2026-06-04", grade: "PSA 10", price: 1550 },
+      { date: "2026-05-28", grade: "PSA 9", price: 1450 },
+      { date: "2026-05-21", grade: "BGS 9.5", price: 1500 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1400 },
+      { day: 10, date: "05-10", price: 1460 },
+      { day: 20, date: "05-20", price: 1510 },
+      { day: 30, date: "06-04", price: 1550 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "新宿夜行商",
+        sellerId: "PKT-6644-88A",
+        price: 1580,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "旺角天線卡王",
+        sellerId: "PKT-1122-33B",
+        price: 1530,
+        sellerRating: 4.8,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "信和執雞大師",
+        sellerId: "PKT-7788-99D",
+        price: 1470,
+        sellerRating: 4.5,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "觀塘夜市收藏王",
+        sellerId: "PKT-8866-00C",
+        price: 1420,
+        sellerRating: 4.6,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv4a-191 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv4a-191",
+    cardNo: "sv4a-191",
+    name: "Sylveon ex SAR (妮可伊布 ex)",
+    jpName: "ニンフィア ex SAR",
+    set: "Shiny Treasure ex",
+    rarity: "SAR",
+    delta: 40,
+    deltaDirection: "down",
+    images: [
+      "https://picsum.photos/seed/poke-sylveon/600/420",
+      "https://picsum.photos/seed/sylveon-alt/600/420",
+    ],
+    type: "超能力 (Psychic)",
+    stage: "Stage 1 (一階進化)",
+    weakness: "金屬 x2",
+    retreatCost: "◆",
+    moveDamage: "迷人之吻 (Fairy Kiss) 180",
+    artist: "NAGIMISO",
+    soldHistory: [
+      { date: "2026-06-03", grade: "CGC 9.5", price: 820 },
+      { date: "2026-05-29", grade: "PSA 9", price: 860 },
+      { date: "2026-05-20", grade: "Raw Card", price: 770 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 900 },
+      { day: 10, date: "05-10", price: 880 },
+      { day: 20, date: "05-20", price: 850 },
+      { day: 30, date: "06-03", price: 820 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "西環電力站",
+        sellerId: "PKT-3322-55A",
+        price: 860,
+        sellerRating: 4.8,
+        customGrade: { authority: "CGC", score: "9.5" },
+      },
+      {
+        sellerName: "藍田玩具商",
+        sellerId: "PKT-4433-66B",
+        price: 820,
+        sellerRating: 4.5,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "元朗動漫城",
+        sellerId: "PKT-5544-77C",
+        price: 790,
+        sellerRating: 4.9,
+        customGrade: { authority: "BGS", score: "9" },
+      },
+      {
+        sellerName: "元朗李生精品",
+        sellerId: "PKT-2233-44B",
+        price: 760,
+        sellerRating: 4.7,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv4a-348 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv4a-348",
+    cardNo: "sv4a-348",
+    name: "Espeon ex SAR (太陽伊布 ex)",
+    jpName: "エーフィ ex SAR",
+    set: "Shiny Treasure ex",
+    rarity: "SAR",
+    delta: 30,
+    deltaDirection: "down",
+    images: [
+      "https://picsum.photos/seed/poke-espeon/600/420",
+      "https://picsum.photos/seed/espeon-alt/600/420",
+    ],
+    type: "超能力 (Psychic)",
+    stage: "Stage 1 (一階進化)",
+    weakness: "惡 x2",
+    retreatCost: "◆",
+    moveDamage: "太陽光束 (Solar Beam) 160",
+    artist: "MITSUHIRO ARITA",
+    soldHistory: [
+      { date: "2026-06-02", grade: "PSA 10", price: 680 },
+      { date: "2026-05-27", grade: "BGS 9", price: 700 },
+      { date: "2026-05-18", grade: "Raw Card", price: 620 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 750 },
+      { day: 10, date: "05-10", price: 730 },
+      { day: 20, date: "05-20", price: 710 },
+      { day: 30, date: "06-02", price: 680 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "九龍城無框生品",
+        sellerId: "PKT-9977-11D",
+        price: 720,
+        sellerRating: 4.4,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "秋葉原海外直送店",
+        sellerId: "PKT-4455-66C",
+        price: 695,
+        sellerRating: 4.9,
+        customGrade: { authority: "BGS", score: "9" },
+      },
+      {
+        sellerName: "石籬二手精品鋪",
+        sellerId: "PKT-1188-22E",
+        price: 660,
+        sellerRating: 4.7,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "大阪神秘珍品室",
+        sellerId: "PKT-7755-99B",
+        price: 630,
+        sellerRating: 4.8,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv3w-085 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv3w-085",
+    cardNo: "sv3w-085",
+    name: "Giratina V SAR (騎拉帝納 V)",
+    jpName: "ギラティナ V SAR",
+    set: "Lost Abyss",
+    rarity: "SAR",
+    delta: 95,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-giratina/600/420",
+      "https://picsum.photos/seed/giratina-alt/600/420",
+    ],
+    type: "龍 (Dragon)",
+    stage: "Basic (基礎)",
+    weakness: "無色 x2",
+    retreatCost: "◆◆◆",
+    moveDamage: "虛空送葬 (Lost Impact) 280",
+    artist: "ANESAKI DYNAMIC",
+    soldHistory: [
+      { date: "2026-06-05", grade: "PSA 10", price: 3200 },
+      { date: "2026-05-30", grade: "BGS 9.5", price: 3050 },
+      { date: "2026-05-23", grade: "PSA 9", price: 2850 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 2800 },
+      { day: 10, date: "05-10", price: 2950 },
+      { day: 20, date: "05-20", price: 3100 },
+      { day: 30, date: "06-05", price: 3200 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "渡邊道館",
+        sellerId: "PKT-8839-44A",
+        price: 3350,
+        sellerRating: 5.0,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "北角高層收藏所",
+        sellerId: "PKT-3366-88F",
+        price: 3200,
+        sellerRating: 4.7,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "大坑珍品屋",
+        sellerId: "PKT-5577-22G",
+        price: 3050,
+        sellerRating: 4.8,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "尖沙咀卡神",
+        sellerId: "PKT-9900-11A",
+        price: 2950,
+        sellerRating: 4.9,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv4k-079 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv4k-079",
+    cardNo: "sv4k-079",
+    name: "Miraidon ex SAR (未來電龍 ex)",
+    jpName: "ミライドン ex SAR",
+    set: "Future Flash",
+    rarity: "SAR",
+    delta: 70,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-miraidon/600/420",
+      "https://picsum.photos/seed/miraidon-alt/600/420",
+    ],
+    type: "電 (Lightning)",
+    stage: "Basic (基礎)",
+    weakness: "格鬥 x2",
+    retreatCost: "◆◆",
+    moveDamage: "疾馳電流 (Swift Run) 230",
+    artist: "TAKUMI WADA",
+    soldHistory: [
+      { date: "2026-06-04", grade: "PSA 10", price: 1850 },
+      { date: "2026-05-29", grade: "BGS 9.5", price: 1780 },
+      { date: "2026-05-22", grade: "CGC 9", price: 1700 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1680 },
+      { day: 10, date: "05-10", price: 1730 },
+      { day: 20, date: "05-20", price: 1790 },
+      { day: 30, date: "06-04", price: 1850 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "灣仔潮流卡舖",
+        sellerId: "PKT-6622-11H",
+        price: 1920,
+        sellerRating: 4.4,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "天水圍拍賣商",
+        sellerId: "PKT-9911-33I",
+        price: 1870,
+        sellerRating: 4.6,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "東涌海外代購",
+        sellerId: "PKT-4477-66J",
+        price: 1800,
+        sellerRating: 4.5,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "銅鑼灣收藏家",
+        sellerId: "PKT-5566-77C",
+        price: 1760,
+        sellerRating: 5.0,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv5d-107 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv5d-107",
+    cardNo: "sv5d-107",
+    name: "Koraidon ex SAR (古代威武雄 ex)",
+    jpName: "コライドン ex SAR",
+    set: "Ancient Roar",
+    rarity: "SAR",
+    delta: 55,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-koraidon/600/420",
+      "https://picsum.photos/seed/koraidon-alt/600/420",
+    ],
+    type: "格鬥 (Fighting)",
+    stage: "Basic (基礎)",
+    weakness: "超能力 x2",
+    retreatCost: "◆◆◆",
+    moveDamage: "古代奔雷 (Collision Course) 250",
+    artist: "SATOSHI NAKAI",
+    soldHistory: [
+      { date: "2026-06-03", grade: "PSA 10", price: 1650 },
+      { date: "2026-05-28", grade: "BGS 9", price: 1580 },
+      { date: "2026-05-20", grade: "PSA 9", price: 1510 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1480 },
+      { day: 10, date: "05-10", price: 1530 },
+      { day: 20, date: "05-20", price: 1590 },
+      { day: 30, date: "06-03", price: 1650 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "屯門古稀精品",
+        sellerId: "PKT-7733-55K",
+        price: 1700,
+        sellerRating: 4.3,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "荃灣TCG Gallery",
+        sellerId: "PKT-1199-44L",
+        price: 1650,
+        sellerRating: 4.9,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "沙田競技商城",
+        sellerId: "PKT-8844-77M",
+        price: 1600,
+        sellerRating: 4.2,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "渡邊道館",
+        sellerId: "PKT-8839-44A",
+        price: 1580,
+        sellerRating: 5.0,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv4pt5-086 ────────────────────────────────────────────────────────────
+  {
+    id: "sv4pt5-086",
+    cardNo: "sv4pt5-086",
+    name: "Lugia V SAR (盧基亞 V)",
+    jpName: "ルギア V SAR",
+    set: "Paradigm Trigger",
+    rarity: "SAR",
+    delta: 110,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-lugia/600/420",
+      "https://picsum.photos/seed/lugia-alt/600/420",
+    ],
+    type: "無色 (Colorless)",
+    stage: "Basic (基礎)",
+    weakness: "電 x2",
+    retreatCost: "◆◆",
+    moveDamage: "航空浪濤 (Aero Ball) 200",
+    artist: "TAKUMI WADA",
+    soldHistory: [
+      { date: "2026-06-05", grade: "PSA 10", price: 2800 },
+      { date: "2026-05-31", grade: "BGS 9.5", price: 2650 },
+      { date: "2026-05-24", grade: "PSA 9", price: 2500 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 2500 },
+      { day: 10, date: "05-10", price: 2600 },
+      { day: 20, date: "05-20", price: 2700 },
+      { day: 30, date: "06-05", price: 2800 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "尖沙咀卡神",
+        sellerId: "PKT-9900-11A",
+        price: 2900,
+        sellerRating: 4.9,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "新宿夜行商",
+        sellerId: "PKT-6644-88A",
+        price: 2750,
+        sellerRating: 5.0,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "深水埗精品角落",
+        sellerId: "PKT-2210-55E",
+        price: 2600,
+        sellerRating: 4.3,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "旺角天線卡王",
+        sellerId: "PKT-1122-33B",
+        price: 2500,
+        sellerRating: 4.8,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv3h-091 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv3h-091",
+    cardNo: "sv3h-091",
+    name: "Iron Hands ex SAR (鋼鐵拳頭 ex)",
+    jpName: "テツノコブシ ex SAR",
+    set: "Cyber Judge",
+    rarity: "SAR",
+    delta: 25,
+    deltaDirection: "down",
+    images: [
+      "https://picsum.photos/seed/poke-ironhands/600/420",
+      "https://picsum.photos/seed/ironhands-alt/600/420",
+    ],
+    type: "電 (Lightning)",
+    stage: "Basic (基礎)",
+    weakness: "格鬥 x2",
+    retreatCost: "◆◆◆◆",
+    moveDamage: "超鐵擊打 (Ultra Impact) 260",
+    artist: "5ban Graphics",
+    soldHistory: [
+      { date: "2026-06-02", grade: "PSA 10", price: 1300 },
+      { date: "2026-05-27", grade: "BGS 9.5", price: 1350 },
+      { date: "2026-05-19", grade: "PSA 9", price: 1280 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1420 },
+      { day: 10, date: "05-10", price: 1390 },
+      { day: 20, date: "05-20", price: 1360 },
+      { day: 30, date: "06-02", price: 1300 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "大阪神秘珍品室",
+        sellerId: "PKT-7755-99B",
+        price: 1380,
+        sellerRating: 4.8,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "觀塘夜市收藏王",
+        sellerId: "PKT-8866-00C",
+        price: 1340,
+        sellerRating: 4.6,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "荔枝角大師傅",
+        sellerId: "PKT-3311-22D",
+        price: 1300,
+        sellerRating: 4.6,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "秋葉原海外直送店",
+        sellerId: "PKT-4455-66C",
+        price: 1260,
+        sellerRating: 4.9,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv2a-236 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv2a-236",
+    cardNo: "sv2a-236",
+    name: "Venusaur ex SAR (妙蛙花 ex)",
+    jpName: "フシギバナ ex SAR",
+    set: "Pokémon 151",
+    rarity: "SAR",
+    delta: 45,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-venusaur/600/420",
+      "https://picsum.photos/seed/venusaur-alt/600/420",
+    ],
+    type: "草 (Grass)",
+    stage: "Stage 2 (二階進化)",
+    weakness: "火 x2",
+    retreatCost: "◆◆◆◆",
+    moveDamage: "重力植地 (Grounding Vines) 230",
+    artist: "MITSUHIRO ARITA",
+    soldHistory: [
+      { date: "2026-06-04", grade: "PSA 10", price: 1800 },
+      { date: "2026-05-30", grade: "PSA 9", price: 1720 },
+      { date: "2026-05-22", grade: "BGS 9.5", price: 1760 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1650 },
+      { day: 10, date: "05-10", price: 1700 },
+      { day: 20, date: "05-20", price: 1750 },
+      { day: 30, date: "06-04", price: 1800 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "元朗動漫城",
+        sellerId: "PKT-5544-77C",
+        price: 1850,
+        sellerRating: 4.9,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "元朗李生精品",
+        sellerId: "PKT-2233-44B",
+        price: 1800,
+        sellerRating: 4.7,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "將軍澳小卡鋪",
+        sellerId: "PKT-6655-88D",
+        price: 1750,
+        sellerRating: 4.2,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "渡邊道館",
+        sellerId: "PKT-8839-44A",
+        price: 1700,
+        sellerRating: 5.0,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv6a-085 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv6a-085",
+    cardNo: "sv6a-085",
+    name: "Arceus V SAR (阿爾宙斯 V)",
+    jpName: "アルセウス V SAR",
+    set: "Stellar Miracle",
+    rarity: "SAR",
+    delta: 130,
+    deltaDirection: "up",
+    images: [
+      "https://picsum.photos/seed/poke-arceus/600/420",
+      "https://picsum.photos/seed/arceus-alt/600/420",
+    ],
+    type: "無色 (Colorless)",
+    stage: "Basic (基礎)",
+    weakness: "格鬥 x2",
+    retreatCost: "◆◆◆",
+    moveDamage: "神聖弧線 (Trinity Nova) 200",
+    artist: "ETHAN KROGSTAD",
+    soldHistory: [
+      { date: "2026-06-05", grade: "PSA 10", price: 3800 },
+      { date: "2026-05-31", grade: "BGS 9.5", price: 3600 },
+      { date: "2026-05-25", grade: "PSA 9", price: 3400 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 3400 },
+      { day: 10, date: "05-10", price: 3550 },
+      { day: 20, date: "05-20", price: 3680 },
+      { day: 30, date: "06-05", price: 3800 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "九龍城無框生品",
+        sellerId: "PKT-9977-11D",
+        price: 3900,
+        sellerRating: 4.4,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "石籬二手精品鋪",
+        sellerId: "PKT-1188-22E",
+        price: 3750,
+        sellerRating: 4.7,
+        customGrade: { authority: "BGS", score: "9.5" },
+      },
+      {
+        sellerName: "西環電力站",
+        sellerId: "PKT-3322-55A",
+        price: 3600,
+        sellerRating: 4.8,
+        customGrade: { authority: "PSA", score: "9" },
+      },
+      {
+        sellerName: "信和執雞大師",
+        sellerId: "PKT-7788-99D",
+        price: 3500,
+        sellerRating: 4.5,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
+  },
+
+  // ── sv5a-091 ─────────────────────────────────────────────────────────────
+  {
+    id: "sv5a-091",
+    cardNo: "sv5a-091",
+    name: "Greninja ex SAR (忍蛙 ex)",
+    jpName: "ゲッコウガ ex SAR",
+    set: "Crimson Haze",
+    rarity: "SAR",
+    delta: 35,
+    deltaDirection: "down",
+    images: [
+      "https://picsum.photos/seed/poke-greninja/600/420",
+      "https://picsum.photos/seed/greninja-alt/600/420",
+    ],
+    type: "水 (Water)",
+    stage: "Stage 2 (二階進化)",
+    weakness: "電 x2",
+    retreatCost: "◆",
+    moveDamage: "暗影忍術 (Shadow Slash) 180",
+    artist: "RYOTA MURAYAMA",
+    soldHistory: [
+      { date: "2026-06-03", grade: "PSA 10", price: 1150 },
+      { date: "2026-05-28", grade: "BGS 9", price: 1200 },
+      { date: "2026-05-21", grade: "PSA 9", price: 1120 },
+    ],
+    chartPoints: [
+      { day: 1, date: "05-01", price: 1280 },
+      { day: 10, date: "05-10", price: 1250 },
+      { day: 20, date: "05-20", price: 1200 },
+      { day: 30, date: "06-03", price: 1150 },
+    ],
+    sellOrders: [
+      {
+        sellerName: "東涌海外代購",
+        sellerId: "PKT-4477-66J",
+        price: 1220,
+        sellerRating: 4.5,
+        customGrade: { authority: "PSA", score: "10" },
+      },
+      {
+        sellerName: "天水圍拍賣商",
+        sellerId: "PKT-9911-33I",
+        price: 1180,
+        sellerRating: 4.6,
+        customGrade: { authority: "BGS", score: "9" },
+      },
+      {
+        sellerName: "屯門古稀精品",
+        sellerId: "PKT-7733-55K",
+        price: 1140,
+        sellerRating: 4.3,
+        customGrade: { authority: "CGC", score: "9" },
+      },
+      {
+        sellerName: "深水埗精品角落",
+        sellerId: "PKT-2210-55E",
+        price: 1100,
+        sellerRating: 4.3,
+        customGrade: { authority: "Raw Card", score: "" }, // Raw
+      },
+    ],
   },
 ];
 
-export function getCardById(id: string) {
+/** Looks up a product specification by its canonical ID. */
+export function getCardById(id: string): UnifiedProductSpec | null {
   return INITIAL_LISTINGS.find((c) => c.id === id) ?? null;
+}
+
+/**
+ * Computes the effective (lowest) ask price for a product.
+ * Falls back to 999_999 if the order book is empty.
+ */
+export function getEffectivePrice(card: UnifiedProductSpec): number {
+  if (card.sellOrders.length === 0) return 999_999;
+  return Math.min(...card.sellOrders.map((o) => o.price));
+}
+
+/**
+ * Returns the SellOrder with the absolute lowest ask price.
+ * Returns null if the order book is empty.
+ */
+export function getBestAsk(card: UnifiedProductSpec): SellOrder | null {
+  if (card.sellOrders.length === 0) return null;
+  return card.sellOrders.reduce((best, o) => (o.price < best.price ? o : best));
 }
 
 export default INITIAL_LISTINGS;

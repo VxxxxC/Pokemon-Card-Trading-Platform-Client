@@ -1,12 +1,8 @@
 "use client";
 
 import { create } from "zustand";
-import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
-import { INITIAL_LISTINGS as CENTRAL_INITIAL_LISTINGS } from "@/app/lib/mock-data/cards";
 
 export type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
-
-export const INITIAL_LISTINGS: MarketplaceListing[] = CENTRAL_INITIAL_LISTINGS;
 
 interface MarketState {
   query: string;
@@ -14,7 +10,7 @@ interface MarketState {
   activeGrades: string[];
   activeConditions: string[];
   // 🟢 新增：刊登模式（MERCHANT | C2C | P2P）全域多維陣列
-  activeTypes: string[]; 
+  activeTypes: string[];
   sortKey: SortKey;
   isSearchFocused: boolean;
 
@@ -26,9 +22,9 @@ interface MarketState {
   toggleGrade: (grade: string) => void;
   toggleCondition: (condition: string) => void;
   // 🟢 新增：切換刊登模式狀態控制線
-  toggleType: (type: string) => void; 
-  // 🟢 新增：全域一鍵滿血重置還原 Action 
-  resetAll: () => void; 
+  toggleType: (type: string) => void;
+  // 🟢 新增：全域一鍵滿血重置還原 Action
+  resetAll: () => void;
 }
 
 export const useMarketStore = create<MarketState>((set) => ({

@@ -149,7 +149,6 @@ export default function UserSettingsPage() {
                   action: "修改",
                 },
                 { label: "登入密碼", value: "••••••••••••", action: "更改" },
-                { label: "兩步驗證", value: "已停用", action: "開啟" },
               ].map(({ label, value, action }) => (
                 <div
                   key={label}
@@ -173,111 +172,6 @@ export default function UserSettingsPage() {
                 </div>
               ))}
             </div>
-          </section>
-
-          {/* ── KYC — Apply for Merchant ───────────────────────────────────── */}
-          <section
-            aria-labelledby="kyc-heading"
-            className="bg-bg-card rounded-2xl border border-[rgba(212,165,116,0.25)] p-5 shadow-md"
-          >
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[rgba(212,165,116,0.12)] border border-brand/20 flex items-center justify-center shrink-0 shadow-inner">
-                <span className="text-[18px]" aria-hidden="true">
-                  🏪
-                </span>
-              </div>
-              <div>
-                <h2
-                  id="kyc-heading"
-                  className="font-sans font-bold text-[15px] text-text-primary"
-                >
-                  申請成為商戶
-                </h2>
-                <p className="font-sans text-[12.5px] text-text-secondary mt-0.5 leading-relaxed">
-                  通過 KYC 審核後，即可開設店舖並上架卡牌銷售，解鎖 Stripe
-                  Connect 金流功能。
-                </p>
-              </div>
-            </div>
-
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-              <div>
-                <label
-                  htmlFor="shop-name"
-                  className="font-mono text-[12px] text-text-secondary block mb-1.5"
-                >
-                  店舖名稱 <span className="text-error font-bold">*</span>
-                </label>
-                <input
-                  id="shop-name"
-                  type="text"
-                  placeholder="例：レン精選卡牌 / Ren Premium Cards"
-                  className="w-full h-11 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none focus:border-brand/50 transition-colors"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="kyc-doc"
-                  className="font-mono text-[12px] text-text-secondary block mb-1.5"
-                >
-                  身份證明文件 (JPG / PDF){" "}
-                  <span className="text-error font-bold">*</span>
-                </label>
-                {/* TODO: [server] File upload div is decorative — no `<input type="file">` element, no Supabase Storage upload handler. Implement with supabase.storage.from('kyc-docs').upload(userId, file) */}
-                <div className="h-24 bg-bg-elevated border border-dashed border-[rgba(237,232,224,0.20)] rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-brand/40 transition-colors group">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#50453b"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                    className="group-hover:stroke-brand transition-colors"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                  <p className="font-mono text-[11px] text-text-disabled group-hover:text-brand transition-colors">
-                    點擊上載或拖放文件
-                  </p>
-                </div>
-                <p className="font-mono text-[10px] text-text-disabled mt-1.5 leading-normal">
-                  接受：護照、政府認可身份證、公司商業登記證。審核需 1–3
-                  個工作天。
-                </p>
-              </div>
-
-              <div className="flex items-start gap-2.5 px-3 py-2.5 bg-[rgba(212,165,116,0.06)] rounded-lg border border-[rgba(212,165,116,0.12)]">
-                <input
-                  id="kyc-agree"
-                  type="checkbox"
-                  className="mt-0.5 accent-[#d4a574] cursor-pointer"
-                />
-                <label
-                  htmlFor="kyc-agree"
-                  className="font-sans text-[12px] text-text-secondary leading-relaxed cursor-pointer"
-                >
-                  我確認所提交之資料真實無誤，並同意 PokéTrade JP
-                  商戶服務條款及平台佣金政策（成交金額之 3–5%）。
-                </label>
-              </div>
-
-              {/* TODO: [server] "提交 KYC 申請" form submit has no handler — must call server action to INSERT into `kyc_applications` table and update `profiles.role = 'PENDING_MERCHANT'` */}
-              <button
-                type="submit"
-                className="w-full h-11 bg-brand text-[#17130f] font-sans font-bold text-[13.5px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer shadow-md"
-              >
-                提交 KYC 申請
-              </button>
-            </form>
-
-            <p className="font-mono text-[10px] text-text-disabled mt-3 text-center">
-              提交後狀態將變更為 PENDING_MERCHANT · 審核完成後電郵通知
-            </p>
           </section>
 
           {/* ── Notifications ─────────────────────────────────────────────── */}

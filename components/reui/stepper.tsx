@@ -170,7 +170,7 @@ function Stepper({
   );
 
   return (
-    <StepperContext.Provider value={contextValue}>
+    <StepperContext value={contextValue}>
       <div
         role="tablist"
         aria-orientation={orientation}
@@ -181,7 +181,7 @@ function Stepper({
       >
         {children}
       </div>
-    </StepperContext.Provider>
+    </StepperContext>
   );
 }
 
@@ -213,7 +213,7 @@ function StepperItem({
   const isLoading = loading && step === activeStep;
 
   return (
-    <StepItemContext.Provider
+    <StepItemContext
       value={{ step, state, isDisabled: disabled, isLoading }}
     >
       <div
@@ -228,7 +228,7 @@ function StepperItem({
       >
         {children}
       </div>
-    </StepItemContext.Provider>
+    </StepItemContext>
   );
 }
 

@@ -8,7 +8,12 @@ export const INITIAL_CHATS = [
     unreadCount: 0,
     timestamp: "10:30",
     messages: [
-      { id: "m1", sender: "them", text: "你好！請問對哪張現貨有興趣？", timestamp: "10:30" },
+      {
+        id: "m1",
+        sender: "them",
+        text: "你好！請問對哪張現貨有興趣？",
+        timestamp: "10:30",
+      },
     ],
   },
   {
@@ -19,8 +24,18 @@ export const INITIAL_CHATS = [
     unreadCount: 2,
     timestamp: "14:32",
     messages: [
-      { id: "1", sender: "me", text: "你好，請問呢張噴火龍幾時可以送到平台鑑定？", timestamp: "10:15" },
-      { id: "3", sender: "them", text: "師兄放心，卡牌已經交咗畀平台。剛才收到通知，鑑定進行中。", timestamp: "14:30" },
+      {
+        id: "1",
+        sender: "me",
+        text: "你好，請問呢張噴火龍幾時可以送到平台鑑定？",
+        timestamp: "10:15",
+      },
+      {
+        id: "3",
+        sender: "them",
+        text: "師兄放心，卡牌已經交咗畀平台。剛才收到通知，鑑定進行中。",
+        timestamp: "14:30",
+      },
       {
         id: "txn-001",
         sender: "them",
@@ -32,7 +47,9 @@ export const INITIAL_CHATS = [
           cardId: "sv2a-182",
           offerPrice: 2250,
           buyerName: "九龍灣卡王",
+          buyerId: "USR-BUYER-MOCK-001",
           sellerId: "PKT-8839-44A",
+          sellerName: "渡邊道館",
         },
       },
     ],

@@ -3,6 +3,16 @@
 import { useState, useSyncExternalStore, use } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { X } from "lucide-react";
 
 interface CheckoutItem {
   id: string;
@@ -48,6 +58,31 @@ const MOCK_INVENTORY_DATABASE: Record<string, CheckoutItem> = {
   },
 };
 
+// Available Coupon Repository
+interface Coupon {
+  code: string;
+  label: string;
+  discount: number;
+}
+
+const AVAILABLE_COUPONS: Coupon[] = [
+  {
+    code: "WELCOME-TCG-50",
+    label: "🎟️ 新手註冊放卡開路禮 (減 HK$50)",
+    discount: 50,
+  },
+  {
+    code: "SF-FREE-DUANWU",
+    label: "🎟️ 端午現貨節免運費券 (減 HK$30)",
+    discount: 30,
+  },
+  {
+    code: "VIP-DISCOUNT-100",
+    label: "🎟️ 核心散戶尊享高能券 (減 HK$100)",
+    discount: 100,
+  },
+];
+
 interface PageProps {
   params: Promise<{ id: string }>;
 }
@@ -69,10 +104,13 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   const [buyerPhone, setBuyerPhone] = useState("91234567");
   const [meetupDetail, setMeetupDetail] = useState("旺角站 A 出口閘邊");
 
-  // Promo code & remarks
-  const [promoCode, setPromoCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState(0);
-  const [couponErrorMessage, setCouponErrorMessage] = useState("");
+  // NEW: Authentication service toggle
+  const [authServiceEnabled, setAuthServiceEnabled] = useState(false);
+
+  // NEW: Multi-select coupons state
+  const [selectedCoupons, setSelectedCoupons] = useState<string[]>([]);
+
+  // Buyer remarks
   const [buyerRemark, setBuyerRemark] = useState("");
 
   if (!isMounted) {
@@ -86,33 +124,39 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   const currentItem =
     MOCK_INVENTORY_DATABASE[listingId] || MOCK_INVENTORY_DATABASE["sv2a-182"];
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCouponErrorMessage("");
-    const formattedCode = promoCode.trim().toUpperCase();
-
-    if (formattedCode === "SF-FREE-DUANWU") {
-      setAppliedDiscount(30);
-      toast.success("🎟️ 優惠券套用成功！", {
-        description: "端午現貨節免運費券已生效，已扣減 HK$30 運費。",
-      });
-    } else if (formattedCode === "WELCOME-TCG-50") {
-      setAppliedDiscount(50);
-      toast.success("🎟️ 優惠券套用成功！", {
-        description: "新手註冊放卡開路禮已生效，總額扣減 HK$50。",
-      });
-    } else {
-      setAppliedDiscount(0);
-      setCouponErrorMessage("此代碼不存在或未達到消費門檻。");
-      toast.error("❌ 優惠券無效", {
-        description: "請檢查折價券代碼大小寫是否正確。",
-      });
+  // Handle coupon selection from dropdown
+  const handleCouponSelect = (couponCode: string) => {
+    if (!selectedCoupons.includes(couponCode)) {
+      setSelectedCoupons([...selectedCoupons, couponCode]);
+      const coupon = AVAILABLE_COUPONS.find((c) => c.code === couponCode);
+      if (coupon) {
+        toast.success("🎟️ 優惠券已選擇", {
+          description: `${coupon.label} 已添加到訂單。`,
+        });
+      }
     }
   };
 
+  // Remove coupon badge
+  const handleRemoveCoupon = (couponCode: string) => {
+    setSelectedCoupons(selectedCoupons.filter((code) => code !== couponCode));
+    toast.info("券證已移除", {
+      description: "優惠券已從訂單中移除。",
+    });
+  };
+
+  // Financial calculations
   const itemSubtotal = currentItem.price;
   const shippingFee = shippingType === "sf" ? 30 : 0;
-  const finalTotal = Math.max(itemSubtotal + shippingFee - appliedDiscount, 0);
+  const authFee = authServiceEnabled ? 150 : 0;
+  const totalDiscount = selectedCoupons.reduce((sum, code) => {
+    const coupon = AVAILABLE_COUPONS.find((c) => c.code === code);
+    return sum + (coupon?.discount || 0);
+  }, 0);
+  const finalTotal = Math.max(
+    itemSubtotal + shippingFee + authFee - totalDiscount,
+    0,
+  );
 
   const handleProceedToPayment = () => {
     if (shippingType === "sf" && (!sfLockerCode || !buyerPhone)) {
@@ -153,6 +197,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Form Entries Column */}
           <div className="lg:col-span-7 space-y-6">
+            {/* Section 1: Asset Verification */}
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
               <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
                 🃏 1. 核對現貨資產品相
@@ -184,6 +229,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               </div>
             </section>
 
+            {/* Section 2: Delivery Channel */}
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
               <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
                 📦 2. 選擇配送 / 交收渠道
@@ -276,12 +322,114 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               )}
             </section>
 
+            {/* Section 3: Authentication Service (NEW) */}
+            <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
+                    🔍 3. 啟用鑑定服務
+                  </h2>
+                  <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
+                    專業第三方官方認證、複驗品相及真偽防偽包裝
+                  </p>
+                </div>
+                <Switch
+                  checked={authServiceEnabled}
+                  onCheckedChange={setAuthServiceEnabled}
+                  className="data-checked:bg-brand data-unchecked:bg-[#39342f]"
+                />
+              </div>
+              {authServiceEnabled && (
+                <div className="mt-3 bg-[#17130f] rounded-xl p-3 border border-brand/20">
+                  <p className="font-sans text-[11px] text-brand leading-relaxed">
+                    ✓
+                    鑑定服務已啟用：將由專業第三方鑑定機構對卡牌進行全面品相檢測，並提供官方認證報告。鑑定費用
+                    HK$150 將計入訂單總額。
+                  </p>
+                </div>
+              )}
+            </section>
+
+            {/* Section 4: Coupon Multi-Select (NEW) */}
+            <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
+              <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
+                🎟️ 4. 使用優惠券
+              </h2>
+
+              {/* Base UI Multi-Select Dropdown */}
+              <div className="space-y-3">
+                <Select
+                  value=""
+                  onValueChange={(value) => {
+                    if (value && typeof value === "string") {
+                      handleCouponSelect(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full h-10 bg-[#17130f] border-white/10 text-[#eae1da] hover:border-brand/30 transition-colors">
+                    <SelectValue
+                      placeholder="選擇優惠券..."
+                      className="text-[#d4c4b7]"
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#26211C] border-white/10">
+                    <SelectGroup>
+                      {AVAILABLE_COUPONS.filter(
+                        (coupon) => !selectedCoupons.includes(coupon.code),
+                      ).map((coupon) => (
+                        <SelectItem
+                          key={coupon.code}
+                          value={coupon.code}
+                          className="text-[#eae1da] focus:bg-brand/10 focus:text-brand"
+                        >
+                          {coupon.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+
+                {/* Badge Tags Render Block */}
+                {selectedCoupons.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCoupons.map((code) => {
+                      const coupon = AVAILABLE_COUPONS.find(
+                        (c) => c.code === code,
+                      );
+                      return (
+                        <div
+                          key={code}
+                          className="inline-flex items-center gap-2 bg-brand/10 border border-brand/30 rounded-full px-3 py-1.5 text-[12px] font-sans text-brand"
+                        >
+                          <span className="font-mono font-bold">
+                            {coupon?.code}
+                          </span>
+                          <span className="text-[#d4c4b7]">
+                            (- HK${coupon?.discount})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCoupon(code)}
+                            className="ml-1 hover:bg-brand/20 rounded-full p-0.5 transition-colors"
+                            aria-label="移除優惠券"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Section 5: Buyer Remarks (Renumbered) */}
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
               <label
                 htmlFor="p-rem"
                 className="font-sans font-bold text-[15px] text-[#eae1da] block"
               >
-                ✍️ 3. 給賣家的特殊交割備註 (Remark)
+                ✍️ 5. 給賣家的特殊交割備註 (Remark)
               </label>
               <textarea
                 id="p-rem"
@@ -296,32 +444,6 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
           {/* Pricing Aggregation Panel */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
-              <h3 className="font-sans font-bold text-[13.5px] text-[#eae1da]">
-                🎟️ 套用全域平台優惠券
-              </h3>
-              <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  placeholder="例：SF-FREE-DUANWU"
-                  className="flex-1 h-9 bg-[#17130f] border border-white/10 rounded-lg px-3 font-mono text-[12px] text-brand uppercase"
-                />
-                <button
-                  type="submit"
-                  className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-lg hover:bg-brand/10 transition-colors"
-                >
-                  套用
-                </button>
-              </form>
-              {couponErrorMessage && (
-                <p className="font-sans text-[11px] text-error pl-1">
-                  {couponErrorMessage}
-                </p>
-              )}
-            </div>
-
             <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-5 space-y-4 shadow-lg">
               <h3 className="font-sans font-bold text-[14.5px] text-[#eae1da] border-b border-white/5 pb-2">
                 🧾 訂單財務明細總結
@@ -339,10 +461,19 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                     HK$ {shippingFee}
                   </span>
                 </div>
-                {appliedDiscount > 0 && (
+                {/* NEW: Authentication Fee Row */}
+                <div className="flex justify-between">
+                  <span>官方第三方鑑定費</span>
+                  <span
+                    className={`font-mono ${authServiceEnabled ? "text-brand font-semibold" : "text-[#eae1da]"}`}
+                  >
+                    HK$ {authFee}
+                  </span>
+                </div>
+                {totalDiscount > 0 && (
                   <div className="flex justify-between text-[#10b981] font-semibold">
                     <span>券證及優惠碼折扣扣減</span>
-                    <span className="font-mono">- HK$ {appliedDiscount}</span>
+                    <span className="font-mono">- HK$ {totalDiscount}</span>
                   </div>
                 )}
                 <div className="border-t border-white/5 pt-3 flex justify-between items-baseline">

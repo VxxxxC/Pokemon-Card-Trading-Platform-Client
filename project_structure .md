@@ -227,7 +227,8 @@ docs/
 
 /profile/merchant      → 你的商家儀表板 (第一人稱)
   /merchant/inventory  → 你的庫存管理
-  /merchant/sales      → 你的銷售報告
+  /merchant/analytics  → 你的商品分析
+  /merchant/trading    → 你的交易管理
   /merchant/finance    → 你的財務報表
   /merchant/settings   → 你的商家設定
 

@@ -1,4 +1,4 @@
-> ⚠️ **TODO 註釋**: 此程式碼庫包含 `// TODO [MOCK DATA]`, `// TODO [API]`, 以及 `// TODO [BACKEND]` 標記，指示硬編碼的演示數據、未連接的 API 以及待後端整合的功能。在發佈任何功能之前，請務必檢查並處理這些 TODO 註釋。
+> ⚠️ **TODO 註釋**: 此程式碼庫包含 `// TODO [MOCK DATA]`, `// TODO [API]`, 以及 `// TODO [BACKEND]` 標記，指示硬編碼的演示數據、未連接的 API 以及待後端整合的功能。在發佈任何功能之前，請務必檢查並處理 these TODO 註釋。
 
 ## 專案背景
 
@@ -55,7 +55,7 @@
 
 針對如 `/orders`（訂單中心）或需要根據用戶身份（買家 `BUYER` / 商家 `MERCHANT`）渲染截然不同介面的核心路由，必須保持單一 URL 語意清爽化：
 
-- **禁止規則**：嚴禁在同層級建立兩個 Route Groups（例如同時存在 `(buyer-switches)/orders` 與 `(merchant-switches)/orders`），此舉會引發 Next.js 編譯時的路由衝突報錯（Duplicate Routes）。
+- **禁止規則**：嚴禁在同層級建立兩個 Route Groups（例如同時存在 `(buyer-switches)/orders` 與 `(merchant-switches)/orders`），此舉會引發 Next.js 編譯時的路由衝突報報。
 - **黃金執行標準**：必須將該路由建立為單一的物理路徑（例如 `app/orders/page.tsx`），並確立為 **Async Server Component (異步伺服器端組件，移除 "use client")**。
 
 ### 2. 伺服器端動態分流範本
@@ -114,6 +114,23 @@ export default async function OrdersGatewayPage() {
     `[首頁]` | `[大盤市場]` | **正中央 `[＋]` 新增商品 Action 掣** | `[交易管理]` | `[會員中心]`
   - **未登入狀態 (Unauthenticated)** ➔ 為了避免功能失效導致用家強迫症破位，必須將底欄結構重新分流調校：隱藏中央 `+` 號、交易管理與會員中心，改為顯著引流的 **`[首頁]`**、**`[大盤市場]`** 組合，並在核心槽位渲染特製高對比的 **`[登入／註冊]`** 導流按鈕，確保未登入散戶在行動端的極致引流閉環。
 
+## 👑 核心工程與架構硬核防線 (Core Engineering Mandates)
+
+### 1. 全域 PWA 級動態導航路由規範 (Client-Side Navigation Rule)
+
+- **硬性禁止防線**：嚴禁在任何組件（Client/Server）中使用 `<button>`、`<div>` 或任何互動標籤綁定 `onClick` 囘調去調用 `window.location.href` 或 `window.location.replace()` 執行常規頁面跳轉。此反模式會徹底擊穿 Next.js App Router 的客戶端路由緩存（Client-side routing cache），導致用家在手機端或 PWA 模式下點擊「返回上一頁」時，網頁陷入無止境的白色重載與 Hydration 鎖死 Loading 狀態。
+- **唯一正確實作鐵律**：全站所有頁面跳轉與重定向引流，必須 100% 強制使用 Next.js 原生的 **`<Link>`** 組件（來自 `next/link`）進行聲明式包裹。如果是編程流式觸發（如條件檢查後的表單直發），必須統一調用 Next.js 原生的 **`useRouter().push()`**。此舉方能確保 PWA 主場的預加載（Prefetching）管線流暢閉環，徹底消除行動裝置上的滾動條閃爍與二次渲染技術債。
+
+### 2. TypeScript 高級語意提純與 DRY（Don't Repeat Yourself）契約鐵律
+
+- **嚴禁巨石重複程式碼 (Anti-Type-Duplication)**：隨著專案的深度開發，嚴禁為了新功能或彈窗組件無腦手寫大量重複、高度相似的 `interface` 或 `type` 定義（如 SellOrder, Listing 等基礎數據結構）。這會導致底層模型在與 Supabase Database 對接時產生災難性的數據對齊漂移（Interface Drift）。
+- **活用 TypeScript 高級工具類型 (Utility Types)**：建立任何新組件、新彈窗或衍生狀態模型時，必須先全局檢索現有的核心真理 Type（如 `INITIAL_LISTINGS` 映射的 `UnifiedProductSpec` 或 `SellOrder`）。必須強制靈活運用以下 TypeScript 內置的工具類型特性對現有 Interface 進行精準的加減與抽離：
+  - **`Pick<Type, Keys>`**：精確抽取現有大模型中的某幾個屬性（如結算彈窗只需 Pick 商品的 ID 與定價）。
+  - **`Omit<Type, Keys>`**：剔除現有模型中的敏感或多餘欄位，派生出清爽的渲染子集。
+  - **`Partial<Type>`**：將目標模型的全量屬性轉為可選（Optional），用於過濾器或暫存狀態線。
+  - **`Required<Type>`**：強迫某些可選屬性在核心交易階段必須 100% 飽滿存在。
+- **目標效果**：用最少、最優雅的 TypeScript 語意代碼，換取 100% 穩健的強型態編譯防線，從根源上斬斷程式碼退化與過度包裝。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
@@ -131,7 +148,7 @@ export default async function OrdersGatewayPage() {
    - **分佈式目錄解耦規範**：所有全域狀態 Store 必須嚴格起在 `$PROJECT_ROOT/store/` 目錄下。
    - **嚴禁巨石 Store (Anti-Monolithic Store)**：嚴禁將所有不同模組、業務領域的狀態無腦塞入單一的 `useTradeStore.ts` 裡面。
    - **架構擴充命名規範**：開發新功能或拓展全新業務領域（如接下來的 Merchant 後台、Stripe Connect 託管狀態、會員資產包等）時，**必須單獨建立一個相對應名稱的 Store 檔案**（例如：商戶模組使用 `store/useMerchantStore.ts`、市場篩選使用 `store/useMarketStore.ts`）。
-   - **按需動態訂閱**：組件在引入全域 Store 時，必須使用精準動態解構（例如 `const isChatOpen = useTradeStore(state => state.isChatOpen)`），嚴禁無腦全量引入（例如 `const state = useTradeStore()`），以防止單一狀態微幅更新觸發全網頁集體連鎖重繪。
+   - **按需動態訂閱**：組件在引入全域 Store時，必須使用精準動態解構（例如 `const isChatOpen = useTradeStore(state => state.isChatOpen)`），嚴禁無腦全量引入（例如 `const state = useTradeStore()`），以防止單一狀態微幅更新觸發全網頁集體連鎖重繪。
 
 ## 任務管理與規劃指令
 
@@ -168,3 +185,7 @@ export default async function OrdersGatewayPage() {
 - **組件安裝：** 如果需要尚未安裝的新 shadcn/ui 組件，請使用 `bunx --bun shadcn@latest add [component-name]` 開始安裝。此命令將引導使用者完成設定。
 - **自定義：** 所有 shadcn/ui 組件都必須進行自定義，以符合 `.stitch/designs/DESIGN.md` 中定義的 PokéTrade JP 設計系統。請嚴格遵守 `.agents/skills/shadcn-ui/SKILL.md` 和 `.github/prompts/shadcn-ui.prompt.md` 中指定的審美覆蓋和組件整合規則。
 - **觸發動作：** 當 UI 實作需要特定的 shadcn 組件時，請明確提及需要使用 `bunx --bun shadcn@latest add [component-name]`。此動作將自動觸發 `.github/prompts/shadcn-ui.prompt.md` 和 `shadcn-ui` 技能，以進行安裝 and 品味自定義。
+
+```
+
+```

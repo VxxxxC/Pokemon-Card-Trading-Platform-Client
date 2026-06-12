@@ -1,28 +1,21 @@
 "use client";
 
-import { useState, useCallback, type FormEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  startTransition,
+  useActionState,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+// 🟢 核心引入：加裝 useSearchParams 捕捉大盤外部跳轉載荷
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 type Tab = "login" | "register";
 
-interface LoginFields {
-  email: string;
-  password: string;
-  remember: boolean;
-}
-
-interface RegisterFields {
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  agreeTerms: boolean;
-}
-
 type FormErrors = Record<string, string>;
 
-// ─── shared input class ────────────────────────────────────────────────────────
 function inputClass(hasError: boolean): string {
   return [
     "w-full h-11 px-4 rounded-lg",
@@ -34,7 +27,6 @@ function inputClass(hasError: boolean): string {
   ].join(" ");
 }
 
-// ─── Checkbox ─────────────────────────────────────────────────────────────────
 function Checkbox({
   checked,
   hasError,
@@ -60,7 +52,13 @@ function Checkbox({
       ].join(" ")}
     >
       {checked && (
-        <svg width="10" height="8" viewBox="0 0 10 8" fill="none" aria-hidden="true">
+        <svg
+          width="10"
+          height="8"
+          viewBox="0 0 10 8"
+          fill="none"
+          aria-hidden="true"
+        >
           <path
             d="M1 4L3.5 6.5L9 1"
             stroke="#17130f"
@@ -74,7 +72,6 @@ function Checkbox({
   );
 }
 
-// ─── Eye icons ─────────────────────────────────────────────────────────────────
 function EyeIcon() {
   return (
     <svg
@@ -113,7 +110,6 @@ function EyeOffIcon() {
   );
 }
 
-// ─── Field wrapper ─────────────────────────────────────────────────────────────
 function Field({
   label,
   error,
@@ -134,23 +130,22 @@ function Field({
         {labelRight}
       </div>
       {children}
-      {error && <p className="mt-1 font-sans text-[12px] text-warning">{error}</p>}
+      {error && (
+        <p className="mt-1 font-sans text-[12px] text-warning">{error}</p>
+      )}
     </div>
   );
 }
 
-// ─── Password input ────────────────────────────────────────────────────────────
 function PasswordInput({
-  value,
-  onChange,
+  name,
   placeholder,
   autoComplete,
   hasError,
   showPassword,
   onToggleShow,
 }: {
-  value: string;
-  onChange: (v: string) => void;
+  name: string;
   placeholder?: string;
   autoComplete: string;
   hasError: boolean;
@@ -161,16 +156,15 @@ function PasswordInput({
     <div className="relative">
       <input
         type={showPassword ? "text" : "password"}
+        name={name}
         autoComplete={autoComplete}
         placeholder={placeholder ?? "••••••••"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
         className={inputClass(hasError) + " pr-11"}
       />
       <button
         type="button"
         onClick={onToggleShow}
-        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-disabled hover:text-text-secondary transition-colors"
+        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-disabled hover:text-text-secondary transition-colors focus:outline-none"
         aria-label={showPassword ? "隱藏密碼" : "顯示密碼"}
       >
         {showPassword ? <EyeOffIcon /> : <EyeIcon />}
@@ -179,171 +173,233 @@ function PasswordInput({
   );
 }
 
-// ─── AuthForm ──────────────────────────────────────────────────────────────────
 export function AuthForm() {
   const router = useRouter();
+  // 🟢 接入 Next.js 16 搜尋參數解碼器
+  const searchParams = useSearchParams();
+
   const [tab, setTab] = useState<Tab>("login");
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<FormErrors>({});
 
-  const [loginFields, setLoginFields] = useState<LoginFields>({
-    email: "",
-    password: "",
-    remember: false,
-  });
+  // ── 🟢 React 19 原生表單動作架構：本地僅保留純 UI 互動旗標，文字載荷全數交由原生 FormData 託管 ──
+  const [remember, setRemember] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [isMerchant, setIsMerchant] = useState(false);
 
-  const [registerFields, setRegisterFields] = useState<RegisterFields>({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeTerms: false,
-  });
+  // ── 🟢 核心狀態加裝：商戶審批成功攔截看板 ──
+  const [isMerchantSubmitted, setIsMerchantSubmitted] = useState(false);
 
-  // ── validation ──────────────────────────────────────────────────────────────
-  const validateLogin = useCallback((): FormErrors => {
+  // ── 🟢 終極破局：網址參數雷達自動追蹤與切換 ──
+  useEffect(() => {
+    if (!searchParams) return;
+    const role = searchParams.get("role");
+
+    // 如果帶有商戶標記，直接阻斷 Login 預設，滑動切換去 Register 並自動剔選 Toggle
+    if (role === "merchant") {
+      startTransition(() => {
+        setTab("register");
+        setIsMerchant(true);
+      });
+    }
+  }, [searchParams]);
+
+  // ── 🟢 React 19 useActionState：登入提交管線（原生 FormData 讀取，零受控狀態微突變）──
+  const [loginErrors, loginAction, isLoginPending] = useActionState<
+    FormErrors | null,
+    FormData
+  >(async (_prev, formData) => {
+    const email = ((formData.get("email") as string | null) ?? "").trim();
+    const password = (formData.get("password") as string | null) ?? "";
+
     const e: FormErrors = {};
-    if (!loginFields.email) e.email = "請輸入電子郵件";
-    else if (!/\S+@\S+\.\S+/.test(loginFields.email)) e.email = "電子郵件格式不正確";
-    if (!loginFields.password) e.password = "請輸入密碼";
-    else if (loginFields.password.length < 8) e.password = "密碼至少 8 個字元";
-    return e;
-  }, [loginFields]);
+    if (!email) e.email = "請輸入電子郵件";
+    if (!password) e.password = "請輸入密碼";
+    if (Object.keys(e).length) return e;
 
-  const validateRegister = useCallback((): FormErrors => {
+    // 模擬後端 Auth 握手
+    await new Promise<void>((r) => setTimeout(r, 1000));
+    router.push("/profile/user/collection");
+    return null;
+  }, null);
+
+  // ── 🟢 React 19 useActionState：註冊提交分流管線（含鋼鐵 Regex 邊界與商戶分流攔截）──
+  const [registerErrors, registerAction, isRegisterPending] = useActionState<
+    FormErrors | null,
+    FormData
+  >(async (_prev, formData) => {
+    const username = ((formData.get("username") as string | null) ?? "").trim();
+    const email = ((formData.get("email") as string | null) ?? "").trim();
+    const password = (formData.get("password") as string | null) ?? "";
+    const confirmPassword =
+      (formData.get("confirmPassword") as string | null) ?? "";
+
     const e: FormErrors = {};
-    if (!registerFields.username) e.username = "請輸入用戶名稱";
-    else if (registerFields.username.length < 3) e.username = "用戶名稱至少 3 個字元";
-    if (!registerFields.email) e.email = "請輸入電子郵件";
-    else if (!/\S+@\S+\.\S+/.test(registerFields.email)) e.email = "電子郵件格式不正確";
-    if (!registerFields.password) e.password = "請輸入密碼";
-    else if (registerFields.password.length < 8) e.password = "密碼至少 8 個字元";
-    if (registerFields.password !== registerFields.confirmPassword)
+
+    // 1. 用戶名稱：限英文、數字、底線、連字號，限 3-24 字元長度
+    const usernameRegex = /^[A-Za-z0-9_\-]{3,24}$/;
+    if (!username) {
+      e.username = "請輸入用戶名稱";
+    } else if (!usernameRegex.test(username)) {
+      e.username =
+        "用戶名稱限 3-24 字元，且只可包含英文、數字、底線(_)或連字號(-)";
+    }
+
+    if (!email) e.email = "請輸入電子郵件";
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = "電子郵件格式不正確";
+
+    // 2. 密碼複雜度：大階、小階、數字、特殊符號，限 8-32 字元
+    const passwordComplexityRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/])[A-Za-z\d!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/]{8,32}$/;
+    if (!password) {
+      e.password = "請輸入密碼";
+    } else if (!passwordComplexityRegex.test(password)) {
+      e.password =
+        "密碼限 8-32 字元，且必須同時包含大寫英文、小寫英文、數字及特殊符號";
+    }
+
+    if (password !== confirmPassword)
       e.confirmPassword = "兩次輸入的密碼不一致";
-    if (!registerFields.agreeTerms) e.agreeTerms = "請同意服務條款及私隱政策";
-    return e;
-  }, [registerFields]);
+    if (!agreeTerms) e.agreeTerms = "請同意服務條款及私隱政策";
+    if (Object.keys(e).length) return e;
 
-  // ── submit handlers ─────────────────────────────────────────────────────────
-  const handleLoginSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      const errs = validateLogin();
-      if (Object.keys(errs).length) { setErrors(errs); return; }
-      setErrors({});
-      setLoading(true);
-      // TODO: [server] replace with Supabase auth.signInWithPassword()
-      await new Promise<void>((r) => setTimeout(r, 1000));
-      setLoading(false);
-    },
-    [validateLogin],
-  );
+    // 模擬後端 DB QUERY & ALTER
+    await new Promise<void>((r) => setTimeout(r, 1200));
 
-  const handleRegisterSubmit = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      const errs = validateRegister();
-      if (Object.keys(errs).length) { setErrors(errs); return; }
-      setErrors({});
-      setLoading(true);
-      // TODO: [server] replace with Supabase auth.signUp()
-      await new Promise<void>((r) => setTimeout(r, 1000));
-      setLoading(false);
-    },
-    [validateRegister],
-  );
+    // 如果是用家剔選咗認證商戶，直接攔截成功畫面，切換至高冷黑金提示看板
+    if (isMerchant) {
+      setIsMerchantSubmitted(true);
+      return null;
+    }
+
+    toast.success("🎉 帳戶建立成功！");
+    router.push("/profile/user/collection");
+    return null;
+  }, null);
+
+  // 派生錯誤源：依當前分頁直接讀取對應 Action 回傳的錯誤快照
+  const errors: FormErrors =
+    (tab === "login" ? loginErrors : registerErrors) ?? {};
 
   const handleTabChange = useCallback((next: Tab) => {
     setTab(next);
-    setErrors({});
     setShowPassword(false);
+    setIsMerchant(false);
   }, []);
 
   const toggleShow = useCallback(() => setShowPassword((v) => !v), []);
 
-  // ── render ──────────────────────────────────────────────────────────────────
+  // ── 🟢 核心優化：商戶審批等待提示畫面 ──
+  if (isMerchantSubmitted) {
+    return (
+      <div className="bg-[#26211C] border border-[rgba(212,165,116,0.25)] rounded-2xl p-6 text-left shadow-2xl space-y-4 animate-scaleUp">
+        <div className="flex items-center gap-2 border-b border-white/5 pb-3">
+          <span className="text-[20px]">🏛️</span>
+          <h2 className="font-sans font-black text-[17px] text-[#eae1da]">
+            認證商戶註冊申請已成功提交
+          </h2>
+        </div>
+        <p className="font-sans text-[13px] text-[#d4c4b7] leading-relaxed">
+          平台管理員已收到您的入駐要約申請。由於認證商戶具備開啟私域散件櫥窗、發布大盤出讓及免手續費等高級特權，風控官將於{" "}
+          <span className="text-brand font-bold">24 小時內</span> 完成人工初審。
+        </p>
+        <div className="p-3.5 bg-[#17130f] rounded-xl border border-white/5 font-sans text-[12.5px] text-[#8A8680] leading-relaxed">
+          💡 <span className="text-[#eae1da] font-semibold">後續流程：</span>
+          審批通過後，系統將自動向您的郵箱發送官方{" "}
+          <span className="text-brand font-medium">
+            Merchant Account Approved
+          </span>{" "}
+          核准認證電郵，並附加一串加密的
+          <span className="text-[#eae1da] font-semibold">
+            一次性憑證 URL
+          </span>{" "}
+          供您直接進行首次安全登入。
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIsMerchantSubmitted(false);
+            handleTabChange("login");
+          }}
+          className="w-full h-11 bg-brand hover:bg-brand-hover text-[#17130f] font-sans text-[14px] font-black rounded-xl cursor-pointer transition-colors focus:outline-none"
+        >
+          返回登入主頁
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col">
-      {/* ── Header: Heading + Tab bar — stable, not shifted by form content ── */}
       <div className="shrink-0">
-      {/* Back button */}
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-6 -ml-1 w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-elevated active:scale-95 transition-all"
-        aria-label="返回上一頁"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-6 -ml-1 w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-elevated active:scale-95 transition-all focus:outline-none"
+          aria-label="返回上一頁"
         >
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-      </button>
-      {/* Heading */}
-      <div className="mb-8">
-        <h1 className="font-sans text-[26px] font-bold text-text-primary leading-tight">
-          {tab === "login" ? "歡迎回來" : "建立帳戶"}
-        </h1>
-        <p className="mt-1.5 font-sans text-[14px] text-text-secondary leading-relaxed">
-          {tab === "login"
-            ? "登入以查看您的卡牌收藏與交易記錄"
-            : "加入 PokéTrade JP，開始交易日版精選卡牌"}
-        </p>
-      </div>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
 
-      {/* Tab bar */}
-      <div className="relative flex bg-bg-card rounded-lg p-1 mb-8 border border-[rgba(237,232,224,0.08)]">
-        {/* Sliding active pill */}
-        <div
-          className="absolute top-1 bottom-1 rounded-md bg-[rgba(212,165,116,0.14)] border border-[rgba(212,165,116,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
-          style={{
-            width: "calc(50% - 4px)",
-            transform: tab === "login" ? "translateX(0)" : "translateX(calc(100% + 4px))",
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => handleTabChange("login")}
-          className={`relative flex-1 h-9 font-sans text-[14px] font-medium rounded-md transition-colors z-10 ${
-            tab === "login" ? "text-brand" : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          登入
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("register")}
-          className={`relative flex-1 h-9 font-sans text-[14px] font-medium rounded-md transition-colors z-10 ${
-            tab === "register" ? "text-brand" : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          免費註冊
-        </button>
+        <div className="mb-8">
+          <h1 className="font-sans text-[26px] font-bold text-text-primary leading-tight">
+            {tab === "login" ? "歡迎回來" : "建立帳戶"}
+          </h1>
+          <p className="mt-1.5 font-sans text-[14px] text-text-secondary leading-relaxed">
+            {tab === "login"
+              ? "登入以查看您的卡牌收藏與交易記錄"
+              : "加入 PokéTrade JP，開始交易日版精選卡牌"}
+          </p>
+        </div>
+
+        <div className="relative flex bg-bg-card rounded-lg p-1 mb-8 border border-[rgba(237,232,224,0.08)]">
+          <div
+            className="absolute top-1 bottom-1 rounded-md bg-[rgba(212,165,116,0.14)] border border-[rgba(212,165,116,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
+            style={{
+              width: "calc(50% - 4px)",
+              transform:
+                tab === "login"
+                  ? "translateX(0)"
+                  : "translateX(calc(100% + 4px))",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => handleTabChange("login")}
+            className={`relative flex-1 h-9 font-sans text-[14px] font-medium rounded-md transition-colors z-10 ${tab === "login" ? "text-brand" : "text-text-secondary hover:text-text-primary"}`}
+          >
+            登入
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("register")}
+            className={`relative flex-1 h-9 font-sans text-[14px] font-medium rounded-md transition-colors z-10 ${tab === "register" ? "text-brand" : "text-text-secondary hover:text-text-primary"}`}
+          >
+            免費註冊
+          </button>
+        </div>
       </div>
-      </div>{/* ── /Header ── */}
 
       {/* ── Login form ─────────────────────────────────────────────────────── */}
       {tab === "login" && (
-        <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+        <form action={loginAction} noValidate className="space-y-4">
           <Field label="電子郵件" error={errors.email}>
             <input
               type="email"
+              name="email"
               autoComplete="email"
               placeholder="your@email.com"
-              value={loginFields.email}
-              onChange={(e) => setLoginFields((f) => ({ ...f, email: e.target.value }))}
               className={inputClass(!!errors.email)}
             />
           </Field>
-
           <Field
             label="密碼"
             error={errors.password}
@@ -357,94 +413,92 @@ export function AuthForm() {
             }
           >
             <PasswordInput
-              value={loginFields.password}
-              onChange={(v) => setLoginFields((f) => ({ ...f, password: v }))}
+              name="password"
               autoComplete="current-password"
               hasError={!!errors.password}
               showPassword={showPassword}
               onToggleShow={toggleShow}
             />
           </Field>
-
-          {/* Remember me */}
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={loginFields.remember}
-              onChange={() => setLoginFields((f) => ({ ...f, remember: !f.remember }))}
+              checked={remember}
+              onChange={() => setRemember((v) => !v)}
             />
             <span className="font-sans text-[13px] text-text-secondary select-none">
               記住我
             </span>
           </div>
-
           <button
             type="submit"
-            disabled={loading}
-            className="w-full h-11 mt-2 rounded-lg bg-brand font-sans text-[15px] font-semibold text-[#17130f] hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoginPending}
+            className="w-full h-11 mt-2 rounded-lg bg-brand font-sans text-[15px] font-semibold text-[#17130f] hover:bg-brand-hover active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "登入中…" : "登入"}
+            {isLoginPending ? "登入中…" : "登入"}
           </button>
         </form>
       )}
 
       {/* ── Register form ──────────────────────────────────────────────────── */}
       {tab === "register" && (
-        <form onSubmit={handleRegisterSubmit} noValidate className="space-y-4">
+        <form action={registerAction} noValidate className="space-y-4">
+          {/* 🟢 頂級加裝：奢華商戶註冊身份分流 Toggle */}
+          <div className="flex items-center justify-between p-3.5 bg-[#17130f] rounded-xl border border-white/5 mb-2">
+            <div className="space-y-0.5 max-w-[80%]">
+              <span className="block font-sans font-bold text-[13px] text-[#eae1da]">
+                🏪 申請註冊成為認證商戶
+              </span>
+            </div>
+            <Checkbox
+              checked={isMerchant}
+              onChange={() => setIsMerchant((v) => !v)}
+            />
+          </div>
+
           <Field label="用戶名稱" error={errors.username}>
             <input
               type="text"
+              name="username"
               autoComplete="username"
               placeholder="poketrader_jp"
-              value={registerFields.username}
-              onChange={(e) => setRegisterFields((f) => ({ ...f, username: e.target.value }))}
               className={inputClass(!!errors.username)}
             />
           </Field>
-
           <Field label="電子郵件" error={errors.email}>
             <input
               type="email"
+              name="email"
               autoComplete="email"
               placeholder="your@email.com"
-              value={registerFields.email}
-              onChange={(e) => setRegisterFields((f) => ({ ...f, email: e.target.value }))}
               className={inputClass(!!errors.email)}
             />
           </Field>
-
           <Field label="密碼" error={errors.password}>
             <PasswordInput
-              value={registerFields.password}
-              onChange={(v) => setRegisterFields((f) => ({ ...f, password: v }))}
+              name="password"
               autoComplete="new-password"
-              placeholder="••••••••（至少 8 個字元）"
+              placeholder="••••••••（必須包含大小寫英數及符號）"
               hasError={!!errors.password}
               showPassword={showPassword}
               onToggleShow={toggleShow}
             />
           </Field>
-
           <Field label="確認密碼" error={errors.confirmPassword}>
             <PasswordInput
-              value={registerFields.confirmPassword}
-              onChange={(v) => setRegisterFields((f) => ({ ...f, confirmPassword: v }))}
+              name="confirmPassword"
               autoComplete="new-password"
               hasError={!!errors.confirmPassword}
               showPassword={showPassword}
               onToggleShow={toggleShow}
             />
           </Field>
-
-          {/* Terms */}
           <div>
             <div className="flex items-start gap-2">
               <div className="mt-0.5">
                 <Checkbox
-                  checked={registerFields.agreeTerms}
+                  checked={agreeTerms}
                   hasError={!!errors.agreeTerms}
-                  onChange={() =>
-                    setRegisterFields((f) => ({ ...f, agreeTerms: !f.agreeTerms }))
-                  }
+                  onChange={() => setAgreeTerms((v) => !v)}
                 />
               </div>
               <span className="font-sans text-[13px] text-text-secondary leading-relaxed">
@@ -465,21 +519,25 @@ export function AuthForm() {
               </span>
             </div>
             {errors.agreeTerms && (
-              <p className="mt-1 pl-6 font-sans text-[12px] text-warning">{errors.agreeTerms}</p>
+              <p className="mt-1 pl-6 font-sans text-[12px] text-warning">
+                {errors.agreeTerms}
+              </p>
             )}
           </div>
-
           <button
             type="submit"
-            disabled={loading}
-            className="w-full h-11 mt-2 rounded-lg bg-brand font-sans text-[15px] font-semibold text-[#17130f] hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isRegisterPending}
+            className="w-full h-11 mt-2 rounded-lg bg-brand font-sans text-[15px] font-semibold text-[#17130f] hover:bg-brand-hover active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "建立中…" : "免費建立帳戶"}
+            {isRegisterPending
+              ? "建立中…"
+              : isMerchant
+                ? "提交商戶入駐申請 🚀"
+                : "免費建立帳戶"}
           </button>
         </form>
       )}
 
-      {/* Footer */}
       <p className="mt-8 text-center font-sans text-[12px] text-text-disabled">
         © 2026 PokéTrade JP · 所有交易受平台監管保障
       </p>

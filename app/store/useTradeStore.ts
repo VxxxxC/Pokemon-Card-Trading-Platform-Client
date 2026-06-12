@@ -6,8 +6,10 @@ export interface SpecialTransactionData {
   cardId: string;
   offerPrice: number;
   buyerName: string;
+  buyerId: string; // 🟢 Added: buyer session identity
   sellerId: string; // 綁定賣家/店鋪唯一識別碼
-  initialStatus?: "pending" | "accepted" | "rejected"; // 🟢 新增：同步投餵給 SpecialTransactionMessage 的初始狀態
+  sellerName: string; // 🟢 Added: seller display name for bilateral rendering
+  initialStatus?: "pending" | "accepted" | "rejected" | "countered"; // 🟢 Expanded with counter-offer state
 }
 
 export interface Message {
@@ -84,6 +86,7 @@ interface TradeStore {
     cardId: string;
     offerPrice: number;
     buyerName: string;
+    buyerId: string; // 🟢 Added
     isInstantTake: boolean;
   }) => void;
 }
@@ -194,7 +197,9 @@ export const useTradeStore = create<TradeStore>((set) => ({
           cardId: payload.cardId,
           offerPrice: payload.offerPrice,
           buyerName: payload.buyerName,
+          buyerId: payload.buyerId,
           sellerId: payload.sellerId,
+          sellerName: payload.sellerName,
           initialStatus: status, // 精準塞入交割狀態
         },
         msgText,
