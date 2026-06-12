@@ -211,6 +211,18 @@ export default function MerchantOverviewPage() {
               </div>
             ))}
           </div>
+
+          {/* ── 🟢 頂級增強點：加裝右下角高貴暗金漸變色「業績分析控制台」入口 ── */}
+          <div className="md:absolute md:bottom-5 md:right-5 mt-4 md:mt-0">
+            <Link
+              href="/profile/merchant/analytics"
+              className="inline-flex items-center justify-center gap-1.5 w-full md:w-auto px-4 h-9 bg-gradient-to-r from-[#d4a574] to-[#e8b896] hover:from-[#e8b896] hover:to-[#d4a574] text-[#17130f] font-sans text-[12.5px] font-black rounded-xl transition-all duration-300 shadow-[0_4px_15px_rgba(212,165,116,0.22)] active:scale-[0.98] cursor-pointer"
+              title="進入商戶數據與業績分析控制艙"
+            >
+              <span>統計分析 📈</span>
+            </Link>
+          </div>
+
         </div>
       </section>
 
