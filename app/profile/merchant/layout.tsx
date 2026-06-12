@@ -10,7 +10,6 @@ const MERCHANT_TABS: TabItem[] = [
   { href: "/profile/merchant/inventory", label: "商品管理", icon: "🗂️" },
   { href: "/profile/merchant/trading", label: "交易管理", icon: "🤝" },
   { href: "/profile/merchant/finance", label: "資金金流", icon: "💰" },
-  { href: "/profile/merchant/settings", label: "店舖設定", icon: "⚙️" },
 ];
 
 export default function MerchantProfileLayout({
