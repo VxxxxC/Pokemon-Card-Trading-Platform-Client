@@ -61,7 +61,7 @@
     --color-warning: var(--warning);
 
     /* 字體 — Geist + Hanken Grotesk (Body) + JetBrains Mono (Data) */
-    --font-sans: var(--font-sans);
+    --font-sans: var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
     /* TODO: Add Hanken Grotesk and JetBrains Mono CSS variables when fonts are imported */
     --font-heading: var(--font-sans);
