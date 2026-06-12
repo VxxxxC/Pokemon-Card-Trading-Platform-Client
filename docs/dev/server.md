@@ -28,12 +28,12 @@
 
 | File | Description |
 |------|-------------|
-| `app/profile/merchant/inventory/page.tsx` | Photo upload — implement `supabase.storage.from('listing-photos').upload()` handler |
-| `app/profile/merchant/inventory/page.tsx` | "儲存草稿" — server action to INSERT into `listings` with `status='draft'` |
-| `app/profile/merchant/inventory/page.tsx` | "立即上架" — server action to INSERT into `listings` with `status='active'` |
-| `app/profile/merchant/sales/page.tsx` | "確認並準備發貨"/"確認發貨" — server action to update `orders.status`, notify buyer |
-| `app/profile/merchant/sales/page.tsx` | "聯絡買家" — open in-platform messaging or navigate to chat thread |
-| `app/profile/merchant/settings/page.tsx` | "儲存店舖資料" — server action to UPDATE `merchant_profiles.shop_name` |
+| `app/components/merchant/NewListingForm.tsx` | Photo upload — implement `supabase.storage.from('listing-photos').upload()` handler |
+| `app/components/merchant/NewListingForm.tsx` | "儲存草稿" — server action to INSERT into `listings` with `status='draft'` |
+| `app/components/merchant/NewListingForm.tsx` | "立即上架" — server action to INSERT into `listings` with `status='active'` |
+| `app/profile/merchant/trading/page.tsx` | "確認並準備發貨"/"確認發貨" — server action to update `orders.status`, notify buyer |
+| `app/profile/merchant/trading/page.tsx` | "聯絡買家" — open in-platform messaging or navigate to chat thread |
+| `app/profile/merchant/settings/page.tsx` | "儲存更改" — server action to UPDATE `merchant_profiles` (shop_name, handle, bio) |
 | `app/profile/merchant/finance/page.tsx` | Stripe Express Dashboard redirect — `stripe.accounts.createLoginLink(accountId)` server action |
 | `app/components/home/PremiumMarket.tsx` | Stripe Connect Onboarding status must be checked via webhook before allowing premium listing |
 

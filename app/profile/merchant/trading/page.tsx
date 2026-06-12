@@ -3,7 +3,7 @@ import type { OrderStatus } from "@/app/lib/types/rbac";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 
 export const metadata: Metadata = {
-  title: "銷售訂單 — PokéTrade JP",
+  title: "交易管理 — PokéTrade JP",
   description: "處理買家訂單、填寫物流追蹤號碼",
 };
 
@@ -49,7 +49,7 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
-export default function MerchantSalesPage() {
+export default function MerchantTradingPage() {
   const needsAction = saleOrders.filter((o) => o.status === "custody" || o.status === "payment");
 
   return (
@@ -70,13 +70,15 @@ export default function MerchantSalesPage() {
       )}
 
       {/* ── Orders List ───────────────────────────────────────────────── */}
-      <section aria-labelledby="sales-heading">
+      <section aria-labelledby="trading-heading">
         <div className="flex items-center justify-between mb-4">
-          <h2 id="sales-heading" className="font-sans font-semibold text-[16px] text-text-primary">
-            銷售訂單 ({saleOrders.length})
+          <h2 id="trading-heading" className="font-sans font-semibold text-[16px] text-text-primary">
+            交易管理 ({saleOrders.length})
           </h2>
-          <div className="flex gap-1.5">
-            {["全部", "待處理", "進行中", "已完成"].map((f) => (
+          {/* 四階段交易管線分流篩選器：已取消 → 待付款 → 鑑定中 → 已完成 */}
+          {/* TODO: [server] Filter pills have no handlers — must filter `orders` query by status server-side or via URL searchParams */}
+          <div className="flex gap-1.5 flex-wrap justify-end">
+            {["全部", "已取消", "待付款", "鑑定中", "已完成"].map((f) => (
               <button key={f} type="button" className={`font-mono text-[11px] px-2.5 py-1 rounded-lg border transition-colors ${f === "全部" ? "text-brand border-brand/30 bg-[rgba(212,165,116,0.08)]" : "text-text-secondary border-[rgba(237,232,224,0.08)] hover:text-text-primary"}`}>
                 {f}
               </button>
