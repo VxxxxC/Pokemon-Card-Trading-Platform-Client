@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import type { OrderStatus } from "@/app/lib/types/rbac";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { Pagination } from "@/app/components/ui/Pagination"; // 完美引入全站統一分頁控制器
+import { toast } from "sonner";
 
 // 🟢 擴充版中央數據源：注入海量級模擬數據，以供完美測試網頁端(8張)與手機端(5張)的分頁切片
 const initialSaleOrders: SaleOrder[] = [
@@ -76,7 +77,7 @@ export default function MerchantTradingPage() {
 
   // 重置頁碼防線：當過濾條件或搜尋關鍵字改變時，自動退回第 1 頁
   useEffect(() => {
-    setCurrentPage(1);
+    queueMicrotask(() => setCurrentPage(1));
   }, [filter, searchQuery]);
 
   // 🟢 核心數據加工鏈：聯動過濾器 + 全文本模糊檢索搜尋

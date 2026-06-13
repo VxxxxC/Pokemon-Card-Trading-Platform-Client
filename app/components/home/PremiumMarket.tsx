@@ -67,14 +67,15 @@ const PREMIUM_LISTINGS = [
 ];
 
 export function PremiumMarket() {
-  const plugin = React.useRef(
-    Autoplay({
+  const plugin = React.useMemo(
+    () => Autoplay({
       delay: 2500,
       playOnInit: true,
       stopOnInteraction: false,
       stopOnMouseEnter: true,
       stopOnFocusIn: true,
     }),
+    [],
   );
 
   return (
@@ -103,10 +104,10 @@ export function PremiumMarket() {
       </div>
 
       <Carousel
-        plugins={[plugin.current]}
+        plugins={[plugin]}
         className="w-full"
-        onMouseEnter={plugin.current.stop}
-        onMouseLeave={plugin.current.reset}
+        onMouseEnter={plugin.stop}
+        onMouseLeave={plugin.reset}
         opts={{
           align: "start",
           loop: true,
