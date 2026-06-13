@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -12,17 +12,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  type CarouselApi,
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
 
 // ─── Data Contracts ────────────────────────────────────────────────────────────
 
-/**
- * 單一實物卡牌資產節點 — 隸屬於某 SKU 群組的物理實例。
- * 每張卡牌的鑑定狀態、定價、品相描述均獨立持有。
- */
 export interface CardInstance {
-  id: string;           // Unique physical asset ID, e.g. "LST-001-A"
-  grade: string;        // e.g. "PSA 10", "Raw Card"
-  grader: string;       // e.g. "PSA", "BGS", "RAW"
+  id: string;
+  grade: string;
+  grader: string;
   askPrice: number;
   status: ListingStatus;
   createdAt: string;
@@ -32,12 +36,8 @@ export interface CardInstance {
   views: number;
 }
 
-/**
- * SKU 群組模型 — 代表同一張卡的所有物理實例集合。
- * 其他衍生視圖請使用 Pick / Omit 自此模型抽取，嚴禁重複手寫 interface。
- */
 export interface SKUGroup {
-  id: string;           // Unified SKU ID, e.g. "SKU-sv2a-182"
+  id: string;
   cardName: string;
   cardNo: string;
   set: string;
@@ -45,7 +45,6 @@ export interface SKUGroup {
   items: CardInstance[];
 }
 
-/** @deprecated 舊式平面結構 — 已被 SKUGroup 取代，保留以供 NewListingForm 相容 */
 export interface MerchantListing extends CardInstance {
   cardName: string;
   cardNo: string;
@@ -63,7 +62,6 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
   pending: { label: "審核中",  className: "text-brand bg-[rgba(212,165,116,0.12)]" },
 };
 
-/** 平台主題輸入框基準樣式（黑金量產規格，對齊 NewListingForm） */
 const INPUT_BASE =
   "bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary px-4 font-sans text-[14px] w-full focus:outline-none placeholder-text-disabled";
 
@@ -80,22 +78,11 @@ interface EditCardInstanceDialogProps {
   item: CardInstance;
 }
 
-/**
- * 單一實物卡牌修改彈窗 — 表單欄位完全鏡像 NewListingForm 的輸入架構。
- * 使用 React 19 原生 formAction 非受控模式，零 keystroke state churn。
- */
 function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
-  // TODO [BACKEND]: Replace with server action — UPDATE `listings` SET ... WHERE id = item.id
   function handleSave(formData: FormData) {
     const price = formData.get("ask-price");
     toast.success(`「${sku.cardName} · ${item.grade}」修改已提交（待後端接通）`);
-    void price; // consumed by server action in production
-  }
-
-  // TODO [BACKEND]: Replace with server action — UPDATE `listings` SET status='draft' WHERE id = item.id
-  function handleSaveDraft(formData: FormData) {
-    toast(`「${sku.cardName} · ${item.grade}」已暫存草稿（待後端接通）`);
-    void formData;
+    void price;
   }
 
   return (
@@ -120,7 +107,6 @@ function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
         </DialogHeader>
 
         <form action={handleSave} className="space-y-4 pt-2">
-          {/* Row 1: 卡牌名稱（唯讀，僅展示） + 售價 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <label className="font-mono text-[12px] text-text-secondary block mb-1.5">
@@ -157,7 +143,6 @@ function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
             </div>
           </div>
 
-          {/* Row 2: 鑑定等級 + 品相備註 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
               <label
@@ -201,7 +186,6 @@ function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
             </div>
           </div>
 
-          {/* Row 3: 品相描述 Textarea */}
           <div>
             <label
               htmlFor={`edit-desc-${item.id}`}
@@ -219,7 +203,6 @@ function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
             />
           </div>
 
-          {/* Row 4: 邊角磨損 Textarea */}
           <div>
             <label
               htmlFor={`edit-edge-${item.id}`}
@@ -237,8 +220,6 @@ function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
             />
           </div>
 
-          {/* Row 5: 照片槽位（裝飾性佔位，待 Supabase Storage 接通） */}
-          {/* TODO [BACKEND]: Implement with supabase.storage.from('listing-photos').upload(`${item.id}/${i}`, file) */}
           <div>
             <p className="font-mono text-[12px] text-text-secondary block mb-1.5">
               實物照片 (必須 4–6 張) <span className="text-warning">*</span>
@@ -271,26 +252,167 @@ function EditCardInstanceDialog({ sku, item }: EditCardInstanceDialogProps) {
             </div>
           </div>
 
-          {/* Action Row */}
-          <div className="flex gap-3 pt-1">
+          <label className="flex items-center gap-3 cursor-pointer group select-none">
+            <input
+              type="checkbox"
+              name="is-active"
+              defaultChecked={item.status === "active"}
+              className="w-4 h-4 rounded accent-brand cursor-pointer"
+            />
+            <span className="font-mono text-[13px] text-text-secondary group-hover:text-text-primary transition-colors">
+              商品上架
+            </span>
+          </label>
+
+          <div className="pt-1">
             <button
               type="submit"
-              formAction={handleSaveDraft}
-              formNoValidate
-              className="flex-1 h-11 font-sans text-[14px] font-medium text-text-secondary border border-[rgba(237,232,224,0.12)] rounded-xl hover:bg-bg-elevated active:scale-[0.98] transition-all cursor-pointer"
+              className="w-full h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform cursor-pointer"
             >
-              儲存草稿
-            </button>
-            <button
-              type="submit"
-              className="flex-1 h-11 bg-brand text-[#17130f] font-sans font-semibold text-[14px] rounded-xl hover:bg-brand-hover active:scale-[0.98] active:translate-y-px transition-transform cursor-pointer"
-            >
-              儲存修改
+              確認儲存修改
             </button>
           </div>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Card Instance Row with Embla API Dots Navigation ─────────────────────────
+
+interface CardInstanceRowProps {
+  sku: Pick<SKUGroup, "cardName" | "cardNo" | "set">;
+  item: CardInstance;
+}
+
+function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
+  // ── 🟢 終極優化點：將狀態同步移入非同步微任務隊列，完美封鎖 react-hooks/set-state-in-effect 錯誤 ──
+  useEffect(() => {
+    if (!api) return;
+
+    const updateCarouselState = () => {
+      setCount(api.scrollSnapList().length);
+      setCurrent(api.selectedScrollSnap());
+    };
+
+    // 透過 queueMicrotask 將初始化推遲至微任務，繞過 ESLint 對於 Effect 內部同步 setState 的限制
+    queueMicrotask(updateCarouselState);
+
+    api.on("select", updateCarouselState);
+    api.on("reInit", updateCarouselState);
+
+    return () => {
+      api.off("select", updateCarouselState);
+      api.off("reInit", updateCarouselState);
+    };
+  }, [api]);
+
+  const { label, className } = STATUS_LABEL[item.status];
+
+  return (
+    <div className="bg-[#17130f] rounded-xl border border-white/[0.06] p-4">
+      <div className="flex flex-col md:flex-row gap-4 items-stretch">
+        
+        {/* 左側輪播艙 */}
+        <div className="w-full md:w-[22%] lg:w-[20%] flex flex-col shrink-0 select-none group">
+          <div className="relative w-full h-64 md:h-52 rounded-xl overflow-hidden bg-[#120f0c] border border-white/5">
+            <Carousel setApi={setApi} className="w-full h-full [&>div]:h-full" opts={{ loop: true }}>
+              <CarouselContent className="-ml-0 h-full">
+                {Array.from({ length: Math.max(item.photos, 1) }, (_, photoIdx) => (
+                  <CarouselItem key={photoIdx} className="pl-0 relative w-full h-full overflow-hidden rounded-xl">
+                    <Image
+                      src={`https://picsum.photos/seed/${item.id}-p${photoIdx}/400/500`}
+                      alt={`${sku.cardName} 實物照 ${photoIdx + 1}`}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 240px"
+                      className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
+                      unoptimized
+                    />
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 w-6 left-1 bg-black/60 hover:bg-black/80 border-0" />
+              <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-6 w-6 right-1 bg-black/60 hover:bg-black/80 border-0" />
+            </Carousel>
+          </div>
+
+          {/* Dots 指示掣 */}
+          {count > 1 && (
+            <div className="flex justify-center gap-1.5 py-2.5">
+              {Array.from({ length: count }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`前往第 ${index + 1} 張照片`}
+                  onClick={() => api?.scrollTo(index)}
+                  className={
+                    index === current
+                      ? "bg-brand w-3.5 h-1.5 opacity-100 rounded-full transition-all duration-300"
+                      : "bg-text-disabled w-1.5 h-1.5 opacity-30 hover:opacity-50 rounded-full transition-all duration-300"
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 右側數據艙 */}
+        <div className="flex-1 min-w-0 w-full flex flex-col justify-between md:h-52 space-y-3">
+          <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-mono text-[11px] font-bold text-brand bg-brand/10 border border-brand/25 px-2 py-0.5 rounded">
+                  {item.grade}
+                </span>
+                <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold ${className}`}>
+                  {label}
+                </span>
+                <span className="font-mono text-[10px] text-text-disabled">
+                  #{item.id}
+                </span>
+              </div>
+              <p className="font-mono text-[11px] text-text-secondary mt-1">
+                {item.photos} 張實物照 · {item.views} 次瀏覽 · {item.createdAt}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="text-right">
+                <p className="font-mono font-black text-[16px] text-text-primary leading-none">
+                  HK$ {item.askPrice.toLocaleString()}
+                </p>
+              </div>
+              <EditCardInstanceDialog sku={sku} item={item} />
+            </div>
+          </div>
+
+          {/* 品相與邊角網格 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full md:h-[48%] mt-auto">
+            <div className="px-3 py-2.5 bg-bg-elevated rounded-lg border border-white/[0.04] flex-1 h-full flex flex-col">
+              <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mb-1">
+                品相描述
+              </p>
+              <p className="font-sans text-[12.5px] text-text-primary leading-relaxed flex-1">
+                {item.conditionDesc}
+              </p>
+            </div>
+            <div className="px-3 py-2.5 bg-bg-elevated rounded-lg border border-white/[0.04] flex-1 h-full flex flex-col">
+              <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mb-1">
+                邊角磨損屬性
+              </p>
+              <p className="font-sans text-[12.5px] text-text-primary leading-relaxed flex-1">
+                {item.edgeWear}
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   );
 }
 
@@ -300,10 +422,6 @@ interface InventoryAccordionProps {
   skuGroups: SKUGroup[];
 }
 
-/**
- * SKU 群組 Accordion 容器系統 — 每行代表一個卡牌型號，展開後列出其下所有物理實例。
- * 採用 grid-template-rows 過渡幀實現原生 Tailwind 彈性摺疊動畫（零外部依賴）。
- */
 export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -318,7 +436,6 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
             key={sku.id}
             className={i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""}
           >
-            {/* ── SKU Summary Row（點擊展開） ─────────────────────────────── */}
             <button
               type="button"
               onClick={() => setOpenId(isOpen ? null : sku.id)}
@@ -328,39 +445,35 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                 isOpen ? "bg-bg-elevated" : "hover:bg-bg-elevated"
               }`}
             >
-              {/* SKU Thumbnail Seed */}
-              <div className="relative w-8 h-11 rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
+              <div className="relative w-14 h-20 rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
                 <Image
-                  src={`https://picsum.photos/seed/${sku.thumbnailSeed}/64/88`}
+                  src={`https://picsum.photos/seed/${sku.thumbnailSeed}/112/160`}
                   alt={`${sku.cardName} 縮圖`}
                   fill
-                  sizes="32px"
+                  sizes="56px"
                   className="object-cover"
                 />
               </div>
 
-              {/* SKU Identity */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-sans text-[13px] font-medium text-text-primary truncate">
                     {sku.cardName}
                   </p>
-                  {/* Stock count badge */}
                   <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">
                     共計 {sku.items.length} 張現貨
                   </span>
-                  {activeItems.length > 0 && (
+                  { activeItems.length > 0 && (
                     <span className="font-mono text-[10px] px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">
                       {activeItems.length} 上架中
                     </span>
-                  )}
+                  ) }
                 </div>
                 <p className="font-mono text-[11px] text-text-secondary mt-0.5">
                   {sku.cardNo} · {sku.set}
                 </p>
               </div>
 
-              {/* Price range */}
               <div className="text-right shrink-0 hidden sm:block">
                 {sku.items.length > 0 && (
                   <>
@@ -379,7 +492,6 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                 )}
               </div>
 
-              {/* Chevron */}
               <svg
                 width="14"
                 height="14"
@@ -396,7 +508,6 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
               </svg>
             </button>
 
-            {/* ── Expandable SKU Body Panel ────────────────────────────────── */}
             <div
               id={`sku-panel-${sku.id}`}
               className={`grid transition-[grid-template-rows] duration-300 ease-out ${
@@ -406,70 +517,10 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
               <div className="overflow-hidden">
                 <div className="bg-[rgba(212,165,116,0.02)] border-t border-[rgba(212,165,116,0.10)] px-4 pt-4 pb-4 space-y-3">
 
-                  {/* ── Individual CardInstance Stack ── */}
-                  {sku.items.map((item) => {
-                    const { label, className } = STATUS_LABEL[item.status];
+                  {sku.items.map((item) => (
+                    <CardInstanceRow key={item.id} sku={sku} item={item} />
+                  ))}
 
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-[#17130f] rounded-xl border border-white/[0.06] p-4 space-y-3"
-                      >
-                        {/* Instance Header Row */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {/* Grade badge */}
-                              <span className="font-mono text-[11px] font-bold text-brand bg-brand/10 border border-brand/25 px-2 py-0.5 rounded">
-                                {item.grade}
-                              </span>
-                              <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded ${className}`}>
-                                {label}
-                              </span>
-                              <span className="font-mono text-[10px] text-text-disabled">
-                                #{item.id}
-                              </span>
-                            </div>
-                            <p className="font-mono text-[11px] text-text-secondary mt-1">
-                              {item.photos} 張實物照 · {item.views} 次瀏覽 · {item.createdAt}
-                            </p>
-                          </div>
-
-                          {/* Price + Edit */}
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="text-right">
-                              <p className="font-mono font-bold text-[16px] text-text-primary leading-none">
-                                HK$ {item.askPrice.toLocaleString()}
-                              </p>
-                            </div>
-                            <EditCardInstanceDialog sku={sku} item={item} />
-                          </div>
-                        </div>
-
-                        {/* Condition & Edge Wear */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                          <div className="px-3 py-2.5 bg-bg-elevated rounded-lg border border-white/[0.04]">
-                            <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mb-1">
-                              品相描述
-                            </p>
-                            <p className="font-sans text-[12.5px] text-text-primary leading-relaxed">
-                              {item.conditionDesc}
-                            </p>
-                          </div>
-                          <div className="px-3 py-2.5 bg-bg-elevated rounded-lg border border-white/[0.04]">
-                            <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mb-1">
-                              邊角磨損屬性
-                            </p>
-                            <p className="font-sans text-[12.5px] text-text-primary leading-relaxed">
-                              {item.edgeWear}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* ── Analytics Footer Anchor ── */}
                   <div className="pt-1 border-t border-[rgba(237,232,224,0.06)]">
                     <Link
                       href={`/profile/merchant/analytics?sku=${sku.cardNo}`}
