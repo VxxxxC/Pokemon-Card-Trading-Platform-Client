@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { NewListingForm } from "@/app/components/merchant/NewListingForm";
 import {
   InventoryAccordion,
   type SKUGroup,
 } from "@/app/components/merchant/InventoryAccordion";
+import { Pagination } from "@/app/components/ui/Pagination";
 
 // TODO [MOCK DATA]: Replace with Supabase query —
 // SELECT skus.*, json_agg(listings.*) AS items
@@ -173,6 +174,33 @@ export default function MerchantInventoryPage() {
   const soldCount   = countByStatus(skuGroups, "sold");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentSkuPage, setCurrentSkuPage] = useState(1);
+  const skusPerPage = 6;
+
+  // Reset currentSkuPage to 1 when searchQuery changes
+  useEffect(() => {
+    queueMicrotask(() => setCurrentSkuPage(1));
+  }, [searchQuery]);
+
+  // Fuzzy Search on cardName or cardNo
+  const filteredSkuGroups = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return skuGroups;
+    return skuGroups.filter(
+      (sku) =>
+        sku.cardName.toLowerCase().includes(query) ||
+        sku.cardNo.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
+  // Pagination slicing
+  const paginatedSkuGroups = useMemo(() => {
+    return filteredSkuGroups.slice(
+      (currentSkuPage - 1) * skusPerPage,
+      currentSkuPage * skusPerPage
+    );
+  }, [filteredSkuGroups, currentSkuPage]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -191,6 +219,32 @@ export default function MerchantInventoryPage() {
             <p className="font-mono font-bold text-[18px] text-text-primary">{value}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── 🟢 智慧卡牌商品搜尋欄 ────────────────────────────────── */}
+      <div className="relative bg-bg-card border border-[rgba(237,232,224,0.08)] p-4 rounded-2xl shadow-sm flex flex-col gap-2">
+        <label htmlFor="merchant-sku-search" className="font-mono text-[11px] text-text-secondary uppercase tracking-wider">
+          🔍 智慧卡牌商品檢索控制台 (SUPPORT FUZZY QUERY)
+        </label>
+        <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
+          <input
+            id="merchant-sku-search"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜尋卡牌名稱、卡號 (如 sv2a-182)..."
+            className="flex-1 h-full bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="px-3 h-full font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
+            >
+              清除
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── 🟢 HIGH-PERFORMANCE GRID ACCORDION SHIELD FOR CREATION CABINET ── */}
@@ -246,10 +300,23 @@ export default function MerchantInventoryPage() {
           className="font-sans font-semibold text-[16px] text-text-primary mb-4 space-x-2"
         >
           <span>所有商品</span>
-          <span className="font-mono text-sm px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">{skuGroups.length} 款 卡牌</span> 
+          <span className="font-mono text-sm px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">{filteredSkuGroups.length} 款 卡牌</span> 
           <span className="font-mono text-sm px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">{totalItems} 張現貨</span>
         </h2>
-        <InventoryAccordion skuGroups={skuGroups} />
+        <InventoryAccordion skuGroups={paginatedSkuGroups} />
+
+        {/* ── 🟢 SKU Group Pagination ── */}
+        <div className="pt-4">
+          <Pagination
+            currentPage={currentSkuPage}
+            totalPages={Math.ceil(filteredSkuGroups.length / skusPerPage)}
+            onPageChange={(page) => setCurrentSkuPage(page)}
+            itemLabel="款卡牌商品"
+            totalItems={filteredSkuGroups.length}
+            itemsPerPage={skusPerPage}
+            enableScroll={true}
+          />
+        </div>
       </section>
     </div>
   );
