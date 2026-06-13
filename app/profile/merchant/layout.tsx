@@ -22,7 +22,7 @@ export default function MerchantProfileLayout({
       <TopNav />
       <MobileHeader />
 
-      <main className="flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
+      <main className="mt-5 flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
         {/* 商戶後台分流導航列（輕量外殼 — Hero 已下放至總覽頁承載） */}
         <ProfileTabNav tabs={MERCHANT_TABS} />
 

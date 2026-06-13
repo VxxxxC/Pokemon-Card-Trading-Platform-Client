@@ -21,7 +21,7 @@ export default function UserProfileLayout({
       <TopNav />
       <MobileHeader />
 
-      <main className="flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
+      <main className="mt-5 flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
         {/* 4柱石分流導航列 */}
         <ProfileTabNav tabs={USER_TABS} />
 
