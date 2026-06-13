@@ -168,10 +168,9 @@ function countByStatus(
 // ─── Page Component ────────────────────────────────────────────────────────────
 
 export default function MerchantInventoryPage() {
-  const activeCount = countByStatus(skuGroups, "active");
-  const draftCount  = countByStatus(skuGroups, "draft");
-  const soldCount   = countByStatus(skuGroups, "sold");
   const totalItems  = skuGroups.reduce((t, sku) => t + sku.items.length, 0);
+  const activeCount = countByStatus(skuGroups, "active");
+  const soldCount   = countByStatus(skuGroups, "sold");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -180,8 +179,8 @@ export default function MerchantInventoryPage() {
       {/* ── Summary 數據統計卡 ─────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {[
+          { label: "現貨",   value: `${totalItems} 件`  },
           { label: "上架中", value: `${activeCount} 件` },
-          { label: "草稿",   value: `${draftCount} 件`  },
           { label: "已售出", value: `${soldCount} 件`   },
         ].map(({ label, value }) => (
           <div
@@ -205,13 +204,7 @@ export default function MerchantInventoryPage() {
           className="w-full flex items-center justify-between font-sans text-[14.5px] md:text-[15.5px] font-black text-brand normal-case tracking-tight group focus:outline-none cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            <span className={`inline-block transition-transform duration-300 ${isFormOpen ? "rotate-45 scale-125" : "group-hover:scale-125"}`}>
-              ✨
-            </span>
-            <span>🏪 進入商戶安全庫存：新增商品上架登記</span>
-            <span className="font-mono text-[11px] text-text-disabled font-normal tracking-wide lowercase opacity-50 hidden sm:inline">
-              (click to toggle cabinet form)
-            </span>
+            <span>新增商品</span>
           </div>
 
           {/* Animated Chevron Arrow Node */}
@@ -250,9 +243,11 @@ export default function MerchantInventoryPage() {
       <section aria-labelledby="listings-heading" className="pt-1">
         <h2
           id="listings-heading"
-          className="font-sans font-semibold text-[16px] text-text-primary mb-4"
+          className="font-sans font-semibold text-[16px] text-text-primary mb-4 space-x-2"
         >
-          所有商品 ({skuGroups.length} 個 SKU · 共 {totalItems} 張實物)
+          <span>所有商品</span>
+          <span className="font-mono text-sm px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">{skuGroups.length} 款 卡牌</span> 
+          <span className="font-mono text-sm px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">{totalItems} 張現貨</span>
         </h2>
         <InventoryAccordion skuGroups={skuGroups} />
       </section>
