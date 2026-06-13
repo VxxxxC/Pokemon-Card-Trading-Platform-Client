@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { ListingStatus } from "@/app/lib/types/rbac";
+import { Pagination } from "@/app/components/ui/Pagination";
 import {
   Dialog,
   DialogContent,
@@ -416,6 +417,42 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
   );
 }
 
+// ─── Sku Items Standalone State-Bounded Module Framework ───────────────────
+
+interface SkuItemsListProps {
+  sku: SKUGroup;
+}
+
+function SkuItemsList({ sku }: SkuItemsListProps) {
+  const [itemPage, setItemPage] = useState(1);
+  const itemsPerPage = 3;
+  const totalItemPages = Math.ceil(sku.items.length / itemsPerPage);
+  const paginatedItems = sku.items.slice(
+    (itemPage - 1) * itemsPerPage,
+    itemPage * itemsPerPage,
+  );
+
+  return (
+    <div className="space-y-3">
+      {paginatedItems.map((item) => (
+        <CardInstanceRow key={item.id} sku={sku} item={item} />
+      ))}
+
+      {/* Localized Micro Pagination Bar */}
+      <Pagination
+        currentPage={itemPage}
+        totalPages={totalItemPages}
+        onPageChange={(page) => setItemPage(page)}
+        itemLabel="張實物現貨"
+        totalItems={sku.items.length}
+        itemsPerPage={itemsPerPage}
+        hideControls={true}
+        enableScroll={false}
+      />
+    </div>
+  );
+}
+
 // ─── Main SKU Inventory Accordion ─────────────────────────────────────────────
 
 interface InventoryAccordionProps {
@@ -517,9 +554,7 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
               <div className="overflow-hidden">
                 <div className="bg-[rgba(212,165,116,0.02)] border-t border-[rgba(212,165,116,0.10)] px-4 pt-4 pb-4 space-y-3">
 
-                  {sku.items.map((item) => (
-                    <CardInstanceRow key={item.id} sku={sku} item={item} />
-                  ))}
+                  <SkuItemsList sku={sku} />
 
                   <div className="pt-1 border-t border-[rgba(237,232,224,0.06)]">
                     <Link
