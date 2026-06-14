@@ -46,14 +46,6 @@ export interface SKUGroup {
   items: CardInstance[];
 }
 
-export interface MerchantListing extends CardInstance {
-  cardName: string;
-  cardNo: string;
-  set: string;
-  thumbnailSeeds: string[];
-  viewTrail: { period: string; views: number }[];
-}
-
 // ─── Status Display Map ────────────────────────────────────────────────────────
 
 const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> = {
