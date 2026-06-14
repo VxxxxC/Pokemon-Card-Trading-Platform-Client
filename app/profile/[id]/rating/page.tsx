@@ -143,7 +143,7 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
       <TopNav />
       <MobileHeader />
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6">
+      <main className="mb-[5rem] flex-1 max-w-3xl mx-auto w-full px-4 py-6">
         {/* ── Back navigation ──────────────────────────────────────────── */}
         <div className="mb-6">
           <button
