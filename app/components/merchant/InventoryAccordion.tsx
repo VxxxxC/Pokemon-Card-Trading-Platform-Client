@@ -35,6 +35,7 @@ export interface CardInstance {
   edgeWear: string;
   photos: number;
   views: number;
+  offersCount?: number;
 }
 
 export interface SKUGroup {
@@ -112,32 +113,47 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
           <div className="w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 hover:bg-[#1a1612] border border-white/[0.03] rounded-xl transition-all cursor-pointer select-none group/row text-left" />
         }
       >
+        {/* Left Info Column */}
         <div className="flex flex-col gap-0.5 min-w-0 flex-1 items-start">
-          <span className="font-mono text-[10px] font-bold text-text-disabled tracking-wider block mb-0.5">
-            #{item.id}
-          </span>
-          <span className="font-sans text-[14.5px] font-medium text-text-primary truncate">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-mono text-[10px] font-bold text-text-disabled tracking-wider block">
+              #{item.id}
+            </span>
+            {item.offersCount && item.offersCount > 0 ? (
+              <span className="text-[10px] animate-pulse" title="有買家叫價！">🔥</span>
+            ) : null}
+          </div>
+          
+          <span className="font-sans text-[14.5px] font-medium text-text-primary truncate w-full">
             {sku.cardName}
           </span>
-          <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0 mt-1">
-            {item.grade}
-          </span>
+          
+          {/* 🟢 核心重構點 1：[上架中] 完美重組至 [PSA grade] 右手面（Web + Mobile 100% 同步橫排） */}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0">
+              {item.grade}
+            </span>
+            <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${className}`}>
+              {label}
+            </span>
+          </div>
         </div>
 
-        {/* Center Context: Status Label Badge ONLY (已移除舊重複 ID 襯底) */}
-        <div className="hidden sm:flex items-center gap-3 px-4 shrink-0">
-          <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${className}`}>
-            {label}
-          </span>
-        </div>
+        {/* 🟢 核心重構點 2：右側動作艙升格為 flex-col 縱向排字，叫價次數完美貼合在價格/按鈕正下方 */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0 pl-2">
+          {/* 上排：售價 + 編輯掣 */}
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="font-mono font-semibold text-[15px] md:text-[16px] text-brand">
+              HK$ {item.askPrice.toLocaleString()}
+            </span>
+            <span className="flex items-center justify-center px-3 h-7 font-sans text-[12px] font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer shrink-0">
+              編輯
+            </span>
+          </div>
 
-        {/* Right Action Side */}
-        <div className="flex items-center gap-3 shrink-0 pl-2">
-          <span className="font-mono font-semibold text-[15px] md:text-[16px] text-brand">
-            HK$ {item.askPrice.toLocaleString()}
-          </span>
-          <span className="flex items-center justify-center px-3 h-7 font-sans text-[12px] font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer shrink-0">
-            編輯
+          {/* 下排：叫價次數提示字眼（手機端完美流暢顯化） */}
+          <span className="font-mono text-[11px] text-text-secondary tracking-tight">
+            叫價次數：<span className={item.offersCount && item.offersCount > 0 ? "text-warning font-bold" : ""}>{item.offersCount || 0} 次</span>
           </span>
         </div>
       </DialogTrigger>
@@ -174,7 +190,7 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
                           className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
                           unoptimized
                         />
-                        {/* 🟢 Center-Top Contextual Annotation HUD Overlay */}
+                        {/* Center-Top Contextual Annotation HUD Overlay */}
                         {currentRemark && (
                           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-md bg-[#17130f]/75 backdrop-blur-xs border border-white/10 text-center pointer-events-none select-none max-w-[85%] animate-fadeIn">
                             <p className="font-sans text-[11px] font-medium text-brand tracking-wide truncate">
@@ -419,6 +435,8 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
       {skuGroups.map((sku, i) => {
         const isOpen = openId === sku.id;
         const activeItems = sku.items.filter((item) => item.status === "active");
+        const totalOffers = sku.items.reduce((acc, item) => acc + (item.offersCount || 0), 0);
+        const hasActiveOffer = sku.items.some((item) => (item.offersCount || 0) > 0);
 
         return (
           <div
@@ -442,6 +460,11 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                   sizes="56px"
                   className="object-cover"
                 />
+                {hasActiveOffer && (
+                  <div className="absolute top-1 right-1 z-10 w-5 h-5 bg-[#EF4444] rounded-full flex items-center justify-center animate-bounce shadow-md" title="有買家叫價！">
+                    <span className="text-[10px]">🔥</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 min-w-0">
@@ -457,6 +480,11 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                       {activeItems.length} 上架中
                     </span>
                   ) }
+                  {totalOffers > 0 && (
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded text-warning bg-[rgba(239,68,68,0.10)] font-bold animate-pulse">
+                      {totalOffers} 次叫價
+                    </span>
+                  )}
                 </div>
                 <p className="font-mono text-[11px] text-text-secondary mt-0.5">
                   {sku.cardNo}
@@ -472,10 +500,14 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                         <span className="text-text-disabled text-[11px]"> 起</span>
                       )}
                     </p>
-                    <p className="font-mono text-[10px] text-text-disabled">
-                      {sku.items.length > 1
-                        ? `至 HK$ ${Math.max(...sku.items.map((it) => it.askPrice)).toLocaleString()}`
-                        : sku.items[0].grade}
+                    <p className="font-mono text-[10.5px] mt-0.5">
+                      {sku.items.length > 1 ? (
+                        <>
+                          至 <span className="text-brand font-bold">HK$ {Math.max(...sku.items.map((it) => it.askPrice)).toLocaleString()}</span>
+                        </>
+                      ) : (
+                        sku.items[0].grade
+                      )}
                     </p>
                   </>
                 )}
