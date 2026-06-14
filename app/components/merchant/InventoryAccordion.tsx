@@ -54,6 +54,15 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
   pending: { label: "審核中",  className: "text-brand bg-[rgba(212,165,116,0.12)]" },
 };
 
+const REMARKS_PRESETS = [
+  "卡牌正面全貌",
+  "背面右上角帶微白點",
+  "左下邊角銳利特寫",
+  "封殼完美無裂紋",
+  "隨照附帶備註",
+  "微距視角細節"
+];
+
 // ─── Card Instance Row with Full-Scale Inspection Dialog ─────────────────────────
 
 interface CardInstanceRowProps {
@@ -153,18 +162,29 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
             <div className="relative w-full aspect-[3/4] max-h-[45dvh] md:w-80 md:h-[420px] md:max-h-none md:aspect-none rounded-xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
               <Carousel setApi={setApi} className="w-full h-full [&>div]:h-full" opts={{ loop: true }}>
                 <CarouselContent className="-ml-0 h-full">
-                  {Array.from({ length: Math.max(item.photos, 1) }, (_, photoIdx) => (
-                    <CarouselItem key={photoIdx} className="pl-0 relative w-full h-full overflow-hidden rounded-xl">
-                      <Image
-                        src={`https://picsum.photos/seed/${item.id}-p${photoIdx}/400/500`}
-                        alt={`${sku.cardName} 實物照 ${photoIdx + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 320px"
-                        className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
-                        unoptimized
-                      />
-                    </CarouselItem>
-                  ))}
+                  {Array.from({ length: Math.max(item.photos, 1) }, (_, photoIdx) => {
+                    const currentRemark = current === photoIdx ? (REMARKS_PRESETS[photoIdx] ?? "") : "";
+                    return (
+                      <CarouselItem key={photoIdx} className="pl-0 relative w-full h-full overflow-hidden rounded-xl">
+                        <Image
+                          src={`https://picsum.photos/seed/${item.id}-p${photoIdx}/400/500`}
+                          alt={`${sku.cardName} 實物照 ${photoIdx + 1}`}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 320px"
+                          className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
+                          unoptimized
+                        />
+                        {/* 🟢 Center-Top Contextual Annotation HUD Overlay */}
+                        {currentRemark && (
+                          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-md bg-[#17130f]/75 backdrop-blur-xs border border-white/10 text-center pointer-events-none select-none max-w-[85%] animate-fadeIn">
+                            <p className="font-sans text-[11px] font-medium text-brand tracking-wide truncate">
+                              {currentRemark}
+                            </p>
+                          </div>
+                        )}
+                      </CarouselItem>
+                    );
+                  })}
                 </CarouselContent>
                 <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 left-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
                 <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 right-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
@@ -285,30 +305,41 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
                 實物照片 (必須 4–6 張) <span className="text-warning">*</span>
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {Array.from({ length: 6 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                      i < item.photos
-                        ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
-                        : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
-                    }`}
-                  >
-                    {i < item.photos ? (
-                      <span className="font-mono text-[9px] text-brand">✓</span>
-                    ) : (
-                      <>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <line x1="12" y1="5" x2="12" y2="19" />
-                          <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        <span className="font-mono text-[9px] text-text-disabled mt-0.5">
-                          {i < 4 ? "必填" : "選填"}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {Array.from({ length: 6 }, (_, i) => {
+                  const presetRemark = i === 0 ? "卡牌正面全貌" : i === 1 ? "背面右上角帶微白點" : i === 2 ? "左下邊角銳利特寫" : i === 3 ? "封殼完美無裂紋" : "";
+                  return (
+                    <div key={i} className="flex flex-col">
+                      <div
+                        className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                          i < item.photos
+                            ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
+                            : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
+                        }`}
+                      >
+                        {i < item.photos ? (
+                          <span className="font-mono text-[9px] text-brand">✓</span>
+                        ) : (
+                          <>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span className="font-mono text-[9px] text-text-disabled mt-0.5">
+                              {i < 4 ? "必填" : "選填"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        name={`photo-remark-${i}`}
+                        placeholder="照片備註（例：背面左上角微白）"
+                        defaultValue={presetRemark}
+                        className="w-full bg-[#17130f] border border-white/5 rounded-lg h-8 px-2 font-sans text-[11px] text-text-primary focus:outline-none placeholder-text-disabled mt-1.5"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
