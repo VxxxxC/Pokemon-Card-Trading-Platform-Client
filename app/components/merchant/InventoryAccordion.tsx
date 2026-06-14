@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
+import { CiBullhorn } from "react-icons/ci";
 import type { ListingStatus } from "@/app/lib/types/rbac";
 import { Pagination } from "@/app/components/ui/Pagination";
 import {
@@ -120,7 +121,7 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
               #{item.id}
             </span>
             {item.offersCount && item.offersCount > 0 ? (
-              <span className="text-[10px] animate-pulse" title="有買家叫價！">🔥</span>
+              <CiBullhorn className="w-4 h-4 text-warning animate-pulse shrink-0" title="有買家叫價！" />
             ) : null}
           </div>
           
@@ -462,7 +463,7 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                 />
                 {hasActiveOffer && (
                   <div className="absolute top-1 right-1 z-10 w-5 h-5 bg-[#EF4444] rounded-full flex items-center justify-center animate-bounce shadow-md" title="有買家叫價！">
-                    <span className="text-[10px]">🔥</span>
+                    <CiBullhorn className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
               </div>
