@@ -41,7 +41,6 @@ export interface SKUGroup {
   id: string;
   cardName: string;
   cardNo: string;
-  set: string;
   thumbnailSeed: string;
   items: CardInstance[];
 }
@@ -58,7 +57,7 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
 // ─── Card Instance Row with Full-Scale Inspection Dialog ─────────────────────────
 
 interface CardInstanceRowProps {
-  sku: Pick<SKUGroup, "cardName" | "cardNo" | "set">;
+  sku: Pick<SKUGroup, "cardName" | "cardNo">;
   item: CardInstance;
 }
 
@@ -68,7 +67,6 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
   const [count, setCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  // ── 🟢 異步微任務排程：完美封鎖 react-hooks/set-state-in-effect 錯誤 ──
   useEffect(() => {
     if (!api) return;
 
@@ -99,34 +97,32 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {/* 🟢 輕量化降溫列表行行殼：nativeButton={false} 徹底解除 Base UI 阻斷 */}
       <DialogTrigger
         nativeButton={false}
         render={
           <div className="w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 hover:bg-[#1a1612] border border-white/[0.03] rounded-xl transition-all cursor-pointer select-none group/row text-left" />
         }
       >
-        {/* 🟢 優化點 1：將卡牌名稱與 PSA Grade 收入同一個 <div> 並改為 flex-col 縱向靠左排 */}
-        <div className="flex flex-col gap-1 min-w-0 flex-1 items-start">
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1 items-start">
+          <span className="font-mono text-[10px] font-bold text-text-disabled tracking-wider block mb-0.5">
+            #{item.id}
+          </span>
           <span className="font-sans text-[14.5px] font-medium text-text-primary truncate">
             {sku.cardName}
           </span>
-          <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0">
+          <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0 mt-1">
             {item.grade}
           </span>
         </div>
 
-        {/* Center Context: Product Listing ID + Status Label Badge */}
+        {/* Center Context: Status Label Badge ONLY (已移除舊重複 ID 襯底) */}
         <div className="hidden sm:flex items-center gap-3 px-4 shrink-0">
-          <span className="font-mono text-[11px] text-text-disabled">
-            #{item.id}
-          </span>
           <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${className}`}>
             {label}
           </span>
         </div>
 
-        {/* 🟢 優化點 2：右側價錢與編輯掣字體調幼（font-semibold / font-medium），正名為 [編輯] */}
+        {/* Right Action Side */}
         <div className="flex items-center gap-3 shrink-0 pl-2">
           <span className="font-mono font-semibold text-[15px] md:text-[16px] text-brand">
             HK$ {item.askPrice.toLocaleString()}
@@ -137,7 +133,6 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
         </div>
       </DialogTrigger>
 
-      {/* 🟢 優化點 3：Dialog 容器極限防爆。加上 max-w-[calc(100%-2rem)] 鎖死手機邊界 */}
       <DialogContent
         className="sm:max-w-[850px] w-full max-w-[calc(100%-2rem)] bg-[#1A1612] border border-[rgba(212,165,116,0.20)] text-text-primary overflow-y-auto max-h-[90dvh] p-5 sm:p-6"
         showCloseButton
@@ -147,14 +142,13 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
             卡牌實物詳情與編輯
           </DialogTitle>
           <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-            {sku.cardName} · {item.grade}
+            #{item.id} · {sku.cardName} · {item.grade}
           </p>
         </DialogHeader>
 
-        {/* Dialog Main Content Grid */}
         <div className="flex flex-col md:flex-row gap-5 md:gap-6 mt-3 md:mt-4 items-start">
           
-          {/* 🟢 優化點 4：手機版 Carousel 採用 aspect 寬度自適應主導，徹底阻斷橫向破版溢出 */}
+          {/* Left Carousel Viewport */}
           <div className="flex flex-col items-center select-none group w-full md:w-auto shrink-0 overflow-hidden">
             <div className="relative w-full aspect-[3/4] max-h-[45dvh] md:w-80 md:h-[420px] md:max-h-none md:aspect-none rounded-xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
               <Carousel setApi={setApi} className="w-full h-full [&>div]:h-full" opts={{ loop: true }}>
@@ -197,10 +191,9 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
             )}
           </div>
 
-          {/* Right Frame: Twin Metadata Deck & Form controls */}
+          {/* Right Form Container */}
           <form action={handleSave} className="flex-1 w-full space-y-4">
             
-            {/* Price & Grade Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
                 <label htmlFor={`edit-price-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
@@ -243,7 +236,6 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
               </div>
             </div>
 
-            {/* Condition Notes */}
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
               <label htmlFor={`edit-condition-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
                 品相備註
@@ -258,9 +250,7 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
               />
             </div>
 
-            {/* Symmetrical Twin Metadata Deck */}
             <div className="grid grid-cols-1 gap-3.5 flex-1">
-              {/* Detailed Condition Card */}
               <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col min-h-[95px] flex-1">
                 <label htmlFor={`edit-desc-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
                   品相描述
@@ -275,7 +265,6 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
                 />
               </div>
 
-              {/* Edge Wear Card */}
               <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col min-h-[85px] flex-1">
                 <label htmlFor={`edit-edge-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
                   邊角磨損屬性
@@ -291,7 +280,6 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
               </div>
             </div>
 
-            {/* ── 🟢 優化點 5：手機端照片欄換裝 grid-cols-3，徹底杜絕橫向擠壓爆版 ── */}
             <div>
               <p className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1.5">
                 實物照片 (必須 4–6 張) <span className="text-warning">*</span>
@@ -324,7 +312,6 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
               </div>
             </div>
 
-            {/* Status Checklist & Submission Threshold Gate */}
             <div className="flex items-center justify-between pt-2 border-t border-white/5">
               <label className="flex items-center gap-2.5 cursor-pointer group select-none">
                 <input
@@ -345,16 +332,14 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
                 確認儲存修改
               </button>
             </div>
-
           </form>
-
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ─── Sku Items Standalone State-Bounded Module Framework ───────────────────
+// ─── Sku Items List Module ───────────────────────────────────────────────────
 
 interface SkuItemsListProps {
   sku: SKUGroup;
@@ -375,7 +360,6 @@ function SkuItemsList({ sku }: SkuItemsListProps) {
         <CardInstanceRow key={item.id} sku={sku} item={item} />
       ))}
 
-      {/* Localized Micro Pagination Bar */}
       <Pagination
         currentPage={itemPage}
         totalPages={totalItemPages}
@@ -444,7 +428,7 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                   ) }
                 </div>
                 <p className="font-mono text-[11px] text-text-secondary mt-0.5">
-                  {sku.cardNo} · {sku.set}
+                  {sku.cardNo}
                 </p>
               </div>
 
