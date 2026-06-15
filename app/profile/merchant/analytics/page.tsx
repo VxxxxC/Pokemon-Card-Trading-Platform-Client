@@ -1,132 +1,280 @@
-import type { Metadata } from "next";
-import Link from "next/link";
+"use client";
 
-export const metadata: Metadata = {
-  title: "商品分析 — PokéTrade JP",
-  description: "進階商品表現分析閘道：即時數據流視窗準備中",
+import * as React from "react";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { IoChevronBack } from "react-icons/io5";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import {
+ ChartContainer,
+ ChartTooltip,
+ ChartTooltipContent,
+ ChartLegend,
+ ChartLegendContent,
+ type ChartConfig,
+} from "@/components/ui/chart";
+import {
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from "@/components/ui/select";
+
+// ─── Data Types ──────────────────────────────────────────────────────────────
+
+interface MetricData {
+ time: string;
+ totalSales: number;
+ viewCount: number;
+ txCount: number;
+}
+
+// ─── Mock Time Dimension Datasets ─────────────────────────────────────────────
+
+const MOCK_DATA_MAP: Record<string, MetricData[]> = {
+ "12h": [
+   { time: "02:00", totalSales: 12500, viewCount: 45, txCount: 1 },
+   { time: "04:00", totalSales: 28500, viewCount: 68, txCount: 2 },
+   { time: "06:00", totalSales: 15000, viewCount: 89, txCount: 1 },
+   { time: "08:00", totalSales: 42000, viewCount: 112, txCount: 3 },
+   { time: "10:00", totalSales: 35000, viewCount: 154, txCount: 2 },
+   { time: "12:00", totalSales: 49800, viewCount: 180, txCount: 4 },
+ ],
+ "7d": [
+   { time: "週一", totalSales: 42000, viewCount: 210, txCount: 3 },
+   { time: "週二", totalSales: 68000, viewCount: 340, txCount: 5 },
+   { time: "週三", totalSales: 51000, viewCount: 280, txCount: 4 },
+   { time: "週四", totalSales: 92000, viewCount: 450, txCount: 6 },
+   { time: "週五", totalSales: 74000, viewCount: 390, txCount: 5 },
+   { time: "週六", totalSales: 118000, viewCount: 580, txCount: 8 },
+   { time: "週日", totalSales: 135000, viewCount: 640, txCount: 9 },
+ ],
+ "1m": [
+   { time: "W1", totalSales: 120000, viewCount: 890, txCount: 12 },
+   { time: "W2", totalSales: 185000, viewCount: 1240, txCount: 16 },
+   { time: "W3", totalSales: 142000, viewCount: 1050, txCount: 11 },
+   { time: "W4", totalSales: 215000, viewCount: 1680, txCount: 19 },
+ ],
+ "3m": [
+   { time: "四月", totalSales: 420000, viewCount: 3100, txCount: 42 },
+   { time: "五月", totalSales: 580000, viewCount: 4800, txCount: 56 },
+   { time: "六月", totalSales: 640000, viewCount: 5200, txCount: 61 },
+ ],
+ "6m": [
+   { time: "一月", totalSales: 380000, viewCount: 2800, txCount: 35 },
+   { time: "二月", totalSales: 450000, viewCount: 3400, txCount: 41 },
+   { time: "三月", totalSales: 510000, viewCount: 4100, txCount: 49 },
+   { time: "四月", totalSales: 420000, viewCount: 3100, txCount: 42 },
+   { time: "五月", totalSales: 580000, viewCount: 4800, txCount: 56 },
+   { time: "六月", totalSales: 640000, viewCount: 5200, txCount: 61 },
+ ],
+ "12m": [
+   { time: "25/07", totalSales: 310000, viewCount: 2200, txCount: 28 },
+   { time: "25/08", totalSales: 290000, viewCount: 1950, txCount: 24 },
+   { time: "25/09", totalSales: 340000, viewCount: 2500, txCount: 31 },
+   { time: "25/10", totalSales: 420000, viewCount: 3100, txCount: 38 },
+   { time: "25/11", totalSales: 380000, viewCount: 2900, txCount: 33 },
+   { time: "25/12", totalSales: 490000, viewCount: 3800, txCount: 44 },
+   { time: "26/01", totalSales: 380000, viewCount: 2800, txCount: 35 },
+   { time: "26/02", totalSales: 450000, viewCount: 3400, txCount: 41 },
+   { time: "26/03", totalSales: 510000, viewCount: 4100, txCount: 49 },
+   { time: "26/04", totalSales: 420000, viewCount: 3100, txCount: 42 },
+   { time: "26/05", totalSales: 580000, viewCount: 4800, txCount: 56 },
+   { time: "26/06", totalSales: 640000, viewCount: 5200, txCount: 61 },
+ ],
+};
+
+// ─── Chart Config Matrix ──────────────────────────────────────────────────────
+
+const chartConfig: ChartConfig = {
+ totalSales: {
+   label: "總銷售額 (HK$)",
+   color: "#d4a574", // Custom Branding Theme Gold Hue
+ },
+ viewCount: {
+   label: "瀏覽次數 (次)",
+   color: "#a89888",
+ },
+ txCount: {
+   label: "成交次數 (次)",
+   color: "#10b981",
+ },
 };
 
 interface MerchantAnalyticsPageProps {
-  searchParams: Promise<{ sku?: string }>;
+ searchParams: Promise<{ sku?: string }>;
 }
 
-// 骨架矩陣規格：高冷黑金漸層脈衝塊，等待後端即時數據流接管
-const SKELETON_KPI_SLOTS = [
-  "VIEW VELOCITY",
-  "WATCHLIST DEPTH",
-  "PRICE DELTA",
-  "CONVERSION PULSE",
-] as const;
-
-// TODO: [BACKEND] Replace this temporary skeleton matrix with the Client Container Live Data Stream Viewport —
-// subscribe to Supabase Realtime channel (per-SKU views / watchlist / price events) and hydrate via streaming RSC.
-// TODO: [API] Fetch per-SKU analytics aggregation from `listing_analytics` (views, watchers, price history) WHERE listing_id = sku
-export default async function MerchantAnalyticsPage({
-  searchParams,
+export default function MerchantAnalyticsPage({
+ searchParams,
 }: MerchantAnalyticsPageProps) {
-  const { sku } = await searchParams;
+ const router = useRouter();
+ const [timeRange, setTimeRange] = useState<string>("7d");
 
-  return (
-    <section
-      aria-labelledby="analytics-heading"
-      aria-busy="true"
-      className="space-y-5 animate-fadeIn p-5"
-    >
-      {/* ── 精緻航線麵包屑：引流重返商品管理 ─────────────────────────────── */}
-      <div className="font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
-        <Link
-          href="/profile/merchant/inventory"
-          className="hover:text-brand transition-colors"
-        >
-          🗂️ 商品管理
-        </Link>
-        <span className="text-text-disabled">/</span>
-        <span className="text-text-disabled uppercase">Analytics 商品分析</span>
-      </div>
+ // Await searchParams in client side safe pattern using React.use
+ const resolvedParams = React.use(searchParams);
+ const sku = resolvedParams?.sku ?? null;
 
-      {/* ── Page Title Header ──────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div>
-          <h1
-            id="analytics-heading"
-            className="font-sans font-black text-[22px] lg:text-[26px] text-text-primary tracking-tight"
-          >
-        {sku && (
-          <span className="font-mono text-brand">
-            {sku}
-          </span>
-        )}
-            商品分析
-          </h1>
-          <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-            Client Container Live Data Stream Viewport
-          </p>
-        </div>
-      </div>
+ // Extract selected timeseries data
+ const currentChartData = useMemo(() => {
+   return MOCK_DATA_MAP[timeRange] ?? MOCK_DATA_MAP["7d"];
+ }, [timeRange]);
 
-      {/* ── KPI Skeleton Matrix（黑金脈衝佔位） ───────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" aria-hidden="true">
-        {SKELETON_KPI_SLOTS.map((slot) => (
-          <div
-            key={slot}
-            className="bg-bg-card rounded-2xl border border-[rgba(212,165,116,0.15)] p-4 overflow-hidden"
-          >
-            <p className="font-mono text-[9px] text-text-disabled uppercase tracking-wider mb-3">
-              {slot}
-            </p>
-            <div className="h-5 w-24 rounded-md bg-linear-to-r from-[rgba(212,165,116,0.18)] via-[rgba(212,165,116,0.06)] to-[rgba(212,165,116,0.18)] animate-pulse mb-2" />
-            <div className="h-3 w-16 rounded bg-[rgba(237,232,224,0.06)] animate-pulse" />
-          </div>
-        ))}
-      </div>
+ return (
+   <section
+     aria-labelledby="analytics-heading"
+     className="space-y-6 animate-fadeIn p-4 md:p-6"
+   >
+     {/* ── Standardized Minimalist History Back Navigation Node ─────────────── */}
+     <div className="flex items-center gap-4 select-none">
+       <button
+         onClick={() => router.back()}
+         className="w-10 h-10 rounded-full bg-[#26211C] border border-[rgba(237,232,224,0.12)] text-[#8A8680] hover:text-[#d4a574] hover:border-[#d4a574]/40 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-md"
+         aria-label="回上頁"
+       >
+         <IoChevronBack className="size-5" />
+       </button>
+       <div>
+         <h1
+           id="analytics-heading"
+           className="font-sans font-black text-[22px] lg:text-[25px] text-[#eae1da] tracking-tight flex items-center gap-2 flex-wrap"
+         >
+           {sku && (
+             <span className="font-mono text-[#d4a574]">
+               {sku}
+             </span>
+           )}
+           <span>商品分析</span>
+         </h1>
+         <p className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider mt-0.5">
+           Client Container Live Data Stream Viewport
+         </p>
+       </div>
+     </div>
 
-      {/* ── Live Data Stream Viewport Skeleton ────────────────────────── */}
-      <div className="bg-bg-card rounded-2xl border border-[rgba(212,165,116,0.15)] p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="h-4 w-36 rounded bg-[rgba(212,165,116,0.14)] animate-pulse" />
-          <div className="h-6 w-20 rounded-lg bg-[rgba(237,232,224,0.06)] animate-pulse" />
-        </div>
-        <div
-          className="flex items-end gap-1.5 h-40"
-          role="img"
-          aria-label="圖表數據載入中"
-        >
-          {[34, 58, 42, 71, 50, 88, 63, 95, 76, 54, 82, 67, 90, 60, 73, 48, 85, 70, 92, 64].map(
-            (h, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-t-sm bg-linear-to-t from-[rgba(212,165,116,0.22)] to-[rgba(212,165,116,0.05)] animate-pulse"
-                style={{ height: `${h}%`, animationDelay: `${i * 60}ms` }}
-                aria-hidden="true"
-              />
-            ),
-          )}
-        </div>
-        <div className="flex justify-between mt-3" aria-hidden="true">
-          <div className="h-3 w-14 rounded bg-[rgba(237,232,224,0.06)] animate-pulse" />
-          <div className="h-3 w-14 rounded bg-[rgba(237,232,224,0.06)] animate-pulse" />
-        </div>
-      </div>
+     {/* ── Executive KPI Summary Widgets ──────────────────────────────────────── */}
+     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+       {[
+         { label: "平均成交價", value: "HK$ 42,500" },
+         { label: "市場最低價", value: "HK$ 38,000" },
+       ].map(({ label, value }) => (
+         <div
+           key={label}
+           className="bg-[#26211C] rounded-2xl border border-white/5 p-5 shadow-sm transition-all"
+         >
+           <p className="font-mono text-[11px] text-[#8A8680] uppercase tracking-wider mb-1">
+             {label}
+           </p>
+           <p className="font-mono font-bold text-[24px] text-[#eae1da] tracking-tight">
+             {value}
+           </p>
+         </div>
+       ))}
+     </div>
 
-      {/* ── Event Feed Skeleton Rows ──────────────────────────────────── */}
-      <div
-        className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden"
-        aria-hidden="true"
-      >
-        {Array.from({ length: 4 }, (_, i) => (
-          <div
-            key={i}
-            className={`flex items-center gap-3 px-4 py-3.5 ${i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""}`}
-          >
-            <div className="w-9 h-9 rounded-xl bg-[rgba(212,165,116,0.10)] animate-pulse shrink-0" />
-            <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-2/5 rounded bg-[rgba(237,232,224,0.08)] animate-pulse" />
-              <div className="h-3 w-1/4 rounded bg-[rgba(237,232,224,0.05)] animate-pulse" />
-            </div>
-            <div className="h-4 w-16 rounded bg-[rgba(212,165,116,0.12)] animate-pulse shrink-0" />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+     {/* ── Interactive Area Chart Area ────────────────────────────────────────── */}
+     <div className="bg-[#26211C] rounded-2xl border border-white/5 p-5 shadow-lg">
+       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+         <div>
+           <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
+             商品表現即時監控圖表
+           </h3>
+           <p className="font-mono text-[10px] text-[#8A8680]">
+             實時監察銷售總額、瀏覽與成交轉化數據
+           </p>
+         </div>
+
+         {/* 6-Tier Time-Range Select Controller */}
+         <Select value={timeRange} onValueChange={(val) => setTimeRange(val ?? "7d")}>
+           <SelectTrigger className="w-[125px]">
+             <SelectValue placeholder="選擇時間" />
+           </SelectTrigger>
+           <SelectContent>
+             <SelectItem value="12h">12 小時</SelectItem>
+             <SelectItem value="7d">7 日</SelectItem>
+             <SelectItem value="1m">1 個月</SelectItem>
+             <SelectItem value="3m">3 個月</SelectItem>
+             <SelectItem value="6m">6 個月</SelectItem>
+             <SelectItem value="12m">12 個月</SelectItem>
+           </SelectContent>
+         </Select>
+       </div>
+
+       <div className="h-72 w-full">
+         <ChartContainer config={chartConfig} className="h-full w-full">
+           <ResponsiveContainer width="100%" height="100%">
+             <AreaChart data={currentChartData} margin={{ left: -10, right: 10, top: 10, bottom: 0 }}>
+               <defs>
+                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="5%" stopColor="#d4a574" stopOpacity={0.25} />
+                   <stop offset="95%" stopColor="#d4a574" stopOpacity={0} />
+                 </linearGradient>
+                 <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="5%" stopColor="#a89888" stopOpacity={0.2} />
+                   <stop offset="95%" stopColor="#a89888" stopOpacity={0} />
+                 </linearGradient>
+                 <linearGradient id="colorTx" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                 </linearGradient>
+               </defs>
+               <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
+               <XAxis
+                 dataKey="time"
+                 tickLine={false}
+                 axisLine={false}
+                 tickMargin={8}
+               />
+               <YAxis
+                 yAxisId="left"
+                 tickLine={false}
+                 axisLine={false}
+                 tickMargin={8}
+                 style={{ fill: "#10b981", fontSize: 10, fontFamily: "monospace" }}
+               />
+               <YAxis
+                 yAxisId="right"
+                 orientation="right"
+                 tickLine={true}
+                 axisLine={true}
+                 tickMargin={8}
+                 style={{ fill: "#d4a574", fontSize: 10, fontFamily: "monospace" }}
+               />
+               <ChartTooltip content={<ChartTooltipContent />} />
+               <Area
+                 yAxisId="right"
+                 type="monotone"
+                 dataKey="totalSales"
+                 stroke="#d4a574"
+                 strokeWidth={2}
+                 fillOpacity={1}
+                 fill="url(#colorSales)"
+               />
+               <Area
+                 type="monotone"
+                 dataKey="viewCount"
+                 stroke="#a89888"
+                 strokeWidth={1.5}
+                 fillOpacity={1}
+                 fill="url(#colorViews)"
+               />
+               <Area
+                 yAxisId="left"
+                 type="monotone"
+                 dataKey="txCount"
+                 stroke="#10b981"
+                 strokeWidth={1.5}
+                 fillOpacity={1}
+                 fill="url(#colorTx)"
+               />
+               <ChartLegend content={<ChartLegendContent/>}/>
+             </AreaChart>
+           </ResponsiveContainer>
+         </ChartContainer>
+       </div>
+     </div>
+
+   </section>
+ );
 }
