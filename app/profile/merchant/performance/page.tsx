@@ -12,28 +12,6 @@ const monthlyPerformanceData = [
   { month: "5月", revenue: 384600, profit: 95400 }, // Current active billing cycle
 ];
 
-// TODO [MOCK DATA]: Replace with real category breakdown from Supabase order aggregation
-const categoryBreakdown = [
-  {
-    category: "單卡現貨 (Singles)",
-    percentage: 65,
-    value: "HK$ 249,990",
-    color: "bg-brand",
-  },
-  {
-    category: "密封盒/補充包 (Sealed Boxes)",
-    percentage: 20,
-    value: "HK$ 76,920",
-    color: "bg-amber-600",
-  },
-  {
-    category: "鑑定代辦服務 (Grading)",
-    percentage: 15,
-    value: "HK$ 57,690",
-    color: "bg-emerald-500",
-  },
-];
-
 export default function MerchantPerformancePage() {
   const router = useRouter();
 
@@ -66,9 +44,9 @@ export default function MerchantPerformancePage() {
       </div>
 
       {/* ── 🟢 STAGE 2: Three Master Executive Financial Metric Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="flex flex-row justify-evenly gap-4">
         {/* KPI 1: 總營業額 */}
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
+        <div className="w-full bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-brand/5 to-transparent rounded-bl-full pointer-events-none" />
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
             總營業額 (Gross Turnover)
@@ -88,29 +66,8 @@ export default function MerchantPerformancePage() {
           </div>
         </div>
 
-        {/* KPI 2: 店舖淨利潤率 */}
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-brand/5 to-transparent rounded-bl-full pointer-events-none" />
-          <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
-            店舖淨利潤率 (Net Profit Margin %)
-          </p>
-          <div className="space-y-1">
-            <p className="font-mono text-[24px] font-black text-brand leading-none tracking-tight">
-              24.85%
-            </p>
-            <div className="flex items-center gap-1.5 pt-1">
-              <span className="font-mono text-[10px] text-success bg-[rgba(16,185,129,0.1)] px-1.5 py-0.5 rounded font-bold">
-                ● 營運穩健
-              </span>
-              <span className="font-sans text-[10.5px] text-text-disabled">
-                扣除平台佣金與金流成本
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 3: 平均客單價 (AOV) — replaces Conversion Velocity */}
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
+        {/* KPI 2: 平均客單價 (AOV) — replaces Conversion Velocity */}
+        <div className="w-full bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-linear-to-bl from-brand/5 to-transparent rounded-bl-full pointer-events-none" />
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
             平均客單價 (Average Order Value - AOV)
@@ -192,57 +149,6 @@ export default function MerchantPerformancePage() {
             <div className="w-2.5 h-2.5 rounded-xs bg-emerald-500" />
             <span>店舖淨利潤 (Net Profit)</span>
           </div>
-        </div>
-      </div>
-
-      {/* ── 🟢 STAGE 4: CHART 2 - 銷售品類結構佔比分析 ── */}
-      <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
-        <div className="mb-4">
-          <h2 className="font-sans font-bold text-[15px] text-text-primary tracking-tight">
-            店舖銷售品類結構佔比
-          </h2>
-          <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-            Product Category Sales Breakdown Ledger
-          </p>
-        </div>
-
-        {/* Horizontal Stacked Percentage Bar */}
-        <div className="w-full h-4 bg-[#17130f] rounded-full overflow-hidden flex border border-white/5 my-4">
-          {categoryBreakdown.map((item, idx) => (
-            <div
-              key={idx}
-              className={`${item.color} h-full first:rounded-l-full last:rounded-r-full transition-all duration-300 hover:opacity-80 cursor-help`}
-              style={{ width: `${item.percentage}%` }}
-              title={`${item.category}: ${item.percentage}%`}
-            />
-          ))}
-        </div>
-
-        {/* Detailed Items Legend Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-          {categoryBreakdown.map((item, idx) => (
-            <div
-              key={idx}
-              className="p-3 rounded-xl bg-[#17130f]/40 border border-white/[0.03] flex items-center justify-between"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className={`w-2 h-2 rounded-full shrink-0 ${item.color}`}
-                />
-                <span className="font-sans text-[12.5px] text-text-secondary truncate">
-                  {item.category}
-                </span>
-              </div>
-              <div className="text-right pl-2 shrink-0">
-                <span className="font-mono text-[12px] font-bold text-text-primary block">
-                  {item.value}
-                </span>
-                <span className="font-mono text-[10px] text-text-disabled block">
-                  {item.percentage}%
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </section>
