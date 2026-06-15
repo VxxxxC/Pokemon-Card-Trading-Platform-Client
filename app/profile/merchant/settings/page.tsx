@@ -1,5 +1,8 @@
 "use client";
 
+import { TopNav } from "@/app/components/navigation/TopNav";
+import { MobileHeader } from "@/app/components/navigation/MobileHeader";
+import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
@@ -21,7 +24,10 @@ export default function MerchantSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="min-h-dvh bg-bg-page flex flex-col">
+      <TopNav />
+      <MobileHeader />
+    <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pt-4 pb-28 lg:pb-12 space-y-6 animate-fadeIn">
       {/* 精緻航線麵包屑：引流重返商戶總覽 */}
       <div className="font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
         <Link
@@ -235,6 +241,8 @@ export default function MerchantSettingsPage() {
           <LogoutModal />
         </section>
       </div>
+    </main>
+    <BottomNav/>
     </div>
   );
 }

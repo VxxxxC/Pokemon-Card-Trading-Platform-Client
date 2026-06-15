@@ -30,7 +30,7 @@ export default async function MerchantAnalyticsPage({
     <section
       aria-labelledby="analytics-heading"
       aria-busy="true"
-      className="space-y-5 animate-fadeIn"
+      className="space-y-5 animate-fadeIn p-5"
     >
       {/* ── 精緻航線麵包屑：引流重返商品管理 ─────────────────────────────── */}
       <div className="font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
@@ -51,28 +51,17 @@ export default async function MerchantAnalyticsPage({
             id="analytics-heading"
             className="font-sans font-black text-[22px] lg:text-[26px] text-text-primary tracking-tight"
           >
-            進階商品分析
+        {sku && (
+          <span className="font-mono text-brand">
+            {sku}
+          </span>
+        )}
+            商品分析
           </h1>
           <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
             Client Container Live Data Stream Viewport
           </p>
         </div>
-        {sku && (
-          <span className="font-mono text-[11px] text-brand bg-[rgba(212,165,116,0.10)] border border-brand/25 px-2.5 py-1 rounded-lg">
-            SKU 鎖定：{sku}
-          </span>
-        )}
-      </div>
-
-      {/* ── 連線狀態指示燈 ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-bg-card border border-[rgba(212,165,116,0.20)] rounded-xl">
-        <span
-          className="w-2 h-2 rounded-full bg-brand animate-pulse"
-          aria-hidden="true"
-        />
-        <p className="font-mono text-[11px] text-text-secondary">
-          即時數據流通道建立中 — 後端分析管線尚未接通，以下為佔位骨架矩陣。
-        </p>
       </div>
 
       {/* ── KPI Skeleton Matrix（黑金脈衝佔位） ───────────────────────────── */}
