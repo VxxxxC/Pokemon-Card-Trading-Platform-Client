@@ -4,7 +4,7 @@ import * as React from "react";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { IoChevronBack } from "react-icons/io5";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import { ComposedChart, Area, Line, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import {
  ChartContainer,
  ChartTooltip,
@@ -94,12 +94,21 @@ const chartConfig: ChartConfig = {
  },
  viewCount: {
    label: "瀏覽次數 (次)",
-   color: "#a89888",
+   color: "#00D2FF",
  },
  txCount: {
    label: "成交次數 (次)",
    color: "#10b981",
  },
+};
+
+const rangeLabelMap: Record<string, string> = {
+  "12h": "12 小時",
+  "7d": "7 日",
+  "1m": "1 個月",
+  "3m": "3 個月",
+  "6m": "6 個月",
+  "12m": "12 個月"
 };
 
 interface MerchantAnalyticsPageProps {
@@ -177,18 +186,16 @@ export default function MerchantAnalyticsPage({
      <div className="bg-[#26211C] rounded-2xl border border-white/5 p-5 shadow-lg">
        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
          <div>
-           <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-             商品表現即時監控圖表
-           </h3>
-           <p className="font-mono text-[10px] text-[#8A8680]">
-             實時監察銷售總額、瀏覽與成交轉化數據
+           <p className="font-sans font-bold text-[15px] text-[#eae1da]">
+             商品表現
            </p>
          </div>
 
+         <div className="w-[125px] shrink-0">
          {/* 6-Tier Time-Range Select Controller */}
          <Select value={timeRange} onValueChange={(val) => setTimeRange(val ?? "7d")}>
-           <SelectTrigger className="w-[125px]">
-             <SelectValue placeholder="選擇時間" />
+           <SelectTrigger className="w-full bg-[#1A1612] border border-white/5 rounded-xl text-text-primary text-[13px] font-sans h-9">
+             <SelectValue>{rangeLabelMap[timeRange] || "選擇時間"}</SelectValue>
            </SelectTrigger>
            <SelectContent>
              <SelectItem value="12h">12 小時</SelectItem>
@@ -199,77 +206,91 @@ export default function MerchantAnalyticsPage({
              <SelectItem value="12m">12 個月</SelectItem>
            </SelectContent>
          </Select>
+         </div>
        </div>
 
        <div className="h-72 w-full">
          <ChartContainer config={chartConfig} className="h-full w-full">
            <ResponsiveContainer width="100%" height="100%">
-             <AreaChart data={currentChartData} margin={{ left: -10, right: 10, top: 10, bottom: 0 }}>
+             <ComposedChart data={currentChartData}>
                <defs>
-                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                   <stop offset="5%" stopColor="#d4a574" stopOpacity={0.25} />
-                   <stop offset="95%" stopColor="#d4a574" stopOpacity={0} />
-                 </linearGradient>
-                 <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                   <stop offset="5%" stopColor="#a89888" stopOpacity={0.2} />
-                   <stop offset="95%" stopColor="#a89888" stopOpacity={0} />
-                 </linearGradient>
-                 <linearGradient id="colorTx" x1="0" y1="0" x2="0" y2="1">
-                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                 <linearGradient id="mixViewCount" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="5%" stopColor="#00D2FF" stopOpacity={0.4} />
+                   <stop offset="95%" stopColor="#00D2FF" stopOpacity={0.0} />
                  </linearGradient>
                </defs>
-               <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.03)" />
+
+               <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" />
+                
                <XAxis
                  dataKey="time"
+                 scale="band"
+                 tickLine={false}
+                 axisLine={false}
+                 tickMargin={10}
+                 style={{ fill: "#8A8680", fontSize: 10, fontFamily: "monospace" }}
+               />
+                
+               {/* 左 Y 軸線路：主管大金額數值 */}
+               <YAxis
+                 yAxisId="totalSales"
+                 orientation="left"
                  tickLine={false}
                  axisLine={false}
                  tickMargin={8}
+                 style={{ fill: chartConfig.totalSales.color, fontSize: 10, fontFamily: "monospace" }}
+                 tickFormatter={(val) => `$${val.toLocaleString()}`}
                />
+                
+               {/* 右 Y 軸線路：主管小數額次數 */}
                <YAxis
-                 yAxisId="left"
-                 tickLine={false}
-                 axisLine={false}
-                 tickMargin={8}
-                 style={{ fill: "#10b981", fontSize: 10, fontFamily: "monospace" }}
-               />
-               <YAxis
-                 yAxisId="right"
+                 yAxisId="viewCount"
                  orientation="right"
-                 tickLine={true}
-                 axisLine={true}
+                 tickLine={false}
+                 axisLine={false}
                  tickMargin={8}
-                 style={{ fill: "#d4a574", fontSize: 10, fontFamily: "monospace" }}
+                 style={{ fill: chartConfig.viewCount.color, fontSize: 10, fontFamily: "monospace" }}
+                 tickFormatter={(val) => `$${val.toLocaleString()}`}
                />
-               <ChartTooltip content={<ChartTooltipContent />} />
-               <Area
-                 yAxisId="right"
-                 type="monotone"
-                 dataKey="totalSales"
-                 stroke="#d4a574"
-                 strokeWidth={2}
-                 fillOpacity={1}
-                 fill="url(#colorSales)"
+                
+               <ChartTooltip
+                 cursor={{ fill: "#ffffff", opacity: 0.04 }}
+                 content={
+                    <ChartTooltipContent className="bg-[#1A1612] border border-white/10 [&&_*]:text-[#eae1da]" labelClassName="text-lg"/>
+                 }
                />
+
+               {/* 瀏覽次數：Area 漸變底襯 */}
                <Area
+                 yAxisId="viewCount"
                  type="monotone"
                  dataKey="viewCount"
-                 stroke="#a89888"
-                 strokeWidth={1.5}
-                 fillOpacity={1}
-                 fill="url(#colorViews)"
+                 fill="url(#mixViewCount)"
+                 stroke={chartConfig.viewCount.color}
+                 strokeWidth={2}
                />
-               <Area
-                 yAxisId="left"
+
+               {/* 總銷售額：Line 折線 */}
+               <Line
+                 yAxisId="totalSales"
                  type="monotone"
-                 dataKey="txCount"
-                 stroke="#10b981"
-                 strokeWidth={1.5}
-                 fillOpacity={1}
-                 fill="url(#colorTx)"
+                 dataKey="totalSales"
+                 stroke={chartConfig.totalSales.color}
+                 strokeWidth={2.5}
+                 dot={{ r: 3 }}
+                 activeDot={{ r: 5 }}
                />
-               <ChartLegend content={<ChartLegendContent/>}/>
-             </AreaChart>
+                
+               {/* 成交次數 */}
+               <Bar
+                 dataKey="txCount"
+                 fill={chartConfig.txCount.color}
+                 radius={[3, 3, 0, 0]}
+                 maxBarSize={14}
+               />
+                
+               <ChartLegend content={<ChartLegendContent className="mt-4" />} />
+             </ComposedChart>
            </ResponsiveContainer>
          </ChartContainer>
        </div>
