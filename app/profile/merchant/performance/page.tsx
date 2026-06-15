@@ -224,9 +224,6 @@ export default function MerchantPerformancePage() {
           >
             店舖經營與業績分析
           </h1>
-          <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-            Macro Storefront Business Intelligence Terminal
-          </p>
         </div>
       </div>
 
@@ -234,32 +231,29 @@ export default function MerchantPerformancePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="w-full bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
-            歷史累計總營業額 (Lifetime Turnover)
+            歷史累計總營業額
           </p>
-          <p className="font-mono text-[24px] font-black text-text-primary leading-none tracking-tight">
+          <p className={`font-mono text-[24px] font-black text-[${chartConfig.turnover.color}] leading-none tracking-tight`}>
             HK$ {allTimeMetrics.turnoverSum.toLocaleString()}
           </p>
-          <p className="font-sans text-[10.5px] text-text-disabled mt-2">● 平台全量結算累計資產</p>
         </div>
 
         <div className="w-full bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
-            歷史累計平均單價 (Lifetime AOV)
+            歷史累計平均單價
           </p>
-          <p className="font-mono text-[24px] font-black text-text-primary leading-none tracking-tight">
+          <p className={ `font-mono text-[24px] font-black text-[${chartConfig.avgPrice.color}] leading-none tracking-tight` }>
             HK$ {allTimeMetrics.avgPriceCalc.toLocaleString()}
           </p>
-          <p className="font-sans text-[10.5px] text-text-disabled mt-2">★ 歷史全期卡牌流動溢價</p>
         </div>
 
         <div className="w-full bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 shadow-sm relative group overflow-hidden">
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
-            歷史累計總成交次數 (Lifetime Volume)
+            歷史累計總成交次數
           </p>
-          <p className="font-mono text-[24px] font-black text-text-primary leading-none tracking-tight">
+          <p className={ `font-mono text-[24px] font-black text-[${chartConfig.txCount.color}] leading-none tracking-tight` }>
             {allTimeMetrics.txCountSum.toLocaleString()} 次
           </p>
-          <p className="font-sans text-[10.5px] text-text-disabled mt-2">▲ 店舖歷史完成交割單量</p>
         </div>
       </div>
 
@@ -429,11 +423,8 @@ export default function MerchantPerformancePage() {
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
           <div className="mb-4">
             <h3 className="font-sans font-bold text-[15px] text-text-primary tracking-tight">
-              暢銷商品排行榜 (Top 9 Velocity SKUs)
+              暢銷商品排行榜
             </h3>
-            <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-              Top 9 card variants yielding the highest storefront velocity
-            </p>
           </div>
 
           <div className="divide-y divide-white/5">
@@ -460,7 +451,7 @@ export default function MerchantPerformancePage() {
                     <p className="text-text-primary font-medium truncate">
                       {prod.name}
                     </p>
-                    <p className="font-mono text-[10.5px] text-text-disabled uppercase mt-0.5">
+                    <p className="font-mono text-[10.5px] text-stone-500 uppercase mt-0.5">
                       {prod.skuNo}
                     </p>
                   </div>
@@ -483,11 +474,8 @@ export default function MerchantPerformancePage() {
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
           <div className="mb-4">
             <h3 className="font-sans font-bold text-[15px] text-text-primary tracking-tight">
-              高價值客戶大會堂 (Top 9 High-Value CRM Matrix)
+              高價值客戶
             </h3>
-            <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-              Top 9 consumers sorted by gross lifetime spending value
-            </p>
           </div>
 
           <div className="divide-y divide-white/5">
@@ -500,7 +488,7 @@ export default function MerchantPerformancePage() {
                   href={`/user/${client.id}`}
                   className="flex items-center gap-3 hover:text-brand transition-colors group min-w-0"
                 >
-                  <span className="font-mono text-[11px] text-text-disabled w-4 text-center shrink-0">
+                  <span className="font-mono text-[11px] text-text-primary w-4 text-center shrink-0">
                     {idx + 1}
                   </span>
 
@@ -518,7 +506,7 @@ export default function MerchantPerformancePage() {
                     <p className="text-text-primary font-medium group-hover:text-brand transition-colors truncate">
                       {client.name}
                     </p>
-                    <p className="text-[10.5px] text-text-disabled uppercase mt-0.5">
+                    <p className="text-[10.5px] text-brand uppercase mt-0.5">
                       VIP LEVEL {idx < 3 ? "III" : idx < 6 ? "II" : "I"}
                     </p>
                   </div>
