@@ -390,16 +390,16 @@ export default function MerchantPerformancePage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-4 py-3 flex flex-col">
-              <span className="font-mono text-[10.5px] text-text-disabled uppercase">區間總營業額</span>
-              <span className="font-mono text-[16px] font-bold text-text-primary mt-1">HK$ {intervalTurnover.toLocaleString()}</span>
+              <span className="font-mono text-[10.5px]">區間總營業額</span>
+              <span className={`text-[#d4a574] font-mono text-[16px] font-bold mt-1`}>HK$ {intervalTurnover.toLocaleString()}</span>
             </div>
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-4 py-3 flex flex-col">
-              <span className="font-mono text-[10.5px] text-text-disabled uppercase">區間客單價 (AOV)</span>
-              <span className="font-mono text-[16px] font-bold text-text-primary mt-1">HK$ {intervalAvgPrice.toLocaleString()}</span>
+              <span className="font-mono text-[10.5px]">區間平均價 (AOV)</span>
+              <span className={`text-[#00D2FF] font-mono text-[16px] font-bold mt-1`}>HK$ {intervalAvgPrice.toLocaleString()}</span>
             </div>
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-4 py-3 flex flex-col">
-              <span className="font-mono text-[10.5px] text-text-disabled uppercase">區間總交易筆數</span>
-              <span className="font-mono text-[16px] font-bold text-success mt-1">{intervalTxCount.toLocaleString()} 次</span>
+              <span className="font-mono text-[10.5px]">區間總交易筆數</span>
+              <span className={`text-[#10b981] font-mono text-[16px] font-bold mt-1`}>{intervalTxCount.toLocaleString()} 次</span>
             </div>
           </div>
         </div>
