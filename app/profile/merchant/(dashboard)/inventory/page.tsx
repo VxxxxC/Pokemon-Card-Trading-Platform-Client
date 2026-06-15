@@ -8,17 +8,11 @@ import {
 } from "@/app/components/merchant/InventoryAccordion";
 import { Pagination } from "@/app/components/ui/Pagination";
 
-// TODO [MOCK DATA]: Replace with Supabase query —
-// SELECT skus.*, json_agg(listings.*) AS items
-// FROM skus LEFT JOIN listings ON listings.sku_id = skus.id
-// WHERE skus.merchant_id = current_user_id
-// GROUP BY skus.id ORDER BY skus.created_at DESC
 const skuGroups: SKUGroup[] = [
   {
     id: "SKU-sv2a-182",
     cardName: "Charizard ex SAR",
     cardNo: "sv2a-182",
-    set: "151",
     thumbnailSeed: "sku-sv2a-182-charizard",
     items: [
       {
@@ -32,6 +26,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角銳利無磨損，PSA 封殼完美無裂紋。",
         photos: 6,
         views: 324,
+        offersCount: 0,
       },
       {
         id: "LST-001-B",
@@ -44,6 +39,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "背面邊緣一處微小磨痕，PSA 封殼完整。",
         photos: 5,
         views: 145,
+        offersCount: 3,
       },
     ],
   },
@@ -51,7 +47,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sv6a-109",
     cardName: "Umbreon ex SAR",
     cardNo: "sv6a-109",
-    set: "Night Wanderer",
     thumbnailSeed: "sku-sv6a-109-umbreon",
     items: [
       {
@@ -65,6 +60,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "右上角輕微白邊 0.3mm，其餘三角完好。",
         photos: 5,
         views: 218,
+        offersCount: 0,
       },
     ],
   },
@@ -72,7 +68,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sv4a-237",
     cardName: "Gardevoir ex SAR",
     cardNo: "sv4a-237",
-    set: "Shiny Treasure",
     thumbnailSeed: "sku-sv4a-237-gardevoir",
     items: [
       {
@@ -86,6 +81,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "邊緣切割平整，無任何白邊或毛邊。",
         photos: 6,
         views: 176,
+        offersCount: 0,
       },
     ],
   },
@@ -93,7 +89,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sv2a-205",
     cardName: "Mew ex SAR",
     cardNo: "sv2a-205",
-    set: "151",
     thumbnailSeed: "sku-sv2a-205-mew",
     items: [
       {
@@ -107,6 +102,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角完美，已售出封存於託管倉。",
         photos: 4,
         views: 89,
+        offersCount: 0,
       },
     ],
   },
@@ -114,7 +110,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-s6a-209",
     cardName: "Espeon ex SAR",
     cardNo: "s6a-209",
-    set: "Eevee Heroes",
     thumbnailSeed: "sku-s6a-209-espeon",
     items: [
       {
@@ -128,6 +123,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "左下角極輕微壓白，建議補拍微距特寫。",
         photos: 3,
         views: 0,
+        offersCount: 0,
       },
     ],
   },
@@ -135,7 +131,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-s6a-206",
     cardName: "Jolteon ex SAR",
     cardNo: "s6a-206",
-    set: "Eevee Heroes",
     thumbnailSeed: "sku-s6a-206-jolteon",
     items: [
       {
@@ -149,6 +144,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "背面下緣輕微磨白，正面四角銳利。",
         photos: 6,
         views: 134,
+        offersCount: 0,
       },
     ],
   },
@@ -156,7 +152,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sv2a-173",
     cardName: "Pikachu AR",
     cardNo: "sv2a-173",
-    set: "151",
     thumbnailSeed: "sku-sv2a-173-pikachu",
     items: [
       {
@@ -170,6 +165,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "完美邊角，封殼無瑕疵。",
         photos: 6,
         views: 245,
+        offersCount: 0,
       },
       {
         id: "LST-007-B",
@@ -182,6 +178,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角完美，背面無磨損。",
         photos: 5,
         views: 180,
+        offersCount: 0,
       },
       {
         id: "LST-007-C",
@@ -194,6 +191,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "有一處極微白邊，正面無瑕。",
         photos: 4,
         views: 92,
+        offersCount: 1,
       },
       {
         id: "LST-007-D",
@@ -206,6 +204,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角 9.5，卡面 10，邊緣 9.5。",
         photos: 6,
         views: 110,
+        offersCount: 0,
       },
     ],
   },
@@ -213,7 +212,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-s12a-221",
     cardName: "Mewtwo VSTAR SAR",
     cardNo: "s12a-221",
-    set: "VSTAR Universe",
     thumbnailSeed: "sku-s12a-221-mewtwo",
     items: [
       {
@@ -227,6 +225,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "切割完美，邊緣光滑無白邊。",
         photos: 5,
         views: 320,
+        offersCount: 0,
       },
     ],
   },
@@ -234,7 +233,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sv2a-206",
     cardName: "Erika's Invitation SAR",
     cardNo: "sv2a-206",
-    set: "151",
     thumbnailSeed: "sku-sv2a-206-erika",
     items: [
       {
@@ -248,6 +246,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角銳利無瑕，封殼無磨損。",
         photos: 6,
         views: 412,
+        offersCount: 0,
       },
       {
         id: "LST-009-B",
@@ -260,6 +259,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角完整，未送評但狀態優良。",
         photos: 3,
         views: 0,
+        offersCount: 0,
       },
     ],
   },
@@ -267,7 +267,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-s11-111",
     cardName: "Giratina V SA",
     cardNo: "s11-111",
-    set: "Lost Abyss",
     thumbnailSeed: "sku-s11-111-giratina",
     items: [
       {
@@ -281,6 +280,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "邊角無白邊，PSA 頂級認證。",
         photos: 6,
         views: 612,
+        offersCount: 0,
       },
     ],
   },
@@ -288,7 +288,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sv4a-350",
     cardName: "Iono SAR",
     cardNo: "sv4a-350",
-    set: "Shiny Treasure",
     thumbnailSeed: "sku-sv4a-350-iono",
     items: [
       {
@@ -302,6 +301,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "四角均呈 9.5 以上的高水準評分。",
         photos: 5,
         views: 289,
+        offersCount: 0,
       },
     ],
   },
@@ -309,7 +309,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-s12-110",
     cardName: "Lugia V SA",
     cardNo: "s12-110",
-    set: "Paradigm Trigger",
     thumbnailSeed: "sku-s12-110-lugia",
     items: [
       {
@@ -323,6 +322,7 @@ const skuGroups: SKUGroup[] = [
         edgeWear: "切角端正銳利，背面極度乾淨。",
         photos: 6,
         views: 450,
+        offersCount: 0,
       },
       {
         id: "LST-012-B",
@@ -332,9 +332,10 @@ const skuGroups: SKUGroup[] = [
         status: "active",
         createdAt: "2025/5/10",
         conditionDesc: "背面下邊緣有一極微小白點，不影響正面觀感。",
-        edgeWear: "有一處 0.1mm 輕微壓痕，其餘完好。",
+        edgeWear: "有一處 0.1mm 輕微壓痕，其蹤跡完好。",
         photos: 4,
         views: 188,
+        offersCount: 0,
       },
     ],
   },
@@ -342,7 +343,6 @@ const skuGroups: SKUGroup[] = [
     id: "SKU-sm4-119",
     cardName: "Lillie SR",
     cardNo: "sm4+-119",
-    set: "GX Battle Boost",
     thumbnailSeed: "sku-sm4-119-lillie",
     items: [
       {
@@ -352,16 +352,15 @@ const skuGroups: SKUGroup[] = [
         askPrice: 1_280_000,
         status: "active",
         createdAt: "2025/5/01",
-        conditionDesc: "殿堂級珍藏莉莉艾 SR，色澤鮮豔無褪色，極高收藏級品相。",
+        conditionDesc: "殿堂級珍藏莉莉艾 SR，色澤鮮豔無褪色，極高收藏級品品相。",
         edgeWear: "極致完美，PSA 10 頂峰鑑定，封盒保護妥善。",
         photos: 6,
         views: 1450,
+        offersCount: 0,
       },
     ],
   },
 ];
-
-// ─── Derived summary counts ────────────────────────────────────────────────────
 
 function countByStatus(
   groups: SKUGroup[],
@@ -373,8 +372,6 @@ function countByStatus(
   );
 }
 
-// ─── Page Component ────────────────────────────────────────────────────────────
-
 export default function MerchantInventoryPage() {
   const totalItems  = skuGroups.reduce((t, sku) => t + sku.items.length, 0);
   const activeCount = countByStatus(skuGroups, "active");
@@ -385,12 +382,10 @@ export default function MerchantInventoryPage() {
   const [currentSkuPage, setCurrentSkuPage] = useState(1);
   const skusPerPage = 6;
 
-  // Reset currentSkuPage to 1 when searchQuery changes
   useEffect(() => {
     queueMicrotask(() => setCurrentSkuPage(1));
   }, [searchQuery]);
 
-  // Fuzzy Search on cardName or cardNo
   const filteredSkuGroups = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return skuGroups;
@@ -401,7 +396,6 @@ export default function MerchantInventoryPage() {
     );
   }, [searchQuery]);
 
-  // Pagination slicing
   const paginatedSkuGroups = useMemo(() => {
     return filteredSkuGroups.slice(
       (currentSkuPage - 1) * skusPerPage,
@@ -456,7 +450,6 @@ export default function MerchantInventoryPage() {
 
       {/* ── 🟢 HIGH-PERFORMANCE GRID ACCORDION SHIELD FOR CREATION CABINET ── */}
       <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-5 py-3.5 shadow-md">
-        {/* Trigger Interactive Header Bar */}
         <button
           type="button"
           onClick={() => setIsFormOpen((prev) => !prev)}
@@ -468,7 +461,6 @@ export default function MerchantInventoryPage() {
             <span>新增商品</span>
           </div>
 
-          {/* Animated Chevron Arrow Node */}
           <svg
             width="14"
             height="14"
@@ -485,7 +477,6 @@ export default function MerchantInventoryPage() {
           </svg>
         </button>
 
-        {/* Pure CSS Grid Track Transition Mechanism (Zero Unmount Stutter) */}
         <div
           id="new-listing-form-panel"
           className={`grid transition-[grid-template-rows] duration-300 ease-out ${

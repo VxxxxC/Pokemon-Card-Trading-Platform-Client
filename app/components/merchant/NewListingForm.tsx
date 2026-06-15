@@ -165,37 +165,44 @@ export function NewListingForm() {
         </p>
         <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
           {Array.from({ length: 6 }, (_, i) => (
-            <div
-              key={i}
-              className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                i < 2
-                  ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
-                  : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
-              }`}
-            >
-              {i < 2 ? (
-                <span className="font-mono text-[10px] text-brand">✓ 已上傳</span>
-              ) : (
-                <>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#50453b"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  <span className="font-mono text-[9px] text-text-disabled mt-1">
-                    {i < 4 ? "必填" : "選填"}
-                  </span>
-                </>
-              )}
+            <div key={i} className="flex flex-col">
+              <div
+                className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                  i < 2
+                    ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
+                    : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
+                }`}
+              >
+                {i < 2 ? (
+                  <span className="font-mono text-[10px] text-brand">✓ 已上傳</span>
+                ) : (
+                  <>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#50453b"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span className="font-mono text-[9px] text-text-disabled mt-1">
+                      {i < 4 ? "必填" : "選填"}
+                    </span>
+                  </>
+                )}
+              </div>
+              <input
+                type="text"
+                name={`photo-remark-${i}`}
+                placeholder="照片備註（例：背面左上角微白）"
+                className="w-full bg-[#17130f] border border-white/5 rounded-lg h-8 px-2 font-sans text-[11px] text-text-primary focus:outline-none placeholder-text-disabled mt-1.5"
+              />
             </div>
           ))}
         </div>

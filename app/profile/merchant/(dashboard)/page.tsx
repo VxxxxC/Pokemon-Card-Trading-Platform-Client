@@ -3,13 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { CiSettings } from "react-icons/ci";
 
-
 export const metadata: Metadata = {
   title: "商戶總覽 — PokéTrade JP",
   description: "查看銷售統計、待處理訂單及商戶概覽",
 };
 
-// 🟢 中央數據源：商戶身分真理數據（Hero 看板專用）
+// 中央數據源：商戶身分真理數據（Hero 看板專用）
 const mockMerchant = {
   id: "koji_tcg",
   name: "田中 Koji",
@@ -44,12 +43,6 @@ const merchantSteps = [
   { levelNum: 5, label: "傳奇卡牌王" },
 ];
 
-// 提純版指標數據
-const revenueStats = [
-  { label: "本月營收", value: "HK$ 384,600", note: "▲ +24% vs 上月", dir: "up" as const },
-  { label: "本月訂單", value: "23", note: "4 件待處理", dir: "warn" as const },
-];
-
 // 待處理訂單流水線路
 const pendingActions = [
   { id: "ORD-20250519-041", buyer: "M.佐藤", card: "Charizard ex SAR", grade: "PSA 10", amount: 49_800, action: "待發貨", actionColor: "text-warning" },
@@ -58,7 +51,7 @@ const pendingActions = [
   { id: "ORD-20250517-030", buyer: "A.Yamamoto", card: "Gardevoir ex SAR", grade: "PSA 9", amount: 28_000, action: "待發貨", actionColor: "text-warning" },
 ];
 
-// 模擬最新期 3 筆真實信用評價數據（未來直接對接 Supabase member_reviews 表）
+// 模擬最新期 3 筆真實信用評價數據
 const mockRecentReviews = [
   { id: "r1", reviewer: "K.田中", rating: 5, comment: "包裝非常謹慎，卡況與描述完全一致，快速發貨，強力推薦！", date: "2026年 5月" },
   { id: "r2", reviewer: "C.Lin", rating: 5, comment: "專業賣家，溝通回應快，第二次購買同一位賣家，值得信賴。", date: "2026年 4月" },
@@ -118,7 +111,7 @@ export default function MerchantOverviewPage() {
             {mockMerchant.handle} · {mockMerchant.joinDate}
           </p>
 
-          {/* 雙欄核心指標：商戶級別與信用評分 (徹底清除積分餘額) */}
+          {/* 雙欄核心指標：商戶級別與信用評分 */}
           <div className="flex items-center gap-4 mt-4 pt-3 border-t border-[rgba(237,232,224,0.06)] flex-wrap">
             <div className="flex flex-col">
               <span className="font-mono text-[9px] text-text-disabled uppercase tracking-wider">
@@ -151,7 +144,7 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
 
-          {/* 1b. 商戶等級步進器 (Stepper) */}
+          {/* 商戶等級步進器 (Stepper) */}
           <div className="pt-4 max-w-xl">
             <div className="relative flex justify-between items-center">
               <div className="absolute top-3.25 left-2 right-2 h-px bg-white/5 z-0" />
@@ -198,7 +191,7 @@ export default function MerchantOverviewPage() {
             </div>
           </div>
 
-          {/* 1c. 商戶認證榮譽徽章列 */}
+          {/* 商戶認證榮譽徽章列 */}
           <div className="flex gap-2 overflow-x-auto pt-4 pb-0.5 scrollbar-none max-w-xl">
             {mockMerchant.badges.map((badge) => (
               <div
@@ -211,33 +204,58 @@ export default function MerchantOverviewPage() {
             ))}
           </div>
 
-          {/* ── 🟢 頂級增強點：加裝右下角高貴暗金漸變色「業績分析控制台」入口 ── */}
-          <div className="md:absolute md:bottom-5 md:right-5 mt-4 md:mt-0">
+          {/* 🟢 項目 3 搬遷修正：已將舊有 [經營分析] 鈕由 Header 右下角彻底剷除，避免元件重複洩漏 */}
+
+        </div>
+      </section>
+
+      {/* ── 🟢 2. COMBINED REVENUE & ORDERS EXECUTIVE PANEL (核心整合監控艙) ── */}
+      <section aria-labelledby="revenue-heading" className="mb-5">
+        <h2 id="revenue-heading" className="sr-only">經營業績與快報分析</h2>
+        
+        {/* 🟢 項目 1 & 2：雙指標合二為一做同一個 Container，自適應 Grid 完美優化跨端可視化 */}
+        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 space-y-5 shadow-sm">
+          
+          {/* 上層數據網絡列：保持 Mobile(平排網格不擠壓) ⇄ Web(寬裕比例對齊) */}
+          <div className="grid grid-cols-2 gap-4 w-full">
+            {/* 左側：本月營收模組 */}
+            <div className="space-y-1">
+              <p className="font-mono text-[11px] text-text-secondary uppercase tracking-wider select-none">
+                本月營收
+              </p>
+              <p className="font-mono font-black text-[20px] md:text-[23px] text-text-primary leading-none tracking-tight">
+                HK$ 384,600
+              </p>
+              <p className="font-mono text-[11px] text-success font-medium">
+                ▲ +24% vs 上月
+              </p>
+            </div>
+
+            {/* 右側：本月訂單模組（注入細微 border-l 完美撕開水平邊界） */}
+            <div className="space-y-1 pl-4 border-l border-white/5">
+              <p className="font-mono text-[11px] text-text-secondary uppercase tracking-wider select-none">
+                本月訂單
+              </p>
+              <p className="font-mono font-black text-[20px] md:text-[23px] text-text-primary leading-none tracking-tight">
+                23 <span className="font-sans text-[12px] text-text-secondary font-normal">單</span>
+              </p>
+              <p className="font-mono text-[11px] text-warning font-medium">
+                4 件待處理
+              </p>
+            </div>
+          </div>
+
+          {/* 🟢 項目 3：將 [經營分析] 鈕移入此 Container 下方，鋼鐵鎖定 Full Width 佔滿 */}
+          <div className="pt-0.5">
             <Link
               href="/profile/merchant/performance"
-              className="inline-flex items-center justify-center gap-1.5 w-full md:w-auto px-4 h-9 bg-linear-to-r from-[#d4a574] to-[#e8b896] hover:from-[#e8b896] hover:to-[#d4a574] text-[#17130f] font-sans text-[12.5px] font-black rounded-xl transition-all duration-300 shadow-[0_4px_15px_rgba(212,165,116,0.22)] active:scale-[0.98] cursor-pointer"
+              className="flex items-center justify-center gap-1.5 w-full h-11 bg-linear-to-r from-[#d4a574] to-[#e8b896] hover:from-[#e8b896] hover:to-[#d4a574] text-[#17130f] font-sans text-[13.5px] font-black rounded-xl transition-all duration-300 shadow-[0_4px_15px_rgba(212,165,116,0.18)] active:scale-[0.98] cursor-pointer"
               title="進入商戶數據與業績分析控制艙"
             >
               <span>經營分析 📈</span>
             </Link>
           </div>
 
-        </div>
-      </section>
-
-      {/* ── Revenue Stats ─────────────────────────────────────────────── */}
-      <section aria-labelledby="revenue-heading" className="mb-5">
-        <h2 id="revenue-heading" className="sr-only">營收統計</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {revenueStats.map(({ label, value, note, dir }) => (
-            <div key={label} className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4">
-              <p className="font-mono text-[11px] text-text-secondary mb-1.5">{label}</p>
-              <p className="font-mono font-semibold text-[18px] text-text-primary leading-none mb-1">{value}</p>
-              <p className={`font-mono text-[11px] ${dir === "up" ? "text-success" : dir === "warn" ? "text-warning" : "text-text-disabled"}`}>
-                {note}
-              </p>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -282,7 +300,7 @@ export default function MerchantOverviewPage() {
         </div>
       </section>
 
-      {/* ── 🟢 2. REPUTATION SECTION (信用評級模組 — 精準對齊最近 3 筆) ────── */}
+      {/* ── REPUTATION SECTION (信用評級模組) ────── */}
       <section aria-labelledby="rating-heading">
         <div className="flex items-center justify-between mb-3">
           <h2 id="rating-heading" className="font-sans font-semibold text-[16px] text-text-primary">
