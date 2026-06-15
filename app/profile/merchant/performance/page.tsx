@@ -310,6 +310,8 @@ export default function MerchantPerformancePage() {
                 {/* 左 Y 軸線路：主管大金額數值 */}
                 <YAxis
                   yAxisId="turnover"
+                  hide
+                  includeHidden
                   label={chartConfig.turnover.label}
                   orientation="left"
                   domain={['auto', 'auto']}
@@ -324,6 +326,8 @@ export default function MerchantPerformancePage() {
                 {/* 右 Y 軸線路：主管平均價 */}
                 <YAxis
                   yAxisId="avgPrice"
+                  hide
+                  includeHidden
                   label={chartConfig.avgPrice.label}
                   orientation="right"
                   domain={['auto', 'auto']}

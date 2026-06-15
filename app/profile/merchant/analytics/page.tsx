@@ -234,9 +234,11 @@ export default function MerchantAnalyticsPage({
                {/* 左 Y 軸線路：總銷售金額 */}
                <YAxis
                  yAxisId="totalSalesId"
+                 hide
+                 includeHidden
                  label={chartConfig.totalSales.label}
                  orientation="left"
-                 domain={['auto', 'auto']}
+                 domain={[0, 'auto']}
                  tickCount={6}
                  tickLine={false}
                  axisLine={false}
@@ -248,9 +250,11 @@ export default function MerchantAnalyticsPage({
                {/* 右 Y 軸線路：查看次數 */}
                <YAxis
                  yAxisId="viewCountId"
+                 hide
+                 includeHidden
                  label={chartConfig.viewCount.label}
                  orientation="right"
-                  domain={['auto', 'auto']}
+                  domain={[0, 'auto']}
                   tickCount={6}
                  tickLine={false}
                  axisLine={false}
@@ -265,7 +269,7 @@ export default function MerchantAnalyticsPage({
                  hide
                  includeHidden
                  label={chartConfig.txCount.label}
-                  domain={['auto','auto']}
+                  domain={[0,'auto']}
                   tickCount={6}
                  tickLine={false}
                  axisLine={false}
