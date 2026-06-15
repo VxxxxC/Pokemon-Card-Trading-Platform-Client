@@ -268,7 +268,7 @@ export default function MerchantPerformancePage() {
         <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
           <div>
             <p className="font-sans font-bold text-[15px] text-text-primary tracking-tight">
-              營收、價格與成交量多維度分佈
+              營收、價格與成交量
             </p>
           </div>
 
@@ -318,6 +318,7 @@ export default function MerchantPerformancePage() {
                   yAxisId="turnover"
                   label={chartConfig.turnover.label}
                   orientation="left"
+                  domain={['auto', 'auto']}
                   tickCount={6}
                   tickLine={false}
                   axisLine={false}
@@ -331,11 +332,28 @@ export default function MerchantPerformancePage() {
                   yAxisId="avgPrice"
                   label={chartConfig.avgPrice.label}
                   orientation="right"
+                  domain={['auto', 'auto']}
                   tickCount={6}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
                   style={{ fill: chartConfig.avgPrice.color, fontSize: 10, fontFamily: "monospace" }}
+                  tickFormatter={(val) => `$${val.toLocaleString()}`}
+                />
+
+                {/* 右 Y 軸線路：交易次數 */}
+                <YAxis
+                  yAxisId="txCount"
+                  hide
+                  includeHidden
+                  label={chartConfig.txCount.label}
+                  orientation="right"
+                  domain={['auto', 'auto']}
+                  tickCount={6}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  style={{ fill: chartConfig.avgPrice.color, fontSize: 10, fontFamily: "monospace"}}
                   tickFormatter={(val) => `$${val.toLocaleString()}`}
                 />
                 
@@ -369,11 +387,11 @@ export default function MerchantPerformancePage() {
                 
                 {/* 成交總數 */}
                 <Bar
-                  yAxisId="right"
+                  yAxisId="txCount"
                   dataKey="txCount"
                   fill={chartConfig.txCount.color}
                   radius={[3, 3, 0, 0]}
-                  maxBarSize={14}
+                  maxBarSize={8}
                 />
                 
                 <ChartLegend content={<ChartLegendContent className="mt-4" />} />

@@ -87,7 +87,7 @@ const MOCK_DATA_MAP: Record<string, MetricData[]> = {
 
 // ─── Chart Config Matrix ──────────────────────────────────────────────────────
 
-const chartConfig: ChartConfig = {
+const chartConfig = {
  totalSales: {
    label: "總銷售額 (HK$)",
    color: "#d4a574", // Custom Branding Theme Gold Hue
@@ -100,7 +100,7 @@ const chartConfig: ChartConfig = {
    label: "成交次數 (次)",
    color: "#10b981",
  },
-};
+} satisfies ChartConfig;
 
 const rangeLabelMap: Record<string, string> = {
   "12h": "12 小時",
@@ -231,10 +231,13 @@ export default function MerchantAnalyticsPage({
                  style={{ fill: "#8A8680", fontSize: 10, fontFamily: "monospace" }}
                />
                 
-               {/* 左 Y 軸線路：主管大金額數值 */}
+               {/* 左 Y 軸線路：總銷售金額 */}
                <YAxis
-                 yAxisId="totalSales"
+                 yAxisId="totalSalesId"
+                 label={chartConfig.totalSales.label}
                  orientation="left"
+                 domain={['auto', 'auto']}
+                 tickCount={6}
                  tickLine={false}
                  axisLine={false}
                  tickMargin={8}
@@ -242,10 +245,28 @@ export default function MerchantAnalyticsPage({
                  tickFormatter={(val) => `$${val.toLocaleString()}`}
                />
                 
-               {/* 右 Y 軸線路：主管小數額次數 */}
+               {/* 右 Y 軸線路：查看次數 */}
                <YAxis
-                 yAxisId="viewCount"
+                 yAxisId="viewCountId"
+                 label={chartConfig.viewCount.label}
                  orientation="right"
+                  domain={['auto', 'auto']}
+                  tickCount={6}
+                 tickLine={false}
+                 axisLine={false}
+                 tickMargin={8}
+                 style={{ fill: chartConfig.viewCount.color, fontSize: 10, fontFamily: "monospace" }}
+                 tickFormatter={(val) => `$${val.toLocaleString()}`}
+               />
+
+               {/* 右 Y 軸線路：交易次數 */}
+               <YAxis
+                 yAxisId="txCountId"
+                 hide
+                 includeHidden
+                 label={chartConfig.txCount.label}
+                  domain={['auto','auto']}
+                  tickCount={6}
                  tickLine={false}
                  axisLine={false}
                  tickMargin={8}
@@ -262,7 +283,7 @@ export default function MerchantAnalyticsPage({
 
                {/* 瀏覽次數：Area 漸變底襯 */}
                <Area
-                 yAxisId="viewCount"
+                 yAxisId="viewCountId"
                  type="monotone"
                  dataKey="viewCount"
                  fill="url(#mixViewCount)"
@@ -272,7 +293,7 @@ export default function MerchantAnalyticsPage({
 
                {/* 總銷售額：Line 折線 */}
                <Line
-                 yAxisId="totalSales"
+                 yAxisId="totalSalesId"
                  type="monotone"
                  dataKey="totalSales"
                  stroke={chartConfig.totalSales.color}
@@ -283,10 +304,11 @@ export default function MerchantAnalyticsPage({
                 
                {/* 成交次數 */}
                <Bar
+                 yAxisId="txCountId"
                  dataKey="txCount"
                  fill={chartConfig.txCount.color}
                  radius={[3, 3, 0, 0]}
-                 maxBarSize={14}
+                 maxBarSize={8}
                />
                 
                <ChartLegend content={<ChartLegendContent className="mt-4" />} />
