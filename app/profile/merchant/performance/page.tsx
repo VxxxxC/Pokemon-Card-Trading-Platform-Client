@@ -40,7 +40,7 @@ export default function MerchantPerformancePage() {
   return (
     <section
       aria-labelledby="performance-heading"
-      className="space-y-6 animate-fadeIn pb-12"
+      className="space-y-6 animate-fadeIn p-4 md:p-6"
     >
       {/* ── 🟢 STAGE 1: Minimalist Header Control ── */}
       <div className="flex items-center gap-4">
