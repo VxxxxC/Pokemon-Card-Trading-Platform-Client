@@ -131,6 +131,12 @@ export default async function OrdersGatewayPage() {
   - **`Required<Type>`**：強迫某些可選屬性在核心交易階段必須 100% 飽滿存在。
 - **目標效果**：用最少、最優雅的 TypeScript 語意代碼，換取 100% 穩健的強型態編譯防線，從根源上斬斷程式碼退化與過度包裝。
 
+### 3. 交易全額結算防線 (Full Pay Architecture Mandate)
+
+- **全量款項託管**：PokéTrade JP 的所有交易、中介鑑定、代管合約（Escrow）均強制遵循 **全額付訖 (100% Full Pay)** 結算防線。
+- **嚴禁新增/渲染訂金欄位**：嚴禁任何 AI 協作者或代碼修改在 `SaleOrder` / 任何交易 interface 中重新加入 `depositPaid`、`depositAmount` 或任何形式的「擔保訂金」/「成數定金」欄位。
+- **鑑定增值服務可選費用**：唯一的額外支付模組僅限於可選（Optional）的平台微觀品相鑑定服務，主交易商品本身絕無分期或兩階段付款。所有代碼、UI 元件和 Mock 數據均必須徹底對齊此全額交付之閉環。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
