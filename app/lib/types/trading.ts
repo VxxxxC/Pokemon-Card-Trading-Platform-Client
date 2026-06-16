@@ -18,7 +18,6 @@ export interface SaleOrder {
   cardNo: string;
   grade: string;
   amount: number;
-  depositPaid: number;
   status: OrderStatus;
   createdAt: string;
   trackingNo?: string;
