@@ -63,7 +63,7 @@ export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
             買家：{order.buyerName}
           </span>
           <span className="hidden sm:inline text-white/5">|</span>
-          <span className="text-[11px] font-mono tracking-tight text-text-disabled">
+          <span className="text-[11px] font-mono tracking-tight text-brand">
             訂單編號: #{order.id}
           </span>
         </div>
@@ -76,7 +76,7 @@ export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
             HK$ {order.amount.toLocaleString("zh-TW")}
           </span>
           <span className="text-[10px] font-mono text-text-disabled">
-            訂金: HK$ {order.depositPaid.toLocaleString("zh-TW")}
+            全額結算 (Full Pay)
           </span>
         </div>
 
