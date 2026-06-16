@@ -10,8 +10,10 @@ export const STATUS_STEP_INDEX: Record<Exclude<OrderStatus, 'cancelled'>, number
 
 export interface SaleOrder {
   id: string;
+  buyerId: string;     // Unique user identity for deterministic chat room hashing
   buyerName: string;
-  sellerName: string; // To cleanly differentiate C2C multi-seller nodes
+  sellerId: string;    // Unique seller identity for deterministic chat room hashing
+  sellerName: string;  // To cleanly differentiate C2C multi-seller nodes
   cardName: string;
   cardNo: string;
   grade: string;

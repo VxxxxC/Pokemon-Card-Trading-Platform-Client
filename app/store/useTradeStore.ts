@@ -1,15 +1,16 @@
 import { create } from "zustand";
 import { INITIAL_CHATS } from "@/app/lib/mock-data/chatrooms";
+import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
 
 export interface SpecialTransactionData {
   cardName: string;
   cardId: string;
   offerPrice: number;
   buyerName: string;
-  buyerId: string; // 🟢 Added: buyer session identity
-  sellerId: string; // 綁定賣家/店鋪唯一識別碼
-  sellerName: string; // 🟢 Added: seller display name for bilateral rendering
-  initialStatus?: "pending" | "accepted" | "rejected" | "countered"; // 🟢 Expanded with counter-offer state
+  buyerId: string;
+  sellerId: string;
+  sellerName: string;
+  initialStatus?: "pending" | "accepted" | "rejected" | "countered";
 }
 
 export interface Message {
@@ -23,6 +24,7 @@ export interface Message {
 
 export interface ChatRoom {
   id: string;
+  partnerId: string;
   partnerName: string;
   partnerTier: string;
   lastMessage: string;
@@ -43,19 +45,18 @@ function isValidSpecialTransactionData(
   );
 }
 
-// 🟢 升格輔助函數：支持自訂文字訊息內容
 function createSpecialTransactionMessage(
   sender: Message["sender"],
   payload: SpecialTransactionData,
   customText?: string,
 ): Message {
   return {
-    id: `MSG-TXN-${Date.now()}`,
+    id: "MSG-TXN-" + Date.now(),
     sender,
     text:
       customText ||
-      `${payload.buyerName} offer price HK$ ${payload.offerPrice} - ${payload.cardName} (${payload.cardId})`,
-    timestamp: "剛剛",
+      payload.buyerName + " offer price HK$ " + payload.offerPrice + " - " + payload.cardName + " (" + payload.cardId + ")",
+    timestamp: new Date().toISOString(),
     type: "special_transaction",
     specialData: payload,
   };
@@ -72,13 +73,27 @@ interface TradeStore {
   setMobileView: (view: "LIST" | "CHAT") => void;
   setChats: (updater: ChatRoom[] | ((prev: ChatRoom[]) => ChatRoom[])) => void;
 
+  /**
+   * Opens the global chat console and navigates to the canonical deterministic room
+   * derived from buyerId + sellerId via MD5 hash. Bi-directional symmetry is guaranteed:
+   * openGlobalChat(A, B) and openGlobalChat(B, A) resolve to the exact same room.
+   */
   openGlobalChat: (
-    roomId: string,
-    partnerName: string,
+    buyerId: string,
+    buyerName: string,
+    sellerId: string,
+    sellerName: string,
+    currentViewerRole: "BUYER" | "SELLER",
     injectOffer?: SpecialTransactionData,
   ) => void;
 
-  // 🟢 核心修改點 1：傳入參數追加 isInstantTake 標誌，用以切分一口價與議價流向
+  /**
+   * Legacy-compatible room activator for CustomEvent-driven nav paths.
+   * Activates an existing room by its raw ID, or creates a minimal stub if not found.
+   * Prefer openGlobalChat for new call sites where buyer/seller IDs are known.
+   */
+  activateRoomById: (roomId: string, partnerName: string) => void;
+
   injectSpecialTransaction: (payload: {
     sellerName: string;
     sellerId: string;
@@ -86,7 +101,7 @@ interface TradeStore {
     cardId: string;
     offerPrice: number;
     buyerName: string;
-    buyerId: string; // 🟢 Added
+    buyerId: string;
     isInstantTake: boolean;
   }) => void;
 }
@@ -105,14 +120,59 @@ export const useTradeStore = create<TradeStore>((set) => ({
       chats: typeof updater === "function" ? updater(state.chats) : updater,
     })),
 
-  openGlobalChat: (roomId, partnerName, injectOffer) =>
+  activateRoomById: (roomId, partnerName) =>
     set((state) => {
       const exists = state.chats.some((c) => c.id === roomId);
+      if (exists) {
+        return {
+          activeRoomId: roomId,
+          isChatOpen: true,
+          mobileView: "CHAT" as const,
+          chats: state.chats.map((c) =>
+            c.id === roomId ? { ...c, unreadCount: 0 } : c,
+          ),
+        };
+      }
+      const stub: ChatRoom = {
+        id: roomId,
+        partnerId: roomId,
+        partnerName,
+        partnerTier: "認證用戶",
+        lastMessage: "已開啟對話",
+        unreadCount: 0,
+        timestamp: new Date().toISOString(),
+        messages: [
+          {
+            id: "sys-" + Date.now(),
+            sender: "system",
+            text: "🔒 已建立與 " + partnerName + " 的安全對話通道。",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+      return {
+        chats: [stub, ...state.chats],
+        activeRoomId: roomId,
+        isChatOpen: true,
+        mobileView: "CHAT" as const,
+      };
+    }),
+
+  openGlobalChat: (buyerId, buyerName, sellerId, sellerName, currentViewerRole, injectOffer) =>
+    set((state) => {
+      // Deterministic canonical room ID — alphabetically sorted for bi-directional symmetry
+      const canonicalRoomId = generateDeterministicRoomId(buyerId, sellerId);
+      const exists = state.chats.some((c) => c.id === canonicalRoomId);
       let updatedChats = [...state.chats];
+
+      // Determine who is the partner based on who is viewing the chat
+      const partnerId = currentViewerRole === "SELLER" ? buyerId : sellerId;
+      const partnerName = currentViewerRole === "SELLER" ? buyerName : sellerName;
+      const partnerTier = currentViewerRole === "SELLER" ? "認證買家" : "專業認證商戶";
 
       if (exists) {
         updatedChats = state.chats.map((room) => {
-          if (room.id !== roomId) return room;
+          if (room.id !== canonicalRoomId) return room;
 
           let currentMessages = [...room.messages];
           let currentLastMessage = room.lastMessage;
@@ -136,6 +196,9 @@ export const useTradeStore = create<TradeStore>((set) => ({
 
           return {
             ...room,
+            partnerId,      // Dynamically pivot the partnerId for current viewer
+            partnerName,    // Dynamically pivot the partnerName for current viewer
+            partnerTier,    // Dynamically pivot the partnerTier for current viewer
             messages: currentMessages,
             lastMessage: currentLastMessage,
             unreadCount: 0,
@@ -143,18 +206,19 @@ export const useTradeStore = create<TradeStore>((set) => ({
         });
       } else {
         const newSession: ChatRoom = {
-          id: roomId,
+          id: canonicalRoomId,
+          partnerId,
           partnerName,
-          partnerTier: "認證買家",
+          partnerTier,
           lastMessage: "已開啟即時議價對話",
           unreadCount: 0,
-          timestamp: "剛剛",
+          timestamp: new Date().toISOString(),
           messages: [
             {
               id: "sys-" + Date.now(),
               sender: "system",
-              text: `🔒 已建立與 ${partnerName} 的安全中介託管議價通道。`,
-              timestamp: "剛剛",
+              text: "🔒 已建立與 " + partnerName + " 的安全交易對話通道。",
+              timestamp: new Date().toISOString(),
             },
           ],
         };
@@ -173,22 +237,21 @@ export const useTradeStore = create<TradeStore>((set) => ({
 
       return {
         chats: updatedChats,
-        activeRoomId: roomId,
+        activeRoomId: canonicalRoomId,
         isChatOpen: true,
         mobileView: "CHAT",
       };
     }),
 
-  // 🟢 核心修改點 2：完全體雙軌分流與盲開房守衛實作
   injectSpecialTransaction: (payload) =>
     set((state) => {
-      const targetRoomId = payload.sellerId;
+      // Use deterministic canonical room ID for injectSpecialTransaction as well
+      const canonicalRoomId = generateDeterministicRoomId(payload.buyerId, payload.sellerId);
 
-      // 根據買家點擊，決定交割文字語意與特殊要約卡的初使狀態碼
       const status = payload.isInstantTake ? "accepted" : "pending";
       const msgText = payload.isInstantTake
-        ? `⚡【立即購買】${payload.buyerName} 已接受一口價購入並成功預留資產！`
-        : `📩【議價要約】${payload.buyerName} 向您提報了 HK$ ${payload.offerPrice.toLocaleString()} 的預期出價。`;
+        ? "⚡【立即購買】" + payload.buyerName + " 已接受一口價購入並成功預留資產！"
+        : "📩【議價要約】" + payload.buyerName + " 向您提報了 HK$ " + payload.offerPrice.toLocaleString() + " 的預期出價。";
 
       const specialMsg = createSpecialTransactionMessage(
         "me",
@@ -200,18 +263,17 @@ export const useTradeStore = create<TradeStore>((set) => ({
           buyerId: payload.buyerId,
           sellerId: payload.sellerId,
           sellerName: payload.sellerName,
-          initialStatus: status, // 精準塞入交割狀態
+          initialStatus: status,
         },
         msgText,
       );
 
-      const exists = state.chats.some((c) => c.id === targetRoomId);
+      const exists = state.chats.some((c) => c.id === canonicalRoomId);
       let updatedChats = [...state.chats];
 
       if (exists) {
-        // 情況 A：房間早已存在，直接塞入訊息並清理未讀數
         updatedChats = state.chats.map((room) => {
-          if (room.id === targetRoomId) {
+          if (room.id === canonicalRoomId) {
             return {
               ...room,
               lastMessage: specialMsg.text,
@@ -222,20 +284,20 @@ export const useTradeStore = create<TradeStore>((set) => ({
           return room;
         });
       } else {
-        // 情況 B（關鍵修復）：全新交易會話，原地生出一個帶有系統歡迎詞的 ChatRoom
         const newRoom: ChatRoom = {
-          id: targetRoomId,
+          id: canonicalRoomId,
+          partnerId: payload.sellerId,
           partnerName: payload.sellerName,
           partnerTier: "認證賣家",
           lastMessage: specialMsg.text,
           unreadCount: 0,
-          timestamp: "剛剛",
+          timestamp: new Date().toISOString(),
           messages: [
             {
               id: "sys-" + Date.now(),
               sender: "system",
-              text: `🔒 已建立與 ${payload.sellerName} 的安全中介託管交易通道。`,
-              timestamp: "剛剛",
+              text: "🔒 已建立與 " + payload.sellerName + " 的安全中介蒗管交易通道。",
+              timestamp: new Date().toISOString(),
             },
             specialMsg,
           ],
@@ -243,10 +305,9 @@ export const useTradeStore = create<TradeStore>((set) => ({
         updatedChats = [newRoom, ...state.chats];
       }
 
-      // 瞬間拉起全域 Chat 控制艙
       return {
         chats: updatedChats,
-        activeRoomId: targetRoomId,
+        activeRoomId: canonicalRoomId,
         isChatOpen: true,
         mobileView: "CHAT",
       };

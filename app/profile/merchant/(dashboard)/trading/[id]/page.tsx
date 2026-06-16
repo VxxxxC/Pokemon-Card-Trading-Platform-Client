@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { useMerchantStore } from "@/app/store/useMerchantStore";
+import { useTradeStore } from "@/app/store/useTradeStore";
 import { OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { toast } from "sonner";
@@ -29,6 +30,8 @@ export default function MerchantOrderDetailPage() {
     sendOrderToGrading,
     releaseOrderEscrow
   } = useMerchantStore();
+
+  const { openGlobalChat } = useTradeStore();
 
   const order = orders.find((o) => o.id === orderId);
 
@@ -67,7 +70,9 @@ export default function MerchantOrderDetailPage() {
           ← 返回交易管理資產大盤
         </Link>
         <button
-          onClick={() => toast.info("正在連接口碑買家「" + order.buyerName + "」的加密對講機...")}
+          onClick={() => {
+            openGlobalChat(order.buyerId, order.buyerName, order.sellerId, order.sellerName, "SELLER");
+          }}
           className="h-10 px-5 bg-[#26211C] border border-brand/20 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-[0.96] transition-all shadow-md cursor-pointer flex items-center gap-2"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

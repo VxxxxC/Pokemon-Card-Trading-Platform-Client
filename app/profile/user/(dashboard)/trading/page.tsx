@@ -125,7 +125,7 @@ function ProductRowItem({
   ) => {
     event.stopPropagation();
     if (!order) return;
-    openGlobalChat(order.sellerId, order.seller);
+    openGlobalChat("USR-ME", "我", order.sellerId, order.seller, "BUYER");
   };
 
   return (

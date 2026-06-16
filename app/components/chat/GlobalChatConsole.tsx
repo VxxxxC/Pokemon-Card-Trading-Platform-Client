@@ -22,8 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
 import { useTradeStore } from "@/app/store/useTradeStore";
+import { formatMessageTime, getDateSeparatorLabel } from "@/app/lib/utils/chatUtils";
 
-// 引入 Shadcn UI 頂級黑金 Select 組件群
 import {
   Select,
   SelectContent,
@@ -44,14 +44,15 @@ export interface Message {
     cardId: string;
     offerPrice: number;
     buyerName: string;
-    buyerId: string; // 🟢 Added
+    buyerId: string;
     sellerId: string;
-    sellerName: string; // 🟢 Added
+    sellerName: string;
   };
 }
 
 export interface ChatRoom {
   id: string;
+  partnerId: string;
   partnerName: string;
   partnerTier: string;
   lastMessage: string;
@@ -74,16 +75,213 @@ function hasRenderableSpecialData(
   );
 }
 
-// 常駐安全免責法律防護線
+// Day-separator HUD pill chip
+function DateSeparatorChip({ label }: { label: string }) {
+  return (
+    <div className="flex justify-center my-3">
+      <span className="mx-auto px-2.5 py-0.5 rounded-full bg-[#26211C] border border-white/5 font-mono text-[10px] text-text-disabled tracking-wider select-none uppercase inline-block text-center">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+// Inline micro-timestamp adjacent to a message bubble
+function MicroTimestamp({ timestamp, isMe }: { timestamp: string; isMe: boolean }) {
+  const label = formatMessageTime(timestamp);
+  return (
+    <span
+      className={
+        "font-mono text-[9.5px] text-text-disabled/60 self-end px-1.5 pb-0.5 select-none" +
+        (isMe ? " order-first" : " order-last")
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
 function AntiScamDisclaimer() {
   return (
     <div className="bg-[#1A1612] px-4 py-2 border-t border-[rgba(237,232,224,0.05)] text-left shrink-0 select-none">
       <p className="font-sans text-[10.5px] leading-normal text-[#8A8680] tracking-tight">
         <span className="text-brand font-black mr-1">🛡️ 安全聲明：</span>
-        本平台所有交易行為均屬用戶雙方自願與同意之契約。凡涉及之任何形式資產損失，平台概不承擔任何法律責任、資金追償
-        or 經濟賠償義務。
+        本平台所有交易行為均屬用戶雙方自愿與同意之契約。凡涉及之任何形式資產損失，平台概不承擔任何法律責任、資金追償 or 經濟賠償義務。
       </p>
     </div>
+  );
+}
+
+/**
+ * Builds a list of render items interleaved with date separator nodes.
+ * A separator is only injected when the calendar date of a message differs
+ * from the previous message in the thread.
+ */
+function buildMessageRenderList(messages: Message[]) {
+  const items: Array<{ type: "separator"; label: string } | { type: "message"; msg: Message }> = [];
+  let lastDateKey = "";
+
+  for (const msg of messages) {
+    try {
+      const d = new Date(msg.timestamp);
+      if (!isNaN(d.getTime())) {
+        const dateKey = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+        if (dateKey !== lastDateKey) {
+          lastDateKey = dateKey;
+          items.push({ type: "separator", label: getDateSeparatorLabel(msg.timestamp) });
+        }
+      }
+    } catch {
+      // malformed timestamp: skip separator
+    }
+    items.push({ type: "message", msg });
+  }
+  return items;
+}
+
+type RenderItem = ReturnType<typeof buildMessageRenderList>[number];
+
+// Desktop message thread — compact bubbles (12.5px, 75% max-width)
+function MessageThread({ renderList }: { renderList: RenderItem[] }) {
+  return (
+    <>
+      {renderList.map((item, idx) => {
+        if (item.type === "separator") {
+          return <DateSeparatorChip key={"sep-" + idx} label={item.label} />;
+        }
+
+        const msg = item.msg;
+
+        if (
+          msg.type === "special_transaction" &&
+          hasRenderableSpecialData(msg.specialData)
+        ) {
+          return (
+            <div
+              key={msg.id}
+              className="w-full flex justify-start max-w-[90%] animate-fadeIn"
+            >
+              <SpecialTransactionMessage
+                msgId={msg.id}
+                buyerName={msg.specialData.buyerName}
+                buyerId={msg.specialData.buyerId}
+                sellerId={msg.specialData.sellerId}
+                sellerName={msg.specialData.sellerName}
+                cardName={msg.specialData.cardName}
+                cardId={msg.specialData.cardId}
+                offerPrice={msg.specialData.offerPrice}
+                initialStatus="pending"
+                isMe={msg.sender === "me"}
+              />
+            </div>
+          );
+        }
+
+        const isMe = msg.sender === "me";
+
+        if (msg.sender === "system") {
+          return (
+            <div key={msg.id} className="flex justify-center my-1">
+              <span className="font-mono text-[10px] text-text-disabled/70 bg-[#26211C]/60 px-3 py-1 rounded-full border border-white/[0.04] select-none text-center">
+                {msg.text}
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={msg.id}
+            className={"flex w-full items-end gap-1 " + (isMe ? "justify-end" : "justify-start")}
+          >
+            {isMe && <MicroTimestamp timestamp={msg.timestamp} isMe={true} />}
+            <div className="max-w-[75%]">
+              <div
+                className={
+                  "px-3 py-1.5 rounded-xl font-sans text-[12.5px] inline-block shadow-sm leading-snug " +
+                  (isMe
+                    ? "bg-brand text-[#17130f] font-medium"
+                    : "bg-[#26211C] text-text-primary border border-[rgba(237,232,224,0.04)]")
+                }
+              >
+                {msg.text}
+              </div>
+            </div>
+            {!isMe && <MicroTimestamp timestamp={msg.timestamp} isMe={false} />}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// Mobile message thread — larger bubbles (13px, rounded-2xl)
+function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
+  return (
+    <>
+      {renderList.map((item, idx) => {
+        if (item.type === "separator") {
+          return <DateSeparatorChip key={"sep-m-" + idx} label={item.label} />;
+        }
+
+        const msg = item.msg;
+
+        if (
+          msg.type === "special_transaction" &&
+          hasRenderableSpecialData(msg.specialData)
+        ) {
+          return (
+            <div
+              key={msg.id}
+              className="w-full flex justify-start max-w-[95%] animate-fadeIn"
+            >
+              <SpecialTransactionMessage
+                msgId={msg.id}
+                buyerName={msg.specialData.buyerName}
+                buyerId={msg.specialData.buyerId}
+                sellerId={msg.specialData.sellerId}
+                sellerName={msg.specialData.sellerName}
+                cardName={msg.specialData.cardName}
+                cardId={msg.specialData.cardId}
+                offerPrice={msg.specialData.offerPrice}
+                initialStatus="pending"
+                isMe={msg.sender === "me"}
+              />
+            </div>
+          );
+        }
+
+        const isMe = msg.sender === "me";
+
+        if (msg.sender === "system") {
+          return (
+            <div key={msg.id} className="flex justify-center my-1">
+              <span className="font-mono text-[10px] text-text-disabled/70 bg-[#26211C]/60 px-3 py-1 rounded-full border border-white/[0.04] select-none text-center">
+                {msg.text}
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={msg.id}
+            className={"flex w-full items-end gap-1 " + (isMe ? "justify-end" : "justify-start")}
+          >
+            {isMe && <MicroTimestamp timestamp={msg.timestamp} isMe={true} />}
+            <div
+              className={
+                "px-4 py-2 rounded-2xl font-sans text-[13px] " +
+                (isMe ? "bg-brand text-[#17130f]" : "bg-[#26211C] text-text-primary")
+              }
+            >
+              {msg.text}
+            </div>
+            {!isMe && <MicroTimestamp timestamp={msg.timestamp} isMe={false} />}
+          </div>
+        );
+      })}
+    </>
   );
 }
 
@@ -101,23 +299,19 @@ export function GlobalChatConsole() {
 
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
   const [isReportOpen, setIsReportOpen] = useState(false);
-
-  // 舉報類別與詳細內文說明狀態鎖
   const [reportCategory, setReportCategory] = useState<string>("");
   const [reportDetails, setReportDetails] = useState<string>("");
 
-  // 帶有結構化載荷（Payload）的風控提交處理器
   const handleReportConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!reportCategory) {
-      e.preventDefault(); // 攔截關閉行為
+      e.preventDefault();
       toast.error("❌ 請選擇舉報事項類別");
       return;
     }
 
     toast.error("⚠️ 舉報信號已受理", {
-      description: `【${reportCategory}】風控隊列已啟動，案件詳情已留存快照，合約風控官將於 15 分鐘內介入審查。`,
-      className:
-        "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
+      description: "【" + reportCategory + "】風控隊列已啟動，案件詳情已留存快照，合約風控官將於 15 分鐘內介入審查。",
+      className: "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
     });
 
     setIsReportOpen(false);
@@ -141,7 +335,7 @@ export function GlobalChatConsole() {
       if (
         target.closest('[role="alertdialog"]') ||
         target.closest("[data-radix-portal]") ||
-        target.closest('[role="listbox"]') // 點擊 Select 下拉選單內部時，防止誤觸關閉聊天室邏輯
+        target.closest('[role="listbox"]')
       ) {
         return;
       }
@@ -168,7 +362,6 @@ export function GlobalChatConsole() {
     }
   }, [chats, activeRoomId, isChatOpen]);
 
-  // 完美進行 SSR 環境水合防線看守
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -187,7 +380,7 @@ export function GlobalChatConsole() {
       id: Date.now().toString(),
       sender: "me",
       text: inputText,
-      timestamp: "14:50",
+      timestamp: new Date().toISOString(),
       type: "text",
     };
     setChats((prev) =>
@@ -204,6 +397,9 @@ export function GlobalChatConsole() {
     setInputText("");
   };
 
+  // Build interleaved message + separator render list for the active room
+  const renderList = buildMessageRenderList(activeRoom.messages);
+
   return (
     <AlertDialog
       open={isReportOpen}
@@ -216,7 +412,7 @@ export function GlobalChatConsole() {
       }}
     >
       <>
-        {/* 💻 1. 電腦端布局 (Desktop View) */}
+        {/* 1. Desktop View */}
         <motion.div
           ref={desktopConsoleRef}
           data-chat-console="true"
@@ -225,7 +421,7 @@ export function GlobalChatConsole() {
           exit={{ opacity: 0, y: 40, scale: 0.98 }}
           className="hidden lg:flex fixed bottom-6 right-6 z-[200] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
         >
-          {/* 左欄：商戶列表選單 */}
+          {/* Left column: room list */}
           <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
             <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0">
               <span className="font-mono text-[9px] text-brand tracking-widest uppercase font-bold">
@@ -245,7 +441,7 @@ export function GlobalChatConsole() {
                       ),
                     );
                   }}
-                  className={`w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none ${room.id === activeRoomId ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md" : "hover:bg-[#26211C]/40 border border-transparent"}`}
+                  className={"w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none " + (room.id === activeRoomId ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md" : "hover:bg-[#26211C]/40 border border-transparent")}
                 >
                   <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                     {room.partnerName[0]}
@@ -263,26 +459,21 @@ export function GlobalChatConsole() {
             </div>
           </div>
 
-          {/* 右欄：對話歷史主戰區 */}
+          {/* Right column: message thread */}
           <div className="flex-1 flex flex-col bg-[#17130f]">
             <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
               <div className="flex items-center gap-2">
-                {/* User online status */}
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                <Link href={`/profile/${activeRoom.id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                  {/* User Avatar */}
+                <Link href={"/profile/" + activeRoom.partnerId} onClick={onClose} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                   <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                     {activeRoom.partnerName[0]}
                   </div>
-                  {/* User name */}
                   <span className="font-sans font-bold text-[13px] text-text-primary">
                     {activeRoom.partnerName}
                   </span>
                 </Link>
               </div>
               <div className="flex items-center gap-2">
-                {/* 🟢 頂級修正 A（電腦端）：徹底砍掉 asChild 與內嵌 button！
-                    把所有黑金樣式直接灌入 AlertDialogTrigger，完美回歸標準單一原生 HTML 按鈕結構 */}
                 <AlertDialogTrigger className={reportButtonClass}>
                   舉報
                 </AlertDialogTrigger>
@@ -300,47 +491,7 @@ export function GlobalChatConsole() {
               ref={scrollRef}
               className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
             >
-              {activeRoom.messages.map((msg) => {
-                if (
-                  msg.type === "special_transaction" &&
-                  hasRenderableSpecialData(msg.specialData)
-                ) {
-                  return (
-                    <div
-                      key={msg.id}
-                      className="w-full flex justify-start max-w-[90%] animate-fadeIn"
-                    >
-                      <SpecialTransactionMessage
-                        msgId={msg.id}
-                        buyerName={msg.specialData.buyerName}
-                        buyerId={msg.specialData.buyerId}
-                        sellerId={msg.specialData.sellerId}
-                        sellerName={msg.specialData.sellerName}
-                        cardName={msg.specialData.cardName}
-                        cardId={msg.specialData.cardId}
-                        offerPrice={msg.specialData.offerPrice}
-                        initialStatus="pending"
-                        isMe={msg.sender === "me"}
-                      />
-                    </div>
-                  );
-                }
-                const isMe = msg.sender === "me";
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className="max-w-[75%]">
-                      <div
-                        className={`px-3 py-1.5 rounded-xl font-sans text-[12.5px] inline-block shadow-sm leading-snug ${isMe ? "bg-brand text-[#17130f] font-medium" : "bg-[#26211C] text-text-primary border border border-[rgba(237,232,224,0.04)]"}`}
-                      >
-                        {msg.text}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              <MessageThread renderList={renderList} />
             </div>
 
             <AntiScamDisclaimer />
@@ -353,7 +504,7 @@ export function GlobalChatConsole() {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`回覆給 ${activeRoom.partnerName}...`}
+                placeholder={"回覆給 " + activeRoom.partnerName + "..."}
                 className="flex-1 h-9 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-lg px-3 text-[12px] text-text-primary focus:outline-none"
               />
               <button
@@ -367,7 +518,7 @@ export function GlobalChatConsole() {
           </div>
         </motion.div>
 
-        {/* 📱 2. 手機端布局 (Mobile View) */}
+        {/* 2. Mobile View */}
         <motion.div
           data-chat-console="true"
           initial={{ y: "100%" }}
@@ -429,14 +580,11 @@ export function GlobalChatConsole() {
                     <IoChevronBack />
                   </button>
                   <div className="flex items-center gap-2">
-                    {/* User online status */}
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                    <Link href={`/profile/${activeRoom.id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                      {/* User Avatar */}
+                    <Link href={"/profile/" + activeRoom.partnerId} onClick={onClose} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                       <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                         {activeRoom.partnerName[0]}
                       </div>
-                      {/* User name */}
                       <span className="font-sans font-bold text-[13px] text-text-primary">
                         {activeRoom.partnerName}
                       </span>
@@ -444,7 +592,6 @@ export function GlobalChatConsole() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* 🟢 頂級修正 B（手機端）：同步砍掉 asChild 與內嵌 button 結構，拒絕 nested 按鈕殘留 */}
                   <AlertDialogTrigger className={reportButtonClass}>
                     舉報
                   </AlertDialogTrigger>
@@ -462,45 +609,7 @@ export function GlobalChatConsole() {
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
               >
-                {activeRoom.messages.map((msg) => {
-                  if (
-                    msg.type === "special_transaction" &&
-                    hasRenderableSpecialData(msg.specialData)
-                  ) {
-                    return (
-                      <div
-                        key={msg.id}
-                        className="w-full flex justify-start max-w-[95%] animate-fadeIn"
-                      >
-                        <SpecialTransactionMessage
-                          msgId={msg.id}
-                          buyerName={msg.specialData.buyerName}
-                          buyerId={msg.specialData.buyerId}
-                          sellerId={msg.specialData.sellerId}
-                          sellerName={msg.specialData.sellerName}
-                          cardName={msg.specialData.cardName}
-                          cardId={msg.specialData.cardId}
-                          offerPrice={msg.specialData.offerPrice}
-                          initialStatus="pending"
-                          isMe={msg.sender === "me"}
-                        />
-                      </div>
-                    );
-                  }
-                  const isMe = msg.sender === "me";
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`px-4 py-2 rounded-2xl font-sans text-[13px] ${isMe ? "bg-brand text-[#17130f]" : "bg-[#26211C] text-text-primary"}`}
-                      >
-                        {msg.text}
-                      </div>
-                    </div>
-                  );
-                })}
+                <MobileMessageThread renderList={renderList} />
               </div>
 
               <AntiScamDisclaimer />
@@ -513,7 +622,7 @@ export function GlobalChatConsole() {
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`回覆 ${activeRoom.partnerName}...`}
+                  placeholder={"回覆 " + activeRoom.partnerName + "..."}
                   className="flex-1 h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-text-primary focus:outline-none"
                 />
                 <button
@@ -529,7 +638,7 @@ export function GlobalChatConsole() {
         </motion.div>
       </>
 
-      {/* 全新對焦黑金奢華風控制表對話框 */}
+      {/* Report dialog */}
       <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_12px_40px_rgba(239,68,68,0.15)] rounded-2xl max-w-sm p-6 animate-scaleUp">
         <AlertDialogHeader className="text-left place-items-start gap-1">
           <AlertDialogTitle className="text-[16px] font-black text-[#eae1da] flex items-center gap-2">
@@ -540,7 +649,6 @@ export function GlobalChatConsole() {
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* 下拉配置及詳情表單 */}
         <div className="space-y-4 py-3 font-sans text-[13px] w-full">
           <div className="space-y-1.5">
             <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
@@ -554,28 +662,16 @@ export function GlobalChatConsole() {
                 <SelectValue placeholder="點擊展開合約違規類別" />
               </SelectTrigger>
               <SelectContent className="bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
-                <SelectItem
-                  value="惡意欺詐 / 虛假交易"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
+                <SelectItem value="惡意欺詐 / 虛假交易" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
                   🛑 惡意欺詐 / 虛假交易 (FRAUD)
                 </SelectItem>
-                <SelectItem
-                  value="言語辱罵 / 不當言論"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
+                <SelectItem value="言語辱罵 / 不當言論" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
                   💬 言語辱罵 / 不當言論 (HARASS)
                 </SelectItem>
-                <SelectItem
-                  value="誘導私下交易"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
+                <SelectItem value="誘導私下交易" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
                   🔒 誘導私下交易 / 逃避中介 (OFFLINE)
                 </SelectItem>
-                <SelectItem
-                  value="其他違規行為"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
+                <SelectItem value="其他違規行為" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
                   ⚙️ 其他違規行為 (OTHER)
                 </SelectItem>
               </SelectContent>
@@ -587,25 +683,23 @@ export function GlobalChatConsole() {
               htmlFor="chat-report-details"
               className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide"
             >
-              舉報或投訴之詳細事實敘述
+              舉報或投訴之詳細事實敍述
             </label>
             <textarea
               id="chat-report-details"
               value={reportDetails}
               onChange={(e) => setReportDetails(e.target.value)}
-              placeholder="請具體提供案發事實（例如：對方提供虛假銀行轉帳截圖、使用冒犯性詞彙等），以利風控官快速調閱對話存證。"
+              placeholder="請具體提供案發事實（例如：對方提供虛假銀行轉帳截圖、使用冀辱性詞彙等），以利風控官快速調閱對話存證。"
               rows={3}
               className="w-full bg-[#17130f] border border-white/5 rounded-xl text-[12.5px] font-sans text-[#eae1da] placeholder:text-[#50453b] p-3 focus:outline-none focus:border-brand/40 transition-colors resize-none leading-relaxed"
             />
           </div>
 
           <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
-            ⚠️
-            聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨賬戶風控扣分限制。
+            ⚠️ 聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨账戶風控扣分限制。
           </p>
         </div>
 
-        {/* 垂直流式佈局原生 HTML <div> 容器 */}
         <div className="flex flex-col gap-2 pt-1 w-full">
           <AlertDialogAction
             type="button"

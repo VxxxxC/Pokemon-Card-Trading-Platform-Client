@@ -237,7 +237,7 @@ function ActiveOrderDetail({ order }: { order: LocalOrder }) {
           ← 返回交易管理資產大盤
         </Link>
         <button
-          onClick={() => openGlobalChat(order.sellerId, order.seller)}
+          onClick={() => openGlobalChat("USR-ME", "我", order.sellerId, order.seller, "BUYER")}
           className="h-11 px-6 bg-[#26211C] border border-brand/30 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-[0.95] transition-all shadow-md cursor-pointer"
         >
           💬 呼叫全域加密對講機

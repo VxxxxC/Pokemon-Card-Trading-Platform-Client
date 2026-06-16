@@ -27,7 +27,7 @@ export function TopNav() {
   const isGuest = mockRole === "GUEST";
 
   // 從 Zustand 接入受控雷達狀態
-  const { chats, isChatOpen, setIsChatOpen, setActiveRoomId, openGlobalChat } =
+  const { chats, isChatOpen, setIsChatOpen, setActiveRoomId, activateRoomById } =
     useTradeStore();
 
   // 點擊外面收起下拉選單
@@ -52,9 +52,9 @@ export function TopNav() {
         partnerName?: string;
       }>;
       if (customEvent.detail?.roomId) {
-        openGlobalChat(
+        activateRoomById(
           customEvent.detail.roomId,
-          customEvent.detail.partnerName || "未知名商戶",
+          customEvent.detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
         );
       }
     };
@@ -62,7 +62,7 @@ export function TopNav() {
     window.addEventListener("open-global-chat", handleGlobalOpenChat);
     return () =>
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
-  }, [openGlobalChat]);
+  }, [activateRoomById]);
 
   const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
 

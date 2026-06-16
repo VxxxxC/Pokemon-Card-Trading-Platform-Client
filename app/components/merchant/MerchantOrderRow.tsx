@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { SaleOrder, OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { useTradeStore } from "@/app/store/useTradeStore";
-import { toast } from "sonner";
 
 interface MerchantOrderRowProps {
   order: SaleOrder;
@@ -38,11 +37,8 @@ export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
   const { openGlobalChat } = useTradeStore(); 
 
   const handleChatClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 鎖死冒泡事件，防範觸發外層 router.push 進入詳情頁面
-    
-    // 🟢 核心優化 2：完美接駁通車！使用買家唯一的名稱或 ID，直接對焦拉起加密聊天通道
-    const buyerRoomId = "RM-BUYER-" + order.buyerName;
-    openGlobalChat(buyerRoomId, order.buyerName);
+    e.stopPropagation();
+    openGlobalChat(order.buyerId, order.buyerName, order.sellerId, order.sellerName, "SELLER");
   };
 
   return (
