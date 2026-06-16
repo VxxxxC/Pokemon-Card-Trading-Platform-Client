@@ -425,10 +425,11 @@ function SkuItemsList({ sku }: SkuItemsListProps) {
 // ─── Main SKU Inventory Accordion ─────────────────────────────────────────────
 
 interface InventoryAccordionProps {
+  analytics?: boolean;
   skuGroups: SKUGroup[];
 }
 
-export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
+export function InventoryAccordion({ skuGroups, analytics = true }: InventoryAccordionProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
@@ -541,6 +542,7 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
 
                   <SkuItemsList sku={sku} />
 
+                  {analytics ? 
                   <div className="pt-1 border-t border-[rgba(237,232,224,0.06)]">
                     <Link
                       href={`/profile/merchant/analytics?sku=${sku.cardNo}`}
@@ -549,6 +551,7 @@ export function InventoryAccordion({ skuGroups }: InventoryAccordionProps) {
                       📊 前往本卡牌進階商品分析
                     </Link>
                   </div>
+                    : null}
                 </div>
               </div>
             </div>
