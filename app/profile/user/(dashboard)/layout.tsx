@@ -8,6 +8,7 @@ import type { TabItem } from "@/app/components/profile/ProfileTabNav";
 const USER_TABS: TabItem[] = [
   { href: "/profile/user", label: "總覽", icon: "👤" },
   { href: "/profile/user/collection", label: "卡牌庫", icon: "💎" },
+  { href: "/profile/user/inventory", label: "商品管理", icon: "🏪" },
   { href: "/profile/user/trading", label: "交易管理", icon: "⚡" },
 ];
 
