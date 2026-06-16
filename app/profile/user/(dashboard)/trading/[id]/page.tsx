@@ -30,7 +30,6 @@ interface LocalOrder {
   cornersGrade?: string;
   edgesGrade?: string;
   surfaceGrade?: string;
-  securityHash?: string;
 }
 
 // TODO: [server/api/database]
@@ -122,7 +121,6 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     statusLabel: "交易完結 (買賣雙方已當面完成資產核對交收)",
     createdAt: "2026年 5月10日",
     side: "buy",
-    securityHash: "HASH-SHA256-PKT-C2C-9981237",
   },
   "ORD-C2C-DONE-102": {
     id: "ORD-C2C-DONE-102",
@@ -140,7 +138,6 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     statusLabel: "交易完結 (順豐自提點智能櫃買家已簽收)",
     createdAt: "2026年 5月08日",
     side: "sell",
-    securityHash: "HASH-SHA256-PKT-C2C-8874109",
   },
   "ORD-B2C-DONE-103": {
     id: "ORD-B2C-DONE-103",
@@ -163,7 +160,6 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     cornersGrade: "9.5 / 10",
     edgesGrade: "10 / 10",
     surfaceGrade: "10 / 10",
-    securityHash: "HASH-SHA256-ESCROW-AUTH-20260505",
   },
 };
 
@@ -537,16 +533,6 @@ function CompletedOrderDetail({ order }: { order: LocalOrder }) {
                   </span>
                 </div>
               </div>
-            </div>
-          )}
-          {order.securityHash && (
-            <div className="bg-[#26211C]/40 border border-[rgba(237,232,224,0.04)] rounded-2xl p-4 space-y-1.5 text-[11px] text-text-disabled">
-              <p className="font-sans font-semibold text-[10px] text-text-secondary uppercase tracking-widest">
-                🔒 安全防偽區塊鏈驗證碼
-              </p>
-              <p className="truncate font-mono select-all bg-[#17130f] p-2 rounded-lg border border-[rgba(237,232,224,0.06)] text-brand/80 mt-2">
-                {order.securityHash}
-              </p>
             </div>
           )}
         </div>
