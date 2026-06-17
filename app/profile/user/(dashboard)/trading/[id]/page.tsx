@@ -318,9 +318,12 @@ export default function UserOrderDetailPage() {
             <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
               {order.cardName}
             </div>
-            <span className="font-mono text-[12.5px] text-brand mt-1">
+            <p className="font-mono text-[12.5px] text-brand mt-1">
               訂單號碼: {order.id}
-            </span>
+            </p>
+            <p className="font-mono text-[12.5px] text-brand mt-1">
+              {/* 加上接受出價日期時間 */}
+            </p>
           </div>
           <div>
             <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">

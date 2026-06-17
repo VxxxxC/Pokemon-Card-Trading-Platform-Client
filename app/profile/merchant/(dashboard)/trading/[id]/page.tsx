@@ -150,6 +150,9 @@ export default function MerchantOrderDetailPage() {
           </div>
           <div className="font-mono text-[12.5px] text-brand mt-1">
             <p>訂單號碼: {order.id}</p>
+            <p className="font-mono text-[12.5px] text-brand mt-1">
+              {/* 加上接受出價日期時間 */}
+            </p>
           </div>
         </div>
         <div className="font-mono font-black text-md text-brand mt-1 text-nowrap">
