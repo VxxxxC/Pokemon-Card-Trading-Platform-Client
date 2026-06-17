@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { IoChevronBack } from "react-icons/io5";
 import { useMerchantStore } from "@/app/store/useMerchantStore";
 import { useTradeStore } from "@/app/store/useTradeStore";
 import { OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
@@ -105,14 +106,15 @@ export default function MerchantOrderDetailPage() {
     STATUS_STEP_INDEX[order.status as Exclude<OrderStatus, "cancelled">];
 
   return (
-    <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-4 sm:p-6 space-y-6 animate-fadeIn">
+    <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans  sm:p-6 space-y-2 animate-fadeIn">
       {/* Upper Navigation Header */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+      <div className="flex items-center justify-between ">
         <button
+          type="button"
           onClick={() => router.back()}
-          className="font-sans text-[13.5px] font-bold text-[#d4c4b7] hover:text-brand flex items-center gap-1 transition-colors"
+          className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
         >
-          ← 返回交易管理資產大盤
+          <IoChevronBack />
         </button>
         <button
           onClick={() => {
@@ -139,24 +141,26 @@ export default function MerchantOrderDetailPage() {
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span>{"與" + order.buyerName + "對話"}</span>
         </button>
       </div>
 
       <div className="flex flex-row justify-between">
-        <div>
+        <div className="justify-items-start">
           <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
             {order.cardName}
           </div>
           <div className="font-mono text-[12.5px] text-brand mt-1">
             <p>訂單號碼: {order.id}</p>
             <p className="font-mono text-[11px] text-text-disabled mt-1">
-              出價日期: {order.bidTimestamp || order.createdAt || "2026/06/17 12:00"}
+              出價日期:{" "}
+              {order.bidTimestamp || order.createdAt || "2026/06/17 12:00"}
             </p>
           </div>
         </div>
-        <div className="font-mono font-black text-md text-brand mt-1 text-nowrap">
-          <p>{order.buyerName}</p>
+        <div className="justify-items-end">
+          <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
+            {order.buyerName}
+          </p>
           <div className="flex items-center gap-1 mt-1">
             <span className="font-mono text-[13px] text-text-primary font-bold">
               ⭐ {order.rating || 5.0}
