@@ -130,7 +130,10 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
         </section>
 
         {/* 3. 買家評價 */}
-        <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6 mb-20">
+        <section
+          id="rating"
+          className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6 mb-20"
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-sans font-bold text-[16px]">
               最近收到的信用評價
