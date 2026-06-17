@@ -1,12 +1,11 @@
-import type { Metadata } from "next";
+"use client";
+
+import React, { useMemo, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CiSettings } from "react-icons/ci";
-
-export const metadata: Metadata = {
-  title: "商戶總覽 — PokéTrade JP",
-  description: "查看銷售統計、待處理訂單及商戶概覽",
-};
+import { useMerchantStore } from "@/app/store/useMerchantStore";
+import { MerchantOrderRow } from "@/app/components/merchant/MerchantOrderRow";
 
 // 中央數據源：商戶身分真理數據（Hero 看板專用）
 const mockMerchant = {
@@ -43,14 +42,6 @@ const merchantSteps = [
   { levelNum: 5, label: "傳奇卡牌王" },
 ];
 
-// 待處理訂單流水線路
-const pendingActions = [
-  { id: "ORD-20250519-041", buyer: "M.佐藤", card: "Charizard ex SAR", grade: "PSA 10", amount: 49_800, action: "待發貨", actionColor: "text-warning" },
-  { id: "ORD-20250519-039", buyer: "K.田中", card: "Umbreon ex SAR", grade: "BGS 9", amount: 38_200, action: "待確認", actionColor: "text-brand" },
-  { id: "ORD-20250518-035", buyer: "C.Chen", card: "Pikachu ex SAR", grade: "PSA 10", amount: 32_500, action: "鑑定進行中", actionColor: "text-success" },
-  { id: "ORD-20250517-030", buyer: "A.Yamamoto", card: "Gardevoir ex SAR", grade: "PSA 9", amount: 28_000, action: "待發貨", actionColor: "text-warning" },
-];
-
 // 模擬最新期 3 筆真實信用評價數據
 const mockRecentReviews = [
   { id: "r1", reviewer: "K.田中", rating: 5, comment: "包裝非常謹慎，卡況與描述完全一致，快速發貨，強力推薦！", date: "2026年 5月" },
@@ -59,6 +50,29 @@ const mockRecentReviews = [
 ];
 
 export default function MerchantOverviewPage() {
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+
+  const { orders } = useMerchantStore();
+
+  // 1. 數據獲取與篩選
+  // 篩選條件：status === "payment" 或 status === "custody" (待處理)
+  // 排序：按 createdAt 降序排列 (最新在前)
+  // 切片：只取前 4 筆
+  const pendingOrders = useMemo(() => {
+    return orders
+      .filter(o => o.status === "payment" || o.status === "custody")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+  }, [orders]);
+
+  const totalPendingCount = useMemo(() => {
+    return orders.filter(o => o.status === "payment" || o.status === "custody").length;
+  }, [orders]);
+
   return (
     <>
       {/* ── 🟢 1. MERCHANT HERO HEADER (升級版商戶自豪看板) ───────────────── */}
@@ -204,8 +218,6 @@ export default function MerchantOverviewPage() {
             ))}
           </div>
 
-          {/* 🟢 項目 3 搬遷修正：已將舊有 [經營分析] 鈕由 Header 右下角彻底剷除，避免元件重複洩漏 */}
-
         </div>
       </section>
 
@@ -213,7 +225,6 @@ export default function MerchantOverviewPage() {
       <section aria-labelledby="revenue-heading" className="mb-5">
         <h2 id="revenue-heading" className="sr-only">經營業績與快報分析</h2>
         
-        {/* 🟢 項目 1 & 2：雙指標合二為一做同一個 Container，自適應 Grid 完美優化跨端可視化 */}
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 space-y-5 shadow-sm">
           
           {/* 上層數據網絡列：保持 Mobile(平排網格不擠壓) ⇄ Web(寬裕比例對齊) */}
@@ -240,12 +251,12 @@ export default function MerchantOverviewPage() {
                 23 <span className="font-sans text-[12px] text-text-secondary font-normal">單</span>
               </p>
               <p className="font-mono text-[11px] text-warning font-medium">
-                4 件待處理
+                {isMounted ? `${totalPendingCount} 件待處理` : "載入中..."}
               </p>
             </div>
           </div>
 
-          {/* 🟢 項目 3：將 [經營分析] 鈕移入此 Container 下方，鋼鐵鎖定 Full Width 佔滿 */}
+          {/* 項目 3：將 [經營分析] 鈕移入此 Container 下方，鋼鐵鎖定 Full Width 佔滿 */}
           <div className="pt-0.5">
             <Link
               href="/profile/merchant/performance"
@@ -266,38 +277,28 @@ export default function MerchantOverviewPage() {
             待處理訂單
           </h2>
           <Link
-            href="/profile/merchant/trading"
-            className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
+            href="/profile/merchant/trading?filter=待處理"
+            className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors font-bold"
           >
             查看全部 →
           </Link>
         </div>
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {pendingActions.map((order, i) => (
-            <div
-              key={order.id}
-              className={`flex items-center gap-3 px-4 py-3.5 hover:bg-bg-elevated transition-colors ${i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""}`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="font-sans text-[13px] font-medium text-text-primary truncate">{order.card}</p>
-                  <span className="font-mono text-[10px] text-text-disabled">{order.grade}</span>
-                </div>
-                <p className="font-mono text-[11px] text-text-secondary">
-                  買家：{order.buyer} · #{order.id.slice(-6)}
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-mono font-semibold text-[14px] text-text-primary">
-                  HK$ {order.amount.toLocaleString("zh-TW")}
-                </p>
-                <span className={`font-mono text-[11px] ${order.actionColor}`}>
-                  {order.action}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+        
+        {!isMounted ? (
+          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-8 text-center">
+            <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin mx-auto" />
+          </div>
+        ) : pendingOrders.length === 0 ? (
+          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-12 text-center">
+            <p className="font-sans text-[13px] text-text-disabled">目前無待處理訂單</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {pendingOrders.map((order) => (
+              <MerchantOrderRow key={order.id} order={order} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── REPUTATION SECTION (信用評級模組) ────── */}

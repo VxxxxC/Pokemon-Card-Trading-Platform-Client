@@ -1,20 +1,32 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMerchantStore } from "@/app/store/useMerchantStore";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { MerchantOrderRow } from "@/app/components/merchant/MerchantOrderRow";
 
-export default function MerchantTradingPage() {
+function MerchantTradingPageContent() {
   const { orders } = useMerchantStore();
   
-  const [filter, setFilter] = useState("全部");
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get("filter") || "全部";
+
+  const [filter, setFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
 
   const [subPaymentChecked, setSubPaymentChecked] = useState(true);
   const [subGradingChecked, setSubGradingChecked] = useState(true);
+
+  // Sync state if URL query param changes dynamically (e.g. click "View All" link)
+  useEffect(() => {
+    const queryFilter = searchParams.get("filter");
+    if (queryFilter && queryFilter !== filter) {
+      queueMicrotask(() => setFilter(queryFilter));
+    }
+  }, [searchParams, filter]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -85,7 +97,7 @@ export default function MerchantTradingPage() {
         </div>
       )}
 
-      <div className="relative bg-bg-card rounded-2xl border border Red border-white/5 p-4 shadow-sm flex flex-col gap-2">
+      <div className="relative bg-bg-card rounded-2xl border border-white/5 p-4 shadow-sm flex flex-col gap-2">
         <label htmlFor="merchant-order-search" className="font-mono text-[11px] text-text-secondary uppercase tracking-wider">
           智慧訂單檢索控制台
         </label>
@@ -140,6 +152,7 @@ export default function MerchantTradingPage() {
               );
             })}
           </div>
+
         </div>
 
         {filter === "待處理" && (
@@ -191,5 +204,17 @@ export default function MerchantTradingPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function MerchantTradingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    }>
+      <MerchantTradingPageContent />
+    </Suspense>
   );
 }

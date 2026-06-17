@@ -32,7 +32,7 @@ interface LocalOrder {
   createdAt: string;
   trackingNo?: string;
   orderType: "B2C" | "C2C";
-  side: "buy" | "sell";
+  userContext: "BUYER" | "SELLER";
   certNo?: string;
   centeringGrade?: string;
   cornersGrade?: string;
@@ -41,42 +41,41 @@ interface LocalOrder {
 }
 
 const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
-  "ORD-C2C-MEETUP-001": {
-    id: "ORD-C2C-MEETUP-001",
+  "ORD-2026-U01": {
+    id: "ORD-2026-U01",
     buyerId: "USR-ME",
-    buyerName: "我",
-    sellerId: "ROOM-MOCK-C2C-01",
-    sellerName: "星光收藏家",
+    buyerName: "田中 Koji",
+    sellerId: "PKT-MER-001",
+    sellerName: "KojiTCG Premium",
     cardName: "Charizard ex SAR (噴火龍)",
     cardNo: "sv2a-182",
     grade: "PSA 10",
-    amount: 2250,
+    amount: 49800,
     status: "payment",
     createdAt: "2026/05/27",
-    orderType: "C2C",
-    side: "buy",
+    orderType: "B2C",
+    userContext: "BUYER",
   },
-  "ORD-C2C-DELIVERY-002": {
-    id: "ORD-C2C-DELIVERY-002",
-    buyerId: "ROOM-MOCK-C2C-02",
-    buyerName: "港島執雞王",
+  "ORD-2026-U02": {
+    id: "ORD-2026-U02",
+    buyerId: "USR-BUY-002",
+    buyerName: "M.佐藤",
     sellerId: "USR-ME",
-    sellerName: "我",
+    sellerName: "田中 Koji",
     cardName: "Umbreon ex SAR (月亮伊布)",
     cardNo: "sv6a-109",
     grade: "Raw 裸卡",
-    amount: 1900,
-    status: "shipped",
+    amount: 38200,
+    status: "custody",
     createdAt: "2026/05/26",
-    trackingNo: "SF123456789",
     orderType: "C2C",
-    side: "sell",
+    userContext: "SELLER",
   },
-  "ORD-B2C-AUTH-003": {
-    id: "ORD-B2C-AUTH-003",
+  "ORD-2026-U03": {
+    id: "ORD-2026-U03",
     buyerId: "USR-ME",
-    buyerName: "我",
-    sellerId: "PKT-8839-44A",
+    buyerName: "田中 Koji",
+    sellerId: "PKT-MER-002",
     sellerName: "渡邊道館",
     cardName: "Marnie (瑪俐) SR 198/190",
     cardNo: "s5a-070",
@@ -85,13 +84,13 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "grading",
     createdAt: "2026/05/25",
     orderType: "B2C",
-    side: "buy",
+    userContext: "BUYER",
   },
-  "ORD-B2C-NOAUTH-004": {
-    id: "ORD-B2C-NOAUTH-004",
+  "ORD-2026-U04": {
+    id: "ORD-2026-U04",
     buyerId: "USR-ME",
-    buyerName: "我",
-    sellerId: "ROOM-MOCK-B2C-02",
+    buyerName: "田中 Koji",
+    sellerId: "USR-SEL-004",
     sellerName: "東京TCG市場",
     cardName: "Pikachu AR (皮卡丘)",
     cardNo: "sv2a-215",
@@ -100,13 +99,13 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "payment",
     createdAt: "2026/05/24",
     orderType: "C2C",
-    side: "buy",
+    userContext: "BUYER",
   },
-  "ORD-C2C-DONE-101": {
-    id: "ORD-C2C-DONE-101",
+  "ORD-2026-U05": {
+    id: "ORD-2026-U05",
     buyerId: "USR-ME",
-    buyerName: "我",
-    sellerId: "ROOM-MOCK-C2C-99",
+    buyerName: "田中 Koji",
+    sellerId: "USR-SEL-005",
     sellerName: "尖沙咀卡神",
     cardName: "Lillie (莉莉艾) SR 119/114",
     cardNo: "sm4+119",
@@ -115,14 +114,14 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "released",
     createdAt: "2026/05/10",
     orderType: "C2C",
-    side: "buy",
+    userContext: "BUYER",
   },
-  "ORD-C2C-DONE-102": {
-    id: "ORD-C2C-DONE-102",
-    buyerId: "ROOM-MOCK-C2C-98",
+  "ORD-2026-U06": {
+    id: "ORD-2026-U06",
+    buyerId: "USR-BUY-006",
     buyerName: "元朗李生",
     sellerId: "USR-ME",
-    sellerName: "我",
+    sellerName: "田中 Koji",
     cardName: "Gengar VMAX (耿鬼) SA 020/019",
     cardNo: "sGG-020",
     grade: "PSA 10",
@@ -130,13 +129,13 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "released",
     createdAt: "2026/05/08",
     orderType: "C2C",
-    side: "sell",
+    userContext: "SELLER",
   },
-  "ORD-B2C-DONE-103": {
-    id: "ORD-B2C-DONE-103",
+  "ORD-2026-U07": {
+    id: "ORD-2026-U07",
     buyerId: "USR-ME",
-    buyerName: "我",
-    sellerId: "ROOM-MOCK-B2C-97",
+    buyerName: "田中 Koji",
+    sellerId: "PKT-MER-007",
     sellerName: "木戶卡牌旗艦店",
     cardName: "Rayquaza VMAX SA 083/067",
     cardNo: "s7R-083",
@@ -145,12 +144,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     status: "released",
     createdAt: "2026/05/05",
     orderType: "B2C",
-    side: "buy",
-    certNo: "PSA-CERT-9982410",
-    centeringGrade: "10 / 10",
-    cornersGrade: "9.5 / 10",
-    edgesGrade: "10 / 10",
-    surfaceGrade: "10 / 10",
+    userContext: "BUYER",
   },
 };
 
@@ -160,7 +154,7 @@ const REMARKS_PRESETS = [
   "正面右上角：金邊切割銳利，無邊緣磨損",
   "背面左下角：四維防偽雷射標籤對位極致",
   "鑑定認證封殼：防塵防紫外，全密閉存證封裝",
-  "條碼微距特寫：認證編號完美可讀，防偽一致"
+  "條碼微距特寫：認證編號完美可讀，防偽一致",
 ];
 
 export default function UserOrderDetailPage() {
@@ -171,7 +165,7 @@ export default function UserOrderDetailPage() {
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
-    () => false
+    () => false,
   );
 
   const { openGlobalChat } = useTradeStore();
@@ -181,7 +175,8 @@ export default function UserOrderDetailPage() {
   const [count, setCount] = useState(0);
 
   // Local state order simulator for the user interface
-  const [orders, setOrders] = useState<Record<string, LocalOrder>>(MOCK_ORDERS_DB);
+  const [orders, setOrders] =
+    useState<Record<string, LocalOrder>>(MOCK_ORDERS_DB);
 
   useEffect(() => {
     if (!api) return;
@@ -202,7 +197,7 @@ export default function UserOrderDetailPage() {
     };
   }, [api]);
 
-  const order = orders[orderId] || orders["ORD-C2C-MEETUP-001"];
+  const order = orders[orderId] || orders["ORD-2026-U01"];
 
   if (!isMounted) {
     return (
@@ -215,7 +210,9 @@ export default function UserOrderDetailPage() {
   if (!order) {
     return (
       <div className="min-h-screen bg-[#17130f] text-text-primary p-6 flex flex-col items-center justify-center gap-4">
-        <p className="font-sans text-[14px] text-text-disabled">找不到指定的交易訂單記錄。</p>
+        <p className="font-sans text-[14px] text-text-disabled">
+          找不到指定的交易訂單記錄。
+        </p>
         <Link
           href="/profile/user/trading"
           className="font-sans text-[13px] font-bold text-brand hover:underline"
@@ -226,36 +223,41 @@ export default function UserOrderDetailPage() {
     );
   }
 
-  const currentStepIdx = STATUS_STEP_INDEX[order.status as Exclude<OrderStatus, "cancelled">] ?? 0;
-  const isSeller = order.side === "sell";
+  const currentStepIdx =
+    STATUS_STEP_INDEX[order.status as Exclude<OrderStatus, "cancelled">] ?? 0;
+  const isSeller = order.userContext === "SELLER";
   const partnerName = isSeller ? order.buyerName : order.sellerName;
 
   // Simulator mutators
   const simulateConfirmOrder = () => {
-    setOrders(prev => ({
+    setOrders((prev) => ({
       ...prev,
-      [order.id]: { ...prev[order.id], status: "custody" }
+      [order.id]: { ...prev[order.id], status: "custody" },
     }));
   };
 
   const simulateUpdateTracking = (tracking: string) => {
-    setOrders(prev => ({
+    setOrders((prev) => ({
       ...prev,
-      [order.id]: { ...prev[order.id], status: "shipped", trackingNo: tracking }
+      [order.id]: {
+        ...prev[order.id],
+        status: "shipped",
+        trackingNo: tracking,
+      },
     }));
   };
 
   const simulateSendToGrading = () => {
-    setOrders(prev => ({
+    setOrders((prev) => ({
       ...prev,
-      [order.id]: { ...prev[order.id], status: "grading" }
+      [order.id]: { ...prev[order.id], status: "grading" },
     }));
   };
 
   const simulateReleaseEscrow = () => {
-    setOrders(prev => ({
+    setOrders((prev) => ({
       ...prev,
-      [order.id]: { ...prev[order.id], status: "released" }
+      [order.id]: { ...prev[order.id], status: "released" },
     }));
   };
 
@@ -272,48 +274,94 @@ export default function UserOrderDetailPage() {
         <button
           onClick={() => {
             openGlobalChat(
-              isSeller ? "USR-ME" : order.buyerId,
-              isSeller ? "我" : order.buyerName,
-              isSeller ? order.sellerId : "USR-ME",
-              isSeller ? order.sellerName : "我",
-              isSeller ? "SELLER" : "BUYER"
+              order.buyerId,
+              order.buyerName,
+              order.sellerId,
+              order.sellerName,
+              order.userContext,
             );
           }}
           className="h-10 px-5 bg-[#26211C] border border-brand/20 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-[0.96] transition-all shadow-md cursor-pointer flex items-center gap-2"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span>{"與"+ partnerName +"對話"}</span>
+          {"與" + partnerName + " 對話"}
         </button>
       </div>
 
+      <div className="flex flex-col gap-y-2">
+        <div>
+          <span
+            className={cn(
+              "font-sans text-sm font-black tracking-wide uppercase px-2 py-0.5 rounded border",
+              isSeller
+                ? "text-warning bg-warning/10 border-warning/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                : "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]",
+            )}
+          >
+            {isSeller ? "賣出交易" : "買入交易"}
+          </span>
+        </div>
+        <div className="flex flex-row justify-between">
           <div>
-            <h2 className="font-sans font-black text-[22px] text-text-primary leading-tight">
+            <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
               {order.cardName}
-            </h2>
-            <p className="font-mono text-[12.5px] text-brand mt-1">
-              {"卡片編號: " + order.cardNo + " · 訂單ID: " + order.id}
-            </p>
+            </div>
+            <span className="font-mono text-[12.5px] text-brand mt-1">
+              訂單號碼: {order.id}
+            </span>
           </div>
-
-
+          <div>
+            <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
+              {partnerName}
+            </p>
+            <p>{/* 加上用戶評分等級 */}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Symmetrical Twin Column Layout */}
-      <div className="block gap-6 items-start">
-        {/* Carousel Viewport + Twin Metadata Deck + Electronic Receipt */}
-        <div className="space-y-5">
-          {/*Carousel Viewport */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Carousel Viewport + Twin Metadata Deck + Electronic Receipt */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Left Carousel Viewport */}
           <div className="flex flex-col items-center select-none group w-full overflow-hidden">
             <div className="relative w-full aspect-[3/4] max-h-[45dvh] lg:max-h-[55vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
-              <Carousel setApi={setApi} className="w-full h-full [&>div]:h-full" opts={{ loop: true }}>
+              <Carousel
+                setApi={setApi}
+                className="w-full h-full [&>div]:h-full"
+                opts={{ loop: true }}
+              >
                 <CarouselContent className="-ml-0 h-full">
                   {Array.from({ length: 5 }, (_, photoIdx) => {
-                    const currentRemark = current === photoIdx ? (REMARKS_PRESETS[photoIdx] ?? "") : "";
+                    const currentRemark =
+                      current === photoIdx
+                        ? (REMARKS_PRESETS[photoIdx] ?? "")
+                        : "";
                     return (
-                      <CarouselItem key={photoIdx} className="pl-0 relative w-full h-full overflow-hidden rounded-2xl">
+                      <CarouselItem
+                        key={photoIdx}
+                        className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
+                      >
                         <Image
-                          src={"https://picsum.photos/seed/" + order.id + "-p" + photoIdx + "/400/500"}
+                          src={
+                            "https://picsum.photos/seed/" +
+                            order.id +
+                            "-p" +
+                            photoIdx +
+                            "/400/500"
+                          }
                           alt={order.cardName + " 實物照 " + (photoIdx + 1)}
                           fill
                           sizes="(max-width: 768px) 100vw, 400px"
@@ -328,6 +376,10 @@ export default function UserOrderDetailPage() {
                             </p>
                           </div>
                         )}
+                        {/* PSA Badge Overlay */}
+                        <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-[#17130f]/80 backdrop-blur-xs border border-brand/20 text-[11px] font-sans font-bold text-brand">
+                          {order.grade}
+                        </div>
                       </CarouselItem>
                     );
                   })}
@@ -366,7 +418,9 @@ export default function UserOrderDetailPage() {
               <div className="text-[12px] space-y-2 text-text-secondary font-mono">
                 <div className="flex justify-between">
                   <span>合約模式</span>
-                  <span className="text-brand font-bold">B2C 平台中介鑑定託管</span>
+                  <span className="text-brand font-bold">
+                    B2C 平台中介鑑定託管
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>{isSeller ? "買方帳號" : "賣方帳號"}</span>
@@ -386,16 +440,18 @@ export default function UserOrderDetailPage() {
 
           {/* 🧾 交易資產最終交收電子收據清冊 */}
           <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <div className="flex items-center justify-between pb-2">
               <h3 className="font-sans font-extrabold text-[14.5px] text-[#eae1da]">
                 🧾 交易資產最終交收電子收據
               </h3>
-              <span className={cn(
-                "font-sans text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded border",
-                isSeller 
-                  ? "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                  : "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]"
-              )}>
+              <span
+                className={cn(
+                  "font-sans text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded border",
+                  isSeller
+                    ? "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                    : "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]",
+                )}
+              >
                 {isSeller ? "賣出交易" : "買入交易"}
               </span>
             </div>
@@ -405,7 +461,10 @@ export default function UserOrderDetailPage() {
                 {order.cardName}
               </h4>
               <p className="font-mono text-[11px] text-text-secondary">
-                {"序號: " + order.cardNo + " · 等級: " + order.grade + " · " + (isSeller ? "買家:" : "賣家:") + " " + partnerName}
+                序號: {order.cardNo} · 等級: {order.grade}
+              </p>
+              <p className="font-mono text-[11px] text-text-secondary">
+                訂單號碼: {order.id} · 買家: {order.buyerName}
               </p>
             </div>
 
@@ -424,7 +483,7 @@ export default function UserOrderDetailPage() {
                 <span>平台免郵定額補貼 (Subsidy)</span>
                 <span>-HK$ 30</span>
               </div>
-              
+
               {/* Optional Authentication Fee row if orderType is B2C */}
               {order.orderType === "B2C" && (
                 <div className="flex justify-between text-brand">
@@ -436,7 +495,10 @@ export default function UserOrderDetailPage() {
               <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
                 <span>{isSeller ? "最終實收總額" : "最終扣款總額"}</span>
                 <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                  {"HK$ " + (order.amount + (order.orderType === "B2C" ? 150 : 0)).toLocaleString("zh-TW")}
+                  {"HK$ " +
+                    (
+                      order.amount + (order.orderType === "B2C" ? 150 : 0)
+                    ).toLocaleString("zh-TW")}
                 </span>
               </div>
             </div>
@@ -446,7 +508,8 @@ export default function UserOrderDetailPage() {
                 type="button"
                 onClick={() =>
                   toast.success("📥 鑑定報告已匯出", {
-                    description: "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
+                    description:
+                      "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
                   })
                 }
                 className="w-full h-10 bg-[#39342f] border border-[rgba(237,232,224,0.12)] hover:border-brand text-text-primary text-[12px] font-bold rounded-xl transition-all mt-2 shadow-md flex items-center justify-center gap-2 cursor-pointer"
@@ -457,222 +520,280 @@ export default function UserOrderDetailPage() {
           </div>
         </div>
 
-        {/*Escrow Steps and Interactive Controls */}
-        <div>
-          {/* Interactive Controls */}
+        {/* Escrow Steps and Interactive Controls */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Escrow Stepper */}
           <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
-            <h4 className="font-sans font-bold text-[12.5px] text-text-primary flex items-center gap-1.5">
+            <h4 className="font-sans font-bold text-[12.5px] text-text-primary">
               交易狀態
             </h4>
 
-          {/* Escrow Stepper */}
-          <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
-            <div className="relative pl-6 space-y-5 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
-              {ESCROW_STEPS.map((step, idx) => {
-                const isCompleted = idx < currentStepIdx;
-                const isActive = idx === currentStepIdx;
-                
-                return (
-                  <div key={step.id} className="relative text-[12.5px] leading-relaxed">
-                    {/* Stepper Dot */}
-                    <div className={cn(
-                      "absolute left-[-23px] top-1 w-3.5 h-3.5 rounded-full border-2 transition-all flex items-center justify-center",
-                      isCompleted ? "bg-success border-success text-white" :
-                      isActive ? "bg-brand border-brand animate-pulse" :
-                      "bg-[#1A1612] border-white/20"
-                    )}>
-                      {isCompleted && (
-                        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
+            <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
+              <div className="relative pl-6 space-y-5 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
+                {ESCROW_STEPS.map((step, idx) => {
+                  const isCompleted = idx < currentStepIdx;
+                  const isActive = idx === currentStepIdx;
+
+                  return (
+                    <div
+                      key={step.id}
+                      className="relative text-[12.5px] leading-relaxed"
+                    >
+                      {/* Stepper Dot */}
+                      <div
+                        className={cn(
+                          "absolute left-[-23px] top-1 w-3.5 h-3.5 rounded-full border-2 transition-all flex items-center justify-center",
+                          isCompleted
+                            ? "bg-success border-success text-white"
+                            : isActive
+                              ? "bg-brand border-brand animate-pulse"
+                              : "bg-[#1A1612] border-white/20",
+                        )}
+                      >
+                        {isCompleted && (
+                          <svg
+                            width="6"
+                            height="6"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span
+                          className={cn(
+                            "font-sans font-bold",
+                            isActive
+                              ? "text-brand"
+                              : isCompleted
+                                ? "text-success"
+                                : "text-text-secondary",
+                          )}
+                        >
+                          {step.label}
+                        </span>
+                        <span className="text-[11px] text-text-disabled">
+                          {step.description}
+                        </span>
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-col">
-                      <span className={cn(
-                        "font-sans font-bold",
-                        isActive ? "text-brand" : isCompleted ? "text-success" : "text-text-secondary"
-                      )}>
-                        {step.label}
-                      </span>
-                      <span className="text-[11px] text-text-disabled">{step.description}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-
-            {order.status === "payment" && (
-              <div className="space-y-3">
-                <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  {isSeller ? (
-                    "等待買家付款，商品總成交價：HK$ " + order.amount.toLocaleString("zh-TW") + "。買家完成付款後您將收到確認通知。"
-                  ) : (
-                    "您已完成此交易的全額付款 HK$ " + order.amount.toLocaleString("zh-TW") + "。此資金已安全存入 PokéTrade 官方擔保帳戶託管，等待賣家確認出貨。"
-                  )}
-                </p>
-                {isSeller && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      simulateConfirmOrder();
-                      toast.success("模擬：買家已付款！您已確認訂單，請填寫物流追蹤號發貨。");
-                    }}
-                    className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
-                  >
-                    (模擬) 確認買家付款並確認訂單 ➔
-                  </button>
-                )}
-              </div>
-            )}
-
-            {order.status === "custody" && (
-              <div className="space-y-3">
-                <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  {isSeller ? (
-                    "資金正處於平台安全託管中。請將卡牌實物寄出，並在下方登錄物流號碼完成出貨手續。"
-                  ) : (
-                    "資金已抵達平台託管。等待賣家將卡牌實物寄出或登錄快遞追蹤號碼。"
-                  )}
-                </p>
-                {isSeller && (
-                  <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
-                    <input
-                      id={"page-tracking-" + order.id}
-                      type="text"
-                      placeholder="填寫順豐、郵便或宅急便物流追蹤號"
-                      defaultValue={order.trackingNo || ""}
-                      className="flex-1 h-full bg-transparent px-3 font-mono text-[12px] text-text-primary placeholder-text-disabled focus:outline-none"
-                    />
+            {/* Interactive Controls */}
+            <div>
+              {order.status === "payment" && (
+                <div className="space-y-3">
+                  <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                    {isSeller
+                      ? "等待買家付款，商品總成交價：HK$ " +
+                        order.amount.toLocaleString("zh-TW") +
+                        "。買家完成付款後您將收到確認通知。"
+                      : "您已完成此交易的全額付款 HK$ " +
+                        order.amount.toLocaleString("zh-TW") +
+                        "。此資金已安全存入 PokéTrade 官方擔保帳戶託管，等待賣家確認出貨。"}
+                  </p>
+                  {isSeller && (
                     <button
                       type="button"
                       onClick={() => {
-                        const input = document.getElementById("page-tracking-" + order.id) as HTMLInputElement;
-                        const val = input?.value ?? "";
-                        if (!val.trim()) {
-                          toast.error("請先填寫物流追蹤號碼");
-                          return;
-                        }
-                        simulateUpdateTracking(val);
-                        toast.success("已成功發貨！追蹤號碼已登錄。");
+                        simulateConfirmOrder();
+                        toast.success(
+                          "模擬：買家已付款！您已確認訂單，請填寫物流追蹤號發貨。",
+                        );
                       }}
-                      className="px-4 h-full bg-brand/10 font-sans text-[11px] text-brand border-l border-white/5 hover:bg-brand/15 transition-colors cursor-pointer"
+                      className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
                     >
-                      確認發貨
+                      (模擬) 確認買家付款並確認訂單 ➔
                     </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {order.status === "shipped" && (
-              <div className="space-y-3">
-                <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  {"包裹已由快遞承運發送。物流單號：" + order.trackingNo + "。"}
-                  {isSeller ? (
-                    "您可以修改物流追蹤號，或確認包裹已送達鑑定所。"
-                  ) : (
-                    "商品已寄出。若為 B2C 鑑定服務，包裹正寄往專家鑑定櫃，完成掃描評級後即發往您的地址。"
                   )}
-                </p>
-                
-                {isSeller && (
-                  <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
-                    <input
-                      id={"page-tracking-update-" + order.id}
-                      type="text"
-                      placeholder="修改物流號碼"
-                      defaultValue={order.trackingNo || ""}
-                      className="flex-1 h-full bg-transparent px-3 font-mono text-[12px] text-text-primary placeholder-text-disabled focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.getElementById("page-tracking-update-" + order.id) as HTMLInputElement;
-                        const val = input?.value ?? "";
-                        if (!val.trim()) {
-                          toast.error("物流號碼不能為空");
-                          return;
-                        }
-                        simulateUpdateTracking(val);
-                        toast.success("物流追蹤號碼已成功更新");
-                      }}
-                      className="px-4 h-full bg-white/5 font-sans text-[11px] text-text-primary border-l border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                    >
-                      修改單號
-                    </button>
-                  </div>
-                )}
-
-                {order.orderType === "B2C" && isSeller && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      simulateSendToGrading();
-                      toast.success("卡牌已成功寄達！送入專家鑑定中心檢驗中。");
-                    }}
-                    className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
-                  >
-                    確認抵達專家鑑定所 🔍
-                  </button>
-                )}
-
-                {!isSeller && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      simulateReleaseEscrow();
-                      toast.success("恭喜！您已確認收貨。款項已成功釋放給賣家。");
-                    }}
-                    className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer shadow-md"
-                  >
-                    確認收貨並釋放款項 ➔
-                  </button>
-                )}
-              </div>
-            )}
-
-            {order.status === "grading" && (
-              <div className="space-y-3">
-                <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  卡牌實物正在由 PokéTrade 專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS 標準驗證）。
-                </p>
-                {isSeller && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      simulateReleaseEscrow();
-                      toast.success("鑑定審核通過！款項已成功釋放，存入您的商家錢包。");
-                    }}
-                    className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.2)]"
-                  >
-                    模擬鑑定通過並放款給賣家 🪙
-                  </button>
-                )}
-              </div>
-            )}
-
-            {order.status === "released" && (
-              <div className="p-3.5 bg-[rgba(16,185,129,0.06)] border border-success/20 rounded-xl flex items-start gap-3 animate-fadeIn">
-                <svg className="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                  <path d="m9 12 2 2 4-4" />
-                </svg>
-                <div className="space-y-1">
-                  <p className="font-sans font-bold text-[13.5px] text-success">
-                    {isSeller ? "款項已釋放，交易成功結算" : "交易安全完結，款項已付迄"}
-                  </p>
-                  <p className="text-[11.5px] text-text-secondary">
-                    {isSeller ? (
-                      "此合約已完成全量閉環。款項 HK$ " + (order.amount + (order.orderType === "B2C" ? 150 : 0)).toLocaleString("zh-TW") + " 已成功存入您的託管錢包。"
-                    ) : (
-                      "此合約已安全完結。扣款金額 HK$ " + (order.amount + (order.orderType === "B2C" ? 150 : 0)).toLocaleString("zh-TW") + " 已由平台支付予賣家。感謝您對 PokéTrade 的信任。"
-                    )}
-                  </p>
                 </div>
-              </div>
-            )}
+              )}
+
+              {order.status === "custody" && (
+                <div className="space-y-3">
+                  <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                    {isSeller
+                      ? "資金正處於平台安全託管中。請將卡牌實物寄出，並在下方登錄物流號碼完成出貨手續。"
+                      : "資金已抵達平台託管。等待賣家將卡牌實物寄出或登錄快遞追蹤號碼。"}
+                  </p>
+                  {isSeller && (
+                    <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
+                      <input
+                        id={"page-tracking-" + order.id}
+                        type="text"
+                        placeholder="填寫順豐、郵便或宅急便物流追蹤號"
+                        defaultValue={order.trackingNo || ""}
+                        className="flex-1 h-full bg-transparent px-3 font-mono text-[12px] text-text-primary placeholder-text-disabled focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById(
+                            "page-tracking-" + order.id,
+                          ) as HTMLInputElement;
+                          const val = input?.value ?? "";
+                          if (!val.trim()) {
+                            toast.error("請先填寫物流追蹤號碼");
+                            return;
+                          }
+                          simulateUpdateTracking(val);
+                          toast.success("已成功發貨！追蹤號碼已登錄。");
+                        }}
+                        className="px-4 h-full bg-brand/10 font-sans text-[11px] text-brand border-l border-white/5 hover:bg-brand/15 transition-colors cursor-pointer"
+                      >
+                        確認發貨
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {order.status === "shipped" && (
+                <div className="space-y-3">
+                  <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                    {"包裹已由快遞承運發送。物流單號：" +
+                      order.trackingNo +
+                      "。"}
+                    {isSeller
+                      ? "您可以修改物流追蹤號，或確認包裹已送達鑑定所。"
+                      : "商品已寄出。若為 B2C 鑑定服務，包裹正寄往專家鑑定櫃，完成掃描評級後即發往您的地址。"}
+                  </p>
+
+                  {isSeller && (
+                    <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
+                      <input
+                        id={"page-tracking-update-" + order.id}
+                        type="text"
+                        placeholder="修改物流號碼"
+                        defaultValue={order.trackingNo || ""}
+                        className="flex-1 h-full bg-transparent px-3 font-mono text-[12px] text-text-primary placeholder-text-disabled focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById(
+                            "page-tracking-update-" + order.id,
+                          ) as HTMLInputElement;
+                          const val = input?.value ?? "";
+                          if (!val.trim()) {
+                            toast.error("物流號碼不能為空");
+                            return;
+                          }
+                          simulateUpdateTracking(val);
+                          toast.success("物流追蹤號碼已成功更新");
+                        }}
+                        className="px-4 h-full bg-white/5 font-sans text-[11px] text-text-primary border-l border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                      >
+                        修改單號
+                      </button>
+                    </div>
+                  )}
+
+                  {order.orderType === "B2C" && isSeller && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        simulateSendToGrading();
+                        toast.success(
+                          "卡牌已成功寄達！送入專家鑑定中心檢驗中。",
+                        );
+                      }}
+                      className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
+                    >
+                      確認抵達專家鑑定所 🔍
+                    </button>
+                  )}
+
+                  {!isSeller && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        simulateReleaseEscrow();
+                        toast.success(
+                          "恭喜！您已確認收貨。款項已成功釋放給賣家。",
+                        );
+                      }}
+                      className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer shadow-md"
+                    >
+                      確認收貨並釋放款項 ➔
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {order.status === "grading" && (
+                <div className="space-y-3">
+                  <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                    卡牌實物正在由 PokéTrade
+                    專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS
+                    標準驗證）。
+                  </p>
+                  {isSeller && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        simulateReleaseEscrow();
+                        toast.success(
+                          "鑑定審核通過！款項已成功釋放，存入您的商家錢包。",
+                        );
+                      }}
+                      className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.2)]"
+                    >
+                      模擬鑑定通過並放款給賣家 🪙
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {order.status === "released" && (
+                <div className="p-3.5 bg-[rgba(16,185,129,0.06)] border border-success/20 rounded-xl flex items-start gap-3 animate-fadeIn">
+                  <svg
+                    className="mt-0.5 shrink-0"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  <div className="space-y-1">
+                    <p className="font-sans font-bold text-[13.5px] text-success">
+                      {isSeller
+                        ? "款項已釋放，交易成功結算"
+                        : "交易安全完結，款項已付迄"}
+                    </p>
+                    <p className="text-[11.5px] text-text-secondary">
+                      {isSeller
+                        ? "此合約已完成全量閉環。款項 HK$ " +
+                          (
+                            order.amount + (order.orderType === "B2C" ? 150 : 0)
+                          ).toLocaleString("zh-TW") +
+                          " 已成功存入您的託管錢包。"
+                        : "此合約已安全完結。扣款金額 HK$ " +
+                          (
+                            order.amount + (order.orderType === "B2C" ? 150 : 0)
+                          ).toLocaleString("zh-TW") +
+                          " 已由平台支付予賣家。感謝您對 PokéTrade 的信任。"}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

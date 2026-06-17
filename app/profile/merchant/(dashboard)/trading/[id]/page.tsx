@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useSyncExternalStore, useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -25,18 +25,20 @@ const REMARKS_PRESETS = [
   "正面右上角：金邊切割銳利，無邊緣磨損",
   "背面左下角：四維防偽雷射標籤對位極致",
   "鑑定認證封殼：防塵防紫外，全密閉存證封裝",
-  "條碼微距特寫：認證編號完美可讀，防偽一致"
+  "條碼微距特寫：認證編號完美可讀，防偽一致",
 ];
 
 export default function MerchantOrderDetailPage() {
   const params = useParams();
   const orderId = params.id as string;
 
+  const router = useRouter();
+
   // Hydration Guard using useSyncExternalStore
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
-    () => false
+    () => false,
   );
 
   // Retrieve orders and actions from our centralized Merchant Store
@@ -45,7 +47,7 @@ export default function MerchantOrderDetailPage() {
     confirmOrderAndSetCustody,
     updateOrderTracking,
     sendOrderToGrading,
-    releaseOrderEscrow
+    releaseOrderEscrow,
   } = useMerchantStore();
 
   const { openGlobalChat } = useTradeStore();
@@ -86,7 +88,9 @@ export default function MerchantOrderDetailPage() {
   if (!order) {
     return (
       <div className="min-h-screen bg-[#17130f] text-text-primary p-6 flex flex-col items-center justify-center gap-4">
-        <p className="font-sans text-[14px] text-text-disabled">找不到指定的交易訂單記錄。</p>
+        <p className="font-sans text-[14px] text-text-disabled">
+          找不到指定的交易訂單記錄。
+        </p>
         <Link
           href="/profile/merchant/trading"
           className="font-sans text-[13px] font-bold text-brand hover:underline"
@@ -97,39 +101,62 @@ export default function MerchantOrderDetailPage() {
     );
   }
 
-  const currentStepIdx = STATUS_STEP_INDEX[order.status as Exclude<OrderStatus, "cancelled">];
+  const currentStepIdx =
+    STATUS_STEP_INDEX[order.status as Exclude<OrderStatus, "cancelled">];
 
   return (
     <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-4 sm:p-6 space-y-6 animate-fadeIn">
       {/* Upper Navigation Header */}
       <div className="flex items-center justify-between border-b border-white/5 pb-4">
-        <Link
-          href="/profile/merchant/trading"
+        <button
+          onClick={() => router.back()}
           className="font-sans text-[13.5px] font-bold text-[#d4c4b7] hover:text-brand flex items-center gap-1 transition-colors"
         >
           ← 返回交易管理資產大盤
-        </Link>
+        </button>
         <button
           onClick={() => {
-            openGlobalChat(order.buyerId, order.buyerName, order.sellerId, order.sellerName, "SELLER");
+            openGlobalChat(
+              order.buyerId,
+              order.buyerName,
+              order.sellerId,
+              order.sellerName,
+              "SELLER",
+            );
           }}
           className="h-10 px-5 bg-[#26211C] border border-brand/20 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-[0.96] transition-all shadow-md cursor-pointer flex items-center gap-2"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span>{"與"+ order.buyerName +"對話"}</span>
+          <span>{"與" + order.buyerName + "對話"}</span>
         </button>
       </div>
 
-          <div>
-            <h2 className="font-sans font-black text-[22px] text-text-primary leading-tight">
-              {order.cardName}
-            </h2>
-            <p className="font-mono text-[12.5px] text-brand mt-1">
-              卡片編號: {order.cardNo} · 訂單ID: {order.id}
-            </p>
+      <div className="flex flex-row justify-between">
+        <div>
+          <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
+            {order.cardName}
           </div>
+          <div className="font-mono text-[12.5px] text-brand mt-1">
+            <p>訂單號碼: {order.id}</p>
+          </div>
+        </div>
+        <div className="font-mono font-black text-md text-brand mt-1 text-nowrap">
+          <p>{order.buyerName}</p>
+          <p>{/* 加上用戶評分等級 */}</p>
+        </div>
+      </div>
 
       {/* Symmetrical Twin Column Layout */}
       <div className="grid grid-cols-1 gap-6 items-start">
@@ -138,12 +165,22 @@ export default function MerchantOrderDetailPage() {
           {/* Left Carousel Viewport */}
           <div className="flex flex-col items-center select-none group w-full overflow-hidden">
             <div className="relative w-full aspect-[3/4] max-h-[45dvh] lg:max-h-[55vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
-              <Carousel setApi={setApi} className="w-full h-full [&>div]:h-full" opts={{ loop: true }}>
+              <Carousel
+                setApi={setApi}
+                className="w-full h-full [&>div]:h-full"
+                opts={{ loop: true }}
+              >
                 <CarouselContent className="-ml-0 h-full">
                   {Array.from({ length: 5 }, (_, photoIdx) => {
-                    const currentRemark = current === photoIdx ? (REMARKS_PRESETS[photoIdx] ?? "") : "";
+                    const currentRemark =
+                      current === photoIdx
+                        ? (REMARKS_PRESETS[photoIdx] ?? "")
+                        : "";
                     return (
-                      <CarouselItem key={photoIdx} className="pl-0 relative w-full h-full overflow-hidden rounded-2xl">
+                      <CarouselItem
+                        key={photoIdx}
+                        className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
+                      >
                         <Image
                           src={`https://picsum.photos/seed/${order.id}-p${photoIdx}/400/500`}
                           alt={`${order.cardName} 實物照 ${photoIdx + 1}`}
@@ -198,7 +235,9 @@ export default function MerchantOrderDetailPage() {
               <div className="text-[12px] space-y-2 text-text-secondary font-mono">
                 <div className="flex justify-between">
                   <span>合約模式</span>
-                  <span className="text-brand font-bold">B2C 平台中介鑑定託管</span>
+                  <span className="text-brand font-bold">
+                    B2C 平台中介鑑定託管
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>買方帳號</span>
@@ -232,7 +271,10 @@ export default function MerchantOrderDetailPage() {
                 {order.cardName}
               </h4>
               <p className="font-mono text-[11px] text-text-secondary">
-                序號: {order.cardNo} · 等級: {order.grade} · 買家: {order.buyerName}
+                序號: {order.cardNo} · 等級: {order.grade}
+              </p>
+              <p className="font-mono text-[11px] text-text-secondary">
+                訂單號碼: {order.id} · 買家: {order.buyerName}
               </p>
             </div>
 
@@ -251,7 +293,7 @@ export default function MerchantOrderDetailPage() {
                 <span>平台免郵定額補貼 (Subsidy)</span>
                 <span>-HK$ 30</span>
               </div>
-              
+
               {/* Optional Authentication Fee row if orderType is B2C */}
               {order.orderType === "B2C" && (
                 <div className="flex justify-between text-brand">
@@ -263,7 +305,10 @@ export default function MerchantOrderDetailPage() {
               <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
                 <span>最終實收總額</span>
                 <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                  HK$ {(order.amount + (order.orderType === "B2C" ? 150 : 0)).toLocaleString("zh-TW")}
+                  HK${" "}
+                  {(
+                    order.amount + (order.orderType === "B2C" ? 150 : 0)
+                  ).toLocaleString("zh-TW")}
                 </span>
               </div>
             </div>
@@ -273,7 +318,8 @@ export default function MerchantOrderDetailPage() {
                 type="button"
                 onClick={() =>
                   toast.success("📥 鑑定報告已匯出", {
-                    description: "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
+                    description:
+                      "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
                   })
                 }
                 className="w-full h-10 bg-[#39342f] border border-[rgba(237,232,224,0.12)] hover:border-brand text-text-primary text-[12px] font-bold rounded-xl transition-all mt-2 shadow-md flex items-center justify-center gap-2 cursor-pointer"
@@ -289,57 +335,87 @@ export default function MerchantOrderDetailPage() {
           {/* Interactive Controls */}
           <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
             <h4 className="font-sans font-bold text-[12.5px] text-text-primary flex items-center gap-1.5">
-             交易狀態
+              交易狀態
             </h4>
-          {/* Escrow Stepper */}
-          <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
-            <div className="relative pl-6 space-y-5 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
-              {ESCROW_STEPS.map((step, idx) => {
-                const isCompleted = idx < currentStepIdx;
-                const isActive = idx === currentStepIdx;
-                
-                return (
-                  <div key={step.id} className="relative text-[12.5px] leading-relaxed">
-                    {/* Stepper Dot */}
-                    <div className={cn(
-                      "absolute left-[-23px] top-1 w-3.5 h-3.5 rounded-full border-2 transition-all flex items-center justify-center",
-                      isCompleted ? "bg-success border-success text-white" :
-                      isActive ? "bg-brand border-brand animate-pulse" :
-                      "bg-[#1A1612] border-white/20"
-                    )}>
-                      {isCompleted && (
-                        <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
+            {/* Escrow Stepper */}
+            <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
+              <div className="relative pl-6 space-y-5 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
+                {ESCROW_STEPS.map((step, idx) => {
+                  const isCompleted = idx < currentStepIdx;
+                  const isActive = idx === currentStepIdx;
+
+                  return (
+                    <div
+                      key={step.id}
+                      className="relative text-[12.5px] leading-relaxed"
+                    >
+                      {/* Stepper Dot */}
+                      <div
+                        className={cn(
+                          "absolute left-[-23px] top-1 w-3.5 h-3.5 rounded-full border-2 transition-all flex items-center justify-center",
+                          isCompleted
+                            ? "bg-success border-success text-white"
+                            : isActive
+                              ? "bg-brand border-brand animate-pulse"
+                              : "bg-[#1A1612] border-white/20",
+                        )}
+                      >
+                        {isCompleted && (
+                          <svg
+                            width="6"
+                            height="6"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span
+                          className={cn(
+                            "font-sans font-bold",
+                            isActive
+                              ? "text-brand"
+                              : isCompleted
+                                ? "text-success"
+                                : "text-text-secondary",
+                          )}
+                        >
+                          {step.label}
+                        </span>
+                        <span className="text-[11px] text-text-disabled">
+                          {step.description}
+                        </span>
+                      </div>
                     </div>
-                    
-                    <div className="flex flex-col">
-                      <span className={cn(
-                        "font-sans font-bold",
-                        isActive ? "text-brand" : isCompleted ? "text-success" : "text-text-secondary"
-                      )}>
-                        {step.label}
-                      </span>
-                      <span className="text-[11px] text-text-disabled">{step.description}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
             {order.status === "payment" && (
               <div className="space-y-3">
                 <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  買家已完成此交易的全額付款 <span className="text-[#10b981] font-mono font-bold">HK$ {order.amount.toLocaleString("zh-TW")}</span>，
-                  此資金已安全存入 PokéTrade 官方擔保帳戶託管。請您確認此交易並準備安排發貨。
+                  買家已完成此交易的全額付款{" "}
+                  <span className="text-[#10b981] font-mono font-bold">
+                    HK$ {order.amount.toLocaleString("zh-TW")}
+                  </span>
+                  ， 此資金已安全存入 PokéTrade
+                  官方擔保帳戶託管。請您確認此交易並準備安排發貨。
                 </p>
                 <button
                   type="button"
                   onClick={() => {
                     confirmOrderAndSetCustody(order.id);
-                    toast.success("已確認訂單！請在下方填寫物流追蹤號碼準備出貨。");
+                    toast.success(
+                      "已確認訂單！請在下方填寫物流追蹤號碼準備出貨。",
+                    );
                   }}
                   className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
                 >
@@ -364,7 +440,9 @@ export default function MerchantOrderDetailPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const input = document.getElementById("page-tracking-" + order.id) as HTMLInputElement;
+                      const input = document.getElementById(
+                        "page-tracking-" + order.id,
+                      ) as HTMLInputElement;
                       const val = input?.value ?? "";
                       if (!val.trim()) {
                         toast.error("請先填寫物流追蹤號碼");
@@ -384,10 +462,13 @@ export default function MerchantOrderDetailPage() {
             {order.status === "shipped" && (
               <div className="space-y-3">
                 <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  包裹已由快遞承運發送。物流單號：<span className="font-mono text-brand font-bold">{order.trackingNo}</span>。
-                  您可以修改物流追蹤號，或確認包裹已送達鑑定所。
+                  包裹已由快遞承運發送。物流單號：
+                  <span className="font-mono text-brand font-bold">
+                    {order.trackingNo}
+                  </span>
+                  。 您可以修改物流追蹤號，或確認包裹已送達鑑定所。
                 </p>
-                
+
                 <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
                   <input
                     id={"page-tracking-update-" + order.id}
@@ -399,7 +480,9 @@ export default function MerchantOrderDetailPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      const input = document.getElementById("page-tracking-update-" + order.id) as HTMLInputElement;
+                      const input = document.getElementById(
+                        "page-tracking-update-" + order.id,
+                      ) as HTMLInputElement;
                       const val = input?.value ?? "";
                       if (!val.trim()) {
                         toast.error("物流號碼不能為空");
@@ -430,13 +513,17 @@ export default function MerchantOrderDetailPage() {
             {order.status === "grading" && (
               <div className="space-y-3">
                 <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  卡牌實物正在由 PokéTrade 專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS 標準驗證）。
+                  卡牌實物正在由 PokéTrade
+                  專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS
+                  標準驗證）。
                 </p>
                 <button
                   type="button"
                   onClick={() => {
                     releaseOrderEscrow(order.id);
-                    toast.success("鑑定審核通過！款項已成功釋放，存入您的商家錢包。");
+                    toast.success(
+                      "鑑定審核通過！款項已成功釋放，存入您的商家錢包。",
+                    );
                   }}
                   className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.2)]"
                 >
@@ -447,14 +534,31 @@ export default function MerchantOrderDetailPage() {
 
             {order.status === "released" && (
               <div className="p-3.5 bg-[rgba(16,185,129,0.06)] border border-success/20 rounded-xl flex items-start gap-3 animate-fadeIn">
-                <svg className="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  className="mt-0.5 shrink-0"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
                   <path d="m9 12 2 2 4-4" />
                 </svg>
                 <div className="space-y-1">
-                  <p className="font-sans font-bold text-[13.5px] text-success">款項釋放成功，交易全流程關閉</p>
+                  <p className="font-sans font-bold text-[13.5px] text-success">
+                    款項釋放成功，交易全流程關閉
+                  </p>
                   <p className="text-[11.5px] text-text-secondary">
-                    此合約已完成全量閉環。款項 <span className="font-mono text-brand font-bold">HK$ {order.amount.toLocaleString("zh-TW")}</span> 已存入您的 Stripe / Supabase 託管錢包中。
+                    此合約已完成全量閉環。款項{" "}
+                    <span className="font-mono text-brand font-bold">
+                      HK$ {order.amount.toLocaleString("zh-TW")}
+                    </span>{" "}
+                    已存入您的 Stripe / Supabase 託管錢包中。
                   </p>
                 </div>
               </div>

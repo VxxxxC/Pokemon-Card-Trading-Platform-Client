@@ -1,306 +1,194 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { OrderLifecycleStepper } from "@/app/components/transactions/OrderLifecycleStepper";
-import { type ListingStatus } from "@/app/lib/mock-data/members";
-import { useTradeStore } from "@/app/store/useTradeStore";
-import { INITIAL_ORDERS } from "@/app/lib/mock-data/transactions";
-// 核心對接：引入中央模擬數據庫與強型態
-import { useMockDbStore, type UserListing } from "@/app/store/useMockDbStore";
+import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { SaleOrder } from "@/app/lib/types/trading";
+import { Pagination } from "@/app/components/ui/Pagination";
+import { UserOrderRow } from "@/app/components/user/UserOrderRow";
 
-// 🟢 核心引入：補裝全域統一的奢華黑金對話框組件群
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-interface Order {
-  id: string;
-  cardName: string;
-  cardNo: string;
-  grade: string;
-  cardImage: string;
-  seller: string;
-  sellerId: string;
-  amount: number;
-  tradeType: "c2c" | "b2c";
-  flowType: "meetup" | "delivery" | "escrow_auth" | "escrow_no_auth";
-  side: "buy" | "sell";
-  status: string;
-  statusLabel: string;
-  createdAt: string;
-  isHighValue: boolean;
-}
-
-const FLOW_STEPS_DEFINITION: Record<string, { id: string; label: string }[]> = {
-  meetup: [
-    { id: "reserved", label: "已預留" },
-    { id: "completed_meetup", label: "已面交結單" },
-  ],
-  delivery: [
-    { id: "reserved", label: "已預留" },
-    { id: "paid", label: "已付款" },
-    { id: "shipped", label: "已發貨" },
-    { id: "received", label: "已簽收" },
-  ],
-  escrow_auth: [
-    { id: "paid", label: "已付款" },
-    { id: "custody", label: "保管中" },
-    { id: "grading", label: "鑑定中" },
-    { id: "released", label: "已釋放" },
-    { id: "shipped", label: "已發貨" },
-    { id: "received", label: "已簽收" },
-  ],
-  escrow_no_auth: [
-    { id: "reserved", label: "Price Offer" },
-    { id: "paid", label: "已付款" },
-    { id: "shipped", label: "已發貨" },
-    { id: "received", label: "已簽收" },
-  ],
-};
-
-const TAB_LABELS: Record<ListingStatus, string> = {
-  active: "出售中現貨",
-  pending_trade: "交易中 / 待交收",
-  sold: "歷史交易",
-  unlisted: "已暫時下架",
-};
-
-function isFinishedOrder(order: Order) {
-  return order.status === "completed_meetup" || order.status === "received";
-}
-
-function getProductNavigationHref(item: UserListing, order?: Order) {
-  if (item.status === "pending_trade" || item.status === "sold") {
-    return `/profile/user/trading/${order?.id ?? item.linkedOrderId ?? item.id}`;
-  }
-  return "";
-}
-
-function DynamicProductStepper({ order }: { order: Order }) {
-  return (
-    <OrderLifecycleStepper
-      steps={FLOW_STEPS_DEFINITION[order.flowType] || []}
-      status={order.status}
-      isFinished={isFinishedOrder(order)}
-      statusLabel={order.statusLabel}
-      variant="compact"
-      className="mt-4 pb-1"
-    />
-  );
-}
-
-function ProductRowItem({
-  item,
-  order,
-  onNavigate,
-  onToggleStatus,
-  onCancelListing,
-}: {
-  item: UserListing;
-  order?: Order;
-  onNavigate: (href: string) => void;
-  onToggleStatus: (id: string) => void;
-  // 🟢 頂級語意對齊：操作回調改為傳送完整 item 物件，方便 Dialog 安全渲染商品特寫
-  onCancelListing: (item: UserListing) => void;
-}) {
-  const isClickable = item.status === "pending_trade" || item.status === "sold";
-  const href = isClickable ? getProductNavigationHref(item, order) : "";
-  const shouldRenderStepper = Boolean(
-    order && (item.status === "pending_trade" || item.status === "sold"),
-  );
-
-  const tradeSide = order?.side || "sell";
-  const openGlobalChat = useTradeStore((state) => state.openGlobalChat);
-
-  const handleContactCounterparty = (
-    event: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    event.stopPropagation();
-    if (!order) return;
-    openGlobalChat("USR-ME", "我", order.sellerId, order.seller, "BUYER");
-  };
-
-  return (
-    <div
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      onClick={isClickable ? () => onNavigate(href) : undefined}
-      onKeyDown={
-        isClickable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") onNavigate(href);
-            }
-          : undefined
-      }
-      className={`bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 flex flex-col transition-colors group focus:outline-none ${isClickable ? "hover:border-[rgba(237,232,224,0.15)] cursor-pointer focus:ring-2 focus:ring-brand/35" : "cursor-default"}`}
-    >
-      <div className="flex gap-4 items-start w-full">
-        <div className="relative w-14 h-20 sm:w-16 sm:h-22 rounded-xl overflow-hidden bg-[#17130f] border border-[rgba(237,232,224,0.08)] shrink-0 shadow-sm">
-          <Image
-            src={item.cardImage}
-            alt={item.cardName}
-            fill
-            sizes="80px"
-            className="object-cover"
-            unoptimized
-          />
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            {isClickable && (
-              <span
-                className={`font-sans text-[11px] font-black tracking-wide uppercase px-2 py-0.5 rounded border ${tradeSide === "buy" ? "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]" : "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"}`}
-              >
-                {tradeSide === "buy" ? "📥 買入" : "📤 賣出"}
-              </span>
-            )}
-            <span className="font-mono text-[9px] text-[#50453b]">
-              #{item.id}
-            </span>
-            <span className="font-mono text-[10px] text-brand font-medium">
-              {item.grade}
-            </span>
-          </div>
-          <h3
-            className={`font-sans font-bold text-[14.5px] text-[#eae1da] transition-colors truncate ${isClickable ? "group-hover:text-brand" : ""}`}
-          >
-            {item.cardName}
-          </h3>
-          <p className="font-mono text-[11px] text-text-secondary">
-            官方卡號:{" "}
-            <span className="text-[#eae1da]">{item.cardNo.toUpperCase()}</span>{" "}
-            · 上架日期: {item.createdAt}
-          </p>
-          <div className="flex gap-1.5 flex-wrap pt-1">
-            {item.paymentMethods.map((pm) => (
-              <span
-                key={pm}
-                className="font-sans text-[9px] text-text-secondary bg-[#17130f] px-2 py-0.5 rounded-[4px] border border-[rgba(237,232,224,0.04)]"
-              >
-                💸 {pm}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-right shrink-0 ml-2">
-          <p className="font-mono font-bold text-[16px] text-brand">
-            HK$ {item.price.toLocaleString()}
-          </p>
-          <p className="font-mono text-[9px] text-[#50453b] mt-0.5">
-            👁 {item.views} 點擊 · ★ {item.watchers} 心水
-          </p>
-        </div>
-      </div>
-
-      {shouldRenderStepper && order && <DynamicProductStepper order={order} />}
-
-      {item.status !== "sold" && (
-        <div className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-[rgba(237,232,224,0.06)] w-full">
-          {item.status === "active" && (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleStatus(item.id);
-              }}
-              className="h-9 px-4 bg-transparent border border-amber-500/40 text-amber-400 font-sans font-bold text-[12px] rounded-xl hover:bg-amber-500/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
-            >
-              ⚙ 暫時下架
-            </button>
-          )}
-          {item.status === "pending_trade" && (
-            <>
-              <button
-                type="button"
-                onClick={handleContactCounterparty}
-                className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                💬 聯絡對方
-              </button>
-              <span className="font-mono text-[11px] text-text-disabled ml-auto bg-[#17130f] px-2.5 py-1 rounded border border-white/5 select-none">
-                🔒 資產已鎖定
-              </span>
-            </>
-          )}
-          {item.status === "unlisted" && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleStatus(item.id);
-                }}
-                className="h-9 px-4 bg-[#10b981] text-white font-sans font-bold text-[12px] rounded-xl hover:bg-[#0fa573] active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-              >
-                ⚡ 重新上架商品
-              </button>
-              {/* 🟢 頂級修正：點擊後不再直接執行刪除，而是將當前 item 送進攔截鎖 */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCancelListing(item);
-                }}
-                className="h-9 px-4 bg-transparent border border-[#ef4444]/50 text-[#ef4444] font-sans font-bold text-[12px] rounded-xl hover:bg-[#ef4444]/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 ml-auto cursor-pointer"
-              >
-                🗑️ 取消商品上架
-              </button>
-            </>
-          )}
-        </div>
-      )}
-
-      {item.status === "sold" && order && (
-        <div className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-[rgba(237,232,224,0.06)] w-full">
-          <button
-            type="button"
-            onClick={handleContactCounterparty}
-            className="h-9 px-4 bg-[#17130f] border border-brand/30 text-brand font-sans font-bold text-[12px] rounded-xl hover:bg-brand/10 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            💬 聯絡對方
-          </button>
-          <span className="font-mono text-[11px] text-[#10b981] ml-auto bg-[#10b981]/10 px-2.5 py-1 rounded border border-[#10b981]/20 select-none">
-            ✓ 平台存證已完成
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
+const USER_MOCK_ORDERS_DB: SaleOrder[] = [
+  {
+    id: "ORD-2026-U01",
+    buyerId: "USR-ME",
+    buyerName: "田中 Koji",
+    sellerId: "PKT-MER-001",
+    sellerName: "KojiTCG Premium",
+    cardName: "Charizard ex SAR (噴火龍)",
+    cardNo: "sv2a-182",
+    grade: "PSA 10",
+    amount: 49800,
+    status: "payment",
+    createdAt: "2026/05/27",
+    orderType: "B2C",
+    userContext: "BUYER",
+  },
+  {
+    id: "ORD-2026-U02",
+    buyerId: "USR-BUY-002",
+    buyerName: "M.佐藤",
+    sellerId: "USR-ME",
+    sellerName: "田中 Koji",
+    cardName: "Umbreon ex SAR (月亮伊布)",
+    cardNo: "sv6a-109",
+    grade: "Raw 裸卡",
+    amount: 38200,
+    status: "custody",
+    createdAt: "2026/05/26",
+    orderType: "C2C",
+    userContext: "SELLER",
+  },
+  {
+    id: "ORD-2026-U03",
+    buyerId: "USR-ME",
+    buyerName: "田中 Koji",
+    sellerId: "PKT-MER-002",
+    sellerName: "渡邊道館",
+    cardName: "Marnie (瑪俐) SR 198/190",
+    cardNo: "s5a-070",
+    grade: "PSA 10",
+    amount: 4200,
+    status: "grading",
+    createdAt: "2026/05/25",
+    orderType: "B2C",
+    userContext: "BUYER",
+  },
+  {
+    id: "ORD-2026-U04",
+    buyerId: "USR-ME",
+    buyerName: "田中 Koji",
+    sellerId: "USR-SEL-004",
+    sellerName: "東京TCG市場",
+    cardName: "Pikachu AR (皮卡丘)",
+    cardNo: "sv2a-215",
+    grade: "CGC 9",
+    amount: 425,
+    status: "payment",
+    createdAt: "2026/05/24",
+    orderType: "C2C",
+    userContext: "BUYER",
+  },
+  {
+    id: "ORD-2026-U05",
+    buyerId: "USR-ME",
+    buyerName: "田中 Koji",
+    sellerId: "USR-SEL-005",
+    sellerName: "尖沙咀卡神",
+    cardName: "Lillie (莉莉艾) SR 119/114",
+    cardNo: "sm4+119",
+    grade: "BGS 9.5",
+    amount: 18500,
+    status: "released",
+    createdAt: "2026/05/10",
+    orderType: "C2C",
+    userContext: "BUYER",
+  },
+  {
+    id: "ORD-2026-U06",
+    buyerId: "USR-BUY-006",
+    buyerName: "元朗李生",
+    sellerId: "USR-ME",
+    sellerName: "田中 Koji",
+    cardName: "Gengar VMAX (耿鬼) SA 020/019",
+    cardNo: "sGG-020",
+    grade: "PSA 10",
+    amount: 3400,
+    status: "released",
+    createdAt: "2026/05/08",
+    orderType: "C2C",
+    userContext: "SELLER",
+  },
+  {
+    id: "ORD-2026-U07",
+    buyerId: "USR-ME",
+    buyerName: "田中 Koji",
+    sellerId: "PKT-MER-007",
+    sellerName: "木戶卡牌旗艦店",
+    cardName: "Rayquaza VMAX SA 083/067",
+    cardNo: "s7R-083",
+    grade: "PSA 10",
+    amount: 4800,
+    status: "released",
+    createdAt: "2026/05/05",
+    orderType: "B2C",
+    userContext: "BUYER",
+  },
+];
 
 export default function UserTradingPage() {
-  const router = useRouter();
-
-  // 直接對接全域持久化 Mock 資料庫
-  const tradingListings = useMockDbStore((state) => state.tradingListings);
-  const toggleListingStatus = useMockDbStore(
-    (state) => state.toggleListingStatus,
-  );
-  const cancelListingAndRemove = useMockDbStore(
-    (state) => state.cancelListingAndRemove,
-  );
-
-  const [activeTab, setActiveTab] = useState<ListingStatus>("active");
-
-  // ── 🟢 核心加裝：取消上架的 Dialog 安全狀態鎖 ──
-  const [cancelTargetListing, setCancelTargetListing] =
-    useState<UserListing | null>(null);
-
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
-    () => false,
+    () => false
   );
+
+  const [filter, setFilter] = useState("全部");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(8);
+
+  const [subPaymentChecked, setSubPaymentChecked] = useState(true);
+  const [subGradingChecked, setSubGradingChecked] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setItemsPerPage(5);
+      } else {
+        setItemsPerPage(8);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => setCurrentPage(1));
+  }, [filter, searchQuery, subPaymentChecked, subGradingChecked]);
+
+  const filteredOrders = useMemo(() => {
+    return USER_MOCK_ORDERS_DB.filter(order => {
+      let matchFilter = true;
+      if (filter === "待處理") {
+        let matchSub = false;
+        if (subPaymentChecked && order.status === "payment") matchSub = true;
+        if (subGradingChecked && (order.status === "custody" || order.status === "shipped" || order.status === "grading")) matchSub = true;
+        matchFilter = matchSub;
+      } else if (filter === "已完成") {
+        matchFilter = order.status === "released";
+      } else if (filter === "已取消") {
+        matchFilter = order.status === "cancelled";
+      }
+
+      const normalizedQuery = searchQuery.trim().toLowerCase();
+      let matchSearch = true;
+      if (normalizedQuery) {
+        matchSearch =
+          order.cardName.toLowerCase().includes(normalizedQuery) ||
+          order.cardNo.toLowerCase().includes(normalizedQuery) ||
+          order.buyerName.toLowerCase().includes(normalizedQuery) ||
+          order.sellerName.toLowerCase().includes(normalizedQuery) ||
+          order.id.toLowerCase().includes(normalizedQuery);
+      }
+
+      return matchFilter && matchSearch;
+    });
+  }, [filter, searchQuery, subPaymentChecked, subGradingChecked]);
+
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredOrders.slice(start, end);
+  }, [filteredOrders, currentPage, itemsPerPage]);
+
+  const needsAction = USER_MOCK_ORDERS_DB.filter(o => {
+    const isSeller = o.userContext === "SELLER";
+    if (isSeller) {
+      return o.status === "custody" || o.status === "payment";
+    } else {
+      return o.status === "payment" || o.status === "shipped";
+    }
+  });
 
   if (!isMounted) {
     return (
@@ -310,173 +198,125 @@ export default function UserTradingPage() {
     );
   }
 
-  const orderById = new Map(INITIAL_ORDERS.map((order) => [order.id, order]));
-  const filteredListings = tradingListings.filter(
-    (listing) => listing.status === activeTab,
-  );
-
-  const handleToggleStatus = (id: string) => {
-    const targetListing = tradingListings.find((l) => l.id === id);
-    if (!targetListing) return;
-
-    toggleListingStatus(id);
-
-    if (targetListing.status === "active") {
-      toast.warning("⏸️ 商品已暫時下架", {
-        description: `【${targetListing.cardName}】已暫時從現貨盤移出，可稍後重新上架。`,
-      });
-    } else {
-      toast.success("🚀 商品已重新上架", {
-        description: `【${targetListing.cardName}】已重新回到全港現貨大盤。`,
-      });
-    }
-  };
-
-  // 🟢 核心修正：觸發「取消上架」時，先彈出 Dialog 阻斷點擊
-  const handleTriggerCancelWorkflow = (item: UserListing) => {
-    setCancelTargetListing(item);
-  };
-
-  // 🟢 核心修正：用家在 Dialog 內點擊紅掣，才正式執行 DB.ALTER 徹底銷毀
-  const handleConfirmCancelListing = () => {
-    if (!cancelTargetListing) return;
-
-    cancelListingAndRemove(cancelTargetListing.id);
-
-    toast.warning("🗑️ 商品已完全下架", {
-      description: `【${cancelTargetListing.cardName}】已從交易管理資產大盤徹底移除。`,
-      className:
-        "bg-[#26211C] border border-brand/30 text-[#eae1da] font-sans shadow-2xl",
-    });
-
-    setCancelTargetListing(null);
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex border-b border-[rgba(237,232,224,0.08)] overflow-x-auto scrollbar-none">
-        {(["active", "pending_trade", "sold", "unlisted"] as const).map(
-          (tab) => {
-            const count = tradingListings.filter(
-              (l) => l.status === tab,
-            ).length;
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-3 px-4 font-sans text-[14px] font-semibold transition-all relative shrink-0 cursor-pointer ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
-              >
-                {TAB_LABELS[tab]} ({count})
-                {isActive && (
-                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
-                )}
-              </button>
-            );
-          },
-        )}
-      </div>
+    <div className="space-y-5 animate-fadeIn">
+      {needsAction.length > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl animate-fadeIn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p className="font-sans text-[13px] text-text-primary">
+            <span className="font-semibold text-warning">{needsAction.length + " 件交易"}</span> 需要您的處理：完成付款、寄出卡牌或確認收貨。
+          </p>
+        </div>
+      )}
 
-      <div className="space-y-4">
-        {filteredListings.length === 0 ? (
-          <div className="py-16 text-center bg-[#26211C]/40 border border-[rgba(237,232,224,0.04)] rounded-2xl">
-            <p className="font-sans text-[13.5px] text-text-disabled select-none">
-              該分類下目前沒有卡牌資產紀錄
-            </p>
-          </div>
-        ) : (
-          filteredListings.map((item) => (
-            <ProductRowItem
-              key={item.id}
-              item={item}
-              order={
-                item.linkedOrderId
-                  ? orderById.get(item.linkedOrderId)
-                  : undefined
-              }
-              onNavigate={(href) => router.push(href)}
-              onToggleStatus={handleToggleStatus}
-              onCancelListing={handleTriggerCancelWorkflow}
-            />
-          ))
-        )}
-      </div>
-
-      {/* ── 🟢 全新高能加裝：Shadcn UI 奢華黑曜石商品完全下架確認對話框 (Listing Revocation Dialog) ── */}
-      <Dialog
-        open={cancelTargetListing !== null}
-        onOpenChange={(open) => {
-          if (!open) setCancelTargetListing(null);
-        }}
-      >
-        <DialogContent className="bg-[#26211C] border border-white/10 rounded-2xl text-[#eae1da] max-w-sm p-6 shadow-2xl animate-scaleUp">
-          <DialogHeader className="text-left space-y-1">
-            <DialogTitle className="font-sans font-black text-[17px] text-[#ef4444] flex items-center gap-2">
-              ⚠️ 確認完全下架商品？
-            </DialogTitle>
-            <DialogDescription className="font-mono text-[10.5px] text-[#8A8680] uppercase tracking-wider">
-              Permanent Listing Revocation Guard
-            </DialogDescription>
-          </DialogHeader>
-
-          {cancelTargetListing && (
-            <div className="space-y-3.5 py-2 font-sans text-[13.2px] text-[#d4c4b7] leading-relaxed">
-              <p>
-                你正準備將此資產要約從公開交易大盤中
-                <span className="text-[#ef4444] font-bold">
-                  徹底撤單並完全下架
-                </span>
-                。此操作不可逆，商品的心水追蹤、點擊數據與歷史快照將會被完全銷毀。
-              </p>
-
-              {/* 精準對焦的下架資產規格卡 */}
-              <div className="p-3 bg-[#17130f] rounded-xl border border-white/5 flex items-center gap-3">
-                <div className="relative w-10 h-14 rounded overflow-hidden bg-[#2c2722] border border-white/10 shrink-0">
-                  <Image
-                    src={cancelTargetListing.cardImage}
-                    alt={cancelTargetListing.cardName}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                </div>
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <p className="font-bold text-[#eae1da] truncate">
-                    {cancelTargetListing.cardName}
-                  </p>
-                  <p className="font-mono text-[11px] text-[#8A8680]">
-                    一口價:{" "}
-                    <span className="text-brand font-bold">
-                      HK$ {cancelTargetListing.price.toLocaleString()}
-                    </span>
-                  </p>
-                  <p className="font-mono text-[10px] text-[#8A8680] truncate">
-                    {cancelTargetListing.grade}
-                  </p>
-                </div>
-              </div>
-            </div>
+      <div className="relative bg-bg-card rounded-2xl border border-white/5 p-4 shadow-sm flex flex-col gap-2">
+        <label htmlFor="user-order-search" className="font-mono text-[11px] text-text-secondary uppercase tracking-wider">
+          智慧交易檢索控制台
+        </label>
+        <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
+          <input
+            id="user-order-search"
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="輸入卡牌名稱、卡號如 sv2a-182、交易對手姓名或訂單 ID..."
+            className="flex-1 h-full bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="px-3 h-full font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
+            >
+              清除
+            </button>
           )}
+        </div>
+      </div>
 
-          {/* 奢華黑曜石按鈕深色優化（Obsidian Slate Accent） */}
-          <DialogFooter className="flex flex-col gap-2 pt-2 sm:space-x-0">
-            <button
-              type="button"
-              onClick={handleConfirmCancelListing}
-              className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13.5px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
-            >
-              🚨 確認完全下架 · 徹底刪除
-            </button>
-            <button
-              type="button"
-              onClick={() => setCancelTargetListing(null)}
-              className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
-            >
-              取消返回
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <section aria-labelledby="user-trading-heading" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 id="user-trading-heading" className="font-sans font-semibold text-[16px] text-text-primary">
+            {"交易管理（" + filteredOrders.length + "）"}
+          </h2>
+          
+          <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
+            {["全部", "待處理", "已完成", "已取消"].map(f => {
+              const isActive = filter === f;
+              let btnClass = "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
+              if (isActive) {
+                if (f === "待處理") {
+                  btnClass = "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
+                } else {
+                  btnClass = "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
+                }
+              }
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  className={"font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " + btnClass}
+                >
+                  {f}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {filter === "待處理" && (
+          <div className="flex items-center gap-4 px-4 py-2.5 bg-[#17130f] border border-white/5 rounded-xl animate-fadeIn mt-2 w-full sm:w-auto">
+            <span className="font-sans text-[11px] text-text-secondary font-medium mr-2">進階子篩選：</span>
+            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={subPaymentChecked}
+                onChange={e => setSubPaymentChecked(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
+              />
+              待付款
+            </label>
+            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={subGradingChecked}
+                onChange={e => setSubGradingChecked(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
+              />
+              鑑定中/待收寄
+            </label>
+          </div>
+        )}
+
+        <div className="space-y-3 min-h-[200px]">
+          {paginatedOrders.length === 0 ? (
+            <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
+              <p className="font-sans text-[13px] text-text-disabled">沒有符合當前篩選與關鍵字的交易訂單記錄。</p>
+            </div>
+          ) : (
+            paginatedOrders.map(order => (
+              <UserOrderRow key={order.id} order={order} />
+            ))
+          )}
+        </div>
+
+        <div className="pt-2">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={page => setCurrentPage(page)}
+            itemLabel="筆訂單記錄"
+            totalItems={filteredOrders.length}
+            itemsPerPage={itemsPerPage}
+            enableScroll={true}
+          />
+        </div>
+      </section>
     </div>
   );
 }
