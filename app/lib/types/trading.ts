@@ -23,4 +23,7 @@ export interface SaleOrder {
   trackingNo?: string;
   orderType: 'B2C' | 'C2C';         // B2C processes bypass standard initial escrow step indexes; C2C holds rigid peer custody checks
   userContext: 'BUYER' | 'SELLER';   // For general user page reusability; for merchant views, maps to 'SELLER'
+  rating?: number;
+  level?: string;
+  bidTimestamp?: string;
 }

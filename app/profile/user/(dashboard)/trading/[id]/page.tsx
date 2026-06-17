@@ -38,6 +38,9 @@ interface LocalOrder {
   cornersGrade?: string;
   edgesGrade?: string;
   surfaceGrade?: string;
+  rating?: number;
+  level?: string;
+  bidTimestamp?: string;
 }
 
 const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
@@ -321,15 +324,23 @@ export default function UserOrderDetailPage() {
             <p className="font-mono text-[12.5px] text-brand mt-1">
               訂單號碼: {order.id}
             </p>
-            <p className="font-mono text-[12.5px] text-brand mt-1">
-              {/* 加上接受出價日期時間 */}
+            <p className="font-mono text-[11px] text-text-disabled mt-1">
+              出價日期:{" "}
+              {order.bidTimestamp || order.createdAt || "2026/06/17 12:00"}
             </p>
           </div>
           <div>
             <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
               {partnerName}
             </p>
-            <p>{/* 加上用戶評分等級 */}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <span className="font-mono text-[13px] text-text-primary font-bold">
+                ⭐ {order.rating || 5.0}
+              </span>
+              <span className="text-[11px] text-text-disabled uppercase">
+                ({order.level || "資深收藏家"})
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -379,10 +390,6 @@ export default function UserOrderDetailPage() {
                             </p>
                           </div>
                         )}
-                        {/* PSA Badge Overlay */}
-                        <div className="absolute top-3 left-3 px-3 py-1 rounded-md bg-[#17130f]/80 backdrop-blur-xs border border-brand/20 text-[11px] font-sans font-bold text-brand">
-                          {order.grade}
-                        </div>
                       </CarouselItem>
                     );
                   })}
