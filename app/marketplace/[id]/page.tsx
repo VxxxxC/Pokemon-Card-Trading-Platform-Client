@@ -324,7 +324,7 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
       </div>
 
       {/* 🟢 排序控制區：完美對齊 /marketplace 引入 Base UI Select 組件拋光 */}
-      <div className="flex items-center mb-6 gap-2 self-start xl:self-start shrink-0">
+      <div className="hidden lg:flex items-center mb-6 gap-2 self-start xl:self-start shrink-0">
         <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold select-none">
           排序
         </span>
@@ -463,6 +463,44 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
         title="📊 篩選"
         subtitle="ADVANCE FILTER"
       >
+        {/* Mobile Sorting Selector Section */}
+        <div className="mb-6 rounded-xl border border-white/8 bg-[#26211C] p-5">
+          <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
+            商品排序
+          </h3>
+          <p className="font-mono text-[10.5px] text-[#8A8680] mb-4 uppercase tracking-wider">
+            SORT PRODUCTS
+          </p>
+          <Select
+            value={sortKey}
+            onValueChange={(value) => setSortKey(value as SortKey)}
+          >
+            <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-[8px] text-[#eae1da] font-sans text-[12.5px] hover:bg-[#322a24] hover:border-white/10 transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
+              <SelectValue placeholder="選擇排序規則" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
+              <SelectItem
+                value="最新"
+                className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+              >
+                上架時間：最新
+              </SelectItem>
+              <SelectItem
+                value="價格：由低到高"
+                className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+              >
+                價格：由低到高
+              </SelectItem>
+              <SelectItem
+                value="價格：由高到低"
+                className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+              >
+                價格：由高到低
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* 🟢 價格區間滑桿模組 (Mobile Drawer 版) */}
         <div className="mb-6 rounded-xl border border-white/8 bg-[#26211C] p-5">
           <h3 className="font-sans font-bold text-[13px] text-[#eae1da] mb-1.5">
