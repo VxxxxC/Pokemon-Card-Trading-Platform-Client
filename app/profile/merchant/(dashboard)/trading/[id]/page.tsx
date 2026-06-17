@@ -158,6 +158,14 @@ export default function MerchantOrderDetailPage() {
           </div>
         </div>
         <div className="justify-items-end">
+          <div className="relative w-10 h-10 rounded-full border border-white/10 overflow-hidden bg-[#17130f] shrink-0 shadow-xs mb-1">
+            <Image
+              src={`https://picsum.photos/seed/${order.avatarSeed || "merchant-koji-tcg"}/40/40`}
+              alt={`${order.buyerName} 的頭像`}
+              fill
+              className="object-cover"
+            />
+          </div>
           <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
             {order.buyerName}
           </p>

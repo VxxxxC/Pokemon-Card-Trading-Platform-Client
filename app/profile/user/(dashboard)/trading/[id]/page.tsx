@@ -42,6 +42,7 @@ interface LocalOrder {
   rating?: number;
   level?: string;
   bidTimestamp?: string;
+  avatarSeed?: string;
 }
 
 const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
@@ -332,6 +333,14 @@ export default function UserOrderDetailPage() {
             </p>
           </div>
           <div className="justify-items-end">
+            <div className="relative w-10 h-10 rounded-full border border-white/10 overflow-hidden bg-[#17130f] shrink-0 shadow-xs mb-1">
+              <Image
+                src={`https://picsum.photos/seed/${order.avatarSeed || (isSeller ? "merchant-koji-tcg" : "user-zard")}/40/40`}
+                alt={`${partnerName} 的頭像`}
+                fill
+                className="object-cover"
+              />
+            </div>
             <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
               {partnerName}
             </p>

@@ -26,4 +26,5 @@ export interface SaleOrder {
   rating?: number;
   level?: string;
   bidTimestamp?: string;
+  avatarSeed?: string;
 }
