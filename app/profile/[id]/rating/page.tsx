@@ -1,6 +1,12 @@
 "use client";
 
-import React, { use, useState, useSyncExternalStore, useCallback, useMemo } from "react";
+import React, {
+  use,
+  useState,
+  useSyncExternalStore,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import { IoChevronBack } from "react-icons/io5";
 import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
@@ -102,7 +108,10 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
         const parseDate = (dStr: string) => {
           const match = dStr.match(/(\d+)年\s*(\d+)月/);
           if (match) {
-            return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+            return new Date(
+              parseInt(match[1]),
+              parseInt(match[2]) - 1,
+            ).getTime();
           }
           return 0;
         };
@@ -112,7 +121,10 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
         const parseDate = (dStr: string) => {
           const match = dStr.match(/(\d+)年\s*(\d+)月/);
           if (match) {
-            return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+            return new Date(
+              parseInt(match[1]),
+              parseInt(match[2]) - 1,
+            ).getTime();
           }
           return 0;
         };
@@ -188,7 +200,9 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
               <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da]">
                 <SelectItem value="date-desc">📅 日期：最新 → 最舊</SelectItem>
                 <SelectItem value="date-asc">⏳ 日期：最舊 → 最新</SelectItem>
-                <SelectItem value="rating-desc">🔥 評分：最高 → 最低</SelectItem>
+                <SelectItem value="rating-desc">
+                  🔥 評分：最高 → 最低
+                </SelectItem>
                 <SelectItem value="rating-asc">❄️ 評分：最低 → 最高</SelectItem>
               </SelectContent>
             </Select>
@@ -211,7 +225,7 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
                     ⭐ {review.rating}
                   </span>
                   {review.isMerchantTx && (
-                    <span className="font-mono text-[9.5px] text-text-disabled bg-bg-elevated px-1.5 py-0.5 rounded border border-[rgba(237,232,224,0.06)] shrink-0">
+                    <span className="font-sans text-[10.5px] font-black tracking-wide uppercase px-1.5 py-0.5 rounded text-warning bg-warning/10 border border-warning/20 shadow-[0_0_12px_rgba(212,165,116,0.15)]">
                       商家交易
                     </span>
                   )}
