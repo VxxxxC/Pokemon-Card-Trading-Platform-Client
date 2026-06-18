@@ -12,6 +12,8 @@ import {
   getPublicMemberById,
   getStorefrontListingsByMember,
 } from "@/app/lib/mock-data/members";
+import { IoChevronBack } from "react-icons/io5";
+import { useRouter } from "next/navigation";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
@@ -21,6 +23,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   // 🟢 為了在 Client 組件內完美兼容 Next.js 16 異步參數協議，使用 React.use() 進行解包
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+  const router = useRouter();
   const member = getPublicMemberById(id);
   const storefrontListings = member
     ? getStorefrontListingsByMember(member)
@@ -77,6 +80,14 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
       <MobileHeader />
 
       <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
+        >
+          <IoChevronBack />
+        </button>
+
         {/* 1. 商戶名片 + 右下角懸浮 Chatbox */}
         <ProfileHeaderWithChat member={member} />
 

@@ -15,6 +15,8 @@ import {
   INITIAL_LISTINGS,
   type UnifiedProductSpec,
 } from "@/app/lib/mock-data/cards";
+import { IoChevronBack } from "react-icons/io5";
+import { useRouter } from "next/navigation";
 
 interface PageProps {
   params: Promise<{ id: string; productId: string }>;
@@ -35,6 +37,7 @@ type CardSpecificationMatrix = Pick<
 export default function MerchantProductDetailPage({ params }: PageProps) {
   const { id, productId } = use(params);
   const member = getPublicMemberById(id);
+  const router = useRouter();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
@@ -125,19 +128,13 @@ export default function MerchantProductDetailPage({ params }: PageProps) {
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
       <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 animate-fadeIn">
-        {/* 麵包屑導航 */}
-        <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
-          <Link
-            href={`/marketplace/${id}`}
-            className="text-[#eae1da] hover:text-brand transition-colors duration-200 font-bold tracking-wide cursor-pointer"
-          >
-            🏪 {member.username} 私域櫥窗
-          </Link>
-          <span className="text-[#50453b] font-sans font-normal">/</span>
-          <span className="text-[#8A8680] truncate uppercase cursor-default">
-            {productId} VERIFIED COMMODITY DETAILED
-          </span>
-        </div>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
+        >
+          <IoChevronBack />
+        </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 items-start">
           {/* 左側：四大真實卡牌相片展示主網格 (Quad-Angle Photo Suite) */}
