@@ -40,6 +40,7 @@ export function ExecutionSlideOver({
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  // isCounterOffer: true = buyer entered custom price mode; false = instant accept mode (default)
   const [isCounterOffer, setIsCounterOffer] = useState(false);
   const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,10 +83,28 @@ export function ExecutionSlideOver({
       ? card.images
       : ["https://picsum.photos/seed/fallback/400/500"];
 
-  const handleConfirm = async () => {
-    const finalPrice = isCounterOffer ? Number(customPrice) : order.price;
+  // Task C: One-click instant accept — fires immediately on button click, bypasses confirm step
+  const handleInstantAccept = () => {
+    injectSpecialTransaction({
+      sellerName: order.sellerName,
+      sellerId: order.sellerId,
+      cardName: card.name,
+      cardId: productId,
+      offerPrice: order.price,
+      buyerName: MOCK_BUYER_NAME,
+      buyerId: MOCK_BUYER_ID,
+      isInstantTake: true, // 🟢 直接 accepted 狀態，商品即時 on hold，開立新訂單
+    });
+    onClose();
+    toast.success("🎉 已接受原價！資產已成功扣鎖預留", {
+      description: "交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！",
+      duration: 4000,
+    });
+  };
 
-    if (isCounterOffer && (!customPrice || Number(customPrice) <= 0)) {
+  // Task B: Counter-offer submit — only reachable when isCounterOffer === true
+  const handleSendCounterOffer = async () => {
+    if (!customPrice || Number(customPrice) <= 0) {
       toast.error("⚠️ 請輸入有效的預期出價金額");
       return;
     }
@@ -99,58 +118,57 @@ export function ExecutionSlideOver({
       sellerId: order.sellerId,
       cardName: card.name,
       cardId: productId,
-      offerPrice: finalPrice,
+      offerPrice: Number(customPrice),
       buyerName: MOCK_BUYER_NAME,
       buyerId: MOCK_BUYER_ID,
-      isInstantTake: !isCounterOffer,
+      isInstantTake: false, // 🟡 pending 狀態，等待賣家回應議價
     });
 
     onClose();
-
-    toast.success(
-      !isCounterOffer ? "🎉 已接受原價！資產已成功扣鎖預留" : "✉️ 議價要約已成功送出",
-      {
-        description: "交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！",
-        duration: 4000,
-      },
-    );
+    toast.success("✉️ 議價要約已成功送出", {
+      description: "交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！",
+      duration: 4000,
+    });
   };
 
   return (
-    <div className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[400] flex justify-end">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/75 backdrop-blur-xs"
         onClick={onClose}
       />
 
-      {/* Panel */}
-      <div className="relative bg-[#2e2925] border border-[rgba(237,232,224,0.15)] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl animate-fadeIn overflow-hidden max-h-[92dvh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07] shrink-0">
+      {/* Panel — Right-Side Full-Height Slide-over Drawer */}
+      <div className="relative z-10 w-screen max-w-md bg-[#2e2925] border-l border-white/[0.08] flex flex-col h-screen h-[100dvh] shadow-2xl animate-fadeIn overflow-hidden">
+
+        {/* Header Section (Fixed, Top) */}
+        <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-[#26211C]">
           <div>
-            <h4 className="font-sans font-black text-[16px] text-[#eae1da]">
-              ⚡ 即時購買交割終端
-            </h4>
-            <p className="font-mono text-[10px] text-[#8A8680] uppercase tracking-widest mt-0.5">
-              C2C PEER-TO-PEER INSTANT BARGAIN
+            <h2 className="font-sans font-bold text-[16px] text-[#eae1da] truncate max-w-[280px]">
+              {card.name}
+            </h2>
+            <p className="font-mono text-[10px] text-brand mt-0.5 uppercase tracking-wider">
+              {card.rarity} · {order.customGrade.authority} {order.customGrade.score}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="關閉"
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-[#8A8680] hover:text-[#eae1da] transition-all text-[14px] cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-[#17130f] hover:bg-[#39342f] flex items-center justify-center transition-colors cursor-pointer text-[#8A8680] hover:text-brand focus:outline-none"
           >
-            ✕
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {/* Dynamic Scrollable Body Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#231e1a]/40 min-h-0 scrollbar-none">
           {/* ── Super-Sized Photo Carousel ── */}
           <div className="flex flex-col items-center select-none group w-full overflow-hidden">
-            <div className="relative w-full aspect-[3/4] max-h-[55dvh] sm:max-h-[60vh] md:w-80 md:h-[420px] md:aspect-auto rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner mx-auto">
+            <div className="relative w-full aspect-[3/4] max-h-[45dvh] sm:max-h-[55vh] md:w-80 md:h-[380px] md:aspect-auto rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner mx-auto">
               <Carousel
                 setApi={setApi}
                 className="w-full h-full [&>div]:h-full"
@@ -198,7 +216,7 @@ export function ExecutionSlideOver({
             )}
           </div>
 
-          {/* ── Snippet 1: 對接賣家商號 ── */}
+          {/* ── Seller info deck ── */}
           <div className="bg-[#17130f] border border-white/5 rounded-xl p-4 space-y-3.5">
             <div className="flex flex-col text-left space-y-1">
               <span className="font-mono text-[10px] text-[#8A8680] uppercase">
@@ -222,7 +240,7 @@ export function ExecutionSlideOver({
             </div>
           </div>
 
-          {/* ── Snippet 2: 私域現貨引流導航卡 ── */}
+          {/* ── Storefront navigation card ── */}
           <Link
             href={`/marketplace/${order.sellerId}/product/${productId}`}
             className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer text-left focus:outline-none"
@@ -243,16 +261,13 @@ export function ExecutionSlideOver({
             </svg>
           </Link>
 
-          {/* ── Action Mode Toggle ── */}
+          {/* ── Action mode toggle ── */}
           <div className="grid grid-cols-2 gap-2">
+            {/* Task C: onClick immediately triggers instant-accept transaction */}
             <button
               type="button"
-              onClick={() => setIsCounterOffer(false)}
-              className={`h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer focus:outline-none ${
-                !isCounterOffer
-                  ? "bg-brand/10 border-brand text-brand font-black"
-                  : "bg-[#17130f] border-white/5 text-[#d4c4b7]"
-              }`}
+              onClick={handleInstantAccept}
+              className="h-10 text-[12px] font-bold rounded-xl border transition-all cursor-pointer focus:outline-none bg-brand/10 border-brand text-brand font-black hover:bg-brand/20 active:scale-[0.97]"
             >
               🤝 接受賣方原價
             </button>
@@ -269,7 +284,7 @@ export function ExecutionSlideOver({
             </button>
           </div>
 
-          {/* Counter-offer price input */}
+          {/* Counter-offer price input — only visible in counter-offer mode */}
           {isCounterOffer && (
             <div className="space-y-1.5 animate-fadeIn">
               <label
@@ -295,23 +310,23 @@ export function ExecutionSlideOver({
           )}
         </div>
 
-        {/* Fixed action bar */}
-        <div className="px-5 py-4 border-t border-white/[0.07] shrink-0">
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={handleConfirm}
-            className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
-            ) : !isCounterOffer ? (
-              "⚡ 確認以原價購入並預留資產"
-            ) : (
-              "✉️ 發送議價要約至聊天室"
-            )}
-          </button>
-        </div>
+        {/* Task B: Fixed action bar — ONLY rendered when isCounterOffer === true */}
+        {isCounterOffer && (
+          <div className="px-5 py-4 border-t border-white/[0.07] shrink-0 bg-[#26211C]">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleSendCounterOffer}
+              className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
+              ) : (
+                "✉️ 發送議價要約至聊天室"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
