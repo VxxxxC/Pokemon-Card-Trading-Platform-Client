@@ -12,7 +12,6 @@ import { PremiumMarket } from "@/app/components/home/PremiumMarket";
 import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
-import { ExecutionSlideOver } from "./components/transactions/ExecutionSlideOver";
 import { PwaInlineBanner } from "./components/pwa/PwaInlineBanner";
 
 // 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件
@@ -65,8 +64,7 @@ export default function HomePage() {
 
       <BottomNav />
 
-      {/* 全域智能交割總線抽屜 */}
-      <ExecutionSlideOver />
+      {/* 全域交割終端已遷移至 product/[id]/page.tsx props-based 架構 */}
     </div>
   );
 }

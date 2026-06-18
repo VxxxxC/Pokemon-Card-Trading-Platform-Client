@@ -5,10 +5,10 @@ import { Pagination } from "@/app/components/ui/Pagination";
 import Image from "next/image";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
-import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
 import { CChart16 } from "@/components/reui/c-chart-16";
+import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
 
 import { Switch } from "@/components/ui/switch";
 import {
@@ -71,9 +71,8 @@ export default function ProductDetailPage({ params }: PageProps) {
     INITIAL_LISTINGS.find((l) => l.id === id) ?? getFallbackProduct(id);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedAskOrder, setSelectedAskOrder] = useState<SellOrder | null>(
-    null,
-  );
+  const [isGateOpen, setIsGateOpen] = useState(false);
+  const [gateOrder, setGateOrder] = useState<SellOrder | null>(null);
 
   const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
   const [onlyGraded, setOnlyGraded] = useState(false);
@@ -174,32 +173,6 @@ export default function ProductDetailPage({ params }: PageProps) {
   const referenceGrade = card.sellOrders.find(
     (o) => o.customGrade.authority !== "Raw Card",
   )?.customGrade ?? { authority: "PSA", score: "10" };
-
-  const handleTriggerInstantBuy = () => {
-    if (!selectedAskOrder) return;
-
-    const currentListing: MarketplaceListing = {
-      id,
-      name: card.name,
-      set: card.set,
-      rarity: card.rarity,
-      grade: selectedAskOrder.customGrade,
-      price: selectedAskOrder.price,
-      delta: card.delta,
-      deltaDirection: card.deltaDirection,
-      image: card.images[0],
-      seller: selectedAskOrder.sellerName,
-      sellerId: selectedAskOrder.sellerId,
-    };
-
-    setSelectedAskOrder(null);
-
-    window.dispatchEvent(
-      new CustomEvent("open-global-transaction", {
-        detail: { listing: currentListing, mode: "buy" },
-      }),
-    );
-  };
 
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
@@ -413,7 +386,10 @@ export default function ProductDetailPage({ params }: PageProps) {
                         order={order}
                         idx={globalIdx}
                         productId={id}
-                        onOpenGate={setSelectedAskOrder}
+                        onOpenGate={(o) => {
+                            setGateOrder(o);
+                            setIsGateOpen(true);
+                          }}
                         grade={order.customGrade}
                         rarity={card.rarity}
                       />
@@ -508,87 +484,14 @@ export default function ProductDetailPage({ params }: PageProps) {
         </div>
       </main>
 
-      {/* 互動交割窗口彈窗 */}
-      {selectedAskOrder && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/75 backdrop-blur-xs"
-            onClick={() => setSelectedAskOrder(null)}
-          />
-
-          <div className="relative bg-[#2e2925] border border-[rgba(237,232,224,0.15)] rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4.5 animate-scaleUp">
-            <div className="text-left space-y-1">
-              <h4 className="font-sans font-black text-[16px] text-[#eae1da]">
-                📦 選擇要約交割商戶
-              </h4>
-              <p className="font-mono text-[10px] text-[#8A8680] uppercase tracking-widest">
-                VERIFIED MERCHANT HANDSHAKE GATEWAY
-              </p>
-            </div>
-
-            <div className="bg-[#17130f] border border-white/5 rounded-xl p-4 space-y-3.5">
-              <div className="flex flex-col text-left space-y-1">
-                <span className="font-mono text-[10px] text-[#8A8680] uppercase">
-                  對接賣家商號
-                </span>
-                <Link
-                  href={`/profile/${selectedAskOrder.sellerId}`}
-                  className="font-sans font-black text-[14px] text-brand underline cursor-pointer bg-transparent border-none text-left focus:outline-none"
-                >
-                  {selectedAskOrder.sellerName} (@{selectedAskOrder.sellerId}) →
-                </Link>
-              </div>
-
-              <div className="flex flex-col text-left border-t border-white/5 pt-2.5">
-                <span className="font-mono text-[10px] text-[#8A8680] uppercase">
-                  選定掛牌售價
-                </span>
-                <span className="font-mono font-black text-[18px] text-brand mt-0.5">
-                  HK$ {selectedAskOrder.price.toLocaleString("en-HK")}
-                </span>
-              </div>
-            </div>
-
-            {/* 安全下放的私域現貨引流導航卡 */}
-            <Link
-              href={`/marketplace/${selectedAskOrder.sellerId}/product/${id}`}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer text-left focus:outline-none"
-            >
-              <span>
-                🏪 查看 {selectedAskOrder.sellerName} 的{" "}
-                <span className="font-black underline">{card.name}</span>
-              </span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </Link>
-
-            <div className="flex flex-col gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleTriggerInstantBuy}
-                className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-md focus:outline-none"
-              >
-                ⚡ 進入交割端 / 立即購買
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedAskOrder(null)}
-                className="w-full h-10 bg-transparent border border-white/10 text-[#8A8680] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
-              >
-                取消返回大盤
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 交割終端 SlideOver — 由 AskOrderBookRow 點擊觸發，props-based 架構 */}
+      <ExecutionSlideOver
+        isOpen={isGateOpen}
+        onClose={() => setIsGateOpen(false)}
+        order={gateOrder}
+        card={card}
+        productId={id}
+      />
     </div>
   );
 }

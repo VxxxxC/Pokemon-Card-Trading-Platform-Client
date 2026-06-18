@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StarIcon } from "lucide-react";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type SellOrder } from "@/app/lib/mock-data/cards";
@@ -54,17 +53,18 @@ export function AskOrderBookRow({
 
             {/* Responsive Stack Defense Line */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              {/* Trust Rating Stars */}
+              {/* Trust Rating Stars — compact single star + score */}
               <div
-                className="flex items-center gap-0.5 shrink-0"
-                title="商戶信譽評級: 5.0 星"
+                className="flex items-center gap-1 shrink-0 font-mono"
+                title={`商戶信譽評級: ${order.sellerRating} 星`}
               >
-                {[...Array(5)].map((_, i) => (
-                  <StarIcon
-                    key={i}
-                    className="w-2.5 h-2.5 fill-brand text-brand shrink-0"
-                  />
-                ))}
+                <span className="text-brand text-[11px]">⭐</span>
+                <span className="text-[11px] font-bold text-[#d4c4b7]">
+                  {order.sellerRating.toFixed(1)}
+                </span>
+                <span className="text-[10px] text-[#8A8680]">
+                  ({order.reviewCount ?? Math.round(order.sellerRating * 40 + 15)} 筆評價)
+                </span>
               </div>
 
               {/* MOBILE ONLY METADATA BLOCK */}

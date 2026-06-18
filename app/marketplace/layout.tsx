@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
-import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
 
 export const metadata: Metadata = {
   title: "市場 — PokéTrade JP",
@@ -24,9 +23,8 @@ export default function MarketplaceLayout({
       {/* 核心內容視窗投影 */}
       {children}
 
-      {/* 常駐底導航與全域智能交割總線抽屜 */}
+      {/* 常駐底導航；交割終端由 product/[id]/page.tsx 按需掛載 */}
       <BottomNav />
-      <ExecutionSlideOver />
     </div>
   );
 }
