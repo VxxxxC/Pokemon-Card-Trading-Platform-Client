@@ -135,12 +135,12 @@ export function ExecutionSlideOver({
     <div className="fixed inset-0 z-[400] flex justify-end">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/75 backdrop-blur-xs"
+        className="absolute inset-0 bg-black/65 backdrop-blur-md"
         onClick={onClose}
       />
 
       {/* Panel — Right-Side Full-Height Slide-over Drawer */}
-      <div className="relative z-10 w-screen max-w-md bg-[#2e2925] border-l border-white/[0.08] flex flex-col h-screen h-[100dvh] shadow-2xl animate-fadeIn overflow-hidden">
+      <div className="relative z-10 w-full max-w-md bg-[#2e2925] border-l border-white/[0.08] flex flex-col h-screen h-[100dvh] shadow-[0_0_50px_rgba(0,0,0,0.85)] translate-x-0 transition-transform duration-300 ease-out rounded-none" style={{ height: '100dvh' }}>
 
         {/* Header Section (Fixed, Top) */}
         <div className="px-5 py-4 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-[#26211C]">
