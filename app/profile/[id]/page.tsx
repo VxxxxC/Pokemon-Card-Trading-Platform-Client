@@ -12,6 +12,8 @@ import {
   getPublicMemberById,
   getStorefrontListingsByMember,
 } from "@/app/lib/mock-data/members";
+import { IoChevronBack } from "react-icons/io5";
+import { useRouter } from "next/navigation";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
@@ -21,6 +23,7 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
   // 🟢 為了在 Client 組件內完美兼容 Next.js 16 異步參數協議，使用 React.use() 進行解包
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+  const router = useRouter();
   const member = getPublicMemberById(id);
   const storefrontListings = member
     ? getStorefrontListingsByMember(member)
@@ -77,6 +80,14 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
       <MobileHeader />
 
       <main className="flex-1 max-w-[900px] mx-auto w-full px-4 py-6 space-y-6 animate-fadeIn">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
+        >
+          <IoChevronBack />
+        </button>
+
         {/* 1. 商戶名片 + 右下角懸浮 Chatbox */}
         <ProfileHeaderWithChat member={member} />
 
@@ -95,13 +106,14 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {storefrontListings.map((item) => (
+          {/* 🎯 Target Refactored Horizontal Scrolling Chassis */}
+          <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-3 pt-1 scrollbar-none snap-x snap-mandatory [-webkit-overflow-scrolling:touch]">
+            {storefrontListings.slice(0, 5).map((item) => (
               /* 🟢 核心修正 2：將商品卡片跳轉路徑，精準導向私域專屬商品詳情頁，消滅 404 地雷 */
               <Link
                 key={item.id}
                 href={`/marketplace/${member.id}/product/${item.id}`}
-                className="block group bg-[#17130f]/40 p-2.5 rounded-xl border border-transparent hover:border-brand/20 transition-all duration-300"
+                className="block shrink-0 w-[155px] sm:w-[175px] md:w-[195px] bg-[#17130f]/40 p-2.5 rounded-xl border border-transparent hover:border-brand/20 transition-all duration-300 snap-start group"
               >
                 <div className="relative aspect-[3/4] bg-[#17130f] rounded-lg mb-2 overflow-hidden border border-[rgba(237,232,224,0.04)] group-hover:border-brand/40 transition-colors">
                   <Image
@@ -130,9 +142,14 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
         </section>
 
         {/* 3. 買家評價 */}
-        <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
+        <section
+          id="rating"
+          className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6 mb-20"
+        >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-sans font-bold text-[16px]">最近收到的信用評價</h2>
+            <h2 className="font-sans font-bold text-[16px]">
+              最近收到的信用評價
+            </h2>
             <Link
               href={`/profile/${member.id}/rating`}
               className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"

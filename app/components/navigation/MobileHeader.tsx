@@ -15,7 +15,7 @@ export function MobileHeader() {
   );
 
   // 🟢 從 Zustand 引流狀態
-  const { chats, isChatOpen, setIsChatOpen, setMobileView, openGlobalChat } =
+  const { chats, isChatOpen, setIsChatOpen, setMobileView, activateRoomById } =
     useTradeStore();
 
   // 廣播接收監聽器 ➔ 自動同步至狀態大腦
@@ -26,17 +26,18 @@ export function MobileHeader() {
         partnerName?: string;
       }>;
       if (customEvent.detail?.roomId) {
-        openGlobalChat(
+        activateRoomById(
           customEvent.detail.roomId,
-          customEvent.detail.partnerName || "未知名商戶",
+          customEvent.detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
         );
+        setMobileView("CHAT");
       }
     };
 
     window.addEventListener("open-global-chat", handleGlobalOpenChat);
     return () =>
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
-  }, [openGlobalChat]);
+  }, [activateRoomById, setMobileView]);
 
   const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
 

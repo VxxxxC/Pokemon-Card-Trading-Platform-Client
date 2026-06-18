@@ -42,8 +42,8 @@ interface ProfileHeaderProps {
     completedTrades: number;
     bio: string;
     badges: readonly Badge[];
-    rating: number;       // 🟢 Added for metrics encapsulation
-    reviewCount: number;  // 🟢 Added for metrics encapsulation
+    rating: number; // 🟢 Added for metrics encapsulation
+    reviewCount: number; // 🟢 Added for metrics encapsulation
   };
 }
 
@@ -159,7 +159,14 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
               </span>
             </div>
             <div className="w-px h-7 bg-white/5 self-end hidden sm:block" />
-            <div className="flex flex-col">
+            <button
+              className="flex flex-col items-start"
+              onClick={() => {
+                document
+                  .getElementById("rating")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
                 信用評分
               </span>
@@ -169,7 +176,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
                   ({member.reviewCount} 評)
                 </span>
               </span>
-            </div>
+            </button>
           </div>
 
           <p className="font-sans text-[14px] text-[#d4c4b7] leading-relaxed max-w-2xl">

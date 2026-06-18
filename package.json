@@ -13,6 +13,7 @@
     "@serwist/next": "^9.5.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "crypto-js": "^4.2.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.40.0",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@serwist/turbopack": "^9.5.7",
     "@tailwindcss/postcss": "^4",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

@@ -5,6 +5,7 @@ import { GrUserSettings } from "react-icons/gr";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import { PortfolioStatsSkeleton } from "@/app/components/shared/PortfolioSkeletons";
 import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export const metadata: Metadata = {
   title: "我的帳號 · 總覽 — PokéTrade JP",
@@ -451,7 +452,7 @@ export default function UserOverviewPage() {
             <div className="flex items-center justify-between mb-3">
               <h2
                 id="reviews-heading"
-                className="font-sans font-bold text-[15px] text-text-primary"
+                className="font-sans font-semibold text-[15px] text-text-primary"
               >
                 最近收到的信用評價
               </h2>
@@ -466,22 +467,48 @@ export default function UserOverviewPage() {
               {reviews.map((review) => (
                 <div
                   key={review.id}
-                  className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 shadow-2xs"
+                  className="flex flex-row gap-x-2 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 hover:border-[rgba(237,232,224,0.15)] transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-sans text-[13px] font-bold text-text-primary">
-                        {review.reviewer}
-                      </span>
-                      <span className="font-mono text-[12px] text-brand font-bold">⭐ {review.rating}</span>
-                    </div>
-                    <span className="font-mono text-[11px] text-text-disabled">
-                      {review.date}
-                    </span>
+                  <div className="self-start">
+                    <Link
+                      href={`/profile/${review.reviewerId || "koji_tcg"}`}
+                      className="block w-8 h-8 rounded-full border border-white/10 hover:opacity-80 transition-opacity cursor-pointer overflow-hidden shrink-0"
+                      title={`查看 ${review.reviewer} 的個人檔案`}
+                    >
+                      <Avatar className="w-full h-full">
+                        <AvatarImage
+                          src={`https://picsum.photos/seed/${review.avatarSeed || "user-yamada-ren-tcg"}/32/32`}
+                          alt={`${review.reviewer} 的頭像`}
+                          className="w-full h-full object-cover rounded-full"
+                        />
+                        <AvatarFallback className="text-[10px]">
+                          {review.reviewer.substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                   </div>
-                  <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
-                    {review.comment}
-                  </p>
+                  <div className="flex flex-col flex-1">
+                    <div className="flex flex-row justify-between items-center mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/profile/${review.reviewerId || "koji_tcg"}`}
+                          className="font-sans text-[13px] font-bold text-text-primary hover:text-brand transition-colors cursor-pointer"
+                          title={`查看 ${review.reviewer} 的個人檔案`}
+                        >
+                          {review.reviewer}
+                        </Link>
+                        <span className="font-mono text-[12px] text-brand font-bold">
+                          ⭐ {review.rating}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[11px] text-text-disabled">
+                        {review.date}
+                      </span>
+                    </div>
+                    <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
+                      {review.comment}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

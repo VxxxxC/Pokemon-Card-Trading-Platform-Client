@@ -6,6 +6,7 @@ export interface SellOrder {
   readonly sellerId: string;
   readonly price: number;
   readonly sellerRating: number;
+  readonly reviewCount?: number;
   readonly customGrade: { authority: string; score: string };
 }
 

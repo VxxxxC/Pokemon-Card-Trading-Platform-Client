@@ -557,11 +557,11 @@ export default function UserCollectionPage() {
                                 <DropdownMenuItem
                                   onClick={() =>
                                     router.push(
-                                      `/marketplace?q=${encodeURIComponent(card.name)}`,
+                                      `/marketplace/product/${encodeURIComponent(card.id)}`,
                                     )
                                   }
                                 >
-                                  📈 查看全網大盤走勢
+                                  查看公開市場
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() =>
@@ -569,14 +569,14 @@ export default function UserCollectionPage() {
                                   }
                                   className="text-brand focus:bg-[#322a24] focus:text-brand font-bold"
                                 >
-                                  💰 出售收藏品
+                                  出售收藏品
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                   variant="destructive"
                                   onClick={() => removeCard(card.id)}
                                 >
-                                  🚨 移除出資產庫
+                                  移除出資產庫
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>

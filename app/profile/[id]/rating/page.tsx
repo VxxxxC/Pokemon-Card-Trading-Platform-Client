@@ -1,7 +1,14 @@
 "use client";
 
-import React, { use, useState, useSyncExternalStore, useCallback, useMemo } from "react";
+import React, {
+  use,
+  useState,
+  useSyncExternalStore,
+  useCallback,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { IoChevronBack } from "react-icons/io5";
 import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
 import { Pagination } from "@/app/components/ui/Pagination";
@@ -9,6 +16,7 @@ import { getPublicMemberById } from "@/app/lib/mock-data/members";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // 引入 Shadcn UI 頂級黑金 Select 組件群
 import {
@@ -102,7 +110,10 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
         const parseDate = (dStr: string) => {
           const match = dStr.match(/(\d+)年\s*(\d+)月/);
           if (match) {
-            return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+            return new Date(
+              parseInt(match[1]),
+              parseInt(match[2]) - 1,
+            ).getTime();
           }
           return 0;
         };
@@ -112,7 +123,10 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
         const parseDate = (dStr: string) => {
           const match = dStr.match(/(\d+)年\s*(\d+)月/);
           if (match) {
-            return new Date(parseInt(match[1]), parseInt(match[2]) - 1).getTime();
+            return new Date(
+              parseInt(match[1]),
+              parseInt(match[2]) - 1,
+            ).getTime();
           }
           return 0;
         };
@@ -188,7 +202,9 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
               <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da]">
                 <SelectItem value="date-desc">📅 日期：最新 → 最舊</SelectItem>
                 <SelectItem value="date-asc">⏳ 日期：最舊 → 最新</SelectItem>
-                <SelectItem value="rating-desc">🔥 評分：最高 → 最低</SelectItem>
+                <SelectItem value="rating-desc">
+                  🔥 評分：最高 → 最低
+                </SelectItem>
                 <SelectItem value="rating-asc">❄️ 評分：最低 → 最高</SelectItem>
               </SelectContent>
             </Select>
@@ -200,29 +216,53 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
           {visibleReviews.map((review) => (
             <div
               key={review.id}
-              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 shadow-sm"
+              className="flex flex-row gap-x-2 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 hover:border-[rgba(237,232,224,0.15)] transition-colors"
             >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-sans text-[13px] font-bold text-text-primary truncate">
-                    {review.reviewer}
-                  </span>
-                  <span className="font-mono text-[12px] text-brand font-bold shrink-0">
-                    ⭐ {review.rating}
-                  </span>
-                  {review.isMerchantTx && (
-                    <span className="font-mono text-[9.5px] text-text-disabled bg-bg-elevated px-1.5 py-0.5 rounded border border-[rgba(237,232,224,0.06)] shrink-0">
-                      商家交易
-                    </span>
-                  )}
-                </div>
-                <span className="font-mono text-[11px] text-text-disabled shrink-0">
-                  {review.date}
-                </span>
+              <div className="self-start">
+                <Link
+                  href={`/profile/${review.reviewerId || "koji_tcg"}`}
+                  className="block w-8 h-8 rounded-full border border-white/10 hover:opacity-80 transition-opacity cursor-pointer overflow-hidden shrink-0"
+                  title={`查看 ${review.reviewer} 的個人檔案`}
+                >
+                  <Avatar className="w-full h-full">
+                    <AvatarImage
+                      src={`https://picsum.photos/seed/${review.avatarSeed || "user-yamada-ren-tcg"}/32/32`}
+                      alt={`${review.reviewer} 的頭像`}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                    <AvatarFallback className="text-[10px]">
+                      {review.reviewer.substring(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
               </div>
-              <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
-                {review.comment}
-              </p>
+              <div className="flex flex-col flex-1">
+                <div className="flex flex-row justify-between items-center mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/profile/${review.reviewerId || "koji_tcg"}`}
+                      className="font-sans text-[13px] font-bold text-text-primary hover:text-brand transition-colors cursor-pointer"
+                      title={`查看 ${review.reviewer} 的個人檔案`}
+                    >
+                      {review.reviewer}
+                    </Link>
+                    <span className="font-mono text-[12px] text-brand font-bold">
+                      ⭐ {review.rating}
+                    </span>
+                    {review.isMerchantTx && (
+                      <span className="font-sans text-[10.5px] font-black tracking-wide uppercase px-1.5 py-0.5 rounded text-warning bg-warning/10 border border-warning/20 shadow-[0_0_12px_rgba(212,165,116,0.15)]">
+                        商家交易
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-mono text-[11px] text-text-disabled">
+                    {review.date}
+                  </span>
+                </div>
+                <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
+                  {review.comment}
+                </p>
+              </div>
             </div>
           ))}
         </div>

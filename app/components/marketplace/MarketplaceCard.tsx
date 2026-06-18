@@ -77,17 +77,19 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
                 </h3>
               </Link>
               <span className="font-mono text-[11px] text-[#d4c4b7]">
-                {displayCardNo} · {listing.set}
+                {displayCardNo}
               </span>
             </div>
-            <GradeBadge
-              authority={listing.grade.authority}
-              score={listing.grade.score}
-            />
           </div>
 
           <div className="flex items-end justify-between pt-1">
             <div>
+              <div className="text-nowrap mb-2 -mx-1">
+                <GradeBadge
+                  authority={listing.grade.authority}
+                  score={listing.grade.score}
+                />
+              </div>
               <p className="font-mono font-bold text-[17px] text-[#eae1da] leading-none">
                 {formattedPrice}
               </p>

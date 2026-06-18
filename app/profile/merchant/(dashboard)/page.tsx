@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
+"use client";
+ 
+import React, { useMemo, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CiSettings } from "react-icons/ci";
-
-export const metadata: Metadata = {
-  title: "商戶總覽 — PokéTrade JP",
-  description: "查看銷售統計、待處理訂單及商戶概覽",
-};
+import { useMerchantStore } from "@/app/store/useMerchantStore";
+import { MerchantOrderRow } from "@/app/components/merchant/MerchantOrderRow";
+import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // 中央數據源：商戶身分真理數據（Hero 看板專用）
 const mockMerchant = {
@@ -43,22 +44,38 @@ const merchantSteps = [
   { levelNum: 5, label: "傳奇卡牌王" },
 ];
 
-// 待處理訂單流水線路
-const pendingActions = [
-  { id: "ORD-20250519-041", buyer: "M.佐藤", card: "Charizard ex SAR", grade: "PSA 10", amount: 49_800, action: "待發貨", actionColor: "text-warning" },
-  { id: "ORD-20250519-039", buyer: "K.田中", card: "Umbreon ex SAR", grade: "BGS 9", amount: 38_200, action: "待確認", actionColor: "text-brand" },
-  { id: "ORD-20250518-035", buyer: "C.Chen", card: "Pikachu ex SAR", grade: "PSA 10", amount: 32_500, action: "鑑定進行中", actionColor: "text-success" },
-  { id: "ORD-20250517-030", buyer: "A.Yamamoto", card: "Gardevoir ex SAR", grade: "PSA 9", amount: 28_000, action: "待發貨", actionColor: "text-warning" },
-];
-
 // 模擬最新期 3 筆真實信用評價數據
-const mockRecentReviews = [
-  { id: "r1", reviewer: "K.田中", rating: 5, comment: "包裝非常謹慎，卡況與描述完全一致，快速發貨，強力推薦！", date: "2026年 5月" },
-  { id: "r2", reviewer: "C.Lin", rating: 5, comment: "專業賣家，溝通回應快，第二次購買同一位賣家，值得信賴。", date: "2026年 4月" },
-  { id: "r3", reviewer: "M.鈴木", rating: 5, comment: "PSA 10 品相完美，雙重氣泡袋保護出貨，超出預期，感謝！", date: "2026年 3月" },
-];
+const reviews = MOCK_MEMBER_REVIEWS.slice(0, 3);
 
 export default function MerchantOverviewPage() {
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  const { orders } = useMerchantStore();
+
+  // 1. 數據獲取與篩選
+  // 篩選條件：status === "payment" 或 status === "custody" (待處理)
+  // 排序：按 createdAt 降序排列 (最新在前)
+  // 切片：只取前 4 筆
+  const pendingOrders = useMemo(() => {
+    return orders
+      .filter((o) => o.status === "payment" || o.status === "custody")
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+      .slice(0, 4);
+  }, [orders]);
+
+  const totalPendingCount = useMemo(() => {
+    return orders.filter(
+      (o) => o.status === "payment" || o.status === "custody",
+    ).length;
+  }, [orders]);
+
   return (
     <>
       {/* ── 🟢 1. MERCHANT HERO HEADER (升級版商戶自豪看板) ───────────────── */}
@@ -93,7 +110,10 @@ export default function MerchantOverviewPage() {
 
           {/* 基本資料 */}
           <div className="flex items-center gap-2 flex-wrap mt-1">
-            <h1 id="merchant-hero-name" className="font-sans font-bold text-[22px] text-text-primary tracking-tight">
+            <h1
+              id="merchant-hero-name"
+              className="font-sans font-bold text-[22px] text-text-primary tracking-tight"
+            >
               {mockMerchant.shopName}
             </h1>
             {mockMerchant.kycVerified && (
@@ -139,7 +159,10 @@ export default function MerchantOverviewPage() {
                 在庫資產
               </span>
               <span className="font-mono text-[13px] text-text-primary font-bold mt-1">
-                {mockMerchant.totalListings} <span className="text-[11px] text-text-secondary font-normal">件在售</span>
+                {mockMerchant.totalListings}{" "}
+                <span className="text-[11px] text-text-secondary font-normal">
+                  件在售
+                </span>
               </span>
             </div>
           </div>
@@ -149,7 +172,10 @@ export default function MerchantOverviewPage() {
             <div className="relative flex justify-between items-center">
               <div className="absolute top-3.25 left-2 right-2 h-px bg-white/5 z-0" />
               {merchantSteps.map((step) => (
-                <div key={step.levelNum} className="relative flex flex-col items-center z-10 flex-1">
+                <div
+                  key={step.levelNum}
+                  className="relative flex flex-col items-center z-10 flex-1"
+                >
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center font-mono text-[11px] font-bold transition-colors ${
                       step.active
@@ -163,7 +189,9 @@ export default function MerchantOverviewPage() {
                   </div>
                   <span
                     className={`font-sans text-[10px] mt-1.5 whitespace-nowrap tracking-tight ${
-                      step.active ? "text-brand font-bold" : "text-text-disabled"
+                      step.active
+                        ? "text-brand font-bold"
+                        : "text-text-disabled"
                     }`}
                   >
                     {step.label}
@@ -177,16 +205,22 @@ export default function MerchantOverviewPage() {
           <div className="max-w-xl pt-4 space-y-1.5">
             <div className="flex justify-between items-center font-mono text-[11px]">
               <span className="text-text-disabled">
-                升至 <span className="text-text-primary font-bold">{mockMerchant.nextLevel}</span>
+                升至{" "}
+                <span className="text-text-primary font-bold">
+                  {mockMerchant.nextLevel}
+                </span>
               </span>
               <span className="text-brand font-bold">
-                {mockMerchant.xp.toLocaleString()} / {mockMerchant.maxXp.toLocaleString()} XP
+                {mockMerchant.xp.toLocaleString()} /{" "}
+                {mockMerchant.maxXp.toLocaleString()} XP
               </span>
             </div>
             <div className="w-full h-1.5 bg-[#17130f] rounded-full overflow-hidden border border-white/5">
               <div
                 className="h-full bg-linear-to-r from-[#d4a574] to-[#e8b896] rounded-full transition-all duration-500"
-                style={{ width: `${(mockMerchant.xp / mockMerchant.maxXp) * 100}%` }}
+                style={{
+                  width: `${(mockMerchant.xp / mockMerchant.maxXp) * 100}%`,
+                }}
               />
             </div>
           </div>
@@ -199,23 +233,22 @@ export default function MerchantOverviewPage() {
                 className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-[#17130f] border border-[rgba(237,232,224,0.06)] rounded-lg"
               >
                 <span className="text-[12px]">{badge.emoji}</span>
-                <span className="font-mono text-[10.5px] text-[#d4c4b7]">{badge.label}</span>
+                <span className="font-mono text-[10.5px] text-[#d4c4b7]">
+                  {badge.label}
+                </span>
               </div>
             ))}
           </div>
-
-          {/* 🟢 項目 3 搬遷修正：已將舊有 [經營分析] 鈕由 Header 右下角彻底剷除，避免元件重複洩漏 */}
-
         </div>
       </section>
 
       {/* ── 🟢 2. COMBINED REVENUE & ORDERS EXECUTIVE PANEL (核心整合監控艙) ── */}
       <section aria-labelledby="revenue-heading" className="mb-5">
-        <h2 id="revenue-heading" className="sr-only">經營業績與快報分析</h2>
-        
-        {/* 🟢 項目 1 & 2：雙指標合二為一做同一個 Container，自適應 Grid 完美優化跨端可視化 */}
+        <h2 id="revenue-heading" className="sr-only">
+          經營業績與快報分析
+        </h2>
+
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 space-y-5 shadow-sm">
-          
           {/* 上層數據網絡列：保持 Mobile(平排網格不擠壓) ⇄ Web(寬裕比例對齊) */}
           <div className="grid grid-cols-2 gap-4 w-full">
             {/* 左側：本月營收模組 */}
@@ -237,15 +270,18 @@ export default function MerchantOverviewPage() {
                 本月訂單
               </p>
               <p className="font-mono font-black text-[20px] md:text-[23px] text-text-primary leading-none tracking-tight">
-                23 <span className="font-sans text-[12px] text-text-secondary font-normal">單</span>
+                23{" "}
+                <span className="font-sans text-[12px] text-text-secondary font-normal">
+                  單
+                </span>
               </p>
               <p className="font-mono text-[11px] text-warning font-medium">
-                4 件待處理
+                {isMounted ? `${totalPendingCount} 件待處理` : "載入中..."}
               </p>
             </div>
           </div>
 
-          {/* 🟢 項目 3：將 [經營分析] 鈕移入此 Container 下方，鋼鐵鎖定 Full Width 佔滿 */}
+          {/* 項目 3：將 [經營分析] 鈕移入此 Container 下方，鋼鐵鎖定 Full Width 佔滿 */}
           <div className="pt-0.5">
             <Link
               href="/profile/merchant/performance"
@@ -255,55 +291,52 @@ export default function MerchantOverviewPage() {
               <span>經營分析 📈</span>
             </Link>
           </div>
-
         </div>
       </section>
 
       {/* ── Pending Actions ────────────────────────────────────────────── */}
       <section aria-labelledby="pending-heading" className="mb-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 id="pending-heading" className="font-sans font-semibold text-[16px] text-text-primary">
+          <h2
+            id="pending-heading"
+            className="font-sans font-semibold text-[16px] text-text-primary"
+          >
             待處理訂單
           </h2>
           <Link
-            href="/profile/merchant/trading"
-            className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
+            href="/profile/merchant/trading?filter=待處理"
+            className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors font-bold"
           >
             查看全部 →
           </Link>
         </div>
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {pendingActions.map((order, i) => (
-            <div
-              key={order.id}
-              className={`flex items-center gap-3 px-4 py-3.5 hover:bg-bg-elevated transition-colors ${i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""}`}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="font-sans text-[13px] font-medium text-text-primary truncate">{order.card}</p>
-                  <span className="font-mono text-[10px] text-text-disabled">{order.grade}</span>
-                </div>
-                <p className="font-mono text-[11px] text-text-secondary">
-                  買家：{order.buyer} · #{order.id.slice(-6)}
-                </p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="font-mono font-semibold text-[14px] text-text-primary">
-                  HK$ {order.amount.toLocaleString("zh-TW")}
-                </p>
-                <span className={`font-mono text-[11px] ${order.actionColor}`}>
-                  {order.action}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+
+        {!isMounted ? (
+          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-8 text-center">
+            <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin mx-auto" />
+          </div>
+        ) : pendingOrders.length === 0 ? (
+          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-12 text-center">
+            <p className="font-sans text-[13px] text-text-disabled">
+              目前無待處理訂單
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {pendingOrders.map((order) => (
+              <MerchantOrderRow key={order.id} order={order} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── REPUTATION SECTION (信用評級模組) ────── */}
       <section aria-labelledby="rating-heading">
         <div className="flex items-center justify-between mb-3">
-          <h2 id="rating-heading" className="font-sans font-semibold text-[16px] text-text-primary">
+          <h2
+            id="rating-heading"
+            className="font-sans font-semibold text-[15px] text-text-primary"
+          >
             最近收到的信用評價
           </h2>
           <Link
@@ -314,27 +347,51 @@ export default function MerchantOverviewPage() {
           </Link>
         </div>
         <div className="space-y-3">
-          {mockRecentReviews.map((review) => (
+          {reviews.map((review) => (
             <div
               key={review.id}
-              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 hover:border-[rgba(237,232,224,0.15)] transition-colors"
+              className="flex flex-row gap-x-2 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 hover:border-[rgba(237,232,224,0.15)] transition-colors"
             >
-              <div className="flex justify-between items-center mb-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-sans text-[13px] font-bold text-text-primary">
-                    {review.reviewer}
-                  </span>
-                  <span className="font-mono text-[12px] text-brand font-bold">
-                    ⭐ {review.rating}
+              <div className="self-start">
+                <Link
+                  href={`/profile/${review.reviewerId || "koji_tcg"}`}
+                  className="block w-8 h-8 rounded-full border border-white/10 hover:opacity-80 transition-opacity cursor-pointer overflow-hidden shrink-0"
+                  title={`查看 ${review.reviewer} 的個人檔案`}
+                >
+                  <Avatar className="w-full h-full">
+                    <AvatarImage
+                      src={`https://picsum.photos/seed/${review.avatarSeed || "user-yamada-ren-tcg"}/32/32`}
+                      alt={`${review.reviewer} 的頭像`}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                    <AvatarFallback className="text-[10px]">
+                      {review.reviewer.substring(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+              </div>
+              <div className="flex flex-col flex-1">
+                <div className="flex flex-row justify-between items-center mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/profile/${review.reviewerId || "koji_tcg"}`}
+                      className="font-sans text-[13px] font-bold text-text-primary hover:text-brand transition-colors cursor-pointer"
+                      title={`查看 ${review.reviewer} 的個人檔案`}
+                    >
+                      {review.reviewer}
+                    </Link>
+                    <span className="font-mono text-[12px] text-brand font-bold">
+                      ⭐ {review.rating}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[11px] text-text-disabled">
+                    {review.date}
                   </span>
                 </div>
-                <span className="font-mono text-[11px] text-text-disabled">
-                  {review.date}
-                </span>
+                <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
+                  {review.comment}
+                </p>
               </div>
-              <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
-                {review.comment}
-              </p>
             </div>
           ))}
         </div>

@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
+
+export const metadata: Metadata = {
+  title: "商戶總覽 — PokéTrade JP",
+  description: "查看銷售統計、待處理訂單及商戶概覽",
+};
 
 const MERCHANT_TABS: TabItem[] = [
   { href: "/profile/merchant", label: "總覽", icon: "📊" },

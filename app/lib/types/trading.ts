@@ -1,0 +1,30 @@
+export type OrderStatus = 'payment' | 'custody' | 'shipped' | 'grading' | 'released' | 'cancelled';
+
+export const STATUS_STEP_INDEX: Record<Exclude<OrderStatus, 'cancelled'>, number> = {
+  payment: 0,
+  custody: 1,
+  shipped: 2,
+  grading: 3,
+  released: 4,
+};
+
+export interface SaleOrder {
+  id: string;
+  buyerId: string;     // Unique user identity for deterministic chat room hashing
+  buyerName: string;
+  sellerId: string;    // Unique seller identity for deterministic chat room hashing
+  sellerName: string;  // To cleanly differentiate C2C multi-seller nodes
+  cardName: string;
+  cardNo: string;
+  grade: string;
+  amount: number;
+  status: OrderStatus;
+  createdAt: string;
+  trackingNo?: string;
+  orderType: 'B2C' | 'C2C';         // B2C processes bypass standard initial escrow step indexes; C2C holds rigid peer custody checks
+  userContext: 'BUYER' | 'SELLER';   // For general user page reusability; for merchant views, maps to 'SELLER'
+  rating?: number;
+  level?: string;
+  bidTimestamp?: string;
+  avatarSeed?: string;
+}
