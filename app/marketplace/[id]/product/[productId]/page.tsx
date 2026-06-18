@@ -80,13 +80,10 @@ export default function MerchantProductDetailPage({ params }: PageProps) {
   }, [item]);
 
   // 🟢 核心優化：創造賣家至少 4 張實物多角度卡牌相片 (Quad-Angle Image Suite)
-  // 如果 mock 數據圖庫不足，自動派生極致品相特寫圖，stress-test 奢華相簿控制排
   const merchantRealPhotos = useMemo<string[]>(() => {
     if (!item) return [];
-    // 優先使用 INITIAL_LISTINGS 的 4 角度高畫質圖，若無則依託種子圖派生高精細微距圖
     const found = INITIAL_LISTINGS.find((c) => c.id === item.cardNo);
     if (found && found.images.length >= 2) {
-      // 擴充使其至少擁有 4 張圖
       return [
         ...found.images,
         "https://picsum.photos/seed/macro-angle/600/420",
@@ -231,6 +228,30 @@ export default function MerchantProductDetailPage({ params }: PageProps) {
               />
             </div>
 
+            {/* 👑 24K 拋光流金極致改裝：高貴亮金導流按鈕 */}
+            <Link
+              href={`/marketplace/product/${productId}`}
+              className="w-full h-12 flex items-center justify-between px-5 rounded-xl bg-linear-to-r from-[#e5c199] via-[#d4a574] to-[#bfa37a] hover:from-[#f3d2ab] hover:to-[#ceb28a] text-[#17130f] font-sans font-black text-[13.5px] tracking-wide transition-all duration-300 shadow-[0_4px_20px_rgba(212,165,116,0.25)] hover:shadow-[0_6px_25px_rgba(212,165,116,0.4)] active:scale-[0.99] cursor-pointer text-left focus:outline-none shrink-0 group"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[15px] group-hover:rotate-12 transition-transform duration-300">
+                  📊
+                </span>
+                <span>進入公開大盤商品市場</span>
+              </div>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                className="transform group-hover:translate-x-1 transition-transform duration-300"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
+
             {/* 實物狀態展示表 */}
             <div className="bg-[#26211C] rounded-xl border border-[rgba(237,232,224,0.08)] overflow-hidden font-sans text-[13px]">
               <div className="flex justify-between items-center p-3.5 bg-[#2c2722] border-b border-white/5">
@@ -301,7 +322,7 @@ export default function MerchantProductDetailPage({ params }: PageProps) {
                   ))}
                   <div className="flex items-center justify-between p-3.5 bg-[#2c2722] border-b border-white/[0.04] sm:col-span-2">
                     <span className="text-[#d4c4b7]">核心招式能力傷害指標</span>
-                    <span className="font-bold text-[#eae1da] font-mono text-[12px] bg-[#1A1612] px-2 py-1 rounded border border-white/5">
+                    <span className="bold text-[#eae1da] font-mono text-[12px] bg-[#1A1612] px-2 py-1 rounded border border-white/5">
                       {canonicalCardSpec.moveDamage}
                     </span>
                   </div>
