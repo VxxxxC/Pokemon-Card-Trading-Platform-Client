@@ -342,12 +342,12 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </div>
 
                 {/* 右側已鑑定快篩 Switch */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-col items-end gap-2 shrink-0">
                   <label
                     htmlFor="graded-only-switch"
                     className="text-[10px] font-bold text-[#8A8680] cursor-pointer"
                   >
-                    只顯示已鑑定現貨
+                    只顯示已鑑定
                   </label>
                   <Switch
                     id="graded-only-switch"
@@ -387,9 +387,9 @@ export default function ProductDetailPage({ params }: PageProps) {
                         idx={globalIdx}
                         productId={id}
                         onOpenGate={(o) => {
-                            setGateOrder(o);
-                            setIsGateOpen(true);
-                          }}
+                          setGateOrder(o);
+                          setIsGateOpen(true);
+                        }}
                         grade={order.customGrade}
                         rarity={card.rarity}
                       />
