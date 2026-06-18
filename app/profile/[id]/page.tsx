@@ -106,13 +106,14 @@ export default function PublicProfilePage({ params }: ProfileIdPageProps) {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {storefrontListings.map((item) => (
+          {/* 🎯 Target Refactored Horizontal Scrolling Chassis */}
+          <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-3 pt-1 scrollbar-none snap-x snap-mandatory [-webkit-overflow-scrolling:touch]">
+            {storefrontListings.slice(0, 5).map((item) => (
               /* 🟢 核心修正 2：將商品卡片跳轉路徑，精準導向私域專屬商品詳情頁，消滅 404 地雷 */
               <Link
                 key={item.id}
                 href={`/marketplace/${member.id}/product/${item.id}`}
-                className="block group bg-[#17130f]/40 p-2.5 rounded-xl border border-transparent hover:border-brand/20 transition-all duration-300"
+                className="block shrink-0 w-[155px] sm:w-[175px] md:w-[195px] bg-[#17130f]/40 p-2.5 rounded-xl border border-transparent hover:border-brand/20 transition-all duration-300 snap-start group"
               >
                 <div className="relative aspect-[3/4] bg-[#17130f] rounded-lg mb-2 overflow-hidden border border-[rgba(237,232,224,0.04)] group-hover:border-brand/40 transition-colors">
                   <Image
