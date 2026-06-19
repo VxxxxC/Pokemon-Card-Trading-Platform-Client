@@ -487,21 +487,6 @@ export default function UserOrderDetailPage() {
                 </span>
               </div>
             </div>
-
-            {order.orderType === "B2C" && (
-              <button
-                type="button"
-                onClick={() =>
-                  toast.success("📥 鑑定報告已匯出", {
-                    description:
-                      "官方四維微觀光學存證鑑定報告 PDF 已成功匯出！",
-                  })
-                }
-                className="w-full h-10 bg-[#39342f] border border-[rgba(237,232,224,0.12)] hover:border-brand text-text-primary text-[12px] font-bold rounded-xl transition-all mt-2 shadow-md flex items-center justify-center gap-2 cursor-pointer"
-              >
-                📥 下載官方實物高精細度鑑定存證報告 (PDF)
-              </button>
-            )}
           </div>
         </div>
 
