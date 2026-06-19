@@ -3,7 +3,11 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { SaleOrder, OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
+import {
+  SaleOrder,
+  OrderStatus,
+  STATUS_STEP_INDEX,
+} from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { useTradeStore } from "@/app/store/useTradeStore";
 
@@ -12,21 +16,25 @@ interface UserOrderRowProps {
 }
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  const stepIdx = STATUS_STEP_INDEX[status as Exclude<OrderStatus, "cancelled">];
+  const stepIdx =
+    STATUS_STEP_INDEX[status as Exclude<OrderStatus, "cancelled">];
   const step = stepIdx !== undefined ? ESCROW_STEPS[stepIdx] : null;
   const colorMap: Record<OrderStatus, string> = {
     payment: "text-warning bg-[rgba(239,68,68,0.10)] border border-warning/10",
     custody: "text-brand bg-[rgba(212,165,116,0.12)] border border-brand/10",
-    shipped: "text-[#3b9eff] bg-[rgba(59,158,255,0.12)] border border-[#3b9eff]/10",
+    shipped:
+      "text-[#3b9eff] bg-[rgba(59,158,255,0.12)] border border-[#3b9eff]/10",
     grading: "text-success bg-[rgba(16,185,129,0.12)] border border-success/10",
     released: "text-text-secondary bg-bg-elevated border border-white/5",
     cancelled: "text-text-disabled bg-bg-elevated border border-white/5",
   };
   return (
-    <span className={cn(
-      "font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full",
-      colorMap[status] ?? "text-text-disabled bg-bg-elevated"
-    )}>
+    <span
+      className={cn(
+        "font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full",
+        colorMap[status] ?? "text-text-disabled bg-bg-elevated",
+      )}
+    >
       {status === "cancelled" ? "已取消" : (step?.label ?? status)}
     </span>
   );
@@ -47,7 +55,7 @@ export function UserOrderRow({ order }: UserOrderRowProps) {
       order.buyerName,
       order.sellerId,
       order.sellerName,
-      order.userContext
+      order.userContext,
     );
   };
 
@@ -90,25 +98,13 @@ export function UserOrderRow({ order }: UserOrderRowProps) {
         </div>
       </div>
 
-      {/* Right side: Price + Message Action Button */}
+      {/* Price */}
       <div className="flex items-center gap-3 shrink-0">
         <div className="text-right">
           <span className="text-[15.5px] font-mono font-black text-brand block">
             {"HK$ " + order.amount.toLocaleString("zh-TW")}
           </span>
         </div>
-
-        {/* Encrypted Message Action Button */}
-        <button
-          type="button"
-          onClick={handleChatClick}
-          className="p-2 bg-white/5 hover:bg-brand/10 border border-white/5 hover:border-brand/30 text-text-secondary hover:text-brand rounded-lg transition-colors cursor-pointer"
-          title="發起加密對話"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
       </div>
     </div>
   );
