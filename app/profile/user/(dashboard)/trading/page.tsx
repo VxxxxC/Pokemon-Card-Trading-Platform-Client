@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  Suspense,
+} from "react";
+import { useSearchParams } from "next/navigation";
 import { SaleOrder } from "@/app/lib/types/trading";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { UserOrderRow } from "@/app/components/user/UserOrderRow";
@@ -113,20 +120,26 @@ export const USER_MOCK_ORDERS_DB: SaleOrder[] = [
   },
 ];
 
-export default function UserTradingPage() {
-  const isMounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
+function UserTradingPageContent() {
+  const searchParams = useSearchParams();
+  const initialFilter = searchParams.get("filter") || "全部";
 
-  const [filter, setFilter] = useState("全部");
+  const [filter, setFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
 
-  const [subPaymentChecked, setSubPaymentChecked] = useState(true);
-  const [subGradingChecked, setSubGradingChecked] = useState(true);
+  // Polymorphic Actor Filters
+  const [showBuyOrders, setShowBuyOrders] = useState(true);
+  const [showSellOrders, setShowSellOrders] = useState(true);
+
+  // Sync state if URL query param changes dynamically (e.g. click "View All" link)
+  useEffect(() => {
+    const queryFilter = searchParams.get("filter");
+    if (queryFilter && queryFilter !== filter) {
+      queueMicrotask(() => setFilter(queryFilter));
+    }
+  }, [searchParams, filter]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -143,22 +156,34 @@ export default function UserTradingPage() {
 
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [filter, searchQuery, subPaymentChecked, subGradingChecked]);
+  }, [filter, searchQuery, showBuyOrders, showSellOrders]);
 
   const filteredOrders = useMemo(() => {
-    return USER_MOCK_ORDERS_DB.filter(order => {
+    return USER_MOCK_ORDERS_DB.filter((order) => {
+      // 1. Base State Check (Filter Status)
       let matchFilter = true;
       if (filter === "待處理") {
-        let matchSub = false;
-        if (subPaymentChecked && order.status === "payment") matchSub = true;
-        if (subGradingChecked && (order.status === "custody" || order.status === "shipped" || order.status === "grading")) matchSub = true;
-        matchFilter = matchSub;
+        matchFilter =
+          order.status === "payment" ||
+          order.status === "custody" ||
+          order.status === "shipped" ||
+          order.status === "grading";
       } else if (filter === "已完成") {
         matchFilter = order.status === "released";
       } else if (filter === "已取消") {
         matchFilter = order.status === "cancelled";
       }
 
+      // 2. Identity Context Matrix Alignment
+      let matchContext = false;
+      if (showBuyOrders && order.userContext === "BUYER") {
+        matchContext = true;
+      }
+      if (showSellOrders && order.userContext === "SELLER") {
+        matchContext = true;
+      }
+
+      // 3. Search Query Expansion
       const normalizedQuery = searchQuery.trim().toLowerCase();
       let matchSearch = true;
       if (normalizedQuery) {
@@ -170,9 +195,9 @@ export default function UserTradingPage() {
           order.id.toLowerCase().includes(normalizedQuery);
       }
 
-      return matchFilter && matchSearch;
+      return matchFilter && matchContext && matchSearch;
     });
-  }, [filter, searchQuery, subPaymentChecked, subGradingChecked]);
+  }, [filter, searchQuery, showBuyOrders, showSellOrders]);
 
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const paginatedOrders = useMemo(() => {
@@ -181,7 +206,7 @@ export default function UserTradingPage() {
     return filteredOrders.slice(start, end);
   }, [filteredOrders, currentPage, itemsPerPage]);
 
-  const needsAction = USER_MOCK_ORDERS_DB.filter(o => {
+  const needsAction = USER_MOCK_ORDERS_DB.filter((o) => {
     const isSeller = o.userContext === "SELLER";
     if (isSeller) {
       return o.status === "custody" || o.status === "payment";
@@ -190,31 +215,39 @@ export default function UserTradingPage() {
     }
   });
 
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5 animate-fadeIn">
       {needsAction.length > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl animate-fadeIn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <p className="font-sans text-[13px] text-text-primary">
-            <span className="font-semibold text-warning">{needsAction.length + " 件交易"}</span> 需要您的處理：完成付款、寄出卡牌或確認收貨。
+            <span className="font-semibold text-warning">
+              {needsAction.length + " 件交易"}
+            </span>{" "}
+            需要您的處理：完成付款、寄出卡牌或確認收貨。
           </p>
         </div>
       )}
 
       <div className="relative bg-bg-card rounded-2xl border border-white/5 p-4 shadow-sm flex flex-col gap-2">
-        <label htmlFor="user-order-search" className="font-mono text-[11px] text-text-secondary uppercase tracking-wider">
+        <label
+          htmlFor="user-order-search"
+          className="font-mono text-[11px] text-text-secondary uppercase tracking-wider"
+        >
           智慧交易檢索控制台
         </label>
         <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
@@ -222,7 +255,7 @@ export default function UserTradingPage() {
             id="user-order-search"
             type="text"
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="輸入卡牌名稱、卡號如 sv2a-182、交易對手姓名或訂單 ID..."
             className="flex-1 h-full bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
           />
@@ -240,19 +273,25 @@ export default function UserTradingPage() {
 
       <section aria-labelledby="user-trading-heading" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2 id="user-trading-heading" className="font-sans font-semibold text-[16px] text-text-primary">
+          <h2
+            id="user-trading-heading"
+            className="font-sans font-semibold text-[16px] text-text-primary"
+          >
             {"交易管理（" + filteredOrders.length + "）"}
           </h2>
-          
+
           <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
-            {["全部", "待處理", "已完成", "已取消"].map(f => {
+            {["全部", "待處理", "已完成", "已取消"].map((f) => {
               const isActive = filter === f;
-              let btnClass = "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
+              let btnClass =
+                "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
               if (isActive) {
                 if (f === "待處理") {
-                  btnClass = "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
+                  btnClass =
+                    "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
                 } else {
-                  btnClass = "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
+                  btnClass =
+                    "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
                 }
               }
               return (
@@ -260,7 +299,10 @@ export default function UserTradingPage() {
                   key={f}
                   type="button"
                   onClick={() => setFilter(f)}
-                  className={"font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " + btnClass}
+                  className={
+                    "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " +
+                    btnClass
+                  }
                 >
                   {f}
                 </button>
@@ -269,37 +311,40 @@ export default function UserTradingPage() {
           </div>
         </div>
 
-        {filter === "待處理" && (
-          <div className="flex items-center gap-4 px-4 py-2.5 bg-[#17130f] border border-white/5 rounded-xl animate-fadeIn mt-2 w-full sm:w-auto">
-            <span className="font-sans text-[11px] text-text-secondary font-medium mr-2">進階子篩選：</span>
-            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={subPaymentChecked}
-                onChange={e => setSubPaymentChecked(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
-              />
-              待付款
-            </label>
-            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={subGradingChecked}
-                onChange={e => setSubGradingChecked(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
-              />
-              鑑定中/待收寄
-            </label>
-          </div>
-        )}
+        {/* 🎯 Polymorphic Dual-Role Controller Row */}
+        <div className="flex items-center gap-4 px-4 py-2.5 bg-[#17130f] border border-white/5 rounded-xl animate-fadeIn mt-2 w-full sm:w-auto">
+          <span className="font-sans text-[11px] text-text-secondary font-medium mr-2">
+            交易方：
+          </span>
+          <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showBuyOrders}
+              onChange={(e) => setShowBuyOrders(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
+            />
+            買單
+          </label>
+          <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showSellOrders}
+              onChange={(e) => setShowSellOrders(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
+            />
+            賣單
+          </label>
+        </div>
 
         <div className="space-y-3 min-h-[200px]">
           {paginatedOrders.length === 0 ? (
             <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
-              <p className="font-sans text-[13px] text-text-disabled">沒有符合當前篩選與關鍵字的交易訂單記錄。</p>
+              <p className="font-sans text-[13px] text-text-disabled">
+                沒有符合當前篩選與關鍵字的交易訂單記錄。
+              </p>
             </div>
           ) : (
-            paginatedOrders.map(order => (
+            paginatedOrders.map((order) => (
               <UserOrderRow key={order.id} order={order} />
             ))
           )}
@@ -309,7 +354,7 @@ export default function UserTradingPage() {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-            onPageChange={page => setCurrentPage(page)}
+            onPageChange={(page) => setCurrentPage(page)}
             itemLabel="筆訂單記錄"
             totalItems={filteredOrders.length}
             itemsPerPage={itemsPerPage}
@@ -318,5 +363,33 @@ export default function UserTradingPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function UserTradingPage() {
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[400px] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <UserTradingPageContent />
+    </Suspense>
   );
 }
