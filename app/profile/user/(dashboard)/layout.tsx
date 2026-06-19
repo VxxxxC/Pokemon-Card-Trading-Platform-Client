@@ -1,9 +1,15 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
+
+export const metadata: Metadata = {
+  title: "我的帳號 · 總覽 — PokéTrade JP",
+  description: "查看個人收藏估值、身份等級及交易紀錄",
+};
 
 const USER_TABS: TabItem[] = [
   { href: "/profile/user", label: "總覽", icon: "👤" },

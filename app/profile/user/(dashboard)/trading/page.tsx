@@ -5,7 +5,7 @@ import { SaleOrder } from "@/app/lib/types/trading";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { UserOrderRow } from "@/app/components/user/UserOrderRow";
 
-const USER_MOCK_ORDERS_DB: SaleOrder[] = [
+export const USER_MOCK_ORDERS_DB: SaleOrder[] = [
   {
     id: "ORD-2026-U01",
     buyerId: "USR-ME",
