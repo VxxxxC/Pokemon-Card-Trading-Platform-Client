@@ -116,38 +116,15 @@ export default function MerchantOrderDetailPage() {
         >
           <IoChevronBack />
         </button>
-        <button
-          onClick={() => {
-            openGlobalChat(
-              order.buyerId,
-              order.buyerName,
-              order.sellerId,
-              order.sellerName,
-              "SELLER",
-            );
-          }}
-          className="h-10 px-5 bg-[#26211C] border border-brand/20 hover:border-brand text-brand font-sans text-[13px] font-bold rounded-xl active:scale-[0.96] transition-all shadow-md cursor-pointer flex items-center gap-2"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        </button>
       </div>
 
-      <div className="flex flex-row justify-between">
-        <div className="justify-items-start">
-          <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
-            {order.cardName}
+      <div className="justify-items-start space-y-2">
+        <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
+          {order.cardName}
+        </div>
+        <div className="flex flex-col p-2 border border-brand/20 rounded-lg items-start space-y-3">
+          <div className="mt-2 font-mono text-[11px] text-text-secondary">
+            序號: {order.cardNo} · 等級: {order.grade}
           </div>
           <div className="font-mono text-[12.5px] text-brand mt-1">
             <p>訂單號碼: {order.id}</p>
@@ -156,8 +133,6 @@ export default function MerchantOrderDetailPage() {
               {order.bidTimestamp || order.createdAt || "2026/06/17 12:00"}
             </p>
           </div>
-        </div>
-        <div className="justify-items-end">
           <div className="relative w-10 h-10 rounded-full border border-white/10 overflow-hidden bg-[#17130f] shrink-0 shadow-xs mb-1">
             <Image
               src={`https://picsum.photos/seed/${order.avatarSeed || "merchant-koji-tcg"}/40/40`}
@@ -288,19 +263,7 @@ export default function MerchantOrderDetailPage() {
               </span>
             </div>
 
-            <div className="space-y-1">
-              <h4 className="font-sans font-extrabold text-[15px] text-[#eae1da]">
-                {order.cardName}
-              </h4>
-              <p className="font-mono text-[11px] text-text-secondary">
-                序號: {order.cardNo} · 等級: {order.grade}
-              </p>
-              <p className="font-mono text-[11px] text-text-secondary">
-                訂單號碼: {order.id} · 買家: {order.buyerName}
-              </p>
-            </div>
-
-            <div className="border-t border-[rgba(237,232,224,0.06)] pt-3 font-mono text-[12px] space-y-2 text-text-secondary">
+            <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
               <div className="flex justify-between">
                 <span>商品最終成交價 (Subtotal)</span>
                 <span className="text-text-primary">
