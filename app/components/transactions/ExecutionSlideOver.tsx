@@ -81,26 +81,6 @@ export function ExecutionSlideOver({
       ? card.images
       : ["https://picsum.photos/seed/fallback/400/500"];
 
-  // Task C: One-click instant accept — fires immediately on button click, bypasses confirm step
-  const handleInstantAccept = () => {
-    injectSpecialTransaction({
-      sellerName: order.sellerName,
-      sellerId: order.sellerId,
-      cardName: card.name,
-      cardId: productId,
-      offerPrice: order.price,
-      buyerName: MOCK_BUYER_NAME,
-      buyerId: MOCK_BUYER_ID,
-      isInstantTake: true, // 🟢 直接 accepted 狀態，商品即時 on hold，開立新訂單
-    });
-    onClose();
-    toast.success("🎉 已接受原價！資產已成功扣鎖預留", {
-      description: "交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！",
-      duration: 4000,
-    });
-  };
-
-  // Task B: Counter-offer submit — only reachable when isCounterOffer === true
   const handleSendCounterOffer = async () => {
     if (!customPrice || Number(customPrice) <= 0) {
       toast.error("⚠️ 請輸入有效的預期出價金額");
