@@ -300,7 +300,7 @@ export function ExecutionSlideOver({
             {isSubmitting ? (
               <div className="w-4 h-4 border-2 border-[#1A1612] border-t-transparent rounded-full animate-spin" />
             ) : (
-              "✉️ 發送議價要約至聊天室"
+              "發送叫價至聊天室"
             )}
           </button>
         </div>
