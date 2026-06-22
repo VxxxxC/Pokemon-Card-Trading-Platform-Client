@@ -501,11 +501,12 @@ export default function MerchantInventoryPage() {
       </div>
 
       {/* ── SKU Grouped Inventory Accordion ───────────────────────────── */}
-      <section aria-labelledby="listings-heading" className="pt-1">
-        <h2
-          id="listings-heading"
-          className="font-sans font-semibold text-[16px] text-text-primary mb-4 space-x-2"
-        >
+      <section
+        id="listings-heading"
+        aria-labelledby="listings-heading"
+        className="pt-1"
+      >
+        <h2 className="font-sans font-semibold text-[16px] text-text-primary mb-4 space-x-2">
           <span>所有商品</span>
           <span className="font-mono text-sm px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">
             {filteredSkuGroups.length} 款 卡牌
@@ -527,6 +528,7 @@ export default function MerchantInventoryPage() {
             itemsPerPage={skusPerPage}
             enableScroll={true}
             scrollToViewId="listings-heading"
+            scrollBlock="end"
           />
         </div>
       </section>

@@ -352,7 +352,8 @@ const skuGroups: SKUGroup[] = [
         askPrice: 1_280_000,
         status: "active",
         createdAt: "2025/5/01",
-        conditionDesc: "殿堂級珍藏莉莉艾 SR，色澤鮮豔無褪色，極高收藏級品品相。",
+        conditionDesc:
+          "殿堂級珍藏莉莉艾 SR，色澤鮮豔無褪色，極高收藏級品品相。",
         edgeWear: "極致完美，PSA 10 頂峰鑑定，封盒保護妥善。",
         photos: 6,
         views: 1450,
@@ -367,15 +368,16 @@ function countByStatus(
   status: SKUGroup["items"][number]["status"],
 ) {
   return groups.reduce(
-    (total, sku) => total + sku.items.filter((item) => item.status === status).length,
+    (total, sku) =>
+      total + sku.items.filter((item) => item.status === status).length,
     0,
   );
 }
 
 export default function UserInventoryPage() {
-  const totalItems  = skuGroups.reduce((t, sku) => t + sku.items.length, 0);
+  const totalItems = skuGroups.reduce((t, sku) => t + sku.items.length, 0);
   const activeCount = countByStatus(skuGroups, "active");
-  const soldCount   = countByStatus(skuGroups, "sold");
+  const soldCount = countByStatus(skuGroups, "sold");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -392,14 +394,14 @@ export default function UserInventoryPage() {
     return skuGroups.filter(
       (sku) =>
         sku.cardName.toLowerCase().includes(query) ||
-        sku.cardNo.toLowerCase().includes(query)
+        sku.cardNo.toLowerCase().includes(query),
     );
   }, [searchQuery]);
 
   const paginatedSkuGroups = useMemo(() => {
     return filteredSkuGroups.slice(
       (currentSkuPage - 1) * skusPerPage,
-      currentSkuPage * skusPerPage
+      currentSkuPage * skusPerPage,
     );
   }, [filteredSkuGroups, currentSkuPage]);
 
@@ -408,23 +410,30 @@ export default function UserInventoryPage() {
       {/* ── Summary 數據統計卡 ─────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "現貨",   value: `${totalItems} 件`  },
+          { label: "現貨", value: `${totalItems} 件` },
           { label: "上架中", value: `${activeCount} 件` },
-          { label: "已售出", value: `${soldCount} 件`   },
+          { label: "已售出", value: `${soldCount} 件` },
         ].map(({ label, value }) => (
           <div
             key={label}
             className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-3 shadow-sm"
           >
-            <p className="font-mono text-[11px] text-text-secondary mb-1">{label}</p>
-            <p className="font-mono font-bold text-[18px] text-text-primary">{value}</p>
+            <p className="font-mono text-[11px] text-text-secondary mb-1">
+              {label}
+            </p>
+            <p className="font-mono font-bold text-[18px] text-text-primary">
+              {value}
+            </p>
           </div>
         ))}
       </div>
 
       {/* ── 🟢 智慧卡牌商品搜尋欄 ────────────────────────────────── */}
       <div className="relative bg-bg-card border border-[rgba(237,232,224,0.08)] p-4 rounded-2xl shadow-sm flex flex-col gap-2">
-        <label htmlFor="user-sku-search" className="font-mono text-[11px] text-text-secondary uppercase tracking-wider">
+        <label
+          htmlFor="user-sku-search"
+          className="font-mono text-[11px] text-text-secondary uppercase tracking-wider"
+        >
           🔍 智慧卡牌商品檢索控制台 (SUPPORT FUZZY QUERY)
         </label>
         <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
@@ -492,16 +501,21 @@ export default function UserInventoryPage() {
       </div>
 
       {/* ── SKU Grouped Inventory Accordion ───────────────────────────── */}
-      <section aria-labelledby="listings-heading" className="pt-1">
-        <h2
-          id="listings-heading"
-          className="font-sans font-semibold text-[16px] text-text-primary mb-4 space-x-2"
-        >
+      <section
+        id="listings-heading"
+        aria-labelledby="listings-heading"
+        className="pt-1"
+      >
+        <h2 className="font-sans font-semibold text-[16px] text-text-primary mb-4 space-x-2">
           <span>所有商品</span>
-          <span className="font-mono text-sm px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">{filteredSkuGroups.length} 款 卡牌</span> 
-          <span className="font-mono text-sm px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">{totalItems} 張現貨</span>
+          <span className="font-mono text-sm px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">
+            {filteredSkuGroups.length} 款 卡牌
+          </span>
+          <span className="font-mono text-sm px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">
+            {totalItems} 張現貨
+          </span>
         </h2>
-        <InventoryAccordion skuGroups={paginatedSkuGroups} analytics={false}/>
+        <InventoryAccordion skuGroups={paginatedSkuGroups} analytics={false} />
 
         {/* ── 🟢 SKU Group Pagination ── */}
         <div className="pt-4">
@@ -513,6 +527,8 @@ export default function UserInventoryPage() {
             totalItems={filteredSkuGroups.length}
             itemsPerPage={skusPerPage}
             enableScroll={true}
+            scrollToViewId="listings-heading"
+            scrollBlock="end"
           />
         </div>
       </section>
