@@ -281,7 +281,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                     Live Index
                   </span>
                 </div>
-                <div className="relative w-full h-[145px] overflow-hidden">
+                <div className="relative w-full h-[10rem] overflow-hidden">
                   <CChart16
                     data={card.chartPoints}
                     xKey="date"
