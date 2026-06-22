@@ -314,8 +314,8 @@ export default function UserOrderDetailPage() {
           <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
             {order.cardName}
           </div>
-          <div className="w-full flex flex-col p-2 border border-brand/20 rounded-lg items-start space-y-3">
-            <div className="mt-2 font-mono text-[11px] text-text-secondary">
+          <div className="w-full flex flex-col p-6 border border-brand/20 rounded-lg items-start space-y-3">
+            <div className="font-mono text-[11px] text-text-secondary">
               序號: {order.cardNo} · 等級: {order.grade}
             </div>
             <div className="font-mono text-[12.5px] text-brand mt-1 space-y-1">
@@ -710,7 +710,7 @@ export default function UserOrderDetailPage() {
 
         {/* Carousel Viewport */}
         <div className="flex flex-col items-center select-none group w-full overflow-hidden">
-          <div className="relative w-full aspect-[3/4] max-h-[45dvh] lg:max-h-[55vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
+          <div className="relative w-full aspect-[3/4] max-h-[65dvh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
             <Carousel
               setApi={setApi}
               className="w-full h-full [&>div]:h-full"
