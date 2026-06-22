@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { IoChevronBack } from "react-icons/io5";
 import {
   ComposedChart,
@@ -129,26 +130,126 @@ interface MerchantAnalyticsPageProps {
 
 // ─── Immutable Relative Offsets Database for High-Fidelity Transaction History ───
 const MOCK_RELATIVE_OFFSETS = [
-  { offsetDays: 0.05, buyerName: "佐藤 健一 (Sato)", id: "ORD-2026-X901" },
-  { offsetDays: 0.15, buyerName: "高橋 翼 (Tsubasa)", id: "ORD-2026-X902" },
-  { offsetDays: 0.35, buyerName: "田中 櫻 (Sakura)", id: "ORD-2026-X903" },
-  { offsetDays: 0.45, buyerName: "伊藤 信一 (Shinichi)", id: "ORD-2026-X904" },
-  { offsetDays: 1.2, buyerName: "渡邊 翔 (Sho)", id: "ORD-2026-X905" },
-  { offsetDays: 2.1, buyerName: "山本 美優 (Miyu)", id: "ORD-2026-X906" },
-  { offsetDays: 3.5, buyerName: "中村 蓮 (Ren)", id: "ORD-2026-X907" },
-  { offsetDays: 5.8, buyerName: "小林 駿 (Shun)", id: "ORD-2026-X908" },
-  { offsetDays: 8.2, buyerName: "加藤 拓也 (Takuya)", id: "ORD-2026-X909" },
-  { offsetDays: 12.5, buyerName: "吉田 葵 (Aoi)", id: "ORD-2026-X910" },
-  { offsetDays: 18.1, buyerName: "山田 大介 (Daisuke)", id: "ORD-2026-X911" },
-  { offsetDays: 24.3, buyerName: "佐々木 陸 (Riku)", id: "ORD-2026-X912" },
-  { offsetDays: 35.0, buyerName: "山口 陽菜 (Hina)", id: "ORD-2026-X913" },
-  { offsetDays: 45.2, buyerName: "松本 裕太 (Yuta)", id: "ORD-2026-X914" },
-  { offsetDays: 60.1, buyerName: "井上 翔太 (Shota)", id: "ORD-2026-X915" },
-  { offsetDays: 85.4, buyerName: "木村 拓哉 (Takuya)", id: "ORD-2026-X916" },
-  { offsetDays: 110.2, buyerName: "林 奈々 (Nana)", id: "ORD-2026-X917" },
-  { offsetDays: 150.5, buyerName: "清水 健 (Ken)", id: "ORD-2026-X918" },
-  { offsetDays: 220.0, buyerName: "阿部 寬 (Hiroshi)", id: "ORD-2026-X919" },
-  { offsetDays: 310.4, buyerName: "森 翔平 (Shohei)", id: "ORD-2026-X920" },
+  {
+    offsetDays: 0.05,
+    buyerName: "佐藤 健一 (Sato)",
+    id: "ORD-2026-X901",
+    buyerId: "USR-BUYER-901",
+  },
+  {
+    offsetDays: 0.15,
+    buyerName: "高橋 翼 (Tsubasa)",
+    id: "ORD-2026-X902",
+    buyerId: "USR-BUYER-902",
+  },
+  {
+    offsetDays: 0.35,
+    buyerName: "田中 櫻 (Sakura)",
+    id: "ORD-2026-X903",
+    buyerId: "USR-BUYER-903",
+  },
+  {
+    offsetDays: 0.45,
+    buyerName: "伊藤 信一 (Shinichi)",
+    id: "ORD-2026-X904",
+    buyerId: "USR-BUYER-904",
+  },
+  {
+    offsetDays: 1.2,
+    buyerName: "渡邊 翔 (Sho)",
+    id: "ORD-2026-X905",
+    buyerId: "USR-BUYER-905",
+  },
+  {
+    offsetDays: 2.1,
+    buyerName: "山本 美優 (Miyu)",
+    id: "ORD-2026-X906",
+    buyerId: "USR-BUYER-906",
+  },
+  {
+    offsetDays: 3.5,
+    buyerName: "中村 蓮 (Ren)",
+    id: "ORD-2026-X907",
+    buyerId: "USR-BUYER-907",
+  },
+  {
+    offsetDays: 5.8,
+    buyerName: "小林 駿 (Shun)",
+    id: "ORD-2026-X908",
+    buyerId: "USR-BUYER-908",
+  },
+  {
+    offsetDays: 8.2,
+    buyerName: "加藤 拓也 (Takuya)",
+    id: "ORD-2026-X909",
+    buyerId: "USR-BUYER-909",
+  },
+  {
+    offsetDays: 12.5,
+    buyerName: "吉田 葵 (Aoi)",
+    id: "ORD-2026-X910",
+    buyerId: "USR-BUYER-910",
+  },
+  {
+    offsetDays: 18.1,
+    buyerName: "山田 大介 (Daisuke)",
+    id: "ORD-2026-X911",
+    buyerId: "USR-BUYER-911",
+  },
+  {
+    offsetDays: 24.3,
+    buyerName: "佐々木 陸 (Riku)",
+    id: "ORD-2026-X912",
+    buyerId: "USR-BUYER-912",
+  },
+  {
+    offsetDays: 35.0,
+    buyerName: "山口 陽菜 (Hina)",
+    id: "ORD-2026-X913",
+    buyerId: "USR-BUYER-913",
+  },
+  {
+    offsetDays: 45.2,
+    buyerName: "松本 裕太 (Yuta)",
+    id: "ORD-2026-X914",
+    buyerId: "USR-BUYER-914",
+  },
+  {
+    offsetDays: 60.1,
+    buyerName: "井上 翔太 (Shota)",
+    id: "ORD-2026-X915",
+    buyerId: "USR-BUYER-915",
+  },
+  {
+    offsetDays: 85.4,
+    buyerName: "木村 拓哉 (Takuya)",
+    id: "ORD-2026-X916",
+    buyerId: "USR-BUYER-916",
+  },
+  {
+    offsetDays: 110.2,
+    buyerName: "林 奈々 (Nana)",
+    id: "ORD-2026-X917",
+    buyerId: "USR-BUYER-917",
+  },
+  {
+    offsetDays: 150.5,
+    buyerName: "清水 健 (Ken)",
+    id: "ORD-2026-X918",
+    buyerId: "USR-BUYER-918",
+  },
+  {
+    offsetDays: 220.0,
+    buyerName: "阿部 寬 (Hiroshi)",
+    id: "ORD-2026-X919",
+    buyerId: "USR-BUYER-919",
+  },
+  {
+    offsetDays: 310.4,
+    buyerName: "森 翔平 (Shohei)",
+    id: "ORD-2026-X920",
+    buyerId: "USR-BUYER-920",
+  },
 ];
 
 export default function MerchantAnalyticsPage({
@@ -158,6 +259,9 @@ export default function MerchantAnalyticsPage({
   const [timeRange, setTimeRange] = useState<string>("7d");
   const [historyPage, setHistoryPage] = useState<number>(1);
   const itemsPerPage = 8;
+  const [displayArea, setDisplayArea] = useState<boolean>(true);
+  const [displayLine, setDisplayLine] = useState<boolean>(true);
+  const [displayBar, setDisplayBar] = useState<boolean>(true);
 
   // Await searchParams in client side safe pattern using React.use
   const resolvedParams = React.use(searchParams);
@@ -228,6 +332,7 @@ export default function MerchantAnalyticsPage({
         id: item.id,
         date: `${yyyy}-${mm}-${dd} ${hh}:${min}`,
         buyerName: item.buyerName,
+        buyerId: item.buyerId, // 🆕 Propagate to rendering template
         price: finalPrice,
       };
     });
@@ -284,36 +389,62 @@ export default function MerchantAnalyticsPage({
 
       {/* ── Interactive Area Chart Area ────────────────────────────────────────── */}
       <div className="bg-[#26211C] rounded-2xl border border-white/5 p-5 shadow-lg">
-        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-          <div>
+        <div className="flex flex-col">
+          <div className="flex flex-row items-center justify-between gap-4 mb-6 flex-wrap">
             <p className="font-sans font-bold text-[15px] text-[#eae1da]">
               商品表現
             </p>
-          </div>
 
-          <div className="w-[125px] shrink-0">
-            {/* 6-Tier Time-Range Select Controller */}
-            <Select
-              value={timeRange}
-              onValueChange={(val) => {
-                setTimeRange(val ?? "7d");
-                setHistoryPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full bg-[#1A1612] border border-white/5 rounded-xl text-text-primary text-[13px] font-sans h-9">
-                <SelectValue>
-                  {rangeLabelMap[timeRange] || "選擇時間"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="12h">12 小時</SelectItem>
-                <SelectItem value="7d">7 日</SelectItem>
-                <SelectItem value="1m">1 個月</SelectItem>
-                <SelectItem value="3m">3 個月</SelectItem>
-                <SelectItem value="6m">6 個月</SelectItem>
-                <SelectItem value="12m">12 個月</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-[125px] shrink-0">
+              {/* 6-Tier Time-Range Select Controller */}
+              <Select
+                value={timeRange}
+                onValueChange={(val) => {
+                  setTimeRange(val ?? "7d");
+                  setHistoryPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full bg-[#1A1612] border border-white/5 rounded-xl text-text-primary text-[13px] font-sans h-9">
+                  <SelectValue>
+                    {rangeLabelMap[timeRange] || "選擇時間"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="12h">12 小時</SelectItem>
+                  <SelectItem value="7d">7 日</SelectItem>
+                  <SelectItem value="1m">1 個月</SelectItem>
+                  <SelectItem value="3m">3 個月</SelectItem>
+                  <SelectItem value="6m">6 個月</SelectItem>
+                  <SelectItem value="12m">12 個月</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-row justify-evenly text-text-secondary text-sm gap-x-2">
+            <div className="flex flex-row gap-x-1">
+              <p>總銷售額</p>
+              <input
+                type="checkbox"
+                checked={displayLine}
+                onChange={() => setDisplayLine(!displayLine)}
+              />
+            </div>
+            <div className="flex flex-row gap-x-1">
+              <p>成交次數</p>
+              <input
+                type="checkbox"
+                checked={displayBar}
+                onChange={() => setDisplayBar(!displayBar)}
+              />
+            </div>
+            <div className="flex flex-row gap-x-1">
+              <p>瀏覽</p>
+              <input
+                type="checkbox"
+                checked={displayArea}
+                onChange={() => setDisplayArea(!displayArea)}
+              />
+            </div>
           </div>
         </div>
 
@@ -423,6 +554,7 @@ export default function MerchantAnalyticsPage({
                   fill="url(#mixViewCount)"
                   stroke={chartConfig.viewCount.color}
                   strokeWidth={2}
+                  hide={!displayArea}
                 />
 
                 {/* 總銷售額：Line 折線 */}
@@ -434,6 +566,7 @@ export default function MerchantAnalyticsPage({
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
+                  hide={!displayLine}
                 />
 
                 {/* 成交次數 */}
@@ -443,6 +576,7 @@ export default function MerchantAnalyticsPage({
                   fill={chartConfig.txCount.color}
                   radius={[3, 3, 0, 0]}
                   maxBarSize={8}
+                  hide={!displayBar}
                 />
 
                 <ChartLegend
@@ -486,9 +620,13 @@ export default function MerchantAnalyticsPage({
               >
                 <span className="text-text-disabled">{tx.date}</span>
                 <span className="text-brand font-bold">{tx.id}</span>
-                <span className="text-[#eae1da] font-sans font-medium">
+                <Link
+                  href={`/profile/${tx.buyerId}`}
+                  className="font-sans font-medium text-[#eae1da] hover:text-brand underline decoration-dotted underline-offset-4 decoration-white/20 hover:decoration-brand transition-colors cursor-pointer text-left focus:outline-none truncate block max-w-max"
+                  title={`查看 ${tx.buyerName} 的公開個人檔案`}
+                >
                   {tx.buyerName}
-                </span>
+                </Link>
                 <span className="text-right text-brand font-black">
                   HK$ {tx.price.toLocaleString("zh-TW")}
                 </span>
