@@ -187,7 +187,11 @@ export function WishlistTable() {
                     align: "text-left",
                     extra: "pl-4 lg:pl-0",
                   },
-                  { label: "稀有度", align: "text-center", extra: "px-3" },
+                  {
+                    label: "稀有度",
+                    align: "text-center text-nowrap",
+                    extra: "px-3",
+                  },
                   { label: "追蹤價格", align: "text-right", extra: "px-3" },
                   { label: "現市價格", align: "text-right", extra: "px-3" },
                   { label: "30D 走勢", align: "text-center", extra: "px-3" },
@@ -285,7 +289,7 @@ export function WishlistTable() {
                     <button
                       onClick={() => removeEntry(entry.id)}
                       aria-label={`從願望清單移除 ${entry.name}`}
-                      className="font-mono text-[11px] text-text-disabled hover:text-warning transition-colors px-2 py-1 rounded border border-transparent hover:border-warning/30"
+                      className="font-mono text-[11px] text-nowrap text-text-disabled hover:text-warning transition-colors py-1 rounded border border-transparent hover:border-warning/30"
                     >
                       移除
                     </button>
@@ -306,7 +310,9 @@ export function WishlistTable() {
         totalItems={entries.length}
         itemsPerPage={ITEMS_PER_PAGE}
         hideControls={false}
-        enableScroll={false} // 🟢 CRITICAL: Bypasses scroll tracking entirely so page flips happen instantly in-place
+        enableScroll={true}
+        scrollToViewId="wishlist-heading"
+        scrollBlock="start"
       />
     </div>
   );

@@ -35,6 +35,7 @@ interface PaginationProps {
   enableScroll?: boolean;
   className?: string;
   scrollToViewId?: string;
+  scrollBlock?: ScrollLogicalPosition;
 }
 
 /** Generates a compact page-number window with optional ellipsis entries. */
@@ -86,6 +87,7 @@ export function Pagination({
   enableScroll = true, // 🟢 預設開啟：保持全站原有平滑回頂行為不變
   className,
   scrollToViewId,
+  scrollBlock = "nearest",
 }: PaginationProps) {
   // Do not render when there's nothing to paginate
   if (totalPages <= 1) return null;
@@ -109,14 +111,18 @@ export function Pagination({
     // 🟢 Scroll Gate 防線：如果傳入 false，全面切斷滾動副作用，原地就地切片
     if (!enableScroll) return;
 
-    if (typeof window !== "undefined") {
-      const customId = document.getElementById(scrollToViewId!);
-      if (customId) {
-        // 🎯 盤口詳情頁專屬：精準平滑對焦回盤口頂部
-        customId.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      } else {
-        // 🎯 大盤市場專屬：回歸標準全域置頂
-        window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => setOnScroll(), 200);
+
+    function setOnScroll() {
+      if (typeof window !== "undefined") {
+        const customId = document.getElementById(scrollToViewId!);
+        if (customId) {
+          // 🎯 盤口詳情頁專屬：精準平滑對焦回盤口頂部
+          customId.scrollIntoView({ behavior: "smooth", block: scrollBlock });
+        } else {
+          // 🎯 大盤市場專屬：回歸標準全域置頂
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
       }
     }
   };

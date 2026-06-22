@@ -597,6 +597,7 @@ export default function UserCollectionPage() {
               itemsPerPage={ITEMS_PER_PAGE}
               hideControls={false}
               enableScroll={true}
+              scrollToViewId="cards-heading"
             />
           </div>
         </section>

@@ -317,10 +317,6 @@ export default function MemberRewardsPage() {
 
   const setCurrentCouponPage = (page: number) => {
     setCouponPageState({ page, forKey: couponFilterFingerprint });
-    // 翻頁時自帶平滑置頂效果，拯救散戶手指
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
   };
 
   const isCouponLoading = MOCK_COUPONS[activeTab] === undefined;
@@ -384,7 +380,7 @@ export default function MemberRewardsPage() {
         <CheckInCard />
 
         {/* ── 智能三態 Coupon 中心 ── */}
-        <section className="space-y-4 pt-2">
+        <section id="redeem-list" className="space-y-4 pt-2">
           <div>
             <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
               🎟️ 我的全域平台折價券中心
@@ -513,6 +509,8 @@ export default function MemberRewardsPage() {
                   hideControls={false}
                   enableScroll={true}
                   className="mt-6"
+                  scrollToViewId="redeem-list"
+                  scrollBlock="start"
                 />
               </div>
             )}
