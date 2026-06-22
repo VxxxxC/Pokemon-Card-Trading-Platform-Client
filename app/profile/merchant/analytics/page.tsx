@@ -258,7 +258,7 @@ export default function MerchantAnalyticsPage({
   const router = useRouter();
   const [timeRange, setTimeRange] = useState<string>("7d");
   const [historyPage, setHistoryPage] = useState<number>(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 6;
   const [displayArea, setDisplayArea] = useState<boolean>(true);
   const [displayLine, setDisplayLine] = useState<boolean>(true);
   const [displayBar, setDisplayBar] = useState<boolean>(true);
