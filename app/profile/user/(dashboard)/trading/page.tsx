@@ -271,7 +271,11 @@ function UserTradingPageContent() {
         </div>
       </div>
 
-      <section aria-labelledby="user-trading-heading" className="space-y-4">
+      <section
+        id="orders-list"
+        aria-labelledby="user-trading-heading"
+        className="space-y-4"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2
             id="user-trading-heading"
@@ -359,6 +363,8 @@ function UserTradingPageContent() {
             totalItems={filteredOrders.length}
             itemsPerPage={itemsPerPage}
             enableScroll={true}
+            scrollBlock="start"
+            scrollToViewId="orders-list"
           />
         </div>
       </section>
