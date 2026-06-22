@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type SellOrder } from "@/app/lib/mock-data/cards";
-import Link from "next/link";
 
 interface AskOrderBookRowProps {
   order: SellOrder;
@@ -37,24 +36,20 @@ export function AskOrderBookRow({
       >
         {/* Left Hand Container (Avatar + Identity Stack) - NOW COMPLETELY INERT */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Link href={`/profile/${order.sellerId}`}>
-            <Avatar className="w-9 h-9 border border-white/10 rounded-full shrink-0 select-none">
-              <AvatarImage
-                src={`https://avatar.iran.liara.run/username?username=${order.sellerName}`}
-                alt={order.sellerName}
-              />
-              <AvatarFallback className="bg-[#26211C] text-brand text-xs font-bold font-mono">
-                {order.sellerName.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
+          <Avatar className="w-9 h-9 border border-white/10 rounded-full shrink-0 select-none">
+            <AvatarImage
+              src={`https://avatar.iran.liara.run/username?username=${order.sellerName}`}
+              alt={order.sellerName}
+            />
+            <AvatarFallback className="bg-[#26211C] text-brand text-xs font-bold font-mono">
+              {order.sellerName.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
 
           <div className="flex flex-col text-left min-w-0 space-y-0.5">
-            <Link href={`/profile/${order.sellerId}`}>
-              <span className="font-sans font-extrabold text-[14.5px] text-[#eae1da] truncate select-none">
-                {order.sellerName}
-              </span>
-            </Link>
+            <span className="font-sans font-extrabold text-[14.5px] text-[#eae1da] truncate select-none">
+              {order.sellerName}
+            </span>
 
             {/* Responsive Stack Defense Line */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

@@ -532,7 +532,7 @@ function MarketplaceContent() {
         </aside>
 
         {/* 右欄商品流 */}
-        <div className="flex-1 space-y-6">
+        <div id="product-cards" className="flex-1 space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
             {paginatedListings.flatMap((item, idx) => {
               const card = <MarketplaceCard key={item.id} listing={item} />;
@@ -586,6 +586,7 @@ function MarketplaceContent() {
             itemsPerPage={itemsPerPage}
             hideControls={true}
             enableScroll={true}
+            scrollToViewId="product-cards"
             className="mt-6"
           />
         </div>

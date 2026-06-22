@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+"use client";
+
+import React, { useMemo, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { GrUserSettings } from "react-icons/gr";
@@ -6,11 +8,8 @@ import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import { PortfolioStatsSkeleton } from "@/app/components/shared/PortfolioSkeletons";
 import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-
-export const metadata: Metadata = {
-  title: "我的帳號 · 總覽 — PokéTrade JP",
-  description: "查看個人收藏估值、身份等級及交易紀錄",
-};
+import { UserOrderRow } from "@/app/components/user/UserOrderRow";
+import { USER_MOCK_ORDERS_DB } from "./trading/page";
 
 // 🟢 從 Layout 移動進駐的真理數據與等級設定基準
 const LEVEL_TIERS = [
@@ -87,77 +86,8 @@ const portfolioStats = [
   },
 ];
 
-const recentActivity = [
-  {
-    id: "txn-001",
-    type: "sold" as const,
-    name: "Charizard ex SAR",
-    cardNo: "sv2a-182",
-    grade: "PSA 10",
-    price: 44800,
-    delta: 2400,
-    deltaDir: "up" as const,
-    time: "3分鐘前",
-  },
-  {
-    id: "txn-002",
-    type: "bought" as const,
-    name: "Umbreon ex SAR",
-    cardNo: "sv6a-109",
-    grade: "BGS 9.5",
-    price: 39500,
-    delta: 1500,
-    deltaDir: "up" as const,
-    time: "2小時前",
-  },
-  {
-    id: "txn-003",
-    type: "sold" as const,
-    name: "Mimikyu ex SAR",
-    cardNo: "sv2a-233",
-    grade: "PSA 9",
-    price: 28500,
-    delta: 3200,
-    deltaDir: "up" as const,
-    time: "昨天",
-  },
-  {
-    id: "txn-004",
-    type: "bought" as const,
-    name: "Pikachu AR",
-    cardNo: "sv2a-215",
-    grade: "CGC 9",
-    price: 8200,
-    delta: 300,
-    deltaDir: "down" as const,
-    time: "3天前",
-  },
-];
-
 // 🟢 Use centralized mock data — display only 3 most recent reviews on overview
 const reviews = MOCK_MEMBER_REVIEWS.slice(0, 3);
-
-function ActivityTypePill({ type }: { type: "sold" | "bought" | "bid" }) {
-  const map = {
-    sold: {
-      label: "已售出",
-      className: "text-success bg-[rgba(16,185,129,0.12)]",
-    },
-    bought: {
-      label: "已購入",
-      className: "text-brand bg-[rgba(212,165,116,0.12)]",
-    },
-    bid: { label: "出價中", className: "text-text-secondary bg-bg-elevated" },
-  };
-  const { label, className } = map[type];
-  return (
-    <span
-      className={`font-mono text-[10px] font-medium px-1.5 py-0.5 rounded ${className}`}
-    >
-      {label}
-    </span>
-  );
-}
 
 function RewardsTicketButton() {
   return (
@@ -168,7 +98,7 @@ function RewardsTicketButton() {
             <span className="text-[18px] shrink-0">🎟️</span>
             <div className="text-left min-w-0">
               <p className="font-sans font-black text-[13.5px] text-brand tracking-tight">
-                進入專專屬獎勵特權專區
+                進入專屬獎勵特權專區
               </p>
               <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider truncate">
                 兌換運費券與限量特典周邊
@@ -186,6 +116,19 @@ function RewardsTicketButton() {
 
 export default function UserOverviewPage() {
   const isPortfolioLoading = portfolioStats.length === 0;
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  const pendingOrders = useMemo(() => {
+    return USER_MOCK_ORDERS_DB
+      .filter((o) => o.status === "payment" || o.status === "custody")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 4);
+  }, []);
+
   const xpProgress = Math.min(
     (mockUser.xpCurrent / mockUser.xpRequired) * 100,
     100,
@@ -211,7 +154,7 @@ export default function UserOverviewPage() {
         <div className="h-20 bg-gradient-to-r from-[#2e2925] via-[rgba(212,165,116,0.08)] to-[#2e2925]" />
         <div className="px-5 pb-5">
           <div className="flex items-end justify-between -mt-10 mb-3">
-            <div className="relative w-20 h-20 rounded-full border-2 border-bg-card shadow-[0_4px_12px_rgba(0,0,0,0.50)] overflow-hidden shrink-0">
+            <div className="relative w-20 h-20 rounded-full border-2 border-bg-card shadow-[0_4px_12px_rgba(0,0,0,0.50)] overflow-hidden shrink-0 bg-[#17130f]">
               <Image
                 src={`https://picsum.photos/seed/${mockUser.avatarSeed}/80/80`}
                 alt={`${mockUser.name} 的頭像`}
@@ -399,53 +342,40 @@ export default function UserOverviewPage() {
             <RewardsTicketButton />
           </div>
 
-          <section aria-labelledby="activity-heading">
+          {/* ── Pending Actions (待處理訂單模組) ── */}
+          <section aria-labelledby="pending-heading">
             <div className="flex items-center justify-between mb-3">
               <h2
-                id="activity-heading"
-                className="font-sans font-bold text-[15px] text-text-primary"
+                id="pending-heading"
+                className="font-sans font-semibold text-[16px] text-text-primary"
               >
-                近期交易紀錄
+                待處理訂單
               </h2>
               <Link
-                href="/profile/user/trading"
+                href="/profile/user/trading?filter=待處理"
                 className="font-mono text-[12px] text-brand hover:text-brand-hover font-bold transition-colors"
               >
                 查看全部 →
               </Link>
             </div>
-            <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden shadow-xs">
-              {recentActivity.map((tx, i) => (
-                <div
-                  key={tx.id}
-                  className={`flex items-center gap-3 px-4 py-3.5 hover:bg-bg-elevated transition-colors ${i > 0 ? "border-t border-[rgba(237,232,224,0.06)]" : ""}`}
-                >
-                  <ActivityTypePill type={tx.type} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-sans text-[13.5px] font-bold text-text-primary truncate">
-                      {tx.name}
-                    </p>
-                    <p className="font-mono text-[11px] text-text-disabled mt-0.5">
-                      {tx.cardNo} · {tx.grade}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-mono font-black text-[14px] text-text-primary">
-                      ¥{tx.price.toLocaleString("zh-TW")}
-                    </p>
-                    <span
-                      className={`font-mono text-[11px] font-medium ${tx.deltaDir === "up" ? "text-success" : "text-warning"}`}
-                    >
-                      {tx.deltaDir === "up" ? "▲" : "▼"} ¥
-                      {tx.delta.toLocaleString("zh-TW")}
-                    </span>
-                  </div>
-                  <p className="font-mono text-[11px] text-text-disabled w-14 text-right shrink-0">
-                    {tx.time}
-                  </p>
-                </div>
-              ))}
-            </div>
+
+            {!isMounted ? (
+              <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-8 text-center">
+                <div className="w-6 h-6 rounded-full border-2 border-brand border-t-transparent animate-spin mx-auto" />
+              </div>
+            ) : pendingOrders.length === 0 ? (
+              <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-12 text-center">
+                <p className="font-sans text-[13px] text-text-disabled">
+                  目前無待處理訂單
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {pendingOrders.map((order) => (
+                  <UserOrderRow key={order.id} order={order} />
+                ))}
+              </div>
+            )}
           </section>
 
           <section aria-labelledby="reviews-heading">

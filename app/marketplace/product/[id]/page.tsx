@@ -142,11 +142,6 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const setOrderPage = (page: number) => {
     setOrderPageState({ page, forKey: orderFilterKey });
-    // 🟢 PWA 行動體驗優化：盤口翻頁時平滑鎖焦回盤口頂部，防止視野斷線
-    const orderBookPanel = document.getElementById("live-order-book-panel");
-    if (orderBookPanel) {
-      orderBookPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
   };
 
   const ordersPerPage = 5;
@@ -281,7 +276,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                     Live Index
                   </span>
                 </div>
-                <div className="relative w-full h-[145px] overflow-hidden">
+                <div className="relative w-full h-[10rem] overflow-hidden">
                   <CChart16
                     data={card.chartPoints}
                     xKey="date"
@@ -407,6 +402,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 totalItems={filteredAndSortedOrders.length}
                 itemsPerPage={ordersPerPage}
                 enableScroll={true}
+                scrollToViewId="live-order-book-panel"
                 className="mt-2 pb-1"
               />
             </div>

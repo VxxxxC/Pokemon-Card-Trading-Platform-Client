@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useTradeStore } from "@/app/store/useTradeStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,8 @@ export function SpecialTransactionMessage({
   >(initialStatus);
   const [currentPrice, setCurrentPrice] = useState(offerPrice);
   const [counterInput, setCounterInput] = useState(offerPrice);
+
+  const { setIsChatOpen } = useTradeStore();
 
   // ── Seller handlers ──────────────────────────────────────────────────────
   const handleAccept = () => {
@@ -126,7 +129,10 @@ export function SpecialTransactionMessage({
         {/* PWA-safe navigation: router.push() instead of window.location.href */}
         <button
           type="button"
-          onClick={() => router.push(`/marketplace/product/${cardId}`)}
+          onClick={() => {
+            router.push(`/marketplace/product/${cardId}`);
+            setIsChatOpen(false);
+          }}
           className="font-sans font-black text-brand underline underline-offset-2 decoration-brand/60 hover:text-[#e8b896] transition-colors cursor-pointer bg-transparent border-none p-0 inline text-left focus:outline-none"
         >
           {cardName}

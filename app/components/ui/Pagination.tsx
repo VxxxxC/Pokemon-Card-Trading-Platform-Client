@@ -34,6 +34,7 @@ interface PaginationProps {
    *  in-place client-side data state slicing with zero viewport displacement. */
   enableScroll?: boolean;
   className?: string;
+  scrollToViewId?: string;
 }
 
 /** Generates a compact page-number window with optional ellipsis entries. */
@@ -84,6 +85,7 @@ export function Pagination({
   hideControls = false,
   enableScroll = true, // 🟢 預設開啟：保持全站原有平滑回頂行為不變
   className,
+  scrollToViewId,
 }: PaginationProps) {
   // Do not render when there's nothing to paginate
   if (totalPages <= 1) return null;
@@ -108,10 +110,10 @@ export function Pagination({
     if (!enableScroll) return;
 
     if (typeof window !== "undefined") {
-      const orderBookPanel = document.getElementById("live-order-book-panel");
-      if (orderBookPanel) {
+      const customId = document.getElementById(scrollToViewId!);
+      if (customId) {
         // 🎯 盤口詳情頁專屬：精準平滑對焦回盤口頂部
-        orderBookPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        customId.scrollIntoView({ behavior: "smooth", block: "nearest" });
       } else {
         // 🎯 大盤市場專屬：回歸標準全域置頂
         window.scrollTo({ top: 0, behavior: "smooth" });
