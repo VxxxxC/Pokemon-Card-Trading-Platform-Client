@@ -153,9 +153,33 @@ export function ExecutionSlideOver({
         </div>
         {/* Dynamic Scrollable Body Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-[#231e1a]/40 min-h-0 scrollbar-none">
+          {/* ── Seller info deck ── */}
+          <div className="bg-[#17130f] border border-white/5 rounded-xl p-4 space-y-3.5">
+            <div className="flex flex-col text-left space-y-1">
+              <span className="font-mono text-[10px] text-[#8A8680] uppercase">
+                對接賣家商號
+              </span>
+              <Link
+                href={`/profile/${order.sellerId}`}
+                className="font-sans font-black text-[14px] text-brand underline cursor-pointer bg-transparent border-none text-left focus:outline-none"
+              >
+                {order.sellerName} (@{order.sellerId}) →
+              </Link>
+            </div>
+
+            <div className="flex flex-col text-left border-t border-white/5 pt-2.5">
+              <span className="font-mono text-[10px] text-[#8A8680] uppercase">
+                選定掛牌售價
+              </span>
+              <span className="font-mono font-black text-[18px] text-brand mt-0.5">
+                HK$ {order.price.toLocaleString("en-HK")}
+              </span>
+            </div>
+          </div>
+
           {/* ── Super-Sized Photo Carousel ── */}
           <div className="flex flex-col items-center select-none group w-full overflow-hidden">
-            <div className="relative w-full aspect-[3/4] max-h-[45dvh] sm:max-h-[55vh] md:w-80 md:h-[380px] md:aspect-auto rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner mx-auto">
+            <div className="relative w-full aspect-[3/4] max-h-[35dvh] lg:max-h-[45vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner mx-auto">
               <Carousel
                 setApi={setApi}
                 className="w-full h-full [&>div]:h-full"
@@ -201,30 +225,6 @@ export function ExecutionSlideOver({
                 ))}
               </div>
             )}
-          </div>
-
-          {/* ── Seller info deck ── */}
-          <div className="bg-[#17130f] border border-white/5 rounded-xl p-4 space-y-3.5">
-            <div className="flex flex-col text-left space-y-1">
-              <span className="font-mono text-[10px] text-[#8A8680] uppercase">
-                對接賣家商號
-              </span>
-              <Link
-                href={`/profile/${order.sellerId}`}
-                className="font-sans font-black text-[14px] text-brand underline cursor-pointer bg-transparent border-none text-left focus:outline-none"
-              >
-                {order.sellerName} (@{order.sellerId}) →
-              </Link>
-            </div>
-
-            <div className="flex flex-col text-left border-t border-white/5 pt-2.5">
-              <span className="font-mono text-[10px] text-[#8A8680] uppercase">
-                選定掛牌售價
-              </span>
-              <span className="font-mono font-black text-[18px] text-brand mt-0.5">
-                HK$ {order.price.toLocaleString("en-HK")}
-              </span>
-            </div>
           </div>
 
           {/* ── Storefront navigation card ── */}
