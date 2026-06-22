@@ -594,7 +594,7 @@ export default function MerchantAnalyticsPage({
       >
         <div className="border-b border-white/5 pb-3">
           <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-            📊 歷史交割清冊流水帳
+            📊 交易歷史
           </h3>
         </div>
 
@@ -644,7 +644,7 @@ export default function MerchantAnalyticsPage({
             itemLabel="筆交易流水"
             totalItems={filteredHistory.length}
             itemsPerPage={itemsPerPage}
-            enableScroll={false}
+            enableScroll={true}
             scrollToViewId="sku-history"
           />
         </div>

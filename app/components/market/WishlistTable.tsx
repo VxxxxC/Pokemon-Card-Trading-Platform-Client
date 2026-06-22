@@ -177,10 +177,7 @@ export function WishlistTable() {
   return (
     <div>
       <div className="overflow-x-auto -mx-4 lg:mx-0">
-        <table
-          id="wishlists-table"
-          className="w-full min-w-160 border-collapse"
-        >
+        <table className="w-full min-w-160 border-collapse">
           <thead>
             <tr className="border-b border-[rgba(237,232,224,0.08)]">
               {(
@@ -313,9 +310,9 @@ export function WishlistTable() {
         totalItems={entries.length}
         itemsPerPage={ITEMS_PER_PAGE}
         hideControls={false}
-        enableScroll={false}
-        scrollToViewId="wishlist-table"
-        scrollBlock="end"
+        enableScroll={true}
+        scrollToViewId="wishlist-heading"
+        scrollBlock="start"
       />
     </div>
   );

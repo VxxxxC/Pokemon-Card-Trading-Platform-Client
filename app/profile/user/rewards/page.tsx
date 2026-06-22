@@ -317,10 +317,6 @@ export default function MemberRewardsPage() {
 
   const setCurrentCouponPage = (page: number) => {
     setCouponPageState({ page, forKey: couponFilterFingerprint });
-    // 翻頁時自帶平滑置頂效果，拯救散戶手指
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
   };
 
   const isCouponLoading = MOCK_COUPONS[activeTab] === undefined;
