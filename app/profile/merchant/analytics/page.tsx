@@ -255,10 +255,9 @@ export default function MerchantAnalyticsPage({
         <div>
           <div
             id="analytics-heading"
-            className="font-sans font-black text-[22px] lg:text-[25px] text-[#eae1da] tracking-tight flex items-center gap-2 flex-wrap"
+            className="font-sans font-black text-[22px] lg:text-[25px] text-brand tracking-tight flex items-center gap-2 text-norwap"
           >
-            <span className="font-mono text-[#d4a574]">{resolvedSkuName}</span>
-            <span>商品分析</span>
+            <span>{resolvedSkuName}</span>
           </div>
         </div>
       </div>
