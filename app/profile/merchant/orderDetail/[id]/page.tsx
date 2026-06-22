@@ -126,7 +126,8 @@ export default function MerchantOrderDetailPage() {
           <div className="mt-2 font-mono text-[11px] text-text-secondary">
             序號: {order.cardNo} · 等級: {order.grade}
           </div>
-          <div className="font-mono text-[12.5px] text-brand mt-1">
+          <div className="font-mono text-[12.5px] text-brand mt-1 space-y-1">
+            <p>商品上架序號: {order.productListingId || "—"}</p>
             <p>訂單號碼: {order.id}</p>
             <p className="font-mono text-[11px] text-text-disabled mt-1">
               出價日期:{" "}
@@ -392,146 +393,144 @@ export default function MerchantOrderDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 items-start">
-        <div className="space-y-5">
-          {/* Twin Metadata Deck (品相與邊角詳情) - Only shown if needs grading (orderType === "B2C") */}
-          {order.orderType === "B2C" && (
-            <div className="p-4 bg-[#17130f] rounded-xl border border-white/5 space-y-3 animate-fadeIn">
-              <h4 className="font-sans font-bold text-[12.5px] text-[#eae1da] border-b border-white/5 pb-2">
-                📋 擔保合約屬性與品相描述
-              </h4>
-              <div className="text-[12px] space-y-2 text-text-secondary font-mono">
-                <div className="flex justify-between">
-                  <span>合約模式</span>
-                  <span className="text-brand font-bold">
-                    B2C 平台中介鑑定託管
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>買方帳號</span>
-                  <span className="text-text-primary">{order.buyerName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>鑑定標準</span>
-                  <span className="text-text-primary">{order.grade}</span>
-                </div>
-                <div className="flex justify-between border-t border-white/5 pt-2">
-                  <span>鑑定服務費用</span>
-                  <span className="text-brand font-bold">HK$ 150</span>
-                </div>
+        {/* 鑑定服務報告 */}
+        {order.hasAuthenticationToggle && (
+          <div className="p-4 bg-[#17130f] rounded-xl border border-white/5 space-y-3 animate-fadeIn">
+            <h4 className="font-sans font-bold text-[12.5px] text-[#eae1da] border-b border-white/5 pb-2">
+              📋 鑑定服務報告與商品描述
+            </h4>
+            <div className="text-[12px] space-y-2 text-text-secondary font-mono">
+              <div className="flex justify-between">
+                <span>鑑定方</span>
+                <span className="text-brand font-bold">
+                  B2C 平台中介鑑定託管
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>買方帳號</span>
+                <span className="text-text-primary">{order.buyerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>鑑定標準</span>
+                <span className="text-text-primary">{order.grade}</span>
+              </div>
+              <div className="flex justify-between border-t border-white/5 pt-2">
+                <span>鑑定服務費用</span>
+                <span className="text-brand font-bold">HK$ 150</span>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 🧾 交易資產最終交收電子收據清冊 (Copied and aligned from user-side trading/[id]/page.tsx) */}
-          <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-sans font-extrabold text-[14.5px] text-[#eae1da]">
-                🧾 交易資產最終交收電子收據
-              </h3>
-              <span className="font-sans text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded border text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-                賣出交易
+        {/* 🧾 交易資產最終交收電子收據清冊 (Copied and aligned from user-side trading/[id]/page.tsx) */}
+        <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-sans font-extrabold text-[14.5px] text-[#eae1da]">
+              🧾 交易資產最終交收電子收據
+            </h3>
+            <span className="font-sans text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded border text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+              賣出交易
+            </span>
+          </div>
+
+          <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
+            <div className="flex justify-between">
+              <span>商品最終成交價 (Subtotal)</span>
+              <span className="text-text-primary">
+                HK$ {order.amount.toLocaleString("zh-TW")}
               </span>
             </div>
-
-            <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
-              <div className="flex justify-between">
-                <span>商品最終成交價 (Subtotal)</span>
-                <span className="text-text-primary">
-                  HK$ {order.amount.toLocaleString("zh-TW")}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>順豐速遞本港運費 (Shipping)</span>
-                <span className="text-text-primary">HK$ 30</span>
-              </div>
-              <div className="flex justify-between text-[#ef4444]">
-                <span>平台免郵定額補貼 (Subsidy)</span>
-                <span>-HK$ 30</span>
-              </div>
-
-              {/* Optional Authentication Fee row if orderType is B2C */}
-              {order.orderType === "B2C" && (
-                <div className="flex justify-between text-brand">
-                  <span>官方第三方鑑定服務費 (Authentication)</span>
-                  <span className="font-bold">HK$ 150</span>
-                </div>
-              )}
-
-              <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
-                <span>最終實收總額</span>
-                <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                  HK${" "}
-                  {(
-                    order.amount + (order.orderType === "B2C" ? 150 : 0)
-                  ).toLocaleString("zh-TW")}
-                </span>
-              </div>
+            <div className="flex justify-between">
+              <span>順豐速遞本港運費 (Shipping)</span>
+              <span className="text-text-primary">HK$ 30</span>
             </div>
-          </div>
-
-          {/* Left Carousel Viewport */}
-          <div className="flex flex-col items-center select-none group w-full overflow-hidden">
-            <div className="relative w-full aspect-[3/4] max-h-[45dvh] lg:max-h-[55vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
-              <Carousel
-                setApi={setApi}
-                className="w-full h-full [&>div]:h-full"
-                opts={{ loop: true }}
-              >
-                <CarouselContent className="-ml-0 h-full">
-                  {Array.from({ length: 5 }, (_, photoIdx) => {
-                    const currentRemark =
-                      current === photoIdx
-                        ? (REMARKS_PRESETS[photoIdx] ?? "")
-                        : "";
-                    return (
-                      <CarouselItem
-                        key={photoIdx}
-                        className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
-                      >
-                        <Image
-                          src={`https://picsum.photos/seed/${order.id}-p${photoIdx}/400/500`}
-                          alt={`${order.cardName} 實物照 ${photoIdx + 1}`}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 400px"
-                          className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
-                          unoptimized
-                        />
-                        {/* Center-Top Contextual Annotation HUD Overlay */}
-                        {currentRemark && (
-                          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-md bg-[#17130f]/80 backdrop-blur-xs border border-white/10 text-center pointer-events-none select-none max-w-[85%] animate-fadeIn">
-                            <p className="font-sans text-[11px] font-medium text-brand tracking-wide truncate">
-                              {currentRemark}
-                            </p>
-                          </div>
-                        )}
-                      </CarouselItem>
-                    );
-                  })}
-                </CarouselContent>
-                <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 left-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-                <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 right-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-              </Carousel>
+            <div className="flex justify-between text-[#ef4444]">
+              <span>平台免郵定額補貼 (Subsidy)</span>
+              <span>-HK$ 30</span>
             </div>
 
-            {/* Dots Indicator */}
-            {count > 1 && (
-              <div className="flex justify-center gap-1.5 py-2.5">
-                {Array.from({ length: count }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    aria-label={`前往第 ${index + 1} 張照片`}
-                    onClick={() => api?.scrollTo(index)}
-                    className={
-                      index === current
-                        ? "bg-brand w-3.5 h-1.5 opacity-100 rounded-full transition-all duration-300"
-                        : "bg-text-disabled w-1.5 h-1.5 opacity-30 hover:opacity-50 rounded-full transition-all duration-300"
-                    }
-                  />
-                ))}
+            {/* Optional Authentication Fee row if buyer requested auth */}
+            {order.hasAuthenticationToggle && (
+              <div className="flex justify-between text-brand">
+                <span>官方第三方鑑定服務費 (Authentication)</span>
+                <span className="font-bold">HK$ 150</span>
               </div>
             )}
+
+            <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
+              <span>最終實收總額</span>
+              <span className="text-brand font-mono text-[18px] md:text-[24px]">
+                HK${" "}
+                {(
+                  order.amount + (order.hasAuthenticationToggle ? 150 : 0)
+                ).toLocaleString("zh-TW")}
+              </span>
+            </div>
           </div>
+        </div>
+
+        {/* Left Carousel Viewport */}
+        <div className="flex flex-col items-center select-none group w-full overflow-hidden">
+          <div className="relative w-full aspect-[3/4] max-h-[45dvh] lg:max-h-[55vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
+            <Carousel
+              setApi={setApi}
+              className="w-full h-full [&>div]:h-full"
+              opts={{ loop: true }}
+            >
+              <CarouselContent className="-ml-0 h-full">
+                {Array.from({ length: 5 }, (_, photoIdx) => {
+                  const currentRemark =
+                    current === photoIdx
+                      ? (REMARKS_PRESETS[photoIdx] ?? "")
+                      : "";
+                  return (
+                    <CarouselItem
+                      key={photoIdx}
+                      className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
+                    >
+                      <Image
+                        src={`https://picsum.photos/seed/${order.id}-p${photoIdx}/400/500`}
+                        alt={`${order.cardName} 實物照 ${photoIdx + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 400px"
+                        className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
+                        unoptimized
+                      />
+                      {/* Center-Top Contextual Annotation HUD Overlay */}
+                      {currentRemark && (
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-md bg-[#17130f]/80 backdrop-blur-xs border border-white/10 text-center pointer-events-none select-none max-w-[85%] animate-fadeIn">
+                          <p className="font-sans text-[11px] font-medium text-brand tracking-wide truncate">
+                            {currentRemark}
+                          </p>
+                        </div>
+                      )}
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+              <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 left-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
+              <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 right-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
+            </Carousel>
+          </div>
+
+          {/* Dots Indicator */}
+          {count > 1 && (
+            <div className="flex justify-center gap-1.5 py-2.5">
+              {Array.from({ length: count }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`前往第 ${index + 1} 張照片`}
+                  onClick={() => api?.scrollTo(index)}
+                  className={
+                    index === current
+                      ? "bg-brand w-3.5 h-1.5 opacity-100 rounded-full transition-all duration-300"
+                      : "bg-text-disabled w-1.5 h-1.5 opacity-30 hover:opacity-50 rounded-full transition-all duration-300"
+                  }
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -27,4 +27,6 @@ export interface SaleOrder {
   level?: string;
   bidTimestamp?: string;
   avatarSeed?: string;
+  productListingId?: string;       // 🆕 商品上架序號 (Product Listing ID)
+  hasAuthenticationToggle?: boolean; // 🆕 買家出價時是否開啟了鑑定服務
 }

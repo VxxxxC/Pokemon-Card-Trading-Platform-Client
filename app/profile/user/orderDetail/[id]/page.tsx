@@ -43,6 +43,8 @@ interface LocalOrder {
   level?: string;
   bidTimestamp?: string;
   avatarSeed?: string;
+  productListingId?: string; // 🆕 商品上架序號 (Product Listing ID)
+  hasAuthenticationToggle?: boolean; // 🆕 買家出價時是否開啟了鑑定服務
 }
 
 const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
@@ -60,6 +62,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/27",
     orderType: "B2C",
     userContext: "BUYER",
+    productListingId: "LST-2026-X991",
+    hasAuthenticationToggle: false,
   },
   "ORD-2026-U02": {
     id: "ORD-2026-U02",
@@ -75,6 +79,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/26",
     orderType: "C2C",
     userContext: "SELLER",
+    productListingId: "LST-2026-N102",
+    hasAuthenticationToggle: true,
   },
   "ORD-2026-U03": {
     id: "ORD-2026-U03",
@@ -90,6 +96,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/25",
     orderType: "B2C",
     userContext: "BUYER",
+    productListingId: "LST-2026-M442",
+    hasAuthenticationToggle: true,
   },
   "ORD-2026-U04": {
     id: "ORD-2026-U04",
@@ -105,6 +113,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/24",
     orderType: "C2C",
     userContext: "BUYER",
+    productListingId: "LST-2026-P215",
+    hasAuthenticationToggle: false,
   },
   "ORD-2026-U05": {
     id: "ORD-2026-U05",
@@ -120,6 +130,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/10",
     orderType: "C2C",
     userContext: "BUYER",
+    productListingId: "LST-2026-L119",
+    hasAuthenticationToggle: true,
   },
   "ORD-2026-U06": {
     id: "ORD-2026-U06",
@@ -135,6 +147,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/08",
     orderType: "C2C",
     userContext: "SELLER",
+    productListingId: "LST-2026-G020",
+    hasAuthenticationToggle: false,
   },
   "ORD-2026-U07": {
     id: "ORD-2026-U07",
@@ -150,6 +164,8 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     createdAt: "2026/05/05",
     orderType: "B2C",
     userContext: "BUYER",
+    productListingId: "LST-2026-R083",
+    hasAuthenticationToggle: true,
   },
 };
 
@@ -302,7 +318,8 @@ export default function UserOrderDetailPage() {
             <div className="mt-2 font-mono text-[11px] text-text-secondary">
               序號: {order.cardNo} · 等級: {order.grade}
             </div>
-            <div className="font-mono text-[12.5px] text-brand mt-1">
+            <div className="font-mono text-[12.5px] text-brand mt-1 space-y-1">
+              <p>商品上架序號: {order.productListingId || "—"}</p>
               <p>訂單號碼: {order.id}</p>
               <p className="font-mono text-[11px] text-text-disabled mt-1">
                 出價日期:{" "}
@@ -508,7 +525,7 @@ export default function UserOrderDetailPage() {
                   </div>
                 )}
 
-                {order.orderType === "B2C" && isSeller && (
+                {order.hasAuthenticationToggle && isSeller && (
                   <button
                     type="button"
                     onClick={() => {
@@ -589,12 +606,14 @@ export default function UserOrderDetailPage() {
                     {isSeller
                       ? "此合約已完成全量閉環。款項 HK$ " +
                         (
-                          order.amount + (order.orderType === "B2C" ? 150 : 0)
+                          order.amount +
+                          (order.hasAuthenticationToggle ? 150 : 0)
                         ).toLocaleString("zh-TW") +
                         " 已成功存入您的託管錢包。"
                       : "此合約已安全完結。扣款金額 HK$ " +
                         (
-                          order.amount + (order.orderType === "B2C" ? 150 : 0)
+                          order.amount +
+                          (order.hasAuthenticationToggle ? 150 : 0)
                         ).toLocaleString("zh-TW") +
                         " 已由平台支付予賣家。感謝您對 PokéTrade 的信任。"}
                   </p>
@@ -605,17 +624,16 @@ export default function UserOrderDetailPage() {
         </div>
       </div>
 
-      {/* TODO: 只顯示若果buyer有要求鑑定服務  */}
-      {/* 鑑定服務報告 */}
       <div className="grid grid-cols-1 gap-6 items-start">
-        {order.orderType === "B2C" && (
+        {/* 鑑定服務報告 */}
+        {order.hasAuthenticationToggle && (
           <div className="p-4 bg-[#17130f] rounded-xl border border-white/5 space-y-3 animate-fadeIn">
             <h4 className="font-sans font-bold text-[12.5px] text-[#eae1da] border-b border-white/5 pb-2">
-              📋 擔保合約屬性與品相描述
+              📋 鑑定服務報告與商品描述
             </h4>
             <div className="text-[12px] space-y-2 text-text-secondary font-mono">
               <div className="flex justify-between">
-                <span>合約模式</span>
+                <span>鑑定方</span>
                 <span className="text-brand font-bold">
                   B2C 平台中介鑑定託管
                 </span>
@@ -670,8 +688,8 @@ export default function UserOrderDetailPage() {
               <span>-HK$ 30</span>
             </div>
 
-            {/* Optional Authentication Fee row if orderType is B2C */}
-            {order.orderType === "B2C" && (
+            {/* Optional Authentication Fee row if buyer requested auth */}
+            {order.hasAuthenticationToggle && (
               <div className="flex justify-between text-brand">
                 <span>官方第三方鑑定服務費 (Authentication)</span>
                 <span className="font-bold">HK$ 150</span>
@@ -683,7 +701,7 @@ export default function UserOrderDetailPage() {
               <span className="text-brand font-mono text-[18px] md:text-[24px]">
                 {"HK$ " +
                   (
-                    order.amount + (order.orderType === "B2C" ? 150 : 0)
+                    order.amount + (order.hasAuthenticationToggle ? 150 : 0)
                   ).toLocaleString("zh-TW")}
               </span>
             </div>
