@@ -57,7 +57,7 @@ export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
 
   return (
     <div
-      onClick={() => router.push("/profile/merchant/trading/" + order.id)}
+      onClick={() => router.push("/profile/merchant/orderDetail/" + order.id)}
       className="flex items-center justify-between py-3 px-4 bg-bg-card hover:bg-bg-elevated border border-[rgba(237,232,224,0.08)] rounded-xl cursor-pointer transition-all duration-200 animate-fadeIn"
     >
       {/* Left side: Card Name + Badges + Sub context */}
