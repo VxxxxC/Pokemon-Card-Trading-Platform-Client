@@ -40,7 +40,6 @@ export function ExecutionSlideOver({
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
-  // isCounterOffer: true = buyer entered custom price mode; false = instant accept mode (default)
   const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
