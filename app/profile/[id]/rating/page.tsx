@@ -147,9 +147,6 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
   }, []);
 
   return (
@@ -171,7 +168,10 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
         </div>
 
         {/* ── Page header ──────────────────────────────────────────────── */}
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div
+          id="rating-list"
+          className="mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
+        >
           <div>
             <h1 className="font-sans font-bold text-[22px] text-text-primary tracking-tight mb-3">
               全量信用評價歷史
@@ -276,6 +276,8 @@ export default function PublicRatingPage({ params }: PublicRatingPageProps) {
           totalItems={totalReviews}
           itemsPerPage={itemsPerPage}
           enableScroll={true}
+          scrollBlock="start"
+          scrollToViewId="rating-list"
         />
       </main>
 
