@@ -6,6 +6,7 @@ import {
   useRef,
   useCallback,
   useSyncExternalStore,
+  useMemo,
 } from "react";
 import { motion } from "framer-motion";
 import { IoChevronBack } from "react-icons/io5";
@@ -22,7 +23,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
 import { useTradeStore } from "@/app/store/useTradeStore";
-import { formatMessageTime, getDateSeparatorLabel } from "@/app/lib/utils/chatUtils";
+import {
+  formatMessageTime,
+  getDateSeparatorLabel,
+} from "@/app/lib/utils/chatUtils";
+import { IoMdCheckboxOutline } from "react-icons/io";
 
 import {
   Select,
@@ -87,7 +92,13 @@ function DateSeparatorChip({ label }: { label: string }) {
 }
 
 // Inline micro-timestamp adjacent to a message bubble
-function MicroTimestamp({ timestamp, isMe }: { timestamp: string; isMe: boolean }) {
+function MicroTimestamp({
+  timestamp,
+  isMe,
+}: {
+  timestamp: string;
+  isMe: boolean;
+}) {
   const label = formatMessageTime(timestamp);
   return (
     <span
@@ -106,7 +117,8 @@ function AntiScamDisclaimer() {
     <div className="bg-[#1A1612] px-4 py-2 border-t border-[rgba(237,232,224,0.05)] text-left shrink-0 select-none">
       <p className="font-sans text-[10.5px] leading-normal text-[#8A8680] tracking-tight">
         <span className="text-brand font-black mr-1">🛡️ 安全聲明：</span>
-        本平台所有交易行為均屬用戶雙方自愿與同意之契約。凡涉及之任何形式資產損失，平台概不承擔任何法律責任、資金追償 or 經濟賠償義務。
+        本平台所有交易行為均屬用戶雙方自愿與同意之契約。凡涉及之任何形式資產損失，平台概不承擔任何法律責任、資金追償
+        or 經濟賠償義務。
       </p>
     </div>
   );
@@ -118,17 +130,23 @@ function AntiScamDisclaimer() {
  * from the previous message in the thread.
  */
 function buildMessageRenderList(messages: Message[]) {
-  const items: Array<{ type: "separator"; label: string } | { type: "message"; msg: Message }> = [];
+  const items: Array<
+    { type: "separator"; label: string } | { type: "message"; msg: Message }
+  > = [];
   let lastDateKey = "";
 
   for (const msg of messages) {
     try {
       const d = new Date(msg.timestamp);
       if (!isNaN(d.getTime())) {
-        const dateKey = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+        const dateKey =
+          d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
         if (dateKey !== lastDateKey) {
           lastDateKey = dateKey;
-          items.push({ type: "separator", label: getDateSeparatorLabel(msg.timestamp) });
+          items.push({
+            type: "separator",
+            label: getDateSeparatorLabel(msg.timestamp),
+          });
         }
       }
     } catch {
@@ -192,7 +210,10 @@ function MessageThread({ renderList }: { renderList: RenderItem[] }) {
         return (
           <div
             key={msg.id}
-            className={"flex w-full items-end gap-1 " + (isMe ? "justify-end" : "justify-start")}
+            className={
+              "flex w-full items-end gap-1 " +
+              (isMe ? "justify-end" : "justify-start")
+            }
           >
             {isMe && <MicroTimestamp timestamp={msg.timestamp} isMe={true} />}
             <div className="max-w-[75%]">
@@ -266,13 +287,18 @@ function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
         return (
           <div
             key={msg.id}
-            className={"flex w-full items-end gap-1 " + (isMe ? "justify-end" : "justify-start")}
+            className={
+              "flex w-full items-end gap-1 " +
+              (isMe ? "justify-end" : "justify-start")
+            }
           >
             {isMe && <MicroTimestamp timestamp={msg.timestamp} isMe={true} />}
             <div
               className={
                 "px-4 py-2 rounded-2xl font-sans text-[13px] " +
-                (isMe ? "bg-brand text-[#17130f]" : "bg-[#26211C] text-text-primary")
+                (isMe
+                  ? "bg-brand text-[#17130f]"
+                  : "bg-[#26211C] text-text-primary")
               }
             >
               {msg.text}
@@ -285,6 +311,22 @@ function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
   );
 }
 
+const KNOWN_PARTNERS = [
+  "旺角卡店 · 專業認證商戶",
+  "渡邉道館",
+  "九龍灣卡王",
+  "秋葉原海外直送店",
+  "旺角天線卡王",
+  "深水埗精品角落",
+  "信和執雞大師",
+  "Satoshi_K",
+  "Yugi_Collector",
+  "Pika_Rich",
+  "Tomy_Trading",
+  "PSA_10_Hunter",
+  "Marnie_Simp",
+];
+
 export function GlobalChatConsole() {
   const {
     isChatOpen,
@@ -295,6 +337,7 @@ export function GlobalChatConsole() {
     setActiveRoomId,
     mobileView,
     setMobileView,
+    activateRoomById,
   } = useTradeStore();
 
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
@@ -310,8 +353,12 @@ export function GlobalChatConsole() {
     }
 
     toast.error("⚠️ 舉報信號已受理", {
-      description: "【" + reportCategory + "】風控隊列已啟動，案件詳情已留存快照，合約風控官將於 15 分鐘內介入審查。",
-      className: "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
+      description:
+        "【" +
+        reportCategory +
+        "】風控隊列已啟動，案件詳情已留存快照，合約風控官將於 15 分鐘內介入審查。",
+      className:
+        "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
     });
 
     setIsReportOpen(false);
@@ -320,8 +367,35 @@ export function GlobalChatConsole() {
   };
 
   const [inputText, setInputText] = useState("");
+  const [lobbySearchQuery, setLobbySearchQuery] = useState("");
+  const [isNewChatComboOpen, setIsNewChatComboOpen] = useState(false);
+  const [targetUsername, setTargetUsername] = useState("");
   const desktopConsoleRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleSpawnChat = useCallback(() => {
+    if (!targetUsername.trim()) return;
+
+    const trimmedUsername = targetUsername.trim();
+    const existingRoom = chats.find(
+      (r) => r.partnerName.toLowerCase() === trimmedUsername.toLowerCase(),
+    );
+
+    if (existingRoom) {
+      setActiveRoomId(existingRoom.id);
+      setIsNewChatComboOpen(false);
+      setTargetUsername("");
+      setMobileView("CHAT");
+      toast.success(`已切換至與 ${existingRoom.partnerName} 的對話`);
+    } else {
+      const newRoomId = "room_" + Math.random().toString(36).substring(2, 9);
+      activateRoomById(newRoomId, trimmedUsername);
+      setIsNewChatComboOpen(false);
+      setTargetUsername("");
+      setMobileView("CHAT");
+      toast.success(`成功與 ${trimmedUsername} 建立新對話通道`);
+    }
+  }, [targetUsername, chats, setActiveRoomId, activateRoomById, setMobileView]);
 
   const reportButtonClass =
     "flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:px-2 lg:py-1 lg:text-[11px] lg:font-medium lg:text-text-disabled/70 lg:hover:text-red-500 lg:hover:bg-red-500/10 cursor-pointer select-none";
@@ -367,6 +441,12 @@ export function GlobalChatConsole() {
     () => true,
     () => false,
   );
+
+  const filteredLobbyRooms = useMemo(() => {
+    return chats.filter((room) =>
+      room.partnerName.toLowerCase().includes(lobbySearchQuery.toLowerCase()),
+    );
+  }, [chats, lobbySearchQuery]);
 
   if (!isMounted) return null;
   if (!isChatOpen) return null;
@@ -423,13 +503,94 @@ export function GlobalChatConsole() {
         >
           {/* Left column: room list */}
           <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
-            <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0">
-              <span className="font-mono text-[9px] text-brand tracking-widest uppercase font-bold">
-                Trading Station
-              </span>
+            <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0 flex items-center justify-between gap-1.5 h-12">
+              <div className="flex-1 flex items-center gap-1 overflow-hidden">
+                {!isNewChatComboOpen ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsNewChatComboOpen((prev) => !prev)}
+                      className="flex flex-row gap-1 p-1 hover:bg-[#26211C] rounded transition-colors text-brand flex items-center justify-center shrink-0 focus:outline-none"
+                      title="新建對話"
+                    >
+                      <svg
+                        className="w-4 h-4 text-brand"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                      <span className="font-mono text-sm text-brand">
+                        新增聊天
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  <motion.div
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: "auto", opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="flex items-center gap-1 flex-1 min-w-0"
+                  >
+                    <input
+                      type="text"
+                      list="desktop-partners-list"
+                      value={targetUsername}
+                      onChange={(e) => setTargetUsername(e.target.value)}
+                      placeholder="搜尋/輸入用戶..."
+                      className="w-full bg-[#17130f] border border-white/10 rounded px-1.5 py-0.5 font-sans text-[10.5px] text-text-primary placeholder:text-[#50453b] focus:outline-none focus:border-brand/40"
+                    />
+                    <datalist id="desktop-partners-list">
+                      {KNOWN_PARTNERS.map((p) => (
+                        <option key={p} value={p} />
+                      ))}
+                    </datalist>
+                  </motion.div>
+                )}
+              </div>
+
+              {isNewChatComboOpen && (
+                <button
+                  type="button"
+                  onClick={handleSpawnChat}
+                  disabled={!targetUsername.trim()}
+                  className={`p-1 flex items-center justify-center shrink-0 transition-all focus:outline-none ${
+                    !targetUsername.trim()
+                      ? "opacity-30 grayscale cursor-not-allowed text-text-disabled"
+                      : "text-brand opacity-100 hover:text-brand-hover active:scale-95 cursor-pointer"
+                  }`}
+                  title="確認新建對話"
+                >
+                  <IoMdCheckboxOutline className="w-4.5 h-4.5" />
+                </button>
+              )}
             </div>
+
+            {/* 🎯 Target Injected Real-Time Lobby Filtering Search Bar Chassis */}
+            <div className="px-3 py-2 border-b border-white/[0.04] bg-[#1A1612] shrink-0">
+              <div className="flex items-center h-8 bg-[#17130f] border border-white/5 rounded-lg px-2.5 focus-within:border-brand/40 transition-colors">
+                <span className="text-[11px] opacity-40 mr-1.5 select-none">
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  value={lobbySearchQuery}
+                  onChange={(e) => setLobbySearchQuery(e.target.value)}
+                  placeholder="搜尋已存在對話用戶..."
+                  className="w-full bg-transparent font-sans text-[11.5px] text-text-primary placeholder:text-[#50453b] focus:outline-none"
+                />
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto p-1.5 space-y-1 scrollbar-none">
-              {chats.map((room) => (
+              {filteredLobbyRooms.map((room: ChatRoom) => (
                 <button
                   key={room.id}
                   type="button"
@@ -441,7 +602,12 @@ export function GlobalChatConsole() {
                       ),
                     );
                   }}
-                  className={"w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none " + (room.id === activeRoomId ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md" : "hover:bg-[#26211C]/40 border border-transparent")}
+                  className={
+                    "w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none " +
+                    (room.id === activeRoomId
+                      ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md"
+                      : "hover:bg-[#26211C]/40 border border-transparent")
+                  }
                 >
                   <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                     {room.partnerName[0]}
@@ -464,7 +630,11 @@ export function GlobalChatConsole() {
             <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                <Link href={"/profile/" + activeRoom.partnerId} onClick={onClose} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <Link
+                  href={"/profile/" + activeRoom.partnerId}
+                  onClick={onClose}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
                   <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                     {activeRoom.partnerName[0]}
                   </div>
@@ -529,22 +699,108 @@ export function GlobalChatConsole() {
         >
           {mobileView === "LIST" ? (
             <div className="flex flex-col h-full">
-              <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
-                <div>
-                  <h3 className="font-sans font-bold text-[14px] text-text-primary">
-                    即時交易通知中心
-                  </h3>
+              <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0 gap-2">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="flex-1 flex items-center gap-1.5 overflow-hidden">
+                    {!isNewChatComboOpen ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setIsNewChatComboOpen((prev) => !prev)}
+                          className="gap-1 p-1.5 hover:bg-[#1A1612] rounded-full transition-colors text-brand flex items-center justify-center shrink-0 focus:outline-none"
+                          title="新建對話"
+                        >
+                          <svg
+                            className="w-5 h-5 text-brand"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2.5}
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                            />
+                          </svg>
+
+                          <h3 className="font-mono text-sm text-brand">
+                            新增聊天
+                          </h3>
+                        </button>
+                      </>
+                    ) : (
+                      <motion.div
+                        initial={{ width: 0, opacity: 0 }}
+                        animate={{ width: "auto", opacity: 1 }}
+                        exit={{ width: 0, opacity: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 20,
+                        }}
+                        className="flex items-center gap-1.5 flex-1 min-w-0"
+                      >
+                        <input
+                          type="text"
+                          list="mobile-partners-list"
+                          value={targetUsername}
+                          onChange={(e) => setTargetUsername(e.target.value)}
+                          placeholder="搜尋/輸入用戶..."
+                          className="w-full bg-[#17130f] border border-white/10 rounded-lg px-2.5 py-1 font-sans text-[12px] text-text-primary placeholder:text-[#50453b] focus:outline-none focus:border-brand/40"
+                        />
+                        <datalist id="mobile-partners-list">
+                          {KNOWN_PARTNERS.map((p) => (
+                            <option key={p} value={p} />
+                          ))}
+                        </datalist>
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {isNewChatComboOpen && (
+                    <button
+                      type="button"
+                      onClick={handleSpawnChat}
+                      disabled={!targetUsername.trim()}
+                      className={`p-1.5 flex items-center justify-center shrink-0 transition-all focus:outline-none ${
+                        !targetUsername.trim()
+                          ? "opacity-30 grayscale cursor-not-allowed text-text-disabled"
+                          : "text-brand opacity-100 hover:text-brand-hover active:scale-95 cursor-pointer"
+                      }`}
+                      title="確認新建對話"
+                    >
+                      <IoMdCheckboxOutline className="w-5.5 h-5.5" />
+                    </button>
+                  )}
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-[#1A1612] flex items-center justify-center font-sans text-sm text-text-secondary focus:outline-none"
+                  className="w-8 h-8 rounded-full bg-[#1A1612] flex items-center justify-center font-sans text-sm text-text-secondary focus:outline-none shrink-0"
                 >
                   ✕
                 </button>
               </div>
+
+              {/* 🎯 Target Injected Real-Time Lobby Filtering Search Bar Chassis */}
+              <div className="px-3 py-2 border-b border-white/[0.04] bg-[#1A1612] shrink-0">
+                <div className="flex items-center h-9 bg-[#17130f] border border-white/5 rounded-lg px-2.5 focus-within:border-brand/40 transition-colors">
+                  <span className="text-[12px] opacity-40 mr-1.5 select-none">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    value={lobbySearchQuery}
+                    onChange={(e) => setLobbySearchQuery(e.target.value)}
+                    placeholder="搜尋已存在對話用戶..."
+                    className="w-full bg-transparent font-sans text-[12px] text-text-primary placeholder:text-[#50453b] focus:outline-none"
+                  />
+                </div>
+              </div>
+
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#17130f] scrollbar-none">
-                {chats.map((room) => (
+                {filteredLobbyRooms.map((room: ChatRoom) => (
                   <button
                     key={room.id}
                     onClick={() => {
@@ -581,7 +837,11 @@ export function GlobalChatConsole() {
                   </button>
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
-                    <Link href={"/profile/" + activeRoom.partnerId} onClick={onClose} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Link
+                      href={"/profile/" + activeRoom.partnerId}
+                      onClick={onClose}
+                      className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                    >
                       <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
                         {activeRoom.partnerName[0]}
                       </div>
@@ -662,16 +922,28 @@ export function GlobalChatConsole() {
                 <SelectValue placeholder="點擊展開合約違規類別" />
               </SelectTrigger>
               <SelectContent className="bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
-                <SelectItem value="惡意欺詐 / 虛假交易" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
+                <SelectItem
+                  value="惡意欺詐 / 虛假交易"
+                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                >
                   🛑 惡意欺詐 / 虛假交易 (FRAUD)
                 </SelectItem>
-                <SelectItem value="言語辱罵 / 不當言論" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
+                <SelectItem
+                  value="言語辱罵 / 不當言論"
+                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                >
                   💬 言語辱罵 / 不當言論 (HARASS)
                 </SelectItem>
-                <SelectItem value="誘導私下交易" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
+                <SelectItem
+                  value="誘導私下交易"
+                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                >
                   🔒 誘導私下交易 / 逃避中介 (OFFLINE)
                 </SelectItem>
-                <SelectItem value="其他違規行為" className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors">
+                <SelectItem
+                  value="其他違規行為"
+                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                >
                   ⚙️ 其他違規行為 (OTHER)
                 </SelectItem>
               </SelectContent>
@@ -696,7 +968,8 @@ export function GlobalChatConsole() {
           </div>
 
           <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
-            ⚠️ 聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨账戶風控扣分限制。
+            ⚠️
+            聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨账戶風控扣分限制。
           </p>
         </div>
 
