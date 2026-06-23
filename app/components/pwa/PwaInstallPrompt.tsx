@@ -36,7 +36,6 @@ export function PwaInstallPrompt() {
 
   // State A: Native prompt ready
   if (promptState === "NATIVE_READY") {
-    //
     return (
       <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
         <p className="font-sans text-[14px] font-medium text-text-primary">
