@@ -641,14 +641,19 @@ export default function MerchantPerformancePage() {
                   >
                     {prod.rank}
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-text-primary font-medium truncate">
-                      {prod.name}
-                    </p>
-                    <p className="font-mono text-[10.5px] text-stone-500 uppercase mt-0.5">
-                      {prod.skuNo}
-                    </p>
-                  </div>
+                  <Link
+                    href={`/profile/merchant/analytics?sku=${encodeURIComponent(prod.skuNo)}`}
+                    title={`查看 ${prod.name} 的深度經營分析數據看板`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-text-primary font-medium truncate">
+                        {prod.name}
+                      </p>
+                      <p className="font-mono text-[10.5px] text-stone-500 hover:text-brand underline decoration-dotted underline-offset-4 decoration-stone-500/30 hover:decoration-brand transition-colors cursor-pointer text-left focus:outline-none truncate block max-w-max uppercase mt-0.5">
+                        {prod.skuNo}
+                      </p>
+                    </div>
+                  </Link>
                 </div>
 
                 <div className="text-right shrink-0 ml-4">
@@ -679,7 +684,7 @@ export default function MerchantPerformancePage() {
                 className="flex items-center justify-between py-3 text-[13.5px]"
               >
                 <Link
-                  href={`/user/${client.id}`}
+                  href={`/profile/${client.id}`}
                   className="flex items-center gap-3 hover:text-brand transition-colors group min-w-0"
                 >
                   <span className="font-mono text-[11px] text-text-primary w-4 text-center shrink-0">
