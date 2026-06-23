@@ -6,7 +6,7 @@ export default function OfflinePage() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#F8F9FA] px-4">
       <section className="w-full max-w-lg rounded-2xl border border-[rgba(226,232,240,0.6)] bg-white p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
-        <p className="font-mono text-[12px] text-[#5F6368]">PokéTrade JP · Offline</p>
+        <p className="font-mono text-[12px] text-[#5F6368]">HKCardVault · Offline</p>
         <h1 className="mt-2 font-sans text-[24px] font-bold text-[#202124]">
           目前處於離線模式
         </h1>

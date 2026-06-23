@@ -46,7 +46,7 @@ export function Footer() {
               href="/"
               className="font-sans font-bold text-[18px] text-text-primary tracking-tight inline-block mb-3"
             >
-              PokéTrade <span className="text-brand">JP</span>
+              HKCardVault <span className="text-brand">JP</span>
             </Link>
             <p className="font-sans text-[12px] text-text-secondary leading-relaxed max-w-[220px]">
               香港首個日版寶可夢卡牌專業交易平台。鑑定託管・安心交易・全港免運。
@@ -99,7 +99,7 @@ export function Footer() {
         <div className="border-t border-[rgba(237,232,224,0.08)] pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="font-sans text-[11px] text-text-disabled">
-              © {new Date().getFullYear()} PokéTrade JP (HKcardvault). All
+              © {new Date().getFullYear()} HKCardVault (HKcardvault). All
               rights reserved.
             </p>
             <div className="flex items-center gap-4">

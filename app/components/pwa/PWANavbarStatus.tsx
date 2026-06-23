@@ -55,7 +55,7 @@ export function PWANavbarStatus() {
               點擊瀏覽器底部的 <span className="text-brand">📤 分享按鈕</span>
               ，然後選擇
               <span className="text-brand font-medium">「加入主畫面」</span>
-              安裝 PokéTrade JP，快速查看即時成交與託管進度。
+              安裝 HKCardVault，快速查看即時成交與託管進度。
             </p>
           </div>
         )}

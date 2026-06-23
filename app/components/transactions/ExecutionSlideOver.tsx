@@ -12,7 +12,7 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel";
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
   type SellOrder,
   type UnifiedProductSpec,
@@ -43,7 +43,7 @@ export function ExecutionSlideOver({
   const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const injectSpecialTransaction = useTradeStore(
+  const injectSpecialTransaction = useHkCardVaultStore(
     (state) => state.injectSpecialTransaction,
   );
 

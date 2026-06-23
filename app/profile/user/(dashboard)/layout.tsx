@@ -7,7 +7,7 @@ import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
 
 export const metadata: Metadata = {
-  title: "我的帳號 · 總覽 — PokéTrade JP",
+  title: "我的帳號 · 總覽 — HKCardVault",
   description: "查看個人收藏估值、身份等級及交易紀錄",
 };
 

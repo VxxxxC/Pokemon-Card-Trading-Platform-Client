@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AuthForm } from "./AuthForm";
 
 export const metadata: Metadata = {
-  title: "登入 · PokéTrade JP",
+  title: "登入 · HKCardVault",
   description: "登入或建立帳戶，開始交易精選日版寶可夢卡牌。",
 };
 
@@ -128,7 +128,7 @@ export default function AuthPage() {
         {/* Logo */}
         <Link href="/" className="relative z-10 inline-block">
           <span className="font-sans font-bold text-[22px] text-text-primary tracking-tight hover:text-brand transition-colors">
-            PokéTrade <span className="text-brand">JP</span>
+            HKCardVault <span className="text-brand">JP</span>
           </span>
         </Link>
 
@@ -262,7 +262,7 @@ export default function AuthPage() {
           className="lg:hidden mb-10 self-start relative z-10 inline-block"
         >
           <span className="font-sans font-bold text-[20px] text-text-primary tracking-tight hover:text-brand transition-colors">
-            PokéTrade <span className="text-brand">JP</span>
+            HKCardVault <span className="text-brand">JP</span>
           </span>
         </Link>
 

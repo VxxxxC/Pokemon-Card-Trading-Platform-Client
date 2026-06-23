@@ -146,7 +146,7 @@ export default function PaymentStatusPage({ searchParams }: PageProps) {
 
               {/* Error causes */}
               <div className="bg-[#17130f] p-4 rounded-xl border border-[rgba(239,68,68,0.12)] font-mono text-[11px] text-[#ef4444] text-left space-y-1.5">
-                <p>🔴 錯誤代碼: [PKT_STRIPE_DECLINED_402]</p>
+                <p>🔴 錯誤代碼: [HKCV_STRIPE_DECLINED_402]</p>
                 <p>🔴 失敗原因: Stripe 信用卡安全授權失敗，或可用餘額不足。</p>
                 <p>
                   🔴 競態提示: 或該卡牌現貨剛剛已被其他玩家優先直接購買截胡。

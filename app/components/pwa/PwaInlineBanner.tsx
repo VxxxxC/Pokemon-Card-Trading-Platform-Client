@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 // 🟢 引入 UI Store 準備連動教學彈窗
 import { useUIStore } from "@/app/store/useUIStore";
@@ -10,10 +10,10 @@ const SNOOZE_KEY = "pwa_snooze_until";
 // 狀態訂閱雷達
 function subscribeSnooze(callback: () => void) {
   window.addEventListener("storage", callback);
-  window.addEventListener("poketrade:pwa-snooze-changed", callback);
+  window.addEventListener("hkcardvault:pwa-snooze-changed", callback);
   return () => {
     window.removeEventListener("storage", callback);
-    window.removeEventListener("poketrade:pwa-snooze-changed", callback);
+    window.removeEventListener("hkcardvault:pwa-snooze-changed", callback);
   };
 }
 

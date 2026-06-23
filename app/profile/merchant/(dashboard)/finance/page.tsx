@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "資金金流 — PokéTrade JP",
+  title: "資金金流 — HKCardVault",
   description: "查看本月總收入、資金流水記錄及 Stripe Connect 帳戶",
 };
 

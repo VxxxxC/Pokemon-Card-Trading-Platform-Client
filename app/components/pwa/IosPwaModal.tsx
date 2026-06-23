@@ -49,7 +49,7 @@ export function IosPwaModal() {
 
   const handleSnooze = () => {
     localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS)); //
-    window.dispatchEvent(new Event("poketrade:pwa-snooze-changed")); //
+    window.dispatchEvent(new Event("hkcardvault:pwa-snooze-changed")); //
   };
 
   if (!isOpen) return null;

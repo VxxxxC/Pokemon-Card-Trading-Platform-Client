@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 接入 Zustand 全域控制中樞
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -16,7 +16,7 @@ export function MobileHeader() {
 
   // 🟢 從 Zustand 引流狀態
   const { chats, isChatOpen, setIsChatOpen, setMobileView, activateRoomById } =
-    useTradeStore();
+    useHkCardVaultStore();
 
   // 廣播接收監聽器 ➔ 自動同步至狀態大腦
   useEffect(() => {
@@ -49,12 +49,8 @@ export function MobileHeader() {
     <>
       <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
         <div className="h-full px-4 flex items-center justify-between">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="font-sans font-bold text-[16px] text-[#eae1da] tracking-tight"
-          >
-            PokéTrade <span className="text-brand">JP</span>
+          <Link href="/" className="font-sans font-semibold text-lg text-brand">
+            HKCardVault
           </Link>
 
           <div className="flex items-center gap-2">

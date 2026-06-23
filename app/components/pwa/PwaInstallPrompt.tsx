@@ -28,7 +28,7 @@ export function PwaInstallPrompt() {
 
   const handleSnooze = () => {
     localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS)); //
-    window.dispatchEvent(new Event("poketrade:pwa-snooze-changed")); //
+    window.dispatchEvent(new Event("hkcardvault:pwa-snooze-changed")); //
     setDismissed(true); //
   };
 
@@ -42,7 +42,7 @@ export function PwaInstallPrompt() {
           加到主畫面
         </p>
         <p className="mt-1 font-sans text-[13px] leading-relaxed text-text-secondary">
-          安裝 PokéTrade JP，快速查看即時成交與託管進度。
+          安裝 HKCardVault，快速查看即時成交與託管進度。
         </p>
         <div className="mt-3 flex gap-2">
           <button

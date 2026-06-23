@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { KycStatus } from "@/app/lib/types/rbac";
 
 export const metadata: Metadata = {
-  title: "審核中心 — PokéTrade JP 後台",
+  title: "審核中心 — HKCardVault 後台",
   description: "審核商戶 KYC 申請，管理 PENDING_MERCHANT 狀態",
 };
 

@@ -23,7 +23,7 @@ export function AdminNav() {
             後台管理
           </p>
           <h1 className="font-sans font-bold text-[16px] text-text-primary">
-            PokéTrade JP
+            HKCardVault
           </h1>
           <span className="inline-flex items-center gap-1 font-mono text-[10px] text-warning bg-[rgba(239,68,68,0.10)] border border-warning/20 px-2 py-0.5 rounded-full mt-2">
             <span className="w-1.5 h-1.5 rounded-full bg-warning" aria-hidden="true" />

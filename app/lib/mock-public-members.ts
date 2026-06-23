@@ -76,8 +76,8 @@ export interface PublicMemberData {
 }
 
 export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
-  "PKT-8839-44A": {
-    id: "PKT-8839-44A",
+  "HKCV-8839-44A": {
+    id: "HKCV-8839-44A",
     username: "渡邊道館",
     handle: "@watanabe_gym",
     joinDate: "2024年 8月加入",
@@ -155,7 +155,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
           partnerName: "九龍灣卡王",
           buyerName: "九龍灣卡王",
           offerPrice: 425,
-          sellerId: "PKT-8839-44A",
+          sellerId: "HKCV-8839-44A",
         },
       },
       {

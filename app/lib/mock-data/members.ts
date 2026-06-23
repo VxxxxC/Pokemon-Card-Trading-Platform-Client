@@ -75,8 +75,8 @@ export interface PublicMemberData {
 
 // Core merchant dataset (seed)
 export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
-  "PKT-8839-44A": {
-    id: "PKT-8839-44A",
+  "HKCV-8839-44A": {
+    id: "HKCV-8839-44A",
     username: "渡邊道館",
     handle: "@watanabe_gym",
     joinDate: "2024年 8月加入",
@@ -153,7 +153,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
           partnerName: "九龍灣卡王",
           buyerName: "九龍灣卡王",
           offerPrice: 425,
-          sellerId: "PKT-8839-44A",
+          sellerId: "HKCV-8839-44A",
         },
       },
       {
@@ -292,8 +292,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
 
   // ── New merchant profiles — all seller IDs referenced in cards.ts ────────
 
-  "PKT-1122-33B": {
-    id: "PKT-1122-33B",
+  "HKCV-1122-33B": {
+    id: "HKCV-1122-33B",
     username: "旺角天線卡王",
     handle: "@mongkok_card_king",
     joinDate: "2024年 3月加入",
@@ -351,8 +351,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-4455-66C": {
-    id: "PKT-4455-66C",
+  "HKCV-4455-66C": {
+    id: "HKCV-4455-66C",
     username: "秋葉原海外直送店",
     handle: "@akiba_direct",
     joinDate: "2024年 1月加入",
@@ -416,8 +416,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-7788-99D": {
-    id: "PKT-7788-99D",
+  "HKCV-7788-99D": {
+    id: "HKCV-7788-99D",
     username: "信和執雞大師",
     handle: "@sino_master",
     joinDate: "2023年 11月加入",
@@ -475,8 +475,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-2210-55E": {
-    id: "PKT-2210-55E",
+  "HKCV-2210-55E": {
+    id: "HKCV-2210-55E",
     username: "深水埗精品角落",
     handle: "@shamshuipo_corner",
     joinDate: "2024年 5月加入",
@@ -527,8 +527,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-5566-77C": {
-    id: "PKT-5566-77C",
+  "HKCV-5566-77C": {
+    id: "HKCV-5566-77C",
     username: "銅鑼灣收藏家",
     handle: "@cwb_collector",
     joinDate: "2023年 9月加入",
@@ -592,8 +592,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-9900-11A": {
-    id: "PKT-9900-11A",
+  "HKCV-9900-11A": {
+    id: "HKCV-9900-11A",
     username: "尖沙咀卡神",
     handle: "@tsim_card_god",
     joinDate: "2023年 6月加入",
@@ -657,8 +657,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-3311-22D": {
-    id: "PKT-3311-22D",
+  "HKCV-3311-22D": {
+    id: "HKCV-3311-22D",
     username: "荔枝角大師傅",
     handle: "@lck_master",
     joinDate: "2024年 2月加入",
@@ -709,8 +709,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-2233-44B": {
-    id: "PKT-2233-44B",
+  "HKCV-2233-44B": {
+    id: "HKCV-2233-44B",
     username: "元朗李生精品",
     handle: "@ylt_mr_lee",
     joinDate: "2024年 4月加入",
@@ -761,8 +761,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-8866-00C": {
-    id: "PKT-8866-00C",
+  "HKCV-8866-00C": {
+    id: "HKCV-8866-00C",
     username: "觀塘夜市收藏王",
     handle: "@kwuntong_night",
     joinDate: "2023年 12月加入",
@@ -820,8 +820,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-6644-88A": {
-    id: "PKT-6644-88A",
+  "HKCV-6644-88A": {
+    id: "HKCV-6644-88A",
     username: "新宿夜行商",
     handle: "@shinjuku_night_dealer",
     joinDate: "2023年 8月加入",
@@ -891,8 +891,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-1188-22E": {
-    id: "PKT-1188-22E",
+  "HKCV-1188-22E": {
+    id: "HKCV-1188-22E",
     username: "石籬二手精品鋪",
     handle: "@shekleicorner",
     joinDate: "2024年 6月加入",
@@ -943,8 +943,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-7755-99B": {
-    id: "PKT-7755-99B",
+  "HKCV-7755-99B": {
+    id: "HKCV-7755-99B",
     username: "大阪神秘珍品室",
     handle: "@osaka_mystery_room",
     joinDate: "2023年 10月加入",
@@ -1008,8 +1008,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-9977-11D": {
-    id: "PKT-9977-11D",
+  "HKCV-9977-11D": {
+    id: "HKCV-9977-11D",
     username: "九龍城無框生品",
     handle: "@klncity_raw",
     joinDate: "2024年 7月加入",
@@ -1060,8 +1060,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-5544-77C": {
-    id: "PKT-5544-77C",
+  "HKCV-5544-77C": {
+    id: "HKCV-5544-77C",
     username: "元朗動漫城",
     handle: "@ylt_anime_city",
     joinDate: "2023年 7月加入",
@@ -1119,8 +1119,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-3322-55A": {
-    id: "PKT-3322-55A",
+  "HKCV-3322-55A": {
+    id: "HKCV-3322-55A",
     username: "西環電力站",
     handle: "@saiyingpun_power",
     joinDate: "2024年 1月加入",
@@ -1177,8 +1177,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-4433-66B": {
-    id: "PKT-4433-66B",
+  "HKCV-4433-66B": {
+    id: "HKCV-4433-66B",
     username: "藍田玩具商",
     handle: "@lantian_toy",
     joinDate: "2024年 3月加入",
@@ -1229,8 +1229,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-6655-88D": {
-    id: "PKT-6655-88D",
+  "HKCV-6655-88D": {
+    id: "HKCV-6655-88D",
     username: "將軍澳小卡鋪",
     handle: "@tseung_kwan_o_cards",
     joinDate: "2024年 8月加入",
@@ -1283,8 +1283,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
 
   // ── 8 新增賣家：擴展 sv2a-182 掛單簿至 13 筆 ─────────────────────────────
 
-  "PKT-3366-88F": {
-    id: "PKT-3366-88F",
+  "HKCV-3366-88F": {
+    id: "HKCV-3366-88F",
     username: "北角高層收藏所",
     handle: "@northpoint_high_collect",
     joinDate: "2024年 2月加入",
@@ -1336,8 +1336,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-5577-22G": {
-    id: "PKT-5577-22G",
+  "HKCV-5577-22G": {
+    id: "HKCV-5577-22G",
     username: "大坑珍品屋",
     handle: "@taikeng_treasure",
     joinDate: "2023年 11月加入",
@@ -1395,8 +1395,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-6622-11H": {
-    id: "PKT-6622-11H",
+  "HKCV-6622-11H": {
+    id: "HKCV-6622-11H",
     username: "灣仔潮流卡舖",
     handle: "@wanchai_trendy_cards",
     joinDate: "2024年 4月加入",
@@ -1447,8 +1447,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-9911-33I": {
-    id: "PKT-9911-33I",
+  "HKCV-9911-33I": {
+    id: "HKCV-9911-33I",
     username: "天水圍拍賣商",
     handle: "@tinshuiwai_auction",
     joinDate: "2024年 5月加入",
@@ -1499,8 +1499,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-4477-66J": {
-    id: "PKT-4477-66J",
+  "HKCV-4477-66J": {
+    id: "HKCV-4477-66J",
     username: "東涌海外代購",
     handle: "@tung_chung_import",
     joinDate: "2024年 1月加入",
@@ -1558,8 +1558,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-7733-55K": {
-    id: "PKT-7733-55K",
+  "HKCV-7733-55K": {
+    id: "HKCV-7733-55K",
     username: "屯門古稀精品",
     handle: "@tuenmun_antique",
     joinDate: "2024年 3月加入",
@@ -1610,8 +1610,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-1199-44L": {
-    id: "PKT-1199-44L",
+  "HKCV-1199-44L": {
+    id: "HKCV-1199-44L",
     username: "荃灣TCG Gallery",
     handle: "@twgallery_tcg",
     joinDate: "2023年 9月加入",
@@ -1675,8 +1675,8 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
     ],
   },
 
-  "PKT-8844-77M": {
-    id: "PKT-8844-77M",
+  "HKCV-8844-77M": {
+    id: "HKCV-8844-77M",
     username: "沙田競技商城",
     handle: "@shatin_arena",
     joinDate: "2024年 6月加入",

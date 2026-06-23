@@ -43,7 +43,7 @@ const BADGES = [
 ];
 
 const mockUser = {
-  id: "PKT-USER-001",
+  id: "HKCV-USER-001",
   name: "山田レン",
   handle: "@yamada_ren",
   avatarSeed: "user-yamada-ren-tcg",

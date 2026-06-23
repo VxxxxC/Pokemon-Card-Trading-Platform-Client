@@ -6,7 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { IoChevronBack } from "react-icons/io5";
-import { useTradeStore } from "@/app/store/useTradeStore";
 import { OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { toast } from "sonner";
@@ -52,7 +51,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     id: "ORD-2026-U01",
     buyerId: "USR-ME",
     buyerName: "田中 Koji",
-    sellerId: "PKT-MER-001",
+    sellerId: "HKCV-MER-001",
     sellerName: "KojiTCG Premium",
     cardName: "Charizard ex SAR (噴火龍)",
     cardNo: "sv2a-182",
@@ -86,7 +85,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     id: "ORD-2026-U03",
     buyerId: "USR-ME",
     buyerName: "田中 Koji",
-    sellerId: "PKT-MER-002",
+    sellerId: "HKCV-MER-002",
     sellerName: "渡邊道館",
     cardName: "Marnie (瑪俐) SR 198/190",
     cardNo: "s5a-070",
@@ -154,7 +153,7 @@ const MOCK_ORDERS_DB: Record<string, LocalOrder> = {
     id: "ORD-2026-U07",
     buyerId: "USR-ME",
     buyerName: "田中 Koji",
-    sellerId: "PKT-MER-007",
+    sellerId: "HKCV-MER-007",
     sellerName: "木戶卡牌旗艦店",
     cardName: "Rayquaza VMAX SA 083/067",
     cardNo: "s7R-083",
@@ -189,8 +188,6 @@ export default function UserOrderDetailPage() {
     () => true,
     () => false,
   );
-
-  const { openGlobalChat } = useTradeStore();
 
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -428,7 +425,7 @@ export default function UserOrderDetailPage() {
                       "。買家完成付款後您將收到確認通知。"
                     : "您已完成此交易的全額付款 HK$ " +
                       order.amount.toLocaleString("zh-TW") +
-                      "。此資金已安全存入 PokéTrade 官方擔保帳戶託管，等待賣家確認出貨。"}
+                      "。此資金已安全存入 HKCardVault 官方擔保帳戶託管，等待賣家確認出貨。"}
                 </p>
                 {isSeller && (
                   <button
@@ -558,7 +555,7 @@ export default function UserOrderDetailPage() {
             {order.status === "grading" && (
               <div className="space-y-3">
                 <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                  卡牌實物正在由 PokéTrade
+                  卡牌實物正在由 HKCardVault
                   專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS
                   標準驗證）。
                 </p>
@@ -615,7 +612,7 @@ export default function UserOrderDetailPage() {
                           order.amount +
                           (order.hasAuthenticationToggle ? 150 : 0)
                         ).toLocaleString("zh-TW") +
-                        " 已由平台支付予賣家。感謝您對 PokéTrade 的信任。"}
+                        " 已由平台支付予賣家。感謝您對 HKCardVault 的信任。"}
                   </p>
                 </div>
               </div>

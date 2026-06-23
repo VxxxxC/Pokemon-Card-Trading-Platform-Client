@@ -356,7 +356,7 @@ export function AuthForm() {
           <p className="mt-1.5 font-sans text-[14px] text-text-secondary leading-relaxed">
             {tab === "login"
               ? "登入以查看您的卡牌收藏與交易記錄"
-              : "加入 PokéTrade JP，開始交易日版精選卡牌"}
+              : "加入 HKCardVault，開始交易日版精選卡牌"}
           </p>
         </div>
 
@@ -460,7 +460,7 @@ export function AuthForm() {
               type="text"
               name="username"
               autoComplete="username"
-              placeholder="poketrader_jp"
+              placeholder="hkcardvaultr_jp"
               className={inputClass(!!errors.username)}
             />
           </Field>
@@ -539,7 +539,7 @@ export function AuthForm() {
       )}
 
       <p className="mt-8 text-center font-sans text-[12px] text-text-disabled">
-        © 2026 PokéTrade JP · 所有交易受平台監管保障
+        © 2026 HKCardVault · 所有交易受平台監管保障
       </p>
     </div>
   );
