@@ -1,22 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
+import { useUIStore } from "@/app/store/useUIStore";
 
 const SNOOZE_KEY = "pwa_snooze_until";
 const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 export function PwaInstallPrompt() {
   const { promptState, onInstall } = usePwaInstall();
+  const openIosPwaModal = useUIStore((state) => state.openIosPwaModal);
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false; //
     const snoozeUntil = localStorage.getItem(SNOOZE_KEY); //
     return Boolean(snoozeUntil && Date.now() < Number(snoozeUntil)); //
   });
 
+  useEffect(() => {
+    if (
+      promptState !== "ALREADY_INSTALLED" &&
+      !dismissed &&
+      promptState !== "NATIVE_READY"
+    ) {
+      openIosPwaModal();
+    }
+  }, [promptState, dismissed, openIosPwaModal]);
+
   const handleSnooze = () => {
     localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS)); //
-    // 🟢 核心連動：發射同視窗自訂廣播，通知頂部 Inline Banner 即時同步外顯接力！
     window.dispatchEvent(new Event("poketrade:pwa-snooze-changed")); //
     setDismissed(true); //
   };
@@ -25,7 +36,6 @@ export function PwaInstallPrompt() {
 
   // State A: Native prompt ready
   if (promptState === "NATIVE_READY") {
-    //
     return (
       <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
         <p className="font-sans text-[14px] font-medium text-text-primary">
@@ -54,23 +64,5 @@ export function PwaInstallPrompt() {
     );
   }
 
-  // State B: Browser cooling
-  return (
-    <aside className="fixed bottom-30 left-4 z-50 max-w-xs rounded-2xl border border-[rgba(212,165,116,0.25)] bg-[#4e3d2f] p-4 shadow-[0_8px_32px_rgba(0,0,0,0.7)] lg:bottom-6">
-      <div className="flex items-start gap-2">
-        <p className="flex-1 font-sans text-xs leading-relaxed text-[#d4c4b7]">
-          輕觸網址列右側圖標，或點選「更多」→「加到主畫面」，即可安裝 PokéTrade
-          JP。
-        </p>
-        <button
-          type="button"
-          onClick={handleSnooze} // 🟢 點擊交叉時，同樣觸發 handleSnooze 讓頂部 Banner 完美接力！
-          aria-label="關閉提示"
-          className="mt-0.5 shrink-0 text-[#d4c4b7] opacity-50 transition-opacity hover:opacity-100 active:scale-90 cursor-pointer"
-        >
-          ✕
-        </button>
-      </div>
-    </aside>
-  );
+  return null;
 }

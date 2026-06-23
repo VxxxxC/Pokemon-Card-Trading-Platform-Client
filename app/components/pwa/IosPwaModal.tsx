@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUIStore } from "@/app/store/useUIStore";
+import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 
 interface TutorialSlide {
   title: string;
@@ -37,10 +38,19 @@ const IOS_PWA_SLIDES: TutorialSlide[] = [
   },
 ];
 
+const SNOOZE_KEY = "pwa_snooze_until";
+const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
 export function IosPwaModal() {
+  const { promptState } = usePwaInstall();
   const isOpen = useUIStore((state) => state.isIosPwaModalOpen);
   const closeIosPwaModal = useUIStore((state) => state.closeIosPwaModal);
   const [currentStep, setCurrentStep] = useState(0);
+
+  const handleSnooze = () => {
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS)); //
+    window.dispatchEvent(new Event("poketrade:pwa-snooze-changed")); //
+  };
 
   if (!isOpen) return null;
 
@@ -61,9 +71,13 @@ export function IosPwaModal() {
   };
 
   const handleClose = () => {
+    handleSnooze();
     setCurrentStep(0);
     closeIosPwaModal();
   };
+
+  // NOTE: prevent Android will pop-up this Modal
+  if (promptState === "NATIVE_READY") return null;
 
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
