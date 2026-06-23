@@ -1,4 +1,4 @@
-# PokéTrade JP — 寶可夢卡牌專業交易平台
+# HKCardVault — 寶可夢卡牌專業交易平台
 
 A premium Japanese Pokémon card trading platform built for collectors and professional investors. It combines stock-market-style bid/ask trading with Stripe Connect escrow, real-time price feeds from Mercari JP, and a gamified collector experience — all delivered as a PWA.
 

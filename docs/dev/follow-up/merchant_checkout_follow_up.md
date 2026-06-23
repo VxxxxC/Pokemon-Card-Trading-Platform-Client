@@ -1,4 +1,4 @@
-# PokéTrade JP - Merchant B2C Checkout Architecture Conservation
+# HKCardVault - Merchant B2C Checkout Architecture Conservation
 
 This follow-up blueprint records the location and configuration of the full-page pre-checkout asset routing system (`app/checkout/[id]/page.tsx`), which is intentionally preserved exclusively for **Merchant (B2C)** Stripe Escrow settlements.
 

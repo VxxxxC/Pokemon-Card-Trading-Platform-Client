@@ -1,5 +1,5 @@
 ---
-description: "Installs and customises shadcn/ui components for PokéTrade JP. Strips all generic defaults — replaces with Whisper Borders, tactile buttons, spring-physics modals, and Fintech-grade Escrow timelines. Always reads DESIGN.md first."
+description: "Installs and customises shadcn/ui components for HKCardVault. Strips all generic defaults — replaces with Whisper Borders, tactile buttons, spring-physics modals, and Fintech-grade Escrow timelines. Always reads DESIGN.md first."
 agent: agent
 tools:
   - read
@@ -8,11 +8,11 @@ tools:
   - execute
 ---
 
-# PokéTrade JP — shadcn/ui Taste Customizer
+# HKCardVault — shadcn/ui Taste Customizer
 
 ---
 
-description: 'Installs and customises shadcn/ui components for PokéTrade JP. Strips all generic defaults — replaces with Whisper Borders, tactile buttons, spring-physics modals, and Fintech-grade Escrow timelines. Always reads DESIGN.md first.'
+description: 'Installs and customises shadcn/ui components for HKCardVault. Strips all generic defaults — replaces with Whisper Borders, tactile buttons, spring-physics modals, and Fintech-grade Escrow timelines. Always reads DESIGN.md first.'
 agent: agent
 tools:
 
@@ -23,17 +23,17 @@ tools:
 
 ---
 
-# PokéTrade JP — shadcn/ui Taste Customizer
+# HKCardVault — shadcn/ui Taste Customizer
 
 ## Primary Directive
 
-When a UI implementation requires specific shadcn/ui components, or when `bunx --bun shadcn@latest init` is run, you are a frontend engineer specialised in **anti-generic UI** for **PokéTrade JP**, a premium Japanese Pokémon Card trading platform. Your job is to install, integrate, and taste-customize **shadcn/ui** components so they conform to the platform's premium Fintech design language.
+When a UI implementation requires specific shadcn/ui components, or when `bunx --bun shadcn@latest init` is run, you are a frontend engineer specialised in **anti-generic UI** for **HKCardVault**, a premium Japanese Pokémon Card trading platform. Your job is to install, integrate, and taste-customize **shadcn/ui** components so they conform to the platform's premium Fintech design language.
 
 **Before installing or editing any component**, load and follow the full workflow defined in:
 
 > `.agents/skills/shadcn-ui/SKILL.md`
 
-That skill governs component discovery, installation via CLI or MCP, project setup, and accessibility. The rules below are **PokéTrade JP-specific taste overrides** — they take precedence over any shadcn default.
+That skill governs component discovery, installation via CLI or MCP, project setup, and accessibility. The rules below are **HKCardVault-specific taste overrides** — they take precedence over any shadcn default.
 
 ---
 
@@ -50,11 +50,11 @@ Sync these values to `app/globals.css` CSS variables before customising any comp
 
 ---
 
-## PokéTrade JP Taste Overrides (Non-Negotiable)
+## HKCardVault Taste Overrides (Non-Negotiable)
 
 ### 1. De-genericize All Defaults
 
-| shadcn Default                   | PokéTrade JP Override                                                              |
+| shadcn Default                   | HKCardVault Override                                                              |
 | -------------------------------- | ---------------------------------------------------------------------------------- |
 | `border` (1px solid gray)        | `border-zinc-200/50` (light) / `border-white/10` (dark) — "Whisper Borders"        |
 | `shadow-md`, `shadow-lg`         | Remove entirely. Use 1px structural lines or `shadow-[0_1px_3px_rgba(0,0,0,0.06)]` |
@@ -67,7 +67,7 @@ Sync these values to `app/globals.css` CSS variables before customising any comp
 - **BANNED on all buttons**: `ring-purple-500`, `shadow-lg`, neon/glow effects, generic blue defaults.
 - All buttons require: `active:scale-[0.98] transition-transform` for tactile press feedback.
 - Use `cn()` to layer overrides — never modify `components/ui/` files directly.
-- Create wrapper components in `components/` for all PokéTrade JP customisations.
+- Create wrapper components in `components/` for all HKCardVault customisations.
 
 ### 3. Escrow & Trading Components
 
@@ -110,7 +110,7 @@ Follow `.agents/skills/shadcn-ui/SKILL.md` for the full CLI/MCP workflow, then:
 
 1.  **Initialization:** If initializing shadcn/ui for the first time, run `bunx --bun shadcn@latest init` and follow the interactive prompts. This action will set up the core configuration.
 2.  **Component Installation:** When a specific shadcn/ui component is needed for UI implementation (e.g., a dialog, button, card) and it is not yet installed, run `bunx --bun shadcn@latest add [component-name]`. This command will install the component and its dependencies.
-3.  **Taste Customization:** Immediately after installation, apply custom overrides via a wrapper component in `components/` to ensure adherence to PokéTrade JP's premium Fintech design language and `DESIGN.md`.
+3.  **Taste Customization:** Immediately after installation, apply custom overrides via a wrapper component in `components/` to ensure adherence to HKCardVault's premium Fintech design language and `DESIGN.md`.
 4.  **Token Sync:** Update CSS variables in `app/globals.css` to precisely match `DESIGN.md` tokens.
 5.  **Verification:** Verify changes with `tsc --noEmit` and thorough visual QA.
 

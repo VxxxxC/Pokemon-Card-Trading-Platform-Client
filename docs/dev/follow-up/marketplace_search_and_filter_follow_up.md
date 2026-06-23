@@ -1,4 +1,4 @@
-# 🏛️ PokéTrade 大盤市場：複合搜尋與結構化篩選解耦規範文件
+# 🏛️ HKCardVault 大盤市場：複合搜尋與結構化篩選解耦規範文件
 # (Marketplace Search & Faceted Filter Decoupling Specification)
 
 ## ⚠️ 重要實作警示 (For GitHub Copilot / Cursor / All AI Agents)

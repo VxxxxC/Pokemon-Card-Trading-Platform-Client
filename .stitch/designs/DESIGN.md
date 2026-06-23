@@ -1,4 +1,4 @@
-# 設計系統：PokéTrade JP
+# 設計系統：HKCardVault
 
 > 🌐 **語言與字體**：本設計系統使用**繁體中文 (Traditional Chinese)** 作為主要用戶介面語言。主要字體為 **Geist** (UI/Headlines) 和 **Geist Mono** (數據/標籤)，搭配 **Chiron GoRound TC** 作為備選中文字體。所有用戶文本應遵循繁體中文標準，避免簡體或日文混用。
 
@@ -16,7 +16,7 @@
 
 ## Brand & Context
 
-- **產品名稱**: PokéTrade JP
+- **產品名稱**: HKCardVault
 - **產業**: Pokémon TCG 專業級交易與收藏平台
 - **目標用戶**: 日版卡牌收藏家、專業交易員、高價值收藏投資者
 - **視覺個性**: 現代終端風格 + 古董珍寶的尊貴感 + 數據驅動的精確性

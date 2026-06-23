@@ -1,6 +1,6 @@
-# PokéTrade JP - 角色權限存取控制 (RBAC) 介面設計與功能拆解筆記
+# HKCardVault - 角色權限存取控制 (RBAC) 介面設計與功能拆解筆記
 
-本筆記詳細記錄 **PokéTrade JP** 平台在登入後的 Role-Based Access Control (RBAC) 權限劃分與各角色的專屬介面（Sub-tabs）設計。平台採用唯一色彩模式——**暗金色深色主題 (Dark Mode Only)**，確保所有介面在符合視覺美學的前提下，提供高效率、高精確度的數據展示與操作。
+本筆記詳細記錄 **HKCardVault** 平台在登入後的 Role-Based Access Control (RBAC) 權限劃分與各角色的專屬介面（Sub-tabs）設計。平台採用唯一色彩模式——**暗金色深色主題 (Dark Mode Only)**，確保所有介面在符合視覺美學的前提下，提供高效率、高精確度的數據展示與操作。
 
 ---
 
