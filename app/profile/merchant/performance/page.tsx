@@ -6,7 +6,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { IoChevronBack } from "react-icons/io5";
-import { ComposedChart, Area, Line, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import {
+  ComposedChart,
+  Area,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -56,7 +65,7 @@ const PERFORMANCE_DATA_MAP: Record<string, PerformanceMetric[]> = {
     { label: "第一週", turnover: 280000, avgPrice: 14000, txCount: 20 },
     { label: "第二週", turnover: 350000, avgPrice: 14583, txCount: 24 },
     { label: "第三週", turnover: 420000, avgPrice: 15000, txCount: 28 },
-    { label: "第四週", turnover: 390000,  avgPrice: 15600, txCount: 25 },
+    { label: "第四週", turnover: 390000, avgPrice: 15600, txCount: 25 },
   ],
   "3m": [
     { label: "4月", turnover: 1150000, avgPrice: 14375, txCount: 80 },
@@ -98,14 +107,62 @@ interface TopProduct {
 }
 
 const TOP_PRODUCTS: TopProduct[] = [
-  { rank: 1, name: "Pikachu AR", skuNo: "sv2a-173", volume: 84, revenue: 126000 },
-  { rank: 2, name: "Charizard ex SAR", skuNo: "SKU-sv2a-182", volume: 52, revenue: 156000 },
-  { rank: 3, name: "Lillie SR", skuNo: "sm4+-119", volume: 15, revenue: 450000 },
-  { rank: 4, name: "Mew ex SAR", skuNo: "sku-sv2a-205", volume: 41, revenue: 82000 },
-  { rank: 5, name: "Giratina V SA", skuNo: "sku-s11-111", volume: 23, revenue: 138000 },
-  { rank: 6, name: "Rayquaza VMAX SA", skuNo: "s7r-083", volume: 18, revenue: 198000 },
-  { rank: 7, name: "Mario Pikachu", skuNo: "294/XY-P", volume: 5, revenue: 225000 },
-  { rank: 8, name: "Umbreon VMAX SA", skuNo: "s7d-095", volume: 12, revenue: 288000 },
+  {
+    rank: 1,
+    name: "Pikachu AR",
+    skuNo: "sv2a-173",
+    volume: 84,
+    revenue: 126000,
+  },
+  {
+    rank: 2,
+    name: "Charizard ex SAR",
+    skuNo: "SKU-sv2a-182",
+    volume: 52,
+    revenue: 156000,
+  },
+  {
+    rank: 3,
+    name: "Lillie SR",
+    skuNo: "sm4+-119",
+    volume: 15,
+    revenue: 450000,
+  },
+  {
+    rank: 4,
+    name: "Mew ex SAR",
+    skuNo: "sku-sv2a-205",
+    volume: 41,
+    revenue: 82000,
+  },
+  {
+    rank: 5,
+    name: "Giratina V SA",
+    skuNo: "sku-s11-111",
+    volume: 23,
+    revenue: 138000,
+  },
+  {
+    rank: 6,
+    name: "Rayquaza VMAX SA",
+    skuNo: "s7r-083",
+    volume: 18,
+    revenue: 198000,
+  },
+  {
+    rank: 7,
+    name: "Mario Pikachu",
+    skuNo: "294/XY-P",
+    volume: 5,
+    revenue: 225000,
+  },
+  {
+    rank: 8,
+    name: "Umbreon VMAX SA",
+    skuNo: "s7d-095",
+    volume: 12,
+    revenue: 288000,
+  },
   { rank: 9, name: "Acerola SR", skuNo: "sm2+056", volume: 8, revenue: 240000 },
 ];
 
@@ -119,15 +176,60 @@ interface HighValueConsumer {
 }
 
 const HIGH_VALUE_CONSUMERS: HighValueConsumer[] = [
-  { id: "satoshi-k", name: "Satoshi_K", spending: 1280000, avatar: "https://picsum.photos/id/1025/100/100" },
-  { id: "yugi-collector", name: "Yugi_Collector", spending: 940000, avatar: "https://picsum.photos/id/1012/100/100" },
-  { id: "pika-rich", name: "Pika_Rich", spending: 750000, avatar: "https://picsum.photos/id/1027/100/100" },
-  { id: "tomy-trading", name: "Tomy_Trading", spending: 580000, avatar: "https://picsum.photos/id/1005/100/100" },
-  { id: "psa-10-hunter", name: "PSA_10_Hunter", spending: 460000, avatar: "https://picsum.photos/id/1062/100/100" },
-  { id: "marnie-simp", name: "Marnie_Simp", spending: 390000, avatar: "https://picsum.photos/id/1074/100/100" },
-  { id: "card-shogun", name: "Card_Shogun", spending: 320000, avatar: "https://picsum.photos/id/64/100/100" },
-  { id: "neo-tokyo", name: "Neo_Tokyo", spending: 270000, avatar: "https://picsum.photos/id/91/100/100" },
-  { id: "gengar-ghost", name: "Gengar_Ghost", spending: 210000, avatar: "https://picsum.photos/id/338/100/100" },
+  {
+    id: "satoshi-k",
+    name: "Satoshi_K",
+    spending: 1280000,
+    avatar: "https://picsum.photos/id/1025/100/100",
+  },
+  {
+    id: "yugi-collector",
+    name: "Yugi_Collector",
+    spending: 940000,
+    avatar: "https://picsum.photos/id/1012/100/100",
+  },
+  {
+    id: "pika-rich",
+    name: "Pika_Rich",
+    spending: 750000,
+    avatar: "https://picsum.photos/id/1027/100/100",
+  },
+  {
+    id: "tomy-trading",
+    name: "Tomy_Trading",
+    spending: 580000,
+    avatar: "https://picsum.photos/id/1005/100/100",
+  },
+  {
+    id: "psa-10-hunter",
+    name: "PSA_10_Hunter",
+    spending: 460000,
+    avatar: "https://picsum.photos/id/1062/100/100",
+  },
+  {
+    id: "marnie-simp",
+    name: "Marnie_Simp",
+    spending: 390000,
+    avatar: "https://picsum.photos/id/1074/100/100",
+  },
+  {
+    id: "card-shogun",
+    name: "Card_Shogun",
+    spending: 320000,
+    avatar: "https://picsum.photos/id/64/100/100",
+  },
+  {
+    id: "neo-tokyo",
+    name: "Neo_Tokyo",
+    spending: 270000,
+    avatar: "https://picsum.photos/id/91/100/100",
+  },
+  {
+    id: "gengar-ghost",
+    name: "Gengar_Ghost",
+    spending: 210000,
+    avatar: "https://picsum.photos/id/338/100/100",
+  },
 ];
 
 // ─── Chart Config ─────────────────────────────────────────────────────────────
@@ -148,7 +250,12 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 const RANGE_LABEL_MAP: Record<string, string> = {
-  "12h": "12小時內", "7d": "7日內", "1m": "1個月內", "3m": "3個月內", "6m": "6個月內", "12m": "12個月內"
+  "12h": "12小時內",
+  "7d": "7日內",
+  "1m": "1個月內",
+  "3m": "3個月內",
+  "6m": "6個月內",
+  "12m": "12個月內",
 };
 
 const selectDisplayMap: Record<string, string> = {
@@ -157,7 +264,7 @@ const selectDisplayMap: Record<string, string> = {
   "1m": "1 個月",
   "3m": "3 個月",
   "6m": "6 個月",
-  "12m": "12 個月"
+  "12m": "12 個月",
 };
 
 // ─── Component Root ───────────────────────────────────────────────────────────
@@ -165,6 +272,9 @@ const selectDisplayMap: Record<string, string> = {
 export default function MerchantPerformancePage() {
   const router = useRouter();
   const [range, setRange] = useState<string>("7d"); // 預設對齊截圖的 7d 視角
+  const [displayArea, setDisplayArea] = useState<boolean>(true);
+  const [displayLine, setDisplayLine] = useState<boolean>(true);
+  const [displayBar, setDisplayBar] = useState<boolean>(true);
 
   const activeData = useMemo(() => {
     return PERFORMANCE_DATA_MAP[range] || PERFORMANCE_DATA_MAP["7d"];
@@ -174,15 +284,16 @@ export default function MerchantPerformancePage() {
   const allTimeMetrics = useMemo(() => {
     let turnoverSum = 0;
     let txCountSum = 0;
-    
+
     Object.values(PERFORMANCE_DATA_MAP).forEach((dataset) => {
       dataset.forEach((day) => {
         turnoverSum += day.turnover;
         txCountSum += day.txCount;
       });
     });
-    
-    const avgPriceCalc = txCountSum > 0 ? Math.round(turnoverSum / txCountSum) : 0;
+
+    const avgPriceCalc =
+      txCountSum > 0 ? Math.round(turnoverSum / txCountSum) : 0;
     return { turnoverSum, txCountSum, avgPriceCalc };
   }, []);
 
@@ -233,7 +344,9 @@ export default function MerchantPerformancePage() {
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
             歷史累計總營業額
           </p>
-          <p className={`font-mono text-[24px] font-black text-[${chartConfig.turnover.color}] leading-none tracking-tight`}>
+          <p
+            className={`font-mono text-[24px] font-black text-[${chartConfig.turnover.color}] leading-none tracking-tight`}
+          >
             HK$ {allTimeMetrics.turnoverSum.toLocaleString()}
           </p>
         </div>
@@ -242,7 +355,9 @@ export default function MerchantPerformancePage() {
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
             歷史累計平均單價
           </p>
-          <p className={ `font-mono text-[24px] font-black text-[${chartConfig.avgPrice.color}] leading-none tracking-tight` }>
+          <p
+            className={`font-mono text-[24px] font-black text-[${chartConfig.avgPrice.color}] leading-none tracking-tight`}
+          >
             HK$ {allTimeMetrics.avgPriceCalc.toLocaleString()}
           </p>
         </div>
@@ -251,7 +366,9 @@ export default function MerchantPerformancePage() {
           <p className="font-sans text-[12px] text-text-secondary font-medium tracking-tight mb-2">
             歷史累計總成交次數
           </p>
-          <p className={ `font-mono text-[24px] font-black text-[${chartConfig.txCount.color}] leading-none tracking-tight` }>
+          <p
+            className={`font-mono text-[24px] font-black text-[${chartConfig.txCount.color}] leading-none tracking-tight`}
+          >
             {allTimeMetrics.txCountSum.toLocaleString()} 次
           </p>
         </div>
@@ -259,27 +376,61 @@ export default function MerchantPerformancePage() {
 
       {/* Interactive Multi-Scale Performance Engine Container */}
       <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
-        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-          <div>
-            <p className="font-sans font-bold text-[15px] text-text-primary tracking-tight">
-              營收、價格與成交量
-            </p>
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+            <div>
+              <p className="font-sans font-bold text-[15px] text-text-primary tracking-tight">
+                營收、價格與成交量
+              </p>
+            </div>
+
+            <div className="w-[125px] shrink-0">
+              <Select
+                value={range}
+                onValueChange={(val) => val && setRange(val)}
+              >
+                <SelectTrigger className="w-full bg-[#1A1612] border border-white/5 rounded-xl text-text-primary text-[13px] font-sans h-9">
+                  <SelectValue>
+                    {selectDisplayMap[range] || "選擇時間"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-[#1A1612] border border-white/10 text-text-primary">
+                  <SelectItem value="12h">12 小時</SelectItem>
+                  <SelectItem value="7d">7 日</SelectItem>
+                  <SelectItem value="1m">1 個月</SelectItem>
+                  <SelectItem value="3m">3 個月</SelectItem>
+                  <SelectItem value="6m">6 個月</SelectItem>
+                  <SelectItem value="12m">12 個月</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="w-[125px] shrink-0">
-            <Select value={range} onValueChange={(val) => val && setRange(val)}>
-              <SelectTrigger className="w-full bg-[#1A1612] border border-white/5 rounded-xl text-text-primary text-[13px] font-sans h-9">
-                <SelectValue>{selectDisplayMap[range] || "選擇時間"}</SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-[#1A1612] border border-white/10 text-text-primary">
-                <SelectItem value="12h">12 小時</SelectItem>
-                <SelectItem value="7d">7 日</SelectItem>
-                <SelectItem value="1m">1 個月</SelectItem>
-                <SelectItem value="3m">3 個月</SelectItem>
-                <SelectItem value="6m">6 個月</SelectItem>
-                <SelectItem value="12m">12 個月</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-row justify-evenly text-text-secondary text-sm">
+            <div className="flex flex-row items-center gap-x-2">
+              <p>平均價</p>
+              <input
+                type="checkbox"
+                checked={displayArea}
+                onChange={() => setDisplayArea(!displayArea)}
+              />
+            </div>
+            <div className="flex flex-row items-center gap-x-2">
+              <p>營業額</p>
+              <input
+                type="checkbox"
+                checked={displayLine}
+                onChange={() => setDisplayLine(!displayLine)}
+              />
+            </div>
+            <div className="flex flex-row items-center gap-x-2">
+              <p>成交總數</p>
+              <input
+                type="checkbox"
+                checked={displayBar}
+                onChange={() => setDisplayBar(!displayBar)}
+              />
+            </div>
           </div>
         </div>
 
@@ -295,8 +446,11 @@ export default function MerchantPerformancePage() {
                   </linearGradient>
                 </defs>
 
-                <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.04)" />
-                
+                <CartesianGrid
+                  vertical={false}
+                  stroke="rgba(255,255,255,0.04)"
+                />
+
                 {/* ── 🟢 核心修正 1：加裝 scale="band"，強行壓縮 Area 折線的錨點，精準鎖死在柱狀圖正中央！ ── */}
                 <XAxis
                   dataKey="label"
@@ -304,9 +458,13 @@ export default function MerchantPerformancePage() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={10}
-                  style={{ fill: "#8A8680", fontSize: 10, fontFamily: "monospace" }}
+                  style={{
+                    fill: "#8A8680",
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                  }}
                 />
-                
+
                 {/* 左 Y 軸線路：主管大金額數值 */}
                 <YAxis
                   yAxisId="turnover"
@@ -314,15 +472,19 @@ export default function MerchantPerformancePage() {
                   includeHidden
                   label={chartConfig.turnover.label}
                   orientation="left"
-                  domain={['auto', 'auto']}
+                  domain={["auto", "auto"]}
                   tickCount={6}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  style={{ fill: chartConfig.turnover.color, fontSize: 10, fontFamily: "monospace" }}
+                  style={{
+                    fill: chartConfig.turnover.color,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                  }}
                   tickFormatter={(val) => `$${val.toLocaleString()}`}
                 />
-                
+
                 {/* 右 Y 軸線路：主管平均價 */}
                 <YAxis
                   yAxisId="avgPrice"
@@ -330,12 +492,16 @@ export default function MerchantPerformancePage() {
                   includeHidden
                   label={chartConfig.avgPrice.label}
                   orientation="right"
-                  domain={['auto', 'auto']}
+                  domain={["auto", "auto"]}
                   tickCount={6}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  style={{ fill: chartConfig.avgPrice.color, fontSize: 10, fontFamily: "monospace" }}
+                  style={{
+                    fill: chartConfig.avgPrice.color,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                  }}
                   tickFormatter={(val) => `$${val.toLocaleString()}`}
                 />
 
@@ -346,19 +512,26 @@ export default function MerchantPerformancePage() {
                   includeHidden
                   label={chartConfig.txCount.label}
                   orientation="right"
-                  domain={['auto', 'auto']}
+                  domain={["auto", "auto"]}
                   tickCount={6}
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  style={{ fill: chartConfig.avgPrice.color, fontSize: 10, fontFamily: "monospace"}}
+                  style={{
+                    fill: chartConfig.avgPrice.color,
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                  }}
                   tickFormatter={(val) => `$${val.toLocaleString()}`}
                 />
-                
+
                 <ChartTooltip
                   cursor={false}
                   content={
-                    <ChartTooltipContent className="bg-[#1A1612] border border-white/10 [&&_*]:text-[#eae1da]" labelClassName="text-lg"/>
+                    <ChartTooltipContent
+                      className="bg-[#1A1612] border border-white/10 [&&_*]:text-[#eae1da]"
+                      labelClassName="text-lg"
+                    />
                   }
                 />
 
@@ -370,6 +543,7 @@ export default function MerchantPerformancePage() {
                   fill="url(#mixAvgPrice)"
                   stroke={chartConfig.avgPrice.color}
                   strokeWidth={2}
+                  hide={!displayArea}
                 />
 
                 {/* 營業額：Line 折線 */}
@@ -381,8 +555,9 @@ export default function MerchantPerformancePage() {
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
+                  hide={!displayLine}
                 />
-                
+
                 {/* 成交總數 */}
                 <Bar
                   yAxisId="txCount"
@@ -390,9 +565,12 @@ export default function MerchantPerformancePage() {
                   fill={chartConfig.txCount.color}
                   radius={[3, 3, 0, 0]}
                   maxBarSize={8}
+                  hide={!displayBar}
                 />
-                
-                <ChartLegend content={<ChartLegendContent className="mt-4" />} />
+
+                <ChartLegend
+                  content={<ChartLegendContent className="mt-4" />}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -403,19 +581,31 @@ export default function MerchantPerformancePage() {
           <h4 className="font-sans font-bold text-[13.5px] text-brand tracking-tight mb-4">
             📊 區間營收轉化動態分析 ({currentRangeLabel})
           </h4>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-4 py-3 flex flex-col">
               <span className="font-mono text-[10.5px]">區間總營業額</span>
-              <span className={`text-[#d4a574] font-mono text-[16px] font-bold mt-1`}>HK$ {intervalTurnover.toLocaleString()}</span>
+              <span
+                className={`text-[#d4a574] font-mono text-[16px] font-bold mt-1`}
+              >
+                HK$ {intervalTurnover.toLocaleString()}
+              </span>
             </div>
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-4 py-3 flex flex-col">
               <span className="font-mono text-[10.5px]">區間平均價 (AOV)</span>
-              <span className={`text-[#00D2FF] font-mono text-[16px] font-bold mt-1`}>HK$ {intervalAvgPrice.toLocaleString()}</span>
+              <span
+                className={`text-[#00D2FF] font-mono text-[16px] font-bold mt-1`}
+              >
+                HK$ {intervalAvgPrice.toLocaleString()}
+              </span>
             </div>
             <div className="bg-[#17130f] border border-white/5 rounded-xl px-4 py-3 flex flex-col">
               <span className="font-mono text-[10.5px]">區間總交易筆數</span>
-              <span className={`text-[#10b981] font-mono text-[16px] font-bold mt-1`}>{intervalTxCount.toLocaleString()} 次</span>
+              <span
+                className={`text-[#10b981] font-mono text-[16px] font-bold mt-1`}
+              >
+                {intervalTxCount.toLocaleString()} 次
+              </span>
             </div>
           </div>
         </div>
@@ -443,10 +633,10 @@ export default function MerchantPerformancePage() {
                       prod.rank === 1
                         ? "bg-brand text-[#17130f]"
                         : prod.rank === 2
-                        ? "bg-[#a89888] text-[#17130f]"
-                        : prod.rank === 3
-                        ? "bg-[#5c554e] text-text-primary"
-                        : "bg-[#26211C] text-text-secondary"
+                          ? "bg-[#a89888] text-[#17130f]"
+                          : prod.rank === 3
+                            ? "bg-[#5c554e] text-text-primary"
+                            : "bg-[#26211C] text-text-secondary"
                     }`}
                   >
                     {prod.rank}
