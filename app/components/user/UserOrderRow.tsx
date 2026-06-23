@@ -9,7 +9,6 @@ import {
   STATUS_STEP_INDEX,
 } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
-import { useTradeStore } from "@/app/store/useTradeStore";
 
 interface UserOrderRowProps {
   order: SaleOrder;
@@ -42,22 +41,10 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 
 export function UserOrderRow({ order }: UserOrderRowProps) {
   const router = useRouter();
-  const { openGlobalChat } = useTradeStore();
 
   const isBuyer = order.userContext === "BUYER";
   const counterpartLabel = isBuyer ? "賣家" : "買家";
   const counterpartName = isBuyer ? order.sellerName : order.buyerName;
-
-  const handleChatClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    openGlobalChat(
-      order.buyerId,
-      order.buyerName,
-      order.sellerId,
-      order.sellerName,
-      order.userContext,
-    );
-  };
 
   return (
     <div

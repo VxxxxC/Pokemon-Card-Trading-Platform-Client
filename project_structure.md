@@ -1,4 +1,4 @@
-# 🗂️ PokéTrade JP - 完整專案結構樹 (Full-Depth)
+# 🗂️ HKCardVault - 完整專案結構樹 (Full-Depth)
 
 ## 📊 項目統計
 
@@ -204,7 +204,7 @@ docs/
 
 ```
 .github/
-├── copilot-instructions.md        # 📌 PokéTrade 黃金工作流
+├── copilot-instructions.md        # 📌 HKCardVault 黃金工作流
 └── prompts/
     ├── react-components.prompt.md
     ├── shadcn-ui.prompt.md
@@ -233,7 +233,7 @@ docs/
   /merchant/settings   → 你的商家設定
 
 /profile/[id]          → 查看他人檔案 (第三人稱)
-  例: /profile/PKT-8839-44A
+  例: /profile/HKCV-8839-44A
 ```
 
 ### 其他關鍵路由
@@ -316,4 +316,4 @@ docs/
 
 **最後更新**: 2026-05-29
 **版本**: Full-Depth v2.0
-**維護者**: PokéTrade JP 開發團隊
+**維護者**: HKCardVault 開發團隊

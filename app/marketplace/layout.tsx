@@ -4,7 +4,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 
 export const metadata: Metadata = {
-  title: "市場 — PokéTrade JP",
+  title: "市場 — HKCardVault",
   description:
     "瀏覽日版 Pokémon 卡牌交易市場，精選 SAR、UR、SR、AR 稀有度卡牌。",
 };

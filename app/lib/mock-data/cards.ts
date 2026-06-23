@@ -1,4 +1,4 @@
-// TODO [MOCK DATA]: Unified Single Source of Truth (SSOT) — PokéTrade JP Card Asset Registry
+// TODO [MOCK DATA]: Unified Single Source of Truth (SSOT) — HKCardVault Card Asset Registry
 // Replace with real-time Supabase queries upon backend integration.
 
 export interface SellOrder {
@@ -69,35 +69,35 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "渡邊道館",
-        sellerId: "PKT-8839-44A",
+        sellerId: "HKCV-8839-44A",
         price: 2250,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "旺角天線卡王",
-        sellerId: "PKT-1122-33B",
+        sellerId: "HKCV-1122-33B",
         price: 2150,
         sellerRating: 4.8,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "秋葉原海外直送店",
-        sellerId: "PKT-4455-66C",
+        sellerId: "HKCV-4455-66C",
         price: 2400,
         sellerRating: 4.9,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
       },
       {
         sellerName: "信和執雞大師",
-        sellerId: "PKT-7788-99D",
+        sellerId: "HKCV-7788-99D",
         price: 2100,
         sellerRating: 4.5,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "深水埗精品角落",
-        sellerId: "PKT-2210-55E",
+        sellerId: "HKCV-2210-55E",
         price: 1980, // ← lowest ask — this becomes the effective market price
         sellerRating: 4.3,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
@@ -105,56 +105,56 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
       // ── 擴展掛單 Order 6–13：確保訂單簿跨越 3 頁分頁視窗 ────────────────
       {
         sellerName: "北角高層收藏所",
-        sellerId: "PKT-3366-88F",
+        sellerId: "HKCV-3366-88F",
         price: 2350,
         sellerRating: 4.7,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "大坑珍品屋",
-        sellerId: "PKT-5577-22G",
+        sellerId: "HKCV-5577-22G",
         price: 2200,
         sellerRating: 4.8,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "灣仔潮流卡舖",
-        sellerId: "PKT-6622-11H",
+        sellerId: "HKCV-6622-11H",
         price: 1900,
         sellerRating: 4.4,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
       },
       {
         sellerName: "天水圍拍賣商",
-        sellerId: "PKT-9911-33I",
+        sellerId: "HKCV-9911-33I",
         price: 2050,
         sellerRating: 4.6,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "東涌海外代購",
-        sellerId: "PKT-4477-66J",
+        sellerId: "HKCV-4477-66J",
         price: 1970,
         sellerRating: 4.5,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "屯門古稀精品",
-        sellerId: "PKT-7733-55K",
+        sellerId: "HKCV-7733-55K",
         price: 2080,
         sellerRating: 4.3,
         customGrade: { authority: "BGS", score: "9" },
       },
       {
         sellerName: "荃灣TCG Gallery",
-        sellerId: "PKT-1199-44L",
+        sellerId: "HKCV-1199-44L",
         price: 2420,
         sellerRating: 4.9,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "沙田競技商城",
-        sellerId: "PKT-8844-77M",
+        sellerId: "HKCV-8844-77M",
         price: 1860,
         sellerRating: 4.2,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
@@ -194,28 +194,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "銅鑼灣收藏家",
-        sellerId: "PKT-5566-77C",
+        sellerId: "HKCV-5566-77C",
         price: 2750,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "尖沙咀卡神",
-        sellerId: "PKT-9900-11A",
+        sellerId: "HKCV-9900-11A",
         price: 2600,
         sellerRating: 4.9,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "荔枝角大師傅",
-        sellerId: "PKT-3311-22D",
+        sellerId: "HKCV-3311-22D",
         price: 2380,
         sellerRating: 4.6,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "元朗李生精品",
-        sellerId: "PKT-2233-44B",
+        sellerId: "HKCV-2233-44B",
         price: 2450,
         sellerRating: 4.7,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
@@ -258,35 +258,35 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "觀塘夜市收藏王",
-        sellerId: "PKT-8866-00C",
+        sellerId: "HKCV-8866-00C",
         price: 2050,
         sellerRating: 4.6,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "新宿夜行商",
-        sellerId: "PKT-6644-88A",
+        sellerId: "HKCV-6644-88A",
         price: 1900,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "石籬二手精品鋪",
-        sellerId: "PKT-1188-22E",
+        sellerId: "HKCV-1188-22E",
         price: 1820,
         sellerRating: 4.7,
         customGrade: { authority: "CGC", score: "9.5" },
       },
       {
         sellerName: "大阪神秘珍品室",
-        sellerId: "PKT-7755-99B",
+        sellerId: "HKCV-7755-99B",
         price: 1750,
         sellerRating: 4.8,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "九龍城無框生品",
-        sellerId: "PKT-9977-11D",
+        sellerId: "HKCV-9977-11D",
         price: 1650, // ← lowest ask
         sellerRating: 4.4,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
@@ -328,28 +328,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "元朗動漫城",
-        sellerId: "PKT-5544-77C",
+        sellerId: "HKCV-5544-77C",
         price: 460,
         sellerRating: 4.9,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "西環電力站",
-        sellerId: "PKT-3322-55A",
+        sellerId: "HKCV-3322-55A",
         price: 425,
         sellerRating: 4.8,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "藍田玩具商",
-        sellerId: "PKT-4433-66B",
+        sellerId: "HKCV-4433-66B",
         price: 380,
         sellerRating: 4.5,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
       },
       {
         sellerName: "將軍澳小卡鋪",
-        sellerId: "PKT-6655-88D",
+        sellerId: "HKCV-6655-88D",
         price: 350, // ← lowest ask
         sellerRating: 4.2,
         customGrade: { authority: "Raw Card", score: "" }, // Raw — tests graded-only filter
@@ -391,28 +391,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "渡邊道館",
-        sellerId: "PKT-8839-44A",
+        sellerId: "HKCV-8839-44A",
         price: 1120,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "尖沙咀卡神",
-        sellerId: "PKT-9900-11A",
+        sellerId: "HKCV-9900-11A",
         price: 1080,
         sellerRating: 4.9,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "銅鑼灣收藏家",
-        sellerId: "PKT-5566-77C",
+        sellerId: "HKCV-5566-77C",
         price: 1050,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "荔枝角大師傅",
-        sellerId: "PKT-3311-22D",
+        sellerId: "HKCV-3311-22D",
         price: 980,
         sellerRating: 4.6,
         customGrade: { authority: "CGC", score: "9" },
@@ -454,28 +454,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "新宿夜行商",
-        sellerId: "PKT-6644-88A",
+        sellerId: "HKCV-6644-88A",
         price: 1580,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "旺角天線卡王",
-        sellerId: "PKT-1122-33B",
+        sellerId: "HKCV-1122-33B",
         price: 1530,
         sellerRating: 4.8,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "信和執雞大師",
-        sellerId: "PKT-7788-99D",
+        sellerId: "HKCV-7788-99D",
         price: 1470,
         sellerRating: 4.5,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "觀塘夜市收藏王",
-        sellerId: "PKT-8866-00C",
+        sellerId: "HKCV-8866-00C",
         price: 1420,
         sellerRating: 4.6,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -517,28 +517,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "西環電力站",
-        sellerId: "PKT-3322-55A",
+        sellerId: "HKCV-3322-55A",
         price: 860,
         sellerRating: 4.8,
         customGrade: { authority: "CGC", score: "9.5" },
       },
       {
         sellerName: "藍田玩具商",
-        sellerId: "PKT-4433-66B",
+        sellerId: "HKCV-4433-66B",
         price: 820,
         sellerRating: 4.5,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "元朗動漫城",
-        sellerId: "PKT-5544-77C",
+        sellerId: "HKCV-5544-77C",
         price: 790,
         sellerRating: 4.9,
         customGrade: { authority: "BGS", score: "9" },
       },
       {
         sellerName: "元朗李生精品",
-        sellerId: "PKT-2233-44B",
+        sellerId: "HKCV-2233-44B",
         price: 760,
         sellerRating: 4.7,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -580,28 +580,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "九龍城無框生品",
-        sellerId: "PKT-9977-11D",
+        sellerId: "HKCV-9977-11D",
         price: 720,
         sellerRating: 4.4,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "秋葉原海外直送店",
-        sellerId: "PKT-4455-66C",
+        sellerId: "HKCV-4455-66C",
         price: 695,
         sellerRating: 4.9,
         customGrade: { authority: "BGS", score: "9" },
       },
       {
         sellerName: "石籬二手精品鋪",
-        sellerId: "PKT-1188-22E",
+        sellerId: "HKCV-1188-22E",
         price: 660,
         sellerRating: 4.7,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "大阪神秘珍品室",
-        sellerId: "PKT-7755-99B",
+        sellerId: "HKCV-7755-99B",
         price: 630,
         sellerRating: 4.8,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -643,28 +643,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "渡邊道館",
-        sellerId: "PKT-8839-44A",
+        sellerId: "HKCV-8839-44A",
         price: 3350,
         sellerRating: 5.0,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "北角高層收藏所",
-        sellerId: "PKT-3366-88F",
+        sellerId: "HKCV-3366-88F",
         price: 3200,
         sellerRating: 4.7,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "大坑珍品屋",
-        sellerId: "PKT-5577-22G",
+        sellerId: "HKCV-5577-22G",
         price: 3050,
         sellerRating: 4.8,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "尖沙咀卡神",
-        sellerId: "PKT-9900-11A",
+        sellerId: "HKCV-9900-11A",
         price: 2950,
         sellerRating: 4.9,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -706,28 +706,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "灣仔潮流卡舖",
-        sellerId: "PKT-6622-11H",
+        sellerId: "HKCV-6622-11H",
         price: 1920,
         sellerRating: 4.4,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "天水圍拍賣商",
-        sellerId: "PKT-9911-33I",
+        sellerId: "HKCV-9911-33I",
         price: 1870,
         sellerRating: 4.6,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "東涌海外代購",
-        sellerId: "PKT-4477-66J",
+        sellerId: "HKCV-4477-66J",
         price: 1800,
         sellerRating: 4.5,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "銅鑼灣收藏家",
-        sellerId: "PKT-5566-77C",
+        sellerId: "HKCV-5566-77C",
         price: 1760,
         sellerRating: 5.0,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -769,28 +769,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "屯門古稀精品",
-        sellerId: "PKT-7733-55K",
+        sellerId: "HKCV-7733-55K",
         price: 1700,
         sellerRating: 4.3,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "荃灣TCG Gallery",
-        sellerId: "PKT-1199-44L",
+        sellerId: "HKCV-1199-44L",
         price: 1650,
         sellerRating: 4.9,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "沙田競技商城",
-        sellerId: "PKT-8844-77M",
+        sellerId: "HKCV-8844-77M",
         price: 1600,
         sellerRating: 4.2,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "渡邊道館",
-        sellerId: "PKT-8839-44A",
+        sellerId: "HKCV-8839-44A",
         price: 1580,
         sellerRating: 5.0,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -832,28 +832,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "尖沙咀卡神",
-        sellerId: "PKT-9900-11A",
+        sellerId: "HKCV-9900-11A",
         price: 2900,
         sellerRating: 4.9,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "新宿夜行商",
-        sellerId: "PKT-6644-88A",
+        sellerId: "HKCV-6644-88A",
         price: 2750,
         sellerRating: 5.0,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "深水埗精品角落",
-        sellerId: "PKT-2210-55E",
+        sellerId: "HKCV-2210-55E",
         price: 2600,
         sellerRating: 4.3,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "旺角天線卡王",
-        sellerId: "PKT-1122-33B",
+        sellerId: "HKCV-1122-33B",
         price: 2500,
         sellerRating: 4.8,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -895,28 +895,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "大阪神秘珍品室",
-        sellerId: "PKT-7755-99B",
+        sellerId: "HKCV-7755-99B",
         price: 1380,
         sellerRating: 4.8,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "觀塘夜市收藏王",
-        sellerId: "PKT-8866-00C",
+        sellerId: "HKCV-8866-00C",
         price: 1340,
         sellerRating: 4.6,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "荔枝角大師傅",
-        sellerId: "PKT-3311-22D",
+        sellerId: "HKCV-3311-22D",
         price: 1300,
         sellerRating: 4.6,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "秋葉原海外直送店",
-        sellerId: "PKT-4455-66C",
+        sellerId: "HKCV-4455-66C",
         price: 1260,
         sellerRating: 4.9,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -958,28 +958,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "元朗動漫城",
-        sellerId: "PKT-5544-77C",
+        sellerId: "HKCV-5544-77C",
         price: 1850,
         sellerRating: 4.9,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "元朗李生精品",
-        sellerId: "PKT-2233-44B",
+        sellerId: "HKCV-2233-44B",
         price: 1800,
         sellerRating: 4.7,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "將軍澳小卡鋪",
-        sellerId: "PKT-6655-88D",
+        sellerId: "HKCV-6655-88D",
         price: 1750,
         sellerRating: 4.2,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "渡邊道館",
-        sellerId: "PKT-8839-44A",
+        sellerId: "HKCV-8839-44A",
         price: 1700,
         sellerRating: 5.0,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -1021,28 +1021,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "九龍城無框生品",
-        sellerId: "PKT-9977-11D",
+        sellerId: "HKCV-9977-11D",
         price: 3900,
         sellerRating: 4.4,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "石籬二手精品鋪",
-        sellerId: "PKT-1188-22E",
+        sellerId: "HKCV-1188-22E",
         price: 3750,
         sellerRating: 4.7,
         customGrade: { authority: "BGS", score: "9.5" },
       },
       {
         sellerName: "西環電力站",
-        sellerId: "PKT-3322-55A",
+        sellerId: "HKCV-3322-55A",
         price: 3600,
         sellerRating: 4.8,
         customGrade: { authority: "PSA", score: "9" },
       },
       {
         sellerName: "信和執雞大師",
-        sellerId: "PKT-7788-99D",
+        sellerId: "HKCV-7788-99D",
         price: 3500,
         sellerRating: 4.5,
         customGrade: { authority: "Raw Card", score: "" }, // Raw
@@ -1084,28 +1084,28 @@ export const INITIAL_LISTINGS: UnifiedProductSpec[] = [
     sellOrders: [
       {
         sellerName: "東涌海外代購",
-        sellerId: "PKT-4477-66J",
+        sellerId: "HKCV-4477-66J",
         price: 1220,
         sellerRating: 4.5,
         customGrade: { authority: "PSA", score: "10" },
       },
       {
         sellerName: "天水圍拍賣商",
-        sellerId: "PKT-9911-33I",
+        sellerId: "HKCV-9911-33I",
         price: 1180,
         sellerRating: 4.6,
         customGrade: { authority: "BGS", score: "9" },
       },
       {
         sellerName: "屯門古稀精品",
-        sellerId: "PKT-7733-55K",
+        sellerId: "HKCV-7733-55K",
         price: 1140,
         sellerRating: 4.3,
         customGrade: { authority: "CGC", score: "9" },
       },
       {
         sellerName: "深水埗精品角落",
-        sellerId: "PKT-2210-55E",
+        sellerId: "HKCV-2210-55E",
         price: 1100,
         sellerRating: 4.3,
         customGrade: { authority: "Raw Card", score: "" }, // Raw

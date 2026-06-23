@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +44,7 @@ export function SpecialTransactionMessage({
   const [currentPrice, setCurrentPrice] = useState(offerPrice);
   const [counterInput, setCounterInput] = useState(offerPrice);
 
-  const { setIsChatOpen } = useTradeStore();
+  const { setIsChatOpen } = useHkCardVaultStore();
 
   // ── Seller handlers ──────────────────────────────────────────────────────
   const handleAccept = () => {

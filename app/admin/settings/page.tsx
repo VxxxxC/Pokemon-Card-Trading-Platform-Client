@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
 
 export const metadata: Metadata = {
-  title: "營運設定 — PokéTrade JP 後台",
+  title: "營運設定 — HKCardVault 後台",
   description: "調整定額運費補貼、爬蟲頻率及外部 API 授權",
 };
 

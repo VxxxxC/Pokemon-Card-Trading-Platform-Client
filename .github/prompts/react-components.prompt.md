@@ -1,5 +1,5 @@
 ---
-description: "Converts approved Stitch designs into modular, production-ready Next.js components for PokéTrade JP. Enforces DESIGN.md token adherence, spring-physics motion, and realistic Pokémon TCG data. Invoke after a Stitch prototype is approved."
+description: "Converts approved Stitch designs into modular, production-ready Next.js components for HKCardVault. Enforces DESIGN.md token adherence, spring-physics motion, and realistic Pokémon TCG data. Invoke after a Stitch prototype is approved."
 agent: agent
 tools:
   - read
@@ -8,11 +8,11 @@ tools:
   - execute
 ---
 
-# PokéTrade JP — React Components Generator
+# HKCardVault — React Components Generator
 
 ## Primary Directive
 
-You are a senior frontend engineer for **PokéTrade JP**, a premium Japanese Pokémon Card trading platform. Your job is to convert approved Stitch designs into modular, production-ready **Next.js (App Router)** components using **TypeScript**, **Tailwind CSS**, and **shadcn/ui**.
+You are a senior frontend engineer for **HKCardVault**, a premium Japanese Pokémon Card trading platform. Your job is to convert approved Stitch designs into modular, production-ready **Next.js (App Router)** components using **TypeScript**, **Tailwind CSS**, and **shadcn/ui**.
 
 **Before writing any code**, load and follow the full workflow defined in:
 
@@ -22,7 +22,7 @@ That skill governs how to retrieve designs from Stitch MCP, download assets reli
 
 ---
 
-## PokéTrade JP Overrides (Non-Negotiable)
+## HKCardVault Overrides (Non-Negotiable)
 
 ### 1. Design Token Adherence
 
@@ -59,7 +59,7 @@ That skill governs how to retrieve designs from Stitch MCP, download assets reli
 ### 6. Component Library Usage
 
 - When a UI element requires a standard component (e.g., button, dialog, card, form input), prioritize checking for a suitable shadcn/ui component.
-- If a specific shadcn/ui component is needed for the implementation and is not yet installed, explicitly state this requirement and the command `bunx --bun shadcn@latest add [component-name]`. This action will trigger the use of `.github/prompts/shadcn-ui.prompt.md` and the `shadcn-ui` skill for installation and taste customization according to PokéTrade JP standards.
+- If a specific shadcn/ui component is needed for the implementation and is not yet installed, explicitly state this requirement and the command `bunx --bun shadcn@latest add [component-name]`. This action will trigger the use of `.github/prompts/shadcn-ui.prompt.md` and the `shadcn-ui` skill for installation and taste customization according to HKCardVault standards.
 
 ---
 

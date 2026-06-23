@@ -22,7 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
   formatMessageTime,
   getDateSeparatorLabel,
@@ -338,7 +338,7 @@ export function GlobalChatConsole() {
     mobileView,
     setMobileView,
     activateRoomById,
-  } = useTradeStore();
+  } = useHkCardVaultStore();
 
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
   const [isReportOpen, setIsReportOpen] = useState(false);

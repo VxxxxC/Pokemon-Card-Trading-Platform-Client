@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 從全域中央大腦引入狀態
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 
 const navLinks = [
@@ -27,8 +27,13 @@ export function TopNav() {
   const isGuest = mockRole === "GUEST";
 
   // 從 Zustand 接入受控雷達狀態
-  const { chats, isChatOpen, setIsChatOpen, setActiveRoomId, activateRoomById } =
-    useTradeStore();
+  const {
+    chats,
+    isChatOpen,
+    setIsChatOpen,
+    setActiveRoomId,
+    activateRoomById,
+  } = useHkCardVaultStore();
 
   // 點擊外面收起下拉選單
   useEffect(() => {
@@ -70,12 +75,8 @@ export function TopNav() {
     <>
       <header className="hidden lg:flex sticky top-0 z-50 w-full h-16 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
         <div className="max-w-[1200px] mx-auto w-full px-8 flex items-center justify-between">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="font-sans font-bold text-[18px] text-[#eae1da] tracking-tight shrink-0"
-          >
-            PokéTrade <span className="text-brand">JP</span>
+          <Link href="/" className="font-sans font-semibold text-lg text-brand">
+            HKCardVault{" "}
           </Link>
 
           {/* 導航 */}

@@ -9,7 +9,6 @@ import {
   STATUS_STEP_INDEX,
 } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
-import { useTradeStore } from "@/app/store/useTradeStore";
 
 interface MerchantOrderRowProps {
   order: SaleOrder;
@@ -42,18 +41,6 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
 
 export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
   const router = useRouter();
-  const { openGlobalChat } = useTradeStore();
-
-  const handleChatClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    openGlobalChat(
-      order.buyerId,
-      order.buyerName,
-      order.sellerId,
-      order.sellerName,
-      "SELLER",
-    );
-  };
 
   return (
     <div

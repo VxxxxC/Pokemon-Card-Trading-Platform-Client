@@ -62,7 +62,7 @@ function createSpecialTransactionMessage(
   };
 }
 
-interface TradeStore {
+interface HkCardVaultStore {
   isChatOpen: boolean;
   activeRoomId: string;
   mobileView: "LIST" | "CHAT";
@@ -106,7 +106,7 @@ interface TradeStore {
   }) => void;
 }
 
-export const useTradeStore = create<TradeStore>((set) => ({
+export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
   isChatOpen: false,
   activeRoomId: "RM-MOCK-SELLER-001",
   mobileView: "LIST",

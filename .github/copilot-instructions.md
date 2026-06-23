@@ -2,7 +2,7 @@
 
 ## 專案背景
 
-您是一位資深全端工程師兼藝術總監，正致力於開發 **PokéTrade JP**，這是一個為專業投資者打造的頂級日本寶可夢卡牌交易平台。
+您是一位資深全端工程師兼藝術總監，正致力於開發 **HKCardVault**，這是一個為專業投資者打造的頂級日本寶可夢卡牌交易平台。
 技術棧：Next.js (App Router), Tailwind CSS, Supabase, Stripe Connect, shadcn/ui。
 
 ## 優先閱讀 (所有協作者與 AI 代理)
@@ -15,7 +15,7 @@
 4. [docs/dev/database.md](../docs/dev/database.md) — 資料庫架構與查詢 TODO 追蹤器
 5. [docs/dev/follow-up/](../docs/dev/follow-up/) — 後期developement需要follow up
 
-## 👑 PokéTrade 黃金工作流 (Agentic UI 工作流)
+## 👑 HKCardVault 黃金工作流 (Agentic UI 工作流)
 
 當使用者要求建立/修改/編輯/修正頁面、組件或 UI 功能時，您必須嚴格執行以下 3 個步驟的工作流。**請勿直接跳到編寫程式碼。**
 
@@ -99,7 +99,7 @@ export default async function OrdersGatewayPage() {
 
 - `/profile/user/[id]` ➔ 根據 `user_id` 穿透審查特定會員。
 - `/profile/merchant/[id]` ➔ 根據 `merchant_id` 穿透調閱商戶賬目。
-- 散戶對外分享線繼續維持目前的 PKT-ID 格式（`/profile/[id]`）。
+- 散戶對外分享線繼續維持目前的 HKCV-ID 格式（`/profile/[id]`）。
 
 ### 4. 雙端導航欄登入狀態 UI 動態分流規範 (Navbar Auth State Branching Rules)
 
@@ -133,7 +133,7 @@ export default async function OrdersGatewayPage() {
 
 ### 3. 交易全額結算防線 (Full Pay Architecture Mandate)
 
-- **全量款項託管**：PokéTrade JP 的所有交易、中介鑑定、代管合約（Escrow）均強制遵循 **全額付訖 (100% Full Pay)** 結算防線。
+- **全量款項託管**：HKCardVault 的所有交易、中介鑑定、代管合約（Escrow）均強制遵循 **全額付訖 (100% Full Pay)** 結算防線。
 - **嚴禁新增/渲染訂金欄位**：嚴禁任何 AI 協作者或代碼修改在 `SaleOrder` / 任何交易 interface 中重新加入 `depositPaid`、`depositAmount` 或任何形式的「擔保訂金」/「成數定金」欄位。
 - **鑑定增值服務可選費用**：唯一的額外支付模組僅限於可選（Optional）的平台微觀品相鑑定服務，主交易商品本身絕無分期或兩階段付款。所有代碼、UI 元件和 Mock 數據均必須徹底對齊此全額交付之閉環。
 
@@ -152,9 +152,9 @@ export default async function OrdersGatewayPage() {
 4. **全域狀態管理與 Zustand 領域驅動鐵律 (Zustand State Architecture Enforcement)**：
    - **全域狀態唯一真理源**：專案已全面轉型為 Zustand 全域狀態控盤，逐步 Revamp 淘汰舊有的 Prop Drilling 以及無人接收的全域 `CustomEvent` 廣播。
    - **分佈式目錄解耦規範**：所有全域狀態 Store 必須嚴格起在 `$PROJECT_ROOT/store/` 目錄下。
-   - **嚴禁巨石 Store (Anti-Monolithic Store)**：嚴禁將所有不同模組、業務領域的狀態無腦塞入單一的 `useTradeStore.ts` 裡面。
+   - **嚴禁巨石 Store (Anti-Monolithic Store)**：嚴禁將所有不同模組、業務領域的狀態無腦塞入單一的 `useHkCardVaultStore.ts` 裡面。
    - **架構擴充命名規範**：開發新功能或拓展全新業務領域（如接下來的 Merchant 後台、Stripe Connect 託管狀態、會員資產包等）時，**必須單獨建立一個相對應名稱的 Store 檔案**（例如：商戶模組使用 `store/useMerchantStore.ts`、市場篩選使用 `store/useMarketStore.ts`）。
-   - **按需動態訂閱**：組件在引入全域 Store時，必須使用精準動態解構（例如 `const isChatOpen = useTradeStore(state => state.isChatOpen)`），嚴禁無腦全量引入（例如 `const state = useTradeStore()`），以防止單一狀態微幅更新觸發全網頁集體連鎖重繪。
+   - **按需動態訂閱**：組件在引入全域 Store時，必須使用精準動態解構（例如 `const isChatOpen = useHkCardVaultStore(state => state.isChatOpen)`），嚴禁無腦全量引入（例如 `const state = useHkCardVaultStore()`），以防止單一狀態微幅更新觸發全網頁集體連鎖重繪。
 
 ## 任務管理與規劃指令
 
@@ -189,7 +189,7 @@ export default async function OrdersGatewayPage() {
 
 - **初始化：** 如果您需要在專案中初始化 shadcn/ui，請使用命令 `bunx --bun shadcn@latest init`。
 - **組件安裝：** 如果需要尚未安裝的新 shadcn/ui 組件，請使用 `bunx --bun shadcn@latest add [component-name]` 開始安裝。此命令將引導使用者完成設定。
-- **自定義：** 所有 shadcn/ui 組件都必須進行自定義，以符合 `.stitch/designs/DESIGN.md` 中定義的 PokéTrade JP 設計系統。請嚴格遵守 `.agents/skills/shadcn-ui/SKILL.md` 和 `.github/prompts/shadcn-ui.prompt.md` 中指定的審美覆蓋和組件整合規則。
+- **自定義：** 所有 shadcn/ui 組件都必須進行自定義，以符合 `.stitch/designs/DESIGN.md` 中定義的 HKCardVault 設計系統。請嚴格遵守 `.agents/skills/shadcn-ui/SKILL.md` 和 `.github/prompts/shadcn-ui.prompt.md` 中指定的審美覆蓋和組件整合規則。
 - **觸發動作：** 當 UI 實作需要特定的 shadcn 組件時，請明確提及需要使用 `bunx --bun shadcn@latest add [component-name]`。此動作將自動觸發 `.github/prompts/shadcn-ui.prompt.md` 和 `shadcn-ui` 技能，以進行安裝 and 品味自定義。
 
 ```

@@ -51,7 +51,7 @@ const getFallbackProduct = (id: string): UnifiedProductSpec => ({
   sellOrders: [
     {
       sellerName: "官方流動池",
-      sellerId: "PKT-0000-00A",
+      sellerId: "HKCV-0000-00A",
       price: 1000,
       sellerRating: 5.0,
       customGrade: { authority: "PSA", score: "10" },

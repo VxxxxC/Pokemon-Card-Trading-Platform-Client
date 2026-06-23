@@ -5,7 +5,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 
 export const metadata: Metadata = {
-  title: "設定 · PokéTrade JP",
+  title: "設定 · HKCardVault",
   description: "管理語言、貨幣、通知偏好及查看平台條款",
 };
 
@@ -56,7 +56,7 @@ const settingsSections = [
     items: [
       {
         label: "登入 / 註冊",
-        description: "立即加入 PokéTrade JP，開始交易精選卡牌",
+        description: "立即加入 HKCardVault，開始交易精選卡牌",
         action: "前往",
         href: "/auth",
       },
@@ -72,7 +72,7 @@ const settingsSections = [
       },
       {
         label: "服務條款",
-        description: "PokéTrade JP 平台使用條款",
+        description: "HKCardVault 平台使用條款",
         action: "查看",
       },
       {
@@ -92,7 +92,7 @@ const settingsSections = [
       },
       {
         label: "聯絡客服",
-        description: "電郵：support@poketrade.jp",
+        description: "電郵：support@hkcardvault.jp",
         action: "聯絡",
       },
     ],

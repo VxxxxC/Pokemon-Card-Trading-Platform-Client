@@ -17,7 +17,7 @@ import {
   getPublicMemberById,
   getStorefrontListingsByMember,
 } from "@/app/lib/mock-data/members";
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
 
 // 🟢 核心引入：使用底層 Base UI 拋光後的奢華 Select 組件群
@@ -65,8 +65,8 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     () => false,
   );
 
-  const setIsChatOpen = useTradeStore((state) => state.setIsChatOpen);
-  const setActiveRoomId = useTradeStore((state) => state.setActiveRoomId);
+  const setIsChatOpen = useHkCardVaultStore((state) => state.setIsChatOpen);
+  const setActiveRoomId = useHkCardVaultStore((state) => state.setActiveRoomId);
 
   // 🟢 訂閱 Zustand 核心篩選狀態（同步大盤模式）
   const activeTypes = useMarketStore((state) => state.activeTypes);

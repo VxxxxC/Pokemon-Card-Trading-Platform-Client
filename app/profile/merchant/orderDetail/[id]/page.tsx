@@ -7,7 +7,6 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { IoChevronBack } from "react-icons/io5";
 import { useMerchantStore } from "@/app/store/useMerchantStore";
-import { useTradeStore } from "@/app/store/useTradeStore";
 import { OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { toast } from "sonner";
@@ -50,8 +49,6 @@ export default function MerchantOrderDetailPage() {
     sendOrderToGrading,
     releaseOrderEscrow,
   } = useMerchantStore();
-
-  const { openGlobalChat } = useTradeStore();
 
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -232,7 +229,7 @@ export default function MerchantOrderDetailPage() {
                 <span className="text-[#10b981] font-mono font-bold">
                   HK$ {order.amount.toLocaleString("zh-TW")}
                 </span>
-                ， 此資金已安全存入 PokéTrade
+                ， 此資金已安全存入 HKCardVault
                 官方擔保帳戶託管。請您確認此交易並準備安排發貨。
               </p>
               <button
@@ -339,7 +336,7 @@ export default function MerchantOrderDetailPage() {
           {order.status === "grading" && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                卡牌實物正在由 PokéTrade
+                卡牌實物正在由 HKCardVault
                 專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS
                 標準驗證）。
               </p>

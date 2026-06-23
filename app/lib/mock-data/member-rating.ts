@@ -11,7 +11,7 @@ export interface UserReviewItem {
 
 export const MOCK_MEMBER_REVIEWS: UserReviewItem[] = [
   { id: "rev-001", reviewer: "K.田中", rating: 5, comment: "包裝非常謹慎，卡況與描述完全一致，快速發貨，強力推薦！", date: "2026年 5月", isMerchantTx: false, reviewerId: "koji_tcg", avatarSeed: "user-yamada-ren-tcg" },
-  { id: "rev-002", reviewer: "C.Lin", rating: 5, comment: "專業賣家，溝通回應快，第二次購買同一位賣家，值得信賴。", date: "2026年 4月", isMerchantTx: false, reviewerId: "PKT-USER-001", avatarSeed: "cwb-collector-hk" },
+  { id: "rev-002", reviewer: "C.Lin", rating: 5, comment: "專業賣家，溝通回應快，第二次購買同一位賣家，值得信賴。", date: "2026年 4月", isMerchantTx: false, reviewerId: "HKCV-USER-001", avatarSeed: "cwb-collector-hk" },
   { id: "rev-003", reviewer: "M.鈴木", rating: 5, comment: "PSA 10 品相完美，雙重氣泡袋保護出貨，超出預期，感謝！", date: "2026年 3月", isMerchantTx: true, reviewerId: "yuenlong-mrlee", avatarSeed: "yuenlong-mrlee" },
   { id: "rev-004", reviewer: "Y.Watanabe", rating: 4.5, comment: "卡況與圖片描述一致，發貨稍慢但最終無恙送達，整體滿意。", date: "2026年 2月", isMerchantTx: false, reviewerId: "watanabe-gym-tcg", avatarSeed: "watanabe-gym-tcg" },
   { id: "rev-005", reviewer: "T.佐藤", rating: 5, comment: "驗證賣家，每次購買都很放心，Charizard ex SAR 品相無可挑剔。", date: "2026年 1月", isMerchantTx: true, reviewerId: "yuenlong-mrlee", avatarSeed: "yuenlong-mrlee" },

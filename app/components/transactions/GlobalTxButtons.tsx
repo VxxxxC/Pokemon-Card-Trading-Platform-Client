@@ -1,6 +1,6 @@
 "use client";
 
-import { useTradeStore } from "@/app/store/useTradeStore";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
 
 interface GlobalButtonProps {
@@ -19,14 +19,14 @@ export function BuyButton({
   className = "",
   label,
 }: GlobalButtonProps) {
-  const injectSpecialTransaction = useTradeStore(
+  const injectSpecialTransaction = useHkCardVaultStore(
     (state) => state.injectSpecialTransaction,
   );
 
   const handleBuy = () => {
     injectSpecialTransaction({
       sellerName: listing.seller,
-      sellerId: listing.sellerId ?? "PKT-SELLER-UNKNOWN",
+      sellerId: listing.sellerId ?? "HKCV-SELLER-UNKNOWN",
       cardName: listing.name,
       cardId: listing.id,
       offerPrice: listing.price,
@@ -49,14 +49,14 @@ export function BuyButton({
 
 // 🔨 立即競投按鈕 — 注入 pending 議價要約，開啟聊天室議價通道
 export function AuctionButton({ listing, className = "" }: GlobalButtonProps) {
-  const injectSpecialTransaction = useTradeStore(
+  const injectSpecialTransaction = useHkCardVaultStore(
     (state) => state.injectSpecialTransaction,
   );
 
   const handleAuction = () => {
     injectSpecialTransaction({
       sellerName: listing.seller,
-      sellerId: listing.sellerId ?? "PKT-SELLER-UNKNOWN",
+      sellerId: listing.sellerId ?? "HKCV-SELLER-UNKNOWN",
       cardName: listing.name,
       cardId: listing.id,
       offerPrice: listing.price,

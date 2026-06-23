@@ -1,4 +1,4 @@
-# PokéTrade JP - Post-Backend Real-time Toast Requirements
+# HKCardVault - Post-Backend Real-time Toast Requirements
 
 This document tracks the advanced, state-driven real-time toast architectures to be deployed once Supabase Realtime Channels, Scraper Webhooks, and Stripe Connect are integrated.
 

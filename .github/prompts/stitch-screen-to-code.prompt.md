@@ -298,7 +298,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
-// Apply PokéTrade JP customisations (from shadcn-ui.prompt.md)
+// Apply HKCardVault customisations (from shadcn-ui.prompt.md)
 <Button className="active:scale-[0.98]">Action</Button>
 ```
 
@@ -321,7 +321,7 @@ Generate the following files in `${outputPath}`:
 
 3. **`constants.ts`** (if component uses static data)
    - Mock data, configuration constants
-   - Realistic PokéTrade JP data (no Lorem Ipsum)
+   - Realistic HKCardVault data (no Lorem Ipsum)
 
 ### Code Quality Standards
 
@@ -330,7 +330,7 @@ Generate the following files in `${outputPath}`:
 - [ ] **Accessible** — proper semantic HTML, ARIA labels where needed, keyboard navigation
 - [ ] **Responsive** — tested on mobile/tablet/desktop breakpoints
 - [ ] **Design tokens** — 100% from DESIGN.md, no hardcoded colors
-- [ ] **Realistic data** — PokéTrade JP context (card names, prices, grades)
+- [ ] **Realistic data** — HKCardVault context (card names, prices, grades)
 - [ ] **Motion** — spring physics only, no linear transitions
 - [ ] **Props properly typed** — `Readonly<T>` in React where applicable
 

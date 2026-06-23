@@ -1,4 +1,4 @@
-# PokéTrade JP Implementation Sync Archive
+# HKCardVault Implementation Sync Archive
 
 ## Read First (All Collaborators & AI Agents)
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "卡牌資料庫 — PokéTrade JP 後台",
+  title: "卡牌資料庫 — HKCardVault 後台",
   description: "審核卡牌條目，管理非 API 覆蓋的特殊卡牌手動錄入",
 };
 

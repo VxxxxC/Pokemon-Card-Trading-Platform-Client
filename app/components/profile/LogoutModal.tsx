@@ -66,7 +66,7 @@ export function LogoutModal() {
               您確定要結束目前的會話並登出嗎？
             </p>
             <p className="font-mono text-[10px] text-text-disabled mb-6">
-              SESSION_ID: PKT-AUTH-LOGOUT-REQD
+              SESSION_ID: HKCV-AUTH-LOGOUT-REQD
             </p>
 
             <div className="flex gap-3">

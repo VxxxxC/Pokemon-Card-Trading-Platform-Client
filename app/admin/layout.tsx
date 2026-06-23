@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { AdminNav } from "@/app/components/admin/AdminNav";
 
 export const metadata: Metadata = {
-  title: "後台管理 — PokéTrade JP",
+  title: "後台管理 — HKCardVault",
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

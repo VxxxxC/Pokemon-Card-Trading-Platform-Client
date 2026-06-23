@@ -48,7 +48,7 @@ interface MockDbState {
   cancelListingAndRemove: (id: string) => void;
 }
 
-const TRADING_MEMBER_ID = "PKT-8839-44A";
+const TRADING_MEMBER_ID = "HKCV-8839-44A";
 
 // ── 數據庫初始種子（Seed Data） ──
 const SEED_PORTFOLIO = [
@@ -219,7 +219,7 @@ export const useMockDbStore = create<MockDbState>()(
         })),
     }),
     {
-      name: "poketrade-jp-mock-db", // LocalStorage 唯一金鑰鍵
+      name: "hkcardvault-mock-db", // LocalStorage 唯一金鑰鍵
       storage: createJSONStorage(() => localStorage),
     },
   ),

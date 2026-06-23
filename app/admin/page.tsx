@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "平台監控 — PokéTrade JP 後台",
+  title: "平台監控 — HKCardVault 後台",
   description: "實時監控平台整體交易量、營收及系統狀態",
 };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { UserRole } from "@/app/lib/types/rbac";
 
 export const metadata: Metadata = {
-  title: "用戶管理 — PokéTrade JP 後台",
+  title: "用戶管理 — HKCardVault 後台",
   description: "查看所有用戶，管理權限與封禁狀態",
 };
 
