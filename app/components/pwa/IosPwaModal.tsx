@@ -37,10 +37,18 @@ const IOS_PWA_SLIDES: TutorialSlide[] = [
   },
 ];
 
+const SNOOZE_KEY = "pwa_snooze_until";
+const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
 export function IosPwaModal() {
   const isOpen = useUIStore((state) => state.isIosPwaModalOpen);
   const closeIosPwaModal = useUIStore((state) => state.closeIosPwaModal);
   const [currentStep, setCurrentStep] = useState(0);
+
+  const handleSnooze = () => {
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DURATION_MS)); //
+    window.dispatchEvent(new Event("poketrade:pwa-snooze-changed")); //
+  };
 
   if (!isOpen) return null;
 
@@ -61,6 +69,7 @@ export function IosPwaModal() {
   };
 
   const handleClose = () => {
+    handleSnooze();
     setCurrentStep(0);
     closeIosPwaModal();
   };
