@@ -1,22 +1,23 @@
 {
-  "name": "HKCardVault — 寶可夢卡牌專業交易平台",
+  "name": "HKCardVault",
   "short_name": "HKCardVault",
   "description": "寶可夢卡牌專業交易平台。即時市場數據、安全的第三方託管付款。",
   "icons": [
     {
-      "src": "/icons/icon-192.svg",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.svg",
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "theme_color": "#2563EB",
-  "background_color": "#F8F9FA",
+  "theme_color": "#17130f",
+  "background_color": "#17130f",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait"
