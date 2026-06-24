@@ -26,6 +26,9 @@ export const metadata: Metadata = {
   },
   description: APP_DESCRIPTION,
   manifest: "/manifest.json",
+  other: {
+    "apple-mobile-web-app-capable": "yes",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -127,7 +130,9 @@ export default function RootLayout({
       style={{ backgroundColor: "#17130f" }}
     >
       {/* 🎯 核心優化：完全清空手寫的 <head> 內部標籤，交由 Next.js 統一編排輸出 */}
-      <head />
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body
         className="min-h-dvh bg-bg-page text-text-primary font-sans"
         style={{ backgroundColor: "#17130f" }}
