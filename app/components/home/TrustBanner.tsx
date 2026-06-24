@@ -3,20 +3,20 @@
 const steps = [
   {
     number: "1",
-    title: "支付港幣訂金",
-    description: "支付 10-20% 港幣訂金啟動鑑定流程",
+    title: "支付費用",
+    description: "支付鑑定服務費用，啟動鑑定流程",
     icon: ShieldIcon,
   },
   {
     number: "2",
-    title: "官方實體鑑定",
-    description: "4-6 張細節圖確認卡牌真偽與品相",
+    title: "實體鑑定",
+    description: "鑑定卡牌真偽與品相",
     icon: CheckIcon,
   },
   {
     number: "3",
     title: "安全發貨",
-    description: "系統自動扣尾數，安全發貨到手",
+    description: "系統自動發貨，安全到手",
     icon: TruckIcon,
   },
 ];
@@ -37,7 +37,10 @@ export function TrustBanner() {
         {steps.map((step) => {
           const Icon = step.icon;
           return (
-            <div key={step.number} className="flex flex-col items-center text-center">
+            <div
+              key={step.number}
+              className="flex flex-col items-center text-center"
+            >
               <div className="w-12 h-12 rounded-full bg-[rgba(212,165,116,0.10)] border border-[rgba(212,165,116,0.15)] flex items-center justify-center mb-3">
                 <Icon />
               </div>
@@ -60,7 +63,17 @@ export function TrustBanner() {
 
 function ShieldIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#d4a574"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
   );
@@ -68,7 +81,17 @@ function ShieldIcon() {
 
 function CheckIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#d4a574"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M9 11l3 3L22 4" />
       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
@@ -77,7 +100,17 @@ function CheckIcon() {
 
 function TruckIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a574" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#d4a574"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <rect x="1" y="3" width="15" height="13" />
       <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
       <circle cx="5.5" cy="18.5" r="2.5" />
