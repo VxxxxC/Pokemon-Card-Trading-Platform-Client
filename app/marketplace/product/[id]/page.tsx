@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 // 🟢 核心對齊：引入 Next.js 官方原生頂級聲明式導航組件
 import Link from "next/link";
+import { TrustBanner } from "@/app/components/home/TrustBanner";
 
 // 定義完整的三軌複合排序 SubSortKey
 type SubSortKey = "price_asc" | "grade_desc" | "rating_desc";
@@ -276,12 +277,11 @@ export default function ProductDetailPage({ params }: PageProps) {
                     Live Index
                   </span>
                 </div>
-                <div className="relative w-full h-[10rem] overflow-hidden">
+                <div className="relative w-full h-[11rem] overflow-hidden">
                   <CChart16
                     data={card.chartPoints}
                     xKey="date"
                     yKey="price"
-                    height={115}
                     color="#d4a574"
                   />
                 </div>
@@ -476,6 +476,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </div>
               </div>
             </div>
+            <TrustBanner />
           </section>
         </div>
       </main>
