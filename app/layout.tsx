@@ -17,7 +17,6 @@ const APP_TITLE_TEMPLATE = "%s | HKCardVault";
 const APP_DESCRIPTION =
   "寶可夢卡牌專業交易平台。即時市場數據、安全的第三方託管付款、收藏家及專業投資者服務。";
 
-// 🟢 核心修正：將所有 iOS 啟動圖完整移入 Next.js 官方 Metadata 引擎，確保完美解析順序
 export const metadata: Metadata = {
   applicationName: APP_NAME,
   title: {
@@ -30,7 +29,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: APP_NAME,
-    // 🚀 亮點：由 Next.js 統一控盤生成 apple-touch-startup-image，徹底防範白屏
+    // 🚀 保持 Next.js 控盤生成極其工整的直向與橫向 40+ 條全裝置適配鏈路
     startupImage: [
       {
         url: "/splash_screens/iPhone_17_Pro_Max__iPhone_16_Pro_Max_landscape.png",
@@ -243,7 +242,7 @@ export const metadata: Metadata = {
           "screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
       },
       {
-        url: "/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_portrait.png",
+        url: "/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_landscape.png",
         media:
           "screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
       },
@@ -253,6 +252,10 @@ export const metadata: Metadata = {
           "screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)",
       },
     ],
+  },
+  // 🟢 絕殺修正：強制補回被 Next.js 15/16 內置優化引擎誤吞的舊版關鍵相容標籤！
+  other: {
+    "apple-mobile-web-app-capable": "yes",
   },
   formatDetection: {
     telephone: false,
@@ -278,32 +281,23 @@ export default function RootLayout({
         GeistMono.variable,
         "font-sans",
       )}
-      // 🚀 防線二：硬編碼 HTML 頂層背景色，在 CSS 完全載入前強行將畫布鎖死在炭黑色，底層杜絕死白閃爍
       style={{ backgroundColor: "#17130f" }}
     >
-      {/* 🎯 核心優化：完全清空手寫的 <head> 內部標籤，交由 Next.js 統一編排輸出 */}
+      {/* 🎯 保持完全清空手寫的 <head>，全權交給上方官方結構進行 SSOT 控盤輸出 */}
       <head />
       <body
         className="min-h-dvh bg-bg-page text-text-primary font-sans"
         style={{ backgroundColor: "#17130f" }}
       >
-        {/* iOS PWA 安裝提示 */}
         <IosPwaModal />
-        {/* Sticky Navbar Demo controller */}
         <DemoRoleSwitcher />
 
-        {/* 外層：PWA 基建環境供應商 */}
         <AppSerwistProvider>
-          {/* 網絡狀態斷網警告條 */}
           <PwaNetworkBanner />
-
-          {/* 全站主要內容渲染區 */}
           {children}
         </AppSerwistProvider>
 
-        {/* Global Sonner Toast */}
         <Toaster position="top-center" closeButton richColors expand={false} />
-        {/* Global Add Asset Modal */}
         <AddAssetModal />
       </body>
     </html>
