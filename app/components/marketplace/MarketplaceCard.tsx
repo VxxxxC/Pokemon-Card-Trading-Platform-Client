@@ -43,14 +43,14 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
       className="group bg-[#26211C] rounded-2xl overflow-hidden border border-[rgba(237,232,224,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.40)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.65)] flex flex-col justify-between"
     >
       <div>
-        <div className="relative w-full aspect-[5/3.8] overflow-hidden bg-[#1A1612]">
+        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[#1A1612]">
           {/* 🟢 核心修正 1：將卡片封面的 Link，精準正名並導向 /marketplace/product/[id] 公共大盤頁 */}
           <Link href={detailHref} className="block relative w-full h-full">
             <Image
               src={listing.image}
               alt={`${listing.name} — ${listing.rarity}`}
               fill
-              className="object-cover group-hover:scale-[1.03] transition-transform duration-300"
+              className="object-contain group-hover:scale-[1.03] transition-transform duration-300 p-2"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               unoptimized
             />
@@ -68,42 +68,46 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
         </div>
 
         <div className="p-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
+          <div className="flex items-start justify-between gap-2 min-w-0 w-full">
+            <div className="min-w-0 w-full">
               {/* 🟢 核心修正 2：將卡片標題的 Link，同步精準導向 /marketplace/product/[id] */}
-              <Link href={detailHref}>
-                <h3 className="font-sans font-semibold text-[15px] text-[#eae1da] leading-snug truncate hover:text-[#d4a574] transition-colors">
+              <Link href={detailHref} className="block w-full min-w-0">
+                <h3 className="font-sans font-semibold text-[14.5px] text-[#eae1da] leading-snug truncate group-hover:text-[#d4a574] transition-colors whitespace-nowrap block w-full">
                   {listing.name}
                 </h3>
               </Link>
-              <span className="font-mono text-[11px] text-[#d4c4b7]">
+              <span className="font-mono text-[11px] text-[#d4c4b7] block truncate">
                 {displayCardNo}
               </span>
             </div>
           </div>
 
-          <div className="flex items-end justify-between pt-1">
-            <div>
+          <div className="flex items-end justify-between pt-1 gap-2 min-w-0 w-full">
+            <div className="min-w-0 flex-1">
               <div className="text-nowrap mb-2 -mx-1">
                 <GradeBadge
                   authority={listing.grade.authority}
                   score={listing.grade.score}
                 />
               </div>
-              <p className="font-mono font-bold text-[17px] text-[#eae1da] leading-none">
-                {formattedPrice}
-              </p>
-              <span
-                className={`font-mono text-[11px] inline-flex items-center gap-0.5 mt-1 ${listing.deltaDirection === "up" ? "text-[#10b981]" : "text-[#ef4444]"}`}
-              >
-                {formattedDelta}
-              </span>
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <p className="font-mono font-bold tracking-tight text-[16px] text-[#eae1da] leading-none">
+                  {formattedPrice}
+                </p>
+                <span
+                  className={`font-mono text-[11px] whitespace-nowrap flex items-center gap-0.5 ${
+                    listing.deltaDirection === "up" ? "text-[#10b981]" : "text-[#ef4444]"
+                  }`}
+                >
+                  {formattedDelta}
+                </span>
+              </div>
             </div>
-            <div className="text-right">
+            <div className="text-right min-w-0 shrink-0">
               <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
                 賣家
               </p>
-              <p className="font-sans text-[12px] text-[#d4c4b7] truncate max-w-22.5 font-medium mt-0.5">
+              <p className="truncate max-w-[90px] block font-sans whitespace-nowrap text-[12px] text-[#d4c4b7] font-medium mt-0.5">
                 {listing.seller}
               </p>
             </div>
