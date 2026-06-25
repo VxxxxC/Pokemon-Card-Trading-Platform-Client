@@ -99,6 +99,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   const [onlyGraded, setOnlyGraded] = useState(false);
   // 🟢 訂單簿分頁狀態
   const [orderPageState, setOrderPageState] = useState({ page: 1, forKey: "" });
+  const [historyPage, setHistoryPage] = useState(1);
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -145,6 +146,18 @@ export default function ProductDetailPage({ params }: PageProps) {
       return a.price - b.price;
     });
   }, [card.sellOrders, subSortKey, onlyGraded]);
+
+  // 🟢 交易歷史分頁計算引擎
+  const historyPerPage = 5;
+  const totalHistoryPages = Math.ceil(card.soldHistory.length / historyPerPage);
+
+  // Derive active paginated segment array dynamically
+  const paginatedHistory = useMemo(() => {
+    return card.soldHistory.slice(
+      (historyPage - 1) * historyPerPage,
+      historyPage * historyPerPage,
+    );
+  }, [card.soldHistory, historyPage]);
 
   if (!isMounted) {
     return (
@@ -199,11 +212,11 @@ export default function ProductDetailPage({ params }: PageProps) {
             href="/marketplace"
             className="text-[#eae1da] hover:text-brand transition-colors duration-200 font-bold tracking-wide cursor-pointer"
           >
-            MARKETPLACE 交易所大盤
+            MARKETPLACE{" "}
           </Link>
           <span className="text-[#50453b] font-sans font-normal">/</span>
           <span className="text-[#8A8680] truncate uppercase cursor-default">
-            {id} AGGREGATED PRODUCT
+            {id}
           </span>
         </div>
 
@@ -512,7 +525,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                 最近全網已成交歷史紀錄
               </h3>
               <div className="space-y-2">
-                {card.soldHistory.map((item, idx) => (
+                {paginatedHistory.map((item, idx) => (
                   <div
                     key={idx}
                     className="flex items-center justify-between font-mono text-[12px] p-2.5 bg-[#17130f] rounded-lg border border-white/[0.04]"
@@ -528,6 +541,18 @@ export default function ProductDetailPage({ params }: PageProps) {
                   </div>
                 ))}
               </div>
+
+              {/* 🎯 Target Injected History Ledger Pagination Controller */}
+              <Pagination
+                currentPage={historyPage}
+                totalPages={totalHistoryPages}
+                onPageChange={setHistoryPage}
+                itemLabel="筆成交紀錄"
+                totalItems={card.soldHistory.length}
+                itemsPerPage={historyPerPage}
+                enableScroll={false} // Kept false to prevent disruptive viewport jumps on small boxes
+                className="mt-3 pt-1"
+              />
             </div>
 
             {/* 屬性規格矩陣 */}
