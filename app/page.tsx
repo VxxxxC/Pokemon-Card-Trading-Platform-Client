@@ -13,6 +13,7 @@ import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { PwaInlineBanner } from "./components/pwa/PwaInlineBanner";
+import { useUIStore } from "@/app/store/useUIStore";
 
 // 將 PwaInstallPrompt 封裝為非 SSR 的純客戶端動態組件
 const PwaInstallPrompt = dynamic(
@@ -24,6 +25,8 @@ const PwaInstallPrompt = dynamic(
 );
 
 export default function HomePage() {
+  const mockRole = useUIStore((state) => state.mockRole);
+
   return (
     <div className="min-h-[100dvh] bg-bg-page text-text-primary flex flex-col font-sans">
       {/* 頂部全域看盤元件列 */}
@@ -47,7 +50,7 @@ export default function HomePage() {
         <TrustBanner />
 
         {/* Section 3: 心水情報 — wishlist cards with price alerts & personal feed */}
-        <WishlistTicker />
+        {(mockRole === "USER" || mockRole === "ADMIN") && <WishlistTicker />}
 
         {/* Section 5: Premium Escrow Market — KYC merchant listings */}
         <PremiumMarket />

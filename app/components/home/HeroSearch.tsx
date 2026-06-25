@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import { useUIStore } from "@/app/store/useUIStore";
 
 // 🟢 核心修正：將 Rarity 晶片回歸到獨立的欄位 query 參數，與模糊搜尋關鍵字 q 徹底劃清界線
 const quickFilters = [
@@ -17,6 +18,9 @@ const quickFilters = [
 export function HeroSearch() {
   const [searchValue, setSearchValue] = useState("");
   const router = useRouter();
+  const mockRole = useUIStore((state) => state.mockRole);
+
+  const showCheckIn = mockRole === "USER" || mockRole === "ADMIN";
 
   const executeSearch = () => {
     const trimmed = searchValue.trim();
@@ -47,12 +51,12 @@ export function HeroSearch() {
           >
             搜尋你的目標神卡
           </h1>
-          <p className="font-sans text-[13.5px] text-text-secondary mb-5 max-w-[400px]">
+          <p className={`font-sans text-[13.5px] text-text-secondary mb-5 ${showCheckIn ? "max-w-[400px]" : "max-w-xl"}`}>
             輸入卡牌編號，毫秒級查詢全港最低價現貨。
           </p>
 
           {/* Search bar */}
-          <div className="flex gap-2 max-w-[520px]">
+          <div className={`flex gap-2 ${showCheckIn ? "max-w-[520px] w-full" : "w-full max-w-full"}`}>
             <div className="flex-1 relative">
               <SearchIcon />
               <input
@@ -93,9 +97,11 @@ export function HeroSearch() {
           </div>
         </div>
 
-        <div className="w-full lg:w-[550px] shrink-0">
-          <CheckInCard />
-        </div>
+        {showCheckIn && (
+          <div className="w-full lg:w-[550px] shrink-0">
+            <CheckInCard />
+          </div>
+        )}
       </div>
     </section>
   );

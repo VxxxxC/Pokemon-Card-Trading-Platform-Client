@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, use, useSyncExternalStore, useMemo } from "react";
+import { useUIStore } from "@/app/store/useUIStore";
 import { Pagination } from "@/app/components/ui/Pagination";
 import Image from "next/image";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
@@ -87,6 +88,8 @@ const chartConfig = {
 export default function ProductDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+  const mockRole = useUIStore((state) => state.mockRole);
+  const isGuest = mockRole === "GUEST";
 
   const card: UnifiedProductSpec =
     INITIAL_LISTINGS.find((l) => l.id === id) ?? getFallbackProduct(id);
@@ -300,8 +303,22 @@ export default function ProductDetailPage({ params }: PageProps) {
             </div>
 
             {/* 30天歷史走勢圖 */}
+            {/* TODO: 如果未login，加上blur效果及增加button redirect用戶至login page */}
             {hasChartData ? (
-              <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3 overflow-hidden">
+              <div className="relative overflow-hidden bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+                {isGuest && (
+                  <div className="absolute inset-0 bg-[#17130f]/60 backdrop-blur-md z-30 flex flex-col items-center justify-center p-4 text-center select-none animate-fadeIn">
+                    <p className="font-sans font-bold text-[14px] text-[#eae1da] mb-3">
+                      登入免費查閱完整市場大盤走勢
+                    </p>
+                    <Link
+                      href={`/auth?redirect=${encodeURIComponent(`/marketplace/product/${id}`)}`}
+                      className="inline-flex items-center justify-center h-9 px-4 bg-brand text-[#1A1612] font-sans font-bold text-[12px] rounded-lg shadow-md hover:bg-[#e8b896] transition-all active:scale-[0.97] cursor-pointer"
+                    >
+                      登入 / 註冊
+                    </Link>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
                     全網 30 天已成交均價走勢
@@ -520,7 +537,27 @@ export default function ProductDetailPage({ params }: PageProps) {
             </div>
 
             {/* 最近成交紀錄 */}
-            <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+            {/* TODO: 如果未login，加上blur效果及增加button redirect用戶至login page */}
+            <div className="relative overflow-hidden bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+              {isGuest && (
+                <div className="absolute inset-0 bg-[#17130f]/60 backdrop-blur-md z-30 flex flex-col items-center justify-center p-4 text-center select-none animate-fadeIn">
+                  <p className="font-sans font-medium text-[13px] text-[#eae1da] mb-2.5">
+                    登入解鎖全港歷史交割真理數據
+                  </p>
+                  <Link
+                    href={`/auth?redirect=${encodeURIComponent(`/marketplace/product/${id}`)}`}
+                    className="inline-flex items-center justify-center h-9 px-4 bg-brand text-[#1A1612] font-sans font-bold text-[12px] rounded-lg shadow-md hover:bg-[#e8b896] transition-all active:scale-[0.97] cursor-pointer"
+                  >
+                    登入 / 註冊
+                  </Link>
+                  <Link
+                    href={`/auth?redirect=${encodeURIComponent(`/marketplace/product/${id}`)}`}
+                    className="font-sans text-[11px] text-brand underline mt-2 block cursor-pointer"
+                  >
+                    已有帳號？立即登入
+                  </Link>
+                </div>
+              )}
               <h3 className="font-sans font-semibold text-[13px] text-[#eae1da]">
                 最近全網已成交歷史紀錄
               </h3>

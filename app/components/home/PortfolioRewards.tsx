@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useUIStore } from "@/app/store/useUIStore";
 
 // TODO: [API] Fetch user portfolio value from Supabase — aggregate `user_portfolio` table card values in HKD
 // TODO: [database] Create `user_portfolio` table with card_id, quantity, condition fields; compute HKD net worth via market price API
@@ -18,8 +19,9 @@ const checkInDays = [
 ];
 
 export function PortfolioRewards() {
-  // Simulate logged-out state for now
-  const isLoggedIn = false;
+  const mockRole = useUIStore((state) => state.mockRole);
+  const isLoggedIn =
+    mockRole === "USER" || mockRole === "MERCHANT" || mockRole === "ADMIN";
 
   if (!isLoggedIn) {
     return (
@@ -37,7 +39,8 @@ export function PortfolioRewards() {
             我的卡盒身家
           </h2>
           <p className="font-sans text-[14px] text-text-secondary mb-4 max-w-[320px] mx-auto">
-            防潮箱裡藏著多少寶藏？登入即刻啟用「AI 身家計算器」，一秒估算你的卡牌港幣總價值！
+            防潮箱裡藏著多少寶藏？登入即刻啟用「AI
+            身家計算器」，一秒估算你的卡牌港幣總價值！
           </p>
           <Link
             href="/auth"
@@ -62,59 +65,80 @@ export function PortfolioRewards() {
         >
           我的卡盒身家
         </h2>
-        <Link
-          href="/profile/user/collection"
-          className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
-        >
-          管理收藏 →
-        </Link>
+        {mockRole !== "ADMIN" ? (
+          <Link
+            href={`/profile/${mockRole.toLowerCase()}`}
+            className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
+          >
+            管理收藏 →
+          </Link>
+        ) : null}
       </div>
 
       <div className="lg:flex lg:gap-6">
         {/* Portfolio summary */}
-        <div className="mb-4 lg:mb-0 lg:flex-1">
-          <p className="font-mono text-[12px] text-text-secondary mb-1">
-            總收藏估值 (HKD)
-          </p>
-          <p className="font-mono font-bold text-[28px] text-text-primary">
-            HK$48,620
-          </p>
-          <span className="font-mono text-[12px] text-success">
-            ▲ 3.2% (本月)
-          </span>
+        <div className="mb-4 lg:mb-0 lg:flex-1 flex flex-row gap-6 sm:gap-8 items-start">
+          <div className="flex-1 min-w-0">
+            <p className="font-mono text-[12px] text-text-secondary mb-1 truncate">
+              總收藏估值 (HKD)
+            </p>
+            <p className="font-mono font-bold text-[24px] sm:text-[28px] text-text-primary truncate">
+              HK$48,620
+            </p>
+            <span className="font-mono text-[12px] text-success block mt-1">
+              ▲ 3.2% (本月)
+            </span>
+          </div>
+
+          <div className="border-l border-[rgba(237,232,224,0.12)] pl-6 sm:pl-8 flex-1 min-w-0">
+            <p className="font-mono text-[12px] text-text-secondary mb-1 truncate">
+              持有卡牌數量
+            </p>
+            <p className="font-mono font-bold text-[24px] sm:text-[28px] text-text-primary truncate">
+              142{" "}
+              <span className="font-sans text-[13.5px] text-text-secondary font-medium">
+                張
+              </span>
+            </p>
+            <span className="font-mono text-[12px] text-brand block mt-1">
+              ★ 頂級收藏家
+            </span>
+          </div>
         </div>
 
         {/* 7-day check-in */}
-        <div className="lg:flex-1">
-          <p className="font-sans text-[13px] text-text-secondary mb-3">
-            已連續簽到 5 日！第 7 日即可解鎖「全港免運費券」！
-          </p>
-          <div className="flex items-center gap-1">
-            {checkInDays.map((d) => (
-              <div
-                key={d.day}
-                className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-[8px] ${
-                  d.completed
-                    ? "bg-[rgba(16,185,129,0.10)]"
-                    : "bg-[rgba(237,232,224,0.04)]"
-                }`}
-              >
-                <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono ${
+        {mockRole === "USER" ? (
+          <div className="lg:flex-1">
+            <p className="font-sans text-[13px] text-text-secondary mb-3">
+              已連續簽到 5 日！第 7 日即可解鎖「全港免運費券」！
+            </p>
+            <div className="flex items-center gap-1">
+              {checkInDays.map((d) => (
+                <div
+                  key={d.day}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-[8px] ${
                     d.completed
-                      ? "bg-success text-[#17130f]"
-                      : "border border-text-disabled text-text-disabled"
+                      ? "bg-[rgba(16,185,129,0.10)]"
+                      : "bg-[rgba(237,232,224,0.04)]"
                   }`}
                 >
-                  {d.completed ? "✓" : d.day}
-                </span>
-                <span className="font-mono text-[9px] text-text-secondary">
-                  {d.reward}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono ${
+                      d.completed
+                        ? "bg-success text-[#17130f]"
+                        : "border border-text-disabled text-text-disabled"
+                    }`}
+                  >
+                    {d.completed ? "✓" : d.day}
+                  </span>
+                  <span className="font-mono text-[9px] text-text-secondary">
+                    {d.reward}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </section>
   );
