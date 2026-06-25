@@ -137,6 +137,14 @@ export default async function OrdersGatewayPage() {
 - **嚴禁新增/渲染訂金欄位**：嚴禁任何 AI 協作者或代碼修改在 `SaleOrder` / 任何交易 interface 中重新加入 `depositPaid`、`depositAmount` 或 any 形式的「擔保訂金」/「成數定金」欄位。
 - **鑑定增值服務可選費用**：唯一的額外支付模組僅限於可選（Optional）的平台微觀品相鑑定服務，主交易商品本身絕無分期或兩階段付款。所有代碼、UI 元件和 Mock 數據均必須徹底對齊此全額交付之閉環。
 
+### 5. iOS PWA Multi-Orientation Splash Screen Hardline Ordering Mandate (iOS 啟動畫面物理排序鐵律)
+
+- **硬性禁止防線**：嚴禁將 iOS PWA 啟動畫面陣列（`appleWebApp.startupImage`）寫入 Next.js 官方的 `export const metadata: Metadata` 物件中。Next.js 內置的元數據優化引擎會在打包時觸發「標籤自動分組與亂序編排（Tag Grouping & Reordering）」，強行將 `<link>` 移至 `<meta>` 標籤之上。此舉會直接引發 iOS Safari HTML 解析器失效，導致 iPhone 用戶加載 PWA 時陷入永久黑屏或系統預設死白閃爍。
+- **唯一正確實作鐵律**：全站的 iOS PWA 運作狀態與 40 幾條直向/橫向（Portrait/Landscape）啟動圖媒體查詢鏈路，必須 100% 強制在 `app/layout.tsx` 的 **原生 HTML `<head>` 標籤內進行實體硬編碼（Hardcoded Static Seeding）**。且必須嚴格鎖死以下物理閱讀順序：
+  1. 最優先渲染 `apple-mobile-web-app-capable` 等核心 PWA 狀態 Meta 標籤。
+  2. 緊接著渲染 `apple-touch-icon` 保底圖標。
+  此物理順序防線不容任何編譯引擎擅自改動，以確保全裝置 0 延遲加載與極致流金視覺的無縫閉環。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
