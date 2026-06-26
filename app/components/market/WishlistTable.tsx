@@ -230,9 +230,13 @@ export function WishlistTable() {
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="font-sans font-medium text-[13px] text-text-primary truncate">
+                        {/* 🎯 Target Injected Product Viewport Redirect Anchor */}
+                        <Link 
+                          href={`/marketplace/product/${entry.id}`}
+                          className="font-sans font-semibold text-[13px] text-text-primary truncate hover:text-brand transition-colors duration-200 block w-full cursor-pointer"
+                        >
                           {entry.name}
-                        </p>
+                        </Link>
                         <p className="font-mono text-[10px] text-text-disabled">
                           {entry.cardCode}
                         </p>
