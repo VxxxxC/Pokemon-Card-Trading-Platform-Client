@@ -4,6 +4,7 @@ import { useState, use, useSyncExternalStore, useMemo } from "react";
 import { useUIStore } from "@/app/store/useUIStore";
 import { Pagination } from "@/app/components/ui/Pagination";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
@@ -41,6 +42,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { IoChevronBack } from "react-icons/io5";
 
 // 定義完整的三軌複合排序 SubSortKey
 type SubSortKey = "price_asc" | "grade_desc" | "rating_desc";
@@ -88,6 +90,7 @@ const chartConfig = {
 export default function ProductDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
+  const router = useRouter();
   const mockRole = useUIStore((state) => state.mockRole);
   const isGuest = mockRole === "GUEST";
 
@@ -116,9 +119,10 @@ export default function ProductDetailPage({ params }: PageProps) {
   const availableGrades = useMemo(() => {
     const gradesSet = new Set<string>();
     card.sellOrders.forEach((o) => {
-      const gradeStr = o.customGrade.authority === "Raw Card" 
-        ? "Raw Card" 
-        : `${o.customGrade.authority} ${o.customGrade.score}`;
+      const gradeStr =
+        o.customGrade.authority === "Raw Card"
+          ? "Raw Card"
+          : `${o.customGrade.authority} ${o.customGrade.score}`;
       gradesSet.add(gradeStr);
     });
     return ["ALL", ...Array.from(gradesSet)];
@@ -138,9 +142,10 @@ export default function ProductDetailPage({ params }: PageProps) {
     // 1.5 鑑定等級 Variant 過濾篩選
     if (selectedGradeFilter !== "ALL") {
       orders = orders.filter((order) => {
-        const currentGradeStr = order.customGrade.authority === "Raw Card"
-          ? "Raw Card"
-          : `${order.customGrade.authority} ${order.customGrade.score}`;
+        const currentGradeStr =
+          order.customGrade.authority === "Raw Card"
+            ? "Raw Card"
+            : `${order.customGrade.authority} ${order.customGrade.score}`;
         return currentGradeStr === selectedGradeFilter;
       });
     }
@@ -233,6 +238,13 @@ export default function ProductDetailPage({ params }: PageProps) {
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
       <main className="flex-1 max-w-[1240px] mx-auto w-full px-4 lg:px-8 py-6 pb-32 lg:pb-12 animate-fadeIn">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="-mt-2 mb-2 h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
+        >
+          <IoChevronBack />
+        </button>
         {/* 🟢 頂級修正：活化 Breadcrumb 導航鏈條，全面注入高級黑金 hover 微光質感，100% 規避 PWA 閃爍 Loading 債 */}
         <div className="mb-6 font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
           <Link
