@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 從全域中央大腦引入狀態
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
+import Logo from "@/public/asset/logo.png";
 
 const navLinks = [
   { href: "/", label: "首頁" },
@@ -75,8 +77,14 @@ export function TopNav() {
     <>
       <header className="hidden lg:flex sticky top-0 z-50 w-full h-16 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
         <div className="max-w-[1200px] mx-auto w-full px-8 flex items-center justify-between">
-          <Link href="/" className="font-sans font-semibold text-lg text-brand">
-            HKCardVault{" "}
+          <Link
+            href="/"
+            className="flex flex-row items-center font-sans font-semibold text-lg text-brand"
+          >
+            <div className="max-w-20 p-3">
+              <Image src={Logo} alt="logo" width={100} className="rounded-xl" />
+            </div>
+            <p> HKCardVault</p>
           </Link>
 
           {/* 導航 */}

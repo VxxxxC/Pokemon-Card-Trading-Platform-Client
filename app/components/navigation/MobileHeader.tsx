@@ -2,10 +2,12 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 接入 Zustand 全域控制中樞
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
+import Logo from "@/public/asset/logo.png";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -49,8 +51,14 @@ export function MobileHeader() {
     <>
       <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
         <div className="h-full px-4 flex items-center justify-between">
-          <Link href="/" className="font-sans font-semibold text-lg text-brand">
-            HKCardVault
+          <Link
+            href="/"
+            className="flex flex-row items-center font-sans font-semibold text-lg text-brand"
+          >
+            <div className="max-w-20 mr-3">
+              <Image src={Logo} alt="logo" width={50} className="rounded-xl" />
+            </div>
+            <p>HKCardVault</p>
           </Link>
 
           <div className="flex items-center gap-2">
