@@ -9,6 +9,8 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
+import { useUIStore } from "@/app/store/useUIStore";
+import { WishlistButton } from "@/app/components/market/WishlistButton";
 
 // TODO: [API] Fetch premium escrow listings from Supabase — only `account_type='merchant'` AND `kyc_status='verified'` sellers
 // TODO: [database] RLS policy: enforce `use_authentication=true` listings require verified merchant account
@@ -67,14 +69,18 @@ const PREMIUM_LISTINGS = [
 ];
 
 export function PremiumMarket() {
+  const mockRole = useUIStore((state) => state.mockRole);
+  const showWishlist = mockRole !== "MERCHANT";
+
   const plugin = React.useMemo(
-    () => Autoplay({
-      delay: 2500,
-      playOnInit: true,
-      stopOnInteraction: false,
-      stopOnMouseEnter: true,
-      stopOnFocusIn: true,
-    }),
+    () =>
+      Autoplay({
+        delay: 2500,
+        playOnInit: true,
+        stopOnInteraction: false,
+        stopOnMouseEnter: true,
+        stopOnFocusIn: true,
+      }),
     [],
   );
 
@@ -123,7 +129,7 @@ export function PremiumMarket() {
                 {/* 🟢 核心修正 1：點擊實物圖封面，精準引流導向該 Merchant 獨立市集櫥窗內的商品詳情頁 */}
                 <Link
                   href={`/marketplace/${listing.sellerId}/product/${listing.productId}`}
-                  className="relative w-full aspect-[5/7] rounded-lg overflow-hidden bg-bg-elevated block mb-3 border border-white/5"
+                  className="relative w-full aspect-[5/7] max-h-[20rem] mx-auto rounded-lg overflow-hidden bg-bg-elevated block mb-2.5 border border-white/5"
                 >
                   <Image
                     src={listing.image}
@@ -133,10 +139,16 @@ export function PremiumMarket() {
                     sizes="(max-width: 768px) 100vw, 250px"
                     unoptimized
                   />
+                  {/* 🎯 Target Injected Merchant Asset Wishlist Gate */}
+                  {showWishlist && (
+                    <div className="absolute top-3 right-3 z-10 animate-fadeIn">
+                      <WishlistButton listingId={listing.id} />
+                    </div>
+                  )}
                 </Link>
 
                 {/* 卡牌規格資訊 */}
-                <div className="flex-1 min-w-0 mb-3 space-y-1">
+                <div className="flex-1 min-w-0 mb-2.5 space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     {/* 🟢 核心修正 2：卡牌標題同步修正，100% 直穿私域現貨詳情 */}
                     <Link
