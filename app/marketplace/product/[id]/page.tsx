@@ -100,6 +100,8 @@ export default function ProductDetailPage({ params }: PageProps) {
 
   const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
   const [onlyGraded, setOnlyGraded] = useState(false);
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<string>("ALL");
+
   // 🟢 訂單簿分頁狀態
   const [orderPageState, setOrderPageState] = useState({ page: 1, forKey: "" });
   const [historyPage, setHistoryPage] = useState(1);
@@ -110,6 +112,18 @@ export default function ProductDetailPage({ params }: PageProps) {
     () => false,
   );
 
+  // 提取可用之所有鑑定規格，並加上 "ALL" 頂層過濾鍵
+  const availableGrades = useMemo(() => {
+    const gradesSet = new Set<string>();
+    card.sellOrders.forEach((o) => {
+      const gradeStr = o.customGrade.authority === "Raw Card" 
+        ? "Raw Card" 
+        : `${o.customGrade.authority} ${o.customGrade.score}`;
+      gradesSet.add(gradeStr);
+    });
+    return ["ALL", ...Array.from(gradesSet)];
+  }, [card.sellOrders]);
+
   // 執行複合權重三軌排序
   const filteredAndSortedOrders = useMemo(() => {
     let orders = [...card.sellOrders];
@@ -119,6 +133,16 @@ export default function ProductDetailPage({ params }: PageProps) {
       orders = orders.filter(
         (order) => order.customGrade.authority !== "Raw Card",
       );
+    }
+
+    // 1.5 鑑定等級 Variant 過濾篩選
+    if (selectedGradeFilter !== "ALL") {
+      orders = orders.filter((order) => {
+        const currentGradeStr = order.customGrade.authority === "Raw Card"
+          ? "Raw Card"
+          : `${order.customGrade.authority} ${order.customGrade.score}`;
+        return currentGradeStr === selectedGradeFilter;
+      });
     }
 
     // 2. 執行複合權重三軌排序
@@ -148,7 +172,7 @@ export default function ProductDetailPage({ params }: PageProps) {
       // 軌道 C：純淨定價由低到高秒殺排盤
       return a.price - b.price;
     });
-  }, [card.sellOrders, subSortKey, onlyGraded]);
+  }, [card.sellOrders, subSortKey, onlyGraded, selectedGradeFilter]);
 
   // 🟢 交易歷史分頁計算引擎
   const historyPerPage = 5;
@@ -173,7 +197,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   const hasChartData = card.chartPoints.length > 0;
 
   // 🟢 訂單簿分頁計算引擎
-  const orderFilterKey = `${subSortKey}|${String(onlyGraded)}`;
+  const orderFilterKey = `${subSortKey}|${String(onlyGraded)}|${selectedGradeFilter}`;
   const orderPage =
     orderPageState.forKey === orderFilterKey ? orderPageState.page : 1;
 
@@ -424,61 +448,84 @@ export default function ProductDetailPage({ params }: PageProps) {
               id="live-order-book-panel"
               className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 md:p-6 space-y-4 shadow-lg scroll-mt-24"
             >
-              <div className="flex items-center justify-between border-b border-white/5 pb-3 font-mono text-[11px] text-[#8A8680] uppercase tracking-wider select-none gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold shrink-0">
-                    排序
-                  </span>
-                  <Select
-                    value={subSortKey}
-                    onValueChange={(value) =>
-                      setSubSortKey(value as SubSortKey)
-                    }
-                  >
-                    <SelectTrigger className="w-44 min-w-[176px] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11.5px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
-                      <span className="truncate">
-                        {subSortKey === "price_asc" && "最平售價優先"}
-                        {subSortKey === "grade_desc" && "PSA 等級最高"}
-                        {subSortKey === "rating_desc" && "賣家評級最高"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
-                      <SelectItem
-                        value="price_asc"
-                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                      >
-                        最平售價優先
-                      </SelectItem>
-                      <SelectItem
-                        value="grade_desc"
-                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                      >
-                        PSA 等級最高
-                      </SelectItem>
-                      <SelectItem
-                        value="rating_desc"
-                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                      >
-                        賣家評級最高
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-3 font-mono text-[11px] text-[#8A8680] uppercase tracking-wider select-none gap-4">
+                <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold shrink-0">
+                      排序
+                    </span>
+                    <Select
+                      value={subSortKey}
+                      onValueChange={(value) =>
+                        setSubSortKey(value as SubSortKey)
+                      }
+                    >
+                      <SelectTrigger className="w-44 min-w-[176px] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11.5px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
+                        <span className="truncate">
+                          {subSortKey === "price_asc" && "最平售價優先"}
+                          {subSortKey === "grade_desc" && "PSA 等級最高"}
+                          {subSortKey === "rating_desc" && "賣家評級最高"}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
+                        <SelectItem
+                          value="price_asc"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          最平售價優先
+                        </SelectItem>
+                        <SelectItem
+                          value="grade_desc"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          PSA 等級最高
+                        </SelectItem>
+                        <SelectItem
+                          value="rating_desc"
+                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        >
+                          賣家評級最高
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 右側已鑑定快篩 Switch */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <label
+                      htmlFor="graded-only-switch"
+                      className="text-[10px] font-bold text-[#8A8680] cursor-pointer select-none"
+                    >
+                      只顯示已鑑定
+                    </label>
+                    <Switch
+                      id="graded-only-switch"
+                      checked={onlyGraded}
+                      onCheckedChange={setOnlyGraded}
+                      className="scale-90 data-[state=checked]:bg-brand"
+                    />
+                  </div>
                 </div>
 
-                {/* 右側已鑑定快篩 Switch */}
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <label
-                    htmlFor="graded-only-switch"
-                    className="text-[10px] font-bold text-[#8A8680] cursor-pointer"
-                  >
-                    只顯示已鑑定
-                  </label>
-                  <Switch
-                    id="graded-only-switch"
-                    checked={onlyGraded}
-                    onCheckedChange={setOnlyGraded}
-                    className="scale-90 data-[state=checked]:bg-brand"
-                  />
+                {/* 🎯 Target Injected SNKRDUNK-Style Dynamic Grade Variant Filters */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none -mx-1 px-1 w-full md:w-auto max-w-full shrink-0 select-none">
+                  {availableGrades.map((gradeTag) => {
+                    const isActive = selectedGradeFilter === gradeTag;
+                    return (
+                      <button
+                        key={gradeTag}
+                        type="button"
+                        onClick={() => setSelectedGradeFilter(gradeTag)}
+                        className={`font-mono text-[11px] font-bold h-8 px-3.5 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
+                          isActive
+                            ? "bg-brand border-brand text-[#1A1612] shadow-[0_2px_10px_rgba(212,165,116,0.25)]"
+                            : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
+                        }`}
+                      >
+                        {gradeTag === "ALL" ? "全部規格 (ALL)" : gradeTag}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
