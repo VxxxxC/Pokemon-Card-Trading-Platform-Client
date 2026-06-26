@@ -700,6 +700,7 @@ export function GlobalChatConsole() {
           {mobileView === "LIST" ? (
             <div className="flex flex-col h-full">
               <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0 gap-2">
+                {/*
                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                   <div className="flex-1 flex items-center gap-1.5 overflow-hidden">
                     {!isNewChatComboOpen ? (
@@ -774,6 +775,8 @@ export function GlobalChatConsole() {
                     </button>
                   )}
                 </div>
+                  */}
+                <p className="font-mono font-bold text-sm text-brand">聊天室</p>
                 <button
                   type="button"
                   onClick={onClose}
