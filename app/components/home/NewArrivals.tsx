@@ -6,6 +6,8 @@ import Image from "next/image";
 import { motion, useAnimationControls, PanInfo } from "framer-motion";
 import { type MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
+import { useUIStore } from "@/app/store/useUIStore";
+import { WishlistButton } from "@/app/components/market/WishlistButton";
 
 const newArrivals: MarketplaceListing[] = [
   {
@@ -47,6 +49,9 @@ const newArrivals: MarketplaceListing[] = [
 ];
 
 export function NewArrivals() {
+  const mockRole = useUIStore((state) => state.mockRole);
+  const showWishlist = mockRole !== "MERCHANT";
+
   // 三倍鏡像數據，確保自由來回拖拽時左右都有充足的卡牌墊底
   const tripleArrivals = [...newArrivals, ...newArrivals, ...newArrivals];
 
@@ -172,12 +177,23 @@ export function NewArrivals() {
                     sizes="(max-width: 768px) 180px, 230px"
                     unoptimized
                   />
-                  <span className="absolute top-2.5 left-2.5 font-mono text-[10px] font-bold text-text-primary bg-[rgba(23,19,15,0.85)] backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-white/10">
-                    {item.grade.score}
+                  <span className="absolute top-2.5 left-2.5 flex flex-col gap-y-1">
+                    <p className="self-start font-mono text-[10px] font-bold text-text-primary bg-[rgba(23,19,15,0.85)] backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-white/10">
+                      {item.grade.score}
+                    </p>
+                    <p className="self-start font-mono text-[10px] font-bold text-brand bg-[#26211C]/90 backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-brand/30">
+                      {item.rarity}
+                    </p>
                   </span>
-                  <span className="absolute top-2.5 right-2.5 font-mono text-[10px] font-bold text-brand bg-[#26211C]/90 backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-brand/30">
-                    {item.rarity}
-                  </span>
+                  {/* 🎯 Target Injected C2C Asset Wishlist Gate */}
+                  {showWishlist && (
+                    <div
+                      className="absolute top-2.5 right-2.5 z-20"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <WishlistButton listingId={item.id} />
+                    </div>
+                  )}
                   <span className="absolute bottom-0 right-0 left-0 text-center font-mono text-[10px] text-text-disabled bg-[rgba(23,19,15,0.75)] backdrop-blur-md py-1">
                     剛剛上架
                   </span>
