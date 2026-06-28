@@ -52,6 +52,7 @@ export interface Message {
     buyerId: string;
     sellerId: string;
     sellerName: string;
+    initialStatus?: "pending" | "accepted" | "rejected" | "countered";
   };
 }
 
@@ -188,7 +189,7 @@ function MessageThread({ renderList }: { renderList: RenderItem[] }) {
                 cardName={msg.specialData.cardName}
                 cardId={msg.specialData.cardId}
                 offerPrice={msg.specialData.offerPrice}
-                initialStatus="pending"
+                initialStatus={msg.specialData.initialStatus || "pending"}
                 isMe={msg.sender === "me"}
               />
             </div>
@@ -265,7 +266,7 @@ function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
                 cardName={msg.specialData.cardName}
                 cardId={msg.specialData.cardId}
                 offerPrice={msg.specialData.offerPrice}
-                initialStatus="pending"
+                initialStatus={msg.specialData.initialStatus || "pending"}
                 isMe={msg.sender === "me"}
               />
             </div>
@@ -616,6 +617,12 @@ export function GlobalChatConsole() {
                     <div className="font-sans font-medium text-[12px] text-text-primary truncate">
                       {room.partnerName}
                     </div>
+                    {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
+                    {room.partnerTier === "專業認證商戶" && (
+                      <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] mt-0.5 max-w-max select-none tracking-wide">
+                        🏪 認證商家
+                      </span>
+                    )}
                     <div className="font-mono text-[9px] text-text-disabled truncate">
                       {room.id.slice(0, 8)}
                     </div>
@@ -819,6 +826,12 @@ export function GlobalChatConsole() {
                       <span className="font-sans font-semibold text-[13px] text-text-primary">
                         {room.partnerName}
                       </span>
+                      {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
+                      {room.partnerTier === "專業認證商戶" && (
+                        <span className="block inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] mt-0.5 max-w-max select-none tracking-wide">
+                          🏪 認證商家
+                        </span>
+                      )}
                       <p className="font-sans text-[12px] text-text-secondary truncate mt-1">
                         {room.lastMessage}
                       </p>

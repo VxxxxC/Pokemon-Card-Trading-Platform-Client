@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
@@ -295,6 +296,19 @@ export function SpecialTransactionMessage({
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* 🎯 Target Injected Post-Accept Checkout Direct-Link */}
+      {status === "accepted" && isMe && (
+        <div className="w-full mt-3 pt-2.5 border-t border-white/5 animate-fadeIn">
+          <Link
+            href={`/checkout/${cardId}`}
+            onClick={() => setIsChatOpen(false)}
+            className="w-full h-9 bg-brand hover:bg-[#e8b896] text-[#1A1612] font-sans font-black text-[12px] rounded-xl flex items-center justify-center gap-1.5 active:scale-[0.97] transition-all shadow-md cursor-pointer block text-center"
+          >
+            💳 立即前往安全結算付款 →
+          </Link>
         </div>
       )}
     </div>
