@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { X } from "lucide-react";
+import { IoChevronBack } from "react-icons/io5";
 
 interface CheckoutItem {
   id: string;
@@ -194,6 +195,13 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[#17130f] text-[#eae1da] p-4 lg:p-8">
       <div className="max-w-[1000px] mx-auto space-y-6 pb-24">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="h-8 px-2.5 rounded-lg bg-[#1A1612] font-sans text-[12px] font-medium text-brand focus:outline-none"
+        >
+          <IoChevronBack />
+        </button>
         <div className="border-b border-[rgba(237,232,224,0.08)] pb-4">
           <h1 className="font-sans font-black text-[20px] md:text-[24px] text-[#eae1da]">
             商品交易確認
