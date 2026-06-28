@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useSyncExternalStore, use } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -90,6 +92,7 @@ interface PageProps {
 export default function GlobalCheckoutPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const paramsId = resolvedParams.id;
+  const router = useRouter();
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -112,6 +115,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
   // Buyer remarks
   const [buyerRemark, setBuyerRemark] = useState("");
+  const [isPaying, setIsPaying] = useState(false);
 
   if (!isMounted) {
     return (
@@ -122,7 +126,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   }
 
   const currentItem =
-    MOCK_INVENTORY_DATABASE[params] || MOCK_INVENTORY_DATABASE["sv2a-182"];
+    MOCK_INVENTORY_DATABASE[paramsId] || MOCK_INVENTORY_DATABASE["sv2a-182"];
 
   // Handle coupon selection from dropdown
   const handleCouponSelect = (couponCode: string) => {
@@ -166,19 +170,25 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
       return;
     }
 
-    toast.success("🔒 託管協定已成立，正調用 Stripe...", {
-      description: "資金將由平台中介賬戶鎖定，直至您確認收貨並複驗品相為止。",
-      duration: 5000,
-      action: {
-        label: "模擬確認付款 💳",
-        onClick: () => {
-          toast.success("🎉 支付成功！", {
-            description: `商品 [${currentItem.name}] 已成功進入安全交割程序。`,
-          });
-          window.location.href = "/profile/user/trading";
-        },
-      },
+    // 🚀 Lock state and trigger inline visual spinner directly
+    setIsPaying(true);
+
+    toast.info("🔒 正在加密並建立安全託管保障...", {
+      description: "託管協定成立中，正在調用 Stripe 安全金流網絡...",
+      duration: 2000,
     });
+
+    // ⏱️ Simulate 2-second real network handshake delay latency
+    setTimeout(() => {
+      // TODO: [API / STRIPE WEBHOCK]: Real backend integration checks hook here
+      setIsPaying(false);
+
+      toast.success("🎉 支付成功！", {
+        description: `商品 [${currentItem.name}] 已成功進入中介安全交割程序。`,
+      });
+
+      router.push(`/checkout/${paramsId}/success`);
+    }, 2000);
   };
 
   return (
@@ -497,10 +507,20 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
               <button
                 type="button"
+                disabled={isPaying}
                 onClick={handleProceedToPayment}
-                className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-md"
+                className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer focus:outline-none"
               >
-                ⚡ 鎖定資產並進入安全託管支付
+                {isPaying ? (
+                  <>
+                    <Spinner className="text-[#1A1612] size-4 animate-spin" />
+                    <span>正在處理安全金流支付...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⚡ 鎖定資產並進入安全託管支付</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
