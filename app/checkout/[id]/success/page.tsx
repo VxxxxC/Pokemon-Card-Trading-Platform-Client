@@ -84,7 +84,6 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
   return (
     <div className="min-h-screen bg-[#17130f] text-[#eae1da] p-4 lg:p-8 flex flex-col justify-center items-center">
       <div className="max-w-[650px] w-full space-y-6 pb-24 pt-4 sm:pt-12 animate-fadeIn">
-        
         {/* 1. Header Hero Status Card */}
         <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-6 sm:p-8 flex flex-col items-center text-center space-y-5 shadow-xl">
           <div className="relative flex items-center justify-center">
@@ -97,28 +96,21 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
 
           <div className="space-y-2">
             <h1 className="font-sans font-black text-[22px] sm:text-[26px] text-[#eae1da] leading-tight tracking-tight">
-              🎉 交易託管已成功設立
+              🎉 交易成功設立
             </h1>
             <p className="font-sans text-[13px] text-text-secondary">
-              此筆 B2C 專業商戶擔保交易已建立，資金已安全注入代管防禦體系中
+              此筆 B2C 專業商戶交易已建立
             </p>
           </div>
 
           {/* Cryptographic blockchain ledger code block */}
           <div className="bg-[#17130f] border border-white/5 rounded-lg px-4 py-2 flex flex-col sm:flex-row items-center gap-2 select-none w-full justify-center">
-            <span className="font-mono text-[10px] text-text-disabled uppercase tracking-wider text-center sm:text-left">
-              加密交割存證單號 (LEDGER RECORD):
+            <span className="font-mono text-[10px] text-text-primary uppercase tracking-wider text-center sm:text-left">
+              交易結單號碼 (Order ID):
             </span>
             <code className="font-mono font-bold text-[11px] text-brand tracking-tight text-center sm:text-left">
               {mockTxnCode}
             </code>
-          </div>
-
-          {/* Security Notice Block */}
-          <div className="bg-[rgba(212,165,116,0.03)] border border-brand/20 p-4 rounded-xl text-left">
-            <p className="font-sans text-[12.5px] text-brand leading-relaxed">
-              ✓ <strong>資金已鎖定安全代管</strong>：您的款項已由平台中介託管賬戶鎖定。在您簽收快遞、現場面交並複驗實物卡牌品相無誤前，賣方無法提現提款。全額款項 100% 受到資產交易協定防線保護。
-            </p>
           </div>
         </section>
 
@@ -155,22 +147,26 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
           {/* Ledger Table List */}
           <div className="space-y-3 pt-1 text-[13px] font-sans">
             <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
-              <span className="text-[#d4c4b7]">商戶賣方 (Merchant Seller)</span>
-              <span className="font-semibold text-[#eae1da]">{currentItem.seller}</span>
+              <span className="text-[#d4c4b7]">商戶賣方</span>
+              <span className="font-semibold text-[#eae1da]">
+                {currentItem.seller}
+              </span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
-              <span className="text-[#d4c4b7]">交易結算價 (Settled Value)</span>
+              <span className="text-[#d4c4b7]">交易結算價</span>
               <span className="font-mono font-bold text-brand">
                 HK$ {currentItem.price.toLocaleString("en-HK")}
               </span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
-              <span className="text-[#d4c4b7]">平台防偽鑑定 (Optional Auth Status)</span>
-              <span className="text-success font-medium">已啟用 / 已通過中介核驗驗證</span>
+              <span className="text-[#d4c4b7]">平台防偽鑑定</span>
+              <span className="text-success font-medium">
+                已啟用鑑定驗證服務
+              </span>
             </div>
             <div className="flex justify-between items-center py-1.5">
-              <span className="text-[#d4c4b7]">交易性質 (Context Class)</span>
-              <span className="font-medium text-[#eae1da]">B2C 專業商戶擔保交易</span>
+              <span className="text-[#d4c4b7]">交易性質</span>
+              <span className="font-medium text-[#eae1da]">B2C 專業商戶</span>
             </div>
           </div>
         </section>
@@ -190,7 +186,6 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
             🏪 返回大盤市場
           </Link>
         </div>
-
       </div>
     </div>
   );
