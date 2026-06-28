@@ -89,7 +89,7 @@ interface PageProps {
 
 export default function GlobalCheckoutPage({ params }: PageProps) {
   const resolvedParams = use(params);
-  const listingId = resolvedParams.id;
+  const paramsId = resolvedParams.id;
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -122,7 +122,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   }
 
   const currentItem =
-    MOCK_INVENTORY_DATABASE[listingId] || MOCK_INVENTORY_DATABASE["sv2a-182"];
+    MOCK_INVENTORY_DATABASE[params] || MOCK_INVENTORY_DATABASE["sv2a-182"];
 
   // Handle coupon selection from dropdown
   const handleCouponSelect = (couponCode: string) => {
@@ -186,11 +186,10 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
       <div className="max-w-[1000px] mx-auto space-y-6 pb-24">
         <div className="border-b border-[rgba(237,232,224,0.08)] pb-4">
           <h1 className="font-sans font-black text-[20px] md:text-[24px] text-[#eae1da]">
-            安全交割 Pre-Checkout 確認
+            商品交易確認
           </h1>
           <p className="font-mono text-[9px] text-brand uppercase tracking-widest mt-0.5">
-            GLOBAL ESCROW CLEARING PROTOCOL · LISTING TARGET:{" "}
-            {listingId.toUpperCase()}
+            {currentItem.name}・商品序號: {currentItem.id}
           </p>
         </div>
 
