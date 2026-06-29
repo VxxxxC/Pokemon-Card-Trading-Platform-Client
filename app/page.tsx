@@ -9,7 +9,7 @@ import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PremiumMarket } from "@/app/components/home/PremiumMarket";
-import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
+// import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { PwaInlineBanner } from "./components/pwa/PwaInlineBanner";
@@ -25,48 +25,49 @@ const PwaInstallPrompt = dynamic(
 );
 
 export default function HomePage() {
-  // const mockRole = useUIStore((state) => state.mockRole);
+  const mockRole = useUIStore((state) => state.mockRole);
 
   return (
-    <div className="min-h-[100dvh] bg-bg-page text-text-primary flex flex-col font-sans items-center justify-center p-6">
-      <div className="text-center max-w-md mx-auto space-y-4">
-        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-200 bg-clip-text text-transparent font-sans">
-          HKCardVault
-        </h1>
-        <div className="h-[1px] w-12 bg-amber-500/50 mx-auto" />
-        <p className="text-sm text-text-secondary tracking-wider">
-          暫時維護中 / Under Maintenance
-        </p>
-      </div>
-
-      {/*
+    <div className="min-h-[100dvh] bg-bg-page text-text-primary flex flex-col font-sans">
+      {/* 頂部全域看盤元件列 */}
       <TopNav />
       <MobileHeader />
 
+      {/* 奢華常駐看盤提示條 */}
       <PwaInlineBanner />
 
       <PriceTicker />
 
+      {/* 安全隔離後的 PWA 提示組件 */}
       <PwaInstallPrompt />
 
+      {/* 主線大盤跑道 */}
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
+        {/* 🟢 頂級整合：Hero看板自帶右翼每日簽到控制台，視覺合流 */}
         <HeroSearch />
 
+        {/* Section 2: Trust Booster — How It Works (3-step escrow) */}
         <TrustBanner />
 
+        {/* Section 3: 心水情報 — wishlist cards with price alerts & personal feed */}
         {(mockRole === "USER" || mockRole === "ADMIN") && <WishlistTicker />}
 
+        {/* Section 5: Premium Escrow Market — KYC merchant listings */}
         <PremiumMarket />
 
-        <PortfolioRewards />
+        {/* Section 6: Portfolio & Daily Rewards */}
+        {/* <PortfolioRewards /> */}
 
+        {/* Left: Section 7 — C2C New Arrivals */}
         <NewArrivals />
       </main>
 
+      {/* E-shop style Footer */}
       <Footer />
 
       <BottomNav />
-      */}
+
+      {/* 全域交割終端已遷移至 product/[id]/page.tsx props-based 架構 */}
     </div>
   );
 }
