@@ -9,7 +9,7 @@ import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PremiumMarket } from "@/app/components/home/PremiumMarket";
-import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
+// import { PortfolioRewards } from "@/app/components/home/PortfolioRewards";
 import { NewArrivals } from "@/app/components/home/NewArrivals";
 import { WishlistTicker } from "@/app/components/shared/WishlistTicker";
 import { PwaInlineBanner } from "./components/pwa/PwaInlineBanner";
@@ -56,7 +56,7 @@ export default function HomePage() {
         <PremiumMarket />
 
         {/* Section 6: Portfolio & Daily Rewards */}
-        <PortfolioRewards />
+        {/* <PortfolioRewards /> */}
 
         {/* Left: Section 7 — C2C New Arrivals */}
         <NewArrivals />
