@@ -98,10 +98,7 @@ function RewardsTicketButton() {
             <span className="text-[18px] shrink-0">🎟️</span>
             <div className="text-left min-w-0">
               <p className="font-sans font-black text-[13.5px] text-brand tracking-tight">
-                進入專屬獎勵特權專區
-              </p>
-              <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider truncate">
-                兌換運費券與限量特典周邊
+                進入獎勵及任務專區
               </p>
             </div>
           </div>
@@ -123,9 +120,13 @@ export default function UserOverviewPage() {
   );
 
   const pendingOrders = useMemo(() => {
-    return USER_MOCK_ORDERS_DB
-      .filter((o) => o.status === "payment" || o.status === "custody")
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    return USER_MOCK_ORDERS_DB.filter(
+      (o) => o.status === "payment" || o.status === "custody",
+    )
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
       .slice(0, 4);
   }, []);
 

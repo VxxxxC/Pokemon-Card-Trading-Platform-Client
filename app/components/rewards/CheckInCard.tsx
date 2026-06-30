@@ -67,11 +67,8 @@ export function CheckInCard() {
       <div className="flex justify-between items-center border-b border-[rgba(237,232,224,0.06)] pb-3">
         <div className="space-y-0.5">
           <h3 className="font-sans font-black text-[15px] text-[#eae1da] flex items-center gap-1.5">
-            🗓️ 每日靈魂簽到站
+            每日簽到
           </h3>
-          <p className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
-            TCG DAILY LOYALTY PROTOCOL
-          </p>
         </div>
         <div className="text-right">
           <span className="font-mono text-[10px] text-[#d4c4b7] block">

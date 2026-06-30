@@ -361,15 +361,13 @@ export default function MemberRewardsPage() {
             👤 我的帳號總覽
           </Link>
           <span className="text-text-disabled">/</span>
-          <span className="text-text-disabled uppercase">
-            Rewards Centre 獎勵中心
-          </span>
+          <span className="text-text-disabled uppercase">獎勵與任務中心</span>
         </div>
 
         {/* Page Header Title */}
         <div>
           <h2 className="font-sans font-black text-[22px] lg:text-[26px] text-[#eae1da] tracking-tight">
-            會員權益與獎勵中心
+            會員獎勵與任務中心
           </h2>
           <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
             LOYALTY BONUS & TOKENIZED REWARD HUB
