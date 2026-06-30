@@ -41,11 +41,12 @@ export function AccordionFilters({
 
   const rarities = ["SAR", "UR", "SR", "AR"];
   const conditions = [
-    { key: "美品 S", label: "【美品 S】" },
-    { key: "微傷 A", label: "【微傷 A】" },
-    { key: "傷 B", label: "【傷 B】" },
+    { key: "A", label: "【A 級 — 美品】" },
+    { key: "B", label: "【B 級 — 微傷】" },
+    { key: "C", label: "【C 級 — 有傷】" },
+    { key: "D", label: "【D 級 — 嚴重傷】" },
   ];
-  const grades = ["Raw Card", "PSA 10", "BGS 9.5", "CGC 9"];
+  const grades = ["PSA 10", "PSA 9", "CGC 10", "CGC 9", "RAW", "OTHER"];
 
   const listingTypes = [
     { key: "MERCHANT", label: "🏪 商戶特約現貨" },

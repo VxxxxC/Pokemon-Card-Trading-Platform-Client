@@ -177,25 +177,48 @@ function MarketplaceContent() {
         const matchRarity =
           activeRarities.length === 0 || activeRarities.includes(card.rarity);
 
-        const isGradedCard = card.grade.authority !== "Raw Card";
-        const matchGrade =
-          activeGrades.length === 0 ||
-          activeGrades.some((g) => {
-            if (g === "Raw Card") return !isGradedCard;
-            return (
-              card.grade.authority === g.split(" ")[0] &&
-              card.grade.score === g.split(" ")[1]
-            );
+        let matchGrade = true;
+        if (activeGrades && activeGrades.length > 0) {
+          const authority = (card.grade?.authority || "").toUpperCase().trim();
+          const score = (card.grade?.score || "").toUpperCase().trim();
+          const combinedGradeStr = `${authority} ${score}`.trim();
+
+          const isExplicitMatch = activeGrades.some((selected) => {
+            const selUpper = selected.toUpperCase().trim();
+            return combinedGradeStr.includes(selUpper) || authority === selUpper;
           });
+
+          const isPsa = authority.startsWith("PSA");
+          const isCgc = authority.startsWith("CGC");
+          const isRaw =
+            authority === "RAW" ||
+            authority.includes("RAW") ||
+            score.includes("RAW");
+
+          const isOtherMatch =
+            activeGrades.includes("OTHER") && !isPsa && !isCgc && !isRaw;
+
+          matchGrade = isExplicitMatch || isOtherMatch;
+        }
 
         const matchCondition =
           activeConditions.length === 0 ||
           activeConditions.some((c) => {
-            if (c === "美品 S")
+            if (c === "A")
               return card.grade.score === "10" || card.grade.score === "9.5";
-            if (c === "微傷 A")
+            if (c === "B")
               return card.grade.score === "9" || card.grade.score === "NM";
-            return card.grade.score === "8" || card.grade.score === "EX";
+            if (c === "C")
+              return card.grade.score === "8" || card.grade.score === "EX";
+            if (c === "D") {
+              const numericScore = parseFloat(card.grade.score);
+              return (
+                (numericScore > 0 && numericScore < 8) ||
+                card.grade.score.toUpperCase().includes("PR") ||
+                card.grade.score.toUpperCase().includes("PL")
+              );
+            }
+            return false;
           });
 
         const matchType =

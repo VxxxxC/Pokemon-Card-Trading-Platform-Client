@@ -40,7 +40,7 @@ export interface PublicMemberListing {
   readonly set: string;
   readonly rarity: "SAR" | "UR" | "SR" | "AR";
   readonly grade: PublicMemberListingGrade;
-  readonly conditionLabel: "美品 S" | "微傷 A" | "傷 B";
+  readonly conditionLabel: "A" | "B" | "C" | "D";
   readonly price: number;
   readonly delta: number;
   readonly deltaDirection: "up" | "down";
@@ -118,7 +118,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         set: "Pokémon 151",
         rarity: "SAR",
         grade: { authority: "PSA", score: "10", label: "PSA 10 完美鑑定" },
-        conditionLabel: "美品 S",
+        conditionLabel: "A",
         price: 2150,
         delta: 1200,
         deltaDirection: "up",
@@ -137,7 +137,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         set: "Pokémon 151",
         rarity: "AR",
         grade: { authority: "Raw Card", score: "NM", label: "裸卡 (美品S)" },
-        conditionLabel: "美品 S",
+        conditionLabel: "A",
         price: 620,
         delta: 90,
         deltaDirection: "up",
@@ -165,7 +165,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         set: "Pokémon 151",
         rarity: "SAR",
         grade: { authority: "PSA", score: "10", label: "PSA 10" },
-        conditionLabel: "美品 S",
+        conditionLabel: "A",
         price: 900,
         delta: 150,
         deltaDirection: "up",
@@ -185,7 +185,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         set: "Clay Burst",
         rarity: "SR",
         grade: { authority: "Raw Card", score: "LP", label: "打牌實用打法卡" },
-        conditionLabel: "傷 B",
+        conditionLabel: "C",
         price: 180,
         delta: 10,
         deltaDirection: "down",
@@ -204,7 +204,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         set: "Night Wanderer",
         rarity: "SAR",
         grade: { authority: "BGS", score: "9.5", label: "Raw 完美裸卡" },
-        conditionLabel: "美品 S",
+        conditionLabel: "A",
         price: 1900,
         delta: 240,
         deltaDirection: "up",
@@ -224,7 +224,7 @@ export const MOCK_PUBLIC_MEMBERS: Record<string, PublicMemberData> = {
         set: "Shiny Star V",
         rarity: "SR",
         grade: { authority: "PSA", score: "10", label: "PSA 10 頂級判定" },
-        conditionLabel: "美品 S",
+        conditionLabel: "A",
         price: 4200,
         delta: 350,
         deltaDirection: "up",

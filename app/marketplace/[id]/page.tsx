@@ -37,22 +37,35 @@ interface PageProps {
 }
 
 function matchesCondition(
-  condition: "美品 S" | "微傷 A" | "傷 B",
+  condition: "A" | "B" | "C" | "D",
   listing: ReturnType<typeof getStorefrontListingsByMember>[number],
 ) {
   if (listing.conditionLabel) {
     return listing.conditionLabel === condition;
   }
 
-  if (condition === "美品 S") {
+  if (condition === "A") {
     return listing.grade.score === "10" || listing.grade.score === "9.5";
   }
 
-  if (condition === "微傷 A") {
+  if (condition === "B") {
     return listing.grade.score === "9" || listing.grade.score === "NM";
   }
 
-  return listing.grade.score === "8" || listing.grade.score === "EX";
+  if (condition === "C") {
+    return listing.grade.score === "8" || listing.grade.score === "EX";
+  }
+
+  if (condition === "D") {
+    const numericScore = parseFloat(listing.grade.score);
+    return (
+      (numericScore > 0 && numericScore < 8) ||
+      listing.grade.score.toUpperCase().includes("PR") ||
+      listing.grade.score.toUpperCase().includes("PL")
+    );
+  }
+
+  return false;
 }
 
 export default function MerchantStorefrontPage({ params }: PageProps) {
@@ -148,24 +161,35 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
           activeRarities.length === 0 ||
           activeRarities.includes(listing.rarity);
 
-        const isGradedCard = listing.grade.authority !== "Raw Card";
-        const matchGrade =
-          activeGrades.length === 0 ||
-          activeGrades.some((grade) => {
-            if (grade === "Raw Card") return !isGradedCard;
+        let matchGrade = true;
+        if (activeGrades && activeGrades.length > 0) {
+          const authority = (listing.grade?.authority || "").toUpperCase().trim();
+          const score = (listing.grade?.score || "").toUpperCase().trim();
+          const combinedGradeStr = `${authority} ${score}`.trim();
 
-            const [authority, score] = grade.split(" ");
-            return (
-              listing.grade.authority === authority &&
-              listing.grade.score === score
-            );
+          const isExplicitMatch = activeGrades.some((selected) => {
+            const selUpper = selected.toUpperCase().trim();
+            return combinedGradeStr.includes(selUpper) || authority === selUpper;
           });
+
+          const isPsa = authority.startsWith("PSA");
+          const isCgc = authority.startsWith("CGC");
+          const isRaw =
+            authority === "RAW" ||
+            authority.includes("RAW") ||
+            score.includes("RAW");
+
+          const isOtherMatch =
+            activeGrades.includes("OTHER") && !isPsa && !isCgc && !isRaw;
+
+          matchGrade = isExplicitMatch || isOtherMatch;
+        }
 
         const matchCondition =
           activeConditions.length === 0 ||
           activeConditions.some((condition) =>
             matchesCondition(
-              condition as "美品 S" | "微傷 A" | "傷 B",
+              condition as "A" | "B" | "C" | "D",
               listing,
             ),
           );

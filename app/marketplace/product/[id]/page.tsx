@@ -115,18 +115,10 @@ export default function ProductDetailPage({ params }: PageProps) {
     () => false,
   );
 
-  // 提取可用之所有鑑定規格，並加上 "ALL" 頂層過濾鍵
+  // 🟢 核心對齊：硬核對齊側邊欄，鎖死 7 大黃金鑑定規格晶片列
   const availableGrades = useMemo(() => {
-    const gradesSet = new Set<string>();
-    card.sellOrders.forEach((o) => {
-      const gradeStr =
-        o.customGrade.authority === "Raw Card"
-          ? "Raw Card"
-          : `${o.customGrade.authority} ${o.customGrade.score}`;
-      gradesSet.add(gradeStr);
-    });
-    return ["ALL", ...Array.from(gradesSet)];
-  }, [card.sellOrders]);
+    return ["ALL", "PSA 10", "PSA 9", "CGC 10", "CGC 9", "RAW", "OTHER"];
+  }, []);
 
   // 執行複合權重三軌排序
   const filteredAndSortedOrders = useMemo(() => {
@@ -139,14 +131,30 @@ export default function ProductDetailPage({ params }: PageProps) {
       );
     }
 
-    // 1.5 鑑定等級 Variant 過濾篩選
+    // 1.5 鑑定等級 Variant 排除性過濾篩選管道重構
     if (selectedGradeFilter !== "ALL") {
       orders = orders.filter((order) => {
-        const currentGradeStr =
-          order.customGrade.authority === "Raw Card"
-            ? "Raw Card"
-            : `${order.customGrade.authority} ${order.customGrade.score}`;
-        return currentGradeStr === selectedGradeFilter;
+        const authority = (order.customGrade?.authority || "").toUpperCase().trim();
+        const score = (order.customGrade?.score || "").toUpperCase().trim();
+        const combinedGradeStr = `${authority} ${score}`.trim(); // e.g., "PSA 10"
+
+        const isPsa = authority.startsWith("PSA");
+        const isCgc = authority.startsWith("CGC");
+        const isRaw = authority === "RAW" || authority.includes("RAW") || authority === "RAW CARD";
+
+        // 分流 A：如果選取的是 RAW
+        if (selectedGradeFilter === "RAW") {
+          return isRaw;
+        }
+
+        // 分流 B：如果選取的是 OTHER（長尾捕捉網，排除三大常規）
+        if (selectedGradeFilter === "OTHER") {
+          return !isPsa && !isCgc && !isRaw;
+        }
+
+        // 分流 C：標準常規鑑定規格精準比對 (PSA 10, PSA 9, CGC 10, CGC 9)
+        const filterUpper = selectedGradeFilter.toUpperCase().trim();
+        return combinedGradeStr === filterUpper || authority === filterUpper;
       });
     }
 

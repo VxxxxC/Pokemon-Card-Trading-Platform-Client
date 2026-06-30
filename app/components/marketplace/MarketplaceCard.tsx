@@ -16,7 +16,7 @@ export type MarketplaceListing = {
   set: string;
   rarity: "SAR" | "UR" | "SR" | "AR";
   grade: { authority: string; score: string };
-  conditionLabel?: "美品 S" | "微傷 A" | "傷 B";
+  conditionLabel?: "A" | "B" | "C" | "D";
   price: number; // HKD value
   delta: number;
   deltaDirection: "up" | "down";

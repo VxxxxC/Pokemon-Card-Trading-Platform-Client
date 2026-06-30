@@ -267,7 +267,7 @@ export default function MerchantProductDetailPage({ params }: PageProps) {
               <div className="flex justify-between items-center p-3.5 bg-[#26211C] border-b border-white/5">
                 <span className="text-[#d4c4b7]">店主實物標註</span>
                 <span className="font-sans font-extrabold text-[#eae1da] bg-[#1A1612] px-2 py-0.5 rounded border border-white/5 text-[12px]">
-                  {item.conditionLabel || "美品 S"}
+                  {item.conditionLabel || "A"}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3.5 bg-[#26211C] border-b border-white/5">
