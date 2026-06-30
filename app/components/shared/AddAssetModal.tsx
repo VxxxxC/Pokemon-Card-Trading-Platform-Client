@@ -55,13 +55,47 @@ export function AddAssetModal() {
   // 🟢 核心對齊：動態評級分數範圍矩陣 (Enterprise-Grade Grading Scale Matrix)
   const graderScoreOptions = useMemo(() => {
     if (selectedGrader === "RAW") return [];
-    if (selectedGrader === "PSA") return ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
-    if (selectedGrader === "ARS") return ["10+", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
+    if (selectedGrader === "PSA")
+      return ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
+    if (selectedGrader === "ARS")
+      return ["10+", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
     if (selectedGrader === "BGS") {
-      return ["10 (Black Label)", "10 (Pristine)", "9.5", "9.0", "8.5", "8.0", "7.5", "7.0", "6.5", "6.0", "5.0", "4.0", "3.0", "2.0", "1.0"];
+      return [
+        "10 (Black Label)",
+        "10 (Pristine)",
+        "9.5",
+        "9.0",
+        "8.5",
+        "8.0",
+        "7.5",
+        "7.0",
+        "6.5",
+        "6.0",
+        "5.0",
+        "4.0",
+        "3.0",
+        "2.0",
+        "1.0",
+      ];
     }
     if (selectedGrader === "CGC") {
-      return ["10 (Pristine)", "10 (Gem Mint)", "9.5", "9.0", "8.5", "8.0", "7.5", "7.0", "6.5", "6.0", "5.0", "4.0", "3.0", "2.0", "1.0"];
+      return [
+        "10 (Pristine)",
+        "10 (Gem Mint)",
+        "9.5",
+        "9.0",
+        "8.5",
+        "8.0",
+        "7.5",
+        "7.0",
+        "6.5",
+        "6.0",
+        "5.0",
+        "4.0",
+        "3.0",
+        "2.0",
+        "1.0",
+      ];
     }
     return ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
   }, [selectedGrader]);
@@ -188,7 +222,9 @@ export function AddAssetModal() {
       name: cardQuery,
       set: set || "PBR-Compiled",
       cardNo: "PBR-Compiled",
-      grade: isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim(),
+      grade: isScoreDisabled
+        ? "RAW"
+        : `${selectedGrader} ${selectedScore}`.trim(),
       grader: selectedGrader,
       purchasePrice: mode === "hobby" ? Number(purchasePrice) || 0 : 0,
       currentValue: mode === "hobby" ? Number(purchasePrice) || 0 : 0, // 🟢 移除當前估值欄位，預設與入手成本一致
@@ -239,7 +275,7 @@ export function AddAssetModal() {
           {/* === 1. CARD QUERY CONVERGENCE (Both Modes Share This Unified Box) === */}
           <div className="space-y-1.5">
             <label className="font-mono text-[12px] text-[#d4c4b7] block">
-              卡牌官方型號搜尋 <span className="text-warning">*</span>
+              卡牌編號 / 名稱搜尋 <span className="text-warning">*</span>
             </label>
             <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-10 overflow-hidden">
               <input
@@ -262,7 +298,10 @@ export function AddAssetModal() {
           {/* === 2. OPTIONAL EXPANSION SET === */}
           <div className="space-y-1.5">
             <label className="font-sans font-bold text-[#d4c4b7]">
-              擴充包系列 <span className="text-text-disabled font-normal text-[11px]">(選填)</span>
+              擴充包系列{" "}
+              <span className="text-text-disabled font-normal text-[11px]">
+                (選填)
+              </span>
             </label>
             <input
               type="text"
