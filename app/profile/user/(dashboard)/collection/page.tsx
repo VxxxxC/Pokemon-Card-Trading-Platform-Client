@@ -400,7 +400,7 @@ export default function UserCollectionPage() {
                     {(
                       [
                         {
-                          label: "卡牧資料",
+                          label: "卡牌資料",
                           align: "text-left",
                           extra: "pl-4 lg:pl-0 pr-3",
                         },
