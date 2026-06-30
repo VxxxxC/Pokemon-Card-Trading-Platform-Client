@@ -1,31 +1,23 @@
 name: HKCardVault Continuous Integration Engine
-
 on:
   push:
-    branches: [ "**" ] # Triggers on push to any branch across the repository
-
+    branches: ["**"] # Triggers on push to any branch across the repository
 jobs:
   validate-and-pack:
     name: Production Compliance Audit (TSC / Lint / Build)
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Clone Repository Assets
         uses: actions/checkout@v4
-
       - name: ⚡ Setup High-Performance Bun Runtime
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
       - name: 📦 Hydrate Node Dependency Cache
         run: bun install
-
-      - name: 🛡️ Gate 1: TypeScript Global Type Safety Verification
+      - name: 🛡️ Gate 1 TypeScript Global Type Safety Verification
         run: bunx tsc --noEmit
-
-      - name: 🛡️ Gate 2: Linter Structural Cleanliness Audit
+      - name: 🛡️ Gate 2 Linter Structural Cleanliness Audit
         run: bun run lint
-
-      - name: 🛡️ Gate 3: Production Optimization Asset Bundle Packer
+      - name: 🛡️ Gate 3 Production Optimization Asset Bundle Packer
         run: bun run build
