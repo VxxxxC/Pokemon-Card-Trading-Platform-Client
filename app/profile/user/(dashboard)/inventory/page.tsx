@@ -434,7 +434,7 @@ export default function UserInventoryPage() {
           htmlFor="user-sku-search"
           className="font-mono text-[11px] text-text-secondary uppercase tracking-wider"
         >
-          🔍 智慧卡牌商品檢索控制台 (SUPPORT FUZZY QUERY)
+          🔍 商品搜尋
         </label>
         <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
           <input
