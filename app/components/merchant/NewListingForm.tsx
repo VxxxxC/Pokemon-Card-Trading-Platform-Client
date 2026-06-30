@@ -43,6 +43,10 @@ export function NewListingForm() {
   const [selectedScore, setSelectedScore] = useState<string>("10");    // "1" through "10"
   const [selectedCondition, setSelectedCondition] = useState<string>("A"); // "A", "B", "C", "D"
 
+  // 🏛️ Symmetrical Item-Type Switch State
+  const [itemType, setItemType] = useState<"card" | "box_set">("card");
+  const [cardQuery, setCardQuery] = useState("");
+
   const isScoreDisabled = selectedGrader === "RAW";
 
   // 🟢 核心對齊：動態評級分數範圍矩陣 (Enterprise-Grade Grading Scale Matrix)
@@ -93,43 +97,118 @@ export function NewListingForm() {
     });
   };
 
+  // Dynamic Chip Visual Simulation based on cardQuery contents
+  const boxSetBadge = useMemo(() => {
+    if (itemType !== "box_set" || !cardQuery) return null;
+    const lower = cardQuery.toLowerCase();
+    if (lower.includes("box") || lower.includes("盒")) {
+      return (
+        <span className="text-orange-400 bg-orange-500/10 border border-orange-500/20 font-mono px-1.5 py-0.5 rounded text-[10px] uppercase font-bold shrink-0 animate-fadeIn">
+          BOX
+        </span>
+      );
+    }
+    if (lower.includes("set") || lower.includes("套")) {
+      return (
+        <span className="text-purple-400 bg-purple-500/10 border border-purple-500/20 font-mono px-1.5 py-0.5 rounded text-[10px] uppercase font-bold shrink-0 animate-fadeIn">
+          SET
+        </span>
+      );
+    }
+    return null;
+  }, [itemType, cardQuery]);
+
   function publishListing(formData: FormData) {
     const validPhotosCount = photos.filter((p) => p.url).length;
-    if (validPhotosCount < 4) {
-      toast.error(
-        "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。"
-      );
-      return;
+    if (itemType === "card") {
+      if (validPhotosCount < 4) {
+        toast.error(
+          "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。"
+        );
+        return;
+      }
+    } else {
+      if (validPhotosCount < 1) {
+        toast.error(
+          "新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。"
+        );
+        return;
+      }
     }
-    const cardQuery = String(formData.get("card-query") ?? "");
-    const gradeValue = isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim();
-    toast.success(`「${cardQuery || "新商品"}」已提交上架，鑑定等級：${gradeValue}（待後端接通）`);
+
+    const cardQueryValue = String(formData.get("card-query") ?? "");
+    const gradeValue = itemType === "box_set" ? "SEALED" : (isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim());
+    const conditionValue = itemType === "box_set" ? "SEALED" : selectedCondition;
+
+    toast.success(`「${cardQueryValue || "新商品"}」已提交上架，鑑定等級：${gradeValue}，品相分級：${conditionValue}（待後端接通）`);
   }
 
   return (
     <form action={publishListing} className="space-y-4">
+      {/* Symmetrical Item-Type Sharding Switch Chassis */}
+      <div className="relative flex bg-[#17130f] rounded-xl p-1 border border-[rgba(237,232,224,0.08)] w-full max-w-xs mb-4 select-none">
+        <div
+          className="absolute top-1 bottom-1 rounded-lg bg-[rgba(212,165,116,0.14)] border border-[rgba(212,165,116,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
+          style={{
+            width: "calc(50% - 4px)",
+            transform:
+              itemType === "card"
+                ? "translateX(0)"
+                : "translateX(calc(100% + 4px))",
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setItemType("card")}
+          className={`relative flex-1 h-9 font-sans text-[13px] font-bold rounded-lg transition-colors z-10 ${
+            itemType === "card"
+              ? "text-brand"
+              : "text-text-secondary hover:text-text-primary"
+          }`}
+        >
+          單卡交易 (CARD)
+        </button>
+        <button
+          type="button"
+          onClick={() => setItemType("box_set")}
+          className={`relative flex-1 h-9 font-sans text-[13px] font-bold rounded-lg transition-colors z-10 ${
+            itemType === "box_set"
+              ? "text-brand"
+              : "text-text-secondary hover:text-text-primary"
+          }`}
+        >
+          密封盒組 (BOX/SET)
+        </button>
+      </div>
+
       {/* 隱藏輔助欄位，保障 React 19 FormData 相容性 */}
-      <input type="hidden" name="card-grade" value={isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim()} />
-      <input type="hidden" name="card-condition" value={selectedCondition} />
+      <input type="hidden" name="card-grade" value={itemType === "box_set" ? "SEALED" : (isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim())} />
+      <input type="hidden" name="card-condition" value={itemType === "box_set" ? "SEALED" : selectedCondition} />
 
       {/* Row 1: 卡牌搜尋 + 售價 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <label
-            htmlFor="card-query"
-            className="font-mono text-[12px] text-text-secondary block mb-1.5"
-          >
-            卡牌編號 / 名稱搜尋 <span className="text-warning">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label
+              htmlFor="card-query"
+              className="font-mono text-[12px] text-text-secondary block"
+            >
+              {itemType === "box_set" ? "盒組／禮盒名稱搜尋" : "卡牌編號 / 名稱搜尋"} <span className="text-warning">*</span>
+            </label>
+            {boxSetBadge}
+          </div>
           <div className={INPUT_GROUP_BASE}>
             <input
               id="card-query"
               name="card-query"
               type="text"
               required
-              placeholder="sv2a-182 或 Charizard ex SAR"
+              placeholder={itemType === "box_set" ? "例：151 Booster Box 或 20th Anniversary Set" : "sv2a-182 或 Charizard ex SAR"}
+              value={cardQuery}
+              onChange={(e) => setCardQuery(e.target.value)}
               className="flex-1 h-full bg-transparent px-4 font-sans text-[14px] text-text-primary placeholder-text-disabled focus:outline-none"
             />
+            {/* TODO: [database] Handle database query index partitioning for sealed boxes/sets or single asset cards */}
             <button
               type="button"
               className="px-3 h-full font-mono text-[11px] text-brand hover:bg-[rgba(212,165,116,0.08)] transition-colors border-l border-white/5 cursor-pointer"
@@ -163,81 +242,83 @@ export function NewListingForm() {
       </div>
 
       {/* Row 2: 3-Column Cascading Dropdowns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="space-y-1.5">
-          <label className="font-mono text-[12px] text-text-secondary block">鑑定機構</label>
-          <Select
-            value={selectedGrader}
-            onValueChange={(val) => {
-              const safeVal = val ?? "RAW";
-              setSelectedGrader(safeVal);
-              if (safeVal === "RAW") {
-                setSelectedScore("");
-              } else {
-                setSelectedScore(getFirstScoreForGrader(safeVal));
-              }
-            }}
-          >
-            <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-xl px-4 text-text-primary focus:ring-0">
-              <SelectValue placeholder="選擇鑑定機構" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#26211C] border border-white/10 text-text-primary">
-              <SelectGroup>
-                <SelectLabel>認證鑑定機構 (Grader)</SelectLabel>
-                <SelectItem value="RAW">裸卡 (RAW)</SelectItem>
-                <SelectItem value="PSA">PSA</SelectItem>
-                <SelectItem value="CGC">CGC</SelectItem>
-                <SelectItem value="BGS">BGS</SelectItem>
-                <SelectItem value="ARS">ARS</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+      {itemType === "card" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="space-y-1.5">
+            <label className="font-mono text-[12px] text-text-secondary block">鑑定機構</label>
+            <Select
+              value={selectedGrader}
+              onValueChange={(val) => {
+                const safeVal = val ?? "RAW";
+                setSelectedGrader(safeVal);
+                if (safeVal === "RAW") {
+                  setSelectedScore("");
+                } else {
+                  setSelectedScore(getFirstScoreForGrader(safeVal));
+                }
+              }}
+            >
+              <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-xl px-4 text-text-primary focus:ring-0">
+                <SelectValue placeholder="選擇鑑定機構" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#26211C] border border-white/10 text-text-primary">
+                <SelectGroup>
+                  <SelectLabel>認證鑑定機構 (Grader)</SelectLabel>
+                  <SelectItem value="RAW">裸卡 (RAW)</SelectItem>
+                  <SelectItem value="PSA">PSA</SelectItem>
+                  <SelectItem value="CGC">CGC</SelectItem>
+                  <SelectItem value="BGS">BGS</SelectItem>
+                  <SelectItem value="ARS">ARS</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="font-mono text-[12px] text-text-secondary block">鑑定等級</label>
-          <Select
-            value={selectedScore}
-            onValueChange={(val) => setSelectedScore(val ?? "")}
-            disabled={isScoreDisabled}
-          >
-            <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-xl px-4 text-text-primary focus:ring-0 disabled:opacity-40">
-              <SelectValue placeholder={isScoreDisabled ? "裸卡無分數" : "選擇分數"} />
-            </SelectTrigger>
-            <SelectContent className="bg-[#26211C] border border-white/10 text-text-primary">
-              <SelectGroup>
-                <SelectLabel>鑑定評級分數</SelectLabel>
-                {graderScoreOptions.map((score) => (
-                  <SelectItem key={score} value={score}>
-                    {score}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="space-y-1.5">
+            <label className="font-mono text-[12px] text-text-secondary block">鑑定等級</label>
+            <Select
+              value={selectedScore}
+              onValueChange={(val) => setSelectedScore(val ?? "")}
+              disabled={isScoreDisabled}
+            >
+              <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-xl px-4 text-text-primary focus:ring-0 disabled:opacity-40">
+                <SelectValue placeholder={isScoreDisabled ? "裸卡無分數" : "選擇分數"} />
+              </SelectTrigger>
+              <SelectContent className="bg-[#26211C] border border-white/10 text-text-primary">
+                <SelectGroup>
+                  <SelectLabel>鑑定評級分數</SelectLabel>
+                  {graderScoreOptions.map((score) => (
+                    <SelectItem key={score} value={score}>
+                      {score}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="font-mono text-[12px] text-text-secondary block">品相分級</label>
-          <Select
-            value={selectedCondition}
-            onValueChange={(val) => setSelectedCondition(val ?? "A")}
-          >
-            <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-xl px-4 text-text-primary focus:ring-0">
-              <SelectValue placeholder="選擇品相分級" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#26211C] border border-white/10 text-text-primary">
-              <SelectGroup>
-                <SelectLabel>玩家品相指標</SelectLabel>
-                <SelectItem value="A">【A 級 — 美品】</SelectItem>
-                <SelectItem value="B">【B 級 — 微傷】</SelectItem>
-                <SelectItem value="C">【C 級 — 有傷】</SelectItem>
-                <SelectItem value="D">【D 級 — 嚴重傷】</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <label className="font-mono text-[12px] text-text-secondary block">品相分級</label>
+            <Select
+              value={selectedCondition}
+              onValueChange={(val) => setSelectedCondition(val ?? "A")}
+            >
+              <SelectTrigger className="w-full h-11 bg-[#17130f] border border-white/5 rounded-xl px-4 text-text-primary focus:ring-0">
+                <SelectValue placeholder="選擇品相分級" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#26211C] border border-white/10 text-text-primary">
+                <SelectGroup>
+                  <SelectLabel>玩家品相指標</SelectLabel>
+                  <SelectItem value="A">【A 級 — 美品】</SelectItem>
+                  <SelectItem value="B">【B 級 — 微傷】</SelectItem>
+                  <SelectItem value="C">【C 級 — 有傷】</SelectItem>
+                  <SelectItem value="D">【D 級 — 嚴重傷】</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Row 3: 品相備註 */}
       <div className="space-y-1.5">
@@ -292,90 +373,95 @@ export function NewListingForm() {
         </div>
       </div>
 
-      {/* Photo Upload — 4-6 required */}
+      {/* Photo Upload — adaptive limits */}
       <div>
         <p className="font-mono text-[12px] text-text-secondary block mb-1.5">
-          實物照片 (必須 4–6 張) <span className="text-warning">*</span>
+          {itemType === "box_set" ? "實物照片 (必須至少 1 張)" : "實物照片 (必須 4–6 張)"} <span className="text-warning">*</span>
         </p>
         <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
-          {photos.map((photo, i) => (
-            <div key={i} className="flex flex-col">
-              <div
-                className={`relative aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden ${
-                  photo.url
-                    ? "border-brand/30 bg-[#17130f]"
-                    : i < 4
-                    ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
-                    : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
-                }`}
-                onClick={() => {
-                  if (photo.url) return;
-                  setActiveSlotIndex(i);
-                  fileInputRef.current?.click();
-                }}
-              >
-                {photo.url ? (
-                  <>
-                    <Image
-                      src={photo.url}
-                      alt={`實體照 ${i + 1}`}
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveImage(i);
-                      }}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/80 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[10px] font-black cursor-pointer transition-colors focus:outline-none"
-                    >
-                      ✕
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke={i < 4 ? "#d4a574" : "#50453b"}
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    <span className="font-mono text-[9px] text-text-disabled mt-1">
-                      {i < 4 ? "必填" : "選填"}
-                    </span>
-                  </>
-                )}
+          {photos.map((photo, i) => {
+            const isRequired = itemType === "box_set" ? i < 1 : i < 4;
+            return (
+              <div key={i} className="flex flex-col">
+                <div
+                  className={`relative aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden ${
+                    photo.url
+                      ? "border-brand/30 bg-[#17130f]"
+                      : isRequired
+                      ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
+                      : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
+                  }`}
+                  onClick={() => {
+                    if (photo.url) return;
+                    setActiveSlotIndex(i);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  {photo.url ? (
+                    <>
+                      <Image
+                        src={photo.url}
+                        alt={`實體照 ${i + 1}`}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage(i);
+                        }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/80 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[10px] font-black cursor-pointer transition-colors focus:outline-none"
+                      >
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={isRequired ? "#d4a574" : "#50453b"}
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <span className="font-mono text-[9px] text-text-disabled mt-1">
+                        {isRequired ? "必填" : "選填"}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  name={`photo-remark-${i}`}
+                  placeholder="照片備註（例：背面左上角微白）"
+                  value={photo.remark}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPhotos((prev) => {
+                      const next = [...prev];
+                      next[i] = { ...next[i], remark: val };
+                      return next;
+                    });
+                  }}
+                  className="w-full bg-[#17130f] border border-white/5 rounded-lg h-8 px-2 font-sans text-[11px] text-text-primary focus:outline-none placeholder-text-disabled mt-1.5"
+                />
               </div>
-              <input
-                type="text"
-                name={`photo-remark-${i}`}
-                placeholder="照片備註（例：背面左上角微白）"
-                value={photo.remark}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setPhotos((prev) => {
-                    const next = [...prev];
-                    next[i] = { ...next[i], remark: val };
-                    return next;
-                  });
-                }}
-                className="w-full bg-[#17130f] border border-white/5 rounded-lg h-8 px-2 font-sans text-[11px] text-text-primary focus:outline-none placeholder-text-disabled mt-1.5"
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
         <p className="font-mono text-[10px] text-text-disabled mt-1.5">
-          請拍攝正面、背面、卡角、刮痕細節，確保品相透明。最大 10MB / 張。
+          {itemType === "box_set" 
+            ? "請上載商品正面或外包裝實拍，確保封膜完整度與盒況透明。最大 10MB / 張。"
+            : "請拍攝正面、背面、卡角、刮痕細節，確保品相透明。最大 10MB / 張。"}
         </p>
       </div>
 

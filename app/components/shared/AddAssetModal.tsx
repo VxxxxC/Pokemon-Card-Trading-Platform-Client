@@ -41,6 +41,9 @@ export function AddAssetModal() {
   // 模式 Toggle 狀態
   const [mode, setMode] = useState<"hobby" | "merch">("hobby");
 
+  // 🏛️ Symmetrical Item-Type State
+  const [itemType, setItemType] = useState<"card" | "box_set">("card");
+
   // 🟢 核心對齊：整合統一的單一 SKU 搜尋狀態，消除個別欄位
   const [cardQuery, setCardQuery] = useState("");
   const [set, setSet] = useState(""); // 擴充包系列仍為選填欄位
@@ -133,10 +136,32 @@ export function AddAssetModal() {
 
   const displayMode = mode === "hobby" ? "收藏愛好" : "新增商品";
 
+  // Dynamic Chip Visual Simulation based on cardQuery contents
+  const boxSetBadge = useMemo(() => {
+    if (itemType !== "box_set" || !cardQuery) return null;
+    const lower = cardQuery.toLowerCase();
+    if (lower.includes("box") || lower.includes("盒")) {
+      return (
+        <span className="text-orange-400 bg-orange-500/10 border border-orange-500/20 font-mono px-1.5 py-0.5 rounded text-[10px] uppercase font-bold shrink-0 animate-fadeIn">
+          BOX
+        </span>
+      );
+    }
+    if (lower.includes("set") || lower.includes("套")) {
+      return (
+        <span className="text-purple-400 bg-purple-500/10 border border-purple-500/20 font-mono px-1.5 py-0.5 rounded text-[10px] uppercase font-bold shrink-0 animate-fadeIn">
+          SET
+        </span>
+      );
+    }
+    return null;
+  }, [itemType, cardQuery]);
+
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
       setMode(globalMode);
+      setItemType("card"); // 🏛️ Memory Guard Synchronization: Reset itemType back to "card" when opening modal
       setCardQuery("");
       setSet("");
       setSelectedGrader("PSA");
@@ -199,7 +224,7 @@ export function AddAssetModal() {
     e.preventDefault();
 
     if (!cardQuery) {
-      toast.error("⚠️ 請填寫欲搜尋及上架的卡牌型號或名稱！");
+      toast.error("⚠️ 請填寫欲搜尋及上架的商品型號或名稱！");
       return;
     }
 
@@ -209,11 +234,20 @@ export function AddAssetModal() {
         return;
       }
       const validPhotosCount = merchPhotos.filter((p) => p.url).length;
-      if (validPhotosCount < 4) {
-        toast.error(
-          "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。",
-        );
-        return;
+      if (itemType === "card") {
+        if (validPhotosCount < 4) {
+          toast.error(
+            "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。",
+          );
+          return;
+        }
+      } else {
+        if (validPhotosCount < 1) {
+          toast.error(
+            "新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。",
+          );
+          return;
+        }
       }
     }
 
@@ -222,10 +256,12 @@ export function AddAssetModal() {
       name: cardQuery,
       set: set || "PBR-Compiled",
       cardNo: "PBR-Compiled",
-      grade: isScoreDisabled
-        ? "RAW"
-        : `${selectedGrader} ${selectedScore}`.trim(),
-      grader: selectedGrader,
+      grade: itemType === "box_set"
+        ? "SEALED"
+        : (isScoreDisabled
+          ? "RAW"
+          : `${selectedGrader} ${selectedScore}`.trim()),
+      grader: itemType === "box_set" ? "SEALED" : selectedGrader,
       purchasePrice: mode === "hobby" ? Number(purchasePrice) || 0 : 0,
       currentValue: mode === "hobby" ? Number(purchasePrice) || 0 : 0, // 🟢 移除當前估值欄位，預設與入手成本一致
       sellingPrice: mode === "merch" ? Number(sellingPrice) : 0,
@@ -238,7 +274,7 @@ export function AddAssetModal() {
           : images.length > 0
             ? images
             : ["https://picsum.photos/seed/placeholder/600/420"],
-      condition: selectedCondition,
+      condition: itemType === "box_set" ? "SEALED" : selectedCondition,
       conditionDesc: mode === "merch" ? conditionDesc : undefined,
       photosRemark:
         mode === "merch" ? merchPhotos.map((p) => p.remark) : undefined,
@@ -272,20 +308,60 @@ export function AddAssetModal() {
           onSubmit={handleSubmit}
           className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-none pb-1 text-[13px]"
         >
+          {/* Symmetrical Item-Type Sharding Switch Chassis */}
+          <div className="relative flex bg-[#17130f] rounded-xl p-1 border border-[rgba(237,232,224,0.08)] w-full max-w-xs mb-4 select-none mx-auto lg:mx-0">
+            <div
+              className="absolute top-1 bottom-1 rounded-lg bg-[rgba(212,165,116,0.14)] border border-[rgba(212,165,116,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
+              style={{
+                width: "calc(50% - 4px)",
+                transform:
+                  itemType === "card"
+                    ? "translateX(0)"
+                    : "translateX(calc(100% + 4px))",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setItemType("card")}
+              className={`relative flex-1 h-9 font-sans text-[13px] font-bold rounded-lg transition-colors z-10 ${
+                itemType === "card"
+                  ? "text-brand"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              單卡交易 (CARD)
+            </button>
+            <button
+              type="button"
+              onClick={() => setItemType("box_set")}
+              className={`relative flex-1 h-9 font-sans text-[13px] font-bold rounded-lg transition-colors z-10 ${
+                itemType === "box_set"
+                  ? "text-brand"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              密封盒組 (BOX/SET)
+            </button>
+          </div>
+
           {/* === 1. CARD QUERY CONVERGENCE (Both Modes Share This Unified Box) === */}
           <div className="space-y-1.5">
-            <label className="font-mono text-[12px] text-[#d4c4b7] block">
-              卡牌編號 / 名稱搜尋 <span className="text-warning">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="font-mono text-[12px] text-[#d4c4b7] block">
+                {itemType === "box_set" ? "盒組／禮盒名稱搜尋" : "卡牌編號 / 名稱搜尋"} <span className="text-warning">*</span>
+              </label>
+              {boxSetBadge}
+            </div>
             <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-10 overflow-hidden">
               <input
                 type="text"
                 required
-                placeholder="sv2a-182 或 Charizard ex SAR"
+                placeholder={itemType === "box_set" ? "例：151 Booster Box 或 20th Anniversary Set" : "sv2a-182 或 Charizard ex SAR"}
                 value={cardQuery}
                 onChange={(e) => setCardQuery(e.target.value)}
                 className="flex-1 h-full bg-transparent px-3 font-sans text-[13px] text-[#eae1da] placeholder-[#50453b] focus:outline-none"
               />
+              {/* TODO: [database] Connect dynamic lookups to query box_sets table registries */}
               <button
                 type="button"
                 className="px-4 h-full font-mono text-[12px] text-brand hover:bg-[rgba(212,165,116,0.08)] transition-colors border-l border-white/5 cursor-pointer focus:outline-none"
@@ -313,96 +389,100 @@ export function AddAssetModal() {
           </div>
 
           {/* === 3. SYMMETRICAL CASCADING SELECTS GRID === */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#1e1a17] p-3.5 rounded-xl border border-white/[0.04]">
-            <div className="space-y-1">
-              <label className="font-mono text-[11px] text-[#d4c4b7]">
-                鑑定機構
-              </label>
-              <Select
-                value={selectedGrader}
-                onValueChange={(val) => {
-                  const safeVal = val ?? "RAW";
-                  setSelectedGrader(safeVal);
-                  if (safeVal === "RAW") {
-                    setSelectedScore("");
-                  } else {
-                    setSelectedScore(getFirstScoreForGrader(safeVal));
-                  }
-                }}
-              >
-                <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
-                  <SelectValue placeholder="選擇機構" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
-                  <SelectGroup>
-                    <SelectLabel>認證鑑定機構 (Grader)</SelectLabel>
-                    <SelectItem value="RAW">RAW</SelectItem>
-                    <SelectItem value="PSA">PSA</SelectItem>
-                    <SelectItem value="CGC">CGC</SelectItem>
-                    <SelectItem value="BGS">BGS</SelectItem>
-                    <SelectItem value="ARS">ARS</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+          {itemType === "card" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#1e1a17] p-3.5 rounded-xl border border-white/[0.04]">
+              <div className="space-y-1">
+                <label className="font-mono text-[11px] text-[#d4c4b7]">
+                  鑑定機構
+                </label>
+                <Select
+                  value={selectedGrader}
+                  onValueChange={(val) => {
+                    const safeVal = val ?? "RAW";
+                    setSelectedGrader(safeVal);
+                    if (safeVal === "RAW") {
+                      setSelectedScore("");
+                    } else {
+                      setSelectedScore(getFirstScoreForGrader(safeVal));
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
+                    <SelectValue placeholder="選擇機構" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
+                    <SelectGroup>
+                      <SelectLabel>認證鑑定機構 (Grader)</SelectLabel>
+                      <SelectItem value="RAW">RAW</SelectItem>
+                      <SelectItem value="PSA">PSA</SelectItem>
+                      <SelectItem value="CGC">CGC</SelectItem>
+                      <SelectItem value="BGS">BGS</SelectItem>
+                      <SelectItem value="ARS">ARS</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-1">
-              <label className="font-mono text-[11px] text-[#d4c4b7]">
-                鑑定分數
-              </label>
-              <Select
-                value={selectedScore}
-                onValueChange={(val) => setSelectedScore(val ?? "")}
-                disabled={isScoreDisabled}
-              >
-                <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px] disabled:opacity-40">
-                  <SelectValue
-                    placeholder={isScoreDisabled ? "裸卡無分數" : "選擇分數"}
-                  />
-                </SelectTrigger>
-                <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
-                  <SelectGroup>
-                    <SelectLabel>鑑定評級</SelectLabel>
-                    {graderScoreOptions.map((score) => (
-                      <SelectItem key={score} value={score}>
-                        {score}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-1">
+                <label className="font-mono text-[11px] text-[#d4c4b7]">
+                  鑑定分數
+                </label>
+                <Select
+                  value={selectedScore}
+                  onValueChange={(val) => setSelectedScore(val ?? "")}
+                  disabled={isScoreDisabled}
+                >
+                  <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px] disabled:opacity-40">
+                    <SelectValue
+                      placeholder={isScoreDisabled ? "裸卡無分數" : "選擇分數"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
+                    <SelectGroup>
+                      <SelectLabel>鑑定評級</SelectLabel>
+                      {graderScoreOptions.map((score) => (
+                        <SelectItem key={score} value={score}>
+                          {score}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-1">
-              <label className="font-mono text-[11px] text-[#d4c4b7]">
-                品相指標
-              </label>
-              <Select
-                value={selectedCondition}
-                onValueChange={(val) => setSelectedCondition(val ?? "A")}
-              >
-                <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
-                  <SelectValue placeholder="選擇品相" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
-                  <SelectGroup>
-                    <SelectLabel>品相分級</SelectLabel>
-                    <SelectItem value="A">美品 A</SelectItem>
-                    <SelectItem value="B">微傷 B</SelectItem>
-                    <SelectItem value="C">有傷 C</SelectItem>
-                    <SelectItem value="D">重傷 D</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <label className="font-mono text-[11px] text-[#d4c4b7]">
+                  品相指標
+                </label>
+                <Select
+                  value={selectedCondition}
+                  onValueChange={(val) => setSelectedCondition(val ?? "A")}
+                >
+                  <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
+                    <SelectValue placeholder="選擇品相" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
+                    <SelectGroup>
+                      <SelectLabel>品相分級</SelectLabel>
+                      <SelectItem value="A">美品 A</SelectItem>
+                      <SelectItem value="B">微傷 B</SelectItem>
+                      <SelectItem value="C">有傷 C</SelectItem>
+                      <SelectItem value="D">重傷 D</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* === 4. PHOTO UPLOAD SECTION === */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="font-sans font-bold text-[#d4c4b7]">
                 實體品相相片{" "}
-                {mode === "merch" ? `(必須 4–6 張)` : `(${images.length}/6)`}{" "}
+                {mode === "merch" 
+                  ? (itemType === "box_set" ? `(必須至少 1 張)` : `(必須 4–6 張)`)
+                  : `(${images.length}/6)`}{" "}
                 {mode === "merch" && <span className="text-brand">*</span>}
               </label>
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
@@ -460,80 +540,83 @@ export function AddAssetModal() {
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
-                {merchPhotos.map((photo, i) => (
-                  <div key={i} className="flex flex-col">
-                    <div
-                      className={`relative aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${
-                        photo.url
-                          ? "border-brand/30 bg-[#17130f]"
-                          : i < 4
-                            ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
-                            : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
-                      }`}
-                      onClick={() => {
-                        if (photo.url) return;
-                        setActiveSlotIndex(i);
-                        fileInputRef.current?.click();
-                      }}
-                    >
-                      {photo.url ? (
-                        <>
-                          <Image
-                            src={photo.url}
-                            alt={`實體照 ${i + 1}`}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveMerchImage(i);
-                            }}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/80 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[10px] font-black cursor-pointer transition-colors focus:outline-none"
-                          >
-                            ✕
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke={i < 4 ? "#d4a574" : "#50453b"}
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                          </svg>
-                          <span className="font-mono text-[9px] text-text-disabled mt-1">
-                            {i < 4 ? "必填" : "選填"}
-                          </span>
-                        </>
-                      )}
+                {merchPhotos.map((photo, i) => {
+                  const isRequired = itemType === "box_set" ? i < 1 : i < 4;
+                  return (
+                    <div key={i} className="flex flex-col">
+                      <div
+                        className={`relative aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${
+                          photo.url
+                            ? "border-brand/30 bg-[#17130f]"
+                            : isRequired
+                              ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
+                              : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
+                        }`}
+                        onClick={() => {
+                          if (photo.url) return;
+                          setActiveSlotIndex(i);
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        {photo.url ? (
+                          <>
+                            <Image
+                              src={photo.url}
+                              alt={`實體照 ${i + 1}`}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMerchImage(i);
+                              }}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/80 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[10px] font-black cursor-pointer transition-colors focus:outline-none"
+                            >
+                              ✕
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke={isRequired ? "#d4a574" : "#50453b"}
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                            >
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span className="font-mono text-[9px] text-text-disabled mt-1">
+                              {isRequired ? "必填" : "選填"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="照片備註"
+                        value={photo.remark}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMerchPhotos((prev) => {
+                            const next = [...prev];
+                            next[i] = { ...next[i], remark: val };
+                            return next;
+                          });
+                        }}
+                        className="w-full bg-[#17130f] border border-white/5 rounded-lg h-7 px-2 font-sans text-[10px] text-[#eae1da] placeholder-[#50453b] focus:outline-none mt-1"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      placeholder="照片備註"
-                      value={photo.remark}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setMerchPhotos((prev) => {
-                          const next = [...prev];
-                          next[i] = { ...next[i], remark: val };
-                          return next;
-                        });
-                      }}
-                      className="w-full bg-[#17130f] border border-white/5 rounded-lg h-7 px-2 font-sans text-[10px] text-[#eae1da] placeholder-[#50453b] focus:outline-none mt-1"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
