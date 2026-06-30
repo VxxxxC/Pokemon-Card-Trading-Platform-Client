@@ -121,28 +121,45 @@ function MerchantTradingPageContent() {
       <div className="relative bg-bg-card rounded-2xl border border-white/5 p-4 shadow-sm flex flex-col gap-2">
         <label
           htmlFor="merchant-order-search"
-          className="font-mono text-[11px] text-text-secondary uppercase tracking-wider"
+          className="font-mono pl-1 text-xs text-text-primary uppercase tracking-wider"
         >
-          智慧訂單檢索控制台
+          訂單搜尋
         </label>
-        <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
-          <input
-            id="merchant-order-search"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="輸入卡牌名稱、卡號如 sv2a-182、買家姓名或訂單 ID 進行精確過濾..."
-            className="flex-1 h-full bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="px-3 h-full font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
-            >
-              清除
-            </button>
-          )}
+        <div className="relative flex items-center">
+          <svg
+            className="absolute left-3.5 text-[#8A8680] pointer-events-none"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
+            <input
+              id="merchant-order-search"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單ID..."
+              className="pl-10 pr-10 w-full flex-1 h-10 bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="px-3 h-full font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
+              >
+                清除
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
