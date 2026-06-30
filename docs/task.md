@@ -22,10 +22,21 @@
 **Task 1.2.1: 設定 Supabase Database 及 RLS**
 
 - [ ] Ticket 8: 喺 Supabase 開新 Project，設定好 `.env.local` 嘅 URL 同 Keys。
-- [ ] Ticket 9: 撰寫 SQL 建立 `profiles` Table (加入 `role` 欄位預設為 USER)、`listings` Table、`orders` Table。
+- [ ] Ticket 9: 撰寫 SQL 建立 `profiles` Table (加入 `role` 欄位預設為 `USER`)、`listings` Table、`orders` Table。🔄 TODO [BACKEND]
+  - _驗收標準（對齊前端真理源）：_
+    - `listings` 必須包含 `item_type` 欄位，映射前端 `AddAssetModal.tsx` / `NewListingForm.tsx` 的 `itemType` 狀態，型別為 Postgres `ENUM('card', 'box_set')`（對應 BOX 橙色／SET 紫色徽章渲染）。
+    - `listings` 必須包含 `condition` 欄位，映射前端 `selectedCondition` 狀態，型別為 `CHAR(1)` 並加上 `CHECK (condition IN ('A', 'B', 'C', 'D'))`（重構後的純字母品相分級）。
+    - `listings` 必須包含級聯分級欄位 `grader`（`'RAW' | 'PSA' | 'CGC' | 'BGS' | 'ARS' | 'OTHER'`）與 `grade_score`（`TEXT`，容納 `10 (Black Label)` 等複合分數），映射前端 `selectedGrader` / `selectedScore`。
+    - `listings.photos` 須以 `JSONB` 儲存 6 槽相片緩衝 `{ url, remark }[]`（新增商品強制 ≥ 2 張，最多 6 張）。
+    - 完整 DDL 詳見 `docs/dev/database.md`。
 - [ ] Ticket 10: 建立 Supabase Storage Bucket 名為 `listing-images` 供上載實物圖用。
 - [ ] Ticket 11: 為 `listings` 設定 RLS：所有人可 SELECT，只有 `role = MERCHANT` 可 INSERT/UPDATE。
-- [ ] Ticket 12: 為 `orders` 設定 RLS：只有買家本人，或該訂單對應嘅 MERCHANT 可 SELECT/UPDATE。
+- [ ] Ticket 12: 為 `orders` 設定 RLS：只有買家本人，或該訂單對應嘅 MERCHANT 可 SELECT/UPDATE。🔄 TODO [BACKEND]
+  - _驗收標準（全額付訖 Full Pay 鐵律）：_
+    - `orders` 嚴禁設立任何 `deposit_paid` / `deposit_amount` / 成數定金欄位；全站 100% 全額託管。
+    - 訂單狀態機 `escrow_status` 採用 Postgres `ENUM('payment', 'custody', 'shipped', 'grading', 'released', 'cancelled')`，精準映射前端 `app/lib/types/trading.ts` 的 `OrderStatus` 與 `ESCROW_STEPS` 5 階水平步進器。
+    - RLS：`SELECT/UPDATE` 僅允許 `auth.uid() = buyer_id` 或 `auth.uid() = seller_id`；其餘角色一律 fail-closed 拒絕。
+    - 訂單須記錄 `auth_fee`（可選 HK$150 鑑定增值費，由前端 `authServiceEnabled` toggle 帶入）作為獨立行項目，不得併入商品本金。
 - [ ] Ticket 13: 為 Storage 設定 RLS：所有人可讀取圖片，只有 `role = MERCHANT` 可上載圖片。
 
 ---
@@ -36,14 +47,19 @@
 
 **Task 2.1.1: 串接外部日版卡牌 API 及快取至 Supabase**
 
-- [ ] Ticket 14: 閱讀 TCGdex / JustTCG API 文件，使用 `fetch` 封裝基礎 API Client。
-- [ ] Ticket 15: 撰寫根據「卡牌編號」(Card ID) 獲取卡牌詳細資料的函數。
-- [ ] Ticket 16: 撰寫資料 mapping 邏輯，將外部 API 格式轉換為自家 Supabase `cards` Table 格式。
+- [ ] Ticket 14: 閱讀 TCGdex / JustTCG API 文件，使用 `fetch` 封裝基礎 API Client。🔄 TODO [API]
+  - _驗收標準：_ Client 須同時支援單卡（`item_type='card'`）與盒組（`item_type='box_set'`）兩條查詢線，回傳格式需區分卡牌編號與擴充包系列，**不得**在多分類查詢時互相覆寫全域參數。
+- [ ] Ticket 15: 撰寫根據「卡牌編號」(Card ID) 獲取卡牌詳細資料的函數。🔄 TODO [API]
+  - _驗收標準：_ 函數簽章須接受 `itemType` 維度（對齊前端 `HeroSearch.tsx` 毫秒級 `card_number` 索引搜尋），盒組查詢回退至系列名稱模糊匹配。
+- [ ] Ticket 16: 撰寫資料 mapping 邏輯，將外部 API 格式轉換為自家 Supabase `card_catalog` Table 格式。🔄 TODO [BACKEND]
+  - _驗收標準：_ mapping 須寫入 `item_type` 分類欄位，並保留 `rarity`（`SAR | UR | SR | AR | CSR`）原生標籤，不得在寫入單卡時污染盒組快取列。
 
 **Task 2.1.2: 實作 Supabase 快取機制與搜尋**
 
-- [ ] Ticket 17: 搜尋卡牌時，先查詢自家 `cards` Table (Cache) 🔄 TODO [BACKEND]。
-- [ ] Ticket 18: 若自家無資料，Call 外部 API，並將結果 `insert` 落自家 `cards` Table 後回傳 🔄 TODO [BACKEND]。
+- [ ] Ticket 17: 搜尋卡牌時，先查詢自家 `card_catalog` Table (Cache) 🔄 TODO [BACKEND]。
+  - _驗收標準：_ 快取查詢須以 `(item_type, card_number)` 複合鍵命中，多分類（card / box_set）查詢各自獨立分片，**嚴禁**單一全域 `query` 參數覆寫他類結果（對齊 `HeroSearch.tsx` 模糊搜尋與結構化篩選解耦線）。
+- [ ] Ticket 18: 若自家無資料，Call 外部 API，並將結果 `insert` 落自家 `card_catalog` Table 後回傳 🔄 TODO [BACKEND]。
+  - _驗收標準：_ 回填 (write-back) 時須帶 `item_type` 標記與 `needs_review` flag；多分類並發回填須以 `ON CONFLICT (item_type, card_number)` upsert，確保不同分類快取列互不踐踏。
 - [x] Ticket 19: 建立前端「卡牌搜尋框」UI Component (包含輸入防抖 Debounce) ✅ DONE。
 - [x] Ticket 20: 將搜尋結果以列表形式 (Dropdown) 呈現於前端，供表單選取 ✅ DONE。
 - [x] **Ticket 20a [架構優化]: 實作大盤「模糊搜尋」與「結構化篩選」徹底解耦線** ✅ DONE
@@ -67,6 +83,10 @@
 
 - [ ] Ticket 24: 撰寫邏輯使用 Supabase Client (`supabase.storage`) 將圖片上傳至 Bucket 並獲取 URLs。🔄 TODO [BACKEND]
 - [ ] Ticket 25: 撰寫 Server Action 接收表單資料，**驗證用戶是否具備 MERCHANT 權限**，然後 `insert` 入 `listings`。🔄 TODO [BACKEND]
+  - _驗收標準（對齊前端 payload 真理源）：_
+    - Server Action 須接收並寫入 `item_type`（`'card' | 'box_set'`）、`condition`（`'A' | 'B' | 'C' | 'D'`）、`grader`、`grade_score`，以及 6 槽 `photos` JSONB（強制 ≥ 2 張）。
+    - 寫入前須以 RLS 與 Server 端雙重驗證 `role = 'MERCHANT'` 且 `kyc_status = 'verified'`，fail-closed 拒絕越權上架。
+    - 草稿與上架以 `status ENUM('draft', 'active', 'sold', 'pending')` 分流（對齊 `NewListingForm.tsx` 的「儲存草稿」/「立即上架」）。
 - [ ] Ticket 26: 撰寫前端提交表單後的成功與失敗提示 (Toast) 及跳轉邏輯。🔄 TODO [FRONTEND] (2026-06-03：成功提交 toast 已於 `app/profile/user/inventory/page.tsx` 接入 Sonner；失敗提示與 redirect handler 仍待補完)
 - [x] Ticket 27: 開發平台首頁與商品詳情頁，讀取 `listings` 表格並展示商品。✅ DONE (`app/marketplace/page.tsx` + `app/marketplace/[id]/page.tsx`，現接 mock 資料；2026-06-05 補完私域 storefront 與公共 marketplace 100% parity、私域篩選隔離及 `/marketplace/[id]/product/[productId]` 路由閉環)
 
@@ -135,6 +155,10 @@
 - [ ] Ticket 43: 寫 API 產生 PaymentIntent，計算平台抽佣，指定轉帳去賣家嘅 Stripe Account。🔄 TODO [API]
 - [ ] Ticket 44: 建立 API Endpoint 接收 Stripe Webhook (設定 Raw Body 解析及驗證 Signature)。🔄 TODO [API]
 - [ ] Ticket 45: Webhook 處理 `payment_intent.succeeded`：建立 `orders` 紀錄，update `listings` 狀態為已售出。🔄 TODO [API]
+  - _驗收標準（全額付訖 Full Pay）：_
+    - Webhook 收到全額 `payment_intent.succeeded` 後，原子化建立 `orders` 列並將 `escrow_status` 初始化為 `'custody'`（資金 100% 鎖定託管，無訂金分段）。
+    - 同一交易內以 `FOR UPDATE` 行鎖將對應 `listings.status` 切換為 `'sold'`，RLS 阻擋重複付款。
+    - 訂單金額須完整還原前端結算公式 `Math.max(itemSubtotal + shippingFee + authFee - totalDiscount, 0)`，並分列 `auth_fee`（HK$150 可選）與 `coupon_discount`。
 - [x] Ticket 46: 製作前端「付款成功」及「付款失敗」嘅跳轉頁面。✅ DONE (`app/marketplace/payment-status/page.tsx`，含倒數自動跳轉、mock Stripe log，現接 mock 資料)
 
 ---
@@ -145,14 +169,16 @@
 
 **Task 6.1.1: 商戶出貨管理**
 
-- [x] Ticket 47: 製作「我的銷售」頁面，讀取關聯該商戶嘅 orders (加入權限保護，僅 MERCHANT 可入)。✅ DONE (`app/profile/merchant/sales/page.tsx`，含 Escrow 狀態欄、需要行動警示 banner，現接 mock 資料)
+- [x] Ticket 47: 製作「我的銷售」頁面，讀取關聯該商戶嘅 orders (加入權限保護，僅 MERCHANT 可入)。✅ DONE (`app/profile/merchant/(dashboard)/trading/page.tsx`，含 Escrow 狀態欄、需要行動警示 banner，現接 mock 資料)
+  - _後端對齊（全額付訖 Full Pay）：_ 讀取查詢須 `WHERE seller_id = auth.uid()`，Escrow 狀態欄直接綁定 `orders.escrow_status` 5 階 ENUM（`payment → custody → shipped → grading → released`，外加 `cancelled`），不得渲染任何訂金／分段付款欄位。
 - [x] Ticket 48: 喺 UI 加入「輸入速遞單號 (Tracker Number) 並發貨」嘅表單。✅ DONE (`app/profile/merchant/sales/page.tsx` 內含追蹤單號輸入欄 UI)
 - [x] Ticket 49a [前端]: 製作出貨動作按鈕 UI（「確認並準備發貨」、「確認發貨」）及追蹤單號輸入表單。✅ DONE (`app/profile/merchant/sales/page.tsx`)
 - [ ] Ticket 49b [後端]: 撰寫 Server Action `update` `orders` Table 嘅出貨狀態及追蹤單號。🔄 TODO [BACKEND]
 
 **Task 6.1.2: 買家訂單追蹤**
 
-- [x] Ticket 50: 製作「我的購買」頁面，讀取買家本人嘅 orders。✅ DONE (`app/profile/user/orders/page.tsx`，含三 Tab 訂單管理、EscrowStepper、SF 收件表單，現接 mock 資料)
+- [x] Ticket 50: 製作「我的購買」頁面，讀取買家本人嘅 orders。✅ DONE (`app/profile/user/(dashboard)/trading/page.tsx`，含三 Tab 訂單管理、EscrowStepper、SF 收件表單，現接 mock 資料)
+  - _後端對齊（全額付訖 Full Pay）：_ 進行中查詢 `WHERE buyer_id = auth.uid() AND escrow_status NOT IN ('released', 'cancelled')`；已完成查詢 `WHERE escrow_status = 'released'`。EscrowStepper 嚴格映射全額託管 5 階 ENUM，杜絕訂金催付欄位。
 - [x] Ticket 51: UI 顯示訂單狀態及商戶提供嘅 Tracker Number。✅ DONE (`app/profile/user/orders/page.tsx` 內 `OrderCard` 顯示狀態及單號欄位)
 
 ---
