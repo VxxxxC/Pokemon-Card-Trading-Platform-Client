@@ -7,7 +7,6 @@ import { AnimatePresence } from "framer-motion";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 接入 Zustand 全域控制中樞
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
-import Logo from "@/public/asset/logo.png";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -56,7 +55,13 @@ export function MobileHeader() {
             className="flex flex-row items-center font-sans font-semibold text-lg text-brand"
           >
             <div className="max-w-20 mr-3">
-              <Image src={Logo} alt="logo" width={50} className="rounded-xl" />
+              <Image
+                src="/asset/logo.png"
+                alt="logo"
+                height={50}
+                width={50}
+                className="rounded-xl"
+              />
             </div>
             <p>HKCardVault</p>
           </Link>

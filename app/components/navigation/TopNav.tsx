@@ -9,7 +9,6 @@ import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 // 🟢 從全域中央大腦引入狀態
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
-import Logo from "@/public/asset/logo.png";
 
 const navLinks = [
   { href: "/", label: "首頁" },
@@ -82,7 +81,13 @@ export function TopNav() {
             className="flex flex-row items-center font-sans font-semibold text-lg text-brand"
           >
             <div className="max-w-20 p-3">
-              <Image src={Logo} alt="logo" width={100} className="rounded-xl" />
+              <Image
+                src="/asset/logo.png"
+                alt="logo"
+                height={100}
+                width={100}
+                className="rounded-xl"
+              />
             </div>
             <p> HKCardVault</p>
           </Link>
