@@ -134,14 +134,14 @@ export function HeroSearch() {
                 placeholder="輸入卡牌編號 (例: SV8a-123)"
                 className="w-full h-11 pl-10 pr-4 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-[8px] font-sans text-[13.5px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(140,115,85,0.40)]"
                 aria-label="搜尋卡牌編號"
-                aria-expanded={showDropdown}
-                aria-controls="hero-search-results"
                 autoComplete="off"
               />
 
               {showDropdown && (
                 <div
                   id="hero-search-results"
+                  role="listbox"
+                  aria-label="搜尋建議"
                   className="absolute z-50 top-full mt-1 w-full max-h-72 overflow-y-auto rounded-[8px] border border-[rgba(237,232,224,0.12)] bg-bg-elevated shadow-lg"
                 >
                   {isSearching && (

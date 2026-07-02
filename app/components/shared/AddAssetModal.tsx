@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useUIStore } from "@/app/store/useUIStore";
@@ -163,15 +163,10 @@ export function AddAssetModal() {
     return null;
   }, [itemType, catalogSearch.query]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    catalogSearch.clearSearch();
-    setSet("");
-  }, [isOpen, catalogSearch.clearSearch]);
-
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
+      catalogSearch.clearSearch();
       setMode(globalMode);
       setItemType("card"); // 🏛️ Memory Guard Synchronization: Reset itemType back to "card" when opening modal
       setSet("");
@@ -343,7 +338,11 @@ export function AddAssetModal() {
             />
             <button
               type="button"
-              onClick={() => setItemType("card")}
+              onClick={() => {
+                if (itemType === "card") return;
+                setItemType("card");
+                catalogSearch.invalidateResults();
+              }}
               className={`relative flex-1 h-9 font-sans text-[13px] font-bold rounded-lg transition-colors z-10 ${
                 itemType === "card"
                   ? "text-brand"
@@ -354,7 +353,11 @@ export function AddAssetModal() {
             </button>
             <button
               type="button"
-              onClick={() => setItemType("box_set")}
+              onClick={() => {
+                if (itemType === "box_set") return;
+                setItemType("box_set");
+                catalogSearch.invalidateResults();
+              }}
               className={`relative flex-1 h-9 font-sans text-[13px] font-bold rounded-lg transition-colors z-10 ${
                 itemType === "box_set"
                   ? "text-brand"

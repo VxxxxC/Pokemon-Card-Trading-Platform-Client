@@ -124,6 +124,16 @@ export function useProductCatalogSearch(
     setIsSearching(false);
   }, []);
 
+  const invalidateResults = useCallback(() => {
+    requestIdRef.current += 1;
+    setResults([]);
+    setTotal(0);
+    setHasMore(false);
+    setError(null);
+    setSelected(null);
+    setIsSearching(false);
+  }, []);
+
   const selectSuggestion = useCallback(
     (suggestion: ProductCatalogSuggestion) => {
       skipNextSearchRef.current = true;
@@ -144,30 +154,15 @@ export function useProductCatalogSearch(
     }
 
     const trimmed = query.trim();
-    if (trimmed.length < minLength) {
-      setResults([]);
-      setTotal(0);
-      setHasMore(false);
-      setError(null);
-      setIsSearching(false);
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void runSearch(trimmed);
-    }, debounceMs);
+    const timer = window.setTimeout(
+      () => {
+        void runSearch(trimmed);
+      },
+      trimmed.length < minLength ? 0 : debounceMs,
+    );
 
     return () => window.clearTimeout(timer);
   }, [query, enabled, debounceMs, minLength, runSearch]);
-
-  useEffect(() => {
-    requestIdRef.current += 1;
-    setResults([]);
-    setTotal(0);
-    setHasMore(false);
-    setError(null);
-    setSelected(null);
-  }, [itemType]);
 
   return {
     query,
@@ -181,5 +176,6 @@ export function useProductCatalogSearch(
     selectSuggestion,
     searchNow,
     clearSearch,
+    invalidateResults,
   };
 }

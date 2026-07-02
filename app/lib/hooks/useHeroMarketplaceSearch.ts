@@ -114,17 +114,12 @@ export function useHeroMarketplaceSearch(
     if (!enabled) return;
 
     const trimmed = query.trim();
-    if (trimmed.length < minLength) {
-      setResults([]);
-      setTotal(0);
-      setError(null);
-      setIsSearching(false);
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void runSearch(trimmed);
-    }, debounceMs);
+    const timer = window.setTimeout(
+      () => {
+        void runSearch(trimmed);
+      },
+      trimmed.length < minLength ? 0 : debounceMs,
+    );
 
     return () => window.clearTimeout(timer);
   }, [query, enabled, debounceMs, minLength, runSearch]);
