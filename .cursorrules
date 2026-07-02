@@ -1,0 +1,57 @@
+# Project Context
+
+You are an expert full-stack developer assisting in building a trading platform using Next.js (App Router), Supabase, and Tailwind CSS. The team consists of two developers: one handling Backend/Infra/APIs, and the other handling Frontend/UI.
+
+# Core Development Rules
+
+1. STRICT SEPARATION OF CONCERNS:
+
+When asked to write BACKEND logic (APIs, Server Actions, Database queries), strictly place the code in `app/actions/`, `app/api/`, or `lib/`. DO NOT modify files in `components/` or `app/(routes)/` unless explicitly instructed.
+
+When asked to write FRONTEND logic, focus on UI components and client-side hooks. Do not modify backend database clients or schemas.
+
+2. SUPABASE TYPE SAFETY:
+
+DO NOT manually define TypeScript interfaces for database tables.
+
+Always import and use types directly from `types/supabase.ts` (e.g., `import { Tables } from '@/types/supabase'`).
+
+Assume `types/supabase.ts` is the absolute single source of truth generated via Supabase CLI.
+
+3. DATA FETCHING PATTERN:
+
+Prioritize using Next.js Server Actions (`"use server"`) for mutations and direct database queries.
+
+Keep Server Actions isolated in the `app/actions/` directory to act as a clear contract between Backend and Frontend.
+
+4. UI PLACEHOLDER PROTOCOL:
+
+If backend logic requires a UI component that does not exist yet, generate a purely functional, unstyled "stub" component (using basic HTML elements) just to verify data flow. Leave the styling to the frontend developer/Stitch AI.
+
+5. ERROR HANDLING:
+
+All backend actions must return structured objects, e.g., `{ success: true, data: ... }` or `{ success: false, error: string }`. Never let raw database errors leak to the client component.
+
+6. BACKEND ↔ FRONTEND HANDOFF (Partner reporting):
+
+When shipping a backend flow that requires UI wiring, document the integration in the same PR — do not rely on chat alone.
+
+- **Dashboard:** Update `docs/dev/INTEGRATION_QUEUE.md` (status, files touched, UI touchpoint).
+- **Per flow:** Add or update `docs/dev/follow-up/<flow-name>/`:
+  - `backend.md` — files created, action contract, env/migrations, how to verify (backend dev owns).
+  - `frontend.md` — which UI files to touch, hook/API usage, acceptance checklist (frontend dev owns).
+- **One packet per workflow** — not one giant doc for everything.
+- **Stable reference** lives in `docs/dev/api.md` and `docs/dev/database.md`; follow-up docs are integration handoffs until the UI is wired, then mark ✅ in the queue.
+- **Backend dev:** Place logic in `app/actions/`, `lib/` — avoid editing `components/` unless wiring a minimal stub for data-flow verification.
+- **Frontend dev:** Wire UI per `frontend.md`; do not change server actions without backend sync.
+
+7. PACKAGE MANAGER — BUN ONLY:
+
+This project uses **Bun** exclusively. **Never** use npm, npx, yarn, pnpm, or pnpm dlx in commands, docs, scripts, or terminal instructions for this repo.
+
+- Install deps: `bun install`
+- Run scripts: `bun run dev`, `bun run build`, `bun run lint`, etc.
+- Add/remove deps: `bun add <pkg>`, `bun add -d <pkg>`, `bun remove <pkg>`
+- One-off CLIs: `bunx <cli>` (e.g. `bunx tsc --noEmit`, `bunx supabase db push`)
+- shadcn/ui: `bunx --bun shadcn@latest add <component>` (never `npx shadcn@latest`)
+- Lockfile: commit **`bun.lock` only**. Do not create or commit `package-lock.json`.

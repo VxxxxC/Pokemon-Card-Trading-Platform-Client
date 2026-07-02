@@ -1,17 +1,24 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useTransition } from 'react';
+import { logout } from '@/app/actions/auth';
+import { useUIStore } from '@/app/store/useUIStore';
 
 export function LogoutModal() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const setMockRole = useUIStore((state) => state.setMockRole);
 
   const openModal = useCallback(() => setIsOpen(true), []);
   const closeModal = useCallback(() => setIsOpen(false), []);
 
   const handleLogout = useCallback(() => {
-    // TODO: [server] Supabase signOut + redirect to /login
-    setIsOpen(false);
-  }, []);
+    startTransition(async () => {
+      setMockRole('GUEST');
+      setIsOpen(false);
+      await logout();
+    });
+  }, [setMockRole]);
 
   return (
     <>
@@ -73,16 +80,18 @@ export function LogoutModal() {
               <button
                 type="button"
                 onClick={closeModal}
-                className="flex-1 h-11 font-sans text-[14px] font-medium text-text-secondary border border-[rgba(237,232,224,0.12)] rounded-xl hover:bg-bg-hover active:scale-[0.98] active:translate-y-px transition-transform"
+                disabled={isPending}
+                className="flex-1 h-11 font-sans text-[14px] font-medium text-text-secondary border border-[rgba(237,232,224,0.12)] rounded-xl hover:bg-bg-hover active:scale-[0.98] active:translate-y-px transition-transform disabled:opacity-50"
               >
                 取消
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex-1 h-11 font-sans text-[14px] font-semibold text-warning bg-[rgba(239,68,68,0.10)] border border-[rgba(239,68,68,0.20)] rounded-xl hover:bg-[rgba(239,68,68,0.16)] active:scale-[0.98] active:translate-y-px transition-transform"
+                disabled={isPending}
+                className="flex-1 h-11 font-sans text-[14px] font-semibold text-warning bg-[rgba(239,68,68,0.10)] border border-[rgba(239,68,68,0.20)] rounded-xl hover:bg-[rgba(239,68,68,0.16)] active:scale-[0.98] active:translate-y-px transition-transform disabled:opacity-50"
               >
-                確認登出
+                {isPending ? '登出中…' : '確認登出'}
               </button>
             </div>
           </div>

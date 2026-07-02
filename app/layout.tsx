@@ -8,8 +8,9 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
-import { DemoRoleSwitcher } from "@/app/components/shared/DemoRoleSwitcher";
+import { RoleProvider } from "@/app/components/providers/RoleProvider";
 import { IosPwaModal } from "./components/pwa/IosPwaModal";
+import { resolveCurrentDemoRole } from "@/lib/auth/session";
 
 const APP_NAME = "HKCardVault";
 const APP_DEFAULT_TITLE = "HKCardVault — 寶可夢卡牌專業交易平台";
@@ -35,11 +36,13 @@ export const viewport: Viewport = {
   themeColor: "#17130f",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const initialRole = await resolveCurrentDemoRole();
+
   return (
     <html
       lang="zh-HK"
@@ -295,13 +298,14 @@ export default function RootLayout({
         className="min-h-dvh bg-bg-page text-text-primary font-sans"
         style={{ backgroundColor: "#17130f" }}
       >
-        <IosPwaModal />
-        <DemoRoleSwitcher />
+        <RoleProvider initialRole={initialRole}>
+          <IosPwaModal />
 
-        <AppSerwistProvider>
-          <PwaNetworkBanner />
-          {children}
-        </AppSerwistProvider>
+          <AppSerwistProvider>
+            <PwaNetworkBanner />
+            {children}
+          </AppSerwistProvider>
+        </RoleProvider>
 
         <Toaster position="top-center" closeButton richColors expand={false} />
         <AddAssetModal />

@@ -70,8 +70,8 @@ Follow the steps in `.agents/skills/react-components/SKILL.md`, then verify each
 - [ ] `DESIGN.md` tokens extracted and mapped to `resources/style-guide.json`
 - [ ] Design screenshot reviewed at full resolution (`.stitch/designs/{page}.png`)
 - [ ] `src/data/mockData.ts` created with realistic Pokémon TCG JP data
-- [ ] All components pass `npm run validate <file_path>` (AST check)
+- [ ] All components pass `bun run validate <file_path>` (AST check)
 - [ ] `architecture-checklist.md` reviewed and all items satisfied
-- [ ] `npm run dev` — live result matches the approved Stitch screenshot
+- [ ] `bun run dev` — live result matches the approved Stitch screenshot
 - [ ] No `font-mono` missing on price/grade fields
 - [ ] No linear transitions remain in any interactive element

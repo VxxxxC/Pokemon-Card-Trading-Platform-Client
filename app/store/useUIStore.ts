@@ -17,7 +17,7 @@ interface UIStore {
 export const useUIStore = create<UIStore>((set) => ({
     isAddAssetOpen: false,
     addAssetMode: "hobby",
-    mockRole: "USER",
+    mockRole: "GUEST",
     isIosPwaModalOpen: false, // 預設關閉
     openAddAssetModal: (mode) =>
         set({ isAddAssetOpen: true, addAssetMode: mode }),

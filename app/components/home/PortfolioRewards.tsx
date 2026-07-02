@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useUIStore } from "@/app/store/useUIStore";
+import { getRoleHomePath } from "@/lib/auth/roles";
 
 // TODO: [API] Fetch user portfolio value from Supabase — aggregate `user_portfolio` table card values in HKD
 // TODO: [database] Create `user_portfolio` table with card_id, quantity, condition fields; compute HKD net worth via market price API
@@ -67,7 +68,7 @@ export function PortfolioRewards() {
         </h2>
         {mockRole !== "ADMIN" ? (
           <Link
-            href={`/profile/${mockRole.toLowerCase()}`}
+            href={getRoleHomePath(mockRole)}
             className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
           >
             管理收藏 →

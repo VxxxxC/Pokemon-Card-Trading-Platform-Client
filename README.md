@@ -92,8 +92,7 @@ graph TD
 
 ### Prerequisites
 
-- [Node.js 20+](https://nodejs.org/)
-- npm (bundled with Node.js)
+- [Bun 1.3+](https://bun.sh/) (package manager and runtime)
 
 ### Installation
 
@@ -103,7 +102,7 @@ git clone https://github.com/VxxxxC/Pokemon-Card-Trading-Platform.git
 cd Pokemon-Card-Trading-Platform
 
 # 2. Install dependencies
-npm install
+bun install
 ```
 
 ### Environment Variables
@@ -125,7 +124,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 ### Run Locally
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -133,19 +132,19 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### Build for Production
 
 ```bash
-npm run build
-npm run start
+bun run build
+bun run start
 ```
 
 ### Lint
 
 ```bash
-npm run lint
+bun run lint
 ```
 
 ### Expose via Local Tunnel (optional)
 
 ```bash
-npm run localtunnel
-# Exposes localhost:3000 at https://pokemon-trading-platform.loca.lt
+bunx localtunnel --port 3000
+# Exposes localhost:3000 at a public loca.lt URL
 ```

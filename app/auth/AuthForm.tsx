@@ -10,7 +10,8 @@ import {
 import Link from "next/link";
 // 🟢 核心引入：加裝 useSearchParams 捕捉大盤外部跳轉載荷
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { login, registerMember } from "@/app/actions/auth";
+import { validateRegisterFields } from "@/lib/auth/validation";
 
 type Tab = "login" | "register";
 
@@ -185,6 +186,8 @@ export function AuthForm() {
   const [remember, setRemember] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isMerchant, setIsMerchant] = useState(false);
+  const [registerUsername, setRegisterUsername] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
 
   // ── 🟢 核心狀態加裝：商戶審批成功攔截看板 ──
   const [isMerchantSubmitted, setIsMerchantSubmitted] = useState(false);
@@ -203,77 +206,39 @@ export function AuthForm() {
     }
   }, [searchParams]);
 
-  // ── 🟢 React 19 useActionState：登入提交管線（原生 FormData 讀取，零受控狀態微突變）──
-  const [loginErrors, loginAction, isLoginPending] = useActionState<
-    FormErrors | null,
-    FormData
-  >(async (_prev, formData) => {
-    const email = ((formData.get("email") as string | null) ?? "").trim();
-    const password = (formData.get("password") as string | null) ?? "";
+  // ── 🟢 React 19 useActionState：登入提交管線（Supabase signInWithPassword）──
+  const [loginErrors, loginAction, isLoginPending] = useActionState(
+    login,
+    null,
+  );
 
-    const e: FormErrors = {};
-    if (!email) e.email = "請輸入電子郵件";
-    if (!password) e.password = "請輸入密碼";
-    if (Object.keys(e).length) return e;
-
-    // 模擬後端 Auth 握手
-    await new Promise<void>((r) => setTimeout(r, 1000));
-    router.push("/profile/user/collection");
-    return null;
-  }, null);
-
-  // ── 🟢 React 19 useActionState：註冊提交分流管線（含鋼鐵 Regex 邊界與商戶分流攔截）──
+  // ── 🟢 React 19 useActionState：註冊提交分流管線（會員 → Supabase；商戶 → 審批攔截）──
   const [registerErrors, registerAction, isRegisterPending] = useActionState<
     FormErrors | null,
     FormData
-  >(async (_prev, formData) => {
-    const username = ((formData.get("username") as string | null) ?? "").trim();
-    const email = ((formData.get("email") as string | null) ?? "").trim();
-    const password = (formData.get("password") as string | null) ?? "";
-    const confirmPassword =
-      (formData.get("confirmPassword") as string | null) ?? "";
+  >(async (prev, formData) => {
+    const merchantSelected = formData.get("isMerchant") === "true";
+    const fields = {
+      username: ((formData.get("username") as string | null) ?? "").trim(),
+      email: ((formData.get("email") as string | null) ?? "").trim(),
+      password: (formData.get("password") as string | null) ?? "",
+      confirmPassword: (formData.get("confirmPassword") as string | null) ?? "",
+      agreeTerms: formData.get("agreeTerms") === "true",
+    };
 
-    const e: FormErrors = {};
+    setRegisterUsername(fields.username);
+    setRegisterEmail(fields.email);
+    setAgreeTerms(fields.agreeTerms);
 
-    // 1. 用戶名稱：限英文、數字、底線、連字號，限 3-24 字元長度
-    const usernameRegex = /^[A-Za-z0-9_\-]{3,24}$/;
-    if (!username) {
-      e.username = "請輸入用戶名稱";
-    } else if (!usernameRegex.test(username)) {
-      e.username =
-        "用戶名稱限 3-24 字元，且只可包含英文、數字、底線(_)或連字號(-)";
-    }
+    const validationErrors = validateRegisterFields(fields);
+    if (Object.keys(validationErrors).length) return validationErrors;
 
-    if (!email) e.email = "請輸入電子郵件";
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = "電子郵件格式不正確";
-
-    // 2. 密碼複雜度：大階、小階、數字、特殊符號，限 8-32 字元
-    const passwordComplexityRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/])[A-Za-z\d!@#$%^&*(),.?":{}|<>_+\-=\[\]\\\/]{8,32}$/;
-    if (!password) {
-      e.password = "請輸入密碼";
-    } else if (!passwordComplexityRegex.test(password)) {
-      e.password =
-        "密碼限 8-32 字元，且必須同時包含大寫英文、小寫英文、數字及特殊符號";
-    }
-
-    if (password !== confirmPassword)
-      e.confirmPassword = "兩次輸入的密碼不一致";
-    if (!agreeTerms) e.agreeTerms = "請同意服務條款及私隱政策";
-    if (Object.keys(e).length) return e;
-
-    // 模擬後端 DB QUERY & ALTER
-    await new Promise<void>((r) => setTimeout(r, 1200));
-
-    // 如果是用家剔選咗認證商戶，直接攔截成功畫面，切換至高冷黑金提示看板
-    if (isMerchant) {
+    if (merchantSelected) {
       setIsMerchantSubmitted(true);
       return null;
     }
 
-    toast.success("🎉 帳戶建立成功！");
-    router.push("/profile/user/collection");
-    return null;
+    return registerMember(prev, formData);
   }, null);
 
   // 派生錯誤源：依當前分頁直接讀取對應 Action 回傳的錯誤快照
@@ -442,6 +407,16 @@ export function AuthForm() {
       {/* ── Register form ──────────────────────────────────────────────────── */}
       {tab === "register" && (
         <form action={registerAction} noValidate className="space-y-4">
+          <input
+            type="hidden"
+            name="agreeTerms"
+            value={agreeTerms ? "true" : "false"}
+          />
+          <input
+            type="hidden"
+            name="isMerchant"
+            value={isMerchant ? "true" : "false"}
+          />
           {/* 🟢 頂級加裝：奢華商戶註冊身份分流 Toggle */}
           <div className="flex items-center justify-between p-3.5 bg-[#17130f] rounded-xl border border-white/5 mb-2">
             <div className="space-y-0.5 max-w-[80%]">
@@ -461,6 +436,8 @@ export function AuthForm() {
               name="username"
               autoComplete="username"
               placeholder="hkcardvaultr_jp"
+              value={registerUsername}
+              onChange={(e) => setRegisterUsername(e.target.value)}
               className={inputClass(!!errors.username)}
             />
           </Field>
@@ -470,6 +447,8 @@ export function AuthForm() {
               name="email"
               autoComplete="email"
               placeholder="your@email.com"
+              value={registerEmail}
+              onChange={(e) => setRegisterEmail(e.target.value)}
               className={inputClass(!!errors.email)}
             />
           </Field>

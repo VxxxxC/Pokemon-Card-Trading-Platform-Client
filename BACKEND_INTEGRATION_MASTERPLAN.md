@@ -213,7 +213,7 @@
 
 | 防線 | 指令 | 通過條件 |
 |------|------|----------|
-| TypeScript 結構安全 | `npx tsc --noEmit` | Exit Code 0、零型別錯配 |
-| Linter 一致性 | `npm run lint` | Exit Code 0、零 hook/解析警告 |
+| TypeScript 結構安全 | `bunx tsc --noEmit` | Exit Code 0、零型別錯配 |
+| Linter 一致性 | `bun run lint` | Exit Code 0、零 hook/解析警告 |
 
 > 本藍圖為 **文件治理** 產物，未改動任何 `.ts` / `.tsx` 執行碼；上述防線僅驗證文件連結與註解未破壞現有建置。

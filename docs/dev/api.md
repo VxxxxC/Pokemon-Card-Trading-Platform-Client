@@ -72,6 +72,8 @@ interface CatalogEntry {
 |------|---------------|--------------|----------|------|
 | `GET` | `/api/listings?itemType=&rarity=&status=active&page=` | query | `{ items: Listing[], total: number }` | GUEST |
 | `GET` | `/api/listings/[id]` | — | `Listing` | GUEST |
+| `POST` | `[Server Action] searchMarketplaceProducts` | `MarketplaceSearchInput` | `{ data: MarketplaceProductRow[], meta: MarketplacePaginationMeta }` | GUEST |
+| `POST` | `[Server Action] getMarketplacePriceBounds` | — | `{ minPrice, maxPrice }` | GUEST |
 | `POST` | `[Server Action] createListing` | `CreateListingInput` | `Listing` | MERCHANT (KYC approved) |
 | `PATCH` | `[Server Action] updateListing` | `{ id, ...Partial<CreateListingInput> }` | `Listing` | 上架者本人 |
 | `POST` | `[Server Action] uploadListingImage` | `multipart/form-data`（≤ 6 張） | `{ urls: string[] }` | MERCHANT |
@@ -96,6 +98,34 @@ interface Listing extends CreateListingInput {
   id: string; sellerId: string; rarity: string|null;
   status: 'draft'|'active'|'sold'|'pending';
   createdAt: string; updatedAt: string;
+}
+```
+
+> **Implemented (v2 RPC):** `app/actions/marketplace.ts` (async actions only). Types: `app/lib/marketplace/types.ts`. Parsers: `app/lib/marketplace/searchParsers.ts`. See `docs/dev/follow-up/marketplace-search/backend.md`.
+
+```ts
+// searchMarketplaceProducts — live contract (simplified)
+interface MarketplaceSearchInput {
+  query?: string;
+  setCode?: string;
+  cardNumber?: string;
+  rarities?: string[];
+  sellerModes?: string[];
+  gradeFilters?: { company: string; score: string | null }[];
+  priceMin?: number;
+  priceMax?: number;
+  sortKey?: '最新' | '價格：由低到高' | '價格：由高到低';
+  page?: number;
+  pageSize?: number;
+}
+
+interface MarketplacePaginationMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  rangeStart: number;
+  rangeEnd: number;
 }
 ```
 

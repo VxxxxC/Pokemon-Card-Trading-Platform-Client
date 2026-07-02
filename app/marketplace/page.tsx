@@ -12,16 +12,56 @@ import { useSearchParams, useRouter } from "next/navigation";
 // 全域黑金奢華分頁組件
 import { Pagination } from "@/app/components/ui/Pagination";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
+import { MarketplaceEmptyState } from "@/app/components/marketplace/MarketplaceEmptyState";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import { SlideOver } from "@/app/components/ui/SlideOver";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
-import {
-  INITIAL_LISTINGS,
-  getEffectivePrice,
-  getBestAsk,
-} from "@/app/lib/mock-data/cards";
+import { useMarketplaceSearch } from "@/app/lib/hooks/useMarketplaceSearch";
+import type { MarketplaceProductRow } from "@/app/lib/marketplace/types";
 import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+
+const RARITY_VALUES = new Set(["SAR", "UR", "SR", "AR"]);
+
+function mapRarity(
+  rarity: string | null,
+): MarketplaceListing["rarity"] {
+  const normalized = rarity?.toUpperCase() ?? "";
+  return RARITY_VALUES.has(normalized)
+    ? (normalized as MarketplaceListing["rarity"])
+    : "SR";
+}
+
+function formatGrade(
+  company: string,
+  score: string | null,
+): { authority: string; score: string } {
+  const normalized = company.toUpperCase();
+  if (normalized === "RAW") {
+    return { authority: "Raw Card", score: score ?? "" };
+  }
+  return { authority: company, score: score ?? "" };
+}
+
+function toMarketplaceListing(
+  product: MarketplaceProductRow,
+): MarketplaceListing {
+  return {
+    id: product.productId,
+    cardNo: product.cardNumber ?? product.displayId ?? product.productId,
+    name: product.productName,
+    set: product.setCode,
+    rarity: mapRarity(product.rarity),
+    grade: formatGrade(product.gradingCompany, product.gradingScore),
+    price: product.lowestPrice,
+    delta: 0,
+    deltaDirection: "up",
+    image: product.imageUrl,
+    seller: product.sellerName,
+    sellerId: product.sellerId,
+    detailHref: `/marketplace/product/${product.productId}`,
+  };
+}
 
 // 使用底層 Base UI 拋光後的奢華 Select 組件群
 import {
@@ -86,48 +126,49 @@ function MarketplaceContent() {
 
   // 大盤商品網格分頁狀態
   const [pageState, setPageState] = useState({ page: 1, forKey: "" });
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100_000]);
+  const priceBoundsInitialized = useRef(false);
 
-  // SSOT 動態衍生層
-  const derivedListings = useMemo<MarketplaceListing[]>(
-    () =>
-      INITIAL_LISTINGS.map((spec) => {
-        const bestAsk = getBestAsk(spec);
-        return {
-          id: spec.id,
-          cardNo: spec.cardNo,
-          name: spec.name,
-          set: spec.set,
-          rarity: spec.rarity,
-          price: bestAsk?.price ?? 999_999,
-          grade: bestAsk?.customGrade ?? { authority: "Raw Card", score: "" },
-          delta: spec.delta,
-          deltaDirection: spec.deltaDirection,
-          image:
-            spec.images[0] ?? "https://picsum.photos/seed/fallback/600/420",
-          seller: bestAsk?.sellerName ?? "— 暫無賣家 —",
-          sellerId: bestAsk?.sellerId,
-          detailHref: `/marketplace/product/${spec.id}`,
-        };
-      }),
-    [],
+  const itemsPerPage = isMobileViewport ? 9 : 11;
+
+  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeConditions.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
+  const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
+
+  const { products, meta, isLoading, error, priceBounds } = useMarketplaceSearch(
+    {
+      query,
+      rarities: activeRarities,
+      grades: activeGrades,
+      sellerTypes: activeTypes,
+      priceMin: priceRange[0],
+      priceMax: priceRange[1],
+      sortKey,
+      page: currentPage,
+      pageSize: itemsPerPage,
+    },
   );
 
-  // 智能動態價格邊界提取引擎
-  const { absoluteMinPrice, absoluteMaxPrice } = useMemo(() => {
-    if (INITIAL_LISTINGS.length === 0) {
-      return { absoluteMinPrice: 0, absoluteMaxPrice: 100000 };
-    }
-    const effectivePrices = INITIAL_LISTINGS.map((l) => getEffectivePrice(l));
-    return {
-      absoluteMinPrice: Math.min(...effectivePrices),
-      absoluteMaxPrice: Math.max(...effectivePrices),
-    };
-  }, []);
+  const derivedListings = useMemo(
+    () => products.map(toMarketplaceListing),
+    [products],
+  );
 
-  const [priceRange, setPriceRange] = useState<[number, number]>(() => [
-    absoluteMinPrice,
-    absoluteMaxPrice,
-  ]);
+  const absoluteMinPrice = priceBounds?.minPrice ?? 0;
+  const absoluteMaxPrice = priceBounds?.maxPrice ?? 100_000;
+
+  useEffect(() => {
+    if (!priceBounds || priceBoundsInitialized.current) return;
+    priceBoundsInitialized.current = true;
+    setPriceRange((prev) => {
+      if (
+        prev[0] === priceBounds.minPrice &&
+        prev[1] === priceBounds.maxPrice
+      ) {
+        return prev;
+      }
+      return [priceBounds.minPrice, priceBounds.maxPrice];
+    });
+  }, [priceBounds]);
 
   const lastSyncedParamsKey = useRef("");
 
@@ -163,100 +204,6 @@ function MarketplaceContent() {
     router.push("/marketplace");
   };
 
-  const filteredListings = useMemo(() => {
-    return derivedListings
-      .filter((card) => {
-        const searchableCardNo = (card.cardNo ?? card.id).toLowerCase();
-        const normalizedQuery = query.toLowerCase();
-
-        const matchQuery =
-          normalizedQuery === "" ||
-          card.name.toLowerCase().includes(normalizedQuery) ||
-          searchableCardNo.includes(normalizedQuery);
-
-        const matchRarity =
-          activeRarities.length === 0 || activeRarities.includes(card.rarity);
-
-        let matchGrade = true;
-        if (activeGrades && activeGrades.length > 0) {
-          const authority = (card.grade?.authority || "").toUpperCase().trim();
-          const score = (card.grade?.score || "").toUpperCase().trim();
-          const combinedGradeStr = `${authority} ${score}`.trim();
-
-          const isExplicitMatch = activeGrades.some((selected) => {
-            const selUpper = selected.toUpperCase().trim();
-            return combinedGradeStr.includes(selUpper) || authority === selUpper;
-          });
-
-          const isPsa = authority.startsWith("PSA");
-          const isCgc = authority.startsWith("CGC");
-          const isRaw =
-            authority === "RAW" ||
-            authority.includes("RAW") ||
-            score.includes("RAW");
-
-          const isOtherMatch =
-            activeGrades.includes("OTHER") && !isPsa && !isCgc && !isRaw;
-
-          matchGrade = isExplicitMatch || isOtherMatch;
-        }
-
-        const matchCondition =
-          activeConditions.length === 0 ||
-          activeConditions.some((c) => {
-            if (c === "A")
-              return card.grade.score === "10" || card.grade.score === "9.5";
-            if (c === "B")
-              return card.grade.score === "9" || card.grade.score === "NM";
-            if (c === "C")
-              return card.grade.score === "8" || card.grade.score === "EX";
-            if (c === "D") {
-              const numericScore = parseFloat(card.grade.score);
-              return (
-                (numericScore > 0 && numericScore < 8) ||
-                card.grade.score.toUpperCase().includes("PR") ||
-                card.grade.score.toUpperCase().includes("PL")
-              );
-            }
-            return false;
-          });
-
-        const matchType =
-          activeTypes.length === 0 ||
-          activeTypes.includes(card.sellerId ? "MERCHANT" : "C2C");
-
-        const matchPrice =
-          card.price >= priceRange[0] && card.price <= priceRange[1];
-
-        return (
-          matchQuery &&
-          matchRarity &&
-          matchGrade &&
-          matchCondition &&
-          matchType &&
-          matchPrice
-        );
-      })
-      .sort((a, b) => {
-        if (sortKey === "價格：由低到高") return a.price - b.price;
-        if (sortKey === "價格：由高到低") return b.price - a.price;
-        return 0;
-      });
-  }, [
-    derivedListings,
-    query,
-    activeRarities,
-    activeGrades,
-    activeConditions,
-    activeTypes,
-    priceRange,
-    sortKey,
-  ]);
-
-  // 零 useEffect 狀態指紋分頁引擎 (完全防禦級別)
-  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeConditions.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
-  const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
-
   const setCurrentPage = (page: number) => {
     setPageState({ page, forKey: filterKey });
     if (typeof window !== "undefined") {
@@ -267,16 +214,17 @@ function MarketplaceContent() {
     }
   };
 
-  // ── 🟢 絕殺修正：逆向計算商品切片，將 itemsPerPage 讓出 1 格給廣告卡 ──
   // Mobile (雙列流): 撈 9 個商品 + 1 個廣告 = 10 個滿格 (完美 5 整行)
   // Web (三列流): 撈 11 個商品 + 1 個廣告 = 12 個滿格 (完美 4 整行)
-  const itemsPerPage = isMobileViewport ? 9 : 11;
+  const totalPages = Math.max(1, meta.totalPages || 1);
+  const paginatedListings = derivedListings;
 
-  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
-  const paginatedListings = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredListings.slice(start, start + itemsPerPage);
-  }, [filteredListings, currentPage, itemsPerPage]);
+  const resultsSummary =
+    meta.total === 0
+      ? "暫無符合條件的現貨標的"
+      : meta.rangeStart > 0
+        ? `顯示第 ${meta.rangeStart}–${meta.rangeEnd} 件，共 ${meta.total} 件現貨`
+        : `🚀 ${meta.total} 件全網聚合現貨標的在庫`;
 
   const hasActiveFilters =
     query !== "" ||
@@ -296,7 +244,7 @@ function MarketplaceContent() {
             大盤市場
           </h1>
           <p className="font-mono text-[11.5px] text-[#d4c4b7] mt-0.5">
-            🚀 {filteredListings.length} 件全網聚合現貨標的在庫
+            {resultsSummary}
           </p>
         </div>
 
@@ -556,6 +504,23 @@ function MarketplaceContent() {
 
         {/* 右欄商品流 */}
         <div id="product-cards" className="flex-1 space-y-6">
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-200">
+              {error}
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-24">
+              <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : !isLoading && (paginatedListings.length === 0 || meta.total === 0) ? (
+            <MarketplaceEmptyState
+              hasActiveFilters={hasActiveFilters}
+              query={query}
+              onResetFilters={handleResetAllFilters}
+            />
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
             {paginatedListings.flatMap((item, idx) => {
               const card = <MarketplaceCard key={item.id} listing={item} />;
@@ -598,20 +563,23 @@ function MarketplaceContent() {
               ];
             })}
           </div>
+          )}
 
           {/* 🟢 完美分頁交割：100% 抹平任何語法雜質，極致純淨，完美控局 */}
+          {!isLoading && meta.total > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             itemLabel="件商品"
-            totalItems={filteredListings.length}
+            totalItems={meta.total}
             itemsPerPage={itemsPerPage}
             hideControls={true}
             enableScroll={true}
             scrollToViewId="product-cards"
             className="mt-6"
           />
+          )}
         </div>
       </div>
     </main>

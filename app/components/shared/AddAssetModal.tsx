@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { useUIStore } from "@/app/store/useUIStore";
+import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
+import type { ProductCatalogSuggestion } from "@/app/actions/productCatalog";
 import {
   Select,
   SelectContent,
@@ -45,8 +47,12 @@ export function AddAssetModal() {
   const [itemType, setItemType] = useState<"card" | "box_set">("card");
 
   // 🟢 核心對齊：整合統一的單一 SKU 搜尋狀態，消除個別欄位
-  const [cardQuery, setCardQuery] = useState("");
   const [set, setSet] = useState(""); // 擴充包系列仍為選填欄位
+
+  const catalogItemType = itemType === "box_set" ? "box_set" : "card";
+  const catalogSearch = useProductCatalogSearch(catalogItemType, {
+    enabled: isOpen,
+  });
 
   // 🟢 核心對齊：雙端級聯等級與品相分級
   const [selectedGrader, setSelectedGrader] = useState<string>("PSA"); // "RAW", "PSA", "CGC", "BGS", "ARS"
@@ -138,8 +144,8 @@ export function AddAssetModal() {
 
   // Dynamic Chip Visual Simulation based on cardQuery contents
   const boxSetBadge = useMemo(() => {
-    if (itemType !== "box_set" || !cardQuery) return null;
-    const lower = cardQuery.toLowerCase();
+    if (itemType !== "box_set" || !catalogSearch.query) return null;
+    const lower = catalogSearch.query.toLowerCase();
     if (lower.includes("box") || lower.includes("盒")) {
       return (
         <span className="text-orange-400 bg-orange-500/10 border border-orange-500/20 font-mono px-1.5 py-0.5 rounded text-[10px] uppercase font-bold shrink-0 animate-fadeIn">
@@ -155,14 +161,19 @@ export function AddAssetModal() {
       );
     }
     return null;
-  }, [itemType, cardQuery]);
+  }, [itemType, catalogSearch.query]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    catalogSearch.clearSearch();
+    setSet("");
+  }, [isOpen, catalogSearch.clearSearch]);
 
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
       setMode(globalMode);
       setItemType("card"); // 🏛️ Memory Guard Synchronization: Reset itemType back to "card" when opening modal
-      setCardQuery("");
       setSet("");
       setSelectedGrader("PSA");
       setSelectedScore("10");
@@ -216,6 +227,13 @@ export function AddAssetModal() {
     });
   };
 
+  const handleSelectCatalogSuggestion = (
+    suggestion: ProductCatalogSuggestion,
+  ) => {
+    catalogSearch.selectSuggestion(suggestion);
+    setSet(suggestion.setCode);
+  };
+
   const handleCloseAndReset = () => {
     closeAddAssetModal();
   };
@@ -223,7 +241,7 @@ export function AddAssetModal() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!cardQuery) {
+    if (!catalogSearch.query) {
       toast.error("⚠️ 請填寫欲搜尋及上架的商品型號或名稱！");
       return;
     }
@@ -252,10 +270,13 @@ export function AddAssetModal() {
     }
 
     const payload: GlobalAssetPayload = {
-      id: `c-asset-${Date.now()}`,
-      name: cardQuery,
-      set: set || "PBR-Compiled",
-      cardNo: "PBR-Compiled",
+      id: catalogSearch.selected?.id ?? `c-asset-${Date.now()}`,
+      name: catalogSearch.query,
+      set: set || catalogSearch.selected?.setCode || "PBR-Compiled",
+      cardNo:
+        catalogSearch.selected?.displayId ??
+        catalogSearch.selected?.cardNumber ??
+        "PBR-Compiled",
       grade: itemType === "box_set"
         ? "SEALED"
         : (isScoreDisabled
@@ -352,22 +373,85 @@ export function AddAssetModal() {
               </label>
               {boxSetBadge}
             </div>
-            <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-10 overflow-hidden">
-              <input
-                type="text"
-                required
-                placeholder={itemType === "box_set" ? "例：151 Booster Box 或 20th Anniversary Set" : "sv2a-182 或 Charizard ex SAR"}
-                value={cardQuery}
-                onChange={(e) => setCardQuery(e.target.value)}
-                className="flex-1 h-full bg-transparent px-3 font-sans text-[13px] text-[#eae1da] placeholder-[#50453b] focus:outline-none"
-              />
-              {/* TODO: [database] Connect dynamic lookups to query box_sets table registries */}
-              <button
-                type="button"
-                className="px-4 h-full font-mono text-[12px] text-brand hover:bg-[rgba(212,165,116,0.08)] transition-colors border-l border-white/5 cursor-pointer focus:outline-none"
-              >
-                搜尋
-              </button>
+            <div className="relative">
+              <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-10 overflow-hidden">
+                <input
+                  type="text"
+                  required
+                  placeholder={itemType === "box_set" ? "例：151 Booster Box 或 20th Anniversary Set" : "sv2a-182 或 Charizard ex SAR"}
+                  value={catalogSearch.query}
+                  onChange={(e) => catalogSearch.setQuery(e.target.value)}
+                  className="flex-1 h-full bg-transparent px-3 font-sans text-[13px] text-[#eae1da] placeholder-[#50453b] focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={catalogSearch.searchNow}
+                  className="px-4 h-full font-mono text-[12px] text-brand hover:bg-[rgba(212,165,116,0.08)] transition-colors border-l border-white/5 cursor-pointer focus:outline-none"
+                >
+                  {catalogSearch.isSearching ? "..." : "搜尋"}
+                </button>
+              </div>
+
+              {(catalogSearch.isSearching ||
+                catalogSearch.error ||
+                catalogSearch.results.length > 0) && (
+                <div className="absolute z-50 top-full mt-1 w-full max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-[#26211C] shadow-lg">
+                  {catalogSearch.isSearching && (
+                    <p className="px-3 py-2 font-mono text-[11px] text-[#8A8680]">
+                      搜尋中…
+                    </p>
+                  )}
+                  {catalogSearch.error && (
+                    <p className="px-3 py-2 font-mono text-[11px] text-warning">
+                      {catalogSearch.error}
+                    </p>
+                  )}
+                  {catalogSearch.results.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectCatalogSuggestion(item)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[rgba(212,165,116,0.08)] border-b border-white/5 last:border-b-0"
+                    >
+                      <div className="relative w-14 h-[4.5rem] shrink-0 rounded-md overflow-hidden bg-[#17130f] border border-white/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          width={56}
+                          height={72}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-sans text-[13px] text-[#eae1da] truncate">
+                          {item.name}
+                        </p>
+                        <p className="font-mono text-[10px] text-[#8A8680] truncate mt-0.5">
+                          {[
+                            item.displayId,
+                            item.rarity,
+                            item.pokemonStage,
+                            item.cardNumber,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                  {catalogSearch.hasMore && (
+                    <p className="px-3 py-2 font-mono text-[10px] text-[#8A8680] border-t border-white/5 leading-relaxed">
+                      顯示最相關的 {catalogSearch.results.length} 筆，共{" "}
+                      {catalogSearch.total.toLocaleString()} 筆符合
+                      {catalogSearch.total > 50
+                        ? " — 請輸入更精確的編號或名稱以縮小範圍"
+                        : ""}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
