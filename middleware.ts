@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
   const { supabase, user, response } = await updateSession(request);
 
   let role: "GUEST" | "USER" | "MERCHANT" | "ADMIN" = "GUEST";
-  if (user) {
+  if (user && supabase) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")

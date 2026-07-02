@@ -1,11 +1,16 @@
 import type { DemoRole } from "@/app/store/useUIStore";
 import type { Tables } from "@/types/supabase";
-import { createClient } from "@/lib/supabase/server";
 import { dbRoleToDemoRole } from "@/lib/auth/roles";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/server";
 
 type ProfileRoleRow = Pick<Tables<"profiles">, "role">;
 
 export async function resolveCurrentDemoRole(): Promise<DemoRole> {
+  if (!isSupabaseConfigured()) {
+    return "GUEST";
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
