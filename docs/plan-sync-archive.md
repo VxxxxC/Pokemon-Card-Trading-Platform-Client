@@ -8,6 +8,7 @@ Before writing code, read these files in order:
 2. [design.md](../.stitch/designs/design.md)
 3. [task.md](./docs/task.md)
 4. [Role-Based-Access-Control.md](./Role-Based-Access-Control.md)
+5. [Project Structure](./project-structure.md)
 
 ## Membership Level
 
