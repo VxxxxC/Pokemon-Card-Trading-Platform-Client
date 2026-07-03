@@ -370,7 +370,7 @@ export function AuthForm() {
             error={errors.password}
             labelRight={
               <Link
-                href="/auth/reset-password"
+                href="/auth/forgot-password"
                 className="font-sans text-[12px] text-brand hover:text-brand-hover transition-colors"
               >
                 忘記密碼？

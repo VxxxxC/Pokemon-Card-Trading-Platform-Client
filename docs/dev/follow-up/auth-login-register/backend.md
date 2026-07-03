@@ -11,7 +11,7 @@
 | In scope | Out of scope (future) |
 |----------|----------------------|
 | Member `signUp` + `signInWithPassword` | Merchant Supabase registration |
-| Username / email availability pre-check | Password reset (`/auth/reset-password`) |
+| Username / email availability pre-check | Password flows — see [auth-password-recovery](../auth-password-recovery/backend.md) |
 | Profile auto-create on signup (`handle_new_user`) | OAuth / magic link |
 | Role-aware redirect after login/register | Session middleware (see [role-based-routing](../role-based-routing/backend.md)) |
 | `logout` server action | — |

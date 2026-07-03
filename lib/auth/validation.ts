@@ -68,3 +68,68 @@ export function validateRegisterFields(fields: RegisterFields): AuthFormErrors {
 
   return errors;
 }
+
+export function validatePasswordResetRequest(fields: {
+  email: string;
+}): AuthFormErrors {
+  const errors: AuthFormErrors = {};
+  const email = fields.email.trim();
+
+  if (!email) {
+    errors.email = "請輸入電子郵件";
+  } else if (!/\S+@\S+\.\S+/.test(email)) {
+    errors.email = "電子郵件格式不正確";
+  }
+
+  return errors;
+}
+
+export function validatePasswordUpdate(fields: {
+  password: string;
+  confirmPassword: string;
+}): AuthFormErrors {
+  const errors: AuthFormErrors = {};
+
+  if (!fields.password) {
+    errors.password = "請輸入新密碼";
+  } else if (!PASSWORD_COMPLEXITY_REGEX.test(fields.password)) {
+    errors.password =
+      "密碼至少 8 字元，且必須同時包含大寫英文、小寫英文、數字及特殊符號";
+  }
+
+  if (fields.password !== fields.confirmPassword) {
+    errors.confirmPassword = "兩次輸入的密碼不一致";
+  }
+
+  return errors;
+}
+
+export function validateProfilePasswordUpdate(fields: {
+  currentPassword: string;
+  password: string;
+  confirmPassword: string;
+}): AuthFormErrors {
+  const errors: AuthFormErrors = {};
+
+  if (!fields.currentPassword) {
+    errors.currentPassword = "請輸入目前密碼";
+  }
+
+  if (!fields.password) {
+    errors.password = "請輸入新密碼";
+  } else if (!PASSWORD_COMPLEXITY_REGEX.test(fields.password)) {
+    errors.password =
+      "密碼至少 8 字元，且必須同時包含大寫英文、小寫英文、數字及特殊符號";
+  } else if (
+    fields.currentPassword &&
+    fields.password === fields.currentPassword
+  ) {
+    errors.password = "新密碼不可與目前密碼相同";
+  }
+
+  if (fields.password !== fields.confirmPassword) {
+    errors.confirmPassword = "兩次輸入的密碼不一致";
+  }
+
+  return errors;
+}

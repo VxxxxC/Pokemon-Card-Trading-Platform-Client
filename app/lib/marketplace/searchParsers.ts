@@ -1,4 +1,10 @@
 import type { GradeFilter } from "@/app/lib/marketplace/types";
+import {
+  getGradingOption,
+  hasGradingOption,
+  normalizeGradingCompany,
+} from "@/lib/grading/options";
+import type { MarketplaceSellerSourceKey } from "@/lib/marketplace/filter-options";
 
 const MAX_QUERY_LENGTH = 100;
 const KNOWN_GRADING_COMPANIES = new Set(["PSA", "CGC", "BGS", "RAW", "ARS"]);
@@ -36,17 +42,22 @@ export function parseCatalogSearchQuery(query: string | undefined): {
   return { setCode: null, cardNumber: null, nameQuery: normalized };
 }
 
-/** Map UI grade chips ("PSA 10", "RAW", "OTHER") to RPC grade filter objects. */
+/** Map unified grading option ids (or legacy chip labels) to RPC grade filter objects. */
 export function parseGradeFilters(activeGrades: string[]): GradeFilter[] {
-  return activeGrades.map((grade) => {
-    const trimmed = grade.trim();
+  return activeGrades.map((gradeKey) => {
+    if (hasGradingOption(gradeKey)) {
+      const option = getGradingOption(gradeKey);
+      return { company: option.company, score: option.score };
+    }
+
+    const trimmed = gradeKey.trim();
     const upper = trimmed.toUpperCase();
 
     if (upper === "RAW") return { company: "RAW", score: null };
     if (upper === "OTHER") return { company: "OTHER", score: null };
 
     const [company, ...scoreParts] = trimmed.split(/\s+/);
-    const companyUpper = company.toUpperCase();
+    const companyUpper = normalizeGradingCompany(company);
 
     if (KNOWN_GRADING_COMPANIES.has(companyUpper) && scoreParts.length > 0) {
       return { company: companyUpper, score: scoreParts.join(" ") };
@@ -56,16 +67,17 @@ export function parseGradeFilters(activeGrades: string[]): GradeFilter[] {
   });
 }
 
-/** Map UI seller type chips to RPC seller mode values. */
-export function mapSellerModes(sellerTypes: string[]): string[] {
+/** Map UI seller source chips to RPC seller mode values. */
+export function mapSellerModes(
+  sellerTypes: string[],
+): MarketplaceSellerSourceKey[] {
   return sellerTypes
     .map((type) => {
       if (type === "MERCHANT") return "MERCHANT";
-      if (type === "C2C") return "MEMBER";
-      if (type === "P2P") return "P2P";
-      return type.toUpperCase();
+      if (type === "MEMBER" || type === "C2C") return "MEMBER";
+      return null;
     })
-    .filter(Boolean);
+    .filter((mode): mode is MarketplaceSellerSourceKey => mode !== null);
 }
 
 export function normalizeMarketplaceText(

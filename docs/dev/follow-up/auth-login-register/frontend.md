@@ -69,7 +69,7 @@ const [registerErrors, registerAction, isRegisterPending] = useActionState(
 | **Member** register | ✅ Wired to Supabase |
 | **Member** login | ✅ Wired to Supabase |
 | **Merchant** register | ⏳ UI-only — shows approval screen, no backend call |
-| Password reset | ⏳ Link exists (`/auth/reset-password`) — page not wired |
+| Password reset | ✅ See [auth-password-recovery](../auth-password-recovery/frontend.md) — forgot (guest) + reset (logged-in) |
 | Remember me | ⏳ UI checkbox only — no session persistence logic |
 | Session / route guards | ✅ See [role-based-routing](../role-based-routing/frontend.md) |
 | Logout | ✅ `LogoutModal` → `logout` action |
@@ -81,7 +81,7 @@ const [registerErrors, registerAction, isRegisterPending] = useActionState(
 - [ ] Loading / error toast for unexpected failures
 - [ ] Disable submit while pending (already done via `isLoginPending` / `isRegisterPending`)
 - [ ] Wire **merchant registration** when backend flow is ready
-- [ ] Wire **password reset** page
+- [ ] Wire **merchant settings** password link → `/auth/reset-password` (member path done — see [auth-password-recovery](../auth-password-recovery/frontend.md))
 - [ ] Redirect authenticated users away from `/auth` if already logged in
 - [ ] Connect TopNav / BottomNav avatar to real session profile
 - [ ] Role-aware nav links (see [role-based-routing](../role-based-routing/frontend.md))

@@ -252,6 +252,7 @@ export type Database = {
           images: Json
           price: number
           product_id: string
+          seller_description: string | null
           seller_id: string
           seller_persona: Database["public"]["Enums"]["seller_persona_type"]
           status: Database["public"]["Enums"]["listing_status"]
@@ -266,6 +267,7 @@ export type Database = {
           images?: Json
           price: number
           product_id: string
+          seller_description?: string | null
           seller_id: string
           seller_persona?: Database["public"]["Enums"]["seller_persona_type"]
           status?: Database["public"]["Enums"]["listing_status"]
@@ -280,6 +282,7 @@ export type Database = {
           images?: Json
           price?: number
           product_id?: string
+          seller_description?: string | null
           seller_id?: string
           seller_persona?: Database["public"]["Enums"]["seller_persona_type"]
           status?: Database["public"]["Enums"]["listing_status"]
@@ -696,10 +699,12 @@ export type Database = {
           display_name: string
           id: string
           rating_score: number | null
-          reputation_tag: string | null
+          reputation_tag: Json | null
           role: Database["public"]["Enums"]["user_role"]
+          short_description: string | null
           total_trades: number | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           avatar_path?: string | null
@@ -707,10 +712,12 @@ export type Database = {
           display_name: string
           id: string
           rating_score?: number | null
-          reputation_tag?: string | null
+          reputation_tag?: Json | null
           role?: Database["public"]["Enums"]["user_role"]
+          short_description?: string | null
           total_trades?: number | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           avatar_path?: string | null
@@ -718,10 +725,12 @@ export type Database = {
           display_name?: string
           id?: string
           rating_score?: number | null
-          reputation_tag?: string | null
+          reputation_tag?: Json | null
           role?: Database["public"]["Enums"]["user_role"]
+          short_description?: string | null
           total_trades?: number | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -965,6 +974,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      escape_ilike_pattern: { Args: { input: string }; Returns: string }
       get_marketplace_price_bounds: {
         Args: never
         Returns: {
@@ -972,27 +982,57 @@ export type Database = {
           min_price: number
         }[]
       }
-      is_display_name_available: { Args: { name: string }; Returns: boolean }
-      search_marketplace_products: {
+      get_marketplace_product_listings: {
         Args: {
-          p_card_number?: string | null
-          p_grade_filters?: Json | null
-          p_name_query?: string | null
+          p_grade_filters?: Json
+          p_only_graded?: boolean
           p_page?: number
           p_page_size?: number
-          p_price_max?: number | null
-          p_price_min?: number | null
-          p_rarities?: string[] | null
-          p_seller_modes?: string[] | null
-          p_set_code?: string | null
+          p_product_id: string
           p_sort?: string
         }
         Returns: {
-          card_number: string | null
-          catalog_type: Database["public"]["Enums"]["catalog_type"]
-          display_id: string | null
+          created_at: string
+          filtered_lowest_price: number
           grading_company: string
-          grading_score: string | null
+          grading_score: string
+          listing_id: string
+          page: number
+          page_size: number
+          price: number
+          range_end: number
+          range_start: number
+          seller_id: string
+          seller_name: string
+          seller_persona: Database["public"]["Enums"]["seller_persona_type"]
+          seller_rating: number
+          seller_total_trades: number
+          total_count: number
+          total_pages: number
+          use_authentication: boolean
+        }[]
+      }
+      is_display_name_available: { Args: { name: string }; Returns: boolean }
+      search_marketplace_products: {
+        Args: {
+          p_card_number?: string
+          p_grade_filters?: Json
+          p_name_query?: string
+          p_page?: number
+          p_page_size?: number
+          p_price_max?: number
+          p_price_min?: number
+          p_rarities?: string[]
+          p_seller_modes?: string[]
+          p_set_code?: string
+          p_sort?: string
+        }
+        Returns: {
+          card_number: string
+          catalog_type: Database["public"]["Enums"]["catalog_type"]
+          display_id: string
+          grading_company: string
+          grading_score: string
           highest_price: number
           image_url: string
           latest_listing_at: string
@@ -1000,16 +1040,16 @@ export type Database = {
           lowest_listing_created_at: string
           lowest_listing_id: string
           lowest_price: number
-          name_en: string | null
+          name_en: string
           name_ja: string
-          name_zh: string | null
+          name_zh: string
           page: number
           page_size: number
           product_id: string
           product_name: string
           range_end: number
           range_start: number
-          rarity: string | null
+          rarity: string
           seller_id: string
           seller_name: string
           seller_persona: Database["public"]["Enums"]["seller_persona_type"]

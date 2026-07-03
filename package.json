@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "supabase:types": "supabase gen types typescript --linked > types/supabase.ts",
+    "supabase:types": "bunx supabase gen types typescript --linked > types/supabase.ts",
     "test:catalog-search": "bun run scripts/test-product-catalog-search.ts"
   },
   "dependencies": {

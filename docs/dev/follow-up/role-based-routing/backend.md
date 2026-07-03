@@ -24,7 +24,7 @@
 | `lib/auth/roles.ts` | DB↔UI role mapping, home paths, path guard rules |
 | `lib/auth/session.ts` | `resolveCurrentDemoRole()` — server-side profile role lookup |
 | `lib/supabase/middleware.ts` | Supabase cookie session refresh for middleware |
-| `middleware.ts` | Auth + role guards on `/profile` and `/admin` routes |
+| `middleware.ts` | Session refresh on all routes; auth + role guards on `/profile` and `/admin` |
 | `app/actions/profile.ts` | `getCurrentUserRole()` server action (client refresh) |
 | `app/actions/auth.ts` | Role-aware `login`/`registerMember` redirect; **`logout`** action |
 | `app/profile/page.tsx` | Server gateway — redirect by session role |
@@ -89,9 +89,17 @@ No FormData. Called from client via `startTransition(() => logout())`.
 | Guest on any row above | → redirect `/auth?redirect=<pathname>` |
 | Wrong role | → redirect role home (`getRoleHomePath`) |
 
-**Not guarded by middleware:** `/profile/[id]` public profile pages, marketplace, home, `/auth`.
+**Not guarded by middleware (role redirects):** `/profile/[id]` public profile pages, marketplace, home, `/auth`.
 
-Matcher: `["/profile", "/profile/:path*", "/admin", "/admin/:path*"]`
+**Session refresh:** middleware runs on **all** non-static routes so Supabase cookies stay fresh for server actions (e.g. create listing from marketplace / home via `AddAssetModal`).
+
+Matcher:
+
+```ts
+"/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"
+```
+
+Role redirect logic unchanged — only paths under `/profile` and `/admin` are blocked or redirected by role.
 
 ## Database dependency
 
@@ -107,7 +115,7 @@ Same as auth flow:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key>   # login/register only — not used by role routing
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>   # auth admin + trusted listing insert — not used for role routing reads
 ```
 
 ## How to verify

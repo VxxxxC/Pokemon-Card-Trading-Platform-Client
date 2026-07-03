@@ -21,17 +21,6 @@ import { useMarketplaceSearch } from "@/app/lib/hooks/useMarketplaceSearch";
 import type { MarketplaceProductRow } from "@/app/lib/marketplace/types";
 import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 
-const RARITY_VALUES = new Set(["SAR", "UR", "SR", "AR"]);
-
-function mapRarity(
-  rarity: string | null,
-): MarketplaceListing["rarity"] {
-  const normalized = rarity?.toUpperCase() ?? "";
-  return RARITY_VALUES.has(normalized)
-    ? (normalized as MarketplaceListing["rarity"])
-    : "SR";
-}
-
 function formatGrade(
   company: string,
   score: string | null,
@@ -48,10 +37,11 @@ function toMarketplaceListing(
 ): MarketplaceListing {
   return {
     id: product.productId,
+    productId: product.productId,
     cardNo: product.cardNumber ?? product.displayId ?? product.productId,
     name: product.productName,
     set: product.setCode,
-    rarity: mapRarity(product.rarity),
+    rarity: product.rarity,
     grade: formatGrade(product.gradingCompany, product.gradingScore),
     price: product.lowestPrice,
     delta: 0,
@@ -99,12 +89,10 @@ function MarketplaceContent() {
 
   const activeRarities = useMarketStore((state) => state.activeRarities);
   const activeGrades = useMarketStore((state) => state.activeGrades);
-  const activeConditions = useMarketStore((state) => state.activeConditions);
   const activeTypes = useMarketStore((state) => state.activeTypes);
 
   const toggleRarity = useMarketStore((state) => state.toggleRarity);
   const toggleGrade = useMarketStore((state) => state.toggleGrade);
-  const toggleCondition = useMarketStore((state) => state.toggleCondition);
   const toggleType = useMarketStore((state) => state.toggleType);
   const resetAll = useMarketStore((state) => state.resetAll);
 
@@ -131,7 +119,7 @@ function MarketplaceContent() {
 
   const itemsPerPage = isMobileViewport ? 9 : 11;
 
-  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeConditions.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
+  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeTypes.join(",")}|${priceRange.join(",")}`;
   const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
 
   const { products, meta, isLoading, error, priceBounds } = useMarketplaceSearch(
@@ -176,11 +164,14 @@ function MarketplaceContent() {
     const currentParamsKey = `${urlQuery}-${urlRarity}`;
     if (lastSyncedParamsKey.current === currentParamsKey) return;
     if (urlQuery !== null) setQuery(urlQuery);
-    if (
-      urlRarity !== null &&
-      !activeRarities.includes(urlRarity.toUpperCase())
-    ) {
-      toggleRarity(urlRarity.toUpperCase());
+    if (urlRarity !== null) {
+      const matchedRarity =
+        activeRarities.find(
+          (rarity) => rarity.toLowerCase() === urlRarity.toLowerCase(),
+        ) ?? urlRarity;
+      if (!activeRarities.includes(matchedRarity)) {
+        toggleRarity(matchedRarity);
+      }
     }
     lastSyncedParamsKey.current = currentParamsKey;
   }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
@@ -230,7 +221,6 @@ function MarketplaceContent() {
     query !== "" ||
     activeRarities.length > 0 ||
     activeGrades.length > 0 ||
-    activeConditions.length > 0 ||
     activeTypes.length > 0 ||
     priceRange[0] !== absoluteMinPrice ||
     priceRange[1] !== absoluteMaxPrice;
@@ -453,8 +443,6 @@ function MarketplaceContent() {
           onRarityToggle={toggleRarity}
           activeGrades={activeGrades}
           onGradeToggle={toggleGrade}
-          activeConditions={activeConditions}
-          onConditionToggle={toggleCondition}
           activeTypes={activeTypes}
           onTypeToggle={toggleType}
           hideTypeSection={false}
@@ -494,8 +482,6 @@ function MarketplaceContent() {
             onRarityToggle={toggleRarity}
             activeGrades={activeGrades}
             onGradeToggle={toggleGrade}
-            activeConditions={activeConditions}
-            onConditionToggle={toggleCondition}
             activeTypes={useMarketStore.getState().activeTypes}
             onTypeToggle={toggleType}
             hideTypeSection={false}

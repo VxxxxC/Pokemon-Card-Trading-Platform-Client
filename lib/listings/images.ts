@@ -1,0 +1,36 @@
+/** Ordered listing image row — matches `listings.images` JSONB contract. */
+export type ListingImage = {
+  url: string;
+  order: number;
+};
+
+export const LISTING_IMAGE_MIN = 4;
+export const LISTING_IMAGE_MAX = 6;
+
+export const LISTING_IMAGE_ACCEPTED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+] as const;
+
+export const LISTING_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+export function toListingImages(urls: string[]): ListingImage[] {
+  return urls.map((url, index) => ({
+    url,
+    order: index + 1,
+  }));
+}
+
+export function isListingImageArray(value: unknown): value is ListingImage[] {
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item) =>
+      typeof item === "object" &&
+      item !== null &&
+      typeof (item as ListingImage).url === "string" &&
+      typeof (item as ListingImage).order === "number",
+  );
+}

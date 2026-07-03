@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { AppSerwistProvider } from "@/app/components/serwist-provider";
@@ -8,9 +9,11 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
+import { ListingSubmitOverlay } from "@/components/listings/ListingSubmitOverlay";
 import { RoleProvider } from "@/app/components/providers/RoleProvider";
 import { IosPwaModal } from "./components/pwa/IosPwaModal";
 import { resolveCurrentDemoRole } from "@/lib/auth/session";
+import { PasswordUpdatedToast } from "@/components/auth/PasswordUpdatedToast";
 
 const APP_NAME = "HKCardVault";
 const APP_DEFAULT_TITLE = "HKCardVault — 寶可夢卡牌專業交易平台";
@@ -308,7 +311,11 @@ export default async function RootLayout({
         </RoleProvider>
 
         <Toaster position="top-center" closeButton richColors expand={false} />
+        <Suspense fallback={null}>
+          <PasswordUpdatedToast />
+        </Suspense>
         <AddAssetModal />
+        <ListingSubmitOverlay />
       </body>
     </html>
   );

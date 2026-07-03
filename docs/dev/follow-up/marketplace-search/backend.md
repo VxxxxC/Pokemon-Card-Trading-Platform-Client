@@ -2,9 +2,22 @@
 
 ## Status
 
-- **Backend:** ✅ Ready (v2 RPC)
-- **Frontend:** ✅ Wired — `/marketplace` + homepage `HeroSearch` (query-only via same action)
-- **Partner:** Polish UI + product detail nested listings — see [frontend.md](./frontend.md)
+- **Backend:** ✅ Ready (v2 RPC + filter helpers)
+- **Frontend:** ✅ Wired — `/marketplace` filters + grid card baseline
+- **Partner:** Card polish (listing count, price spread) + product detail — see [frontend.md](./frontend.md)
+
+## Changelog (2026-07-03)
+
+| Change | Detail |
+|--------|--------|
+| **`getMarketplaceRarities()`** | New server action — `SELECT rarity` from `product_catalog`, dedupe + sort for filter UI |
+| **Grade filter ids** | `parseGradeFilters()` accepts `lib/grading/options` option ids (`psa:10`, `bgs:10 (Black Label)`, `raw:A`, …) |
+| **Seller source** | `mapSellerModes()` now maps UI `MEMBER` \| `MERCHANT` only; legacy `C2C` → `MEMBER` |
+| **Shared grading helpers** | `normalizeGradingCompany`, `matchesGradeFilter`, `matchesAnyGradeFilter` in `lib/grading/options.ts` |
+| **Filter constants** | `lib/marketplace/filter-options.ts` — `MARKETPLACE_SELLER_SOURCE_OPTIONS` |
+| **`getMarketplaceProductDetail()`** | Catalog row for product detail — see [marketplace-product-detail/backend.md](../marketplace-product-detail/backend.md) |
+
+No new DB migrations required for this slice.
 
 ## Files created / modified (backend track)
 
@@ -12,23 +25,25 @@
 |------|---------|
 | `supabase/migrations/20260702120000_marketplace_search_rpc.sql` | RLS (`listings` active read, `profiles` public read), indexes, v1 RPC |
 | `supabase/migrations/20260702130000_marketplace_search_rpc_v2.sql` | v2 RPC — grading, `seller_persona`, structured catalog filters, pagination meta |
-| `app/actions/marketplace.ts` | Async server actions only: `searchMarketplaceProducts`, `getMarketplacePriceBounds` |
-| `app/lib/marketplace/types.ts` | Shared types: `MarketplaceProductRow`, `MarketplacePaginationMeta`, `MarketplaceSearchInput`, … |
-| `app/lib/marketplace/searchParsers.ts` | Client-safe parsers: `parseCatalogSearchQuery`, `parseGradeFilters`, `mapSellerModes` |
+| `app/actions/marketplace.ts` | `searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`** |
+| `app/lib/marketplace/types.ts` | `MarketplaceProductRow`, `MarketplacePaginationMeta`, `MarketplaceSearchInput`, `GradeFilter` |
+| `app/lib/marketplace/searchParsers.ts` | `parseCatalogSearchQuery`, **`parseGradeFilters`** (grading option ids), **`mapSellerModes`** |
+| `lib/marketplace/filter-options.ts` | Seller source chip keys (`MEMBER`, `MERCHANT`) |
+| `lib/grading/options.ts` | Canonical grading options + **`matchesGradeFilter`** / **`matchesAnyGradeFilter`** |
 | `app/lib/hooks/useMarketplaceSearch.ts` | Debounced client hook |
-| `types/supabase.ts` | RPC function typings (`search_marketplace_products`, `get_marketplace_price_bounds`) |
+| `types/supabase.ts` | RPC function typings |
 
-> **Note:** `"use server"` files may only export **async** functions. Parsers and types live in `app/lib/marketplace/` so the client hook can import them without bundling server code.
+> **Note:** `"use server"` files may only export **async** functions. Parsers and types live in `app/lib/marketplace/` and `lib/` so client components can import them without bundling server code.
 
 ## Architecture
 
-Grid is **product-centric**: one card per `product_catalog` row that has ≥ 1 matching `active` listing. Each product may have many listings; the grid shows the **lowest-price** matching listing. Detail page (planned) will show all nested listings.
+Grid is **product-centric**: one card per `product_catalog` row that has ≥ 1 matching `active` listing. Each product may have many listings; the grid shows the **lowest-price** matching listing.
 
 ```
 product_catalog ──< listings (status = active)
                       ├── grading_company, grading_score
                       ├── seller_persona (member | merchant)
-                      └── use_authentication (P2P escrow)
+                      └── use_authentication (P2P escrow — not exposed in current filter UI)
 ```
 
 ## RPC: `search_marketplace_products`
@@ -40,84 +55,83 @@ product_catalog ──< listings (status = active)
 | `p_set_code` | `text` | Set code partial match (`product_catalog.set_code`) |
 | `p_card_number` | `text` | Card number or `display_id` |
 | `p_name_query` | `text` | Card name (`name_ja`, `name_en`, `name_zh`) |
-| `p_rarities` | `text[]` | Rarity facet |
-| `p_seller_modes` | `text[]` | `MERCHANT`, `MEMBER`, `P2P` |
+| `p_rarities` | `text[]` | **Exact** `product_catalog.rarity` values (dynamic list from `getMarketplaceRarities`) |
+| `p_seller_modes` | `text[]` | `MERCHANT`, `MEMBER` (P2P still supported by RPC if passed) |
 | `p_grade_filters` | `jsonb` | `[{"company":"PSA","score":"10"},{"company":"RAW","score":null}]` |
 | `p_price_min` / `p_price_max` | `numeric` | Listing price range |
 | `p_sort` | `text` | `latest` \| `price_asc` \| `price_desc` |
 | `p_page` / `p_page_size` | `int` | Pagination |
 
-### Seller mode mapping
+### Seller mode mapping (current UI)
 
-| UI chip | RPC value | SQL |
-|---------|-----------|-----|
-| MERCHANT | `MERCHANT` | `seller_persona = 'merchant'` |
-| C2C | `MEMBER` | `seller_persona = 'member' AND NOT use_authentication` |
-| P2P | `P2P` | `use_authentication = true` |
+| UI chip key | RPC value | SQL |
+|-------------|-----------|-----|
+| `MERCHANT` | `MERCHANT` | `seller_persona = 'merchant'` |
+| `MEMBER` | `MEMBER` | `seller_persona = 'member' AND NOT use_authentication` |
+| *(legacy)* `C2C` | `MEMBER` | Same as `MEMBER` |
+
+`P2P` is **not** shown in filter UI; RPC still accepts `P2P` → `use_authentication = true` if needed later.
 
 ### Grade filter (`p_grade_filters`)
 
-| JSON | Matches |
-|------|---------|
-| `{"company":"PSA","score":"10"}` | `grading_company = PSA` AND `grading_score = 10` |
-| `{"company":"RAW","score":null}` | Raw cards |
-| `{"company":"OTHER"}` | Not PSA / CGC / BGS / RAW |
+Built from grading option ids via `parseGradeFilters(activeGrades)`:
+
+| UI selection (option id) | JSON sent to RPC |
+|--------------------------|------------------|
+| `psa:10` | `{"company":"PSA","score":"10"}` |
+| `bgs:10 (Black Label)` | `{"company":"BGS","score":"10 (Black Label)"}` |
+| `cgc:10 (Gem Mint)` | `{"company":"CGC","score":"10 (Gem Mint)"}` |
+| `raw:A` | `{"company":"RAW","score":null}` |
+
+**Note:** Raw condition (A/B/C/D) is **not** stored on `listings` today — all `raw:*` filters match `grading_company = RAW` regardless of condition letter.
 
 ### Sort behaviour
 
 | `p_sort` | Orders products by |
 |----------|-------------------|
-| `latest` | `latest_listing_at` DESC (newest active listing per product) |
+| `latest` | `latest_listing_at` DESC |
 | `price_asc` | `lowest_price` ASC |
 | `price_desc` | `lowest_price` DESC |
 
-## Server action contract
+## Server action contracts
+
+### `searchMarketplaceProducts`
 
 ```ts
-import { searchMarketplaceProducts, getMarketplacePriceBounds } from "@/app/actions/marketplace";
-import {
-  parseCatalogSearchQuery,
-  parseGradeFilters,
-  mapSellerModes,
-} from "@/app/lib/marketplace/searchParsers";
-import type { MarketplaceProductRow, MarketplacePaginationMeta } from "@/app/lib/marketplace/types";
+import { searchMarketplaceProducts } from "@/app/actions/marketplace";
+import { parseGradeFilters, mapSellerModes } from "@/app/lib/marketplace/searchParsers";
 
 const result = await searchMarketplaceProducts({
-  query: "sv2a-062",              // auto-parsed (see below)
-  setCode: "sv2a",                // optional explicit override
-  cardNumber: "062",
-  rarities: ["SAR"],
-  gradeFilters: parseGradeFilters(["PSA 10", "RAW"]),
-  sellerModes: mapSellerModes(["MERCHANT", "C2C"]),
+  query: "sv2a-062",
+  rarities: ["SAR", "CSR"],           // exact catalog values
+  gradeFilters: parseGradeFilters(["psa:10", "raw:A"]),
+  sellerModes: mapSellerModes(["MERCHANT", "MEMBER"]),
   priceMin: 100,
   priceMax: 5000,
-  sortKey: "價格：由低到高",       // maps to price_asc
+  sortKey: "價格：由低到高",
   page: 1,
   pageSize: 11,
 });
-
-// Homepage hero (`useHeroMarketplaceSearch`) — same action, query-only:
-// searchMarketplaceProducts({ query: "charizard", page: 1, pageSize: 8, sortKey: "最新" })
-
-// Success
-{
-  success: true,
-  data: MarketplaceProductRow[],
-  meta: {
-    total: 234,
-    page: 1,
-    pageSize: 11,
-    totalPages: 22,
-    rangeStart: 1,
-    rangeEnd: 11,
-  },
-}
-
-// Failure
-{ success: false, error: string }
 ```
 
-### `parseCatalogSearchQuery(query)` — `app/lib/marketplace/searchParsers.ts`
+### `getMarketplaceRarities()` *(new)*
+
+```ts
+import { getMarketplaceRarities } from "@/app/actions/marketplace";
+
+// Success: { success: true, data: string[] }  — distinct non-null rarities, sorted
+// Failure: { success: false, error: string }
+```
+
+Used by `AccordionFilters` on mount to populate rarity chips.
+
+### `getMarketplacePriceBounds()`
+
+```ts
+// Success: { success: true, data: { minPrice, maxPrice } }
+```
+
+### `parseCatalogSearchQuery(query)`
 
 | Input | Parsed as |
 |-------|-----------|
@@ -125,39 +139,13 @@ const result = await searchMarketplaceProducts({
 | `sv2a` (short alphanumeric) | `setCode=sv2a` |
 | `ピカチュウ` | `nameQuery=ピカチュウ` |
 
-### `MarketplaceProductRow` (camelCase in action)
+### `MarketplaceProductRow`
 
 | Field | RPC column | Notes |
 |-------|------------|-------|
-| `productId` | `product_id` | Grid id + detail route |
-| `productName` | `product_name` | `name_zh ?? name_ja` |
-| `nameJa` / `nameEn` / `nameZh` | `name_*` | Full catalog names |
-| `setCode` | `set_code` | |
-| `cardNumber` | `card_number` | |
-| `displayId` | `display_id` | |
-| `rarity` | `rarity` | Raw DB value |
-| `imageUrl` | `image_url` | |
-| `catalogType` | `catalog_type` | `single_card`, `booster_box`, … |
-| `listingCount` | `listing_count` | Matching active listings |
-| `lowestPrice` | `lowest_price` | Grid price |
-| `highestPrice` | `highest_price` | Price spread hint |
-| `lowestListingId` | `lowest_listing_id` | Cheapest listing |
-| `lowestListingCreatedAt` | `lowest_listing_created_at` | |
-| `latestListingAt` | `latest_listing_at` | Newest listing on product |
-| `gradingCompany` | `grading_company` | From cheapest listing |
-| `gradingScore` | `grading_score` | From cheapest listing |
-| `sellerId` / `sellerName` | `seller_*` | From cheapest listing |
-| `sellerPersona` | `seller_persona` | `member` \| `merchant` |
-| `useAuthentication` | `use_authentication` | P2P flag |
-
-Pagination meta is taken from the first RPC row (`total_count`, `range_start`, `range_end`, etc.).
-
-### `getMarketplacePriceBounds()`
-
-```ts
-// Success: { success: true, data: { minPrice, maxPrice } }
-// Uses RPC get_marketplace_price_bounds (or falls back if unavailable)
-```
+| `rarity` | `rarity` | Raw `product_catalog.rarity` (`string \| null`) |
+| `gradingCompany` / `gradingScore` | `grading_*` | From cheapest matching listing — **not shown on grid card** |
+| … | … | See prior table in git history for full field list |
 
 ## Env required
 
@@ -169,21 +157,22 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 ## How to verify
 
 ```bash
-supabase db push   # applies v1 + v2 migrations
-bun run dev        # /marketplace
+bunx supabase db push
+bun run dev
 ```
 
 SQL:
 
 ```sql
-SELECT product_id, product_name, listing_count, lowest_price,
-       grading_company, grading_score, seller_persona,
-       total_count, range_start, range_end
+-- Rarities in catalog
+SELECT DISTINCT rarity FROM product_catalog WHERE rarity IS NOT NULL ORDER BY rarity;
+
+-- Filtered search
+SELECT product_id, product_name, rarity, grading_company, grading_score, seller_persona
 FROM search_marketplace_products(
-  p_set_code := 'sv2a',
+  p_rarities := ARRAY['SAR'],
   p_grade_filters := '[{"company":"PSA","score":"10"}]'::jsonb,
-  p_seller_modes := ARRAY['MERCHANT'],
-  p_sort := 'price_asc',
+  p_seller_modes := ARRAY['MERCHANT','MEMBER'],
   p_page := 1,
   p_page_size := 10
 );
@@ -196,21 +185,20 @@ FROM search_marketplace_products(
 | Supabase RPC error | `搜尋大盤市場時發生錯誤` |
 | Client / env failure | `無法連線至大盤市場` |
 | Price bounds failure | `無法取得價格區間` |
+| Rarities fetch failure | `無法載入稀有度選項` / `無法連線至商品目錄` |
 
-Raw database errors are **not** leaked to the client.
-
-## Blocked / not in v2
+## Blocked / not in scope
 
 | Feature | Reason |
 |---------|--------|
-| Condition filters (A/B/C/D) | No `condition` column on `listings` yet |
-| Product detail nested listings | Separate RPC planned — see queue |
+| Raw card condition filter (A/B/C/D) as separate facet | Removed from UI; condition not on `listings` — use `raw:*` grading options |
+| Per-condition RAW RPC match | Needs `listings.condition` column or score encoding |
+| Product detail nested listings | Separate RPC — see [marketplace-product-detail/backend.md](../marketplace-product-detail/backend.md) |
 
 ## Do not change without backend sync
 
-- `MarketplaceProductRow` / `MarketplacePaginationMeta` shapes in `app/lib/marketplace/types.ts`
-- `parseCatalogSearchQuery` / `parseGradeFilters` / `mapSellerModes` in `app/lib/marketplace/searchParsers.ts`
+- `MarketplaceProductRow` / `GradeFilter` shapes
+- `parseGradeFilters` / `mapSellerModes` / grading option id format
 - RPC param names and `p_sort` enum values
+- `getMarketplaceRarities` query source (`product_catalog.rarity`)
 - `success` / `error` envelope on server actions
-
-UI styling in `app/marketplace/page.tsx` is partner-owned.

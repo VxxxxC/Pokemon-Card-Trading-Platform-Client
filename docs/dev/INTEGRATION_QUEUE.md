@@ -5,18 +5,22 @@
 
 | Flow | Backend | Frontend | Backend files | UI touchpoint | Follow-up |
 |------|---------|----------|---------------|---------------|-----------|
-| Product catalog search | ✅ Ready | ✅ Wired (baseline) | `app/actions/productCatalog.ts`, `app/lib/hooks/useProductCatalogSearch.ts`, `lib/supabase/server.ts` | `app/components/shared/AddAssetModal.tsx` (~L375–450) | [backend](./follow-up/product-catalog-search/backend.md) · [frontend](./follow-up/product-catalog-search/frontend.md) |
-| Marketplace product search | ✅ Ready (v2 RPC) | ✅ Wired (baseline) | `app/actions/marketplace.ts`, `app/lib/marketplace/types.ts`, `app/lib/marketplace/searchParsers.ts`, `app/lib/hooks/useMarketplaceSearch.ts`, `app/lib/hooks/useHeroMarketplaceSearch.ts`, `supabase/migrations/20260702120000_marketplace_search_rpc.sql`, `supabase/migrations/20260702130000_marketplace_search_rpc_v2.sql` | `app/marketplace/page.tsx`, `MarketplaceEmptyState.tsx`, `app/components/home/HeroSearch.tsx` | [backend](./follow-up/marketplace-search/backend.md) · [frontend](./follow-up/marketplace-search/frontend.md) |
+| Product catalog search + create listing (single card) | ✅ Ready | ✅ Wired (baseline) | `app/actions/productCatalog.ts`, `app/actions/listings.ts`, `app/api/listings/upload-image/route.ts`, `app/lib/hooks/useProductCatalogSearch.ts`, `app/store/useListingSubmitStore.ts`, `components/listings/ListingSubmitOverlay.tsx`, `lib/listings/*`, `lib/grading/options.ts`, `lib/storage/bunny.ts`, `middleware.ts`, migrations `20260702100000`, `20260703130000`–`20260703160000` | `AddAssetModal.tsx`, `ListingSubmitOverlay` (root layout) | [backend](./follow-up/product-catalog-search/backend.md) · [frontend](./follow-up/product-catalog-search/frontend.md) |
+| Marketplace product search | ✅ Ready (v2 RPC) | ✅ Wired (filters + card baseline) | `app/actions/marketplace.ts` (`searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`**), `app/lib/marketplace/types.ts`, `app/lib/marketplace/searchParsers.ts`, `lib/marketplace/filter-options.ts`, `lib/grading/options.ts` (`matchesGradeFilter`, `matchesAnyGradeFilter`), `app/lib/hooks/useMarketplaceSearch.ts`, migrations `20260702120000`, `20260702130000` | `app/marketplace/page.tsx`, `AccordionFilters.tsx`, `MarketplaceCard.tsx`, `RarityBadge.tsx`, `MarketplaceEmptyState.tsx`, `app/components/home/HeroSearch.tsx` | [backend](./follow-up/marketplace-search/backend.md) · [frontend](./follow-up/marketplace-search/frontend.md) |
 | Auth login / register (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `lib/auth/validation.ts`, `lib/supabase/admin.ts` | `app/auth/AuthForm.tsx` | [backend](./follow-up/auth-login-register/backend.md) · [frontend](./follow-up/auth-login-register/frontend.md) |
-| Role-based routing & session | ✅ Ready | ✅ Wired (baseline) | `lib/auth/roles.ts`, `lib/auth/session.ts`, `middleware.ts`, `app/actions/profile.ts`, `app/actions/auth.ts` (`logout`) | `RoleProvider`, `LogoutModal`, `mockRole` consumers | [backend](./follow-up/role-based-routing/backend.md) · [frontend](./follow-up/role-based-routing/frontend.md) |
-| Marketplace product detail (nested listings) | ⏳ Planned | ⏳ Pending | `get_marketplace_product_listings` RPC (planned) | `app/marketplace/product/[id]/page.tsx` | [frontend](./follow-up/marketplace-search/frontend.md) |
+| Auth password (forgot + reset) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `app/auth/callback/route.ts`, `lib/auth/password-errors.ts`, `lib/auth/site-url.ts` | `app/auth/forgot-password/`, `app/auth/reset-password/`, `AuthForm.tsx`, `PasswordUpdatedToast` | [backend](./follow-up/auth-password-recovery/backend.md) · [frontend](./follow-up/auth-password-recovery/frontend.md) |
+| User profile settings (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/profile.ts`, `lib/profile/avatar.ts`, `lib/profile/validation.ts`, `lib/profile/errors.ts`, migrations `20260703100000`–`20260703120000` | `app/profile/user/settings/` | [backend](./follow-up/user-profile-settings/backend.md) · [frontend](./follow-up/user-profile-settings/frontend.md) |
+| Role-based routing & session | ✅ Ready | ✅ Wired (baseline) | `lib/auth/roles.ts`, `lib/auth/session.ts`, `middleware.ts` (session refresh all routes; role guard `/profile` + `/admin`), `app/actions/profile.ts`, `app/actions/auth.ts` (`logout`) | `RoleProvider`, `LogoutModal`, `mockRole` consumers | [backend](./follow-up/role-based-routing/backend.md) · [frontend](./follow-up/role-based-routing/frontend.md) |
+| Marketplace product detail (catalog) | ✅ Ready | ✅ Wired (baseline) | `app/actions/marketplace.ts` (`getMarketplaceProductDetail`), `app/lib/marketplace/types.ts` (`MarketplaceProductDetail`), `lib/catalog/element-types.ts`, `app/marketplace/product/[id]/page.tsx`, `ProductDetailClient.tsx`, `app/marketplace/MarketplaceChrome.tsx` | `app/marketplace/product/[id]/`, `MarketplaceCard.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
+| Marketplace product detail (listings / chart / history) | ✅ Listings + trade history ready · ⏳ chart | ✅ Listings + trade history wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, `getMarketplaceProductTradeHistory`, `useMarketplaceProductListings`, `useMarketplaceProductTradeHistory`, migrations `20260703170000`, `20260703180000` | `ProductDetailClient.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
 | Wishlist toggle | ⏳ Planned | ✅ UI done | `app/actions/Wishlist.ts` (planned) | `WishlistButton.tsx`, `WishlistTable.tsx` | [wishlist](./follow-up/wishlist/) |
-| Create listing submit | ⏳ Planned | ⏳ Pending | `app/actions/listings.ts` (planned) | `AddAssetModal.tsx` submit handler | — |
+| Create listing submit (box/set + hobby) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` non-card paths | — |
 
 ## Prerequisites (shared)
 
 - `lib/supabase/server.ts`
 - `.env` / `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only; URL must **not** include `/rest/v1/`)
+- Bunny (create listing images): `BUNNY_STORAGE_ZONE_NAME`, `BUNNY_STORAGE_ACCESS_KEY`, `BUNNY_CDN_HOSTNAME`, optional `BUNNY_STORAGE_REGION`
 - `product_catalog` table populated + anon `SELECT` (see migration below)
 - `listings` rows with `status = 'active'`, valid `product_id`, `grading_company`, `grading_score`, `seller_persona`
 - `next.config.ts`: `www.pokemon-card.com` in `images.remotePatterns` (catalog thumbnails)
@@ -30,6 +34,14 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260702110000_auth_profiles_registration.sql`
 - `supabase/migrations/20260702120000_marketplace_search_rpc.sql` — RLS on `listings` + `profiles`
 - `supabase/migrations/20260702130000_marketplace_search_rpc_v2.sql` — **required** for current RPC signature
+- `supabase/migrations/20260703100000_profiles_default_avatar.sql` — default `avatar_path`
+- `supabase/migrations/20260703110000_profiles_owner_update.sql` — profiles owner `UPDATE` RLS
+- `supabase/migrations/20260703120000_profiles_settings_columns.sql` — `username`, `short_description`
+- `supabase/migrations/20260703130000_listings_owner_insert.sql` — listings seller `INSERT`/`UPDATE` RLS
+- `supabase/migrations/20260703140000_listings_owner_insert_simplify.sql` — simplified insert policy (`seller_id = auth.uid()`)
+- `supabase/migrations/20260703150000_listings_service_role_grants.sql` — `service_role` grants on `listings` (trusted server insert)
+- `supabase/migrations/20260703170000_get_marketplace_product_listings.sql` — product detail order book RPC
+- `supabase/migrations/20260703180000_member_orders_trade_history_read.sql` — completed `member_orders` read for authenticated users
 
 ### Quick verify
 
@@ -37,6 +49,14 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 bun run test:catalog-search   # DB connectivity + sample catalog search
 bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, role routing
 ```
+
+**Add Asset — create listing (manual, single card):**
+
+1. Log in → open **新增商品** (merch mode).
+2. Search + pick catalog card → selected card panel shows name / number / rarity.
+3. Choose grading, add 4–6 photos, set price → submit.
+4. **Global progress overlay** shows per-photo upload % then「寫入商品資料…」; success toast; modal closes.
+5. Verify `listings` row + Bunny CDN URLs; `listing_stats` row created by DB trigger.
 
 **Homepage hero search (manual):**
 
@@ -49,9 +69,39 @@ bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, rol
 
 1. With **zero** active `listings` — `/marketplace` shows `MarketplaceEmptyState` (not an infinite spinner).
 2. With active listings — grid shows only products with ≥ 1 active listing.
-3. Search `sv2a`, `sv2a-062`, or a card name; toggle grade / seller-type filters.
+3. Search `sv2a`, `sv2a-062`, or a card name; toggle grade / seller-source filters.
 4. Header should show `顯示第 X–Y 件，共 Z 件現貨` when results exist.
 5. Apply a filter with no matches — `MarketplaceEmptyState` shows with 「清除所有篩選」.
+6. **Rarity facet** — sidebar loads all distinct `product_catalog.rarity` values (not hardcoded SAR/UR/SR/AR).
+7. **Seller source** — only **會員** (`MEMBER`) and **認證商戶** (`MERCHANT`); no C2C/P2P chips.
+8. **Grade facet** — options match create-listing dropdown (`lib/grading/options.ts`); filter state uses grading option ids (e.g. `psa:10`, `raw:A`).
+9. **Grid card** — rarity badge on image (top-left) from `product_catalog.rarity`; grading badge **not** shown on card.
+10. **Grid → detail** — card click opens `/marketplace/product/<productId>` with live catalog data.
+
+**Product detail — catalog (manual):**
+
+1. From grid, open a product → title is `name_ja`; `name_zh` + rarity badge when present.
+2. Nav bars hidden on detail; back chevron returns to previous page.
+3. Spec matrix: set, 日版原名, 卡牌屬性 (繁中), 進化階段.
+4. Invalid product id → 404.
+
+**Product detail — listings (manual):**
+
+1. Apply migration `20260703170000_get_marketplace_product_listings.sql`.
+2. Open product with active listings → order book shows seller rows from DB.
+3. Toggle **只顯示已鑑定** — RAW listings hidden.
+4. Select a grading chip (e.g. **PSA 10**, **裸卡 A**) — only matching listings shown.
+5. Change sort (價格 / 鑑定等級 / 賣家評級) — order updates server-side.
+6. Pagination works when > 5 listings match filters.
+
+**Product detail — trade history (manual):**
+
+1. Apply migration `20260703180000_member_orders_trade_history_read.sql`.
+2. As **guest** — sold history section blurred; no fetch.
+3. Log in → completed orders for product show with date, grade, price.
+4. Pagination when > 5 completed orders.
+
+**Product detail — pending (chart):**
 
 **SQL smoke test:**
 

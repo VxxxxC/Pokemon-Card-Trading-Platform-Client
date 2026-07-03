@@ -1,15 +1,22 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getRoleDefaultLandingPath } from "@/lib/auth/roles";
+import { getRoleDefaultLandingPath, getRoleSettingsPath } from "@/lib/auth/roles";
 import { resolveCurrentDemoRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   type AuthFormErrors,
   validateLoginFields,
+  validatePasswordResetRequest,
+  validatePasswordUpdate,
+  validateProfilePasswordUpdate,
   validateRegisterFields,
 } from "@/lib/auth/validation";
+import {
+  mapPasswordUpdateAuthError,
+} from "@/lib/auth/password-errors";
+import { getSiteUrl } from "@/lib/auth/site-url";
 
 function parseRegisterFields(formData: FormData) {
   return {
@@ -170,4 +177,143 @@ export async function logout(): Promise<void> {
   }
 
   redirect("/auth");
+}
+
+export type ForgotPasswordRequestResult =
+  | { status: "sent" }
+  | { status: "error"; errors: AuthFormErrors };
+
+export async function requestForgotPassword(
+  _prev: ForgotPasswordRequestResult | null,
+  formData: FormData,
+): Promise<ForgotPasswordRequestResult> {
+  const email = ((formData.get("email") as string | null) ?? "").trim();
+  const errors = validatePasswordResetRequest({ email });
+
+  if (Object.keys(errors).length) {
+    return { status: "error", errors };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      return {
+        status: "error",
+        errors: { email: "您已登入，請至帳戶設定更改密碼" },
+      };
+    }
+
+    const siteUrl = await getSiteUrl();
+    const nextPath = encodeURIComponent("/auth/forgot-password/complete");
+    const redirectTo = `${siteUrl}/auth/callback?next=${nextPath}`;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      const normalized = error.message.toLowerCase();
+      if (normalized.includes("rate limit")) {
+        return {
+          status: "error",
+          errors: { email: "請求過於頻繁，請稍後再試" },
+        };
+      }
+      return {
+        status: "error",
+        errors: { email: "無法發送重設郵件，請稍後再試" },
+      };
+    }
+  } catch {
+    return {
+      status: "error",
+      errors: { email: "無法發送重設郵件，請稍後再試" },
+    };
+  }
+
+  return { status: "sent" };
+}
+
+export async function completeForgotPassword(
+  _prev: AuthFormErrors | null,
+  formData: FormData,
+): Promise<AuthFormErrors | null> {
+  const fields = {
+    password: (formData.get("password") as string | null) ?? "",
+    confirmPassword: (formData.get("confirmPassword") as string | null) ?? "",
+  };
+
+  const errors = validatePasswordUpdate(fields);
+  if (Object.keys(errors).length) return errors;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { password: "連結已失效，請重新申請忘記密碼" };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: fields.password,
+  });
+
+  if (error) {
+    return mapPasswordUpdateAuthError(error.message);
+  }
+
+  const role = await resolveCurrentDemoRole();
+  redirect(`${getRoleDefaultLandingPath(role)}?passwordUpdated=1`);
+}
+
+export async function updatePasswordFromProfile(
+  _prev: AuthFormErrors | null,
+  formData: FormData,
+): Promise<AuthFormErrors | null> {
+  const fields = {
+    currentPassword: (formData.get("currentPassword") as string | null) ?? "",
+    password: (formData.get("password") as string | null) ?? "",
+    confirmPassword: (formData.get("confirmPassword") as string | null) ?? "",
+  };
+
+  const errors = validateProfilePasswordUpdate(fields);
+  if (Object.keys(errors).length) return errors;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { password: "請先登入後再更改密碼" };
+  }
+
+  if (!user.email) {
+    return { form: "無法驗證帳戶，請重新登入" };
+  }
+
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: fields.currentPassword,
+  });
+
+  if (verifyError) {
+    return { currentPassword: "目前密碼不正確" };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: fields.password,
+  });
+
+  if (error) {
+    return mapPasswordUpdateAuthError(error.message);
+  }
+
+  const role = await resolveCurrentDemoRole();
+  redirect(`${getRoleSettingsPath(role)}?passwordUpdated=1`);
 }

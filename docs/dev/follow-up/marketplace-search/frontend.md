@@ -2,9 +2,20 @@
 
 ## Status
 
-- **Backend:** ✅ Ready (v2 RPC)
-- **Frontend:** ✅ **Baseline wired** — live data on `/marketplace` and homepage hero search
-- **Your focus:** Card polish (listing count, price spread), product detail page, condition filters when schema lands
+- **Backend:** ✅ Ready (v2 RPC + `getMarketplaceRarities`)
+- **Frontend:** ✅ **Wired** — live search, updated filters, grid card baseline
+- **Your focus:** Grid card polish (listing count, price spread, seller chip), filter styling pass. Product detail **catalog** done — see [marketplace-product-detail/frontend.md](../marketplace-product-detail/frontend.md)
+
+## Changelog (2026-07-03)
+
+| Area | What changed |
+|------|----------------|
+| **`MarketplaceCard`** | Rarity badge on image (top-left) from `product_catalog.rarity`; **no** `GradeBadge` on card |
+| **`MarketplaceListing.rarity`** | `Tables<"product_catalog">["rarity"]` (`string \| null`) — no SAR/UR/SR/AR normalization |
+| **`RarityBadge`** | Accepts `string \| null`; renders nothing when empty |
+| **`AccordionFilters`** | Dynamic rarities from DB; seller source = 會員 + 認證商戶 only; grading groups match create-listing dropdown; **removed** separate 裸卡品相分級 section |
+| **`useMarketStore`** | Removed `activeConditions` / `toggleCondition` |
+| **Grade filter state** | Stores grading **option ids** (`psa:10`, `raw:B`, …) not display strings |
 
 ## What is already done
 
@@ -12,234 +23,144 @@
 |---------|----------|
 | Server-side search + pagination | `useMarketplaceSearch` → `searchMarketplaceProducts` |
 | Debounced keyword (350ms) | `app/lib/hooks/useMarketplaceSearch.ts` |
-| Set code / set+card / name parsing | `app/lib/marketplace/searchParsers.ts` → `parseCatalogSearchQuery` |
-| Rarity facet | `activeRarities` → `p_rarities` |
-| Grade facet (PSA 10, RAW, …) | `activeGrades` → `parseGradeFilters()` |
-| Seller mode (MERCHANT / C2C / P2P) | `activeTypes` → `mapSellerModes()` |
+| Set code / set+card / name parsing | `app/lib/marketplace/searchParsers.ts` |
+| Rarity facet (all catalog values) | `getMarketplaceRarities` → `AccordionFilters` → `p_rarities` |
+| Grade facet (create-listing options) | `GRADING_OPTION_GROUPS` / `GRADING_OPTIONS` → option ids → `parseGradeFilters()` |
+| Seller source (會員 / 認證商戶) | `MARKETPLACE_SELLER_SOURCE_OPTIONS` → `mapSellerModes()` |
 | Price range slider | `priceRange` → `p_price_min` / `p_price_max` |
 | Sort (最新 / 價格) | `sortKey` in `useMarketStore` |
-| Pagination | `Pagination` + server `meta.totalPages` |
-| Results summary | `顯示第 X–Y 件，共 Z 件現貨` |
-| Grading on grid card | `formatGrade()` in `toMarketplaceListing` |
-| Loading spinner | `app/marketplace/page.tsx` — only while `isLoading` |
-| Empty state (no results) | `MarketplaceEmptyState.tsx` when `!isLoading && meta.total === 0` |
-| Stable search refetch | `useMarketplaceSearch` — `searchKey` string dedupes requests |
-| Error banner | `app/marketplace/page.tsx` |
-| URL sync (`?q=`, `?rarity=`) | `useEffect` on search params |
-| Homepage hero typeahead | `useHeroMarketplaceSearch` → `searchMarketplaceProducts` (query only) |
-| Homepage 搜尋 → marketplace | `HeroSearch.tsx` — `router.push('/marketplace?q=…')` on submit / suggestion pick |
-| Hero dropdown: price + grade | `HeroSearch.tsx` — `lowestPrice`, `listingCount`, `gradingCompany` |
+| Pagination + results summary | `Pagination` + `meta.rangeStart` / `rangeEnd` / `total` |
+| Grid card rarity | `RarityBadge` on image when `listing.rarity` present |
+| Loading / empty / error states | `app/marketplace/page.tsx`, `MarketplaceEmptyState.tsx` |
+| URL sync (`?q=`, `?rarity=`) | Case-insensitive rarity match; preserves catalog value |
+| Homepage hero typeahead | `useHeroMarketplaceSearch` (unchanged) |
 
 ## UI touchpoints
 
-### Primary: `app/marketplace/page.tsx`
+### Grid card: `app/components/marketplace/MarketplaceCard.tsx`
 
-| Area | ~Lines | Notes |
-|------|--------|-------|
-| Hook wiring | L136–148 | Passes all filter state + `page` / `pageSize` |
-| `toMarketplaceListing` mapper | L34–62 | Maps `gradingCompany` / `gradingScore` to card grade |
-| Results summary header | subtitle under 「大盤市場」 | Uses `meta.rangeStart` / `rangeEnd` / `total` |
-| Empty state | L509–515 | `MarketplaceEmptyState` when `!isLoading && (meta.total === 0)` |
-| Price bounds init | `useEffect` on `priceBounds` | Sets slider once; skips `setState` if min/max unchanged |
-| Product grid | `#product-cards` | `MarketplaceCard` per product |
-| Pagination | bottom of grid | `totalItems={meta.total}` |
+| Element | Behaviour |
+|---------|-----------|
+| Image overlay top-left | `RarityBadge` when `listing.rarity` is non-null |
+| Image overlay top-right | `WishlistButton` |
+| Body | Name, card no, price, delta, seller — **no grade row** |
+| `MarketplaceListing.grade` | Still on type for `BuyButton` / mocks; not rendered |
 
-### Empty state: `app/components/marketplace/MarketplaceEmptyState.tsx`
+### Filters: `app/components/marketplace/filters/AccordionFilters.tsx`
 
-| Prop | Purpose |
-|------|---------|
-| `hasActiveFilters` | Switches copy: filtered-empty vs market-empty |
-| `query` | Highlights search term in empty message |
-| `onResetFilters` | Wired to `handleResetAllFilters` — shows 「清除所有篩選」 |
+| Section | Source | State key |
+|---------|--------|-----------|
+| 刊登來源 | `MARKETPLACE_SELLER_SOURCE_OPTIONS` | `activeTypes` (`MEMBER`, `MERCHANT`) |
+| 稀有度 | `getMarketplaceRarities()` on mount (or `rarities` prop override) | `activeRarities` |
+| 鑑定／品相 | `GRADING_OPTION_GROUPS` + `getGradingOptionsByGroup` | `activeGrades` (option **ids**) |
 
-**Two modes:**
-- **Filters active, no matches** — 「找不到符合條件的現貨」 + reset button
-- **No filters, empty market** — 「大盤暫無現貨標的」
+**Removed:** 裸卡品相分級 / `activeConditions` — raw conditions live under 鑑定／品相 → 裸卡 group.
+
+### Primary page: `app/marketplace/page.tsx`
+
+| Area | Notes |
+|------|-------|
+| `toMarketplaceListing` | `rarity: product.rarity` direct; `grade` still mapped for downstream compat |
+| `useMarketplaceSearch` wiring | `rarities`, `grades` (ids), `sellerTypes`, `priceRange`, `sortKey`, `page` |
+| `hasActiveFilters` | query, rarities, grades, seller types, price range — **no** conditions |
+| Desktop + mobile `AccordionFilters` | Same props; type section visible on main marketplace |
 
 ### Store: `app/store/useMarketStore.ts`
 
 | State | Used for |
 |-------|----------|
 | `query` | Keyword search |
-| `activeRarities` | Rarity checkboxes |
-| `activeGrades` | Grade checkboxes |
-| `activeTypes` | MERCHANT / C2C / P2P |
-| `activeConditions` | **UI only** — not sent to API yet |
+| `activeRarities` | Rarity chips (catalog strings) |
+| `activeGrades` | Grading option ids |
+| `activeTypes` | `MEMBER` \| `MERCHANT` |
 | `sortKey` | `最新` \| `價格：由低到高` \| `價格：由高到低` |
+| `resetAll()` | Clears all above |
 
-### Homepage hero: `app/components/home/HeroSearch.tsx`
+### Merchant storefront (mock): `app/marketplace/[id]/page.tsx`
 
-| Area | Notes |
-|------|-------|
-| Hook | `useHeroMarketplaceSearch()` — debounced 350ms, min 2 chars, `pageSize: 8` |
-| RPC params | **Query only** — `searchMarketplaceProducts({ query, page: 1, pageSize: 8, sortKey: '最新' })`; `parseCatalogSearchQuery` splits set / card / name |
-| Dropdown | Thumbnail, name, set·rarity·grade, `lowestPrice`, optional `listingCount` |
-| Submit | **搜尋** / Enter → `searchNow()` then `/marketplace?q=…` |
-| Suggestion pick | Fills input with `displayId` or `setCode-cardNumber`, navigates with `?q=` |
-| Click outside | Closes dropdown |
-| Quick filters | Unchanged — `Link` to `/marketplace?rarity=…` / `?q=charizard` |
+| Note | Detail |
+|------|--------|
+| Filters | `hideTypeSection={true}` — no seller source section |
+| Grade match | `matchesAnyGradeFilter()` from `lib/grading/options.ts` |
+| Rarities | Loaded via same `AccordionFilters` DB fetch |
 
-**Why marketplace RPC (not product catalog):** hero copy promises lowest in-stock price; catalog search has no listing/price data.
-
-### Filters UI
-
-| Component | Path |
-|-----------|------|
-| Sidebar + mobile slide-over filters | `app/components/marketplace/filters/AccordionFilters.tsx` |
-| Search autocomplete | `app/components/marketplace/filters/SmartSearch.tsx` (client-side on current page results) |
-| Grid card | `app/components/marketplace/MarketplaceCard.tsx` |
-| Empty state | `app/components/marketplace/MarketplaceEmptyState.tsx` |
-
-## Module layout (import guide)
+## Module layout
 
 ```ts
-// Server actions — call from client hooks only
-import { searchMarketplaceProducts, getMarketplacePriceBounds } from "@/app/actions/marketplace";
-
-// Shared types — safe for client components
-import type { MarketplaceProductRow, MarketplacePaginationMeta } from "@/app/lib/marketplace/types";
-
-// Parsers — client-safe, used by hook before calling server action
+import { searchMarketplaceProducts, getMarketplaceRarities } from "@/app/actions/marketplace";
 import { parseGradeFilters, mapSellerModes } from "@/app/lib/marketplace/searchParsers";
-
-// Homepage hero — lightweight typeahead (no filters / pagination)
-import { useHeroMarketplaceSearch } from "@/app/lib/hooks/useHeroMarketplaceSearch";
+import { MARKETPLACE_SELLER_SOURCE_OPTIONS } from "@/lib/marketplace/filter-options";
+import {
+  GRADING_OPTION_GROUPS,
+  getGradingOptionsByGroup,
+  matchesAnyGradeFilter,
+} from "@/lib/grading/options";
+import type { MarketplaceProductRow } from "@/app/lib/marketplace/types";
 ```
 
-## Hook API
+## Hook API (unchanged shape)
 
 ```ts
-import { useMarketplaceSearch } from "@/app/lib/hooks/useMarketplaceSearch";
-
 const { products, meta, isLoading, error, priceBounds, refetch } =
   useMarketplaceSearch({
     query,
     rarities: activeRarities,
-    grades: activeGrades,
-    sellerTypes: activeTypes,
+    grades: activeGrades,        // grading option ids
+    sellerTypes: activeTypes,      // MEMBER | MERCHANT
     priceMin: priceRange[0],
     priceMax: priceRange[1],
     sortKey,
     page: currentPage,
-    pageSize: itemsPerPage, // 9 mobile / 11 desktop
+    pageSize: itemsPerPage,
   });
 ```
 
-### `meta` shape
-
-```ts
-{
-  total: 234,
-  page: 2,
-  pageSize: 11,
-  totalPages: 22,
-  rangeStart: 12,
-  rangeEnd: 22,
-}
-```
-
-### `useHeroMarketplaceSearch` (homepage)
-
-```ts
-const {
-  query,
-  setQuery,
-  results,       // MarketplaceProductRow[]
-  total,
-  hasMore,
-  isSearching,
-  error,
-  isDropdownOpen,
-  closeDropdown,
-  searchNow,
-} = useHeroMarketplaceSearch();
-```
-
-| Pattern | Why |
-|---------|-----|
-| 60s in-memory cache per query | Avoid duplicate RPC while user reopens dropdown |
-| `searchNow()` on button | Immediate RPC before navigation |
-| No `priceBounds` fetch | Hero only needs suggestion rows |
-
-## Hook implementation notes (do not break)
-
-`useMarketplaceSearch` intentionally avoids depending on the inline `filters` object identity from the page (a new object every render).
-
-| Pattern | Why |
-|---------|-----|
-| `searchKey` string (`filtersKey(...)`) | Effect only re-runs when filter **values** change |
-| `filtersRef.current` | Reads latest filters inside the effect without unstable deps |
-| `finally { setIsLoading(false) }` | Latest request always clears spinner — stale requests bail early |
-| Debounced `query` merged into `searchKey` | Keyword search waits 350ms before RPC |
-
-**If you add new filter fields:** update `MarketplaceSearchFilters`, `filtersKey()`, the `searchMarketplaceProducts` call in the hook, and the page wiring.
-
-**Common pitfall:** putting `runSearch` or the whole `filters` object in a `useEffect` dependency array causes infinite re-fetch and a stuck loading spinner.
-
-## `MarketplaceProductRow` — fields available for polish
-
-| Field | Suggested UI |
-|-------|--------------|
-| `listingCount` | Badge: 「3 件現貨」 when > 1 |
-| `highestPrice` | Show spread: `HK$ 1,200 – 2,400` when `listingCount > 1` |
-| `gradingCompany` / `gradingScore` | ✅ Already on card via `GradeBadge` |
-| `sellerPersona` | Chip: 🏪 商戶 vs 🏛️ 玩家 |
-| `useAuthentication` | P2P escrow indicator |
-| `latestListingAt` | 「最新上架」 relative time |
-| `catalogType` | Box set vs single card label |
-| `lowestListingId` | Wishlist / buy button target (listing-level) |
+**If you add filter fields:** update `MarketplaceSearchFilters`, `filtersKey()`, hook RPC call, page wiring, and `AccordionFilters`.
 
 ## Partner TODO (polish & next screen)
 
 - [ ] **Listing count badge** on `MarketplaceCard` when `listingCount > 1`
 - [ ] **Price spread** when `lowestPrice !== highestPrice`
-- [ ] **Seller persona chip** (merchant vs member)
-- [ ] **Product detail page** `app/marketplace/product/[id]/page.tsx` — list all nested listings (backend RPC TBD)
-- [ ] **SmartSearch** — optionally call server for suggestions instead of filtering current page only
-- [ ] **URL params** — `?set=sv2a&card=062` structured deep links (optional)
-- [ ] **Condition filters** — wire when `listings.condition` column exists; until then consider hiding `activeConditions` UI or show disabled state
-- [ ] **Empty state** — optional illustration / CTA to list a card (styling pass)
-- [ ] **HeroSearch** — keyboard navigation (↑↓ Enter), highlight matched substring, style pass
+- [ ] **Seller persona chip** (merchant vs member) on card
+- [ ] **Filter UX** — collapsible grading groups, search within long rarity list
+- [ ] **Product detail** order book + chart + history — [marketplace-product-detail/frontend.md](../marketplace-product-detail/frontend.md)
+- [ ] **SmartSearch** — server suggestions vs current-page filter only
+- [ ] **URL params** — `?set=sv2a&card=062` structured deep links
+- [ ] **HeroSearch** — keyboard nav, style pass
+- [ ] **Styling pass** on `AccordionFilters` scroll areas and mobile slide-over
 
 ## Acceptance checklist
 
 - [x] Grid only shows products with ≥ 1 active listing
 - [x] Card price = lowest matching listing price
-- [x] Card grade = cheapest listing's `grading_company` + `grading_score`
-- [x] Search: set code (`sv2a`)
-- [x] Search: set + number (`sv2a-062`)
-- [x] Search: card name
-- [x] Price range filter
-- [x] Merchant / member / P2P seller modes
-- [x] Grading company + score filters
-- [x] Sort: latest, price asc, price desc
-- [x] Server pagination with total + range display
-- [x] Empty state with filter-aware copy + reset CTA
-- [x] Zero listings / zero matches — spinner stops, empty component shows
-- [x] Homepage hero: typeahead hits DB (in-stock products only)
-- [x] Homepage hero: 搜尋 / Enter → `/marketplace?q=…`
-- [x] Homepage hero: suggestion pick → marketplace with resolved query
-- [ ] Condition filters (blocked on schema)
-- [ ] Product detail nested listings
+- [x] Card shows **rarity** from `product_catalog.rarity` (not normalized enum)
+- [x] Card does **not** show grading badge
+- [x] Rarity filter loads all distinct catalog rarities
+- [x] Seller filter: 會員 + 認證商戶 only
+- [x] Grade filter options match `AddAssetModal` grading dropdown
+- [x] Grade filter sends correct company + score to RPC
+- [x] Search, price range, sort, pagination
+- [x] Empty state + reset filters
+- [x] Homepage hero → `/marketplace?q=…`
 - [ ] Listing count / price spread on card
+- [ ] Product detail order book / chart / history ([detail handoff](../marketplace-product-detail/frontend.md))
+- [ ] Raw condition-specific filter (blocked — no `listings.condition` column)
 
 ## Do not change without backend sync
 
-- `app/actions/marketplace.ts` — async server actions + response envelope
-- `app/lib/marketplace/types.ts` — shared type shapes
-- `app/lib/marketplace/searchParsers.ts` — filter/query mapping logic
-- `useMarketplaceSearch` filter → action param mapping
-- RPC param names / sort values
+- `app/actions/marketplace.ts` — server actions + envelopes
+- `parseGradeFilters` / `mapSellerModes` / grading option id format
+- `getMarketplaceRarities` data source
+- `useMarketplaceSearch` filter → RPC param mapping
 
 ## Manual test plan
 
 1. Apply migrations (`INTEGRATION_QUEUE.md`).
-2. **Zero listings DB** — `/marketplace` shows empty state within one load cycle (no infinite spinner).
-3. Seed ≥ 2 active listings on the same `product_id` with different prices/grades.
-4. `/marketplace` — product appears once; price = lowest.
-5. Filter PSA 10 — only products with a PSA 10 listing match.
-6. Toggle MERCHANT only — only `seller_persona = merchant` listings match.
-7. Change sort to 價格：由低到高 — order updates.
-8. Paginate — header shows correct `X–Y of Z`.
-9. Search nonsense or over-restrict filters — `MarketplaceEmptyState` appears; reset clears filters.
-10. **Homepage** — type `sv2a` or card name → hero dropdown shows prices; submit lands on `/marketplace` with same query.
+2. `/marketplace` — rarity section shows DB values (not only SAR/UR/SR/AR).
+3. Toggle **認證商戶** — only `seller_persona = merchant` listings match.
+4. Toggle **PSA 10** under 鑑定／品相 — only PSA 10 listings match.
+5. Toggle **裸卡 A** — matches all RAW listings (condition not in DB yet).
+6. Grid card — rarity chip on image; no PSA/CGC badge.
+7. `?rarity=SAR` (or any catalog value) — pre-selects matching chip.
+8. Reset filters — clears rarities, grades, seller types, query, price slider.
+9. Merchant storefront `/marketplace/[id]` — grade filter still works on mock data.

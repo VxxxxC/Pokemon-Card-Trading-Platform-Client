@@ -55,3 +55,25 @@ This project uses **Bun** exclusively. **Never** use npm, npx, yarn, pnpm, or pn
 - One-off CLIs: `bunx <cli>` (e.g. `bunx tsc --noEmit`, `bunx supabase db push`)
 - shadcn/ui: `bunx --bun shadcn@latest add <component>` (never `npx shadcn@latest`)
 - Lockfile: commit **`bun.lock` only**. Do not create or commit `package-lock.json`.
+
+# =====================================================================
+# BACKEND-DRIVEN UI MODIFICATION PROTOCOL (後端接駁專用 UI 修正守則)
+# =====================================================================
+
+When explicitly instructed to modify or update an existing UI component (inside `components/` or `app/` routes) to facilitate backend data wiring, database RPCs, or form mutations, you MUST strictly adhere to the following constraints:
+
+1. STRICT "ADDITION-ONLY" POLICY (絕對加法原則):
+   - You are ONLY allowed to insert new required input elements (e.g., `<input>`, `<select>`), form action triggers, or baseline logical statements (e.g., handling null/empty states).
+   - NEVER delete, rewrite, or move existing structural HTML nodes or wrappers built by the frontend developer.
+
+2. TAILWIND CSS 4 & STYLE INTANGIBILITY (樣式防禦線):
+   - DO NOT alter, replace, optimize, or delete any existing Tailwind CSS 4 classes (`className="..."`) within the file.
+   - For any newly injected input or select elements, apply either completely raw/unstyled tags or basic visual placeholders. Leave all aesthetic integration and layout spacing entirely to the frontend developer's future fine-tuning.
+
+3. STRICT FIELD CONTRACT ALIGNMENT (屬性合約對齊):
+   - Ensure all newly added input fields use exact case-sensitive `name` attributes dictated by `backend.md` and `frontend.md` specs (e.g., `displayName`, `username`, `shortDescription`).
+   - Props and data models injected into the component must strictly align with the database row definitions imported from `types/supabase.ts`. Do not invent custom interfaces.
+
+4. NO COMPONENT ARCHITECTURE ALTERATION (禁止擅自轉型):
+   - Never insert or remove the `"use server"` or `"use client"` directives unless explicitly commanded.
+   - Do not attempt to abstract or split the UI component into sub-files; apply your backend wire-up inline within the precise boundaries requested.

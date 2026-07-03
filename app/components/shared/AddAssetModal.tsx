@@ -1,11 +1,30 @@
 "use client";
 
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listing";
 import { useUIStore } from "@/app/store/useUIStore";
+import { useListingSubmitStore } from "@/app/store/useListingSubmitStore";
 import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
 import type { ProductCatalogSuggestion } from "@/app/actions/productCatalog";
+import {
+  DEFAULT_GRADING_OPTION_ID,
+  GRADING_OPTION_GROUPS,
+  getGradingOption,
+  getGradingOptionsByGroup,
+  gradingOptionToFields,
+} from "@/lib/grading/options";
+import type { ListingImage } from "@/lib/listings/images";
+import {
+  LISTING_IMAGE_MAX,
+  LISTING_IMAGE_MIN,
+} from "@/lib/listings/images";
+import {
+  LISTING_DESCRIPTION_MAX,
+  validateCreateCardListing,
+  validateImageFile,
+} from "@/lib/listings/validation";
 import {
   Select,
   SelectContent,
@@ -15,6 +34,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+type LocalPhotoSlot = {
+  file: File | null;
+  previewUrl: string | null;
+};
+
+function createEmptyPhotoSlots(): LocalPhotoSlot[] {
+  return Array.from({ length: LISTING_IMAGE_MAX }, () => ({
+    file: null,
+    previewUrl: null,
+  }));
+}
+
+function revokePhotoSlots(slots: LocalPhotoSlot[]) {
+  for (const slot of slots) {
+    if (slot.previewUrl) {
+      URL.revokeObjectURL(slot.previewUrl);
+    }
+  }
+}
 
 // 嚴格定義全域資產數據合約
 export interface GlobalAssetPayload {
@@ -29,7 +68,7 @@ export interface GlobalAssetPayload {
   sellingPrice: number; // 僅新增商品使用
   status: "holding" | "listed" | "grading";
   isHobbyOnly: boolean;
-  images: string[]; // 實時相片快照陣列
+  images: string[] | ListingImage[];
   condition?: string;
   conditionDesc?: string;
   photosRemark?: string[];
@@ -54,70 +93,13 @@ export function AddAssetModal() {
     enabled: isOpen,
   });
 
-  // 🟢 核心對齊：雙端級聯等級與品相分級
-  const [selectedGrader, setSelectedGrader] = useState<string>("PSA"); // "RAW", "PSA", "CGC", "BGS", "ARS"
-  const [selectedScore, setSelectedScore] = useState<string>("10"); // "1" through "10"
-  const [selectedCondition, setSelectedCondition] = useState<string>("A"); // "A", "B", "C", "D"
-
-  const isScoreDisabled = selectedGrader === "RAW";
-
-  // 🟢 核心對齊：動態評級分數範圍矩陣 (Enterprise-Grade Grading Scale Matrix)
-  const graderScoreOptions = useMemo(() => {
-    if (selectedGrader === "RAW") return [];
-    if (selectedGrader === "PSA")
-      return ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
-    if (selectedGrader === "ARS")
-      return ["10+", "10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
-    if (selectedGrader === "BGS") {
-      return [
-        "10 (Black Label)",
-        "10 (Pristine)",
-        "9.5",
-        "9.0",
-        "8.5",
-        "8.0",
-        "7.5",
-        "7.0",
-        "6.5",
-        "6.0",
-        "5.0",
-        "4.0",
-        "3.0",
-        "2.0",
-        "1.0",
-      ];
-    }
-    if (selectedGrader === "CGC") {
-      return [
-        "10 (Pristine)",
-        "10 (Gem Mint)",
-        "9.5",
-        "9.0",
-        "8.5",
-        "8.0",
-        "7.5",
-        "7.0",
-        "6.5",
-        "6.0",
-        "5.0",
-        "4.0",
-        "3.0",
-        "2.0",
-        "1.0",
-      ];
-    }
-    return ["10", "9", "8", "7", "6", "5", "4", "3", "2", "1"];
-  }, [selectedGrader]);
-
-  // 🟢 核心對齊：自動初始化分數防線
-  const getFirstScoreForGrader = (grader: string): string => {
-    if (grader === "RAW") return "";
-    if (grader === "PSA") return "10";
-    if (grader === "ARS") return "10+";
-    if (grader === "BGS") return "10 (Black Label)";
-    if (grader === "CGC") return "10 (Pristine)";
-    return "10";
-  };
+  const [selectedGradingId, setSelectedGradingId] = useState(
+    DEFAULT_GRADING_OPTION_ID,
+  );
+  const selectedGrading = useMemo(
+    () => getGradingOption(selectedGradingId),
+    [selectedGradingId],
+  );
 
   // 收藏愛好專屬欄位
   const [purchasePrice, setPurchasePrice] = useState("");
@@ -125,24 +107,51 @@ export function AddAssetModal() {
   // 新增商品專屬欄位
   const [sellingPrice, setSellingPrice] = useState("");
 
-  // 圖片上載緩衝矩陣 (Hobby)
-  const [images, setImages] = useState<string[]>([]);
+  // 圖片預覽槽（僅於提交時上傳至 Bunny.net）
+  const [photoSlots, setPhotoSlots] = useState<LocalPhotoSlot[]>(
+    createEmptyPhotoSlots,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🟢 Merchant Mode Onboarding States
-  const [merchPhotos, setMerchPhotos] = useState<
-    { url: string; remark: string }[]
-  >(Array.from({ length: 6 }, () => ({ url: "", remark: "" })));
-  const [isActiveListing, setIsActiveListing] = useState(true);
+  // 收藏愛好模式沿用簡易預覽陣列
+  const [hobbyImages, setHobbyImages] = useState<string[]>([]);
+
   const [conditionDesc, setConditionDesc] = useState("");
   const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
+  const listingSubmitPhase = useListingSubmitStore((state) => state.phase);
+  const listingSubmitOpen = useListingSubmitStore((state) => state.isOpen);
+  const isSubmitting =
+    listingSubmitOpen &&
+    listingSubmitPhase !== "idle" &&
+    listingSubmitPhase !== "error";
 
   // 🟢 記憶體時空守衛
   const [prevIsOpen, setPrevIsOpen] = useState(false);
 
+  const resetPhotoSlots = useCallback(() => {
+    setPhotoSlots((prev) => {
+      revokePhotoSlots(prev);
+      const next = createEmptyPhotoSlots();
+      photoSlotsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const photoSlotsRef = useRef(photoSlots);
+  photoSlotsRef.current = photoSlots;
+
+  useEffect(() => {
+    return () => {
+      revokePhotoSlots(photoSlotsRef.current);
+    };
+  }, []);
+
   const displayMode = mode === "hobby" ? "收藏愛好" : "新增商品";
 
-  // Dynamic Chip Visual Simulation based on cardQuery contents
+  const filledPhotoCount = useMemo(
+    () => photoSlots.filter((slot) => slot.file).length,
+    [photoSlots],
+  );
   const boxSetBadge = useMemo(() => {
     if (itemType !== "box_set" || !catalogSearch.query) return null;
     const lower = catalogSearch.query.toLowerCase();
@@ -170,16 +179,11 @@ export function AddAssetModal() {
       setMode(globalMode);
       setItemType("card"); // 🏛️ Memory Guard Synchronization: Reset itemType back to "card" when opening modal
       setSet("");
-      setSelectedGrader("PSA");
-      setSelectedScore("10");
-      setSelectedCondition("A");
+      setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
       setPurchasePrice("");
       setSellingPrice("");
-      setImages([]);
-      setMerchPhotos(
-        Array.from({ length: 6 }, () => ({ url: "", remark: "" })),
-      );
-      setIsActiveListing(true);
+      setHobbyImages([]);
+      resetPhotoSlots();
       setConditionDesc("");
       setActiveSlotIndex(null);
     }
@@ -187,39 +191,163 @@ export function AddAssetModal() {
 
   if (!isOpen) return null;
 
+  const buildNextPhotoSlots = (
+    prev: LocalPhotoSlot[],
+    files: File[],
+    startIndex: number,
+  ): {
+    next: LocalPhotoSlot[];
+    assigned: number;
+    skipped: number;
+    fileErrors: string[];
+  } => {
+    const next = [...prev];
+    let slotIndex = startIndex;
+    let assigned = 0;
+    let skipped = 0;
+    const fileErrors: string[] = [];
+
+    for (const file of files) {
+      if (slotIndex >= LISTING_IMAGE_MAX) {
+        skipped += 1;
+        continue;
+      }
+
+      const fileError = validateImageFile(file);
+      if (fileError) {
+        fileErrors.push(`${file.name}: ${fileError}`);
+        skipped += 1;
+        continue;
+      }
+
+      const existing = next[slotIndex];
+      if (existing.previewUrl) {
+        URL.revokeObjectURL(existing.previewUrl);
+      }
+
+      next[slotIndex] = {
+        file,
+        previewUrl: URL.createObjectURL(file),
+      };
+      assigned += 1;
+      slotIndex += 1;
+    }
+
+    return { next, assigned, skipped, fileErrors };
+  };
+
+  const applyFilesToPhotoSlots = (
+    files: File[],
+    startIndex: number,
+  ): { assigned: number; skipped: number; fileErrors: string[] } => {
+    const built = buildNextPhotoSlots(
+      photoSlotsRef.current,
+      files,
+      startIndex,
+    );
+
+    photoSlotsRef.current = built.next;
+    setPhotoSlots(built.next);
+
+    for (const message of built.fileErrors) {
+      toast.error(`⚠️ ${message}`);
+    }
+
+    return {
+      assigned: built.assigned,
+      skipped: built.skipped,
+      fileErrors: built.fileErrors,
+    };
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
-    const newUrl = URL.createObjectURL(file);
+    const files = Array.from(e.target.files);
 
-    if (mode === "merch" && activeSlotIndex !== null) {
-      setMerchPhotos((prev) => {
-        const next = [...prev];
-        next[activeSlotIndex] = { ...next[activeSlotIndex], url: newUrl };
-        return next;
-      });
-      setActiveSlotIndex(null);
-    } else {
-      if (images.length >= 6) {
-        toast.error("⚠️ 抱歉，實體相片上載上限為 6 張！");
+    if (mode === "merch") {
+      const startIndex =
+        activeSlotIndex ??
+        photoSlotsRef.current.findIndex((slot) => !slot.file);
+
+      if (startIndex === -1) {
+        toast.error(`⚠️ 已達 ${LISTING_IMAGE_MAX} 張上限`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
-      setImages((prev) => [...prev, newUrl]);
+
+      const { assigned, skipped } = applyFilesToPhotoSlots(files, startIndex);
+
+      if (assigned > 0 && skipped > 0) {
+        toast.message(
+          `已加入 ${assigned} 張相片，${skipped} 張未加入（上限或格式不符）`,
+        );
+      }
+
+      setActiveSlotIndex(null);
+    } else {
+      const remaining = LISTING_IMAGE_MAX - hobbyImages.length;
+      if (remaining <= 0) {
+        toast.error(`⚠️ 抱歉，實體相片上載上限為 ${LISTING_IMAGE_MAX} 張！`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const accepted: string[] = [];
+      let skipped = 0;
+
+      for (const file of files) {
+        if (accepted.length >= remaining) {
+          skipped += 1;
+          continue;
+        }
+
+        const fileError = validateImageFile(file);
+        if (fileError) {
+          toast.error(`⚠️ ${file.name}: ${fileError}`);
+          skipped += 1;
+          continue;
+        }
+
+        accepted.push(URL.createObjectURL(file));
+      }
+
+      if (accepted.length > 0) {
+        setHobbyImages((prev) => [...prev, ...accepted]);
+      }
+
+      if (accepted.length > 0 && skipped > 0) {
+        toast.message(
+          `已加入 ${accepted.length} 張相片，${skipped} 張未加入（上限或格式不符）`,
+        );
+      }
     }
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleRemoveImage = (indexToRemove: number) => {
-    setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
-  };
-
-  const handleRemoveMerchImage = (indexToRemove: number) => {
-    setMerchPhotos((prev) => {
+  const handleRemovePhotoSlot = (indexToRemove: number) => {
+    setPhotoSlots((prev) => {
       const next = [...prev];
-      next[indexToRemove] = { ...next[indexToRemove], url: "" };
+      const existing = next[indexToRemove];
+      if (existing.previewUrl) {
+        URL.revokeObjectURL(existing.previewUrl);
+      }
+      next[indexToRemove] = { file: null, previewUrl: null };
       return next;
     });
+  };
+
+  const handleRemoveHobbyImage = (indexToRemove: number) => {
+    setHobbyImages((prev) => {
+      const target = prev[indexToRemove];
+      if (target) URL.revokeObjectURL(target);
+      return prev.filter((_, idx) => idx !== indexToRemove);
+    });
+  };
+
+  const openPhotoPicker = (slotIndex: number) => {
+    setActiveSlotIndex(slotIndex);
+    fileInputRef.current?.click();
   };
 
   const handleSelectCatalogSuggestion = (
@@ -230,39 +358,107 @@ export function AddAssetModal() {
   };
 
   const handleCloseAndReset = () => {
+    if (isSubmitting) return;
     closeAddAssetModal();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (mode === "merch" && itemType === "card") {
+      const imageFiles = photoSlots
+        .map((slot) => slot.file)
+        .filter((file): file is File => file !== null);
+
+      const validationError = validateCreateCardListing(
+        {
+          productId: catalogSearch.selected?.id ?? "",
+          gradingOptionId: selectedGradingId,
+          price: Number(sellingPrice),
+          sellerDescription: conditionDesc || undefined,
+        },
+        imageFiles,
+      );
+
+      if (validationError) {
+        toast.error(`⚠️ ${validationError}`);
+        return;
+      }
+
+      if (!catalogSearch.selected) {
+        toast.error("⚠️ 請從搜尋結果中選擇一張卡牌");
+        return;
+      }
+
+      const result = await submitCardListingWithProgress({
+        mode: "create",
+        productId: catalogSearch.selected.id,
+        gradingOptionId: selectedGradingId,
+        price: Number(sellingPrice),
+        sellerDescription: conditionDesc || undefined,
+        imageFiles,
+      });
+
+      if (!result.success) {
+        return;
+      }
+
+      const gradingFields = gradingOptionToFields(selectedGrading);
+
+      const payload: GlobalAssetPayload = {
+        id: result.data.listingId,
+        name: catalogSearch.selected.name,
+        set: set || catalogSearch.selected.setCode,
+        cardNo:
+          catalogSearch.selected.displayId ??
+          catalogSearch.selected.cardNumber ??
+          "",
+        grade: gradingFields.gradeLabel,
+        grader: gradingFields.grader,
+        purchasePrice: 0,
+        currentValue: 0,
+        sellingPrice: Number(sellingPrice),
+        status: "listed",
+        isHobbyOnly: false,
+        images: result.data.images,
+        condition: gradingFields.condition,
+        conditionDesc: conditionDesc || undefined,
+      };
+
+      window.dispatchEvent(
+        new CustomEvent("global-asset-successfully-added", { detail: payload }),
+      );
+
+      toast.success("🏪 商品已成功錄入並直接上架交易所大盤");
+      handleCloseAndReset();
+      return;
+    }
 
     if (!catalogSearch.query) {
       toast.error("⚠️ 請填寫欲搜尋及上架的商品型號或名稱！");
       return;
     }
 
-    if (mode === "merch") {
+    if (mode === "merch" && itemType === "box_set") {
+      const imageFiles = photoSlots
+        .map((slot) => slot.file)
+        .filter((file): file is File => file !== null);
+
+      if (imageFiles.length < 1) {
+        toast.error("新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。");
+        return;
+      }
+
       if (!sellingPrice || Number(sellingPrice) <= 0) {
         toast.error("⚠️ 請輸入有效的商品放售售價！");
         return;
       }
-      const validPhotosCount = merchPhotos.filter((p) => p.url).length;
-      if (itemType === "card") {
-        if (validPhotosCount < 4) {
-          toast.error(
-            "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。",
-          );
-          return;
-        }
-      } else {
-        if (validPhotosCount < 1) {
-          toast.error(
-            "新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。",
-          );
-          return;
-        }
-      }
     }
+
+    const gradingFields =
+      itemType === "box_set"
+        ? null
+        : gradingOptionToFields(selectedGrading);
 
     const payload: GlobalAssetPayload = {
       id: catalogSearch.selected?.id ?? `c-asset-${Date.now()}`,
@@ -272,28 +468,26 @@ export function AddAssetModal() {
         catalogSearch.selected?.displayId ??
         catalogSearch.selected?.cardNumber ??
         "PBR-Compiled",
-      grade: itemType === "box_set"
-        ? "SEALED"
-        : (isScoreDisabled
-          ? "RAW"
-          : `${selectedGrader} ${selectedScore}`.trim()),
-      grader: itemType === "box_set" ? "SEALED" : selectedGrader,
+      grade: itemType === "box_set" ? "SEALED" : gradingFields!.gradeLabel,
+      grader: itemType === "box_set" ? "SEALED" : gradingFields!.grader,
       purchasePrice: mode === "hobby" ? Number(purchasePrice) || 0 : 0,
       currentValue: mode === "hobby" ? Number(purchasePrice) || 0 : 0, // 🟢 移除當前估值欄位，預設與入手成本一致
       sellingPrice: mode === "merch" ? Number(sellingPrice) : 0,
-      status:
-        mode === "hobby" ? "holding" : isActiveListing ? "listed" : "holding",
+      status: mode === "hobby" ? "holding" : "listed",
       isHobbyOnly: mode === "hobby",
       images:
         mode === "merch"
-          ? merchPhotos.map((p) => p.url).filter(Boolean)
-          : images.length > 0
-            ? images
+          ? photoSlots
+              .filter((slot) => slot.previewUrl)
+              .map((slot, index) => ({
+                url: slot.previewUrl!,
+                order: index + 1,
+              }))
+          : hobbyImages.length > 0
+            ? hobbyImages
             : ["https://picsum.photos/seed/placeholder/600/420"],
-      condition: itemType === "box_set" ? "SEALED" : selectedCondition,
+      condition: itemType === "box_set" ? "SEALED" : gradingFields!.condition,
       conditionDesc: mode === "merch" ? conditionDesc : undefined,
-      photosRemark:
-        mode === "merch" ? merchPhotos.map((p) => p.remark) : undefined,
     };
 
     window.dispatchEvent(
@@ -458,6 +652,36 @@ export function AddAssetModal() {
             </div>
           </div>
 
+          {catalogSearch.selected && itemType === "card" && (
+            <div className="flex items-center gap-3 rounded-xl border border-brand/20 bg-[rgba(212,165,116,0.06)] p-3">
+              <div className="relative w-14 h-[4.5rem] shrink-0 rounded-md overflow-hidden bg-[#17130f] border border-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={catalogSearch.selected.imageUrl}
+                  alt={catalogSearch.selected.name}
+                  width={56}
+                  height={72}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-sans text-[13px] text-[#eae1da] font-bold truncate">
+                  {catalogSearch.selected.name}
+                </p>
+                <p className="font-mono text-[11px] text-brand mt-0.5 truncate">
+                  {catalogSearch.selected.displayId ??
+                    catalogSearch.selected.cardNumber ??
+                    "—"}
+                </p>
+                {catalogSearch.selected.rarity && (
+                  <p className="font-mono text-[10px] text-[#8A8680] mt-0.5 truncate">
+                    {catalogSearch.selected.rarity}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* === 2. OPTIONAL EXPANSION SET === */}
           <div className="space-y-1.5">
             <label className="font-sans font-bold text-[#d4c4b7]">
@@ -475,90 +699,34 @@ export function AddAssetModal() {
             />
           </div>
 
-          {/* === 3. SYMMETRICAL CASCADING SELECTS GRID === */}
+          {/* === 3. UNIFIED GRADING SELECT === */}
           {itemType === "card" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-[#1e1a17] p-3.5 rounded-xl border border-white/[0.04]">
-              <div className="space-y-1">
-                <label className="font-mono text-[11px] text-[#d4c4b7]">
-                  鑑定機構
-                </label>
-                <Select
-                  value={selectedGrader}
-                  onValueChange={(val) => {
-                    const safeVal = val ?? "RAW";
-                    setSelectedGrader(safeVal);
-                    if (safeVal === "RAW") {
-                      setSelectedScore("");
-                    } else {
-                      setSelectedScore(getFirstScoreForGrader(safeVal));
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
-                    <SelectValue placeholder="選擇機構" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
-                    <SelectGroup>
-                      <SelectLabel>認證鑑定機構 (Grader)</SelectLabel>
-                      <SelectItem value="RAW">RAW</SelectItem>
-                      <SelectItem value="PSA">PSA</SelectItem>
-                      <SelectItem value="CGC">CGC</SelectItem>
-                      <SelectItem value="BGS">BGS</SelectItem>
-                      <SelectItem value="ARS">ARS</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-mono text-[11px] text-[#d4c4b7]">
-                  鑑定分數
-                </label>
-                <Select
-                  value={selectedScore}
-                  onValueChange={(val) => setSelectedScore(val ?? "")}
-                  disabled={isScoreDisabled}
-                >
-                  <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px] disabled:opacity-40">
-                    <SelectValue
-                      placeholder={isScoreDisabled ? "裸卡無分數" : "選擇分數"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
-                    <SelectGroup>
-                      <SelectLabel>鑑定評級</SelectLabel>
-                      {graderScoreOptions.map((score) => (
-                        <SelectItem key={score} value={score}>
-                          {score}
+            <div className="space-y-1.5 bg-[#1e1a17] p-3.5 rounded-xl border border-white/[0.04]">
+              <label className="font-mono text-[11px] text-[#d4c4b7]">
+                鑑定／品相
+              </label>
+              <Select
+                value={selectedGradingId}
+                onValueChange={(val) =>
+                  setSelectedGradingId(val ?? DEFAULT_GRADING_OPTION_ID)
+                }
+              >
+                <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
+                  <SelectValue placeholder="選擇鑑定或裸卡品相" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da] max-h-72">
+                  {GRADING_OPTION_GROUPS.map((group) => (
+                    <SelectGroup key={group.key}>
+                      <SelectLabel>{group.label}</SelectLabel>
+                      {getGradingOptionsByGroup(group.key).map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-mono text-[11px] text-[#d4c4b7]">
-                  品相指標
-                </label>
-                <Select
-                  value={selectedCondition}
-                  onValueChange={(val) => setSelectedCondition(val ?? "A")}
-                >
-                  <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
-                    <SelectValue placeholder="選擇品相" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da]">
-                    <SelectGroup>
-                      <SelectLabel>品相分級</SelectLabel>
-                      <SelectItem value="A">美品 A</SelectItem>
-                      <SelectItem value="B">微傷 B</SelectItem>
-                      <SelectItem value="C">有傷 C</SelectItem>
-                      <SelectItem value="D">重傷 D</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -567,19 +735,23 @@ export function AddAssetModal() {
             <div className="flex items-center justify-between">
               <label className="font-sans font-bold text-[#d4c4b7]">
                 實體品相相片{" "}
-                {mode === "merch" 
-                  ? (itemType === "box_set" ? `(必須至少 1 張)` : `(必須 4–6 張)`)
-                  : `(${images.length}/6)`}{" "}
+                {mode === "merch"
+                  ? itemType === "box_set"
+                    ? `(必須至少 1 張)`
+                    : `(必須 ${LISTING_IMAGE_MIN}–${LISTING_IMAGE_MAX} 張)`
+                  : `(${hobbyImages.length}/${LISTING_IMAGE_MAX})`}{" "}
                 {mode === "merch" && <span className="text-brand">*</span>}
               </label>
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
-                Max 6 Photos
+                {mode === "merch" && itemType === "card"
+                  ? `${filledPhotoCount}/${LISTING_IMAGE_MAX}`
+                  : `Max ${LISTING_IMAGE_MAX} Photos`}
               </span>
             </div>
 
             {mode === "hobby" ? (
               <div className="grid grid-cols-4 gap-2 bg-[#17130f] p-3 rounded-xl border border-white/5 min-h-[76px]">
-                {images.map((url, index) => (
+                {hobbyImages.map((url, index) => (
                   <div
                     key={index}
                     className="relative aspect-[3/4] bg-[#26211C] rounded-lg border border-white/10 overflow-hidden group"
@@ -593,7 +765,7 @@ export function AddAssetModal() {
                     />
                     <button
                       type="button"
-                      onClick={() => handleRemoveImage(index)}
+                      onClick={() => handleRemoveHobbyImage(index)}
                       className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/70 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[9px] font-black cursor-pointer transition-colors focus:outline-none"
                     >
                       ✕
@@ -601,7 +773,7 @@ export function AddAssetModal() {
                   </div>
                 ))}
 
-                {images.length < 6 && (
+                {hobbyImages.length < LISTING_IMAGE_MAX && (
                   <button
                     type="button"
                     onClick={() => {
@@ -627,28 +799,25 @@ export function AddAssetModal() {
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
-                {merchPhotos.map((photo, i) => {
-                  const isRequired = itemType === "box_set" ? i < 1 : i < 4;
+                {photoSlots.map((photo, i) => {
+                  const isRequired =
+                    itemType === "box_set" ? i < 1 : i < LISTING_IMAGE_MIN;
                   return (
                     <div key={i} className="flex flex-col">
                       <div
                         className={`relative aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden ${
-                          photo.url
+                          photo.previewUrl
                             ? "border-brand/30 bg-[#17130f]"
                             : isRequired
                               ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
                               : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
                         }`}
-                        onClick={() => {
-                          if (photo.url) return;
-                          setActiveSlotIndex(i);
-                          fileInputRef.current?.click();
-                        }}
+                        onClick={() => openPhotoPicker(i)}
                       >
-                        {photo.url ? (
+                        {photo.previewUrl ? (
                           <>
                             <Image
-                              src={photo.url}
+                              src={photo.previewUrl}
                               alt={`實體照 ${i + 1}`}
                               fill
                               className="object-cover"
@@ -658,12 +827,15 @@ export function AddAssetModal() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRemoveMerchImage(i);
+                                handleRemovePhotoSlot(i);
                               }}
                               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/80 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[10px] font-black cursor-pointer transition-colors focus:outline-none"
                             >
                               ✕
                             </button>
+                            <span className="absolute bottom-1 left-1 font-mono text-[8px] text-white/80 bg-black/50 px-1 rounded">
+                              更換
+                            </span>
                           </>
                         ) : (
                           <>
@@ -687,20 +859,6 @@ export function AddAssetModal() {
                           </>
                         )}
                       </div>
-                      <input
-                        type="text"
-                        placeholder="照片備註"
-                        value={photo.remark}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setMerchPhotos((prev) => {
-                            const next = [...prev];
-                            next[i] = { ...next[i], remark: val };
-                            return next;
-                          });
-                        }}
-                        className="w-full bg-[#17130f] border border-white/5 rounded-lg h-7 px-2 font-sans text-[10px] text-[#eae1da] placeholder-[#50453b] focus:outline-none mt-1"
-                      />
                     </div>
                   );
                 })}
@@ -725,35 +883,25 @@ export function AddAssetModal() {
           ) : (
             <div className="space-y-4 animate-fadeIn">
               <div className="space-y-1.5">
-                <label className="font-sans font-bold text-[#d4c4b7]">
-                  詳細品相描述{" "}
-                  <span className="text-text-disabled font-normal text-[11px]">
-                    選填
+                <div className="flex items-center justify-between">
+                  <label className="font-sans font-bold text-[#d4c4b7]">
+                    詳細品相描述{" "}
+                    <span className="text-text-disabled font-normal text-[11px]">
+                      選填
+                    </span>
+                  </label>
+                  <span className="font-mono text-[10px] text-[#8A8680]">
+                    {conditionDesc.length}/{LISTING_DESCRIPTION_MAX}
                   </span>
-                </label>
+                </div>
                 <textarea
                   rows={3}
+                  maxLength={LISTING_DESCRIPTION_MAX}
                   placeholder="詳細描述卡面狀況、印刷品質、角落細節等..."
                   value={conditionDesc}
                   onChange={(e) => setConditionDesc(e.target.value)}
                   className="bg-[#17130f] border border-white/5 rounded-xl text-[#eae1da] px-3 py-2.5 font-sans text-[13px] w-full focus:outline-none placeholder-[#50453b] resize-none leading-relaxed"
                 />
-              </div>
-
-              <div className="flex items-center gap-2 py-1 select-none">
-                <input
-                  type="checkbox"
-                  id="modal-is-active"
-                  checked={isActiveListing}
-                  onChange={(e) => setIsActiveListing(e.target.checked)}
-                  className="w-4 h-4 rounded accent-brand cursor-pointer"
-                />
-                <label
-                  htmlFor="modal-is-active"
-                  className="font-mono text-[12px] text-[#eae1da] cursor-pointer"
-                >
-                  商品上架
-                </label>
               </div>
 
               <div className="space-y-1.5">
@@ -782,7 +930,8 @@ export function AddAssetModal() {
           <input
             type="file"
             ref={fileInputRef}
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+            multiple
             onChange={handleImageChange}
             className="hidden"
           />
@@ -791,9 +940,14 @@ export function AddAssetModal() {
           <div className="flex gap-2 pt-3 shrink-0">
             <button
               type="submit"
-              className="flex-1 h-11 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] font-sans font-black rounded-xl active:scale-[0.98] transition-all cursor-pointer shadow-md focus:outline-none"
+              disabled={isSubmitting}
+              className="flex-1 h-11 bg-[#d4a574] hover:bg-[#e8b896] disabled:opacity-60 disabled:cursor-not-allowed text-[#1A1612] font-sans font-black rounded-xl active:scale-[0.98] transition-all cursor-pointer shadow-md focus:outline-none"
             >
-              {mode === "hobby" ? "★ 收錄至私藏愛好" : "🚀 立即發佈商品上架"}
+              {isSubmitting
+                ? "上載中…"
+                : mode === "hobby"
+                  ? "★ 收錄至私藏愛好"
+                  : "🚀 立即發佈商品上架"}
             </button>
             <button
               type="button"

@@ -1,6 +1,8 @@
-type Rarity = "SAR" | "UR" | "SR" | "AR";
+type ProductCatalogRarity = string | null;
 
-export function RarityBadge({ rarity }: { rarity: Rarity }) {
+export function RarityBadge({ rarity }: { rarity: ProductCatalogRarity }) {
+  if (!rarity) return null;
+
   return (
     <span
       className="inline-flex items-center font-mono text-[12px] font-medium text-brand bg-bg-elevated rounded-[4px] px-2 py-0.5 shrink-0"

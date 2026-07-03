@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type SellOrder } from "@/app/lib/mock-data/cards";
+import type { Tables } from "@/types/supabase";
 
 interface AskOrderBookRowProps {
   order: SellOrder;
@@ -12,7 +13,7 @@ interface AskOrderBookRowProps {
   productId: string;
   onOpenGate: (order: SellOrder) => void;
   grade: { authority: string; score: string };
-  rarity: "SAR" | "UR" | "SR" | "AR";
+  rarity: Tables<"product_catalog">["rarity"];
 }
 
 export function AskOrderBookRow({

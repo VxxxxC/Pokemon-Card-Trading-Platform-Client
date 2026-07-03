@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { TopNav } from "@/app/components/navigation/TopNav";
-import { MobileHeader } from "@/app/components/navigation/MobileHeader";
-import { BottomNav } from "@/app/components/navigation/BottomNav";
+import { MarketplaceChrome } from "./MarketplaceChrome";
 
 export const metadata: Metadata = {
   title: "市場 — HKCardVault",
@@ -14,17 +12,5 @@ export default function MarketplaceLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="min-h-[100dvh] bg-[#17130f] text-[#eae1da] flex flex-col font-sans">
-      {/* 🟢 電腦端與手機端固化頂欄導航：頁面切換時絕對不觸發銷毀重新掛載 */}
-      <TopNav />
-      <MobileHeader />
-
-      {/* 核心內容視窗投影 */}
-      {children}
-
-      {/* 常駐底導航；交割終端由 product/[id]/page.tsx 按需掛載 */}
-      <BottomNav />
-    </div>
-  );
+  return <MarketplaceChrome>{children}</MarketplaceChrome>;
 }

@@ -8,8 +8,7 @@ interface MarketState {
   query: string;
   activeRarities: string[];
   activeGrades: string[];
-  activeConditions: string[];
-  // 🟢 新增：刊登模式（MERCHANT | C2C | P2P）全域多維陣列
+  // Seller source filter (MEMBER | MERCHANT)
   activeTypes: string[];
   sortKey: SortKey;
   isSearchFocused: boolean;
@@ -20,8 +19,7 @@ interface MarketState {
 
   toggleRarity: (rarity: string) => void;
   toggleGrade: (grade: string) => void;
-  toggleCondition: (condition: string) => void;
-  // 🟢 新增：切換刊登模式狀態控制線
+  // Seller source multi-select (MEMBER | MERCHANT)
   toggleType: (type: string) => void;
   // 🟢 新增：全域一鍵滿血重置還原 Action
   resetAll: () => void;
@@ -31,7 +29,6 @@ export const useMarketStore = create<MarketState>((set) => ({
   query: "",
   activeRarities: [],
   activeGrades: [],
-  activeConditions: [],
   activeTypes: [], // 預設清空
   sortKey: "最新",
   isSearchFocused: false,
@@ -54,14 +51,7 @@ export const useMarketStore = create<MarketState>((set) => ({
         : [...state.activeGrades, grade],
     })),
 
-  toggleCondition: (condition) =>
-    set((state) => ({
-      activeConditions: state.activeConditions.includes(condition)
-        ? state.activeConditions.filter((c) => c !== condition)
-        : [...state.activeConditions, condition],
-    })),
-
-  // 🟢 實作：刊登來源模式的多維切換開關
+  // Seller source multi-select toggle
   toggleType: (type) =>
     set((state) => ({
       activeTypes: state.activeTypes.includes(type)
@@ -75,7 +65,6 @@ export const useMarketStore = create<MarketState>((set) => ({
       query: "",
       activeRarities: [],
       activeGrades: [],
-      activeConditions: [],
       activeTypes: [],
       sortKey: "最新",
       isSearchFocused: false,

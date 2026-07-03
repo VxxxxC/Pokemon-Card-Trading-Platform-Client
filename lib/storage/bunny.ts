@@ -1,0 +1,143 @@
+import { randomUUID } from "crypto";
+
+export type BunnyStorageConfig = {
+  zoneName: string;
+  accessKey: string;
+  cdnHostname: string;
+  region?: string;
+};
+
+export function getBunnyStorageConfig(): BunnyStorageConfig | null {
+  const zoneName = process.env.BUNNY_STORAGE_ZONE_NAME;
+  const accessKey = process.env.BUNNY_STORAGE_ACCESS_KEY;
+  const cdnHostname = process.env.BUNNY_CDN_HOSTNAME;
+  const region = process.env.BUNNY_STORAGE_REGION;
+
+  if (!zoneName || !accessKey || !cdnHostname) {
+    return null;
+  }
+
+  return {
+    zoneName,
+    accessKey,
+    cdnHostname,
+    region: region || undefined,
+  };
+}
+
+export function isBunnyStorageConfigured(): boolean {
+  return getBunnyStorageConfig() !== null;
+}
+
+function getStorageBaseUrl(config: BunnyStorageConfig): string {
+  if (config.region) {
+    return `https://${config.region}.storage.bunnycdn.com`;
+  }
+  return "https://storage.bunnycdn.com";
+}
+
+export function buildListingObjectKey(
+  sellerId: string,
+  extension: string,
+): string {
+  const safeExt = extension.replace(/^\./, "").toLowerCase() || "webp";
+  return `listings/${sellerId}/${randomUUID()}.${safeExt}`;
+}
+
+export function buildListingCdnUrl(
+  config: BunnyStorageConfig,
+  objectKey: string,
+): string {
+  const hostname = config.cdnHostname.replace(/\/$/, "");
+  const path = objectKey.replace(/^\//, "");
+  return `https://${hostname}/${path}`;
+}
+
+function extensionFromContentType(contentType: string): string {
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/webp") return "webp";
+  if (contentType === "image/heic" || contentType === "image/heif") return "heic";
+  return "jpg";
+}
+
+export type BunnyListingUpload = {
+  objectKey: string;
+  cdnUrl: string;
+};
+
+function buildObjectDeleteUrl(config: BunnyStorageConfig, objectKey: string): string {
+  const path = objectKey.replace(/^\//, "");
+  return `${getStorageBaseUrl(config)}/${config.zoneName}/${path}`;
+}
+
+export async function uploadListingImageToBunny(
+  sellerId: string,
+  fileBytes: Uint8Array,
+  contentType: string,
+): Promise<BunnyListingUpload> {
+  const config = getBunnyStorageConfig();
+  if (!config) {
+    throw new Error("Bunny.net storage is not configured");
+  }
+
+  const extension = extensionFromContentType(contentType);
+  const objectKey = buildListingObjectKey(sellerId, extension);
+  const uploadUrl = buildObjectDeleteUrl(config, objectKey);
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      AccessKey: config.accessKey,
+      "Content-Type": contentType,
+    },
+    body: fileBytes,
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Bunny upload failed (${response.status})${detail ? `: ${detail}` : ""}`,
+    );
+  }
+
+  return {
+    objectKey,
+    cdnUrl: buildListingCdnUrl(config, objectKey),
+  };
+}
+
+/** Best-effort rollback for listing images after a failed DB write. */
+export async function deleteListingImagesFromBunny(
+  objectKeys: string[],
+): Promise<void> {
+  const config = getBunnyStorageConfig();
+  if (!config || objectKeys.length === 0) return;
+
+  const results = await Promise.allSettled(
+    objectKeys.map(async (objectKey) => {
+      const response = await fetch(buildObjectDeleteUrl(config, objectKey), {
+        method: "DELETE",
+        headers: {
+          AccessKey: config.accessKey,
+        },
+      });
+
+      if (!response.ok && response.status !== 404) {
+        const detail = await response.text().catch(() => "");
+        throw new Error(
+          `Bunny delete failed (${response.status})${detail ? `: ${detail}` : ""}`,
+        );
+      }
+    }),
+  );
+
+  const failures = results.filter((result) => result.status === "rejected");
+  if (failures.length > 0) {
+    console.error(
+      "[deleteListingImagesFromBunny]",
+      failures.map((result) =>
+        result.status === "rejected" ? result.reason : null,
+      ),
+    );
+  }
+}

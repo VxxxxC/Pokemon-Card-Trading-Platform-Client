@@ -43,6 +43,19 @@ export function getRoleDefaultLandingPath(role: DemoRole): string {
   }
 }
 
+export function getRoleSettingsPath(role: DemoRole): string {
+  switch (role) {
+    case "MERCHANT":
+      return "/profile/merchant/settings";
+    case "USER":
+      return "/profile/user/settings";
+    case "ADMIN":
+      return "/admin";
+    case "GUEST":
+      return "/auth";
+  }
+}
+
 export function isPathAllowedForRole(role: DemoRole, pathname: string): boolean {
   const requiresAuth =
     pathname === "/profile" ||

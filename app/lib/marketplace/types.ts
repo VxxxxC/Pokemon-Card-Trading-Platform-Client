@@ -66,3 +66,83 @@ export type SearchMarketplaceResult =
 export type MarketplacePriceBoundsResult =
   | { success: true; data: { minPrice: number; maxPrice: number } }
   | { success: false; error: string };
+
+/** Mapped `product_catalog` row for marketplace product detail page. */
+export type MarketplaceProductDetail = {
+  productId: string;
+  productName: string;
+  nameJa: string;
+  nameEn: string | null;
+  nameZh: string | null;
+  setCode: string;
+  cardNumber: string | null;
+  displayId: string | null;
+  rarity: string | null;
+  imageUrl: string;
+  /** Gallery slots — catalog currently exposes one official image. */
+  images: string[];
+  catalogType: Database["public"]["Enums"]["catalog_type"];
+  elementType: string | null;
+  pokemonStage: string | null;
+  hp: number | null;
+  subTypeJa: string | null;
+};
+
+export type MarketplaceProductDetailResult =
+  | { success: true; data: MarketplaceProductDetail }
+  | { success: false; error: string };
+
+export type ProductListingSortKey = "price_asc" | "grade_desc" | "rating_desc";
+
+export type MarketplaceProductListingRow = {
+  listingId: string;
+  price: number;
+  gradingCompany: string;
+  gradingScore: string | null;
+  sellerId: string;
+  sellerName: string;
+  sellerRating: number;
+  sellerTotalTrades: number;
+  sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
+  useAuthentication: boolean;
+  createdAt: string;
+};
+
+export type MarketplaceProductListingsInput = {
+  productId: string;
+  gradeFilters?: GradeFilter[];
+  onlyGraded?: boolean;
+  sort?: ProductListingSortKey;
+  page?: number;
+  pageSize?: number;
+};
+
+export type MarketplaceProductListingsResult =
+  | {
+      success: true;
+      data: MarketplaceProductListingRow[];
+      meta: MarketplacePaginationMeta;
+      lowestPrice: number | null;
+    }
+  | { success: false; error: string };
+
+export type MarketplaceProductTradeHistoryRow = {
+  orderId: string;
+  createdAt: string;
+  grade: string;
+  price: number;
+};
+
+export type MarketplaceProductTradeHistoryInput = {
+  productId: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type MarketplaceProductTradeHistoryResult =
+  | {
+      success: true;
+      data: MarketplaceProductTradeHistoryRow[];
+      meta: MarketplacePaginationMeta;
+    }
+  | { success: false; error: string };

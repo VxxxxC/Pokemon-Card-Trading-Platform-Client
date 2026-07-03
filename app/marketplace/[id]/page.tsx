@@ -19,6 +19,7 @@ import {
 } from "@/app/lib/mock-data/members";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
+import { matchesAnyGradeFilter } from "@/lib/grading/options";
 
 // 🟢 核心引入：使用底層 Base UI 拋光後的奢華 Select 組件群
 import {
@@ -34,38 +35,6 @@ import { Slider } from "@/components/ui/slider";
 
 interface PageProps {
   params: Promise<{ id: string }>;
-}
-
-function matchesCondition(
-  condition: "A" | "B" | "C" | "D",
-  listing: ReturnType<typeof getStorefrontListingsByMember>[number],
-) {
-  if (listing.conditionLabel) {
-    return listing.conditionLabel === condition;
-  }
-
-  if (condition === "A") {
-    return listing.grade.score === "10" || listing.grade.score === "9.5";
-  }
-
-  if (condition === "B") {
-    return listing.grade.score === "9" || listing.grade.score === "NM";
-  }
-
-  if (condition === "C") {
-    return listing.grade.score === "8" || listing.grade.score === "EX";
-  }
-
-  if (condition === "D") {
-    const numericScore = parseFloat(listing.grade.score);
-    return (
-      (numericScore > 0 && numericScore < 8) ||
-      listing.grade.score.toUpperCase().includes("PR") ||
-      listing.grade.score.toUpperCase().includes("PL")
-    );
-  }
-
-  return false;
 }
 
 export default function MerchantStorefrontPage({ params }: PageProps) {
@@ -90,7 +59,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeRarities, setActiveRarities] = useState<string[]>([]);
   const [activeGrades, setActiveGrades] = useState<string[]>([]);
-  const [activeConditions, setActiveConditions] = useState<string[]>([]);
 
   // 🟢 Mobile Filter Panel State
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -159,51 +127,28 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
 
         const matchRarity =
           activeRarities.length === 0 ||
-          activeRarities.includes(listing.rarity);
+          (listing.rarity != null && activeRarities.includes(listing.rarity));
 
-        let matchGrade = true;
-        if (activeGrades && activeGrades.length > 0) {
-          const authority = (listing.grade?.authority || "").toUpperCase().trim();
-          const score = (listing.grade?.score || "").toUpperCase().trim();
-          const combinedGradeStr = `${authority} ${score}`.trim();
-
-          const isExplicitMatch = activeGrades.some((selected) => {
-            const selUpper = selected.toUpperCase().trim();
-            return combinedGradeStr.includes(selUpper) || authority === selUpper;
-          });
-
-          const isPsa = authority.startsWith("PSA");
-          const isCgc = authority.startsWith("CGC");
-          const isRaw =
-            authority === "RAW" ||
-            authority.includes("RAW") ||
-            score.includes("RAW");
-
-          const isOtherMatch =
-            activeGrades.includes("OTHER") && !isPsa && !isCgc && !isRaw;
-
-          matchGrade = isExplicitMatch || isOtherMatch;
-        }
-
-        const matchCondition =
-          activeConditions.length === 0 ||
-          activeConditions.some((condition) =>
-            matchesCondition(
-              condition as "A" | "B" | "C" | "D",
-              listing,
-            ),
+        const matchGrade =
+          activeGrades.length === 0 ||
+          matchesAnyGradeFilter(
+            listing.grade?.authority ?? "",
+            listing.grade?.score ?? null,
+            activeGrades,
           );
 
-        // 🟢 100% 結構化型態斷言，通過大盤市場同級 ESLint 審查
         const matchType =
           activeTypes.length === 0 ||
-          activeTypes.includes(
-            (listing as { sellerType?: string; listingType?: string })
-              .sellerType ||
+          activeTypes.some((type) => {
+            const listingType =
               (listing as { sellerType?: string; listingType?: string })
-                .listingType ||
-              "C2C",
-          );
+                .sellerType ||
+              (listing as { sellerType?: string; listingType?: string })
+                .listingType;
+            if (!listingType) return type === "MEMBER";
+            if (type === "MEMBER" && listingType === "C2C") return true;
+            return listingType === type;
+          });
 
         // 🟢 價格區間智能匹配斷言 (Price Range Intelligent Matching Assertion)
         const matchPrice =
@@ -213,7 +158,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
           matchQuery &&
           matchRarity &&
           matchGrade &&
-          matchCondition &&
           matchType &&
           matchPrice
         );
@@ -228,7 +172,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     query,
     activeRarities,
     activeGrades,
-    activeConditions,
     activeTypes,
     priceRange,
     sortKey,
@@ -274,7 +217,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     query !== "" ||
     activeRarities.length > 0 ||
     activeGrades.length > 0 ||
-    activeConditions.length > 0 ||
     activeTypes.length > 0 ||
     priceRange[0] !== absoluteMinPrice ||
     priceRange[1] !== absoluteMaxPrice;
@@ -559,10 +501,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
           }
           activeGrades={activeGrades}
           onGradeToggle={(grade) => toggleFilterValue(grade, setActiveGrades)}
-          activeConditions={activeConditions}
-          onConditionToggle={(condition) =>
-            toggleFilterValue(condition, setActiveConditions)
-          }
           hideTypeSection={true}
         />
       </SlideOver>
@@ -605,10 +543,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
             }
             activeGrades={activeGrades}
             onGradeToggle={(grade) => toggleFilterValue(grade, setActiveGrades)}
-            activeConditions={activeConditions}
-            onConditionToggle={(condition) =>
-              toggleFilterValue(condition, setActiveConditions)
-            }
             hideTypeSection={true}
           />
         </aside>
