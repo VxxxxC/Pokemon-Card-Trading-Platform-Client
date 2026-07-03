@@ -9,7 +9,7 @@
 
 在編寫程式碼之前，請按順序閱讀以下文件：
 
-1. [docs/plan-sync-archive.md](../docs/plan-sync-archive.md)
+1. [docs/implementation-guidelines.md](../docs/implementation-guidelines.md) - 專案結構概述
 2. [docs/dev/server.md](../docs/dev/server.md) — 伺服器端 TODO 追蹤器
 3. [docs/dev/api.md](../docs/dev/api.md) — API 整合 TODO 追蹤器
 4. [docs/dev/database.md](../docs/dev/database.md) — 資料庫架構與查詢 TODO 追蹤器
@@ -143,7 +143,7 @@ export default async function OrdersGatewayPage() {
 - **唯一正確實作鐵律**：全站的 iOS PWA 運作狀態與 40 幾條直向/橫向（Portrait/Landscape）啟動圖媒體查詢鏈路，必須 100% 強制在 `app/layout.tsx` 的 **原生 HTML `<head>` 標籤內進行實體硬編碼（Hardcoded Static Seeding）**。且必須嚴格鎖死以下物理閱讀順序：
   1. 最優先渲染 `apple-mobile-web-app-capable` 等核心 PWA 狀態 Meta 標籤。
   2. 緊接著渲染 `apple-touch-icon` 保底圖標。
-  此物理順序防線不容任何編譯引擎擅自改動，以確保全裝置 0 延遲加載與極致流金視覺的無縫閉環。
+     此物理順序防線不容任何編譯引擎擅自改動，以確保全裝置 0 延遲加載與極致流金視覺的無縫閉環。
 
 ## 核心指令
 
