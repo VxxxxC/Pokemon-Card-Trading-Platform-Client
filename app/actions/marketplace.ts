@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
   normalizeMarketplaceText,
   parseCatalogSearchQuery,
@@ -342,6 +343,10 @@ export async function getMarketplaceProductDetail(
   const key = productKey.trim();
   if (!key) {
     return { success: false, error: "缺少商品識別碼" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法載入商品資料" };
   }
 
   try {

@@ -9,6 +9,7 @@ import {
   validateUserProfileFields,
   type UserProfileFormErrors,
 } from "@/lib/profile/validation";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/types/supabase";
 
@@ -55,6 +56,10 @@ export async function getCurrentUserRole(): Promise<
 export async function getCurrentUserProfile(): Promise<
   { success: true; data: CurrentUserProfile } | { success: false; error: string }
 > {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -88,6 +93,10 @@ export async function getCurrentUserProfile(): Promise<
 export async function getUserSettings(): Promise<
   { success: true; data: UserSettingsData } | { success: false; error: string }
 > {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
