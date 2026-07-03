@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthFormShell } from "@/app/auth/AuthFormShell";
-import { createClient } from "@/lib/supabase/server";
+import { getOptionalAuthUser } from "@/lib/auth/session";
 import { CompleteForgotPasswordForm } from "./CompleteForgotPasswordForm";
 
 export const metadata: Metadata = {
@@ -10,10 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CompleteForgotPasswordPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getOptionalAuthUser();
 
   if (!user) {
     redirect("/auth/forgot-password?error=expired");

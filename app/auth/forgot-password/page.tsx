@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthFormShell } from "@/app/auth/AuthFormShell";
-import { createClient } from "@/lib/supabase/server";
+import { getOptionalAuthUser } from "@/lib/auth/session";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 
 export const metadata: Metadata = {
@@ -14,10 +14,7 @@ type PageProps = {
 };
 
 export default async function ForgotPasswordPage({ searchParams }: PageProps) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getOptionalAuthUser();
 
   if (user) {
     redirect("/auth/reset-password");

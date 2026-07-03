@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthFormShell } from "@/app/auth/AuthFormShell";
 import { getRoleSettingsPath } from "@/lib/auth/roles";
-import { resolveCurrentDemoRole } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { getOptionalAuthUser, resolveCurrentDemoRole } from "@/lib/auth/session";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
 export const metadata: Metadata = {
@@ -12,10 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ResetPasswordPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getOptionalAuthUser();
 
   if (!user) {
     redirect("/auth/forgot-password");
