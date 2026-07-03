@@ -3,434 +3,300 @@
 ## 📊 項目統計
 
 - **根目錄層級**: 5 層
-- **主要目錄**: 9 個（`app/`, `components/`, `docs/`, `lib/`, `public/`, `.stitch/`, `.agents/`, `.github/`, `.vscode/`）
-- **總檔案數**: 300+ 個（排除 `node_modules`）
-- **語言**: TypeScript/TSX, CSS, JSON, Markdown
+- **主要目錄**: 11 個（`app/`, `components/`, `lib/`, `types/`, `supabase/`, `docs/`, `public/`, `.stitch/`, `.agents/`, `.github/`, `.vscode/`）
+- **總檔案數**: 350+ 個（排除 `node_modules`）
+- **語言**: TypeScript/TSX, CSS, JSON, Markdown, SQL
 - **框架**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui, Zustand, Serwist (PWA)
-- **後端整合**: 規劃中（詳見 `BACKEND_INTEGRATION_MASTERPLAN.md`；目前以 mock data 驅動）
+- **後端整合**: **進行中** — Supabase（Auth、RLS、RPC、Server Actions）；部分 UI 仍用 mock data
+- **Package manager**: Bun only（`bun.lock`；見 `.cursorrules` §7）
 
 ---
 
-## 🌳 完整樹狀結構 (Full Depth Tree)
+## 🌳 頂層結構 (Top-Level)
 
 ```
 Pokemon-Card-Trading-Platform-Client/
-├─ 🔧 配置檔案 (Configuration & Build)
-│   ├── package.json
+├─ 🔧 配置 & 規範
+│   ├── package.json                 # scripts: dev, build, build:ci, lint, supabase:types
 │   ├── next.config.ts
 │   ├── tsconfig.json
 │   ├── eslint.config.mjs
 │   ├── postcss.config.mjs
-│   ├── components.json              # shadcn/ui 配置
-│   ├── skills-lock.json
+│   ├── components.json              # shadcn/ui
+│   ├── middleware.ts                # Supabase session + RBAC（env 未設定時安全跳過）
+│   ├── .cursorrules                 # 開發守則（含 §8 CI-safe Supabase / prerender）
 │   ├── bun.lock
-│   ├── README.md
-│   ├── GEMINI.md
-│   └── BACKEND_INTEGRATION_MASTERPLAN.md
+│   └── README.md
 │
-├─ 📁 app/ (Next.js App Router 應用層)
-├─ 🧩 components/ (shadcn/ui 基礎元件)
-├─ 📦 lib/ (shadcn 工具函數)
-├─ 📖 docs/ (文件 & 規劃中心)
-├─ 🎨 .stitch/ (Stitch 設計系統)
-├─ 🤖 .agents/skills/ (Agent 技能庫)
-├─ 🔗 .github/ (GitHub 配置 & AI 指引)
-├─ 🌐 public/ (靜態資源 & PWA 素材)
-└─ ⚙️ .vscode/ (編輯器配置)
+├─ 📁 app/                           # Next.js App Router（路由 + UI + store + hooks）
+├─ 🧩 components/                    # shadcn/ui + 跨路由共用元件
+├─ 📦 lib/                           # 後端輔助、Supabase client、domain helpers
+├─ 🗄️ types/supabase.ts              # Supabase CLI 生成型別（唯一 DB schema 來源）
+├─ 🐘 supabase/                      # migrations + config.toml
+├─ 📖 docs/                          # 需求、RBAC、dev handoff
+├─ 🎨 .stitch/                       # Stitch 設計系統
+├─ 🤖 .agents/skills/                # Agent 技能庫
+├─ 🔗 .github/workflows/ci.yml       # tsc → lint → build（無 .env）
+└─ 🌐 public/                        # 靜態資源 & PWA
 ```
 
-### 詳細結構
+---
 
-**app/ 目錄** (Next.js App Router — 110+ 檔案)
+## 📁 app/ — App Router
 
 ```
 app/
 ├── 根層級
-│   ├── page.tsx                    # 首頁
-│   ├── layout.tsx                  # 全局 Layout
-│   ├── globals.css                 # 全局樣式
-│   ├── manifest.json               # PWA 配置
-│   ├── favicon.ico
-│   ├── sw.ts                       # Service Worker
-│   └── settings/page.tsx           # 全局設定
-│
-├── auth/                           # 認證系統
-│   ├── page.tsx
-│   └── AuthForm.tsx
-│
-├── marketplace/                    # 商城模組
-│   ├── page.tsx
-│   ├── layout.tsx
-│   ├── [id]/page.tsx               # 賣家/系列詳情
-│   ├── [id]/product/[productId]/page.tsx
-│   ├── product/[id]/page.tsx       # 商品詳情
-│   └── payment-status/page.tsx
-│
-├── checkout/                       # 結帳流程
-│   └── [id]/
-│       ├── page.tsx
-│       └── success/page.tsx
-│
-├── profile/                        # 三層級檔案系統
-│   ├── page.tsx                    # 檔案入口
-│   │
-│   ├── user/                       # 📌 用戶自己的檔案 (第一人稱)
-│   │   ├── (dashboard)/            # 路由群組（共用 layout + TabNav）
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx            # 總覽
-│   │   │   ├── collection/page.tsx # 卡牌庫
-│   │   │   ├── inventory/page.tsx  # 商品管理
-│   │   │   └── trading/page.tsx    # 交易管理
-│   │   ├── orderDetail/[id]/page.tsx
-│   │   ├── rewards/page.tsx
-│   │   └── settings/page.tsx
-│   │
-│   ├── merchant/                   # 📌 商家儀表板 (第一人稱)
-│   │   ├── (dashboard)/            # 路由群組（共用 layout + TabNav）
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx            # 總覽
-│   │   │   ├── inventory/page.tsx  # 商品管理
-│   │   │   ├── trading/page.tsx    # 交易管理
-│   │   │   └── finance/page.tsx    # 資金金流
-│   │   ├── analytics/page.tsx      # 商品分析
-│   │   ├── performance/page.tsx    # 績效報告
-│   │   ├── orderDetail/[id]/page.tsx
-│   │   └── settings/page.tsx
-│   │
-│   └── [id]/                       # 📌 查看他人檔案 (第三人稱)
-│       ├── page.tsx                # 公開檔案頁
-│       └── rating/page.tsx         # 評價頁
-│
-├── admin/                          # 管理員模組 (RBAC 保護)
-│   ├── page.tsx
-│   ├── layout.tsx
-│   ├── users/page.tsx
-│   ├── approvals/page.tsx          # KYC 審批
-│   ├── database/page.tsx
+│   ├── page.tsx                     # 首頁
+│   ├── layout.tsx                   # 全局 Layout
+│   ├── not-found.tsx                # 404
+│   ├── globals.css
+│   ├── manifest.json
+│   ├── sw.ts
 │   └── settings/page.tsx
 │
-├── search/page.tsx                 # 全域搜尋
-├── ~offline/page.tsx               # PWA 離線頁面
-├── serwist/[path]/route.ts         # Service Worker 路由
+├── actions/                         # ⭐ Server Actions（前後端契約）
+│   ├── auth.ts                      # 登入 / 註冊 / 密碼重設
+│   ├── profile.ts                   # 用戶設定、頭像
+│   ├── marketplace.ts               # 搜尋、商品詳情、掛單、成交紀錄
+│   ├── productCatalog.ts            # 目錄搜尋（Hero / AddAsset）
+│   └── listings.ts                  # 上架提交（Bunny + listings insert）
 │
-├── store/                          # Zustand 狀態管理
-│   ├── useHkCardVaultStore.ts
+├── api/
+│   └── listings/upload-image/route.ts
+│
+├── auth/                            # 認證
+│   ├── page.tsx                     # 登入 / 註冊
+│   ├── AuthForm.tsx
+│   ├── AuthFormShell.tsx
+│   ├── callback/route.ts            # OAuth / magic link callback
+│   ├── forgot-password/
+│   │   ├── page.tsx
+│   │   ├── ForgotPasswordForm.tsx
+│   │   └── complete/                # 郵件連結後設定新密碼
+│   └── reset-password/              # 已登入更改密碼
+│       ├── page.tsx
+│       └── ResetPasswordForm.tsx
+│
+├── marketplace/
+│   ├── page.tsx                     # 大盤搜尋（Supabase RPC v2）
+│   ├── layout.tsx
+│   ├── MarketplaceChrome.tsx        # 商品詳情頁隱藏全局 Nav
+│   ├── product/[id]/
+│   │   ├── page.tsx                 # SSR catalog + ProductDetailClient
+│   │   └── ProductDetailClient.tsx  # 掛單簿、成交紀錄、圖表 skeleton
+│   ├── [id]/page.tsx                # 商戶櫥窗（mock）
+│   ├── [id]/product/[productId]/page.tsx
+│   └── payment-status/page.tsx
+│
+├── profile/                         # 三層級檔案系統（見下方路由表）
+├── checkout/[id]/                   # 結帳
+├── admin/                           # 管理員 RBAC
+├── search/page.tsx
+├── ~offline/page.tsx
+├── serwist/[path]/route.ts
+│
+├── lib/                             # App 層工具（非根 lib/）
+│   ├── marketplace/
+│   │   ├── types.ts                 # 搜尋 / 詳情 / 掛單型別
+│   │   └── searchParsers.ts
+│   ├── hooks/
+│   │   ├── useMarketplaceSearch.ts
+│   │   ├── useMarketplaceProductListings.ts
+│   │   ├── useMarketplaceProductTradeHistory.ts
+│   │   ├── useProductCatalogSearch.ts
+│   │   ├── useHeroMarketplaceSearch.ts
+│   │   ├── usePWAEnvironment.ts
+│   │   └── usePwaInstall.ts
+│   ├── mock-data/                   # 過渡期 mock（profile / chat / orders）
+│   └── types/                       # rbac, trading
+│
+├── store/                           # Zustand
 │   ├── useMarketStore.ts
+│   ├── useUIStore.ts
+│   ├── useHkCardVaultStore.ts
 │   ├── useMerchantStore.ts
 │   ├── useMockDbStore.ts
-│   └── useUIStore.ts
+│   └── useListingSubmitStore.ts     # 上架提交 overlay 狀態
 │
-├── components/                     # 50+ 共享元件庫
-│   ├── home/                       # 首頁元件
-│   │   ├── HeroSearch.tsx
-│   │   ├── TrustBanner.tsx
-│   │   ├── PremiumMarket.tsx
-│   │   ├── NewArrivals.tsx
-│   │   ├── FollowingFeed.tsx
-│   │   └── PortfolioRewards.tsx
-│   │
-│   ├── cards/                      # 卡片元件
-│   │   ├── CardGrid.tsx
-│   │   ├── CardItem.tsx
-│   │   ├── GradeBadge.tsx
-│   │   └── RarityBadge.tsx
-│   │
-│   ├── marketplace/                # 商城元件
-│   │   ├── MarketplaceHeader.tsx
-│   │   ├── MarketplaceGrid.tsx
-│   │   ├── MarketplaceCard.tsx
-│   │   ├── AskOrderBookRow.tsx
-│   │   └── filters/
-│   │       ├── AccordionFilters.tsx
-│   │       └── SmartSearch.tsx
-│   │
-│   ├── navigation/                 # 導航元件
-│   │   ├── TopNav.tsx
-│   │   ├── MobileHeader.tsx
-│   │   ├── BottomNav.tsx
-│   │   └── Footer.tsx
-│   │
-│   ├── profile/                    # 檔案元件
-│   │   ├── ProfileTabNav.tsx
-│   │   ├── ProfileHeaderWithChat.tsx
-│   │   └── LogoutModal.tsx
-│   │
-│   ├── merchant/                   # 商家元件
-│   │   ├── NewListingForm.tsx
-│   │   ├── InventoryAccordion.tsx
-│   │   └── MerchantOrderRow.tsx
-│   │
-│   ├── user/UserOrderRow.tsx       # 用戶訂單列
-│   ├── rewards/CheckInCard.tsx     # 簽到獎勵
-│   │
-│   ├── chat/                       # 聊天
-│   │   ├── GlobalChatConsole.tsx
-│   │   └── SpecialTransactionMessage.tsx
-│   │
-│   ├── ticker/PriceTicker.tsx      # 行情條
-│   │
-│   ├── transactions/               # 交易
-│   │   ├── ExecutionSlideOver.tsx
-│   │   ├── GlobalTxButtons.tsx
-│   │   └── OrderLifecycleStepper.tsx
-│   │
-│   ├── pwa/                        # PWA 元件
-│   │   ├── PWANavbarStatus.tsx
-│   │   ├── PwaInstallPrompt.tsx
-│   │   ├── PwaHeroInstallButton.tsx
-│   │   ├── PwaNetworkBanner.tsx
-│   │   ├── PwaInlineBanner.tsx
-│   │   └── IosPwaModal.tsx
-│   │
-│   ├── shared/                     # 共用 UI
-│   │   ├── AddAssetModal.tsx
-│   │   ├── DemoRoleSwitcher.tsx
-│   │   ├── WishlistTicker.tsx
-│   │   ├── MarketSkeletons.tsx
-│   │   ├── PortfolioSkeletons.tsx
-│   │   ├── CouponSkeletons.tsx
-│   │   └── StreamingSkeletons.tsx
-│   │
-│   ├── ui/                         # App 層自訂 UI
-│   │   ├── Accordion.tsx
-│   │   ├── Pagination.tsx
-│   │   └── SlideOver.tsx
-│   │
-│   ├── admin/AdminNav.tsx
-│   ├── market/
-│   │   ├── WishlistButton.tsx
-│   │   └── WishlistTable.tsx
-│   └── serwist-provider.tsx
-│
-└── lib/                            # 工具庫
-    ├── hooks/
-    │   ├── usePWAEnvironment.ts
-    │   └── usePwaInstall.ts
-    ├── types/
-    │   ├── rbac.ts
-    │   └── trading.ts
-    ├── utils/chatUtils.ts
-    ├── mock-public-members.ts
-    └── mock-data/
-        ├── cards.ts
-        ├── chatrooms.ts
-        ├── member-rating.ts
-        ├── members.ts
-        └── transactions.ts
+└── components/                      # App 層 UI（50+ 元件，按 domain 分目錄）
+    ├── marketplace/                 # MarketplaceCard, AccordionFilters, AskOrderBookRow…
+    ├── home/                        # HeroSearch（接 catalog search）
+    ├── shared/                      # AddAssetModal（上架）, MarketSkeletons…
+    ├── navigation/                  # TopNav, BottomNav…
+    ├── transactions/                # ExecutionSlideOver
+    └── …                            # profile, merchant, pwa, chat, cards…
 ```
 
-**components/ 目錄** (shadcn/ui 基礎元件)
+---
 
-```
-components/
-├── ui/                             # shadcn 基礎元件
-│   ├── alert-dialog.tsx
-│   ├── alert.tsx
-│   ├── avatar.tsx
-│   ├── button.tsx
-│   ├── card.tsx
-│   ├── carousel.tsx
-│   ├── chart.tsx
-│   ├── dialog.tsx
-│   ├── dropdown-menu.tsx
-│   ├── pagination.tsx
-│   ├── progress.tsx
-│   ├── select.tsx
-│   ├── separator.tsx
-│   ├── skeleton.tsx
-│   ├── slider.tsx
-│   ├── sonner.tsx
-│   ├── spinner.tsx
-│   └── switch.tsx
-├── reui/                           # ReUI 擴展元件
-│   ├── badge.tsx
-│   └── stepper.tsx
-└── examples/                       # 元件範例
-    ├── c-alert-dialog-8.tsx
-    └── c-chart-16.tsx
-```
-
-**lib/ 目錄** (根層級 shadcn 工具)
+## 📦 lib/ — 根層級 Domain & Infra
 
 ```
 lib/
-└── utils.ts                        # cn() 等共用工具函數
-```
-
-**docs/ 目錄** (文件中心)
-
-```
-docs/
-├── 📋 主要文件
-│   ├── requirement.md              # ⭐ 系統需求規格
-│   ├── plan-sync-archive.md        # 開發計劃
-│   ├── task.md                     # 任務追蹤
-│   └── Role-Based-Access-Control.md
+├── supabase/
+│   ├── env.ts                       # getSupabasePublicEnv(), isSupabaseConfigured()
+│   ├── server.ts                    # createClient() — SSR / Server Actions
+│   ├── admin.ts                     # service_role（僅 server）
+│   └── middleware.ts                # updateSession()
 │
-└── dev/                            # 開發 TODO 追蹤
-    ├── server.md
-    ├── api.md
-    ├── database.md
-    └── follow-up/                  # 功能後續整合追蹤
-        ├── toast_backend_follow_up.md
-        ├── merchant_checkout_follow_up.md
-        ├── marketplace_search_and_filter_follow_up.md
-        └── wishlist/
-            ├── backend_db_api.md
-            └── frontend_ui.md
-```
-
-**public/ 目錄** (靜態資源)
-
-```
-public/
-├── asset/                          # 品牌 & 展示素材
-│   ├── logo.png
-│   ├── 01.png
-│   ├── 02.png
-│   └── 03.png
-├── icons/                          # PWA 圖示
-│   ├── icon-192x192.png
-│   └── icon-512x512.png
-├── splash_screens/                 # iOS PWA 啟動畫面 (多裝置尺寸)
-└── [svg 資源]
-    ├── file.svg
-    ├── globe.svg
-    ├── next.svg
-    ├── vercel.svg
-    └── window.svg
-```
-
-**.stitch/ 目錄** (設計系統)
-
-```
-.stitch/
-└── designs/
-    └── DESIGN.md                   # 主設計規範
-```
-
-**.agents/skills/ 目錄** (13 個技能)
-
-```
-.agents/skills/
-├── taste-design/                   # 建立設計規範
-├── extract-design-md/              # 提取設計系統
-├── stitch-design/                  # 生成 UI 設計
-├── generate-design/                # 生成設計變體
-├── react-components/               # 轉換為 React
-├── shadcn-ui/                      # shadcn 整合指引
-├── shadcn/                         # shadcn CLI & 元件管理
-├── code-to-design/                 # 代碼 → 設計
-├── extract-static-html/            # 提取 HTML
-├── upload-to-stitch/               # 上傳資源
-├── enhance-prompt/                 # 改進提示詞
-├── manage-design-system/           # 管理設計系統
-└── stitch-loop/                    # 迭代構建工作流
-```
-
-**.github/ 目錄** (AI 指引 & CI)
-
-```
-.github/
-├── copilot-instructions.md         # 📌 HKCardVault 黃金工作流
-├── workflows/
-│   └── ci.yml                      # CI 流程
-└── prompts/
-    ├── react-components.prompt.md
-    ├── shadcn-ui.prompt.md
-    ├── stitch-code-to-design-v2.prompt.md
-    ├── stitch-screen-to-code.prompt.md
-    └── taste-prompt-generator.prompt.md
+├── auth/
+│   ├── session.ts                   # getOptionalAuthUser(), resolveCurrentDemoRole()
+│   ├── roles.ts                     # RBAC 路由
+│   ├── validation.ts
+│   ├── password-errors.ts
+│   └── site-url.ts
+│
+├── marketplace/
+│   ├── filter-options.ts
+│   ├── product-listing-filters.ts   # 掛單簿 grade chip → RPC JSON
+│   └── listing-display.ts           # 等級標籤、相對成交時間
+│
+├── catalog/
+│   └── element-types.ts             # 卡牌屬性 → 繁中
+│
+├── grading/
+│   └── options.ts                   # GRADING_OPTIONS, matchesGradeFilter
+│
+├── listings/                        # 上架流程
+│   ├── validation.ts
+│   ├── images.ts / image-files.ts
+│   ├── client-upload.ts
+│   ├── submit-card-listing.ts
+│   └── errors.ts
+│
+├── profile/
+│   ├── validation.ts
+│   ├── avatar.ts
+│   └── errors.ts
+│
+├── storage/
+│   └── bunny.ts                     # Bunny.net 圖片上傳
+│
+└── utils.ts                         # cn() 等 shadcn 工具
 ```
 
 ---
 
-## 📋 路由架構 (三層級檔案系統)
+## 🧩 components/ — shadcn & 共用
 
-### 核心特色：三層級檔案系統
+```
+components/
+├── ui/                              # shadcn 基礎元件
+├── reui/                            # badge, stepper
+├── auth/PasswordUpdatedToast.tsx
+├── errors/NotFoundContent.tsx
+├── listings/ListingSubmitOverlay.tsx
+├── shared/RelativeDateTime.tsx      # 成交紀錄相對時間
+└── examples/
+```
+
+---
+
+## 🐘 supabase/
+
+```
+supabase/
+├── config.toml
+└── migrations/                      # 按時間戳排序，bunx supabase db push
+    ├── 20260702100000_product_catalog_public_read.sql
+    ├── 20260702110000_auth_profiles_registration.sql
+    ├── 20260702120000_marketplace_search_rpc.sql
+    ├── 20260702130000_marketplace_search_rpc_v2.sql
+    ├── 20260703100000_profiles_default_avatar.sql
+    ├── 20260703110000_profiles_owner_update.sql
+    ├── 20260703120000_profiles_settings_columns.sql
+    ├── 20260703130000_listings_owner_insert.sql
+    ├── 20260703140000_listings_owner_insert_simplify.sql
+    ├── 20260703150000_listings_service_role_grants.sql
+    ├── 20260703160000_listing_stats_service_role_grants.sql
+    ├── 20260703170000_get_marketplace_product_listings.sql   # 商品詳情掛單簿 RPC
+    └── 20260703180000_member_orders_trade_history_read.sql   # 成交紀錄 RLS
+```
+
+**Regenerate types:** `bun run supabase:types` → `types/supabase.ts`
+
+---
+
+## 📖 docs/dev/ — 整合 handoff
+
+```
+docs/dev/
+├── INTEGRATION_QUEUE.md             # ⭐ 前後端整合狀態總表
+├── api.md                           # Server Actions 契約
+├── database.md
+├── server.md
+└── follow-up/                       # 每個 workflow 一 packet
+    ├── auth-login-register/
+    ├── auth-password-recovery/
+    ├── marketplace-search/
+    ├── marketplace-product-detail/
+    ├── product-catalog-search/
+    ├── user-profile-settings/
+    ├── role-based-routing/
+    └── wishlist/
+```
+
+---
+
+## 📋 路由架構
+
+### 三層級檔案系統
 
 ```
 /profile/user              → 你的個人中心 (第一人稱)
-  /user/collection         → 卡牌庫
-  /user/inventory          → 商品管理
-  /user/trading            → 交易管理
-  /user/orderDetail/[id]   → 訂單詳情
-  /user/rewards            → 獎勵中心
-  /user/settings           → 個人設定
-
 /profile/merchant          → 你的商家儀表板 (第一人稱)
-  /merchant/inventory      → 商品管理
-  /merchant/trading        → 交易管理
-  /merchant/finance        → 資金金流
-  /merchant/analytics      → 商品分析
-  /merchant/performance    → 績效報告
-  /merchant/orderDetail/[id] → 訂單詳情
-  /merchant/settings       → 商家設定
-
 /profile/[id]              → 查看他人檔案 (第三人稱)
-  /[id]/rating             → 評價頁
-  例: /profile/HKCV-8839-44A
 ```
 
-> `(dashboard)` 為 Next.js 路由群組，不影響 URL 路徑，僅共用 layout 與 TabNav。
+### 關鍵路由
 
-### 其他關鍵路由
-
-| 路由                              | 用途           | 認證 | 角色限制   |
-| --------------------------------- | -------------- | ---- | ---------- |
-| `/auth`                           | 登入/註冊      | ✖️   | 無         |
-| `/marketplace`                    | 卡片交易市場   | ✖️   | 無         |
-| `/marketplace/product/[id]`       | 商品詳情       | ✖️   | 無         |
-| `/marketplace/[id]/product/[productId]` | 賣家商品詳情 | ✖️ | 無         |
-| `/checkout/[id]`                  | 結帳流程       | ✅   | 登入用戶   |
-| `/checkout/[id]/success`          | 結帳成功       | ✅   | 登入用戶   |
-| `/search`                         | 全域搜尋       | ✖️   | 無         |
-| `/admin/*`                        | 管理員後台     | ✅   | Admin only |
-| `/settings`                       | 全局設定       | ✅   | 登入用戶   |
-| `/~offline`                       | PWA 離線頁面   | ✖️   | 無         |
+| 路由 | 用途 | 資料來源 |
+|------|------|----------|
+| `/auth` | 登入 / 註冊 | Supabase Auth |
+| `/auth/forgot-password` | 忘記密碼 | Supabase Auth |
+| `/auth/forgot-password/complete` | 郵件連結後重設 | Supabase Auth |
+| `/auth/reset-password` | 已登入改密碼 | Supabase Auth |
+| `/marketplace` | 大盤搜尋 | `search_marketplace_products` RPC |
+| `/marketplace/product/[id]` | 商品詳情 | catalog + 掛單 RPC + 成交紀錄 |
+| `/profile/user/settings` | 用戶設定 | `getUserSettings` |
+| `/checkout/[id]` | 結帳 | mock（待整合） |
+| `/admin/*` | 管理後台 | mock + RBAC |
 
 ---
 
-## 🎯 核心模組分析
+## 🎯 核心模組狀態
 
-### 1️⃣ 應用層 (`/app`)
+| 模組 | 位置 | 狀態 |
+|------|------|------|
+| **Auth 登入 / 註冊** | `app/actions/auth.ts`, `app/auth/` | ✅ Supabase |
+| **密碼重設** | `app/auth/forgot-password/`, `reset-password/` | ✅ Supabase |
+| **大盤搜尋** | `app/marketplace/page.tsx`, RPC v2 | ✅ Wired |
+| **商品詳情** | `app/marketplace/product/[id]/` | ✅ Catalog + 掛單簿 + 成交紀錄；⏳ 價格圖表 |
+| **用戶設定** | `app/profile/user/settings/` | ✅ Supabase profiles |
+| **卡牌上架** | `AddAssetModal`, `listings.ts`, Bunny | ✅ Backend ready |
+| **結帳 / 願望清單** | checkout, wishlist UI | ⏳ Mock |
+| **Profile 訂單 / 聊天** | profile dashboards | ⏳ 多為 mock |
 
-| 模組            | 檔案數 | 用途                    | 狀態      |
-| --------------- | ------ | ----------------------- | --------- |
-| **marketplace** | 6      | 卡片交易市場 & 商品詳情 | ✅ 開發中 |
-| **checkout**    | 2      | 結帳流程                | ✅ 開發中 |
-| **profile**     | 20     | 用戶/商家檔案系統       | ✅ 開發中 |
-| **components**  | 54     | App 層 UI 元件庫        | ✅ 開發中 |
-| **store**       | 5      | Zustand 全局狀態        | ✅ 開發中 |
-| **admin**       | 6      | 管理員儀表板            | ✅ 開發中 |
-| **auth**        | 2      | 認證系統                | ✅ 開發中 |
-| **lib**         | 12     | Mock 資料、型別、Hooks  | ✅ 開發中 |
+---
 
-### 2️⃣ UI 基礎層 (`/components` + `/lib`)
+## ⚙️ CI & 本地驗證
 
-- **`components/ui/`** — shadcn/ui 安裝的基礎元件（Button, Dialog, Chart 等）
-- **`components/reui/`** — ReUI 擴展元件（Badge, Stepper）
-- **`lib/utils.ts`** — `cn()` 等 Tailwind 合併工具
-- **`components.json`** — shadcn 配置（路徑別名、樣式主題）
+GitHub Actions（`.github/workflows/ci.yml`）**不含** `.env`：
 
-### 3️⃣ 設計系統 (`.stitch/`)
+```bash
+bun ci                    # frozen lockfile
+bunx tsc --noEmit
+bun run lint
+bun run build             # CI 等同此步
+bun run build:ci          # 本地模擬 CI（空 Supabase env）
+```
 
-**DESIGN.md** 規範：
+**Prerender 守則**（`.cursorrules` §8）：
 
-- 🎨 **色彩系統**: 禁止 #000000、符合高端金融美學
-- ✍️ **排版**: 禁止 Inter、使用高端字型
-- 📏 **間距**: 嚴格的量度系統
-- 🧩 **元件樣式**: 模組化元件規則
-- ⚡ **動畫**: Spring physics 動畫指引
-
-### 4️⃣ Agent 技能庫 — 13 個專門技能
-
-**工作流順序**:
-
-1. **taste-design** → 建立設計規範
-2. **stitch-design** → 生成 UI 設計
-3. **react-components** → 轉換為 React
-4. **shadcn** / **shadcn-ui** → 整合基礎 UI 元件
+- `app/**/page.tsx` 不可無 guard 呼叫 `createClient()`
+- 使用 `isSupabaseConfigured()`、`getOptionalAuthUser()`
+- Server Actions 讀取（被 page SSR 呼叫）需 guard；mutation 可於 runtime 直接 `createClient()`
 
 ---
 
@@ -438,42 +304,35 @@ public/
 
 提交前確認:
 
-- [ ] ✅ 檢查 `.stitch/designs/DESIGN.md` 規則
-- [ ] ✅ 顏色/字型 100% 來自 DESIGN.md
-- [ ] ✅ 檢查 TODO `[MOCK DATA]`, `[API]`, `[BACKEND]` 註解
-- [ ] ✅ 在 `/docs/dev/` 更新 TODO 追蹤表
-- [ ] ✅ 新 App 元件放在 `/app/components/[category]/`
-- [ ] ✅ 新 shadcn 元件透過 CLI 安裝至 `/components/ui/`
-- [ ] ✅ 路由符合三層級檔案系統規則
-- [ ] ✅ 全局狀態優先使用 `/app/store/` 的 Zustand store
-- [ ] ✅ TypeScript 型別 100% 覆蓋
-- [ ] ✅ Mobile-first 佈局確認
-- [ ] ✅ 禁止使用泛用 AI 措辭
-- [ ] ✅ 禁止 #000000、Inter 字型
+- [ ] 新 `page.tsx` 若讀 Supabase → `isSupabaseConfigured()` / `getOptionalAuthUser()`
+- [ ] 新 Server Action → `{ success, data \| error }` 信封
+- [ ] DB 型別只從 `types/supabase.ts` import
+- [ ] 新 migration → `docs/dev/INTEGRATION_QUEUE.md` + `follow-up/*/backend.md`
+- [ ] `bunx tsc --noEmit` · `bun run lint` · `bun run build:ci`
+- [ ] 僅用 Bun（勿 npm / yarn / pnpm）
+- [ ] 設計遵循 `.stitch/designs/DESIGN.md`
 
 ---
 
 ## 🚀 快速導航
 
-| 需求           | 檔案位置                                      |
-| -------------- | --------------------------------------------- |
-| 新增頁面       | `/app/[route]/page.tsx`                       |
-| 新增 App 元件  | `/app/components/[category]/`                 |
-| 新增 shadcn 元件 | `bunx --bun shadcn@latest add [component]` → `/components/ui/` |
-| 全局狀態       | `/app/store/`                                 |
-| Mock 資料      | `/app/lib/mock-data/`                         |
-| 設計規範       | `.stitch/designs/DESIGN.md`                   |
-| 系統需求       | `/docs/requirement.md`                        |
-| 開發計劃       | `/docs/plan-sync-archive.md`                  |
-| 後端整合計劃   | `/BACKEND_INTEGRATION_MASTERPLAN.md`           |
-| API TODO       | `/docs/dev/api.md`                            |
-| 資料庫 TODO    | `/docs/dev/database.md`                       |
-| 伺服器 TODO    | `/docs/dev/server.md`                         |
-| AI 指引        | `.github/copilot-instructions.md`             |
-| CI 配置        | `.github/workflows/ci.yml`                    |
+| 需求 | 位置 |
+|------|------|
+| 新增頁面 | `app/[route]/page.tsx` |
+| Server Action | `app/actions/` |
+| API Route | `app/api/` |
+| Domain helper | `lib/[domain]/` |
+| 客戶端 hook | `app/lib/hooks/` |
+| Supabase 型別 | `types/supabase.ts` |
+| Migration | `supabase/migrations/` |
+| 整合狀態 | `docs/dev/INTEGRATION_QUEUE.md` |
+| API 契約 | `docs/dev/api.md` |
+| 開發守則 | `.cursorrules` |
+| CI 配置 | `.github/workflows/ci.yml` |
+| 設計規範 | `.stitch/designs/DESIGN.md` |
 
 ---
 
-**最後更新**: 2026-07-02
-**版本**: Full-Depth v3.0
+**最後更新**: 2026-07-03  
+**版本**: Full-Depth v4.0  
 **維護者**: HKCardVault 開發團隊

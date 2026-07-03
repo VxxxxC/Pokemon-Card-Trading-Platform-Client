@@ -14,18 +14,35 @@ import type {
   MarketplaceProductListingRow,
   MarketplaceProductListingsInput,
   MarketplaceProductListingsResult,
+  MarketplaceListingDetail,
+  MarketplaceListingDetailResult,
   MarketplaceProductRow,
   MarketplaceProductTradeHistoryInput,
   MarketplaceProductTradeHistoryResult,
   MarketplaceProductTradeHistoryRow,
+  MarketplaceMarketPrice,
+  MarketplaceMarketPriceGradeRow,
+  MarketplaceMarketPriceInput,
+  MarketplaceMarketPriceResult,
+  MarketplacePriceChartPoint,
+  MarketplaceProductMarketPricesResult,
   MarketplaceSearchInput,
   SearchMarketplaceResult,
 } from "@/app/lib/marketplace/types";
-import type { Database } from "@/types/supabase";
+import type { Database, Json, Tables } from "@/types/supabase";
 import type { SortKey } from "@/app/store/useMarketStore";
 import {
   formatTradeGradeLabel,
 } from "@/lib/marketplace/listing-display";
+import {
+  buildMarketPriceGradeKey,
+  dbGradingScoreToOptionScore,
+  formatMarketGradeLabel,
+  resolveMarketPriceDbScore,
+  sortMarketPriceGradeRows,
+} from "@/lib/marketplace/market-price";
+import { normalizeGradingCompany } from "@/lib/grading/options";
+import { parseListingImageUrls } from "@/lib/listings/images";
 
 export type {
   GradeFilter,
@@ -36,10 +53,18 @@ export type {
   MarketplaceProductListingRow,
   MarketplaceProductListingsInput,
   MarketplaceProductListingsResult,
+  MarketplaceListingDetail,
+  MarketplaceListingDetailResult,
   MarketplaceProductRow,
   MarketplaceProductTradeHistoryInput,
   MarketplaceProductTradeHistoryResult,
   MarketplaceProductTradeHistoryRow,
+  MarketplaceMarketPrice,
+  MarketplaceMarketPriceGradeRow,
+  MarketplaceMarketPriceInput,
+  MarketplaceMarketPriceResult,
+  MarketplacePriceChartPoint,
+  MarketplaceProductMarketPricesResult,
   MarketplaceSearchInput,
   ProductListingSortKey,
   SearchMarketplaceResult,
@@ -71,6 +96,19 @@ type TradeHistoryQueryRow = {
     grading_score: string | null;
   };
 };
+
+type ListingDetailQueryRow = Pick<
+  Tables<"listings">,
+  | "id"
+  | "product_id"
+  | "price"
+  | "grading_company"
+  | "grading_score"
+  | "seller_id"
+  | "seller_description"
+  | "images"
+  | "use_authentication"
+>;
 
 function mapSortKey(sortKey: SortKey | undefined): string {
   switch (sortKey) {
@@ -456,6 +494,55 @@ export async function getMarketplaceProductListings(
   }
 }
 
+export async function getMarketplaceListingDetail(
+  listingId: string,
+): Promise<MarketplaceListingDetailResult> {
+  const id = listingId.trim();
+  if (!id) {
+    return { success: false, error: "缺少掛單識別碼" };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("listings")
+      .select(
+        "id, product_id, price, grading_company, grading_score, seller_id, seller_description, images, use_authentication",
+      )
+      .eq("id", id)
+      .eq("status", "active")
+      .maybeSingle<ListingDetailQueryRow>();
+
+    if (error) {
+      console.error("[getMarketplaceListingDetail]", error.message);
+      return { success: false, error: "無法載入掛單資料" };
+    }
+
+    if (!data) {
+      return { success: false, error: "找不到此掛單" };
+    }
+
+    return {
+      success: true,
+      data: {
+        listingId: data.id,
+        productId: data.product_id,
+        price: Number(data.price),
+        gradingCompany: data.grading_company,
+        gradingScore: data.grading_score,
+        sellerId: data.seller_id,
+        sellerDescription: data.seller_description,
+        images: parseListingImageUrls(data.images),
+        useAuthentication: data.use_authentication,
+      },
+    };
+  } catch (error) {
+    console.error("[getMarketplaceListingDetail]", error);
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+}
+
 export async function getMarketplaceProductTradeHistory(
   input: MarketplaceProductTradeHistoryInput,
 ): Promise<MarketplaceProductTradeHistoryResult> {
@@ -524,6 +611,191 @@ export async function getMarketplaceProductTradeHistory(
     };
   } catch (error) {
     console.error("[getMarketplaceProductTradeHistory]", error);
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+}
+
+function parseMarketChartData(json: Json | null): MarketplacePriceChartPoint[] {
+  if (!json || !Array.isArray(json)) {
+    return [];
+  }
+
+  const points: MarketplacePriceChartPoint[] = [];
+
+  for (const item of json) {
+    if (
+      typeof item !== "object" ||
+      item === null ||
+      !("date" in item) ||
+      !("price" in item)
+    ) {
+      continue;
+    }
+
+    const date = (item as { date: unknown }).date;
+    const price = (item as { price: unknown }).price;
+
+    if (typeof date !== "string" || typeof price !== "number" || !Number.isFinite(price)) {
+      continue;
+    }
+
+    points.push({ date, price });
+  }
+
+  return points;
+}
+
+const EMPTY_MARKET_PRICE: MarketplaceMarketPrice = {
+  marketAvgPrice: null,
+  marketTrend30d: null,
+  chartPoints: [],
+};
+
+function toFiniteNumber(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(Number(value))) {
+    return null;
+  }
+  return Number(value);
+}
+
+function toMarketPriceGradeRow(
+  row: Pick<
+    Tables<"product_grading_market_prices">,
+    | "grading_company"
+    | "grading_score"
+    | "market_avg_price"
+    | "market_trend_30d"
+    | "market_chart_data"
+  >,
+): MarketplaceMarketPriceGradeRow | null {
+  const gradingCompany = normalizeGradingCompany(row.grading_company);
+  const gradingScore = (row.grading_score ?? "").trim();
+  const chartPoints = parseMarketChartData(row.market_chart_data);
+  const marketAvgPrice = toFiniteNumber(row.market_avg_price);
+  const marketTrend30d = toFiniteNumber(row.market_trend_30d);
+
+  if (marketAvgPrice == null && chartPoints.length === 0) {
+    return null;
+  }
+
+  return {
+    gradeKey: buildMarketPriceGradeKey(gradingCompany, gradingScore),
+    label: formatMarketGradeLabel(gradingCompany, gradingScore),
+    gradingCompany,
+    gradingScore: dbGradingScoreToOptionScore(gradingCompany, gradingScore),
+    marketAvgPrice,
+    marketTrend30d,
+    chartPoints,
+  };
+}
+
+export async function getMarketplaceProductMarketPrices(
+  productIdInput: string,
+): Promise<MarketplaceProductMarketPricesResult> {
+  const productId = productIdInput.trim();
+  if (!productId) {
+    return { success: false, error: "缺少商品識別碼" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: [] };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("product_grading_market_prices")
+      .select(
+        "grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data",
+      )
+      .eq("product_id", productId);
+
+    if (error) {
+      console.error("[getMarketplaceProductMarketPrices]", error.message);
+      return { success: false, error: "無法載入市場價格" };
+    }
+
+    const rows = (data ?? []) as Pick<
+      Tables<"product_grading_market_prices">,
+      | "grading_company"
+      | "grading_score"
+      | "market_avg_price"
+      | "market_trend_30d"
+      | "market_chart_data"
+    >[];
+
+    const grades = sortMarketPriceGradeRows(
+      rows
+        .map(toMarketPriceGradeRow)
+        .filter((row): row is MarketplaceMarketPriceGradeRow => row != null),
+    );
+
+    return { success: true, data: grades };
+  } catch (error) {
+    console.error("[getMarketplaceProductMarketPrices]", error);
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+}
+
+export async function getMarketplaceProductMarketPrice(
+  input: MarketplaceMarketPriceInput,
+): Promise<MarketplaceMarketPriceResult> {
+  const productId = input.productId.trim();
+  if (!productId) {
+    return { success: false, error: "缺少商品識別碼" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: EMPTY_MARKET_PRICE };
+  }
+
+  const gradingCompany = normalizeGradingCompany(input.gradingCompany);
+  const gradingScore = resolveMarketPriceDbScore(
+    gradingCompany,
+    input.gradingScore,
+    input.gradingScore,
+  );
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("product_grading_market_prices")
+      .select("market_avg_price, market_trend_30d, market_chart_data")
+      .eq("product_id", productId)
+      .eq("grading_company", gradingCompany)
+      .eq("grading_score", gradingScore)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[getMarketplaceProductMarketPrice]", error.message);
+      return { success: false, error: "無法載入市場價格" };
+    }
+
+    if (!data) {
+      return { success: true, data: EMPTY_MARKET_PRICE };
+    }
+
+    const row = data as Pick<
+      Tables<"product_grading_market_prices">,
+      "market_avg_price" | "market_trend_30d" | "market_chart_data"
+    >;
+
+    const marketAvgPrice = toFiniteNumber(row.market_avg_price);
+    const marketTrend30d = toFiniteNumber(row.market_trend_30d);
+    const chartPoints = parseMarketChartData(row.market_chart_data);
+
+    return {
+      success: true,
+      data: {
+        marketAvgPrice,
+        marketTrend30d,
+        chartPoints,
+      },
+    };
+  } catch (error) {
+    console.error("[getMarketplaceProductMarketPrice]", error);
     return { success: false, error: "無法連線至大盤市場" };
   }
 }

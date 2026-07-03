@@ -4,16 +4,9 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import {
-  type CarouselApi,
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-} from "@/components/ui/carousel";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
+import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
 import {
   type SellOrder,
   type UnifiedProductSpec,
@@ -22,6 +15,7 @@ import {
 interface ExecutionSlideOverProps {
   isOpen: boolean;
   onClose: () => void;
+  listingId: string | null;
   order: SellOrder | null;
   card: UnifiedProductSpec;
   productId: string;
@@ -34,13 +28,11 @@ const MOCK_BUYER_ID = "USR-BUYER-MOCK-001";
 export function ExecutionSlideOver({
   isOpen,
   onClose,
+  listingId,
   order,
   card,
   productId,
 }: ExecutionSlideOverProps) {
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
   const [customPrice, setCustomPrice] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,38 +43,32 @@ export function ExecutionSlideOver({
     (state) => state.injectSpecialTransaction,
   );
 
-  // Sync carousel dot state via microtask to prevent synchronous setState cascade
-  useEffect(() => {
-    if (!api) return;
-    const update = () => {
-      setCount(api.scrollSnapList().length);
-      setCurrent(api.selectedScrollSnap());
-    };
-    queueMicrotask(update);
-    api.on("select", update);
-    api.on("reInit", update);
-    return () => {
-      api.off("select", update);
-      api.off("reInit", update);
-    };
-  }, [api]);
+  const { detail, isLoading: isDetailLoading } = useMarketplaceListingDetail({
+    listingId,
+    enabled: isOpen && listingId != null,
+  });
 
-  // Reset inner state whenever a new order is opened — use queueMicrotask to avoid sync setState cascade
-  useEffect(() => {
-    if (isOpen) {
-      queueMicrotask(() => {
-        setCustomPrice(order!.price.toString());
-        setCurrent(0);
-      });
-    }
-  }, [isOpen, order?.sellerId]);
-
-  if (!isOpen || !order) return null;
-
-  const images =
+  const catalogFallbackImages =
     card.images.length > 0
       ? card.images
       : ["https://picsum.photos/seed/fallback/400/500"];
+
+  const images =
+    detail?.images && detail.images.length > 0
+      ? detail.images
+      : !isDetailLoading
+        ? catalogFallbackImages
+        : [];
+
+  useEffect(() => {
+    if (isOpen && order) {
+      queueMicrotask(() => {
+        setCustomPrice(order.price.toString());
+      });
+    }
+  }, [isOpen, listingId, order?.price]);
+
+  if (!isOpen || !order) return null;
 
   const handleSendCounterOffer = async () => {
     if (!customPrice || Number(customPrice) <= 0) {
@@ -200,51 +186,36 @@ export function ExecutionSlideOver({
               </div>
             </div>
 
-            {/* ── Super-Sized Photo Carousel ── */}
-            <div className="flex flex-col items-center select-none group w-full overflow-hidden">
-              <div className="relative w-full aspect-[3/4] max-h-[35dvh] lg:max-h-[45vh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner mx-auto">
-                <Carousel
-                  setApi={setApi}
-                  className="w-full h-full [&>div]:h-full"
-                  opts={{ loop: true }}
-                >
-                  <CarouselContent className="-ml-0 h-full">
-                    {images.map((img, idx) => (
-                      <CarouselItem
-                        key={idx}
-                        className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
-                      >
-                        <Image
-                          src={img}
-                          alt={`${card.name} 實物照 ${idx + 1}`}
-                          fill
-                          sizes="(max-width: 640px) 100vw, 320px"
-                          className="scale-100 object-cover transition-transform duration-500 hover:scale-105"
-                          unoptimized
-                        />
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 left-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-                  <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 right-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-                </Carousel>
-              </div>
-
-              {/* Animated dot indicators */}
-              {count > 1 && (
-                <div className="flex justify-center gap-1.5 py-2.5">
-                  {Array.from({ length: count }, (_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      aria-label={`前往第 ${i + 1} 張照片`}
-                      onClick={() => api?.scrollTo(i)}
-                      className={
-                        i === current
-                          ? "bg-brand w-3.5 h-1.5 opacity-100 rounded-full transition-all duration-300"
-                          : "bg-text-disabled w-1.5 h-1.5 opacity-30 hover:opacity-50 rounded-full transition-all duration-300"
-                      }
+            {/* ── Listing photo thumbnails (4–6 × 3:4 grid) ── */}
+            <div className="w-full select-none">
+              <span className="font-mono text-[10px] text-[#8A8680] uppercase block mb-2">
+                賣家實物照 ({isDetailLoading ? "…" : images.length})
+              </span>
+              {isDetailLoading ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {Array.from({ length: 6 }, (_, idx) => (
+                    <div
+                      key={idx}
+                      className="aspect-[3/4] rounded-lg bg-[#120f0c] border border-white/5 animate-pulse"
                     />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="relative aspect-[3/4] rounded-lg overflow-hidden bg-[#120f0c] border border-white/5"
+                    >
+                      <Image
+                        src={img}
+                        alt={`${card.name} 實物照 ${idx + 1}`}
+                        fill
+                        sizes="(max-width: 640px) 28vw, 120px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
                   ))}
                 </div>
               )}

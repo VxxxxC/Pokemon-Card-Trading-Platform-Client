@@ -2,10 +2,8 @@
 
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type SellOrder } from "@/app/lib/mock-data/cards";
-import type { Tables } from "@/types/supabase";
 
 interface AskOrderBookRowProps {
   order: SellOrder;
@@ -13,7 +11,6 @@ interface AskOrderBookRowProps {
   productId: string;
   onOpenGate: (order: SellOrder) => void;
   grade: { authority: string; score: string };
-  rarity: Tables<"product_catalog">["rarity"];
 }
 
 export function AskOrderBookRow({
@@ -21,7 +18,6 @@ export function AskOrderBookRow({
   idx,
   onOpenGate,
   grade,
-  rarity,
 }: AskOrderBookRowProps) {
   return (
     <div className="space-y-2 w-full animate-fadeIn">
@@ -73,7 +69,6 @@ export function AskOrderBookRow({
 
               {/* MOBILE ONLY METADATA BLOCK */}
               <div className="flex sm:hidden items-center gap-1 scale-[0.9] origin-left shrink-0">
-                <RarityBadge rarity={rarity} />
                 <GradeBadge authority={grade.authority} score={grade.score} />
               </div>
             </div>
@@ -82,7 +77,6 @@ export function AskOrderBookRow({
 
         {/* DESKTOP ONLY METADATA BLOCK */}
         <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-          <RarityBadge rarity={rarity} />
           <GradeBadge authority={grade.authority} score={grade.score} />
         </div>
 

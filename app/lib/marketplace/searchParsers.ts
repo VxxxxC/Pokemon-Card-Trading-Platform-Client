@@ -7,7 +7,6 @@ import {
 import type { MarketplaceSellerSourceKey } from "@/lib/marketplace/filter-options";
 
 const MAX_QUERY_LENGTH = 100;
-const KNOWN_GRADING_COMPANIES = new Set(["PSA", "CGC", "BGS", "RAW", "ARS"]);
 
 function normalizeText(raw: string | undefined, max = MAX_QUERY_LENGTH): string | null {
   if (!raw) return null;
@@ -59,7 +58,15 @@ export function parseGradeFilters(activeGrades: string[]): GradeFilter[] {
     const [company, ...scoreParts] = trimmed.split(/\s+/);
     const companyUpper = normalizeGradingCompany(company);
 
-    if (KNOWN_GRADING_COMPANIES.has(companyUpper) && scoreParts.length > 0) {
+    if (
+      companyUpper !== "OTHER" &&
+      scoreParts.length > 0 &&
+      (companyUpper === "PSA" ||
+        companyUpper === "CGC" ||
+        companyUpper === "BGS" ||
+        companyUpper === "ARS" ||
+        companyUpper === "RAW")
+    ) {
       return { company: companyUpper, score: scoreParts.join(" ") };
     }
 

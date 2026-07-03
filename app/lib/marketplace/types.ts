@@ -108,6 +108,23 @@ export type MarketplaceProductListingRow = {
   createdAt: string;
 };
 
+/** Full listing payload for slide-over / detail views (fetched on demand). */
+export type MarketplaceListingDetail = {
+  listingId: string;
+  productId: string;
+  price: number;
+  gradingCompany: string;
+  gradingScore: string | null;
+  sellerId: string;
+  sellerDescription: string | null;
+  images: string[];
+  useAuthentication: boolean;
+};
+
+export type MarketplaceListingDetailResult =
+  | { success: true; data: MarketplaceListingDetail }
+  | { success: false; error: string };
+
 export type MarketplaceProductListingsInput = {
   productId: string;
   gradeFilters?: GradeFilter[];
@@ -145,4 +162,40 @@ export type MarketplaceProductTradeHistoryResult =
       data: MarketplaceProductTradeHistoryRow[];
       meta: MarketplacePaginationMeta;
     }
+  | { success: false; error: string };
+
+export type MarketplacePriceChartPoint = {
+  date: string;
+  price: number;
+};
+
+export type MarketplaceMarketPrice = {
+  marketAvgPrice: number | null;
+  marketTrend30d: number | null;
+  chartPoints: MarketplacePriceChartPoint[];
+};
+
+/** One cached market price row per product + grade. */
+export type MarketplaceMarketPriceGradeRow = {
+  gradeKey: string;
+  label: string;
+  gradingCompany: string;
+  gradingScore: string | null;
+  marketAvgPrice: number | null;
+  marketTrend30d: number | null;
+  chartPoints: MarketplacePriceChartPoint[];
+};
+
+export type MarketplaceMarketPriceInput = {
+  productId: string;
+  gradingCompany: string;
+  gradingScore: string | null;
+};
+
+export type MarketplaceMarketPriceResult =
+  | { success: true; data: MarketplaceMarketPrice }
+  | { success: false; error: string };
+
+export type MarketplaceProductMarketPricesResult =
+  | { success: true; data: MarketplaceMarketPriceGradeRow[] }
   | { success: false; error: string };

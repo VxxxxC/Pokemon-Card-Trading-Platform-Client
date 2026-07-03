@@ -12,7 +12,8 @@
 | User profile settings (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/profile.ts`, `lib/profile/avatar.ts`, `lib/profile/validation.ts`, `lib/profile/errors.ts`, migrations `20260703100000`–`20260703120000` | `app/profile/user/settings/` | [backend](./follow-up/user-profile-settings/backend.md) · [frontend](./follow-up/user-profile-settings/frontend.md) |
 | Role-based routing & session | ✅ Ready | ✅ Wired (baseline) | `lib/auth/roles.ts`, `lib/auth/session.ts`, `middleware.ts` (session refresh all routes; role guard `/profile` + `/admin`), `app/actions/profile.ts`, `app/actions/auth.ts` (`logout`) | `RoleProvider`, `LogoutModal`, `mockRole` consumers | [backend](./follow-up/role-based-routing/backend.md) · [frontend](./follow-up/role-based-routing/frontend.md) |
 | Marketplace product detail (catalog) | ✅ Ready | ✅ Wired (baseline) | `app/actions/marketplace.ts` (`getMarketplaceProductDetail`), `app/lib/marketplace/types.ts` (`MarketplaceProductDetail`), `lib/catalog/element-types.ts`, `app/marketplace/product/[id]/page.tsx`, `ProductDetailClient.tsx`, `app/marketplace/MarketplaceChrome.tsx` | `app/marketplace/product/[id]/`, `MarketplaceCard.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
-| Marketplace product detail (listings / chart / history) | ✅ Listings + trade history ready · ⏳ chart | ✅ Listings + trade history wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, `getMarketplaceProductTradeHistory`, `useMarketplaceProductListings`, `useMarketplaceProductTradeHistory`, migrations `20260703170000`, `20260703180000` | `ProductDetailClient.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
+| Marketplace product detail (listings / chart / history) | ✅ Ready | ✅ Wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, **`getMarketplaceListingDetail`**, `getMarketplaceProductTradeHistory`, **`getMarketplaceProductMarketPrices`**, **`getMarketplaceProductMarketPrice`**, `lib/marketplace/market-price.ts`, `lib/listings/images.ts`, `useMarketplaceProductMarketPrice`, `useMarketplaceListingDetail`, migrations `20260703170000`, `20260703180000`, `20260703210000`, `20260703220000` | `ProductDetailClient.tsx` (banner, chart, market grade chips, order book, trade history), `ExecutionSlideOver.tsx` (on-demand listing photo grid) | [marketplace-product-detail](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
+| Market pricing aggregation (Cron Job 2) | ✅ Ready | ✅ Wired | `app/api/cron/aggregate-prices/route.ts`, `lib/marketplace/market-price.ts`, `lib/supabase/admin.ts`, `product_price_snapshots`, `product_grading_market_prices`, migrations `20260703210000`, `20260703220000` | Product detail chart + market price banner (`ProductDetailClient.tsx`) | [backend](./follow-up/market-pricing-cron/backend.md) · [frontend](./follow-up/market-pricing-cron/frontend.md) |
 | Wishlist toggle | ⏳ Planned | ✅ UI done | `app/actions/Wishlist.ts` (planned) | `WishlistButton.tsx`, `WishlistTable.tsx` | [wishlist](./follow-up/wishlist/) |
 | Create listing submit (box/set + hobby) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` non-card paths | — |
 
@@ -42,6 +43,8 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260703150000_listings_service_role_grants.sql` — `service_role` grants on `listings` (trusted server insert)
 - `supabase/migrations/20260703170000_get_marketplace_product_listings.sql` — product detail order book RPC
 - `supabase/migrations/20260703180000_member_orders_trade_history_read.sql` — completed `member_orders` read for authenticated users
+- `supabase/migrations/20260703210000_market_prices_service_role_grants.sql` — `service_role` grants on `product_grading_market_prices`
+- `supabase/migrations/20260703220000_product_grading_market_prices_public_read.sql` — anon/authenticated `SELECT` on market price cache (product detail chart/banner)
 
 ### Quick verify
 
@@ -94,6 +97,14 @@ bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, rol
 5. Change sort (價格 / 鑑定等級 / 賣家評級) — order updates server-side.
 6. Pagination works when > 5 listings match filters.
 
+**Product detail — execution slide-over (manual):**
+
+1. Open product with a listing that has 4–6 uploaded images.
+2. Click an order book row → `ExecutionSlideOver` opens immediately (seller, price from row).
+3. Photo area shows skeleton grid, then **3-column 3:4 thumbnails** from `getMarketplaceListingDetail`.
+4. Click a different row → new fetch by `listingId`; grid updates.
+5. Listing with empty `images` → catalog fallback thumbnail(s).
+
 **Product detail — trade history (manual):**
 
 1. Apply migration `20260703180000_member_orders_trade_history_read.sql`.
@@ -101,9 +112,24 @@ bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, rol
 3. Log in → completed orders for product show with date, grade, price.
 4. Pagination when > 5 completed orders.
 
-**Product detail — pending (chart):**
+**Product detail — market price + chart (manual):**
 
-**SQL smoke test:**
+1. Apply migrations `20260703210000`, `20260703220000`.
+2. Seed `product_price_snapshots` with `price_hkd`, `grading_company`, `grading_score`, and for **裸卡** rows set `condition_type` to `A` / `B` / `C` / `D`.
+3. Trigger cron: `curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/aggregate-prices`
+4. Open product detail → banner shows `market_avg_price` + green/red `market_trend_30d` badge.
+5. When multiple grades exist in cache, market grade chips appear in banner (PSA 10, 裸卡 A, …) — **independent** of order-book filter chips.
+6. Switching a market grade chip updates avg + chart instantly (client-side; one bulk fetch on mount).
+7. Chart shows 30-day Recharts series from `market_chart_data`; guest blur overlay on chart.
+8. Grade with avg but no chart points → 「此規格暫無走勢圖資料」.
+9. No cache rows → skeleton / `—` in banner.
+
+**Product detail — known limitation (order book vs market price):**
+
+- **Market price** distinguishes 裸卡 A/B/C/D via `product_grading_market_prices.grading_score` (`A`–`D`) after cron groups snapshots by `condition_type`.
+- **Order book** still matches all RAW listings when any `raw:*` chip is selected (`listings.grading_score` is `null` for all raw conditions). Separate listings schema/RPC work if per-condition order-book filter is required.
+
+**Product detail — SQL smoke test:**
 
 ```sql
 SELECT product_id, listing_count, lowest_price, total_count, range_start, range_end

@@ -1,7 +1,18 @@
 /** Grading companies supported for single-card listings. */
 export const GRADING_COMPANIES = ["PSA", "CGC", "BGS", "ARS"] as const;
 
-export type GradingCompany = (typeof GRADING_COMPANIES)[number] | "RAW";
+/** First-party graders shown explicitly in filters; everything else is OTHER. */
+export const FIRST_PARTY_GRADING_COMPANIES = [
+  ...GRADING_COMPANIES,
+  "RAW",
+] as const;
+
+export type GradingCompany =
+  | (typeof GRADING_COMPANIES)[number]
+  | "RAW"
+  | "OTHER";
+
+export const OTHER_GRADING_OPTION_ID = "other";
 
 export type RawCondition = "A" | "B" | "C" | "D";
 
@@ -75,7 +86,7 @@ export interface GradingOption {
   company: GradingCompany;
   score: string | null;
   condition: RawCondition;
-  group: "PSA" | "CGC" | "BGS" | "ARS" | "RAW";
+  group: "PSA" | "CGC" | "BGS" | "ARS" | "RAW" | "OTHER";
 }
 
 function gradedId(company: string, score: string): string {
@@ -111,12 +122,24 @@ function buildRawOptions(): GradingOption[] {
   }));
 }
 
+function buildOtherGradingOption(): GradingOption {
+  return {
+    id: OTHER_GRADING_OPTION_ID,
+    label: "其他鑑定",
+    company: "OTHER",
+    score: null,
+    condition: "A",
+    group: "OTHER",
+  };
+}
+
 export const GRADING_OPTIONS: GradingOption[] = [
   ...buildGradedOptions("PSA", PSA_SCORES),
   ...buildGradedOptions("BGS", BGS_SCORES),
   ...buildGradedOptions("CGC", CGC_SCORES),
   ...buildGradedOptions("ARS", ARS_SCORES),
   ...buildRawOptions(),
+  buildOtherGradingOption(),
 ];
 
 export const DEFAULT_GRADING_OPTION_ID = gradedId("PSA", "10");
@@ -130,6 +153,7 @@ export const GRADING_OPTION_GROUPS: {
   { key: "CGC", label: "CGC" },
   { key: "ARS", label: "ARS" },
   { key: "RAW", label: "裸卡" },
+  { key: "OTHER", label: "其他" },
 ];
 
 const gradingOptionById = new Map(
@@ -156,6 +180,17 @@ export function normalizeGradingCompany(company: string): string {
   return upper;
 }
 
+export function isFirstPartyGradingCompany(company: string): boolean {
+  const normalized = normalizeGradingCompany(company);
+  return (FIRST_PARTY_GRADING_COMPANIES as readonly string[]).includes(
+    normalized,
+  );
+}
+
+export function isOtherGradingCompany(company: string): boolean {
+  return !isFirstPartyGradingCompany(company);
+}
+
 export function matchesGradeFilter(
   gradingCompany: string,
   gradingScore: string | null | undefined,
@@ -165,6 +200,10 @@ export function matchesGradeFilter(
 
   const option = getGradingOption(filterId);
   const normalizedCompany = normalizeGradingCompany(gradingCompany);
+
+  if (option.company === "OTHER") {
+    return isOtherGradingCompany(gradingCompany);
+  }
 
   if (normalizedCompany !== option.company.toUpperCase()) return false;
   if (option.score === null) return true;
@@ -193,6 +232,15 @@ export function gradingOptionToFields(option: GradingOption): {
   if (option.company === "RAW") {
     return {
       grader: "RAW",
+      gradeScore: null,
+      condition: option.condition,
+      gradeLabel: option.label,
+    };
+  }
+
+  if (option.company === "OTHER") {
+    return {
+      grader: "OTHER",
       gradeScore: null,
       condition: option.condition,
       gradeLabel: option.label,

@@ -2,36 +2,41 @@
 
 ## Status
 
-- **Backend:** ✅ Catalog · ✅ listings RPC · ✅ trade history · ⏳ price chart
-- **Frontend:** ✅ Catalog · ✅ order book · ✅ sold history · ⏳ chart
-- **Partner:** Backend owns listings RPC + price/trade actions; frontend owns order-book hook + chart wiring
+- **Backend:** ✅ Catalog · ✅ listings RPC · ✅ trade history · ✅ market price read · ✅ on-demand listing detail
+- **Frontend:** ✅ Catalog · ✅ order book · ✅ sold history · ✅ chart + banner · ✅ slide-over listing photos
+- **Partner:** Optional follow-ups — grid market price, order-book RAW condition filter, slide-over lightbox
 
 ## Changelog (2026-07-03)
 
 | Change | Detail |
 |--------|--------|
-| **`getMarketplaceProductDetail()`** | Server action — `product_catalog` by `id` (UUID) or fallback `display_id` |
-| **`MarketplaceProductDetail` type** | Mapped row in `app/lib/marketplace/types.ts` |
-| **`formatElementTypeZh()`** | `lib/catalog/element-types.ts` — JP/EN `element_type` → 繁體中文 |
-| **Planned RPC** | `get_marketplace_product_listings` — filter/sort/paginate active listings for one product |
-| **Planned action** | `getMarketplaceProductPriceChart` — `product_price_snapshots` (30-day series) |
-| **Planned action** | Trade history from completed `member_orders` (auth-gated UI) |
-
-No new DB migrations for the **catalog slice**. Listings RPC may reuse v2 search filter JSON (`p_grade_filters`).
+| **`getMarketplaceProductDetail()`** | `product_catalog` by `id` or `display_id` |
+| **`get_marketplace_product_listings` RPC** | Order book filter/sort/pagination (**slim rows — no `images`**) |
+| **`getMarketplaceListingDetail(listingId)`** | On-demand single listing read (`listings` table, `status = 'active'`) |
+| **`getMarketplaceProductTradeHistory`** | Auth-gated completed orders |
+| **`getMarketplaceProductMarketPrices`** | Bulk read `product_grading_market_prices` per product |
+| **`lib/marketplace/market-price.ts`** | Grade key + RAW `condition_type` mapping |
+| **`lib/listings/images.ts`** | `parseListingImageUrls` — ordered URL[] from `listings.images` JSONB |
+| **Migrations** | `20260703170000`, `20260703180000`, `20260703210000`, `20260703220000` |
 
 ---
 
-## Architecture (target)
+## Architecture
 
 ```
-Initial SSR (parallel):
-  getMarketplaceProductDetail(productId)     ← ✅ done
-  getMarketplaceProductListings({ ... })     ← RPC TBD
-  getMarketplaceProductPriceChart(productId) ← action TBD
+SSR:
+  getMarketplaceProductDetail(productId)          ← page.tsx
 
-Client refetch on order-book interaction:
-  getMarketplaceProductListings only        ← avoid re-fetching catalog + chart
+Client (parallel on mount):
+  useMarketplaceProductListings({ filters })      ← order book refetch on filter change (slim)
+  useMarketplaceProductMarketPrices({ productId })  ← one bulk fetch; grade switch client-side
+  useMarketplaceProductTradeHistory({ … })        ← auth-gated
+
+Client (on slide-over open only):
+  useMarketplaceListingDetail({ listingId, enabled })  ← images + seller_description
 ```
+
+**Why on-demand listing detail:** Products may have 200+ active listings. Order book RPC stays paginated and lightweight; full `listings.images` (4–6 URLs) loads only when user opens `ExecutionSlideOver`.
 
 ---
 
@@ -39,165 +44,155 @@ Client refetch on order-book interaction:
 
 | File | Purpose |
 |------|---------|
-| `app/actions/marketplace.ts` | **`getMarketplaceProductDetail`**, existing search actions |
-| `app/lib/marketplace/types.ts` | **`MarketplaceProductDetail`**, **`MarketplaceProductDetailResult`** |
-| `lib/catalog/element-types.ts` | **`formatElementTypeZh`** — display helper (safe for client import) |
-| `supabase/migrations/…` *(planned)* | `get_marketplace_product_listings` RPC |
+| `app/actions/marketplace.ts` | Detail, listings, **listing detail**, trade history, market prices |
+| `app/lib/marketplace/types.ts` | All marketplace DTOs incl. `MarketplaceListingDetail` |
+| `lib/listings/images.ts` | `ListingImage` JSONB contract + `parseListingImageUrls` |
+| `lib/marketplace/market-price.ts` | Cache grade resolution (shared with cron) |
+| `lib/catalog/element-types.ts` | `formatElementTypeZh` |
+| `supabase/migrations/20260703170000_get_marketplace_product_listings.sql` | Order book RPC |
+| `supabase/migrations/20260703180000_member_orders_trade_history_read.sql` | Trade history RLS |
+| `supabase/migrations/20260703220000_product_grading_market_prices_public_read.sql` | Market price public read |
 
 ---
 
 ## Server action: `getMarketplaceProductDetail`
 
-### Signature
+Unchanged — see prior field map. Lookup: `id` then `display_id`.
+
+---
+
+## RPC: `get_marketplace_product_listings`
+
+Wired via `getMarketplaceProductListings`. Args: `p_product_id`, `p_grade_filters`, `p_only_graded`, `p_sort`, `p_page`, `p_page_size`.
+
+Returns listing rows + `filtered_lowest_price` + pagination meta.
+
+**Does not return** `images` — intentional for scale (200+ listings per product). Use `getMarketplaceListingDetail` for gallery.
+
+**Limitation:** RAW listings share `grading_score = null` — `raw:A` / `raw:B` chips cannot filter by condition until listings store condition.
+
+---
+
+## Server action: `getMarketplaceListingDetail`
 
 ```ts
-import { getMarketplaceProductDetail } from "@/app/actions/marketplace";
+type MarketplaceListingDetailResult =
+  | { success: true; data: MarketplaceListingDetail }
+  | { success: false; error: string };
 
-const result = await getMarketplaceProductDetail(productKey: string);
+type MarketplaceListingDetail = {
+  listingId: string;
+  productId: string;
+  price: number;
+  gradingCompany: string;
+  gradingScore: string | null;
+  sellerId: string;
+  sellerDescription: string | null;
+  images: string[];           // parseListingImageUrls(listings.images)
+  useAuthentication: boolean;
+};
 ```
 
-### Lookup order
+- **Query:** `listings` `.eq("id", listingId).eq("status", "active").maybeSingle()`
+- **RLS:** Existing `listings_public_read_active` — anon + authenticated can read active rows
+- **No new migration** required
 
-1. `product_catalog.id` = `productKey` (UUID from grid — **primary**)
-2. `product_catalog.display_id` = `productKey` (legacy / human-readable slug)
+### How to verify
 
-### Response envelope
+```bash
+# In app: click order book row → slide-over shows seller photos
+# Or call from a server component / script with listing UUID
+```
+
+```sql
+SELECT id, images, seller_description
+FROM listings
+WHERE status = 'active'
+LIMIT 1;
+```
+
+---
+
+## Market price actions
+
+Read from **`product_grading_market_prices`** ([market-pricing-cron](../market-pricing-cron/backend.md)).
+
+### `getMarketplaceProductMarketPrices(productId)` — primary
 
 ```ts
-type MarketplaceProductDetailResult =
-  | { success: true; data: MarketplaceProductDetail }
+type MarketplaceProductMarketPricesResult =
+  | { success: true; data: MarketplaceMarketPriceGradeRow[] }
   | { success: false; error: string };
 ```
 
-### `MarketplaceProductDetail` field map
+One row per cached grade. Sorted by `GRADING_OPTIONS` order. Rows without avg or chart are omitted.
 
-| Field | Source column | Notes |
-|-------|---------------|-------|
-| `productId` | `id` | Route param from `/marketplace/product/[id]` |
-| `productName` | `name_zh ?? name_ja` | Display fallback (detail page title uses `nameJa` + optional `nameZh`) |
-| `nameJa` | `name_ja` | Page `<h1>` |
-| `nameEn` / `nameZh` | `name_en`, `name_zh` | Subheading when `nameZh` present |
-| `setCode` | `set_code` | Spec matrix + meta line |
-| `cardNumber` | `card_number` | Meta line |
-| `displayId` | `display_id` | Breadcrumb label fallback |
-| `rarity` | `rarity` | Raw string; passed to `RarityBadge` |
-| `imageUrl` | `image_url` | Hero image |
-| `images` | `[image_url]` | Single official image today |
-| `catalogType` | `type` | `catalog_type` enum |
-| `elementType` | `element_type` | Use **`formatElementTypeZh()`** in UI |
-| `pokemonStage` | `pokemon_stage` | Spec matrix |
-| `hp` | `hp` | Reserved |
-| `subTypeJa` | `sub_type_ja` | Reserved |
+### `getMarketplaceProductMarketPrice(input)` — single grade
 
-### Errors
+For ad-hoc single-grade lookup; product detail uses bulk action.
 
-| Condition | `error` |
-|-----------|---------|
-| Empty key | `缺少商品識別碼` |
-| Not found | `找不到此商品` |
-| Supabase error | `無法載入商品資料` |
-| Env / network | `無法連線至商品目錄` |
+### Grade key rules
+
+| Cache row | `gradeKey` | `label` |
+|-----------|------------|---------|
+| PSA + `10` | `psa:10` | PSA 10 |
+| RAW + `A` | `raw:A` | 裸卡 A |
+| RAW + `-` (legacy) | `raw:A` (first raw option) | 裸卡 |
+
+RAW `A`–`D` requires cron grouping by snapshot `condition_type` — re-run cron after ingest fix.
 
 ---
 
-## Planned RPC: `get_marketplace_product_listings`
+## Trade history
 
-Scope to **one** `p_product_id` with same filter semantics as grid search.
-
-### Suggested args
-
-| Param | Type | Purpose |
-|-------|------|---------|
-| `p_product_id` | `uuid` / `text` | Required |
-| `p_grade_filters` | `jsonb` | Same shape as `search_marketplace_products` |
-| `p_only_graded` | `boolean` | Exclude `grading_company = 'RAW'` |
-| `p_sort` | `text` | `price_asc` \| `grade_desc` \| `rating_desc` |
-| `p_page` / `p_page_size` | `int` | Order-book pagination |
-
-### Suggested return row (per listing)
-
-| Column | Maps to UI |
-|--------|------------|
-| `listing_id` | Row key / buy flow |
-| `price` | Ask price |
-| `grading_company`, `grading_score` | `GradeBadge` / filter chips |
-| `seller_id`, `seller_name` | Seller column |
-| `rating_score`, `total_trades` | Sort by `rating_desc` |
-| `seller_persona`, `use_authentication` | Future badges |
-| `images` | Slide-over carousel (listing photos) |
-| `total_count`, `page`, … | Pagination meta |
-
----
-
-## Planned: price chart action
-
-Query `product_price_snapshots` for `product_id`, last 30 days, default condition (e.g. PSA 10 or catalog default).
-
-```ts
-// Target shape
-type MarketplacePriceChartPoint = { date: string; price: number };
-```
-
-Table: `product_price_snapshots` (`snapshot_date`, `price_jpy`, `condition_type`, `product_id`).
+`getMarketplaceProductTradeHistory` — auth required; guest UI blurs section.
 
 ---
 
 ## Env required
 
-Same as marketplace search:
-
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+NEXT_PUBLIC_SUPABASE_URL=…
+NEXT_PUBLIC_SUPABASE_ANON_KEY=…
+CRON_SECRET=…                    # manual cron trigger only
+SUPABASE_SERVICE_ROLE_KEY=…      # cron route only
 ```
-
-`product_catalog` anon `SELECT` — migration `20260702100000_product_catalog_public_read.sql`.
 
 ---
 
-## How to verify (catalog slice)
+## How to verify
 
 ```bash
 bun run dev
+bun run build:ci   # pages guard Supabase env
 ```
 
-SQL:
-
-```sql
--- Pick a catalog row
-SELECT id, display_id, name_ja, name_zh, set_code, element_type, rarity
-FROM product_catalog
-LIMIT 5;
-
--- By UUID (replace)
-SELECT * FROM product_catalog WHERE id = '<uuid>';
-```
-
-Browser:
-
-1. `/marketplace` → click a grid card → `/marketplace/product/<productId>`
-2. Title = `name_ja`; subheading = `name_zh` + rarity badge when present
-3. Spec matrix shows `setCode`, `nameJa`, translated 卡牌屬性, `pokemonStage`
-4. Unknown product UUID → 404 (`notFound()`)
+See [INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md) — product detail manual tests for listings, trade history, market price/chart.
 
 ---
 
-## Blocked / not in scope (this slice)
+## Blocked / not in scope
 
-| Feature | Owner / note |
-|-------|----------------|
-| Order book data | Listings RPC |
-| 30-day chart | `product_price_snapshots` action + condition picker TBD |
-| Sold history | ✅ `getMarketplaceProductTradeHistory` + migration `20260703180000` |
-| 24h price delta | No snapshot delta column yet |
-| `weakness` spec row | Not on `product_catalog` — removed from UI |
-| Multi-image gallery | Catalog has single `image_url` |
+| Feature | Note |
+|---------|------|
+| Order book RAW A/B/C/D | Listings schema — all raw share `grading_score = null` |
+| Grid card market price | Optional batch read |
+| 24h price delta | Only `market_trend_30d` in cache |
+| Catalog multi-image gallery | Catalog single `image_url`; listing photos via `getMarketplaceListingDetail` |
+| Images in order book RPC | Rejected — use on-demand listing detail for 200+ listings scale |
+
+---
+
+## Related docs
+
+- Market pricing cron: [../market-pricing-cron/backend.md](../market-pricing-cron/backend.md) · [frontend](../market-pricing-cron/frontend.md)
+- Integration queue: [../../INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md)
 
 ---
 
 ## Do not change without sync
 
 - `MarketplaceProductDetail` shape
-- `getMarketplaceProductDetail` lookup order (`id` then `display_id`)
-- `success` / `error` envelope
-- `formatElementTypeZh` keys in `lib/catalog/element-types.ts` (extend, don’t rename exported fn)
+- `getMarketplaceProductDetail` lookup order
+- `lib/marketplace/market-price.ts` RAW score semantics
+- `success` / `error` envelopes

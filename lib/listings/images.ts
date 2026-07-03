@@ -34,3 +34,12 @@ export function isListingImageArray(value: unknown): value is ListingImage[] {
       typeof (item as ListingImage).order === "number",
   );
 }
+
+/** Parse `listings.images` JSONB into ordered URL strings for display. */
+export function parseListingImageUrls(value: unknown): string[] {
+  if (!isListingImageArray(value)) return [];
+  return [...value]
+    .sort((a, b) => a.order - b.order)
+    .map((item) => item.url.trim())
+    .filter((url) => url.length > 0);
+}

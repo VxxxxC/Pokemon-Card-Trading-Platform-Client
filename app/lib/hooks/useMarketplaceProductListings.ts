@@ -60,6 +60,8 @@ export function useMarketplaceProductListings(
   const filtersRef = useRef(filters);
   const listingsKey = filtersKey(filters);
 
+  filtersRef.current = filters;
+
   const runListingsFetch = useCallback(
     async (
       requestId: number,
@@ -113,13 +115,13 @@ export function useMarketplaceProductListings(
   );
 
   useEffect(() => {
-    filtersRef.current = filters;
     const requestId = ++requestIdRef.current;
+    const activeFilters = filtersRef.current;
 
     setIsLoading(true);
     setError(null);
-    void runListingsFetch(requestId, filters);
-  }, [listingsKey, runListingsFetch, filters]);
+    void runListingsFetch(requestId, activeFilters);
+  }, [listingsKey, runListingsFetch]);
 
   const refetch = useCallback(() => {
     const requestId = ++requestIdRef.current;

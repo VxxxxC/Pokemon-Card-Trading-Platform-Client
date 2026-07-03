@@ -624,33 +624,86 @@ export type Database = {
         }
         Relationships: []
       }
+      product_grading_market_prices: {
+        Row: {
+          grading_company: string
+          grading_score: string | null
+          id: string
+          market_avg_price: number | null
+          market_chart_data: Json | null
+          market_trend_30d: number | null
+          product_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          grading_company: string
+          grading_score?: string | null
+          id?: string
+          market_avg_price?: number | null
+          market_chart_data?: Json | null
+          market_trend_30d?: number | null
+          product_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          grading_company?: string
+          grading_score?: string | null
+          id?: string
+          market_avg_price?: number | null
+          market_chart_data?: Json | null
+          market_trend_30d?: number | null
+          product_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_grading_market_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_price_snapshots: {
         Row: {
           condition_name_ja: string | null
           condition_type: string
           created_at: string
+          grading_company: string | null
+          grading_score: string | null
           id: string
+          price_hkd: number | null
           price_jpy: number
           product_id: string
           snapshot_date: string
+          source: string | null
         }
         Insert: {
           condition_name_ja?: string | null
           condition_type: string
           created_at?: string
+          grading_company?: string | null
+          grading_score?: string | null
           id?: string
+          price_hkd?: number | null
           price_jpy: number
           product_id: string
           snapshot_date: string
+          source?: string | null
         }
         Update: {
           condition_name_ja?: string | null
           condition_type?: string
           created_at?: string
+          grading_company?: string | null
+          grading_score?: string | null
           id?: string
+          price_hkd?: number | null
           price_jpy?: number
           product_id?: string
           snapshot_date?: string
+          source?: string | null
         }
         Relationships: [
           {
@@ -1013,6 +1066,10 @@ export type Database = {
         }[]
       }
       is_display_name_available: { Args: { name: string }; Returns: boolean }
+      listing_grade_sort_score: {
+        Args: { grading_company: string; grading_score: string }
+        Returns: number
+      }
       search_marketplace_products: {
         Args: {
           p_card_number?: string

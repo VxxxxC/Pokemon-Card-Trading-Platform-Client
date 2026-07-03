@@ -54,6 +54,8 @@ export function useMarketplaceProductTradeHistory(
   const filtersRef = useRef(filters);
   const historyKey = filtersKey(filters);
 
+  filtersRef.current = filters;
+
   const runTradeHistoryFetch = useCallback(
     async (
       requestId: number,
@@ -101,13 +103,13 @@ export function useMarketplaceProductTradeHistory(
   );
 
   useEffect(() => {
-    filtersRef.current = filters;
     const requestId = ++requestIdRef.current;
+    const activeFilters = filtersRef.current;
 
     setIsLoading(true);
     setError(null);
-    void runTradeHistoryFetch(requestId, filters);
-  }, [historyKey, runTradeHistoryFetch, filters]);
+    void runTradeHistoryFetch(requestId, activeFilters);
+  }, [historyKey, runTradeHistoryFetch]);
 
   const refetch = useCallback(() => {
     const requestId = ++requestIdRef.current;

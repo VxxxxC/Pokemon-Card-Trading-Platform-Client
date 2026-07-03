@@ -56,6 +56,57 @@ This project uses **Bun** exclusively. **Never** use npm, npx, yarn, pnpm, or pn
 - shadcn/ui: `bunx --bun shadcn@latest add <component>` (never `npx shadcn@latest`)
 - Lockfile: commit **`bun.lock` only**. Do not create or commit `package-lock.json`.
 
+8. CI-SAFE SUPABASE / PRERENDER (NO `.env` IN GITHUB ACTIONS):
+
+GitHub CI runs `bun run build` **without** `.env`. `next build` prerenders many `app/**/page.tsx` routes. Calling `createClient()` when `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is unset **throws** and fails CI.
+
+**Assume env is missing at build time.** Do not rely on adding GitHub secrets as the only fix.
+
+### Where to guard
+
+| Context | Rule |
+|---------|------|
+| `app/**/page.tsx`, `layout.tsx`, Server Components | **Must** guard before Supabase |
+| `app/actions/*` read helpers called from pages at build time | **Must** guard; return `{ success: false, error }` or safe empty data |
+| `app/actions/*` mutations (form submit, POST) | May call `createClient()` directly; return structured errors at runtime |
+| `app/api/*`, `middleware` | Use `getSupabasePublicEnv()` / existing middleware skip pattern |
+
+### Required helpers (reuse — do not reinvent)
+
+- `isSupabaseConfigured()` — `lib/supabase/env.ts`
+- `getOptionalAuthUser()` — `lib/auth/session.ts` (auth pages; returns `null` if unset or guest)
+- `resolveCurrentDemoRole()` — already returns `"GUEST"` when unset
+
+### Patterns
+
+```ts
+// ✅ Server page / layout — auth
+const user = await getOptionalAuthUser();
+if (!user) redirect("/auth");
+
+// ✅ Server action used during SSR/prerender
+if (!isSupabaseConfigured()) {
+  return { success: false, error: "未登入" };
+}
+const supabase = await createClient();
+
+// ❌ Never in page.tsx / layout.tsx without a guard
+const supabase = await createClient();
+```
+
+### New page checklist
+
+When adding or wiring any route under `app/` that reads Supabase:
+
+1. Guard with `isSupabaseConfigured()` or `getOptionalAuthUser()`.
+2. Handle unauthenticated / unconfigured: `redirect()`, `notFound()`, or empty UI — never throw.
+3. Before merge, verify: `bun run build:ci` (build with empty Supabase env, same as CI).
+
+### CI alignment
+
+- Pin Bun via `packageManager` in `package.json` / `bun-version-file` in `.github/workflows/ci.yml` — never `bun-version: latest`.
+- Run before push on backend-heavy PRs: `bunx tsc --noEmit`, `bun run lint`, `bun run build:ci`.
+
 # =====================================================================
 # BACKEND-DRIVEN UI MODIFICATION PROTOCOL (後端接駁專用 UI 修正守則)
 # =====================================================================

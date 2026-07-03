@@ -12,6 +12,7 @@ import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlide
 import type { MarketplaceProductDetail } from "@/app/lib/marketplace/types";
 import type { SellOrder, UnifiedProductSpec } from "@/app/lib/mock-data/cards";
 import { useMarketplaceProductListings } from "@/app/lib/hooks/useMarketplaceProductListings";
+import { useMarketplaceProductMarketPrice } from "@/app/lib/hooks/useMarketplaceProductMarketPrice";
 import { useMarketplaceProductTradeHistory } from "@/app/lib/hooks/useMarketplaceProductTradeHistory";
 import { formatElementTypeZh } from "@/lib/catalog/element-types";
 import { GRADING_OPTIONS } from "@/lib/grading/options";
@@ -41,7 +42,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { IoChevronBack } from "react-icons/io5";
+import { IoChevronBack, IoTrendingDown, IoTrendingUp } from "react-icons/io5";
 
 type SubSortKey = ProductListingSortKey;
 
@@ -104,11 +105,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const breadcrumbLabel = formatBreadcrumbLabel(product);
   const heroImage = images[0];
 
-  // TODO: replace with getMarketplaceProductPriceChart action
-  const chartPoints: { day: number; date: string; price: number }[] = [];
-
   const [isGateOpen, setIsGateOpen] = useState(false);
   const [gateOrder, setGateOrder] = useState<SellOrder | null>(null);
+  const [gateListingId, setGateListingId] = useState<string | null>(null);
 
   const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
   const [onlyGraded, setOnlyGraded] = useState(false);
@@ -142,6 +141,26 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     page: orderPage,
     pageSize: ordersPerPage,
   });
+
+  const {
+    availableGrades: availableMarketGrades,
+    selectedGradeKey: selectedMarketGradeKey,
+    setSelectedGradeKey: setSelectedMarketGradeKey,
+    marketPrice: marketPriceData,
+    isLoading: isMarketPriceLoading,
+  } = useMarketplaceProductMarketPrice({
+    productId: product.productId,
+  });
+
+  const chartPoints = useMemo(
+    () =>
+      marketPriceData.chartPoints.map((point, index) => ({
+        day: index + 1,
+        date: point.date,
+        price: point.price,
+      })),
+    [marketPriceData.chartPoints],
+  );
 
   const {
     tradeHistory,
@@ -196,9 +215,12 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     );
   }
 
-  const hasChartData = chartPoints.length > 0;
+  const hasChartData = !isMarketPriceLoading && chartPoints.length > 0;
+  const hasMarketPriceData =
+    !isMarketPriceLoading && availableMarketGrades.length > 0;
 
-  const marketPrice = lowestPrice;
+  const marketPrice = marketPriceData.marketAvgPrice;
+  const marketTrend30d = marketPriceData.marketTrend30d;
   const globalBestAskPrice = lowestPrice;
 
   const slideOverCard = toExecutionSlideOverCard(product);
@@ -271,7 +293,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             </div>
 
             <div className="bg-[#26211C] p-5 rounded-2xl border border-white/5 flex items-center justify-between shadow-md">
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="font-mono text-[10px] text-[#d4c4b7] uppercase tracking-wider block mb-1">
                   交易所現貨參考均價 (MARKET AGGREGATED INDEX)
                 </span>
@@ -281,7 +303,50 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                       ? `HK$ ${marketPrice.toLocaleString("en-HK")}`
                       : "—"}
                   </p>
+                  {marketTrend30d != null ? (
+                    <span
+                      className={`inline-flex items-center gap-0.5 font-mono text-[12px] font-bold ${
+                        marketTrend30d > 0
+                          ? "text-[#10b981]"
+                          : marketTrend30d < 0
+                            ? "text-[#ef4444]"
+                            : "text-[#8A8680]"
+                      }`}
+                    >
+                      {marketTrend30d > 0 ? (
+                        <IoTrendingUp className="size-3.5 shrink-0" aria-hidden />
+                      ) : marketTrend30d < 0 ? (
+                        <IoTrendingDown className="size-3.5 shrink-0" aria-hidden />
+                      ) : null}
+                      {marketTrend30d > 0 ? "+" : ""}
+                      {marketTrend30d.toFixed(1)}%
+                    </span>
+                  ) : null}
                 </div>
+                {availableMarketGrades.length > 1 ? (
+                  <div className="flex items-center gap-2 overflow-x-auto pt-3 scrollbar-none -mx-1 px-1">
+                    {availableMarketGrades.map((gradeOption) => {
+                      const isActive =
+                        selectedMarketGradeKey === gradeOption.gradeKey;
+                      return (
+                        <button
+                          key={gradeOption.gradeKey}
+                          type="button"
+                          onClick={() =>
+                            setSelectedMarketGradeKey(gradeOption.gradeKey)
+                          }
+                          className={`font-mono text-[11px] font-bold h-7 px-3 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
+                            isActive
+                              ? "bg-brand border-brand text-[#1A1612] shadow-[0_2px_10px_rgba(212,165,116,0.25)]"
+                              : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
+                          }`}
+                        >
+                          {gradeOption.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -395,6 +460,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     </ResponsiveContainer>
                   </ChartContainer>
                 </div>
+              </div>
+            ) : isMarketPriceLoading ? (
+              <MarketChartSkeleton />
+            ) : hasMarketPriceData ? (
+              <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)]">
+                <p className="font-sans text-[13px] text-text-disabled text-center py-8">
+                  此規格暫無走勢圖資料
+                </p>
               </div>
             ) : (
               <MarketChartSkeleton />
@@ -519,10 +592,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                         productId={product.productId}
                         onOpenGate={(o) => {
                           setGateOrder(o);
+                          setGateListingId(row.listingId);
                           setIsGateOpen(true);
                         }}
                         grade={row.order.customGrade}
-                        rarity={product.rarity}
                       />
                     );
                   })
@@ -656,7 +729,11 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
       <ExecutionSlideOver
         isOpen={isGateOpen}
-        onClose={() => setIsGateOpen(false)}
+        onClose={() => {
+          setIsGateOpen(false);
+          setGateListingId(null);
+        }}
+        listingId={gateListingId}
         order={gateOrder}
         card={slideOverCard}
         productId={product.productId}

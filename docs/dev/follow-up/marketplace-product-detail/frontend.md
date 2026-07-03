@@ -2,23 +2,21 @@
 
 ## Status
 
-- **Backend:** ✅ Catalog · ✅ listings RPC · ✅ trade history · ⏳ chart
-- **Frontend:** ✅ **Catalog baseline wired** · ⏳ order book · ⏳ chart · ⏳ sold history
-- **Your focus:** Order-book hook, chart wiring, styling polish; grid card polish (separate TODOs in search handoff)
+- **Backend:** ✅ All slices ready (incl. on-demand listing detail)
+- **Frontend:** ✅ Catalog · ✅ order book · ✅ trade history · ✅ market price + chart · ✅ `ExecutionSlideOver` listing photos
+- **Your focus:** Polish, grid card market price (optional), slide-over tap-to-enlarge (optional)
 
 ## Changelog (2026-07-03)
 
-| Area | What changed |
-|------|----------------|
-| **Route** | Server `page.tsx` + client `ProductDetailClient.tsx` |
-| **Data** | `getMarketplaceProductDetail` — removed `INITIAL_LISTINGS` mock for catalog |
-| **Grid navigation** | `MarketplaceCard` → `/marketplace/product/${productId}` (full card click; buy/wishlist isolated) |
-| **Nav chrome** | `MarketplaceChrome` hides TopNav / MobileHeader / BottomNav on product detail |
-| **Hero image** | Single image, `aspect-[4/3]`, no thumbnails |
-| **Title block** | `name_ja` title; `name_zh` + `RarityBadge` subheading; set + card number meta |
-| **Spec matrix** | 系列名稱, 日版原名, 卡牌屬性 (TC), 進化階段, 稀有度 — removed 弱點/撤退/畫師/招式 |
-| **Element types** | `formatElementTypeZh(product.elementType)` from `lib/catalog/element-types.ts` |
-| **Order book / chart / history** | Empty placeholders — mock removed; awaiting backend |
+| Area | Shipped |
+|------|---------|
+| **Catalog** | SSR `getMarketplaceProductDetail`, hero, spec matrix, nav hidden |
+| **Order book** | `useMarketplaceProductListings` — sort, graded-only, grade chips, pagination |
+| **Trade history** | `useMarketplaceProductTradeHistory` — guest blur |
+| **Market banner** | `market_avg_price` + `market_trend_30d` (green/red icons) |
+| **Market chart** | Recharts 30-day series; guest blur |
+| **Market grade chips** | DB-available grades only; independent from order-book filters |
+| **Execution slide-over** | On-demand `useMarketplaceListingDetail`; 3×2 **3:4** thumbnail grid (4–6 seller photos) |
 
 ---
 
@@ -26,135 +24,162 @@
 
 | File | Role |
 |------|------|
-| `app/marketplace/product/[id]/page.tsx` | Server: fetch catalog, `notFound()` on miss |
-| `app/marketplace/product/[id]/ProductDetailClient.tsx` | Client: layout, filters UI, empty order book |
-| `app/marketplace/MarketplaceChrome.tsx` | Hide nav on `/marketplace/product/[id]` |
-| `app/marketplace/layout.tsx` | Wraps children in `MarketplaceChrome` |
-| `app/components/marketplace/MarketplaceCard.tsx` | `productId` + click → detail route |
-| `app/marketplace/page.tsx` | Passes `productId` in `toMarketplaceListing` |
-| `app/components/marketplace/AskOrderBookRow.tsx` | `rarity: string \| null` (catalog-aligned) |
+| `app/marketplace/product/[id]/page.tsx` | Server catalog fetch |
+| `app/marketplace/product/[id]/ProductDetailClient.tsx` | Full client layout; `gateListingId` + `gateOrder` on row click |
+| `app/components/transactions/ExecutionSlideOver.tsx` | Negotiation slide-over; listing photo grid |
+| `app/lib/hooks/useMarketplaceProductListings.ts` | Order book (slim rows — no images) |
+| `app/lib/hooks/useMarketplaceListingDetail.ts` | Listing gallery + description (fetch on slide-over open) |
+| `app/lib/hooks/useMarketplaceProductMarketPrice.ts` | Market prices (bulk) |
+| `app/lib/hooks/useMarketplaceProductTradeHistory.ts` | Sold history |
+| `app/marketplace/MarketplaceChrome.tsx` | Hide nav on detail |
 
 ---
 
-## Data wiring (current)
+## Data wiring
 
 ### Server page
 
 ```tsx
-// app/marketplace/product/[id]/page.tsx
 const result = await getMarketplaceProductDetail(id);
 if (!result.success) notFound();
 return <ProductDetailClient product={result.data} />;
 ```
 
-### Client props
-
-```ts
-type ProductDetailClientProps = {
-  product: MarketplaceProductDetail;
-};
-```
-
-### Display mapping
+### Display mapping (current)
 
 | UI | Source |
 |----|--------|
-| `<h1>` | `product.nameJa` |
-| Subheading | `product.nameZh` (if any) + `RarityBadge` |
-| Meta | `product.setCode` \| `product.cardNumber` |
-| Breadcrumb | `displayId` → `setCode-cardNumber` → `setCode` |
-| Hero image | `product.images[0]` or `product.imageUrl` |
-| 卡牌屬性 | `formatElementTypeZh(product.elementType)` |
-| 進化階段 | `product.pokemonStage` or `—` |
-| Market price banner | `—` until listings RPC (was mock `sellOrders`) |
-| Order book | Empty — `sellOrders: []` |
-| Chart | `MarketChartSkeleton` — `chartPoints: []` |
-| Sold history | 「暫無成交紀錄」 |
+| Title / meta / spec | `product` (catalog) |
+| Market avg + trend | `useMarketplaceProductMarketPrice` → selected grade |
+| Market grade chips | `availableGrades` from same hook |
+| 30-day chart | `marketPrice.chartPoints` |
+| Order book | `useMarketplaceProductListings` |
+| 最優現貨掛牌價 | `lowestPrice` from listings meta |
+| Sold history | `useMarketplaceProductTradeHistory` (logged-in) |
+| Slide-over seller/price/grade | Order book row (`SellOrder`) — instant on open |
+| Slide-over photo grid | `useMarketplaceListingDetail({ listingId, enabled: isOpen })` → `detail.images` |
+| Slide-over photo fallback | Catalog `card.images` when listing has no photos |
 
----
+### Order book → slide-over click flow
 
-## Navigation
+```tsx
+// ProductDetailClient.tsx
+onOpenGate={(o) => {
+  setGateOrder(o);
+  setGateListingId(row.listingId);
+  setIsGateOpen(true);
+}}
 
-### From grid
-
-`MarketplaceCard` resolves:
-
-```ts
-/marketplace/product/${listing.productId ?? listing.id}
+<ExecutionSlideOver
+  isOpen={isGateOpen}
+  listingId={gateListingId}
+  order={gateOrder}
+  card={slideOverCard}
+  productId={product.productId}
+  onClose={() => { setIsGateOpen(false); setGateListingId(null); }}
+/>
 ```
 
-Wishlist / Buy use `stopPropagation()` — do not navigate.
+`ExecutionSlideOver` opens immediately with row data; photos load in parallel (spinner skeleton grid → 3-column **3:4** thumbnails).
 
-### Nav hidden
+### Two grade pickers (intentional)
 
-`MarketplaceChrome` regex: `^/marketplace/product/[^/]+$`
+| Picker | Location | Drives |
+|--------|----------|--------|
+| **Market grade chips** | Inside price banner | Avg, trend, chart — only grades in `product_grading_market_prices` |
+| **Order book chips** | Order book panel | Live listings filter — full `GRADING_OPTIONS` list |
 
-Back control: chevron button (`router.back()`) on detail page.
+They are **not** synced. Market chips appear only when `availableGrades.length > 1`.
 
 ---
 
 ## Partner TODO
 
-### Backend-dependent (wire when actions land)
+### Done
 
-- [ ] **`useMarketplaceProductListings` hook** — call listings RPC/action with `subSortKey`, `onlyGraded`, `selectedGradeFilter`, pagination
-- [ ] **Market price banner** — `lowestPrice` from listings meta or detail aggregate
-- [ ] **Price chart** — replace skeleton with `getMarketplaceProductPriceChart` data
-- [x] **Sold history** — `useMarketplaceProductTradeHistory`; guest blur overlay
-- [ ] **Grade filter chips** — derive from distinct grades on active listings (not hardcoded PSA/CGC list)
-- [ ] **`ExecutionSlideOver`** — pass listing images from DB row, slim `card` prop (drop `UnifiedProductSpec` dependency)
+- [x] `useMarketplaceProductListings`
+- [x] Market price banner from cache (not `lowestPrice`)
+- [x] Price chart from `product_grading_market_prices`
+- [x] `market_trend_30d` badge
+- [x] Per-grade market price picker (DB availability)
+- [x] Sold history + guest blur
+- [x] **`ExecutionSlideOver`** — on-demand listing images; 3:4 thumbnail grid (not carousel)
 
-### Frontend polish (no backend block)
+### Remaining
 
-- [ ] Loading skeleton for server page (optional — currently instant SSR)
-- [ ] 404 copy / link back to `/marketplace` (`not-found` is global today)
-- [ ] Responsive pass on 4:3 hero + sticky column
-- [ ] Listing count / price spread on **grid** card (`MarketplaceCard`) — see search handoff
+- [ ] **Order book RAW A/B/C/D** — blocked until listings store condition ([backend](./backend.md))
+- [ ] **Grade chips from live listings** — optional UX (derive distinct grades on active listings)
+- [ ] Grid `MarketplaceCard` market avg — see [market-pricing-cron frontend](../market-pricing-cron/frontend.md)
+- [ ] Slide-over **tap-to-enlarge** / lightbox — optional polish
+
+### Polish (no backend block)
+
+- [ ] Server page loading skeleton
+- [ ] 404 copy / link back to `/marketplace`
+- [ ] Responsive pass on hero + sticky column
+- [ ] Slim `card` prop on `ExecutionSlideOver` (name + rarity only; reduce `UnifiedProductSpec` shim)
 
 ---
 
 ## Acceptance checklist
 
-### Catalog (done)
+### Catalog
 
-- [x] Grid card navigates to `/marketplace/product/<productId>`
-- [x] Detail loads `product_catalog` from DB (no mock catalog)
-- [x] Invalid / missing id → 404
-- [x] Title / subheading / rarity layout
-- [x] 卡牌屬性 in Traditional Chinese
-- [x] Nav hidden on product detail
-- [x] Single 4:3 hero image
+- [x] Grid → detail navigation
+- [x] Live catalog data, 404 on miss
+- [x] Nav hidden on detail
 
-### Pending
+### Order book
 
-- [ ] Order book shows live listings with filter/sort/page
-- [ ] Chart shows 30-day series (logged-in; guest blur)
-- [ ] Sold history from DB
-- [ ] Best ask price matches filtered listing set
+- [x] Live listings, filters, sort, pagination
+- [x] 最優現貨掛牌價 from filtered set
+
+### Market price + chart
+
+- [x] Banner avg from `market_avg_price`
+- [x] Trend badge with sign + color
+- [x] Chart when `chartPoints.length > 0`
+- [x] Market grade chips when multiple cache rows
+- [x] 裸卡 A/B/C/D labels when cron wrote separate rows
+
+### Trade history
+
+- [x] Guest blur; logged-in list + pagination
+
+### Execution slide-over
+
+- [x] Row click opens slide-over with seller + price from order book
+- [x] Listing photos fetched by `listingId` (not bundled in order book RPC)
+- [x] 3-column **3:4** thumbnail grid for 4–6 seller photos
+- [x] Loading skeleton grid while detail fetch runs
+- [x] Catalog image fallback when listing has no photos
 
 ---
 
 ## Manual test plan
 
-1. `bun run dev` — ensure `product_catalog` has rows with listings on grid.
-2. `/marketplace` — click card body (not Buy) → lands on detail with correct `name_ja` / image.
-3. Confirm nav bars hidden on detail; visible on `/marketplace`.
-4. Product with `name_zh` — subheading shows Chinese name + rarity badge.
-5. Product with `element_type` = `Fire` or `炎` — spec shows 火.
-6. Random UUID `/marketplace/product/00000000-0000-0000-0000-000000000000` → 404.
-7. Order book shows empty state (expected until RPC).
+1. Product with listings → order book populated.
+2. Product with cron cache → banner + chart; switch market grade chips.
+3. Product with RAW snapshots (`condition_type` A and B) → after cron, two market chips.
+4. Guest → chart + history blurred; banner visible.
+5. Product without cache → banner `—`, chart skeleton.
+6. Click order book row → slide-over opens; skeleton grid → seller photos (4–6) in 3:4 grid.
+7. Listing with no uploaded images → catalog fallback image in grid.
+8. Switch to another listing row → new `listingId` fetch; grid updates.
 
 ---
 
 ## Do not change without backend sync
 
-- `getMarketplaceProductDetail` / `MarketplaceProductDetail` in `app/actions/marketplace.ts` + types
-- `formatElementTypeZh` in `lib/catalog/element-types.ts`
-- Server/client split in `product/[id]/page.tsx`
+- `getMarketplaceListingDetail` / `getMarketplaceProductMarketPrices` / types in `app/actions/marketplace.ts`
+- `lib/marketplace/market-price.ts`
+- `lib/listings/images.ts` (`parseListingImageUrls` contract)
+- Server/client split in `page.tsx`
 
 ---
 
 ## Related docs
 
-- Grid search: [../marketplace-search/backend.md](../marketplace-search/backend.md) · [frontend](../marketplace-search/frontend.md)
+- Market pricing: [../market-pricing-cron/frontend.md](../market-pricing-cron/frontend.md)
+- Grid search: [../marketplace-search/frontend.md](../marketplace-search/frontend.md)
 - Integration queue: [../../INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md)
