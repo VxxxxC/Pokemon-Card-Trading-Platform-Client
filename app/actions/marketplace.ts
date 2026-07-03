@@ -213,7 +213,7 @@ function toTradeHistoryRow(
 ): MarketplaceProductTradeHistoryRow {
   return {
     orderId: row.id,
-    createdAt: row.created_at,
+    createdAt: row.created_at ?? "",
     grade: formatTradeGradeLabel(
       row.listings.grading_company,
       row.listings.grading_score,
@@ -537,9 +537,10 @@ export async function getMarketplaceRarities(): Promise<MarketplaceRaritiesResul
       return { success: false, error: "無法載入稀有度選項" };
     }
 
+    const rows = (data ?? []) as { rarity: string | null }[];
     const unique = [
       ...new Set(
-        (data ?? [])
+        rows
           .map((row) => row.rarity?.trim())
           .filter((rarity): rarity is string => Boolean(rarity)),
       ),

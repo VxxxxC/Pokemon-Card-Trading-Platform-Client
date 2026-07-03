@@ -63,15 +63,8 @@ export function resolveImageContentType(file: ImageUploadLike): string | null {
 
 export function isFormDataImageUpload(
   entry: FormDataEntryValue,
-): entry is Blob & { name?: string } {
-  return (
-    typeof entry === "object" &&
-    entry !== null &&
-    "arrayBuffer" in entry &&
-    typeof (entry as Blob).arrayBuffer === "function" &&
-    typeof (entry as Blob).size === "number" &&
-    (entry as Blob).size > 0
-  );
+): entry is File {
+  return entry instanceof File && entry.size > 0;
 }
 
 export type ParsedImageUpload = {

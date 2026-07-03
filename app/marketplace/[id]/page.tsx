@@ -108,7 +108,6 @@ export default function MerchantStorefrontPage({ params }: PageProps) {
     setQuery("");
     setActiveRarities([]);
     setActiveGrades([]);
-    setActiveConditions([]);
     setSortKey("最新");
     setPriceRange([absoluteMinPrice, absoluteMaxPrice]);
   };

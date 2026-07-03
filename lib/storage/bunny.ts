@@ -90,7 +90,7 @@ export async function uploadListingImageToBunny(
       AccessKey: config.accessKey,
       "Content-Type": contentType,
     },
-    body: fileBytes,
+    body: Buffer.from(fileBytes),
   });
 
   if (!response.ok) {
