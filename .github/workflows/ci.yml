@@ -12,9 +12,10 @@ jobs:
       - name: ⚡ Setup High-Performance Bun Runtime
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version-file: package.json
+          cache: true
       - name: 📦 Hydrate Node Dependency Cache
-        run: bun install
+        run: bun ci
       - name: 🛡️ Gate 1 TypeScript Global Type Safety Verification
         run: bunx tsc --noEmit
       - name: 🛡️ Gate 2 Linter Structural Cleanliness Audit
