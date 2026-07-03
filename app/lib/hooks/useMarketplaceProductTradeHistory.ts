@@ -52,54 +52,76 @@ export function useMarketplaceProductTradeHistory(
 
   const requestIdRef = useRef(0);
   const filtersRef = useRef(filters);
-  filtersRef.current = filters;
+  const historyKey = filtersKey(filters);
 
-  const fetchTradeHistory = useCallback(async () => {
-    const current = filtersRef.current;
+  const runTradeHistoryFetch = useCallback(
+    async (
+      requestId: number,
+      activeFilters: MarketplaceProductTradeHistoryFilters,
+    ) => {
+      if (!activeFilters.enabled) {
+        setTradeHistory([]);
+        setMeta(EMPTY_META);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
 
-    if (!current.enabled) {
-      setTradeHistory([]);
-      setMeta(EMPTY_META);
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
+      try {
+        const result = await getMarketplaceProductTradeHistory({
+          productId: activeFilters.productId,
+          page: activeFilters.page,
+          pageSize: activeFilters.pageSize,
+        });
 
-    const requestId = ++requestIdRef.current;
-    setIsLoading(true);
-    setError(null);
+        if (requestId !== requestIdRef.current) return;
 
-    const result = await getMarketplaceProductTradeHistory({
-      productId: current.productId,
-      page: current.page,
-      pageSize: current.pageSize,
-    });
+        if (!result.success) {
+          setTradeHistory([]);
+          setMeta(EMPTY_META);
+          setError(result.error);
+          return;
+        }
 
-    if (requestId !== requestIdRef.current) return;
-
-    if (!result.success) {
-      setTradeHistory([]);
-      setMeta(EMPTY_META);
-      setError(result.error);
-      setIsLoading(false);
-      return;
-    }
-
-    setTradeHistory(result.data);
-    setMeta(result.meta);
-    setError(null);
-    setIsLoading(false);
-  }, []);
+        setTradeHistory(result.data);
+        setMeta(result.meta);
+        setError(null);
+      } catch {
+        if (requestId !== requestIdRef.current) return;
+        setTradeHistory([]);
+        setMeta(EMPTY_META);
+        setError("無法連線至大盤市場");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    void fetchTradeHistory();
-  }, [fetchTradeHistory, filtersKey(filters)]);
+    filtersRef.current = filters;
+    const requestId = ++requestIdRef.current;
+
+    setIsLoading(true);
+    setError(null);
+    void runTradeHistoryFetch(requestId, filters);
+  }, [historyKey, runTradeHistoryFetch, filters]);
+
+  const refetch = useCallback(() => {
+    const requestId = ++requestIdRef.current;
+
+    setIsLoading(true);
+    setError(null);
+    void runTradeHistoryFetch(requestId, filtersRef.current);
+  }, [runTradeHistoryFetch]);
 
   return {
     tradeHistory,
     meta,
     isLoading,
     error,
-    refetch: fetchTradeHistory,
+    refetch,
   };
 }

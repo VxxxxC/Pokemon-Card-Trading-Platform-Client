@@ -101,7 +101,7 @@ function buildGradedOptions(
 }
 
 function buildRawOptions(): GradingOption[] {
-  return RAW_CONDITIONS.map(({ value, label }) => ({
+  return RAW_CONDITIONS.map(({ value, label: _label }) => ({
     id: `raw:${value}`,
     label: `裸卡 ${value}`,
     company: "RAW" as const,

@@ -58,51 +58,76 @@ export function useMarketplaceProductListings(
 
   const requestIdRef = useRef(0);
   const filtersRef = useRef(filters);
-  filtersRef.current = filters;
+  const listingsKey = filtersKey(filters);
 
-  const fetchListings = useCallback(async () => {
-    const current = filtersRef.current;
+  const runListingsFetch = useCallback(
+    async (
+      requestId: number,
+      activeFilters: MarketplaceProductListingsFilters,
+    ) => {
+      try {
+        const gradeFilters = buildProductListingGradeFilters(
+          activeFilters.selectedGradeFilterId,
+        );
+        const gradedOnly =
+          activeFilters.selectedGradeFilterId === "ALL"
+            ? activeFilters.onlyGraded
+            : false;
+
+        const result = await getMarketplaceProductListings({
+          productId: activeFilters.productId,
+          sort: activeFilters.sort,
+          onlyGraded: gradedOnly,
+          gradeFilters,
+          page: activeFilters.page,
+          pageSize: activeFilters.pageSize,
+        });
+
+        if (requestId !== requestIdRef.current) return;
+
+        if (!result.success) {
+          setListings([]);
+          setMeta(EMPTY_META);
+          setLowestPrice(null);
+          setError(result.error);
+          return;
+        }
+
+        setListings(result.data);
+        setMeta(result.meta);
+        setLowestPrice(result.lowestPrice);
+        setError(null);
+      } catch {
+        if (requestId !== requestIdRef.current) return;
+        setListings([]);
+        setMeta(EMPTY_META);
+        setLowestPrice(null);
+        setError("無法連線至大盤市場");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    filtersRef.current = filters;
     const requestId = ++requestIdRef.current;
 
     setIsLoading(true);
     setError(null);
+    void runListingsFetch(requestId, filters);
+  }, [listingsKey, runListingsFetch, filters]);
 
-    const gradeFilters = buildProductListingGradeFilters(
-      current.selectedGradeFilterId,
-    );
-    const onlyGraded =
-      current.selectedGradeFilterId === "ALL" ? current.onlyGraded : false;
+  const refetch = useCallback(() => {
+    const requestId = ++requestIdRef.current;
 
-    const result = await getMarketplaceProductListings({
-      productId: current.productId,
-      sort: current.sort,
-      onlyGraded,
-      gradeFilters,
-      page: current.page,
-      pageSize: current.pageSize,
-    });
-
-    if (requestId !== requestIdRef.current) return;
-
-    if (!result.success) {
-      setListings([]);
-      setMeta(EMPTY_META);
-      setLowestPrice(null);
-      setError(result.error);
-      setIsLoading(false);
-      return;
-    }
-
-    setListings(result.data);
-    setMeta(result.meta);
-    setLowestPrice(result.lowestPrice);
+    setIsLoading(true);
     setError(null);
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void fetchListings();
-  }, [fetchListings, filtersKey(filters)]);
+    void runListingsFetch(requestId, filtersRef.current);
+  }, [runListingsFetch]);
 
   return {
     listings,
@@ -110,6 +135,6 @@ export function useMarketplaceProductListings(
     lowestPrice,
     isLoading,
     error,
-    refetch: fetchListings,
+    refetch,
   };
 }

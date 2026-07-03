@@ -128,17 +128,18 @@ export function AddAssetModal() {
   // 🟢 記憶體時空守衛
   const [prevIsOpen, setPrevIsOpen] = useState(false);
 
+  const photoSlotsRef = useRef<LocalPhotoSlot[]>(createEmptyPhotoSlots());
+
+  useEffect(() => {
+    photoSlotsRef.current = photoSlots;
+  }, [photoSlots]);
+
   const resetPhotoSlots = useCallback(() => {
     setPhotoSlots((prev) => {
       revokePhotoSlots(prev);
-      const next = createEmptyPhotoSlots();
-      photoSlotsRef.current = next;
-      return next;
+      return createEmptyPhotoSlots();
     });
   }, []);
-
-  const photoSlotsRef = useRef(photoSlots);
-  photoSlotsRef.current = photoSlots;
 
   useEffect(() => {
     return () => {
@@ -240,13 +241,8 @@ export function AddAssetModal() {
     files: File[],
     startIndex: number,
   ): { assigned: number; skipped: number; fileErrors: string[] } => {
-    const built = buildNextPhotoSlots(
-      photoSlotsRef.current,
-      files,
-      startIndex,
-    );
+    const built = buildNextPhotoSlots(photoSlots, files, startIndex);
 
-    photoSlotsRef.current = built.next;
     setPhotoSlots(built.next);
 
     for (const message of built.fileErrors) {
@@ -267,7 +263,7 @@ export function AddAssetModal() {
     if (mode === "merch") {
       const startIndex =
         activeSlotIndex ??
-        photoSlotsRef.current.findIndex((slot) => !slot.file);
+        photoSlots.findIndex((slot) => !slot.file);
 
       if (startIndex === -1) {
         toast.error(`⚠️ 已達 ${LISTING_IMAGE_MAX} 張上限`);
