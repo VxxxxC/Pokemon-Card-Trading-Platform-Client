@@ -1,4 +1,4 @@
-name: HKCardVault Continuous Integration Engine
+name: GitPush Standard TSC && Linter && Build checking
 on:
   push:
     branches:
@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Clone Repository Assets
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.0
       - name: ⚡ Setup High-Performance Bun Runtime
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version-file: package.json
           cache: true
