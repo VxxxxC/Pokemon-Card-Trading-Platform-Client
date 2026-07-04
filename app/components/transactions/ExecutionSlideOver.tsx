@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
+import { makeOffer } from "@/app/actions/offers";
+import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
@@ -21,10 +23,6 @@ interface ExecutionSlideOverProps {
   productId: string;
 }
 
-// TODO [BACKEND]: Replace with authed session user identity
-const MOCK_BUYER_NAME = "九龍灣卡王";
-const MOCK_BUYER_ID = "USR-BUYER-MOCK-001";
-
 export function ExecutionSlideOver({
   isOpen,
   onClose,
@@ -39,8 +37,8 @@ export function ExecutionSlideOver({
   const mockRole = useUIStore((state) => state.mockRole);
   const isGuest = mockRole === "GUEST";
 
-  const injectSpecialTransaction = useHkCardVaultStore(
-    (state) => state.injectSpecialTransaction,
+  const openOfferChatSession = useHkCardVaultStore(
+    (state) => state.openOfferChatSession,
   );
 
   const { detail, isLoading: isDetailLoading } = useMarketplaceListingDetail({
@@ -71,31 +69,73 @@ export function ExecutionSlideOver({
   if (!isOpen || !order) return null;
 
   const handleSendCounterOffer = async () => {
+    if (!listingId) {
+      toast.error("找不到此掛單");
+      return;
+    }
+
     if (!customPrice || Number(customPrice) <= 0) {
       toast.error("⚠️ 請輸入有效的預期出價金額");
       return;
     }
 
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 400));
-    setIsSubmitting(false);
 
-    injectSpecialTransaction({
-      sellerName: order.sellerName,
+    const offerContext = {
       sellerId: order.sellerId,
+      sellerName: order.sellerName,
       cardName: card.name,
       cardId: productId,
-      offerPrice: Number(customPrice),
-      buyerName: MOCK_BUYER_NAME,
-      buyerId: MOCK_BUYER_ID,
-      isInstantTake: false, // 🟡 pending 狀態，等待賣家回應議價
-    });
+    };
 
-    onClose();
-    toast.success("✉️ 議價要約已成功送出", {
-      description: "交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！",
-      duration: 4000,
-    });
+    try {
+      const profileResult = await getCurrentUserProfile();
+      if (!profileResult.success) {
+        toast.error(profileResult.error);
+        return;
+      }
+
+      const result = await makeOffer(listingId, Number(customPrice));
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      const { room, offer, message } = result.data;
+
+      openOfferChatSession({
+        roomId: room.id,
+        partnerId: offerContext.sellerId,
+        partnerName: offerContext.sellerName,
+        buyerId: profileResult.data.id,
+        buyerName: profileResult.data.displayName,
+        sellerId: offerContext.sellerId,
+        sellerName: offerContext.sellerName,
+        cardName: offerContext.cardName,
+        cardId: offerContext.cardId,
+        offerId: offer.id,
+        offerPrice: offer.offer_price,
+        modifiedCount:
+          "modified_count" in offer
+            ? Number(offer.modified_count) || 0
+            : 0,
+        messageId: message.id,
+        messageContent: message.content,
+        messageCreatedAt: message.created_at ?? new Date().toISOString(),
+        offerStatus: offer.status ?? "pending",
+      });
+
+      onClose();
+
+      toast.success("✉️ 議價要約已成功送出", {
+        description: "交易協定已實時注入全域對話中樞，即刻為您開啟對話視窗！",
+        duration: 4000,
+      });
+    } catch {
+      toast.error("出價時發生錯誤，請稍後再試");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -269,7 +309,7 @@ export function ExecutionSlideOver({
           <div className="px-5 py-4 border-t border-white/[0.07] shrink-0 bg-[#26211C]">
             <button
               type="button"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !listingId}
               onClick={handleSendCounterOffer}
               className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none disabled:opacity-60"
             >

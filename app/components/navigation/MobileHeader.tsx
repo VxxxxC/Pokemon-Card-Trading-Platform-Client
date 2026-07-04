@@ -3,9 +3,6 @@
 import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { AnimatePresence } from "framer-motion";
-import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
-// 🟢 接入 Zustand 全域控制中樞
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 
 export function MobileHeader() {
@@ -16,7 +13,7 @@ export function MobileHeader() {
   );
 
   // 🟢 從 Zustand 引流狀態
-  const { chats, isChatOpen, setIsChatOpen, setMobileView, activateRoomById } =
+  const { chats, setIsChatOpen, setMobileView, activateRoomById } =
     useHkCardVaultStore();
 
   // 廣播接收監聽器 ➔ 自動同步至狀態大腦
@@ -93,9 +90,6 @@ export function MobileHeader() {
             </button>
           </div>
         </div>
-
-        {/* 🎭 手機原生級別雙層全屏動態彈窗 */}
-        <AnimatePresence>{isChatOpen && <GlobalChatConsole />}</AnimatePresence>
       </header>
     </>
   );

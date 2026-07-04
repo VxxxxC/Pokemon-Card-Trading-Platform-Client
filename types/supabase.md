@@ -57,10 +57,14 @@ type UserRole = Enums<"user_role">;
 | Function | Args | Returns |
 |----------|------|---------|
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
+| `generate_profile_username` | `never;` | `string` |
 | `get_marketplace_price_bounds` | `never` | `{ max_price: number min_price: number }[]` |
 | `get_marketplace_product_listings` | `{ p_grade_filters?: Json p_only_graded?: boolean p_page?: number p_page_size?: number p_product_id:…` | `{ created_at: string filtered_lowest_price: number grading_company: string grading_score: string li…` |
 | `is_display_name_available` | `{ name: string };` | `boolean` |
 | `listing_grade_sort_score` | `{ grading_company: string; grading_score: string }` | `number` |
+| `rpc_accept_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
+| `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json` |
+| `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
 | `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_name_query?: string p_page?: number p_page_size?:…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 
 ---
@@ -78,10 +82,13 @@ type UserRole = Enums<"user_role">;
 | `created_at` | `string | null` | Yes |
 | `id` | `string` | No |
 | `is_system_warning` | `boolean | null` | Yes |
+| `member_order_id` | `string | null` | Yes |
+| `merchant_order_id` | `string | null` | Yes |
+| `offer_id` | `string | null` | Yes |
 | `room_id` | `string` | No |
 | `sender_id` | `string` | No |
 
-**Foreign keys:** `room_id` → `chat_rooms`
+**Foreign keys:** `member_order_id` → `member_orders`
 
 ---
 
@@ -94,7 +101,6 @@ type UserRole = Enums<"user_role">;
 | `buyer_id` | `string` | No |
 | `created_at` | `string | null` | Yes |
 | `id` | `string` | No |
-| `listing_id` | `string` | No |
 | `seller_id` | `string` | No |
 | `updated_at` | `string | null` | Yes |
 
@@ -196,6 +202,8 @@ type UserRole = Enums<"user_role">;
 |--------|------|----------|
 | `buyer_id` | `string` | No |
 | `created_at` | `string | null` | Yes |
+| `expires_at` | `string` | No |
+| `extended_count` | `number` | No |
 | `final_price` | `number` | No |
 | `id` | `string` | No |
 | `listing_id` | `string` | No |
@@ -277,6 +285,8 @@ type UserRole = Enums<"user_role">;
 | `buyer_id` | `string` | No |
 | `created_at` | `string | null` | Yes |
 | `id` | `string` | No |
+| `listing_id` | `string | null` | Yes |
+| `modified_count` | `number` | No |
 | `offer_price` | `number` | No |
 | `room_id` | `string` | No |
 | `status` | `offer_status | null` | Yes |
@@ -320,7 +330,7 @@ type UserRole = Enums<"user_role">;
 | Column | Type | Nullable |
 |--------|------|----------|
 | `grading_company` | `string` | No |
-| `grading_score` | `string | null` | Yes |
+| `grading_score` | `string` | No |
 | `id` | `string` | No |
 | `market_avg_price` | `number | null` | Yes |
 | `market_chart_data` | `Json | null` | Yes |
@@ -374,6 +384,8 @@ type UserRole = Enums<"user_role">;
 | Column | Type | Nullable |
 |--------|------|----------|
 | `avatar_path` | `string | null` | Yes |
+| `cancelled_trades_count` | `number` | No |
+| `completed_trades_count` | `number` | No |
 | `created_at` | `string` | No |
 | `display_name` | `string` | No |
 | `id` | `string` | No |
@@ -436,6 +448,7 @@ type UserRole = Enums<"user_role">;
 | `comment` | `string | null` | Yes |
 | `created_at` | `string` | No |
 | `id` | `string` | No |
+| `is_public` | `boolean` | No |
 | `member_order_id` | `string | null` | Yes |
 | `merchant_order_id` | `string | null` | Yes |
 | `rating` | `number` | No |

@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
   useMemo,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
@@ -21,8 +22,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { sendMessage } from "@/app/actions/chat";
+import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
-import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
+import {
+  useHkCardVaultStore,
+} from "@/app/store/useHkCardVaultStore";
+import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import {
   formatMessageTime,
   getDateSeparatorLabel,
@@ -52,6 +58,9 @@ export interface Message {
     buyerId: string;
     sellerId: string;
     sellerName: string;
+    offerId?: string;
+    modifiedCount?: number;
+    imageUrl?: string;
     initialStatus?: "pending" | "accepted" | "rejected" | "countered";
   };
 }
@@ -161,7 +170,15 @@ function buildMessageRenderList(messages: Message[]) {
 type RenderItem = ReturnType<typeof buildMessageRenderList>[number];
 
 // Desktop message thread — compact bubbles (12.5px, 75% max-width)
-function MessageThread({ renderList }: { renderList: RenderItem[] }) {
+function MessageThread({
+  renderList,
+  currentUserId,
+  activeRoomId,
+}: {
+  renderList: RenderItem[];
+  currentUserId: string | null;
+  activeRoomId: string;
+}) {
   return (
     <>
       {renderList.map((item, idx) => {
@@ -175,6 +192,10 @@ function MessageThread({ renderList }: { renderList: RenderItem[] }) {
           msg.type === "special_transaction" &&
           hasRenderableSpecialData(msg.specialData)
         ) {
+          if (!msg.specialData.offerId) {
+            return null;
+          }
+
           return (
             <div
               key={msg.id}
@@ -188,9 +209,14 @@ function MessageThread({ renderList }: { renderList: RenderItem[] }) {
                 sellerName={msg.specialData.sellerName}
                 cardName={msg.specialData.cardName}
                 cardId={msg.specialData.cardId}
+                offerId={msg.specialData.offerId}
+                imageUrl={msg.specialData.imageUrl}
                 offerPrice={msg.specialData.offerPrice}
+                initialModifiedCount={msg.specialData.modifiedCount ?? 0}
                 initialStatus={msg.specialData.initialStatus || "pending"}
                 isMe={msg.sender === "me"}
+                currentUserId={currentUserId}
+                roomId={activeRoomId}
               />
             </div>
           );
@@ -238,7 +264,15 @@ function MessageThread({ renderList }: { renderList: RenderItem[] }) {
 }
 
 // Mobile message thread — larger bubbles (13px, rounded-2xl)
-function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
+function MobileMessageThread({
+  renderList,
+  currentUserId,
+  activeRoomId,
+}: {
+  renderList: RenderItem[];
+  currentUserId: string | null;
+  activeRoomId: string;
+}) {
   return (
     <>
       {renderList.map((item, idx) => {
@@ -252,6 +286,10 @@ function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
           msg.type === "special_transaction" &&
           hasRenderableSpecialData(msg.specialData)
         ) {
+          if (!msg.specialData.offerId) {
+            return null;
+          }
+
           return (
             <div
               key={msg.id}
@@ -265,9 +303,14 @@ function MobileMessageThread({ renderList }: { renderList: RenderItem[] }) {
                 sellerName={msg.specialData.sellerName}
                 cardName={msg.specialData.cardName}
                 cardId={msg.specialData.cardId}
+                offerId={msg.specialData.offerId}
+                imageUrl={msg.specialData.imageUrl}
                 offerPrice={msg.specialData.offerPrice}
+                initialModifiedCount={msg.specialData.modifiedCount ?? 0}
                 initialStatus={msg.specialData.initialStatus || "pending"}
                 isMe={msg.sender === "me"}
+                currentUserId={currentUserId}
+                roomId={activeRoomId}
               />
             </div>
           );
@@ -341,6 +384,7 @@ export function GlobalChatConsole() {
     activateRoomById,
   } = useHkCardVaultStore();
 
+  const currentUserId = useCurrentUserId();
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState<string>("");
@@ -368,6 +412,7 @@ export function GlobalChatConsole() {
   };
 
   const [inputText, setInputText] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [lobbySearchQuery, setLobbySearchQuery] = useState("");
   const [isNewChatComboOpen, setIsNewChatComboOpen] = useState(false);
   const [targetUsername, setTargetUsername] = useState("");
@@ -453,55 +498,127 @@ export function GlobalChatConsole() {
   if (!isChatOpen) return null;
   const activeRoom = chats.find((r) => r.id === activeRoomId) || chats[0];
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    const text = inputText.trim();
+    if (!text || isSending) return;
 
-    const newMsg: Message = {
-      id: Date.now().toString(),
+    const optimisticId = `opt-${Date.now()}`;
+    const sentAt = new Date().toISOString();
+    const optimisticMsg: Message = {
+      id: optimisticId,
       sender: "me",
-      text: inputText,
-      timestamp: new Date().toISOString(),
+      text,
+      timestamp: sentAt,
       type: "text",
     };
+
+    setInputText("");
     setChats((prev) =>
       prev.map((room) =>
         room.id === activeRoomId
           ? {
               ...room,
-              lastMessage: inputText,
-              messages: [...room.messages, newMsg],
+              lastMessage: text,
+              timestamp: sentAt,
+              messages: [...room.messages, optimisticMsg],
             }
           : room,
       ),
     );
-    setInputText("");
+
+    if (!isDbChatRoomId(activeRoomId)) {
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const result = await sendMessage(activeRoomId, text);
+      if (!result.success) {
+        toast.error(result.error);
+        setChats((prev) =>
+          prev.map((room) => {
+            if (room.id !== activeRoomId) return room;
+
+            const messages = room.messages.filter(
+              (message) => message.id !== optimisticId,
+            );
+            const lastMessage =
+              messages.at(-1)?.text ?? room.lastMessage ?? "";
+
+            return {
+              ...room,
+              messages,
+              lastMessage,
+            };
+          }),
+        );
+        setInputText(text);
+        return;
+      }
+
+      const { data } = result;
+      setChats((prev) =>
+        prev.map((room) =>
+          room.id === activeRoomId
+            ? {
+                ...room,
+                lastMessage: data.content,
+                timestamp: data.createdAt,
+                messages: room.messages.map((message) =>
+                  message.id === optimisticId
+                    ? {
+                        ...message,
+                        id: data.id,
+                        text: data.content,
+                        timestamp: data.createdAt,
+                      }
+                    : message,
+                ),
+              }
+            : room,
+        ),
+      );
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "發送訊息時發生錯誤";
+      toast.error(msg);
+      setChats((prev) =>
+        prev.map((room) => {
+          if (room.id !== activeRoomId) return room;
+
+          const messages = room.messages.filter(
+            (message) => message.id !== optimisticId,
+          );
+          const lastMessage = messages.at(-1)?.text ?? room.lastMessage ?? "";
+
+          return {
+            ...room,
+            messages,
+            lastMessage,
+          };
+        }),
+      );
+      setInputText(text);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Build interleaved message + separator render list for the active room
   const renderList = buildMessageRenderList(activeRoom.messages);
 
-  return (
-    <AlertDialog
-      open={isReportOpen}
-      onOpenChange={(open) => {
-        setIsReportOpen(open);
-        if (!open) {
-          setReportCategory("");
-          setReportDetails("");
-        }
-      }}
-    >
-      <>
-        {/* 1. Desktop View */}
-        <motion.div
-          ref={desktopConsoleRef}
-          data-chat-console="true"
-          initial={{ opacity: 0, y: 40, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 40, scale: 0.98 }}
-          className="hidden lg:flex fixed bottom-6 right-6 z-[200] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
-        >
+  const chatConsoleLayer = (
+    <>
+      {/* 1. Desktop View */}
+      <motion.div
+        ref={desktopConsoleRef}
+        data-chat-console="true"
+        initial={{ opacity: 0, y: 40, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 40, scale: 0.98 }}
+        className="hidden lg:flex fixed bottom-6 right-6 z-[500] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
+      >
           {/* Left column: room list */}
           <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
             <div className="p-3 border-b border-[rgba(237,232,224,0.06)] shrink-0 flex items-center justify-between gap-1.5 h-12">
@@ -665,7 +782,11 @@ export function GlobalChatConsole() {
               ref={scrollRef}
               className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
             >
-              <MessageThread renderList={renderList} />
+              <MessageThread
+                renderList={renderList}
+                currentUserId={currentUserId}
+                activeRoomId={activeRoomId}
+              />
             </div>
 
             <AntiScamDisclaimer />
@@ -683,10 +804,10 @@ export function GlobalChatConsole() {
               />
               <button
                 type="submit"
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() || isSending}
                 className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
               >
-                發送 ⚡
+                {isSending ? "發送中…" : "發送 ⚡"}
               </button>
             </form>
           </div>
@@ -699,7 +820,7 @@ export function GlobalChatConsole() {
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="lg:hidden fixed inset-0 z-[150] bg-[#17130f] flex flex-col"
+          className="lg:hidden fixed inset-0 z-[500] bg-[#17130f] flex flex-col"
         >
           {mobileView === "LIST" ? (
             <div className="flex flex-col h-full">
@@ -884,7 +1005,11 @@ export function GlobalChatConsole() {
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
               >
-                <MobileMessageThread renderList={renderList} />
+                <MobileMessageThread
+                  renderList={renderList}
+                  currentUserId={currentUserId}
+                  activeRoomId={activeRoomId}
+                />
               </div>
 
               <AntiScamDisclaimer />
@@ -902,16 +1027,30 @@ export function GlobalChatConsole() {
                 />
                 <button
                   type="submit"
-                  disabled={!inputText.trim()}
-                  className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl cursor-pointer focus:outline-none"
+                  disabled={!inputText.trim() || isSending}
+                  className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
                 >
-                  發送
+                  {isSending ? "發送中…" : "發送"}
                 </button>
               </form>
             </div>
           )}
         </motion.div>
-      </>
+    </>
+  );
+
+  return (
+    <AlertDialog
+      open={isReportOpen}
+      onOpenChange={(open) => {
+        setIsReportOpen(open);
+        if (!open) {
+          setReportCategory("");
+          setReportDetails("");
+        }
+      }}
+    >
+      {isMounted ? createPortal(chatConsoleLayer, document.body) : null}
 
       {/* Report dialog */}
       <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_12px_40px_rgba(239,68,68,0.15)] rounded-2xl max-w-sm p-6 animate-scaleUp">

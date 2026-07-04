@@ -33,7 +33,7 @@
 | Column | Settings UI label | Notes |
 |--------|-------------------|-------|
 | `display_name` | 顯示名稱 | Required non-empty; **unique** index `profiles_display_name_lower_idx` still enforced at DB |
-| `username` | 用戶名 (Handle) | Optional; 3–24 chars `[A-Za-z0-9_-]`; unique when set |
+| `username` | 用戶名 (Handle) | Auto-set on signup (`user_<random>` — see [auth-login-register](../auth-login-register/backend.md)); editable here; 3–24 chars `[A-Za-z0-9_-]`; unique when set |
 | `short_description` | 個人簡介 | Optional; max 280 chars |
 | `avatar_path` | (not on settings page yet) | Default `/asset/default-avator.webp` for new rows |
 | `auth.users.email` | 電郵地址 | Read-only in UI |

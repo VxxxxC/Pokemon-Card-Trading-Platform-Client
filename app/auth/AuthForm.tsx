@@ -186,7 +186,6 @@ export function AuthForm() {
   const [remember, setRemember] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isMerchant, setIsMerchant] = useState(false);
-  const [registerUsername, setRegisterUsername] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
 
   // ── 🟢 核心狀態加裝：商戶審批成功攔截看板 ──
@@ -219,14 +218,12 @@ export function AuthForm() {
   >(async (prev, formData) => {
     const merchantSelected = formData.get("isMerchant") === "true";
     const fields = {
-      username: ((formData.get("username") as string | null) ?? "").trim(),
       email: ((formData.get("email") as string | null) ?? "").trim(),
       password: (formData.get("password") as string | null) ?? "",
       confirmPassword: (formData.get("confirmPassword") as string | null) ?? "",
       agreeTerms: formData.get("agreeTerms") === "true",
     };
 
-    setRegisterUsername(fields.username);
     setRegisterEmail(fields.email);
     setAgreeTerms(fields.agreeTerms);
 
@@ -430,17 +427,6 @@ export function AuthForm() {
             />
           </div>
 
-          <Field label="用戶名稱" error={errors.username}>
-            <input
-              type="text"
-              name="username"
-              autoComplete="username"
-              placeholder="hkcardvaultr_jp"
-              value={registerUsername}
-              onChange={(e) => setRegisterUsername(e.target.value)}
-              className={inputClass(!!errors.username)}
-            />
-          </Field>
           <Field label="電子郵件" error={errors.email}>
             <input
               type="email"

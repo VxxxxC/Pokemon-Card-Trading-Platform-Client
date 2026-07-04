@@ -48,6 +48,7 @@ type SubSortKey = ProductListingSortKey;
 
 type ProductDetailClientProps = {
   product: MarketplaceProductDetail;
+  currentUserId?: string | null;
 };
 
 const chartConfig = {
@@ -95,7 +96,10 @@ function toExecutionSlideOverCard(
   };
 }
 
-export function ProductDetailClient({ product }: ProductDetailClientProps) {
+export function ProductDetailClient({
+  product,
+  currentUserId = null,
+}: ProductDetailClientProps) {
   const router = useRouter();
   const mockRole = useUIStore((state) => state.mockRole);
   const isGuest = mockRole === "GUEST";
@@ -583,6 +587,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 ) : (
                   orderBookRows.map((row, idx) => {
                     const globalIdx = (orderPage - 1) * ordersPerPage + idx;
+                    const isOwnListing =
+                      currentUserId != null &&
+                      row.order.sellerId === currentUserId;
 
                     return (
                       <AskOrderBookRow
@@ -590,7 +597,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                         order={row.order}
                         idx={globalIdx}
                         productId={product.productId}
+                        isOwnListing={isOwnListing}
                         onOpenGate={(o) => {
+                          if (
+                            currentUserId != null &&
+                            o.sellerId === currentUserId
+                          ) {
+                            return;
+                          }
                           setGateOrder(o);
                           setGateListingId(row.listingId);
                           setIsGateOpen(true);

@@ -6,6 +6,13 @@
 - **Frontend:** ✅ **Wired** — live search, updated filters, grid card baseline
 - **Your focus:** Grid card polish (listing count, price spread, seller chip), filter styling pass. Product detail **catalog** done — see [marketplace-product-detail/frontend.md](../marketplace-product-detail/frontend.md)
 
+## Changelog (2026-07-04)
+
+| Area | What changed |
+|------|----------------|
+| **`MarketplaceCard` own-listing guard** | Compares `listing.sellerId` with `useCurrentUserId()`; gold ring + **我的掛單** badge + seller **(你)** + disabled buy button |
+| **`useCurrentUserId`** | New hook — `getCurrentUserProfile()` on mount; used by grid card (product detail uses SSR `currentUserId` instead) |
+
 ## Changelog (2026-07-03)
 
 | Area | What changed |
@@ -42,8 +49,11 @@
 | Element | Behaviour |
 |---------|-----------|
 | Image overlay top-left | `RarityBadge` when `listing.rarity` is non-null |
+| Image overlay bottom-left | **我的掛單** badge when `listing.sellerId === currentUserId` |
 | Image overlay top-right | `WishlistButton` |
-| Body | Name, card no, price, delta, seller — **no grade row** |
+| Card wrapper | Gold ring when own listing |
+| Body | Name, card no, price, delta, seller — **no grade row**; seller shows **(你)** when own listing |
+| Footer CTA | `BuyButton` for others; disabled **我的掛單 · 無法出價** for own listing |
 | `MarketplaceListing.grade` | Still on type for `BuyButton` / mocks; not rendered |
 
 ### Filters: `app/components/marketplace/filters/AccordionFilters.tsx`
@@ -83,6 +93,19 @@
 | Filters | `hideTypeSection={true}` — no seller source section |
 | Grade match | `matchesAnyGradeFilter()` from `lib/grading/options.ts` |
 | Rarities | Loaded via same `AccordionFilters` DB fetch |
+
+```ts
+import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
+
+// Inside MarketplaceCard:
+const currentUserId = useCurrentUserId();
+const isOwnListing =
+  currentUserId != null &&
+  listing.sellerId != null &&
+  listing.sellerId === currentUserId;
+```
+
+**Note:** Grid search RPC returns `seller_id` for the **lowest-price** listing per product. Own-listing UI appears only when that lowest listing belongs to the logged-in user.
 
 ## Module layout
 
@@ -142,6 +165,7 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 - [x] Search, price range, sort, pagination
 - [x] Empty state + reset filters
 - [x] Homepage hero → `/marketplace?q=…`
+- [x] Own listing on grid card — badge, ring, disabled buy (when lowest listing is seller's)
 - [ ] Listing count / price spread on card
 - [ ] Product detail order book / chart / history ([detail handoff](../marketplace-product-detail/frontend.md))
 - [ ] Raw condition-specific filter (blocked — no `listings.condition` column)
@@ -164,3 +188,4 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 7. `?rarity=SAR` (or any catalog value) — pre-selects matching chip.
 8. Reset filters — clears rarities, grades, seller types, query, price slider.
 9. Merchant storefront `/marketplace/[id]` — grade filter still works on mock data.
+10. Log in as seller with lowest-price listing on a product — grid card shows **我的掛單**; buy button disabled.

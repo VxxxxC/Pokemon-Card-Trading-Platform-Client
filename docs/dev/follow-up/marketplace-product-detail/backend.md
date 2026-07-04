@@ -6,6 +6,14 @@
 - **Frontend:** ✅ Catalog · ✅ order book · ✅ sold history · ✅ chart + banner · ✅ slide-over listing photos
 - **Partner:** Optional follow-ups — grid market price, order-book RAW condition filter, slide-over lightbox
 
+## Changelog (2026-07-04)
+
+| Change | Detail |
+|--------|--------|
+| **Own-listing guard (no new RPC)** | Frontend compares `listings.seller_id` (exposed as `sellerId` on order-book rows) with authenticated user id |
+| **Session on product detail SSR** | `getOptionalAuthUser()` in `app/marketplace/product/[id]/page.tsx` — CI-safe (`null` when env unset) |
+| **Grid card session (client)** | `useCurrentUserId` → `getCurrentUserProfile()` for `MarketplaceCard` on `/marketplace` |
+
 ## Changelog (2026-07-03)
 
 | Change | Detail |
@@ -26,6 +34,7 @@
 ```
 SSR:
   getMarketplaceProductDetail(productId)          ← page.tsx
+  getOptionalAuthUser()                           ← page.tsx → currentUserId prop
 
 Client (parallel on mount):
   useMarketplaceProductListings({ filters })      ← order book refetch on filter change (slim)
@@ -38,12 +47,25 @@ Client (on slide-over open only):
 
 **Why on-demand listing detail:** Products may have 200+ active listings. Order book RPC stays paginated and lightweight; full `listings.images` (4–6 URLs) loads only when user opens `ExecutionSlideOver`.
 
+### Own-listing ownership contract
+
+| Field | Source | Notes |
+|-------|--------|-------|
+| `sellerId` on order-book row | `get_marketplace_product_listings` → `listings.seller_id` | UUID; matches `profiles.id` |
+| `currentUserId` (product detail) | `getOptionalAuthUser()?.id` | Server-passed; `null` for guest / CI |
+| `currentUserId` (grid card) | `getCurrentUserProfile()` via `useCurrentUserId` | Client fetch; `null` until resolved |
+
+**No server-side offer block yet** — UI prevents opening slide-over / buy button. Future `createOffer` action should reject `seller_id === auth.uid()` server-side.
+
 ---
 
 ## Files (backend track)
 
 | File | Purpose |
 |------|---------|
+| `lib/auth/session.ts` | `getOptionalAuthUser()` — product detail SSR |
+| `app/actions/profile.ts` | `getCurrentUserProfile()` — grid card client hook |
+| `app/lib/hooks/useCurrentUserId.ts` | Client hook wrapping profile action |
 | `app/actions/marketplace.ts` | Detail, listings, **listing detail**, trade history, market prices |
 | `app/lib/marketplace/types.ts` | All marketplace DTOs incl. `MarketplaceListingDetail` |
 | `lib/listings/images.ts` | `ListingImage` JSONB contract + `parseListingImageUrls` |
@@ -177,6 +199,7 @@ See [INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md) — product detail manual
 |---------|------|
 | Order book RAW A/B/C/D | Listings schema — all raw share `grading_score = null` |
 | Grid card market price | Optional batch read |
+| Server-side offer rejection | UI guard only; add when offer mutation ships |
 | 24h price delta | Only `market_trend_30d` in cache |
 | Catalog multi-image gallery | Catalog single `image_url`; listing photos via `getMarketplaceListingDetail` |
 | Images in order book RPC | Rejected — use on-demand listing detail for 200+ listings scale |

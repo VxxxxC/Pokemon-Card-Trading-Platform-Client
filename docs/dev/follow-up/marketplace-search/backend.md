@@ -6,6 +6,13 @@
 - **Frontend:** ✅ Wired — `/marketplace` filters + grid card baseline
 - **Partner:** Card polish (listing count, price spread) + product detail — see [frontend.md](./frontend.md)
 
+## Changelog (2026-07-04)
+
+| Change | Detail |
+|--------|--------|
+| **Own-listing UI (frontend)** | `MarketplaceProductRow.sellerId` (lowest listing's `seller_id`) used for grid card ownership — no backend change |
+| **Session** | `getCurrentUserProfile()` reused via `useCurrentUserId` on client grid |
+
 ## Changelog (2026-07-03)
 
 | Change | Detail |

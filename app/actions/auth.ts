@@ -17,10 +17,10 @@ import {
   mapPasswordUpdateAuthError,
 } from "@/lib/auth/password-errors";
 import { getSiteUrl } from "@/lib/auth/site-url";
+import { generateUniqueUsername } from "@/lib/auth/username";
 
 function parseRegisterFields(formData: FormData) {
   return {
-    username: ((formData.get("username") as string | null) ?? "").trim(),
     email: ((formData.get("email") as string | null) ?? "").trim(),
     password: (formData.get("password") as string | null) ?? "",
     confirmPassword: (formData.get("confirmPassword") as string | null) ?? "",
@@ -83,14 +83,28 @@ async function isEmailTaken(email: string): Promise<boolean> {
   return false;
 }
 
-async function isUsernameTaken(username: string): Promise<boolean> {
+async function isProfileUsernameTaken(username: string): Promise<boolean> {
   const admin = createAdminClient();
-  const { data, error } = await admin.rpc("is_display_name_available", {
-    name: username,
-  });
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id")
+    .ilike("username", username.trim())
+    .limit(1);
 
   if (error) throw error;
-  return data === false;
+  return (data?.length ?? 0) > 0;
+}
+
+async function assignGeneratedUsername(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const username = await generateUniqueUsername(isProfileUsernameTaken);
+  const { error } = await admin
+    .from("profiles")
+    .update({ username })
+    .eq("id", userId)
+    .is("username", null);
+
+  if (error) throw error;
 }
 
 export async function login(
@@ -128,17 +142,10 @@ export async function registerMember(
   if (Object.keys(errors).length) return errors;
 
   try {
-    const [emailTaken, usernameTaken] = await Promise.all([
-      isEmailTaken(fields.email),
-      isUsernameTaken(fields.username),
-    ]);
+    const emailTaken = await isEmailTaken(fields.email);
 
     if (emailTaken) {
       return { email: "此電子郵件已被註冊" };
-    }
-
-    if (usernameTaken) {
-      return { username: "此用戶名稱已被使用" };
     }
   } catch {
     return { email: "無法驗證帳戶資料，請稍後再試" };
@@ -150,7 +157,7 @@ export async function registerMember(
     password: fields.password,
     options: {
       data: {
-        display_name: fields.username,
+        display_name: fields.email.split("@")[0],
         role: "member",
       },
     },
@@ -162,6 +169,12 @@ export async function registerMember(
 
   if (!data.user) {
     return { email: "註冊失敗，請稍後再試" };
+  }
+
+  try {
+    await assignGeneratedUsername(data.user.id);
+  } catch {
+    return { email: "帳戶已建立，但用戶名稱設定失敗，請聯絡客服" };
   }
 
   const role = await resolveCurrentDemoRole();

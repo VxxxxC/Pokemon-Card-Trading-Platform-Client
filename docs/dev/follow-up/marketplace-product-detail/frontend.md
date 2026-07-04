@@ -6,6 +6,13 @@
 - **Frontend:** ✅ Catalog · ✅ order book · ✅ trade history · ✅ market price + chart · ✅ `ExecutionSlideOver` listing photos
 - **Your focus:** Polish, grid card market price (optional), slide-over tap-to-enlarge (optional)
 
+## Changelog (2026-07-04)
+
+| Area | Shipped |
+|------|---------|
+| **Own-listing guard** | Sellers cannot open offer slide-over on their own order-book rows; visual **我的掛單** badge + disabled interaction |
+| **Session wiring** | `page.tsx` passes `currentUserId` from `getOptionalAuthUser()` → `ProductDetailClient` |
+
 ## Changelog (2026-07-03)
 
 | Area | Shipped |
@@ -24,8 +31,9 @@
 
 | File | Role |
 |------|------|
-| `app/marketplace/product/[id]/page.tsx` | Server catalog fetch |
-| `app/marketplace/product/[id]/ProductDetailClient.tsx` | Full client layout; `gateListingId` + `gateOrder` on row click |
+| `app/marketplace/product/[id]/page.tsx` | Server catalog fetch + `currentUserId` from session |
+| `app/marketplace/product/[id]/ProductDetailClient.tsx` | Full client layout; `gateListingId` + `gateOrder` on row click; own-listing guard |
+| `app/components/marketplace/AskOrderBookRow.tsx` | Order book row; `isOwnListing` visual + click guard |
 | `app/components/transactions/ExecutionSlideOver.tsx` | Negotiation slide-over; listing photo grid |
 | `app/lib/hooks/useMarketplaceProductListings.ts` | Order book (slim rows — no images) |
 | `app/lib/hooks/useMarketplaceListingDetail.ts` | Listing gallery + description (fetch on slide-over open) |
@@ -40,10 +48,20 @@
 ### Server page
 
 ```tsx
-const result = await getMarketplaceProductDetail(id);
+const [result, user] = await Promise.all([
+  getMarketplaceProductDetail(id),
+  getOptionalAuthUser(),
+]);
 if (!result.success) notFound();
-return <ProductDetailClient product={result.data} />;
+return (
+  <ProductDetailClient
+    product={result.data}
+    currentUserId={user?.id ?? null}
+  />
+);
 ```
+
+**Ownership rule:** compare `currentUserId` with order-book `sellerId` (same as `listings.seller_id` / `profiles.id`). Guest → `currentUserId` is `null`; all rows remain clickable.
 
 ### Display mapping (current)
 
@@ -64,12 +82,25 @@ return <ProductDetailClient product={result.data} />;
 
 ```tsx
 // ProductDetailClient.tsx
+const isOwnListing =
+  currentUserId != null && row.order.sellerId === currentUserId;
+
 onOpenGate={(o) => {
+  if (currentUserId != null && o.sellerId === currentUserId) return;
   setGateOrder(o);
   setGateListingId(row.listingId);
   setIsGateOpen(true);
 }}
 
+<AskOrderBookRow
+  isOwnListing={isOwnListing}
+  ...
+/>
+```
+
+Own rows: gold border, **我的掛單** badge, `cursor-default`, helper text below row. Slide-over never opens for own listings.
+
+```tsx
 <ExecutionSlideOver
   isOpen={isGateOpen}
   listingId={gateListingId}
@@ -104,6 +135,7 @@ They are **not** synced. Market chips appear only when `availableGrades.length >
 - [x] Per-grade market price picker (DB availability)
 - [x] Sold history + guest blur
 - [x] **`ExecutionSlideOver`** — on-demand listing images; 3:4 thumbnail grid (not carousel)
+- [x] **Own-listing guard** — order book + `AskOrderBookRow`; session `currentUserId` from server page
 
 ### Remaining
 
@@ -133,6 +165,7 @@ They are **not** synced. Market chips appear only when `availableGrades.length >
 
 - [x] Live listings, filters, sort, pagination
 - [x] 最優現貨掛牌價 from filtered set
+- [x] Own listing rows visually distinct; not clickable; no offer slide-over
 
 ### Market price + chart
 
@@ -166,6 +199,7 @@ They are **not** synced. Market chips appear only when `availableGrades.length >
 6. Click order book row → slide-over opens; skeleton grid → seller photos (4–6) in 3:4 grid.
 7. Listing with no uploaded images → catalog fallback image in grid.
 8. Switch to another listing row → new `listingId` fetch; grid updates.
+9. Log in as seller with listing on product → own row shows **我的掛單**; click does nothing; other sellers' rows still open slide-over.
 
 ---
 

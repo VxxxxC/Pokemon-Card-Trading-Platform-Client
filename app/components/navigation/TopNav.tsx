@@ -5,8 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
-// 🟢 從全域中央大腦引入狀態
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 
@@ -30,7 +28,6 @@ export function TopNav() {
   // 從 Zustand 接入受控雷達狀態
   const {
     chats,
-    isChatOpen,
     setIsChatOpen,
     setActiveRoomId,
     activateRoomById,
@@ -237,9 +234,6 @@ export function TopNav() {
             )}
           </div>
         </div>
-
-        {/* 頂級改良：免傳遞參數，自動實時追隨 Zustand 雷達 */}
-        <AnimatePresence>{isChatOpen && <GlobalChatConsole />}</AnimatePresence>
       </header>
     </>
   );

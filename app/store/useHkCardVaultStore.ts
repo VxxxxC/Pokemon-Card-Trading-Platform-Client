@@ -10,6 +10,9 @@ export interface SpecialTransactionData {
   buyerId: string;
   sellerId: string;
   sellerName: string;
+  offerId?: string;
+  modifiedCount?: number;
+  imageUrl?: string;
   initialStatus?: "pending" | "accepted" | "rejected" | "countered";
 }
 
@@ -103,6 +106,41 @@ interface HkCardVaultStore {
     buyerName: string;
     buyerId: string;
     isInstantTake: boolean;
+  }) => void;
+
+  openOfferChatSession: (payload: {
+    roomId: string;
+    partnerId: string;
+    partnerName: string;
+    buyerId: string;
+    buyerName: string;
+    sellerId: string;
+    sellerName: string;
+    cardName: string;
+    cardId: string;
+    offerId: string;
+    offerPrice: number;
+    modifiedCount?: number;
+    messageId: string;
+    messageContent: string;
+    messageCreatedAt: string;
+    offerStatus: "pending" | "accepted" | "rejected" | "cancelled";
+  }) => void;
+
+  applyOfferModification: (payload: {
+    roomId: string;
+    offerId: string;
+    newPrice: number;
+    modifiedCount: number;
+    messageId: string;
+    messageContent: string;
+    messageCreatedAt?: string;
+  }) => void;
+
+  applyOfferAccepted: (payload: {
+    roomId: string;
+    offerId: string;
+    messageId: string;
   }) => void;
 }
 
@@ -312,4 +350,156 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         mobileView: "CHAT",
       };
     }),
+
+  openOfferChatSession: (payload) =>
+    set((state) => {
+      const modifiedCount = payload.modifiedCount ?? 0;
+      const initialStatus: SpecialTransactionData["initialStatus"] =
+        modifiedCount >= 1
+          ? "countered"
+          : payload.offerStatus === "accepted"
+            ? "accepted"
+            : payload.offerStatus === "rejected"
+              ? "rejected"
+              : "pending";
+
+      const specialMsg: Message = {
+        id: payload.messageId,
+        sender: "me",
+        text: payload.messageContent,
+        timestamp: payload.messageCreatedAt,
+        type: "special_transaction",
+        specialData: {
+          cardName: payload.cardName,
+          cardId: payload.cardId,
+          offerPrice: payload.offerPrice,
+          buyerName: payload.buyerName,
+          buyerId: payload.buyerId,
+          sellerId: payload.sellerId,
+          sellerName: payload.sellerName,
+          offerId: payload.offerId,
+          modifiedCount,
+          initialStatus,
+        },
+      };
+
+      const exists = state.chats.some((c) => c.id === payload.roomId);
+      let updatedChats = [...state.chats];
+
+      if (exists) {
+        updatedChats = state.chats.map((room) => {
+          if (room.id !== payload.roomId) return room;
+
+          const hasOfferMsg = room.messages.some((m) => m.id === payload.messageId);
+
+          return {
+            ...room,
+            partnerId: payload.partnerId,
+            partnerName: payload.partnerName,
+            lastMessage: specialMsg.text,
+            unreadCount: 0,
+            messages: hasOfferMsg ? room.messages : [...room.messages, specialMsg],
+          };
+        });
+      } else {
+        const newRoom: ChatRoom = {
+          id: payload.roomId,
+          partnerId: payload.partnerId,
+          partnerName: payload.partnerName,
+          partnerTier: "認證賣家",
+          lastMessage: specialMsg.text,
+          unreadCount: 0,
+          timestamp: payload.messageCreatedAt,
+          messages: [
+            {
+              id: "sys-" + payload.messageId,
+              sender: "system",
+              text: "🔒 已建立與 " + payload.partnerName + " 的安全交易對話通道。",
+              timestamp: payload.messageCreatedAt,
+            },
+            specialMsg,
+          ],
+        };
+        updatedChats = [newRoom, ...state.chats];
+      }
+
+      return {
+        chats: updatedChats,
+        activeRoomId: payload.roomId,
+        isChatOpen: true,
+        mobileView: "CHAT",
+      };
+    }),
+
+  applyOfferModification: (payload) =>
+    set((state) => ({
+      chats: state.chats.map((room) => {
+        if (room.id !== payload.roomId) return room;
+
+        const hasNewMsg = room.messages.some((m) => m.id === payload.messageId);
+
+        const updatedMessages = room.messages.map((m) => {
+          if (
+            m.type === "special_transaction" &&
+            m.specialData?.offerId === payload.offerId
+          ) {
+            return {
+              ...m,
+              specialData: {
+                ...m.specialData,
+                offerPrice: payload.newPrice,
+                modifiedCount: payload.modifiedCount,
+                initialStatus: "countered" as const,
+              },
+            };
+          }
+          return m;
+        });
+
+        const modificationNotice: Message = {
+          id: payload.messageId,
+          sender: "me",
+          text: payload.messageContent,
+          timestamp: payload.messageCreatedAt ?? new Date().toISOString(),
+          type: "text",
+        };
+
+        return {
+          ...room,
+          lastMessage: payload.messageContent,
+          messages: hasNewMsg
+            ? updatedMessages
+            : [...updatedMessages, modificationNotice],
+        };
+      }),
+    })),
+
+  applyOfferAccepted: (payload) =>
+    set((state) => ({
+      chats: state.chats.map((room) => {
+        if (room.id !== payload.roomId) return room;
+
+        const updatedMessages = room.messages.map((m) => {
+          if (
+            m.type === "special_transaction" &&
+            m.specialData?.offerId === payload.offerId
+          ) {
+            return {
+              ...m,
+              specialData: {
+                ...m.specialData,
+                initialStatus: "accepted" as const,
+              },
+            };
+          }
+          return m;
+        });
+
+        return {
+          ...room,
+          lastMessage: "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）",
+          messages: updatedMessages,
+        };
+      }),
+    })),
 }));

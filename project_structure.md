@@ -3,11 +3,12 @@
 ## 📊 項目統計
 
 - **根目錄層級**: 5 層
-- **主要目錄**: 11 個（`app/`, `components/`, `lib/`, `types/`, `supabase/`, `docs/`, `public/`, `.stitch/`, `.agents/`, `.github/`, `.vscode/`）
-- **總檔案數**: 350+ 個（排除 `node_modules`）
+- **主要目錄**: 12 個（`app/`, `components/`, `lib/`, `types/`, `scripts/`, `supabase/`, `docs/`, `public/`, `.stitch/`, `.agents/`, `.github/`, `.vscode/`）
+- **總檔案數**: 420+ 個（排除 `node_modules`、`.next`）
+- **TypeScript/TSX 檔案**: 210+ 個
 - **語言**: TypeScript/TSX, CSS, JSON, Markdown, SQL
 - **框架**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui, Zustand, Serwist (PWA)
-- **後端整合**: **進行中** — Supabase（Auth、RLS、RPC、Server Actions）；部分 UI 仍用 mock data
+- **後端整合**: **進行中** — Supabase（Auth、RLS、RPC、Server Actions、Cron）；出價協商（offers）已接後端；部分 profile 訂單 / checkout UI 仍用 mock data
 - **Package manager**: Bun only（`bun.lock`；見 `.cursorrules` §7）
 
 ---
@@ -17,7 +18,7 @@
 ```
 Pokemon-Card-Trading-Platform-Client/
 ├─ 🔧 配置 & 規範
-│   ├── package.json                 # scripts: dev, build, build:ci, lint, supabase:types
+│   ├── package.json                 # scripts: dev, build, build:ci, lint, supabase:types, test:catalog-search
 │   ├── next.config.ts
 │   ├── tsconfig.json
 │   ├── eslint.config.mjs
@@ -31,7 +32,10 @@ Pokemon-Card-Trading-Platform-Client/
 ├─ 📁 app/                           # Next.js App Router（路由 + UI + store + hooks）
 ├─ 🧩 components/                    # shadcn/ui + 跨路由共用元件
 ├─ 📦 lib/                           # 後端輔助、Supabase client、domain helpers
-├─ 🗄️ types/supabase.ts              # Supabase CLI 生成型別（唯一 DB schema 來源）
+├─ 🗄️ types/                         # Supabase CLI 生成型別 + 衍生文件
+│   ├── supabase.ts                  # 唯一 DB schema 來源
+│   └── supabase.md                  # `bun run supabase:types` 自動生成
+├─ 🛠️ scripts/                       # 開發 / CI 輔助腳本
 ├─ 🐘 supabase/                      # migrations + config.toml
 ├─ 📖 docs/                          # 需求、RBAC、dev handoff
 ├─ 🎨 .stitch/                       # Stitch 設計系統
@@ -48,7 +52,7 @@ Pokemon-Card-Trading-Platform-Client/
 app/
 ├── 根層級
 │   ├── page.tsx                     # 首頁
-│   ├── layout.tsx                   # 全局 Layout
+│   ├── layout.tsx                   # 全局 Layout（含 GlobalChatOverlay、ListingSubmitOverlay）
 │   ├── not-found.tsx                # 404
 │   ├── globals.css
 │   ├── manifest.json
@@ -58,11 +62,14 @@ app/
 ├── actions/                         # ⭐ Server Actions（前後端契約）
 │   ├── auth.ts                      # 登入 / 註冊 / 密碼重設
 │   ├── profile.ts                   # 用戶設定、頭像
-│   ├── marketplace.ts               # 搜尋、商品詳情、掛單、成交紀錄
+│   ├── marketplace.ts               # 搜尋、商品詳情、掛單簿、成交紀錄、市場價格
 │   ├── productCatalog.ts            # 目錄搜尋（Hero / AddAsset）
-│   └── listings.ts                  # 上架提交（Bunny + listings insert）
+│   ├── listings.ts                  # 上架提交（Bunny + listings insert）
+│   └── offers.ts                    # 出價 / 接受 / 修改（rpc_make_offer 等）
 │
 ├── api/
+│   ├── cron/
+│   │   └── aggregate-prices/route.ts  # Cron Job 2：快照聚合 → market_prices cache
 │   └── listings/upload-image/route.ts
 │
 ├── auth/                            # 認證
@@ -84,7 +91,7 @@ app/
 │   ├── MarketplaceChrome.tsx        # 商品詳情頁隱藏全局 Nav
 │   ├── product/[id]/
 │   │   ├── page.tsx                 # SSR catalog + ProductDetailClient
-│   │   └── ProductDetailClient.tsx  # 掛單簿、成交紀錄、圖表 skeleton
+│   │   └── ProductDetailClient.tsx  # 掛單簿、成交紀錄、市場價 banner、價格圖表
 │   ├── [id]/page.tsx                # 商戶櫥窗（mock）
 │   ├── [id]/product/[productId]/page.tsx
 │   └── payment-status/page.tsx
@@ -98,12 +105,15 @@ app/
 │
 ├── lib/                             # App 層工具（非根 lib/）
 │   ├── marketplace/
-│   │   ├── types.ts                 # 搜尋 / 詳情 / 掛單型別
+│   │   ├── types.ts                 # 搜尋 / 詳情 / 掛單 / 市場價型別
 │   │   └── searchParsers.ts
 │   ├── hooks/
+│   │   ├── useCurrentUserId.ts                   # 當前登入 user id（marketplace / 出價 guard）
 │   │   ├── useMarketplaceSearch.ts
 │   │   ├── useMarketplaceProductListings.ts
 │   │   ├── useMarketplaceProductTradeHistory.ts
+│   │   ├── useMarketplaceProductMarketPrice.ts   # 市場價 banner + 圖表
+│   │   ├── useMarketplaceListingDetail.ts        # 掛單詳情（ExecutionSlideOver）
 │   │   ├── useProductCatalogSearch.ts
 │   │   ├── useHeroMarketplaceSearch.ts
 │   │   ├── usePWAEnvironment.ts
@@ -123,9 +133,10 @@ app/
     ├── marketplace/                 # MarketplaceCard, AccordionFilters, AskOrderBookRow…
     ├── home/                        # HeroSearch（接 catalog search）
     ├── shared/                      # AddAssetModal（上架）, MarketSkeletons…
-    ├── navigation/                  # TopNav, BottomNav…
-    ├── transactions/                # ExecutionSlideOver
-    └── …                            # profile, merchant, pwa, chat, cards…
+    ├── navigation/                  # TopNav, BottomNav, MobileHeader…
+    ├── transactions/                # ExecutionSlideOver（買家出價入口）
+    ├── chat/                        # GlobalChatOverlay, GlobalChatConsole, OfferCard, SpecialTransactionMessage
+    └── …                            # profile, merchant, pwa, cards…
 ```
 
 ---
@@ -137,20 +148,22 @@ lib/
 ├── supabase/
 │   ├── env.ts                       # getSupabasePublicEnv(), isSupabaseConfigured()
 │   ├── server.ts                    # createClient() — SSR / Server Actions
-│   ├── admin.ts                     # service_role（僅 server）
+│   ├── admin.ts                     # service_role（僅 server / cron）
 │   └── middleware.ts                # updateSession()
 │
 ├── auth/
 │   ├── session.ts                   # getOptionalAuthUser(), resolveCurrentDemoRole()
 │   ├── roles.ts                     # RBAC 路由
 │   ├── validation.ts
+│   ├── username.ts                  # 註冊時唯一 username 候選生成
 │   ├── password-errors.ts
 │   └── site-url.ts
 │
 ├── marketplace/
 │   ├── filter-options.ts
 │   ├── product-listing-filters.ts   # 掛單簿 grade chip → RPC JSON
-│   └── listing-display.ts           # 等級標籤、相對成交時間
+│   ├── listing-display.ts           # 等級標籤、相對成交時間
+│   └── market-price.ts              # 市場價聚合、grade 正規化、圖表資料
 │
 ├── catalog/
 │   └── element-types.ts             # 卡牌屬性 → 繁中
@@ -182,13 +195,23 @@ lib/
 
 ```
 components/
-├── ui/                              # shadcn 基礎元件
+├── ui/                              # shadcn 基礎元件（含 chart.tsx）
 ├── reui/                            # badge, stepper
 ├── auth/PasswordUpdatedToast.tsx
 ├── errors/NotFoundContent.tsx
 ├── listings/ListingSubmitOverlay.tsx
 ├── shared/RelativeDateTime.tsx      # 成交紀錄相對時間
 └── examples/
+```
+
+---
+
+## 🛠️ scripts/
+
+```
+scripts/
+├── generate-supabase-md.ts          # `supabase:types` 後自動生成 types/supabase.md
+└── test-product-catalog-search.ts   # `bun run test:catalog-search` — DB 連線驗證
 ```
 
 ---
@@ -211,10 +234,18 @@ supabase/
     ├── 20260703150000_listings_service_role_grants.sql
     ├── 20260703160000_listing_stats_service_role_grants.sql
     ├── 20260703170000_get_marketplace_product_listings.sql   # 商品詳情掛單簿 RPC
-    └── 20260703180000_member_orders_trade_history_read.sql   # 成交紀錄 RLS
+    ├── 20260703180000_member_orders_trade_history_read.sql   # 成交紀錄 RLS
+    ├── 20260703210000_market_prices_service_role_grants.sql   # cron 寫入 market_prices
+    ├── 20260703220000_product_grading_market_prices_public_read.sql  # 圖表 / banner 公開讀
+    ├── 20260704130000_rpc_make_offer.sql                      # 原子出價 + chat room + message
+    ├── 20260704140000_profiles_username_on_signup.sql         # 註冊觸發器自動分配 username
+    ├── 20260704150000_rpc_accept_offer.sql                    # 賣家接受 → hold listing + member_orders
+    ├── 20260704160000_rpc_make_offer_single_pending.sql       # 每買家每掛單僅一筆 active offer
+    ├── 20260704170000_rpc_modify_offer.sql                    # 買家修改 pending offer
+    └── 20260704180000_offers_listing_id_user_centric_rooms.sql  # offers.listing_id + user-centric chat rooms
 ```
 
-**Regenerate types:** `bun run supabase:types` → `types/supabase.ts`
+**Regenerate types:** `bun run supabase:types` → `types/supabase.ts` + `types/supabase.md`
 
 ---
 
@@ -231,9 +262,11 @@ docs/dev/
     ├── auth-password-recovery/
     ├── marketplace-search/
     ├── marketplace-product-detail/
+    ├── market-pricing-cron/         # Cron Job 2：價格快照聚合
     ├── product-catalog-search/
     ├── user-profile-settings/
     ├── role-based-routing/
+    ├── offers-negotiation/          # 出價 / 接受 / 修改 + 全局聊天 overlay
     └── wishlist/
 ```
 
@@ -258,10 +291,11 @@ docs/dev/
 | `/auth/forgot-password/complete` | 郵件連結後重設 | Supabase Auth |
 | `/auth/reset-password` | 已登入改密碼 | Supabase Auth |
 | `/marketplace` | 大盤搜尋 | `search_marketplace_products` RPC |
-| `/marketplace/product/[id]` | 商品詳情 | catalog + 掛單 RPC + 成交紀錄 |
+| `/marketplace/product/[id]` | 商品詳情 | catalog + 掛單 RPC + 成交紀錄 + 市場價 + 買家出價 |
 | `/profile/user/settings` | 用戶設定 | `getUserSettings` |
 | `/checkout/[id]` | 結帳 | mock（待整合） |
 | `/admin/*` | 管理後台 | mock + RBAC |
+| `/api/cron/aggregate-prices` | 市場價聚合 cron | `product_price_snapshots` → `product_grading_market_prices` |
 
 ---
 
@@ -269,14 +303,16 @@ docs/dev/
 
 | 模組 | 位置 | 狀態 |
 |------|------|------|
-| **Auth 登入 / 註冊** | `app/actions/auth.ts`, `app/auth/` | ✅ Supabase |
+| **Auth 登入 / 註冊** | `app/actions/auth.ts`, `app/auth/`, `lib/auth/username.ts` | ✅ Supabase（含註冊自動 username） |
 | **密碼重設** | `app/auth/forgot-password/`, `reset-password/` | ✅ Supabase |
 | **大盤搜尋** | `app/marketplace/page.tsx`, RPC v2 | ✅ Wired |
-| **商品詳情** | `app/marketplace/product/[id]/` | ✅ Catalog + 掛單簿 + 成交紀錄；⏳ 價格圖表 |
+| **商品詳情** | `app/marketplace/product/[id]/` | ✅ Catalog + 掛單簿 + 成交紀錄 + 市場價 banner + 圖表 |
+| **市場價聚合 (Cron)** | `app/api/cron/aggregate-prices/`, `lib/marketplace/market-price.ts` | ✅ Wired |
 | **用戶設定** | `app/profile/user/settings/` | ✅ Supabase profiles |
 | **卡牌上架** | `AddAssetModal`, `listings.ts`, Bunny | ✅ Backend ready |
+| **出價協商** | `app/actions/offers.ts`, `app/components/chat/` | 🟡 買家出價已接；賣家接受 / DB 聊天載入待完成 |
 | **結帳 / 願望清單** | checkout, wishlist UI | ⏳ Mock |
-| **Profile 訂單 / 聊天** | profile dashboards | ⏳ 多為 mock |
+| **Profile 訂單** | profile dashboards | ⏳ 多為 mock |
 
 ---
 
@@ -290,6 +326,7 @@ bunx tsc --noEmit
 bun run lint
 bun run build             # CI 等同此步
 bun run build:ci          # 本地模擬 CI（空 Supabase env）
+bun run test:catalog-search  # 可選：驗證 catalog DB 連線
 ```
 
 **Prerender 守則**（`.cursorrules` §8）：
@@ -321,11 +358,13 @@ bun run build:ci          # 本地模擬 CI（空 Supabase env）
 | 新增頁面 | `app/[route]/page.tsx` |
 | Server Action | `app/actions/` |
 | API Route | `app/api/` |
+| Cron / 背景任務 | `app/api/cron/` |
 | Domain helper | `lib/[domain]/` |
 | 客戶端 hook | `app/lib/hooks/` |
 | Supabase 型別 | `types/supabase.ts` |
 | Migration | `supabase/migrations/` |
 | 整合狀態 | `docs/dev/INTEGRATION_QUEUE.md` |
+| 出價協商 handoff | `docs/dev/follow-up/offers-negotiation/` |
 | API 契約 | `docs/dev/api.md` |
 | 開發守則 | `.cursorrules` |
 | CI 配置 | `.github/workflows/ci.yml` |
@@ -333,6 +372,6 @@ bun run build:ci          # 本地模擬 CI（空 Supabase env）
 
 ---
 
-**最後更新**: 2026-07-03  
-**版本**: Full-Depth v4.0  
+**最後更新**: 2026-07-04  
+**版本**: Full-Depth v4.2  
 **維護者**: HKCardVault 開發團隊

@@ -4,7 +4,6 @@ export type LoginFields = {
 };
 
 export type RegisterFields = {
-  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -12,8 +11,6 @@ export type RegisterFields = {
 };
 
 export type AuthFormErrors = Record<string, string>;
-
-const USERNAME_REGEX = /^[A-Za-z0-9_\-]{3,24}$/;
 
 /** Matches Supabase: lowercase, uppercase, digits, symbols, min 8 chars */
 export const PASSWORD_COMPLEXITY_REGEX =
@@ -35,15 +32,7 @@ export function validateLoginFields(fields: LoginFields): AuthFormErrors {
 
 export function validateRegisterFields(fields: RegisterFields): AuthFormErrors {
   const errors: AuthFormErrors = {};
-  const username = fields.username.trim();
   const email = fields.email.trim();
-
-  if (!username) {
-    errors.username = "請輸入用戶名稱";
-  } else if (!USERNAME_REGEX.test(username)) {
-    errors.username =
-      "用戶名稱限 3-24 字元，且只可包含英文、數字、底線(_)或連字號(-)";
-  }
 
   if (!email) {
     errors.email = "請輸入電子郵件";

@@ -2,7 +2,7 @@
 
 ## Status
 
-- **Backend:** ✅ Ready
+- **Backend:** ✅ Ready (auto-generated username on signup)
 - **Frontend:** ✅ **Baseline wired** — login + member register work in `AuthForm.tsx`
 - **Your focus:** Visual polish, login field persistence, merchant flow, post-auth nav polish
 
@@ -16,8 +16,9 @@
 | Password show/hide toggle | `PasswordInput` |
 | Merchant toggle + approval success screen | `isMerchant` / `isMerchantSubmitted` |
 | `?role=merchant` deep link → register + merchant toggle | `useEffect` ~L196–207 |
-| **Preserve username, email, agreeTerms on validation failure** | Controlled state ~L189–190, ~L229–231, ~L437–452 |
+| **Preserve email, agreeTerms on validation failure** | Controlled state `registerEmail`, ~L229–231 |
 | Hidden fields for `agreeTerms`, `isMerchant` | Register form ~L412–421 |
+| **No username field on register** — backend assigns `profiles.username` | Register form (username input removed) |
 
 ## UI touchpoints
 
@@ -30,7 +31,7 @@
 
 - Tab switcher: ~L322–347
 - Login form: ~L351–399
-- Register form: ~L402–517
+- Register form: ~L402–505 (email, password, terms only)
 - Merchant success panel: ~L251–288
 
 ## Server action usage (already integrated)
@@ -55,12 +56,13 @@ const [registerErrors, registerAction, isRegisterPending] = useActionState(
 
 | `name` | Type | Notes |
 |--------|------|-------|
-| `username` | text input | Controlled via `registerUsername` |
 | `email` | email input | Controlled via `registerEmail` |
 | `password` | password | Uncontrolled (cleared on re-render is OK) |
 | `confirmPassword` | password | Uncontrolled |
 | `agreeTerms` | hidden | `"true"` / `"false"` from `agreeTerms` state |
 | `isMerchant` | hidden | `"true"` / `"false"` from `isMerchant` state |
+
+> **Removed:** `username` — no longer collected at signup. Users get a random handle (e.g. `user_k3m9x2p1q0`) and can change it in **設定 → 用戶名** — see [user-profile-settings](../user-profile-settings/frontend.md).
 
 ## Role flows
 
@@ -76,7 +78,8 @@ const [registerErrors, registerAction, isRegisterPending] = useActionState(
 
 ## Optional polish (partner backlog)
 
-- [ ] Preserve **login email** on failed login (register username/email already preserved)
+- [ ] Preserve **login email** on failed login (register email already preserved)
+- [ ] Post-register UX: show assigned username once (e.g. toast) or link to settings to customize
 - [ ] Preserve password fields on validation error (if product wants — usually avoided for security)
 - [ ] Loading / error toast for unexpected failures
 - [ ] Disable submit while pending (already done via `isLoginPending` / `isRegisterPending`)
@@ -90,19 +93,21 @@ const [registerErrors, registerAction, isRegisterPending] = useActionState(
 ## Acceptance test
 
 1. `bun run dev` — ensure `.env` has all three Supabase keys (see [backend.md](./backend.md))
-2. Confirm migration `20260702110000_auth_profiles_registration.sql` is applied
+2. Confirm migrations `20260702110000` and `20260704140000` are applied
 3. **Register (member)**
    - Go to `/auth` → 免費註冊
+   - Confirm **no username field** on the form
    - Leave fields empty → submit → inline errors, no navigation
-   - Enter weak password → password error; username/email/checkbox **stay filled**
-   - Enter valid data → redirect to `/profile/user/collection`
+   - Enter weak password → password error; email/checkbox **stay filled**
+   - Enter valid email + password → redirect to `/profile/user/collection`
 4. **Duplicate checks**
    - Same email → `此電子郵件已被註冊`
-   - Same username → `此用戶名稱已被使用`
-5. **Login**
+5. **Profile username**
+   - After register, open **設定** → handle field shows auto-generated `user_*` value (or set via DB if migration-only path)
+6. **Login**
    - Sign in with registered credentials → redirect to collection
    - Wrong password → `電子郵件或密碼不正確`
-6. **Merchant UI**
+7. **Merchant UI**
    - Toggle 認證商戶 → submit with valid fields → approval screen (no Supabase signup)
    - Visit `/auth?role=merchant` → lands on register tab with merchant toggle on
 
@@ -110,9 +115,11 @@ const [registerErrors, registerAction, isRegisterPending] = useActionState(
 
 - `app/actions/auth.ts`
 - `lib/auth/validation.ts`
+- `lib/auth/username.ts`
 - `lib/supabase/admin.ts`
 - `lib/supabase/server.ts`
 - `supabase/migrations/20260702110000_auth_profiles_registration.sql`
+- `supabase/migrations/20260704140000_profiles_username_on_signup.sql`
 
 Coordinate with backend dev before changing server actions or validation rules.
 
@@ -120,4 +127,4 @@ Coordinate with backend dev before changing server actions or validation rules.
 
 - **Role-based routing & logout** — ✅ [role-based-routing](../role-based-routing/frontend.md)
 - **Merchant registration** — KYC + `role: merchant` signup path
-- **Profile settings** — `updateProfile` server action (see `docs/dev/api.md`)
+- **Profile settings** — customize `displayName` / `username` via `updateUserProfile` — [user-profile-settings](../user-profile-settings/frontend.md)

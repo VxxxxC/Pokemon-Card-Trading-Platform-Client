@@ -6,14 +6,16 @@
 | Flow | Backend | Frontend | Backend files | UI touchpoint | Follow-up |
 |------|---------|----------|---------------|---------------|-----------|
 | Product catalog search + create listing (single card) | ✅ Ready | ✅ Wired (baseline) | `app/actions/productCatalog.ts`, `app/actions/listings.ts`, `app/api/listings/upload-image/route.ts`, `app/lib/hooks/useProductCatalogSearch.ts`, `app/store/useListingSubmitStore.ts`, `components/listings/ListingSubmitOverlay.tsx`, `lib/listings/*`, `lib/grading/options.ts`, `lib/storage/bunny.ts`, `middleware.ts`, migrations `20260702100000`, `20260703130000`–`20260703160000` | `AddAssetModal.tsx`, `ListingSubmitOverlay` (root layout) | [backend](./follow-up/product-catalog-search/backend.md) · [frontend](./follow-up/product-catalog-search/frontend.md) |
-| Marketplace product search | ✅ Ready (v2 RPC) | ✅ Wired (filters + card baseline) | `app/actions/marketplace.ts` (`searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`**), `app/lib/marketplace/types.ts`, `app/lib/marketplace/searchParsers.ts`, `lib/marketplace/filter-options.ts`, `lib/grading/options.ts` (`matchesGradeFilter`, `matchesAnyGradeFilter`), `app/lib/hooks/useMarketplaceSearch.ts`, migrations `20260702120000`, `20260702130000` | `app/marketplace/page.tsx`, `AccordionFilters.tsx`, `MarketplaceCard.tsx`, `RarityBadge.tsx`, `MarketplaceEmptyState.tsx`, `app/components/home/HeroSearch.tsx` | [backend](./follow-up/marketplace-search/backend.md) · [frontend](./follow-up/marketplace-search/frontend.md) |
-| Auth login / register (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `lib/auth/validation.ts`, `lib/supabase/admin.ts` | `app/auth/AuthForm.tsx` | [backend](./follow-up/auth-login-register/backend.md) · [frontend](./follow-up/auth-login-register/frontend.md) |
+| Marketplace product search | ✅ Ready (v2 RPC) | ✅ Wired (filters + card baseline) | `app/actions/marketplace.ts` (`searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`**), `app/actions/profile.ts` (`getCurrentUserProfile`), `app/lib/hooks/useCurrentUserId.ts`, `app/lib/marketplace/types.ts`, `app/lib/marketplace/searchParsers.ts`, `lib/marketplace/filter-options.ts`, `lib/grading/options.ts` (`matchesGradeFilter`, `matchesAnyGradeFilter`), `app/lib/hooks/useMarketplaceSearch.ts`, migrations `20260702120000`, `20260702130000` | `app/marketplace/page.tsx`, `AccordionFilters.tsx`, `MarketplaceCard.tsx` (**own-listing guard**), `RarityBadge.tsx`, `MarketplaceEmptyState.tsx`, `app/components/home/HeroSearch.tsx` | [backend](./follow-up/marketplace-search/backend.md) · [frontend](./follow-up/marketplace-search/frontend.md) |
+| Auth login / register (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `lib/auth/validation.ts`, `lib/auth/username.ts`, `lib/supabase/admin.ts`, migration `20260704140000` | `app/auth/AuthForm.tsx` | [backend](./follow-up/auth-login-register/backend.md) · [frontend](./follow-up/auth-login-register/frontend.md) |
 | Auth password (forgot + reset) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `app/auth/callback/route.ts`, `lib/auth/password-errors.ts`, `lib/auth/site-url.ts` | `app/auth/forgot-password/`, `app/auth/reset-password/`, `AuthForm.tsx`, `PasswordUpdatedToast` | [backend](./follow-up/auth-password-recovery/backend.md) · [frontend](./follow-up/auth-password-recovery/frontend.md) |
 | User profile settings (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/profile.ts`, `lib/profile/avatar.ts`, `lib/profile/validation.ts`, `lib/profile/errors.ts`, migrations `20260703100000`–`20260703120000` | `app/profile/user/settings/` | [backend](./follow-up/user-profile-settings/backend.md) · [frontend](./follow-up/user-profile-settings/frontend.md) |
 | Role-based routing & session | ✅ Ready | ✅ Wired (baseline) | `lib/auth/roles.ts`, `lib/auth/session.ts`, `middleware.ts` (session refresh all routes; role guard `/profile` + `/admin`), `app/actions/profile.ts`, `app/actions/auth.ts` (`logout`) | `RoleProvider`, `LogoutModal`, `mockRole` consumers | [backend](./follow-up/role-based-routing/backend.md) · [frontend](./follow-up/role-based-routing/frontend.md) |
 | Marketplace product detail (catalog) | ✅ Ready | ✅ Wired (baseline) | `app/actions/marketplace.ts` (`getMarketplaceProductDetail`), `app/lib/marketplace/types.ts` (`MarketplaceProductDetail`), `lib/catalog/element-types.ts`, `app/marketplace/product/[id]/page.tsx`, `ProductDetailClient.tsx`, `app/marketplace/MarketplaceChrome.tsx` | `app/marketplace/product/[id]/`, `MarketplaceCard.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
-| Marketplace product detail (listings / chart / history) | ✅ Ready | ✅ Wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, **`getMarketplaceListingDetail`**, `getMarketplaceProductTradeHistory`, **`getMarketplaceProductMarketPrices`**, **`getMarketplaceProductMarketPrice`**, `lib/marketplace/market-price.ts`, `lib/listings/images.ts`, `useMarketplaceProductMarketPrice`, `useMarketplaceListingDetail`, migrations `20260703170000`, `20260703180000`, `20260703210000`, `20260703220000` | `ProductDetailClient.tsx` (banner, chart, market grade chips, order book, trade history), `ExecutionSlideOver.tsx` (on-demand listing photo grid) | [marketplace-product-detail](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
+| Marketplace product detail (listings / chart / history) | ✅ Ready | ✅ Wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, **`getMarketplaceListingDetail`**, `getMarketplaceProductTradeHistory`, **`getMarketplaceProductMarketPrices`**, **`getMarketplaceProductMarketPrice`**, `lib/marketplace/market-price.ts`, `lib/listings/images.ts`, `useMarketplaceProductMarketPrice`, `useMarketplaceListingDetail`, `getOptionalAuthUser` (`page.tsx`), migrations `20260703170000`, `20260703180000`, `20260703210000`, `20260703220000` | `ProductDetailClient.tsx` (banner, chart, market grade chips, order book, trade history, **own-listing guard**), `AskOrderBookRow.tsx`, `ExecutionSlideOver.tsx` (on-demand listing photo grid) | [marketplace-product-detail](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
 | Market pricing aggregation (Cron Job 2) | ✅ Ready | ✅ Wired | `app/api/cron/aggregate-prices/route.ts`, `lib/marketplace/market-price.ts`, `lib/supabase/admin.ts`, `product_price_snapshots`, `product_grading_market_prices`, migrations `20260703210000`, `20260703220000` | Product detail chart + market price banner (`ProductDetailClient.tsx`) | [backend](./follow-up/market-pricing-cron/backend.md) · [frontend](./follow-up/market-pricing-cron/frontend.md) |
+| Offers & negotiation (make / modify / accept) | ✅ Ready | 🟡 Partial | `app/actions/offers.ts`, migrations `20260704130000`–`20260704180000`, `rpc_make_offer`, `rpc_modify_offer`, `rpc_accept_offer` | `ExecutionSlideOver.tsx`, `OfferCard.tsx`, `SpecialTransactionMessage.tsx` | [backend](./follow-up/offers-negotiation/backend.md) · [frontend](./follow-up/offers-negotiation/frontend.md) |
+| Chat inbox + OfferCard (DB + mock) | ✅ Ready | 🟡 Partial | `app/actions/chat.ts` (`getUserChatInbox`, `sendMessage` → `rpc_send_chat_message`), `get_user_chat_inbox` RPC, `app/lib/chat/*`, migrations through `20260704210000` | `GlobalChatOverlay.tsx`, `GlobalChatConsole.tsx`, `OfferCard.tsx` | [backend](./follow-up/chat-offers-inbox/backend.md) · [frontend](./follow-up/chat-offers-inbox/frontend.md) |
 | Wishlist toggle | ⏳ Planned | ✅ UI done | `app/actions/Wishlist.ts` (planned) | `WishlistButton.tsx`, `WishlistTable.tsx` | [wishlist](./follow-up/wishlist/) |
 | Create listing submit (box/set + hobby) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` non-card paths | — |
 
@@ -38,6 +40,7 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260703100000_profiles_default_avatar.sql` — default `avatar_path`
 - `supabase/migrations/20260703110000_profiles_owner_update.sql` — profiles owner `UPDATE` RLS
 - `supabase/migrations/20260703120000_profiles_settings_columns.sql` — `username`, `short_description`
+- `supabase/migrations/20260704140000_profiles_username_on_signup.sql` — auto-assign unique `profiles.username` on signup trigger
 - `supabase/migrations/20260703130000_listings_owner_insert.sql` — listings seller `INSERT`/`UPDATE` RLS
 - `supabase/migrations/20260703140000_listings_owner_insert_simplify.sql` — simplified insert policy (`seller_id = auth.uid()`)
 - `supabase/migrations/20260703150000_listings_service_role_grants.sql` — `service_role` grants on `listings` (trusted server insert)
@@ -45,6 +48,13 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260703180000_member_orders_trade_history_read.sql` — completed `member_orders` read for authenticated users
 - `supabase/migrations/20260703210000_market_prices_service_role_grants.sql` — `service_role` grants on `product_grading_market_prices`
 - `supabase/migrations/20260703220000_product_grading_market_prices_public_read.sql` — anon/authenticated `SELECT` on market price cache (product detail chart/banner)
+- `supabase/migrations/20260704130000_rpc_make_offer.sql` — atomic buyer offer + chat room + message
+- `supabase/migrations/20260704150000_rpc_accept_offer.sql` — seller accept → hold listing + `member_orders`
+- `supabase/migrations/20260704160000_rpc_make_offer_single_pending.sql` — one active offer per buyer per listing (re-offer after `rejected` / `cancelled`)
+- `supabase/migrations/20260704170000_rpc_modify_offer.sql` — buyer modify offer + `modified_count`
+- `supabase/migrations/20260704180000_offers_listing_id_user_centric_rooms.sql` — Scheme B: `offers.listing_id`, user-centric `chat_rooms`
+- `supabase/migrations/20260704190000_chat_rooms_messages_rls.sql` — chat/offers RLS + grants
+- `supabase/migrations/20260704200000_get_user_chat_inbox_rpc.sql` — `get_user_chat_inbox()` RPC (fixes permission denied)
 
 ### Quick verify
 
@@ -80,6 +90,7 @@ bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, rol
 8. **Grade facet** — options match create-listing dropdown (`lib/grading/options.ts`); filter state uses grading option ids (e.g. `psa:10`, `raw:A`).
 9. **Grid card** — rarity badge on image (top-left) from `product_catalog.rarity`; grading badge **not** shown on card.
 10. **Grid → detail** — card click opens `/marketplace/product/<productId>` with live catalog data.
+11. **Own listing (grid)** — log in as seller whose listing is the lowest price for a product → card shows **我的掛單** badge, gold ring, seller **(你)**, disabled **我的掛單 · 無法出價** button (no buy flow).
 
 **Product detail — catalog (manual):**
 
@@ -96,6 +107,7 @@ bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, rol
 4. Select a grading chip (e.g. **PSA 10**, **裸卡 A**) — only matching listings shown.
 5. Change sort (價格 / 鑑定等級 / 賣家評級) — order updates server-side.
 6. Pagination works when > 5 listings match filters.
+7. **Own listing (order book)** — log in as a seller with an active listing on the product → row shows **我的掛單** badge + gold highlight; row is not clickable; helper text **無法對自己的商品出價**; `ExecutionSlideOver` does not open.
 
 **Product detail — execution slide-over (manual):**
 
@@ -135,3 +147,15 @@ bun run dev                   # UI: /, /marketplace, Add Asset modal, /auth, rol
 SELECT product_id, listing_count, lowest_price, total_count, range_start, range_end
 FROM search_marketplace_products(p_page := 1, p_page_size := 10);
 ```
+
+**Offers & negotiation (manual):**
+
+1. Apply migrations `20260704130000` through **`20260704210000`** (`bunx supabase db push`, or `db query -f` for `20260704210000` if push blocked).
+2. Log in as **buyer** → product detail → order book row → `ExecutionSlideOver` → **發送叫價至聊天室**.
+3. Global chat opens; `OfferCard` shows **待確認** with listing thumbnail.
+4. **修改出價** once → price updates; second attempt blocked.
+5. Send a plain text message → **發送** → persists in DB room; survives chat reopen.
+6. Log in as **seller** → open chat (DB room in lobby + mock rooms) → **接受出價** on `OfferCard`.
+7. Listing `inactive` on marketplace; `member_orders` row `pending` with 14-day `expires_at`.
+
+See [offers-negotiation](./follow-up/offers-negotiation/backend.md) · [chat-offers-inbox backend](./follow-up/chat-offers-inbox/backend.md) · [chat-offers-inbox frontend](./follow-up/chat-offers-inbox/frontend.md).

@@ -45,6 +45,9 @@ export type Database = {
           created_at: string | null
           id: string
           is_system_warning: boolean | null
+          member_order_id: string | null
+          merchant_order_id: string | null
+          offer_id: string | null
           room_id: string
           sender_id: string
         }
@@ -53,6 +56,9 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_system_warning?: boolean | null
+          member_order_id?: string | null
+          merchant_order_id?: string | null
+          offer_id?: string | null
           room_id: string
           sender_id: string
         }
@@ -61,10 +67,34 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_system_warning?: boolean | null
+          member_order_id?: string | null
+          merchant_order_id?: string | null
+          offer_id?: string | null
           room_id?: string
           sender_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_member_order_id_fkey"
+            columns: ["member_order_id"]
+            isOneToOne: false
+            referencedRelation: "member_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_merchant_order_id_fkey"
+            columns: ["merchant_order_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_room_id_fkey"
             columns: ["room_id"]
@@ -79,7 +109,6 @@ export type Database = {
           buyer_id: string
           created_at: string | null
           id: string
-          listing_id: string
           seller_id: string
           updated_at: string | null
         }
@@ -87,7 +116,6 @@ export type Database = {
           buyer_id: string
           created_at?: string | null
           id?: string
-          listing_id: string
           seller_id: string
           updated_at?: string | null
         }
@@ -95,7 +123,6 @@ export type Database = {
           buyer_id?: string
           created_at?: string | null
           id?: string
-          listing_id?: string
           seller_id?: string
           updated_at?: string | null
         }
@@ -105,13 +132,6 @@ export type Database = {
             columns: ["buyer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_chat_rooms_listing_id"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
           {
@@ -310,6 +330,8 @@ export type Database = {
         Row: {
           buyer_id: string
           created_at: string | null
+          expires_at: string
+          extended_count: number
           final_price: number
           id: string
           listing_id: string
@@ -321,6 +343,8 @@ export type Database = {
         Insert: {
           buyer_id: string
           created_at?: string | null
+          expires_at?: string
+          extended_count?: number
           final_price: number
           id?: string
           listing_id: string
@@ -332,6 +356,8 @@ export type Database = {
         Update: {
           buyer_id?: string
           created_at?: string | null
+          expires_at?: string
+          extended_count?: number
           final_price?: number
           id?: string
           listing_id?: string
@@ -515,6 +541,8 @@ export type Database = {
           buyer_id: string
           created_at: string | null
           id: string
+          listing_id: string | null
+          modified_count: number
           offer_price: number
           room_id: string
           status: Database["public"]["Enums"]["offer_status"] | null
@@ -524,6 +552,8 @@ export type Database = {
           buyer_id: string
           created_at?: string | null
           id?: string
+          listing_id?: string | null
+          modified_count?: number
           offer_price: number
           room_id: string
           status?: Database["public"]["Enums"]["offer_status"] | null
@@ -533,6 +563,8 @@ export type Database = {
           buyer_id?: string
           created_at?: string | null
           id?: string
+          listing_id?: string | null
+          modified_count?: number
           offer_price?: number
           room_id?: string
           status?: Database["public"]["Enums"]["offer_status"] | null
@@ -544,6 +576,13 @@ export type Database = {
             columns: ["buyer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
           {
@@ -627,7 +666,7 @@ export type Database = {
       product_grading_market_prices: {
         Row: {
           grading_company: string
-          grading_score: string | null
+          grading_score: string
           id: string
           market_avg_price: number | null
           market_chart_data: Json | null
@@ -637,7 +676,7 @@ export type Database = {
         }
         Insert: {
           grading_company: string
-          grading_score?: string | null
+          grading_score?: string
           id?: string
           market_avg_price?: number | null
           market_chart_data?: Json | null
@@ -647,7 +686,7 @@ export type Database = {
         }
         Update: {
           grading_company?: string
-          grading_score?: string | null
+          grading_score?: string
           id?: string
           market_avg_price?: number | null
           market_chart_data?: Json | null
@@ -748,6 +787,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_path: string | null
+          cancelled_trades_count: number
+          completed_trades_count: number
           created_at: string
           display_name: string
           id: string
@@ -761,6 +802,8 @@ export type Database = {
         }
         Insert: {
           avatar_path?: string | null
+          cancelled_trades_count?: number
+          completed_trades_count?: number
           created_at?: string
           display_name: string
           id: string
@@ -774,6 +817,8 @@ export type Database = {
         }
         Update: {
           avatar_path?: string | null
+          cancelled_trades_count?: number
+          completed_trades_count?: number
           created_at?: string
           display_name?: string
           id?: string
@@ -878,6 +923,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          is_public: boolean
           member_order_id: string | null
           merchant_order_id: string | null
           rating: number
@@ -889,6 +935,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_public?: boolean
           member_order_id?: string | null
           merchant_order_id?: string | null
           rating: number
@@ -900,6 +947,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          is_public?: boolean
           member_order_id?: string | null
           merchant_order_id?: string | null
           rating?: number
@@ -1028,6 +1076,7 @@ export type Database = {
     }
     Functions: {
       escape_ilike_pattern: { Args: { input: string }; Returns: string }
+      generate_profile_username: { Args: never; Returns: string }
       get_marketplace_price_bounds: {
         Args: never
         Returns: {
@@ -1069,6 +1118,28 @@ export type Database = {
       listing_grade_sort_score: {
         Args: { grading_company: string; grading_score: string }
         Returns: number
+      }
+      rpc_accept_offer: {
+        Args: { p_offer_id: string; p_seller_id: string }
+        Returns: Json
+      }
+      rpc_make_offer: {
+        Args: {
+          p_buyer_id: string
+          p_content: string
+          p_listing_id: string
+          p_offer_price: number
+        }
+        Returns: Json
+      }
+      rpc_modify_offer: {
+        Args: {
+          p_buyer_id: string
+          p_content: string
+          p_new_price: number
+          p_offer_id: string
+        }
+        Returns: Json
       }
       search_marketplace_products: {
         Args: {

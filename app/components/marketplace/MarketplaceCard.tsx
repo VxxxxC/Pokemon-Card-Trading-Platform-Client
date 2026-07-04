@@ -8,6 +8,7 @@ import { RarityBadge } from "@/app/components/cards/RarityBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import type { Tables } from "@/types/supabase";
+import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 
 export type MarketplaceListing = {
   /** Active listing id — used by wishlist / buy flows. */
@@ -42,6 +43,11 @@ function resolveProductDetailHref(listing: MarketplaceListing): string {
 
 export function MarketplaceCard({ listing }: MarketplaceCardProps) {
   const router = useRouter();
+  const currentUserId = useCurrentUserId();
+  const isOwnListing =
+    currentUserId != null &&
+    listing.sellerId != null &&
+    listing.sellerId === currentUserId;
   const productDetailHref = resolveProductDetailHref(listing);
   const formattedPrice = `HK$ ${listing.price.toLocaleString("en-HK")}`;
   const formattedDelta = `${listing.deltaDirection === "up" ? "▲" : "▼"} HK$ ${listing.delta.toLocaleString("en-HK")}`;
@@ -52,6 +58,13 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
   };
 
   return (
+    <div
+      className={
+        isOwnListing
+          ? "rounded-2xl ring-2 ring-brand/50 ring-offset-2 ring-offset-[#17130f]"
+          : undefined
+      }
+    >
     <motion.article
       whileHover={{ y: -4, scale: 1.02 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -89,6 +102,14 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
           {listing.rarity ? (
             <div className="absolute top-3 left-3 pointer-events-none">
               <RarityBadge rarity={listing.rarity} />
+            </div>
+          ) : null}
+
+          {isOwnListing ? (
+            <div className="absolute bottom-3 left-3 pointer-events-none z-20">
+              <span className="font-mono text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-brand text-[#1A1612] border border-brand/40 shadow-md">
+                我的掛單
+              </span>
             </div>
           ) : null}
 
@@ -134,6 +155,9 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
               </p>
               <p className="truncate max-w-[90px] block font-sans whitespace-nowrap text-[12px] text-[#d4c4b7] font-medium mt-0.5">
                 {listing.seller}
+                {isOwnListing ? (
+                  <span className="text-brand font-bold"> (你)</span>
+                ) : null}
               </p>
             </div>
           </div>
@@ -146,8 +170,19 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
-        <BuyButton listing={listing} className="w-full" />
+        {isOwnListing ? (
+          <button
+            type="button"
+            disabled
+            className="w-full h-9 px-2 sm:px-4 bg-[#1A1612] border border-brand/30 text-brand/70 font-sans font-bold text-[11px] sm:text-[12px] tracking-wide whitespace-nowrap truncate rounded-xl cursor-not-allowed flex items-center justify-center gap-1"
+          >
+            我的掛單 · 無法出價
+          </button>
+        ) : (
+          <BuyButton listing={listing} className="w-full" />
+        )}
       </div>
     </motion.article>
+    </div>
   );
 }
