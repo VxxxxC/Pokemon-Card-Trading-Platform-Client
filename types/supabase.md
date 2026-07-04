@@ -65,7 +65,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_accept_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json` |
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
-| `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_name_query?: string p_page?: number p_page_size?:…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
+| `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_keyword?: string p_name_query?: string p_page?: number p_page_size?:…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 
 ---
 

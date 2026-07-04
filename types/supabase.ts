@@ -1145,6 +1145,7 @@ export type Database = {
         Args: {
           p_card_number?: string
           p_grade_filters?: Json
+          p_keyword?: string
           p_name_query?: string
           p_page?: number
           p_page_size?: number

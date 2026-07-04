@@ -2,11 +2,19 @@
 
 ## Status
 
-- **Backend:** ✅ Ready (v2 RPC + `getMarketplaceRarities`)
+- **Backend:** ✅ Ready (v2 RPC + unified `p_keyword`)
 - **Frontend:** ✅ **Wired** — live search, updated filters, grid card baseline
 - **Your focus:** Grid card polish (listing count, price spread, seller chip), filter styling pass. Product detail **catalog** done — see [marketplace-product-detail/frontend.md](../marketplace-product-detail/frontend.md)
 
-## Changelog (2026-07-04)
+## Changelog (2026-07-04) — unified keyword search
+
+| Area | What changed |
+|------|----------------|
+| **Keyword behaviour** | One search box term now matches **name (ja/en/zh), set code, card number, and display_id** via backend `p_keyword` — no frontend wiring change |
+| **`parseCatalogSearchQuery`** | Only `sv2a-062`-style combos use structured set+card; everything else is a unified keyword |
+| **Hero + marketplace search** | `useHeroMarketplaceSearch` and `useMarketplaceSearch` benefit automatically after migration `20260704220000` |
+
+## Changelog (2026-07-04) — own-listing UI
 
 | Area | What changed |
 |------|----------------|
@@ -30,7 +38,7 @@
 |---------|----------|
 | Server-side search + pagination | `useMarketplaceSearch` → `searchMarketplaceProducts` |
 | Debounced keyword (350ms) | `app/lib/hooks/useMarketplaceSearch.ts` |
-| Set code / set+card / name parsing | `app/lib/marketplace/searchParsers.ts` |
+| Unified keyword (name / set / card / display_id) | `query` → `parseCatalogSearchQuery` → `p_keyword` (or structured set+card for combos) |
 | Rarity facet (all catalog values) | `getMarketplaceRarities` → `AccordionFilters` → `p_rarities` |
 | Grade facet (create-listing options) | `GRADING_OPTION_GROUPS` / `GRADING_OPTIONS` → option ids → `parseGradeFilters()` |
 | Seller source (會員 / 認證商戶) | `MARKETPLACE_SELLER_SOURCE_OPTIONS` → `mapSellerModes()` |
@@ -162,6 +170,7 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 - [x] Seller filter: 會員 + 認證商戶 only
 - [x] Grade filter options match `AddAssetModal` grading dropdown
 - [x] Grade filter sends correct company + score to RPC
+- [x] Keyword matches name (ja/en/zh), set code, card number, display_id (`p_keyword`, migration `20260704220000`)
 - [x] Search, price range, sort, pagination
 - [x] Empty state + reset filters
 - [x] Homepage hero → `/marketplace?q=…`
@@ -179,7 +188,7 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 
 ## Manual test plan
 
-1. Apply migrations (`INTEGRATION_QUEUE.md`).
+1. Apply migrations (`INTEGRATION_QUEUE.md`) — include **`20260704220000_marketplace_search_keyword.sql`** for unified keyword.
 2. `/marketplace` — rarity section shows DB values (not only SAR/UR/SR/AR).
 3. Toggle **認證商戶** — only `seller_persona = merchant` listings match.
 4. Toggle **PSA 10** under 鑑定／品相 — only PSA 10 listings match.
@@ -189,3 +198,5 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 8. Reset filters — clears rarities, grades, seller types, query, price slider.
 9. Merchant storefront `/marketplace/[id]` — grade filter still works on mock data.
 10. Log in as seller with lowest-price listing on a product — grid card shows **我的掛單**; buy button disabled.
+11. Search `062` or a `display_id` fragment — unified keyword returns matching in-stock products.
+12. Search `sv2a-062` — structured combo still narrows to set + card (AND).

@@ -2,11 +2,21 @@
 
 ## Status
 
-- **Backend:** ✅ Ready (v2 RPC + filter helpers)
+- **Backend:** ✅ Ready (v2 RPC + unified `p_keyword`)
 - **Frontend:** ✅ Wired — `/marketplace` filters + grid card baseline
 - **Partner:** Card polish (listing count, price spread) + product detail — see [frontend.md](./frontend.md)
 
-## Changelog (2026-07-04)
+## Changelog (2026-07-04) — unified keyword search
+
+| Change | Detail |
+|--------|--------|
+| **Migration `20260704220000`** | Adds `p_keyword` to `search_marketplace_products` — single term OR-matches `name_ja`, `name_en`, `name_zh`, `set_code`, `card_number`, `display_id` |
+| **`parseCatalogSearchQuery`** | Combo `set-card` (`sv2a-062`) → structured `p_set_code` + `p_card_number` (AND); all other input → `p_keyword` (no more short-alphanumeric → set-only heuristic) |
+| **`searchMarketplaceProducts`** | Passes `p_keyword` from parsed query; `p_name_query` no longer set from UI `query` |
+| **`types/supabase.ts`** | `p_keyword?: string` on RPC Args |
+| **Frontend** | No UI changes — `useMarketplaceSearch` / `useHeroMarketplaceSearch` unchanged; benefits apply automatically after migration |
+
+## Changelog (2026-07-04) — prior
 
 | Change | Detail |
 |--------|--------|
@@ -24,7 +34,7 @@
 | **Filter constants** | `lib/marketplace/filter-options.ts` — `MARKETPLACE_SELLER_SOURCE_OPTIONS` |
 | **`getMarketplaceProductDetail()`** | Catalog row for product detail — see [marketplace-product-detail/backend.md](../marketplace-product-detail/backend.md) |
 
-No new DB migrations required for this slice.
+No new DB migrations required for that slice (superseded by `20260704220000` for keyword search).
 
 ## Files created / modified (backend track)
 
@@ -32,6 +42,7 @@ No new DB migrations required for this slice.
 |------|---------|
 | `supabase/migrations/20260702120000_marketplace_search_rpc.sql` | RLS (`listings` active read, `profiles` public read), indexes, v1 RPC |
 | `supabase/migrations/20260702130000_marketplace_search_rpc_v2.sql` | v2 RPC — grading, `seller_persona`, structured catalog filters, pagination meta |
+| `supabase/migrations/20260704220000_marketplace_search_keyword.sql` | **`p_keyword`** unified text search (OR across catalog fields) |
 | `app/actions/marketplace.ts` | `searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`** |
 | `app/lib/marketplace/types.ts` | `MarketplaceProductRow`, `MarketplacePaginationMeta`, `MarketplaceSearchInput`, `GradeFilter` |
 | `app/lib/marketplace/searchParsers.ts` | `parseCatalogSearchQuery`, **`parseGradeFilters`** (grading option ids), **`mapSellerModes`** |
@@ -59,9 +70,10 @@ product_catalog ──< listings (status = active)
 
 | Param | Type | Purpose |
 |-------|------|---------|
-| `p_set_code` | `text` | Set code partial match (`product_catalog.set_code`) |
-| `p_card_number` | `text` | Card number or `display_id` |
-| `p_name_query` | `text` | Card name (`name_ja`, `name_en`, `name_zh`) |
+| **`p_keyword`** | `text` | **Primary UI path.** OR partial match on `name_ja`, `name_en`, `name_zh`, `set_code`, `card_number`, `display_id` |
+| `p_set_code` | `text` | Structured set code match (used with `p_card_number` for combo queries) |
+| `p_card_number` | `text` | Structured card number or `display_id` match (AND with `p_set_code` when combo) |
+| `p_name_query` | `text` | Legacy structured name-only match (optional API use; UI uses `p_keyword` instead) |
 | `p_rarities` | `text[]` | **Exact** `product_catalog.rarity` values (dynamic list from `getMarketplaceRarities`) |
 | `p_seller_modes` | `text[]` | `MERCHANT`, `MEMBER` (P2P still supported by RPC if passed) |
 | `p_grade_filters` | `jsonb` | `[{"company":"PSA","score":"10"},{"company":"RAW","score":null}]` |
@@ -140,11 +152,13 @@ Used by `AccordionFilters` on mount to populate rarity chips.
 
 ### `parseCatalogSearchQuery(query)`
 
-| Input | Parsed as |
-|-------|-----------|
-| `sv2a-062` / `sv2a 062` | `setCode=sv2a`, `cardNumber=062` |
-| `sv2a` (short alphanumeric) | `setCode=sv2a` |
-| `ピカチュウ` | `nameQuery=ピカチュウ` |
+| Input | Parsed as | RPC params |
+|-------|-----------|------------|
+| `sv2a-062` / `sv2a 062` | `setCode=sv2a`, `cardNumber=062` | `p_set_code` + `p_card_number` (AND) |
+| `sv2a` | `keyword=sv2a` | `p_keyword` (matches set, names, card no, display_id) |
+| `062` | `keyword=062` | `p_keyword` |
+| `ピカチュウ` / `Pikachu` | `keyword=…` | `p_keyword` |
+| `display_id` fragment | `keyword=…` | `p_keyword` |
 
 ### `MarketplaceProductRow`
 
@@ -174,9 +188,27 @@ SQL:
 -- Rarities in catalog
 SELECT DISTINCT rarity FROM product_catalog WHERE rarity IS NOT NULL ORDER BY rarity;
 
+-- Unified keyword (name / set / card / display_id)
+SELECT product_id, product_name, set_code, card_number, display_id
+FROM search_marketplace_products(
+  p_keyword := 'sv2a',
+  p_page := 1,
+  p_page_size := 10
+);
+
+-- Combo set + card (structured AND)
+SELECT product_id, product_name, set_code, card_number
+FROM search_marketplace_products(
+  p_set_code := 'sv2a',
+  p_card_number := '062',
+  p_page := 1,
+  p_page_size := 10
+);
+
 -- Filtered search
 SELECT product_id, product_name, rarity, grading_company, grading_score, seller_persona
 FROM search_marketplace_products(
+  p_keyword := 'ピカチュウ',
   p_rarities := ARRAY['SAR'],
   p_grade_filters := '[{"company":"PSA","score":"10"}]'::jsonb,
   p_seller_modes := ARRAY['MERCHANT','MEMBER'],

@@ -281,6 +281,7 @@ export async function searchMarketplaceProducts(
         : undefined;
 
     const rpcArgs: SearchRpcArgs = {
+      p_keyword: parsedQuery.keyword ?? undefined,
       p_set_code:
         normalizeMarketplaceText(input.setCode) ??
         parsedQuery.setCode ??
@@ -289,7 +290,6 @@ export async function searchMarketplaceProducts(
         normalizeMarketplaceText(input.cardNumber) ??
         parsedQuery.cardNumber ??
         undefined,
-      p_name_query: parsedQuery.nameQuery ?? undefined,
       p_rarities:
         input.rarities && input.rarities.length > 0 ? input.rarities : undefined,
       p_seller_modes:

@@ -14,15 +14,19 @@ function normalizeText(raw: string | undefined, max = MAX_QUERY_LENGTH): string 
   return trimmed.length > 0 ? trimmed : null;
 }
 
-/** Split "sv2a-062" / "sv2a 062" into set + card number when possible. */
+/**
+ * Parse marketplace search input.
+ * - "sv2a-062" / "sv2a 062" → structured set + card (AND match in RPC).
+ * - Everything else → unified keyword (OR match across name/set/card/display_id).
+ */
 export function parseCatalogSearchQuery(query: string | undefined): {
   setCode: string | null;
   cardNumber: string | null;
-  nameQuery: string | null;
+  keyword: string | null;
 } {
   const normalized = normalizeText(query);
   if (!normalized) {
-    return { setCode: null, cardNumber: null, nameQuery: null };
+    return { setCode: null, cardNumber: null, keyword: null };
   }
 
   const combo = normalized.match(/^([a-zA-Z0-9]+)[\s\-\/#]+([a-zA-Z0-9]+)$/);
@@ -30,15 +34,11 @@ export function parseCatalogSearchQuery(query: string | undefined): {
     return {
       setCode: combo[1],
       cardNumber: combo[2],
-      nameQuery: null,
+      keyword: null,
     };
   }
 
-  if (/^[a-zA-Z0-9]{2,12}$/.test(normalized)) {
-    return { setCode: normalized, cardNumber: null, nameQuery: null };
-  }
-
-  return { setCode: null, cardNumber: null, nameQuery: normalized };
+  return { setCode: null, cardNumber: null, keyword: normalized };
 }
 
 /** Map unified grading option ids (or legacy chip labels) to RPC grade filter objects. */

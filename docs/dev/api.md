@@ -101,7 +101,7 @@ interface Listing extends CreateListingInput {
 }
 ```
 
-> **Implemented (v2 RPC):** `app/actions/marketplace.ts` (async actions only). Types: `app/lib/marketplace/types.ts`. Parsers: `app/lib/marketplace/searchParsers.ts`. See `docs/dev/follow-up/marketplace-search/backend.md`.
+> **Implemented (v2 + keyword RPC):** `app/actions/marketplace.ts` (async actions only). Types: `app/lib/marketplace/types.ts`. Parsers: `app/lib/marketplace/searchParsers.ts`. Migration `20260704220000` adds `p_keyword`. See `docs/dev/follow-up/marketplace-search/backend.md`.
 
 ```ts
 // searchMarketplaceProducts — live contract (simplified)
