@@ -17,6 +17,8 @@ export type MarketplaceListing = {
   productId?: string;
   cardNo?: string;
   name: string;
+  nameZh?: string | null;
+  nameJa?: string | null;
   set: string;
   rarity: Tables<"product_catalog">["rarity"];
   grade: { authority: string; score: string };
@@ -32,6 +34,8 @@ export type MarketplaceListing = {
 
 interface MarketplaceCardProps {
   listing: MarketplaceListing;
+  /** When provided, skips per-card profile fetch (pass from grid parent). */
+  currentUserId?: string | null;
 }
 
 function resolveProductDetailHref(listing: MarketplaceListing): string {
@@ -41,9 +45,55 @@ function resolveProductDetailHref(listing: MarketplaceListing): string {
   );
 }
 
-export function MarketplaceCard({ listing }: MarketplaceCardProps) {
-  const router = useRouter();
+function resolveListingDisplayName(listing: MarketplaceListing): string {
+  const primary = listing.name?.trim();
+  if (primary) return primary;
+
+  const zh = listing.nameZh?.trim();
+  if (zh) return zh;
+
+  const ja = listing.nameJa?.trim();
+  if (ja) return ja;
+
+  return "未命名卡牌";
+}
+
+function hasDisplayableRarity(
+  rarity: MarketplaceListing["rarity"],
+): rarity is NonNullable<MarketplaceListing["rarity"]> {
+  if (!rarity) return false;
+  const trimmed = rarity.trim();
+  return trimmed !== "" && trimmed !== "-";
+}
+
+export function MarketplaceCard({
+  listing,
+  currentUserId: currentUserIdProp,
+}: MarketplaceCardProps) {
+  if (currentUserIdProp !== undefined) {
+    return (
+      <MarketplaceCardView listing={listing} currentUserId={currentUserIdProp} />
+    );
+  }
+
+  return <MarketplaceCardWithSession listing={listing} />;
+}
+
+function MarketplaceCardWithSession({
+  listing,
+}: Pick<MarketplaceCardProps, "listing">) {
   const currentUserId = useCurrentUserId();
+  return <MarketplaceCardView listing={listing} currentUserId={currentUserId} />;
+}
+
+function MarketplaceCardView({
+  listing,
+  currentUserId,
+}: {
+  listing: MarketplaceListing;
+  currentUserId: string | null;
+}) {
+  const router = useRouter();
   const isOwnListing =
     currentUserId != null &&
     listing.sellerId != null &&
@@ -52,6 +102,10 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
   const formattedPrice = `HK$ ${listing.price.toLocaleString("en-HK")}`;
   const formattedDelta = `${listing.deltaDirection === "up" ? "▲" : "▼"} HK$ ${listing.delta.toLocaleString("en-HK")}`;
   const displayCardNo = listing.cardNo ?? listing.id;
+  const displaySetAndCardNo = listing.set
+    ? `${listing.set.toUpperCase()} · ${displayCardNo}`
+    : displayCardNo;
+  const displayName = resolveListingDisplayName(listing);
 
   const openProductDetail = () => {
     router.push(productDetailHref);
@@ -81,25 +135,25 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
           }
         }}
         className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
-        aria-label={`查看 ${listing.name} 商品詳情`}
+        aria-label={`查看 ${displayName} 商品詳情`}
       >
-        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[#1A1612]">
+        <div className="relative w-full aspect-[3/4] overflow-hidden rounded-t-2xl bg-[#1A1612]">
           <Image
             src={listing.image}
             alt={
-              listing.rarity
-                ? `${listing.name} — ${listing.rarity}`
-                : listing.name
+              hasDisplayableRarity(listing.rarity)
+                ? `${displayName} — ${listing.rarity}`
+                : displayName
             }
             fill
-            className="object-contain group-hover:scale-[1.03] transition-transform duration-300 p-2"
+            className="object-full group-hover:scale-[1.03] transition-transform duration-300 p-2 rounded-2xl"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             unoptimized
           />
           <div className="absolute inset-0 bg-linear-to-tr from-transparent via-[rgba(212,165,116,0.08)] to-[rgba(255,255,255,0.15)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
           <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0)_20%,rgba(255,255,255,0.15)_40%,rgba(255,255,255,0)_60%)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
 
-          {listing.rarity ? (
+          {hasDisplayableRarity(listing.rarity) ? (
             <div className="absolute top-3 left-3 pointer-events-none">
               <RarityBadge rarity={listing.rarity} />
             </div>
@@ -126,10 +180,10 @@ export function MarketplaceCard({ listing }: MarketplaceCardProps) {
           <div className="flex items-start justify-between gap-2 min-w-0 w-full">
             <div className="min-w-0 w-full">
               <h3 className="font-sans font-semibold text-[14.5px] text-[#eae1da] leading-snug truncate group-hover:text-[#d4a574] transition-colors whitespace-nowrap block w-full">
-                {listing.name}
+                {displayName}
               </h3>
               <span className="font-mono text-[11px] text-[#d4c4b7] block truncate">
-                {displayCardNo}
+                {displaySetAndCardNo}
               </span>
             </div>
           </div>

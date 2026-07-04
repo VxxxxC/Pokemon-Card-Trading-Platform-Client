@@ -41,6 +41,7 @@ export type DbChatMessageRow = {
   created_at: string | null;
   sender_id: string;
   offer_id: string | null;
+  member_order_id: string | null;
   is_system_warning: boolean | null;
   offers?: DbOfferSnippet | null;
 };
@@ -110,7 +111,13 @@ function resolveSender(
   isSystemWarning: boolean,
   content: string,
 ): Message["sender"] {
-  if (isSystemWarning || content === "SYSTEM_OFFER_ACCEPTED") {
+  if (
+    isSystemWarning ||
+    content === "SYSTEM_OFFER_ACCEPTED" ||
+    content === "SYSTEM_OFFER_REJECTED" ||
+    content === "SYSTEM_ORDER_COMPLETED" ||
+    content === "SYSTEM_ORDER_CANCELLED"
+  ) {
     return "system";
   }
   return senderId === currentUserId ? "me" : "them";
@@ -155,6 +162,42 @@ function mapDbMessage(
       id: row.id,
       sender: "system",
       text: "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）",
+      timestamp,
+      type: "text",
+      orderData: row.member_order_id
+        ? { orderId: row.member_order_id }
+        : undefined,
+    };
+  }
+
+  if (row.content === "SYSTEM_OFFER_REJECTED") {
+    return {
+      id: row.id,
+      sender: "system",
+      text: "❌ 賣家已拒絕此出價",
+      timestamp,
+      type: "text",
+    };
+  }
+
+  if (row.content === "SYSTEM_ORDER_COMPLETED") {
+    return {
+      id: row.id,
+      sender: "system",
+      text: "✅ 交易已順利完成",
+      timestamp,
+      type: "system_order_completed",
+      orderData: row.member_order_id
+        ? { orderId: row.member_order_id }
+        : undefined,
+    };
+  }
+
+  if (row.content === "SYSTEM_ORDER_CANCELLED") {
+    return {
+      id: row.id,
+      sender: "system",
+      text: "❌ 此筆訂單已取消",
       timestamp,
       type: "text",
     };

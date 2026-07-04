@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  getMarketplacePriceBounds,
+  getMarketplaceBootstrap,
   searchMarketplaceProducts,
 } from "@/app/actions/marketplace";
 import {
@@ -38,12 +38,20 @@ export type MarketplaceSearchFilters = {
   pageSize: number;
 };
 
+export type MarketplaceSearchInitialData = {
+  products: MarketplaceProductRow[];
+  meta: MarketplacePaginationMeta;
+  priceBounds: { minPrice: number; maxPrice: number };
+  rarities: string[];
+};
+
 type UseMarketplaceSearchResult = {
   products: MarketplaceProductRow[];
   meta: MarketplacePaginationMeta;
   isLoading: boolean;
   error: string | null;
   priceBounds: { minPrice: number; maxPrice: number } | null;
+  rarities: string[];
   refetch: () => void;
 };
 
@@ -61,20 +69,36 @@ function filtersKey(filters: MarketplaceSearchFilters): string {
   ].join("|");
 }
 
+type UseMarketplaceSearchOptions = {
+  initialData?: MarketplaceSearchInitialData;
+};
+
 export function useMarketplaceSearch(
   filters: MarketplaceSearchFilters,
+  options: UseMarketplaceSearchOptions = {},
 ): UseMarketplaceSearchResult {
-  const [products, setProducts] = useState<MarketplaceProductRow[]>([]);
-  const [meta, setMeta] = useState<MarketplacePaginationMeta>(EMPTY_META);
-  const [isLoading, setIsLoading] = useState(true);
+  const { initialData } = options;
+  const [products, setProducts] = useState<MarketplaceProductRow[]>(
+    initialData?.products ?? [],
+  );
+  const [meta, setMeta] = useState<MarketplacePaginationMeta>(
+    initialData?.meta ?? EMPTY_META,
+  );
+  const [isLoading, setIsLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [priceBounds, setPriceBounds] = useState<{
     minPrice: number;
     maxPrice: number;
-  } | null>(null);
+  } | null>(initialData?.priceBounds ?? null);
+  const [rarities, setRarities] = useState<string[]>(
+    initialData?.rarities ?? [],
+  );
+  const [isReady, setIsReady] = useState(Boolean(initialData));
 
   const requestIdRef = useRef(0);
   const filtersRef = useRef(filters);
+  const bootstrapStartedRef = useRef(Boolean(initialData));
+  const skipNextSearchRef = useRef(Boolean(initialData));
   const [debouncedQuery, setDebouncedQuery] = useState(filters.query);
 
   filtersRef.current = filters;
@@ -86,20 +110,6 @@ export function useMarketplaceSearch(
 
     return () => window.clearTimeout(timer);
   }, [filters.query]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const result = await getMarketplacePriceBounds();
-      if (cancelled || !result.success) return;
-      setPriceBounds(result.data);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const searchKey = filtersKey({ ...filters, query: debouncedQuery });
 
@@ -145,13 +155,69 @@ export function useMarketplaceSearch(
   );
 
   useEffect(() => {
+    if (initialData || bootstrapStartedRef.current) return;
+    bootstrapStartedRef.current = true;
+
+    let cancelled = false;
+
+    void (async () => {
+      setIsLoading(true);
+      setError(null);
+
+      const activeFilters = { ...filtersRef.current, query: filtersRef.current.query };
+      const result = await getMarketplaceBootstrap({
+        query: activeFilters.query,
+        rarities: activeFilters.rarities,
+        gradeFilters: parseGradeFilters(activeFilters.grades),
+        sellerModes: mapSellerModes(activeFilters.sellerTypes),
+        priceMin: activeFilters.priceMin,
+        priceMax: activeFilters.priceMax,
+        sortKey: activeFilters.sortKey,
+        page: activeFilters.page,
+        pageSize: activeFilters.pageSize,
+      });
+
+      if (cancelled) return;
+
+      if (!result.success) {
+        setProducts([]);
+        setMeta(EMPTY_META);
+        setError(result.error);
+        setIsLoading(false);
+        setIsReady(true);
+        return;
+      }
+
+      setProducts(result.data.products);
+      setMeta(result.data.meta);
+      setPriceBounds(result.data.priceBounds);
+      setRarities(result.data.rarities);
+      setError(null);
+      setIsLoading(false);
+      setIsReady(true);
+      skipNextSearchRef.current = true;
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialData]);
+
+  useEffect(() => {
+    if (!isReady) return;
+
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
+
     const requestId = ++requestIdRef.current;
     const activeFilters = { ...filtersRef.current, query: debouncedQuery };
 
     setIsLoading(true);
     setError(null);
     void runSearch(requestId, activeFilters);
-  }, [searchKey, runSearch]);
+  }, [searchKey, runSearch, debouncedQuery, isReady]);
 
   const refetch = useCallback(() => {
     const requestId = ++requestIdRef.current;
@@ -168,6 +234,7 @@ export function useMarketplaceSearch(
     isLoading,
     error,
     priceBounds,
+    rarities,
     refetch,
   };
 }

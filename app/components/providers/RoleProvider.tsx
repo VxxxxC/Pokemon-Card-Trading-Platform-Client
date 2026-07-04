@@ -25,6 +25,8 @@ export function RoleProvider({
       }
     };
 
+    void refreshRole();
+
     const handleFocus = () => {
       void refreshRole();
     };

@@ -7,6 +7,7 @@ import {
   useCallback,
   useSyncExternalStore,
   useMemo,
+  memo,
 } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
@@ -25,10 +26,16 @@ import {
 import { sendMessage } from "@/app/actions/chat";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
+import { SystemOrderCompletedMessage } from "./SystemOrderCompletedMessage";
+import { ReviewModal } from "@/app/components/trading/ReviewModal";
 import {
   useHkCardVaultStore,
+  type Message,
+  type OfferLedgerEntry,
 } from "@/app/store/useHkCardVaultStore";
+import { useShallow } from "zustand/react/shallow";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
+import { useRoomReviewedOrderIds } from "@/app/lib/hooks/useRoomReviewedOrderIds";
 import {
   formatMessageTime,
   getDateSeparatorLabel,
@@ -44,26 +51,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 
-export interface Message {
-  id: string;
-  sender: "me" | "them" | "system";
-  text: string;
-  timestamp: string;
-  type?: "text" | "special_transaction";
-  specialData?: {
-    cardName: string;
-    cardId: string;
-    offerPrice: number;
-    buyerName: string;
-    buyerId: string;
-    sellerId: string;
-    sellerName: string;
-    offerId?: string;
-    modifiedCount?: number;
-    imageUrl?: string;
-    initialStatus?: "pending" | "accepted" | "rejected" | "countered";
-  };
-}
+export type { Message };
 
 export interface ChatRoom {
   id: string;
@@ -169,16 +157,67 @@ function buildMessageRenderList(messages: Message[]) {
 
 type RenderItem = ReturnType<typeof buildMessageRenderList>[number];
 
-// Desktop message thread — compact bubbles (12.5px, 75% max-width)
-function MessageThread({
-  renderList,
-  currentUserId,
-  activeRoomId,
-}: {
+type MessageThreadProps = {
   renderList: RenderItem[];
   currentUserId: string | null;
   activeRoomId: string;
-}) {
+  partnerId: string;
+  partnerName: string;
+  roomMessages: Message[];
+  offers: Record<string, OfferLedgerEntry>;
+  onOpenReview: (orderId: string, revieweeId: string) => void;
+  reviewedOrderIds: ReadonlySet<string> | null;
+};
+
+function renderOrderCompletedCard(
+  msg: Message,
+  partnerId: string,
+  partnerName: string,
+  roomId: string,
+  roomMessages: Message[],
+  offers: Record<string, OfferLedgerEntry>,
+  onOpenReview: (orderId: string, revieweeId: string) => void,
+  maxWidthClass: string,
+  reviewedOrderIds: ReadonlySet<string> | null,
+) {
+  if (msg.type !== "system_order_completed") {
+    return null;
+  }
+
+  const orderId = msg.orderData?.orderId;
+
+  return (
+    <div
+      key={msg.id}
+      className={`w-full flex justify-center ${maxWidthClass} mx-auto animate-fadeIn`}
+    >
+      <SystemOrderCompletedMessage
+        messageId={msg.id}
+        roomId={roomId}
+        roomMessages={roomMessages}
+        offers={offers}
+        orderId={orderId}
+        revieweeId={partnerId}
+        partnerName={partnerName}
+        reviewedOrderIds={reviewedOrderIds}
+        onOpenReview={onOpenReview}
+      />
+    </div>
+  );
+}
+
+// Desktop message thread — compact bubbles (12.5px, 75% max-width)
+const MessageThread = memo(function MessageThread({
+  renderList,
+  currentUserId,
+  activeRoomId,
+  partnerId,
+  partnerName,
+  roomMessages,
+  offers,
+  onOpenReview,
+  reviewedOrderIds,
+}: MessageThreadProps) {
   return (
     <>
       {renderList.map((item, idx) => {
@@ -187,6 +226,21 @@ function MessageThread({
         }
 
         const msg = item.msg;
+
+        const orderCompletedCard = renderOrderCompletedCard(
+          msg,
+          partnerId,
+          partnerName,
+          activeRoomId,
+          roomMessages,
+          offers,
+          onOpenReview,
+          "max-w-[90%]",
+          reviewedOrderIds,
+        );
+        if (orderCompletedCard) {
+          return orderCompletedCard;
+        }
 
         if (
           msg.type === "special_transaction" &&
@@ -261,18 +315,20 @@ function MessageThread({
       })}
     </>
   );
-}
+});
 
 // Mobile message thread — larger bubbles (13px, rounded-2xl)
-function MobileMessageThread({
+const MobileMessageThread = memo(function MobileMessageThread({
   renderList,
   currentUserId,
   activeRoomId,
-}: {
-  renderList: RenderItem[];
-  currentUserId: string | null;
-  activeRoomId: string;
-}) {
+  partnerId,
+  partnerName,
+  roomMessages,
+  offers,
+  onOpenReview,
+  reviewedOrderIds,
+}: MessageThreadProps) {
   return (
     <>
       {renderList.map((item, idx) => {
@@ -281,6 +337,21 @@ function MobileMessageThread({
         }
 
         const msg = item.msg;
+
+        const orderCompletedCard = renderOrderCompletedCard(
+          msg,
+          partnerId,
+          partnerName,
+          activeRoomId,
+          roomMessages,
+          offers,
+          onOpenReview,
+          "max-w-[90%]",
+          reviewedOrderIds,
+        );
+        if (orderCompletedCard) {
+          return orderCompletedCard;
+        }
 
         if (
           msg.type === "special_transaction" &&
@@ -353,7 +424,7 @@ function MobileMessageThread({
       })}
     </>
   );
-}
+});
 
 const KNOWN_PARTNERS = [
   "旺角卡店 · 專業認證商戶",
@@ -376,13 +447,33 @@ export function GlobalChatConsole() {
     isChatOpen,
     setIsChatOpen,
     chats,
-    setChats,
+    offers,
     activeRoomId,
     setActiveRoomId,
     mobileView,
     setMobileView,
     activateRoomById,
-  } = useHkCardVaultStore();
+    appendRoomMessage,
+    finalizeOptimisticMessage,
+    rollbackOptimisticMessage,
+    markRoomRead,
+  } = useHkCardVaultStore(
+    useShallow((state) => ({
+      isChatOpen: state.isChatOpen,
+      setIsChatOpen: state.setIsChatOpen,
+      chats: state.chats,
+      offers: state.offers,
+      activeRoomId: state.activeRoomId,
+      setActiveRoomId: state.setActiveRoomId,
+      mobileView: state.mobileView,
+      setMobileView: state.setMobileView,
+      activateRoomById: state.activateRoomById,
+      appendRoomMessage: state.appendRoomMessage,
+      finalizeOptimisticMessage: state.finalizeOptimisticMessage,
+      rollbackOptimisticMessage: state.rollbackOptimisticMessage,
+      markRoomRead: state.markRoomRead,
+    })),
+  );
 
   const currentUserId = useCurrentUserId();
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
@@ -412,12 +503,38 @@ export function GlobalChatConsole() {
   };
 
   const [inputText, setInputText] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const sendInFlightRef = useRef(false);
+  const [activeReview, setActiveReview] = useState<{
+    orderId: string;
+    revieweeId: string;
+  } | null>(null);
+  const [submittedReviewOrderIds, setSubmittedReviewOrderIds] = useState<
+    Set<string>
+  >(() => new Set());
   const [lobbySearchQuery, setLobbySearchQuery] = useState("");
   const [isNewChatComboOpen, setIsNewChatComboOpen] = useState(false);
   const [targetUsername, setTargetUsername] = useState("");
   const desktopConsoleRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleOpenReview = useCallback(
+    (orderId: string, revieweeId: string) => {
+      setActiveReview({ orderId, revieweeId });
+    },
+    [],
+  );
+
+  const handleCloseReview = useCallback(() => {
+    setActiveReview(null);
+  }, []);
+
+  const handleReviewSubmitted = useCallback((orderId: string) => {
+    setSubmittedReviewOrderIds((current) => {
+      const next = new Set(current);
+      next.add(orderId);
+      return next;
+    });
+  }, []);
 
   const handleSpawnChat = useCallback(() => {
     if (!targetUsername.trim()) return;
@@ -476,11 +593,14 @@ export function GlobalChatConsole() {
     };
   }, [isChatOpen, onClose]);
 
+  const activeRoomMessageCount =
+    chats.find((room) => room.id === activeRoomId)?.messages.length ?? 0;
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chats, activeRoomId, isChatOpen]);
+  }, [activeRoomMessageCount, activeRoomId, isChatOpen]);
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -494,14 +614,30 @@ export function GlobalChatConsole() {
     );
   }, [chats, lobbySearchQuery]);
 
+  const activeRoom = useMemo(
+    () => chats.find((room) => room.id === activeRoomId) ?? chats[0],
+    [activeRoomId, chats],
+  );
+
+  const reviewedOrderIds = useRoomReviewedOrderIds(
+    activeRoom?.messages ?? [],
+    offers,
+    submittedReviewOrderIds,
+  );
+
+  const renderList = useMemo(
+    () => buildMessageRenderList(activeRoom?.messages ?? []),
+    [activeRoom?.messages],
+  );
+
   if (!isMounted) return null;
   if (!isChatOpen) return null;
-  const activeRoom = chats.find((r) => r.id === activeRoomId) || chats[0];
+  if (!activeRoom) return null;
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputText.trim();
-    if (!text || isSending) return;
+    if (!text || sendInFlightRef.current) return;
 
     const optimisticId = `opt-${Date.now()}`;
     const sentAt = new Date().toISOString();
@@ -514,99 +650,43 @@ export function GlobalChatConsole() {
     };
 
     setInputText("");
-    setChats((prev) =>
-      prev.map((room) =>
-        room.id === activeRoomId
-          ? {
-              ...room,
-              lastMessage: text,
-              timestamp: sentAt,
-              messages: [...room.messages, optimisticMsg],
-            }
-          : room,
-      ),
-    );
+    appendRoomMessage(activeRoomId, optimisticMsg);
 
     if (!isDbChatRoomId(activeRoomId)) {
       return;
     }
 
-    setIsSending(true);
-    try {
-      const result = await sendMessage(activeRoomId, text);
-      if (!result.success) {
-        toast.error(result.error);
-        setChats((prev) =>
-          prev.map((room) => {
-            if (room.id !== activeRoomId) return room;
+    sendInFlightRef.current = true;
 
-            const messages = room.messages.filter(
-              (message) => message.id !== optimisticId,
-            );
-            const lastMessage =
-              messages.at(-1)?.text ?? room.lastMessage ?? "";
+    void sendMessage(activeRoomId, text)
+      .then((result) => {
+        if (!result.success) {
+          rollbackOptimisticMessage(activeRoomId, optimisticId);
+          toast.error(result.error);
+          setInputText(text);
+          return;
+        }
 
-            return {
-              ...room,
-              messages,
-              lastMessage,
-            };
-          }),
-        );
+        const { data } = result;
+        finalizeOptimisticMessage(activeRoomId, optimisticId, {
+          id: data.id,
+          sender: "me",
+          text: data.content,
+          timestamp: data.createdAt,
+          type: "text",
+        });
+      })
+      .catch((error) => {
+        const msg =
+          error instanceof Error ? error.message : "發送訊息時發生錯誤";
+        toast.error(msg);
+        rollbackOptimisticMessage(activeRoomId, optimisticId);
         setInputText(text);
-        return;
-      }
-
-      const { data } = result;
-      setChats((prev) =>
-        prev.map((room) =>
-          room.id === activeRoomId
-            ? {
-                ...room,
-                lastMessage: data.content,
-                timestamp: data.createdAt,
-                messages: room.messages.map((message) =>
-                  message.id === optimisticId
-                    ? {
-                        ...message,
-                        id: data.id,
-                        text: data.content,
-                        timestamp: data.createdAt,
-                      }
-                    : message,
-                ),
-              }
-            : room,
-        ),
-      );
-    } catch (error) {
-      const msg =
-        error instanceof Error ? error.message : "發送訊息時發生錯誤";
-      toast.error(msg);
-      setChats((prev) =>
-        prev.map((room) => {
-          if (room.id !== activeRoomId) return room;
-
-          const messages = room.messages.filter(
-            (message) => message.id !== optimisticId,
-          );
-          const lastMessage = messages.at(-1)?.text ?? room.lastMessage ?? "";
-
-          return {
-            ...room,
-            messages,
-            lastMessage,
-          };
-        }),
-      );
-      setInputText(text);
-    } finally {
-      setIsSending(false);
-    }
+      })
+      .finally(() => {
+        sendInFlightRef.current = false;
+      });
   };
-
-  // Build interleaved message + separator render list for the active room
-  const renderList = buildMessageRenderList(activeRoom.messages);
 
   const chatConsoleLayer = (
     <>
@@ -714,11 +794,7 @@ export function GlobalChatConsole() {
                   type="button"
                   onClick={() => {
                     setActiveRoomId(room.id);
-                    setChats((prev) =>
-                      prev.map((c) =>
-                        c.id === room.id ? { ...c, unreadCount: 0 } : c,
-                      ),
-                    );
+                    markRoomRead(room.id);
                   }}
                   className={
                     "w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none " +
@@ -753,6 +829,7 @@ export function GlobalChatConsole() {
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
                 <Link
                   href={"/profile/" + activeRoom.partnerId}
+                  prefetch={false}
                   onClick={onClose}
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
@@ -786,6 +863,12 @@ export function GlobalChatConsole() {
                 renderList={renderList}
                 currentUserId={currentUserId}
                 activeRoomId={activeRoomId}
+                partnerId={activeRoom.partnerId}
+                partnerName={activeRoom.partnerName}
+                roomMessages={activeRoom.messages}
+                offers={offers}
+                onOpenReview={handleOpenReview}
+                reviewedOrderIds={reviewedOrderIds}
               />
             </div>
 
@@ -804,10 +887,10 @@ export function GlobalChatConsole() {
               />
               <button
                 type="submit"
-                disabled={!inputText.trim() || isSending}
+                disabled={!inputText.trim()}
                 className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
               >
-                {isSending ? "發送中…" : "發送 ⚡"}
+                發送 ⚡
               </button>
             </form>
           </div>
@@ -975,6 +1058,7 @@ export function GlobalChatConsole() {
                     <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
                     <Link
                       href={"/profile/" + activeRoom.partnerId}
+                      prefetch={false}
                       onClick={onClose}
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                     >
@@ -1009,6 +1093,12 @@ export function GlobalChatConsole() {
                   renderList={renderList}
                   currentUserId={currentUserId}
                   activeRoomId={activeRoomId}
+                  partnerId={activeRoom.partnerId}
+                  partnerName={activeRoom.partnerName}
+                  roomMessages={activeRoom.messages}
+                  offers={offers}
+                  onOpenReview={handleOpenReview}
+                  reviewedOrderIds={reviewedOrderIds}
                 />
               </div>
 
@@ -1027,10 +1117,10 @@ export function GlobalChatConsole() {
                 />
                 <button
                   type="submit"
-                  disabled={!inputText.trim() || isSending}
+                  disabled={!inputText.trim()}
                   className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
                 >
-                  {isSending ? "發送中…" : "發送"}
+                  發送
                 </button>
               </form>
             </div>
@@ -1040,7 +1130,16 @@ export function GlobalChatConsole() {
   );
 
   return (
-    <AlertDialog
+    <>
+      <ReviewModal
+        isOpen={activeReview !== null}
+        onClose={handleCloseReview}
+        orderId={activeReview?.orderId ?? ""}
+        revieweeId={activeReview?.revieweeId ?? ""}
+        onSubmitted={handleReviewSubmitted}
+      />
+
+      <AlertDialog
       open={isReportOpen}
       onOpenChange={(open) => {
         setIsReportOpen(open);
@@ -1147,5 +1246,6 @@ export function GlobalChatConsole() {
         </div>
       </AlertDialogContent>
     </AlertDialog>
+    </>
   );
 }

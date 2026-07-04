@@ -336,6 +336,7 @@ export type Database = {
           id: string
           listing_id: string
           meetup_details: Json | null
+          order_number: string | null
           seller_id: string
           status: Database["public"]["Enums"]["member_order_state"] | null
           updated_at: string | null
@@ -349,6 +350,7 @@ export type Database = {
           id?: string
           listing_id: string
           meetup_details?: Json | null
+          order_number?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["member_order_state"] | null
           updated_at?: string | null
@@ -362,6 +364,7 @@ export type Database = {
           id?: string
           listing_id?: string
           meetup_details?: Json | null
+          order_number?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["member_order_state"] | null
           updated_at?: string | null
@@ -438,6 +441,7 @@ export type Database = {
           listing_id: string
           logistics_proof_path: string | null
           merchant_id: string
+          order_number: string | null
           requires_authentication: boolean | null
           stripe_payment_intent_id: string | null
           updated_at: string | null
@@ -451,6 +455,7 @@ export type Database = {
           listing_id: string
           logistics_proof_path?: string | null
           merchant_id: string
+          order_number?: string | null
           requires_authentication?: boolean | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
@@ -464,6 +469,7 @@ export type Database = {
           listing_id?: string
           logistics_proof_path?: string | null
           merchant_id?: string
+          order_number?: string | null
           requires_authentication?: boolean | null
           stripe_payment_intent_id?: string | null
           updated_at?: string | null
@@ -1076,6 +1082,10 @@ export type Database = {
     }
     Functions: {
       escape_ilike_pattern: { Args: { input: string }; Returns: string }
+      fn_try_reveal_order_reviews: {
+        Args: { p_order_id: string; p_order_kind: string }
+        Returns: boolean
+      }
       generate_profile_username: { Args: never; Returns: string }
       get_marketplace_price_bounds: {
         Args: never
@@ -1114,6 +1124,11 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
+      get_user_chat_inbox: { Args: never; Returns: Json }
+      is_chat_room_member: {
+        Args: { p_room_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       is_display_name_available: { Args: { name: string }; Returns: boolean }
       listing_grade_sort_score: {
         Args: { grading_company: string; grading_score: string }
@@ -1122,6 +1137,18 @@ export type Database = {
       rpc_accept_offer: {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
+      }
+      rpc_cancel_member_order: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
+      rpc_complete_member_order: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
+      rpc_get_user_reviewed_member_order_ids: {
+        Args: { p_order_ids: string[] }
+        Returns: string[]
       }
       rpc_make_offer: {
         Args: {
@@ -1138,6 +1165,24 @@ export type Database = {
           p_content: string
           p_new_price: number
           p_offer_id: string
+        }
+        Returns: Json
+      }
+      rpc_reject_offer: {
+        Args: { p_offer_id: string; p_seller_id: string }
+        Returns: Json
+      }
+      rpc_send_chat_message: {
+        Args: { p_content: string; p_room_id: string; p_sender_id: string }
+        Returns: Json
+      }
+      rpc_submit_transaction_review: {
+        Args: {
+          p_comment?: string
+          p_order_id: string
+          p_rating: number
+          p_reviewee_id: string
+          p_user_id?: string
         }
         Returns: Json
       }

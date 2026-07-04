@@ -67,6 +67,17 @@ export type MarketplacePriceBoundsResult =
   | { success: true; data: { minPrice: number; maxPrice: number } }
   | { success: false; error: string };
 
+export type MarketplaceBootstrapData = {
+  products: MarketplaceProductRow[];
+  meta: MarketplacePaginationMeta;
+  priceBounds: { minPrice: number; maxPrice: number };
+  rarities: string[];
+};
+
+export type MarketplaceBootstrapResult =
+  | { success: true; data: MarketplaceBootstrapData }
+  | { success: false; error: string };
+
 /** Mapped `product_catalog` row for marketplace product detail page. */
 export type MarketplaceProductDetail = {
   productId: string;

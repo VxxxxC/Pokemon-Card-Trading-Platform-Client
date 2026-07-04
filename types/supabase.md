@@ -57,15 +57,24 @@ type UserRole = Enums<"user_role">;
 | Function | Args | Returns |
 |----------|------|---------|
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
+| `fn_try_reveal_order_reviews` | `{ p_order_id: string; p_order_kind: string }` | `boolean` |
 | `generate_profile_username` | `never;` | `string` |
 | `get_marketplace_price_bounds` | `never` | `{ max_price: number min_price: number }[]` |
 | `get_marketplace_product_listings` | `{ p_grade_filters?: Json p_only_graded?: boolean p_page?: number p_page_size?: number p_product_id:…` | `{ created_at: string filtered_lowest_price: number grading_company: string grading_score: string li…` |
+| `get_user_chat_inbox` | `never;` | `Json` |
+| `is_chat_room_member` | `{ p_room_id: string; p_user_id?: string }` | `boolean` |
 | `is_display_name_available` | `{ name: string };` | `boolean` |
 | `listing_grade_sort_score` | `{ grading_company: string; grading_score: string }` | `number` |
 | `rpc_accept_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
+| `rpc_cancel_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
+| `rpc_complete_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
+| `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json` |
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
-| `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_keyword?: string p_name_query?: string p_page?: number p_page_size?:…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
+| `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
+| `rpc_send_chat_message` | `{ p_content: string; p_room_id: string; p_sender_id: string }` | `Json` |
+| `rpc_submit_transaction_review` | `{ p_comment?: string p_order_id: string p_rating: number p_reviewee_id: string p_user_id?: string }` | `Json` |
+| `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_keyword?: string p_name_query?: string p_page?: n…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 
 ---
 
@@ -208,6 +217,7 @@ type UserRole = Enums<"user_role">;
 | `id` | `string` | No |
 | `listing_id` | `string` | No |
 | `meetup_details` | `Json | null` | Yes |
+| `order_number` | `string | null` | Yes |
 | `seller_id` | `string` | No |
 | `status` | `member_order_state | null` | Yes |
 | `updated_at` | `string | null` | Yes |
@@ -248,6 +258,7 @@ type UserRole = Enums<"user_role">;
 | `listing_id` | `string` | No |
 | `logistics_proof_path` | `string | null` | Yes |
 | `merchant_id` | `string` | No |
+| `order_number` | `string | null` | Yes |
 | `requires_authentication` | `boolean | null` | Yes |
 | `stripe_payment_intent_id` | `string | null` | Yes |
 | `updated_at` | `string | null` | Yes |

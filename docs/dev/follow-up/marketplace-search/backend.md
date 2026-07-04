@@ -6,6 +6,18 @@
 - **Frontend:** ✅ Wired — `/marketplace` filters + grid card baseline
 - **Partner:** Card polish (listing count, price spread) + product detail — see [frontend.md](./frontend.md)
 
+## Changelog (2026-07-04) — SSR bootstrap + load performance
+
+| Change | Detail |
+|--------|--------|
+| **`getMarketplaceBootstrap()`** | New server action — `Promise.all` of `getMarketplacePriceBounds`, `getMarketplaceRarities`, `searchMarketplaceProducts` in **one** middleware round-trip |
+| **`MarketplaceBootstrapData` / `MarketplaceBootstrapResult`** | Types in `app/lib/marketplace/types.ts` — products, meta, priceBounds, rarities |
+| **`app/marketplace/page.tsx`** | Server Component — parallel `getOptionalAuthUser()` + `getMarketplaceBootstrap()` on render; passes `initialData` + `currentUserId` to client |
+| **Client fallback** | When Supabase unset (CI) or bootstrap fails, `useMarketplaceSearch` calls `getMarketplaceBootstrap` once (not 3 separate actions) |
+| **Filter changes only** | After bootstrap, client calls `searchMarketplaceProducts` only (not bounds/rarities again) |
+
+Default SSR search args: `page: 1`, `pageSize: 9` (mobile-first grid), `sortKey: "最新"`.
+
 ## Changelog (2026-07-04) — unified keyword search
 
 | Change | Detail |
@@ -21,7 +33,7 @@
 | Change | Detail |
 |--------|--------|
 | **Own-listing UI (frontend)** | `MarketplaceProductRow.sellerId` (lowest listing's `seller_id`) used for grid card ownership — no backend change |
-| **Session** | `getCurrentUserProfile()` reused via `useCurrentUserId` on client grid |
+| **Session** | `getOptionalAuthUser()` on server page for grid `currentUserId`; client `useCurrentUserId` only when card parent does not pass prop |
 
 ## Changelog (2026-07-03)
 
@@ -43,12 +55,13 @@ No new DB migrations required for that slice (superseded by `20260704220000` for
 | `supabase/migrations/20260702120000_marketplace_search_rpc.sql` | RLS (`listings` active read, `profiles` public read), indexes, v1 RPC |
 | `supabase/migrations/20260702130000_marketplace_search_rpc_v2.sql` | v2 RPC — grading, `seller_persona`, structured catalog filters, pagination meta |
 | `supabase/migrations/20260704220000_marketplace_search_keyword.sql` | **`p_keyword`** unified text search (OR across catalog fields) |
-| `app/actions/marketplace.ts` | `searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`** |
-| `app/lib/marketplace/types.ts` | `MarketplaceProductRow`, `MarketplacePaginationMeta`, `MarketplaceSearchInput`, `GradeFilter` |
+| `app/actions/marketplace.ts` | `searchMarketplaceProducts`, `getMarketplacePriceBounds`, `getMarketplaceRarities`, **`getMarketplaceBootstrap`** |
+| `app/marketplace/page.tsx` | Server page — SSR bootstrap + auth user |
+| `app/lib/marketplace/types.ts` | `MarketplaceProductRow`, `MarketplacePaginationMeta`, `MarketplaceSearchInput`, `GradeFilter`, **`MarketplaceBootstrapData`**, **`MarketplaceBootstrapResult`** |
 | `app/lib/marketplace/searchParsers.ts` | `parseCatalogSearchQuery`, **`parseGradeFilters`** (grading option ids), **`mapSellerModes`** |
 | `lib/marketplace/filter-options.ts` | Seller source chip keys (`MEMBER`, `MERCHANT`) |
 | `lib/grading/options.ts` | Canonical grading options + **`matchesGradeFilter`** / **`matchesAnyGradeFilter`** |
-| `app/lib/hooks/useMarketplaceSearch.ts` | Debounced client hook |
+| `app/lib/hooks/useMarketplaceSearch.ts` | Debounced client hook; accepts **`initialData`** from SSR; filter changes → `searchMarketplaceProducts` only |
 | `types/supabase.ts` | RPC function typings |
 
 > **Note:** `"use server"` files may only export **async** functions. Parsers and types live in `app/lib/marketplace/` and `lib/` so client components can import them without bundling server code.
@@ -142,7 +155,30 @@ import { getMarketplaceRarities } from "@/app/actions/marketplace";
 // Failure: { success: false, error: string }
 ```
 
-Used by `AccordionFilters` on mount to populate rarity chips.
+Used by `AccordionFilters` when parent does not pass `rarities` + `disableRarityFetch`. On `/marketplace`, rarities come from **`getMarketplaceBootstrap`** (SSR or hook).
+
+### `getMarketplaceBootstrap()` *(new)*
+
+```ts
+import { getMarketplaceBootstrap } from "@/app/actions/marketplace";
+
+// Success:
+// {
+//   success: true,
+//   data: {
+//     products: MarketplaceProductRow[],
+//     meta: MarketplacePaginationMeta,
+//     priceBounds: { minPrice, maxPrice },
+//     rarities: string[],
+//   },
+// }
+// Failure: { success: false, error: string }
+```
+
+Runs bounds + rarities + search in parallel inside one server action. Used by:
+
+- `app/marketplace/page.tsx` (SSR initial load)
+- `useMarketplaceSearch` (client-only / CI fallback when `initialData` absent)
 
 ### `getMarketplacePriceBounds()`
 
@@ -225,6 +261,7 @@ FROM search_marketplace_products(
 | Client / env failure | `無法連線至大盤市場` |
 | Price bounds failure | `無法取得價格區間` |
 | Rarities fetch failure | `無法載入稀有度選項` / `無法連線至商品目錄` |
+| Bootstrap search failure | Same as `searchMarketplaceProducts` (`搜尋大盤市場時發生錯誤` / `無法連線至大盤市場`) |
 
 ## Blocked / not in scope
 
@@ -240,4 +277,5 @@ FROM search_marketplace_products(
 - `parseGradeFilters` / `mapSellerModes` / grading option id format
 - RPC param names and `p_sort` enum values
 - `getMarketplaceRarities` query source (`product_catalog.rarity`)
+- `getMarketplaceBootstrap` composition (parallel trio) — extend here if adding more bootstrap fields
 - `success` / `error` envelope on server actions

@@ -5,6 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { getUserChatInbox } from "@/app/actions/chat";
 import { mergeChatRoomsWithDb } from "@/app/lib/chat/mergeChatRooms";
+import { useChatRoomRealtime } from "@/app/lib/hooks/useChatRoomRealtime";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
 
@@ -12,6 +13,8 @@ export function GlobalChatOverlay() {
   const isChatOpen = useHkCardVaultStore((state) => state.isChatOpen);
   const setChats = useHkCardVaultStore((state) => state.setChats);
   const inboxRequestIdRef = useRef(0);
+
+  useChatRoomRealtime({ enabled: isChatOpen });
 
   const syncInboxFromDb = useCallback(async () => {
     const requestId = ++inboxRequestIdRef.current;

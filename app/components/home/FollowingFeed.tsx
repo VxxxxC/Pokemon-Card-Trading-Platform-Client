@@ -27,6 +27,7 @@ export function FollowingFeed() {
         </h2>
         <Link
           href="/profile/user"
+          prefetch={false}
           className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
         >
           管理追蹤 →

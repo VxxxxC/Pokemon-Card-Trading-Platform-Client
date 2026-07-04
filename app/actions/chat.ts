@@ -125,7 +125,7 @@ async function fetchInboxViaTables(
   const { data: messages, error: messagesError } = await supabase
     .from("chat_messages")
     .select(
-      "id, room_id, content, created_at, sender_id, offer_id, is_system_warning",
+      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
     )
     .in("room_id", roomIds)
     .order("created_at", { ascending: true });

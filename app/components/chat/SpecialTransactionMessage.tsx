@@ -44,7 +44,7 @@ function buildHydratedContext(
       modified_count: props.initialModifiedCount ?? 0,
       room_id: props.roomId ?? "",
     },
-    listingId: "",
+    listingId: props.cardId,
     productId: props.cardId,
     cardName: props.cardName,
     cardNumber: null,

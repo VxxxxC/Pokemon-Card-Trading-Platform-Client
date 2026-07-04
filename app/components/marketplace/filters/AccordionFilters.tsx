@@ -19,6 +19,8 @@ interface AccordionFiltersProps {
   hideTypeSection?: boolean;
   /** Optional override; defaults to distinct `product_catalog.rarity` values. */
   rarities?: string[];
+  /** When true, parent supplies rarities — skip internal fetch. */
+  disableRarityFetch?: boolean;
 }
 
 export function AccordionFilters({
@@ -30,6 +32,7 @@ export function AccordionFilters({
   onTypeToggle,
   hideTypeSection = false,
   rarities: raritiesProp,
+  disableRarityFetch = false,
 }: AccordionFiltersProps) {
   const [openSections, setOpenSections] = useState({
     rarity: true,
@@ -37,10 +40,12 @@ export function AccordionFilters({
     type: true,
   });
   const [catalogRarities, setCatalogRarities] = useState<string[]>([]);
-  const [raritiesLoading, setRaritiesLoading] = useState(!raritiesProp);
+  const [raritiesLoading, setRaritiesLoading] = useState(
+    !raritiesProp && !disableRarityFetch,
+  );
 
   useEffect(() => {
-    if (raritiesProp) return;
+    if (raritiesProp || disableRarityFetch) return;
 
     let cancelled = false;
 
@@ -58,7 +63,7 @@ export function AccordionFilters({
     return () => {
       cancelled = true;
     };
-  }, [raritiesProp]);
+  }, [raritiesProp, disableRarityFetch]);
 
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));

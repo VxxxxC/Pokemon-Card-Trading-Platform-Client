@@ -6,7 +6,7 @@
 | Flow | Backend | Frontend | Backend files | UI touchpoint | Follow-up |
 |------|---------|----------|---------------|---------------|-----------|
 | Product catalog search + create listing (single card) | ✅ Ready | ✅ Wired (baseline) | `app/actions/productCatalog.ts`, `app/actions/listings.ts`, `app/api/listings/upload-image/route.ts`, `app/lib/hooks/useProductCatalogSearch.ts`, `app/store/useListingSubmitStore.ts`, `components/listings/ListingSubmitOverlay.tsx`, `lib/listings/*`, `lib/grading/options.ts`, `lib/storage/bunny.ts`, `middleware.ts`, migrations `20260702100000`, `20260703130000`–`20260703160000` | `AddAssetModal.tsx`, `ListingSubmitOverlay` (root layout) | [backend](./follow-up/product-catalog-search/backend.md) · [frontend](./follow-up/product-catalog-search/frontend.md) |
-| Marketplace product search | ✅ Ready (v2 + keyword RPC) | ✅ Wired (filters + card baseline) | `app/actions/marketplace.ts` (`searchMarketplaceProducts`, `getMarketplacePriceBounds`, **`getMarketplaceRarities`**), `app/actions/profile.ts` (`getCurrentUserProfile`), `app/lib/hooks/useCurrentUserId.ts`, `app/lib/marketplace/types.ts`, `app/lib/marketplace/searchParsers.ts`, `lib/marketplace/filter-options.ts`, `lib/grading/options.ts` (`matchesGradeFilter`, `matchesAnyGradeFilter`), `app/lib/hooks/useMarketplaceSearch.ts`, migrations `20260702120000`, `20260702130000`, **`20260704220000`** | `app/marketplace/page.tsx`, `AccordionFilters.tsx`, `MarketplaceCard.tsx` (**own-listing guard**), `RarityBadge.tsx`, `MarketplaceEmptyState.tsx`, `app/components/home/HeroSearch.tsx` | [backend](./follow-up/marketplace-search/backend.md) · [frontend](./follow-up/marketplace-search/frontend.md) |
+| Marketplace product search | ✅ Ready (v2 + keyword RPC + SSR bootstrap) | ✅ Wired (filters + grid + perf) | `app/actions/marketplace.ts` (`searchMarketplaceProducts`, `getMarketplacePriceBounds`, `getMarketplaceRarities`, **`getMarketplaceBootstrap`**), `lib/auth/session.ts` (`getOptionalAuthUser`), `app/lib/hooks/useCurrentUserId.ts`, `app/lib/marketplace/types.ts`, `app/lib/marketplace/searchParsers.ts`, `lib/marketplace/filter-options.ts`, `lib/grading/options.ts`, `app/lib/hooks/useMarketplaceSearch.ts`, migrations `20260702120000`, `20260702130000`, **`20260704220000`** | `app/marketplace/page.tsx` (SSR), **`MarketplacePageClient.tsx`**, `AccordionFilters.tsx`, `MarketplaceCard.tsx` (own-listing + set·cardNo), `RarityBadge.tsx`, `MarketplaceEmptyState.tsx`, `HeroSearch.tsx` | [backend](./follow-up/marketplace-search/backend.md) · [frontend](./follow-up/marketplace-search/frontend.md) |
 | Auth login / register (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `lib/auth/validation.ts`, `lib/auth/username.ts`, `lib/supabase/admin.ts`, migration `20260704140000` | `app/auth/AuthForm.tsx` | [backend](./follow-up/auth-login-register/backend.md) · [frontend](./follow-up/auth-login-register/frontend.md) |
 | Auth password (forgot + reset) | ✅ Ready | ✅ Wired (baseline) | `app/actions/auth.ts`, `app/auth/callback/route.ts`, `lib/auth/password-errors.ts`, `lib/auth/site-url.ts` | `app/auth/forgot-password/`, `app/auth/reset-password/`, `AuthForm.tsx`, `PasswordUpdatedToast` | [backend](./follow-up/auth-password-recovery/backend.md) · [frontend](./follow-up/auth-password-recovery/frontend.md) |
 | User profile settings (member) | ✅ Ready | ✅ Wired (baseline) | `app/actions/profile.ts`, `lib/profile/avatar.ts`, `lib/profile/validation.ts`, `lib/profile/errors.ts`, migrations `20260703100000`–`20260703120000` | `app/profile/user/settings/` | [backend](./follow-up/user-profile-settings/backend.md) · [frontend](./follow-up/user-profile-settings/frontend.md) |
@@ -14,8 +14,10 @@
 | Marketplace product detail (catalog) | ✅ Ready | ✅ Wired (baseline) | `app/actions/marketplace.ts` (`getMarketplaceProductDetail`), `app/lib/marketplace/types.ts` (`MarketplaceProductDetail`), `lib/catalog/element-types.ts`, `app/marketplace/product/[id]/page.tsx`, `ProductDetailClient.tsx`, `app/marketplace/MarketplaceChrome.tsx` | `app/marketplace/product/[id]/`, `MarketplaceCard.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
 | Marketplace product detail (listings / chart / history) | ✅ Ready | ✅ Wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, **`getMarketplaceListingDetail`**, `getMarketplaceProductTradeHistory`, **`getMarketplaceProductMarketPrices`**, **`getMarketplaceProductMarketPrice`**, `lib/marketplace/market-price.ts`, `lib/listings/images.ts`, `useMarketplaceProductMarketPrice`, `useMarketplaceListingDetail`, `getOptionalAuthUser` (`page.tsx`), migrations `20260703170000`, `20260703180000`, `20260703210000`, `20260703220000` | `ProductDetailClient.tsx` (banner, chart, market grade chips, order book, trade history, **own-listing guard**), `AskOrderBookRow.tsx`, `ExecutionSlideOver.tsx` (on-demand listing photo grid) | [marketplace-product-detail](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
 | Market pricing aggregation (Cron Job 2) | ✅ Ready | ✅ Wired | `app/api/cron/aggregate-prices/route.ts`, `lib/marketplace/market-price.ts`, `lib/supabase/admin.ts`, `product_price_snapshots`, `product_grading_market_prices`, migrations `20260703210000`, `20260703220000` | Product detail chart + market price banner (`ProductDetailClient.tsx`) | [backend](./follow-up/market-pricing-cron/backend.md) · [frontend](./follow-up/market-pricing-cron/frontend.md) |
-| Offers & negotiation (make / modify / accept) | ✅ Ready | 🟡 Partial | `app/actions/offers.ts`, migrations `20260704130000`–`20260704180000`, `rpc_make_offer`, `rpc_modify_offer`, `rpc_accept_offer` | `ExecutionSlideOver.tsx`, `OfferCard.tsx`, `SpecialTransactionMessage.tsx` | [backend](./follow-up/offers-negotiation/backend.md) · [frontend](./follow-up/offers-negotiation/frontend.md) |
-| Chat inbox + OfferCard (DB + mock) | ✅ Ready | 🟡 Partial | `app/actions/chat.ts` (`getUserChatInbox`, `sendMessage` → `rpc_send_chat_message`), `get_user_chat_inbox` RPC, `app/lib/chat/*`, migrations through `20260704210000` | `GlobalChatOverlay.tsx`, `GlobalChatConsole.tsx`, `OfferCard.tsx` | [backend](./follow-up/chat-offers-inbox/backend.md) · [frontend](./follow-up/chat-offers-inbox/frontend.md) |
+| Offers & negotiation (make / modify / accept / reject) | ✅ Ready | 🟡 Partial | `app/actions/offers.ts`, migrations `20260704130000`–`20260704250000`, `rpc_make_offer`, `rpc_modify_offer`, **`rpc_accept_offer`** (injects `order_number`), `rpc_reject_offer` | `ExecutionSlideOver.tsx`, `OfferCard.tsx`, `SpecialTransactionMessage.tsx` | [backend](./follow-up/offers-negotiation/backend.md) · [frontend](./follow-up/offers-negotiation/frontend.md) |
+| Chat inbox + OfferCard (DB + mock + Realtime) | ✅ Ready | 🟡 Partial | `app/actions/chat.ts`, `app/actions/offers.ts`, `app/actions/reviews.ts` (`resolveChatCompletionOrderId`), `app/lib/chat/*`, `app/lib/hooks/useChatRoomRealtime.ts`, `app/lib/hooks/useRoomReviewedOrderIds.ts`, `lib/supabase/client.ts`, migrations through **`20260704300000`** | `GlobalChatOverlay.tsx`, `GlobalChatConsole.tsx`, `OfferCard.tsx`, `SystemOrderCompletedMessage.tsx`, `ReviewModal.tsx` | [backend](./follow-up/chat-offers-inbox/backend.md) · [frontend](./follow-up/chat-offers-inbox/frontend.md) |
+| User trading orders (list + actions) | ✅ Ready | 🟡 Partial | `app/actions/orders.ts` (`getUserTradingOrders`, **`cancelMemberOrder`**, **`completeMemberOrder`**, `hasReviewedByMe`), migrations `20260704250000`, **`20260704210000_order_actions_rpc`**, `20260704260000`, `20260704300000` | `app/profile/user/(dashboard)/trading/page.tsx`, `UserOrderRow.tsx` (cancel **AlertDialog**, `建立時間`), `components/ui/badge.tsx`, `components/ui/tabs.tsx`, chat `SystemOrderCompletedMessage` | [backend](./follow-up/user-trading-orders/backend.md) · [frontend](./follow-up/user-trading-orders/frontend.md) |
+| Transaction reviews (submit + modal + **double-blind**) | ✅ Ready | ✅ Wired (trading + chat) | `app/actions/reviews.ts` (`getUserReviewedMemberOrderIds`), migrations **`20260704270000`**–**`20260704290000`**, `rpc_submit_transaction_review` (`revealed`), `fn_try_reveal_order_reviews`, `rpc_get_user_reviewed_member_order_ids` | `ReviewModal.tsx`, trading page + `GlobalChatConsole` / `SystemOrderCompletedMessage` review CTA | [backend](./follow-up/transaction-reviews/backend.md) · [frontend](./follow-up/transaction-reviews/frontend.md) |
 | Wishlist toggle | ⏳ Planned | ✅ UI done | `app/actions/Wishlist.ts` (planned) | `WishlistButton.tsx`, `WishlistTable.tsx` | [wishlist](./follow-up/wishlist/) |
 | Create listing submit (box/set + hobby) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` non-card paths | — |
 
@@ -56,6 +58,12 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260704180000_offers_listing_id_user_centric_rooms.sql` — Scheme B: `offers.listing_id`, user-centric `chat_rooms`
 - `supabase/migrations/20260704190000_chat_rooms_messages_rls.sql` — chat/offers RLS + grants
 - `supabase/migrations/20260704200000_get_user_chat_inbox_rpc.sql` — `get_user_chat_inbox()` RPC (fixes permission denied)
+- `supabase/migrations/20260704250000_member_orders_order_number.sql` — **`order_number`** on `member_orders` / `merchant_orders`; participant RLS; **`rpc_accept_offer`** auto-generates `ORD-2026-*`
+- `supabase/migrations/20260704210000_order_actions_rpc.sql` — **`rpc_cancel_member_order`**, **`rpc_complete_member_order`**, seller-complete trigger guard
+- `supabase/migrations/20260704260000_merchant_order_reputation_stats.sql` — reputation stats on `member_orders` + `merchant_orders` status change
+- `supabase/migrations/20260704270000_transaction_reviews_rls.sql` — `transaction_reviews` RLS + rating refresh trigger
+- `supabase/migrations/20260704280000_rpc_submit_transaction_review.sql` — **`rpc_submit_transaction_review`**, **`rpc_get_user_reviewed_member_order_ids`**
+- `supabase/migrations/20260704290000_transaction_reviews_double_blind.sql` — **double-blind** (`is_public = false` until both rate); `fn_try_reveal_order_reviews`; rating trigger only on public reviews
 
 ### Quick verify
 
@@ -160,3 +168,28 @@ FROM search_marketplace_products(p_page := 1, p_page_size := 10);
 7. Listing `inactive` on marketplace; `member_orders` row `pending` with 14-day `expires_at`.
 
 See [offers-negotiation](./follow-up/offers-negotiation/backend.md) · [chat-offers-inbox backend](./follow-up/chat-offers-inbox/backend.md) · [chat-offers-inbox frontend](./follow-up/chat-offers-inbox/frontend.md).
+
+**User trading orders (manual):**
+
+1. Apply migration `20260704250000` (`bunx supabase db push`); regen `types/supabase.ts`.
+2. Log in → accept an offer (seller) → `member_orders` row with `order_number` like `ORD-2026-XXXXXX`.
+3. Open **`/profile/user/trading`** — live order appears alongside mock rows.
+4. Toggle persona / status tabs; search by order number or card name.
+5. Click row → `/profile/user/orderDetail/<uuid>` (detail page still mock — see [user-trading-orders frontend](./follow-up/user-trading-orders/frontend.md)).
+
+See [user-trading-orders backend](./follow-up/user-trading-orders/backend.md) · [user-trading-orders frontend](./follow-up/user-trading-orders/frontend.md).
+
+**User trading orders — cancel / complete / review (manual):**
+
+1. Apply migrations through **`20260704290000`** (use `db query --linked -f` if `db push` blocked by duplicate `20260704210000` timestamp).
+2. Pending order on **`/profile/user/trading`** → **確認完成交易** → `ReviewModal` → submit review.
+3. Seller pending order → **取消交易** → confirm dialog → **確認取消** → listing `active` on marketplace.
+4. **已完成** tab → **✍️ 給予對手評價** when `hasReviewedByMe === false`.
+
+**Transaction reviews — double-blind (manual):**
+
+1. Party A submits review → toast `待對方評價後將互相公開`; SQL shows `is_public = false`.
+2. Party B cannot see A's rating/comment via app (RLS: only own row or `is_public`).
+3. Party B submits review → toast `雙方評價已公開`; both rows `is_public = true`; `profiles.rating_score` updates for both reviewees.
+
+See [transaction-reviews backend](./follow-up/transaction-reviews/backend.md) · [transaction-reviews frontend](./follow-up/transaction-reviews/frontend.md).

@@ -4,16 +4,26 @@
 ALTER TABLE public.offers
 ADD COLUMN IF NOT EXISTS listing_id UUID REFERENCES public.listings(id) ON DELETE CASCADE;
 
--- 回填既有資料（須在移除 chat_rooms.listing_id 之前執行）
-UPDATE public.offers o
-SET listing_id = r.listing_id
-FROM public.chat_rooms r
-WHERE o.room_id = r.id
-  AND o.listing_id IS NULL
-  AND r.listing_id IS NOT NULL;
+-- 回填既有資料（僅當 chat_rooms.listing_id 仍存在時執行；已遷移過的 DB 可安全跳過）
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'chat_rooms'
+      AND column_name = 'listing_id'
+  ) THEN
+    UPDATE public.offers o
+    SET listing_id = r.listing_id
+    FROM public.chat_rooms r
+    WHERE o.room_id = r.id
+      AND o.listing_id IS NULL
+      AND r.listing_id IS NOT NULL;
 
--- A. 解除舊外鍵與欄位約束
-ALTER TABLE public.chat_rooms DROP COLUMN IF EXISTS listing_id;
+    ALTER TABLE public.chat_rooms DROP COLUMN listing_id;
+  END IF;
+END $$;
 
 -- 建立索引優化效能
 CREATE INDEX IF NOT EXISTS idx_offers_listing_id ON public.offers(listing_id);
@@ -89,10 +99,13 @@ DECLARE
     v_order_row RECORD;
 BEGIN
     -- 【關鍵修正】：直接由 offers 表內提取關聯的 listing_id
-    SELECT o.room_id, o.buyer_id, o.offer_price, o.listing_id INTO v_room_id, v_buyer_id, v_offer_price, v_listing_id
+    SELECT o.room_id, o.buyer_id, o.offer_price, o.listing_id
+    INTO v_room_id, v_buyer_id, v_offer_price, v_listing_id
     FROM public.offers o
-    JOIN public.chat_rooms r ON o.room_id = r.id
-    WHERE o.id = p_offer_id AND r.seller_id = p_seller_id AND o.status = 'pending';
+    INNER JOIN public.listings l ON l.id = o.listing_id
+    WHERE o.id = p_offer_id
+      AND o.status = 'pending'
+      AND l.seller_id = p_seller_id;
 
     IF NOT FOUND THEN RAISE EXCEPTION '操作失敗：出價狀態不合法，或您非商品擁有者。'; END IF;
 

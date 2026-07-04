@@ -27,6 +27,8 @@ import type {
   MarketplacePriceChartPoint,
   MarketplaceProductMarketPricesResult,
   MarketplaceSearchInput,
+  MarketplaceBootstrapData,
+  MarketplaceBootstrapResult,
   SearchMarketplaceResult,
 } from "@/app/lib/marketplace/types";
 import type { Database, Json, Tables } from "@/types/supabase";
@@ -66,6 +68,8 @@ export type {
   MarketplacePriceChartPoint,
   MarketplaceProductMarketPricesResult,
   MarketplaceSearchInput,
+  MarketplaceBootstrapData,
+  MarketplaceBootstrapResult,
   ProductListingSortKey,
   SearchMarketplaceResult,
 } from "@/app/lib/marketplace/types";
@@ -367,6 +371,43 @@ export async function getMarketplacePriceBounds(): Promise<MarketplacePriceBound
     };
   } catch (error) {
     console.error("[getMarketplacePriceBounds]", error);
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+}
+
+export async function getMarketplaceBootstrap(
+  input: MarketplaceSearchInput = {},
+): Promise<MarketplaceBootstrapResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+
+  try {
+    const [boundsResult, raritiesResult, searchResult] = await Promise.all([
+      getMarketplacePriceBounds(),
+      getMarketplaceRarities(),
+      searchMarketplaceProducts(input),
+    ]);
+
+    if (!searchResult.success) {
+      return { success: false, error: searchResult.error };
+    }
+
+    const priceBounds = boundsResult.success
+      ? boundsResult.data
+      : { minPrice: 0, maxPrice: 100_000 };
+
+    return {
+      success: true,
+      data: {
+        products: searchResult.data,
+        meta: searchResult.meta,
+        priceBounds,
+        rarities: raritiesResult.success ? raritiesResult.data : [],
+      },
+    };
+  } catch (error) {
+    console.error("[getMarketplaceBootstrap]", error);
     return { success: false, error: "無法連線至大盤市場" };
   }
 }

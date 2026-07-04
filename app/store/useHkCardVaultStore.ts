@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { INITIAL_CHATS } from "@/app/lib/mock-data/chatrooms";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
+import type { Tables } from "@/types/supabase";
+
+type OfferLedgerStatus = Tables<"offers">["status"];
+
+export type OfferLedgerEntry = {
+  status: OfferLedgerStatus;
+  memberOrderId?: string;
+  offerPrice?: number;
+  modifiedCount?: number;
+};
 
 export interface SpecialTransactionData {
   cardName: string;
@@ -16,13 +26,18 @@ export interface SpecialTransactionData {
   initialStatus?: "pending" | "accepted" | "rejected" | "countered";
 }
 
+export interface OrderCompletedData {
+  orderId: string;
+}
+
 export interface Message {
   id: string;
   sender: "me" | "them" | "system";
   text: string;
   timestamp: string;
-  type?: "text" | "special_transaction";
+  type?: "text" | "special_transaction" | "system_order_completed";
   specialData?: SpecialTransactionData;
+  orderData?: OrderCompletedData;
 }
 
 export interface ChatRoom {
@@ -65,11 +80,91 @@ function createSpecialTransactionMessage(
   };
 }
 
+function findRoomIdByOfferId(chats: ChatRoom[], offerId: string): string | null {
+  for (const room of chats) {
+    const hasOffer = room.messages.some(
+      (message) =>
+        message.type === "special_transaction" &&
+        message.specialData?.offerId === offerId,
+    );
+    if (hasOffer) {
+      return room.id;
+    }
+  }
+  return null;
+}
+
+function mapInitialStatusToLedgerStatus(
+  initialStatus: SpecialTransactionData["initialStatus"],
+): OfferLedgerStatus {
+  if (initialStatus === "accepted") return "accepted";
+  if (initialStatus === "rejected") return "rejected";
+  return "pending";
+}
+
+function isOfferAlreadyInStatus(
+  offers: Record<string, OfferLedgerEntry>,
+  chats: ChatRoom[],
+  offerId: string,
+  targetStatus: Extract<OfferLedgerStatus, "accepted" | "rejected">,
+): boolean {
+  if (offers[offerId]?.status === targetStatus) {
+    return true;
+  }
+
+  for (const room of chats) {
+    for (const message of room.messages) {
+      if (
+        message.type === "special_transaction" &&
+        message.specialData?.offerId === offerId
+      ) {
+        if (targetStatus === "accepted" && message.specialData.initialStatus === "accepted") {
+          return true;
+        }
+        if (targetStatus === "rejected" && message.specialData.initialStatus === "rejected") {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function buildOfferLedgerFromChats(
+  chats: ChatRoom[],
+): Record<string, OfferLedgerEntry> {
+  const ledger: Record<string, OfferLedgerEntry> = {};
+
+  for (const room of chats) {
+    for (const message of room.messages) {
+      if (
+        message.type !== "special_transaction" ||
+        !message.specialData?.offerId
+      ) {
+        continue;
+      }
+
+      const offerId = message.specialData.offerId;
+      ledger[offerId] = {
+        status: mapInitialStatusToLedgerStatus(
+          message.specialData.initialStatus ?? "pending",
+        ),
+        offerPrice: message.specialData.offerPrice,
+        modifiedCount: message.specialData.modifiedCount ?? 0,
+      };
+    }
+  }
+
+  return ledger;
+}
+
 interface HkCardVaultStore {
   isChatOpen: boolean;
   activeRoomId: string;
   mobileView: "LIST" | "CHAT";
   chats: ChatRoom[];
+  offers: Record<string, OfferLedgerEntry>;
 
   setIsChatOpen: (open: boolean) => void;
   setActiveRoomId: (id: string) => void;
@@ -137,11 +232,29 @@ interface HkCardVaultStore {
     messageCreatedAt?: string;
   }) => void;
 
-  applyOfferAccepted: (payload: {
-    roomId: string;
+  applyOfferAccepted: (offerId: string, memberOrderId?: string) => void;
+
+  applyOfferRejected: (offerId: string) => void;
+
+  applyOfferPriceSync: (payload: {
     offerId: string;
-    messageId: string;
+    offerPrice: number;
+    modifiedCount: number;
   }) => void;
+
+  appendRoomMessage: (roomId: string, message: Message) => void;
+
+  markRoomRead: (roomId: string) => void;
+
+  finalizeOptimisticMessage: (
+    roomId: string,
+    optimisticId: string,
+    confirmed: Message,
+  ) => void;
+
+  rollbackOptimisticMessage: (roomId: string, optimisticId: string) => void;
+
+  reconcileOfferLedger: () => void;
 }
 
 export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
@@ -149,14 +262,20 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
   activeRoomId: "RM-MOCK-A-BUYER-MERCHANT",
   mobileView: "LIST",
   chats: INITIAL_CHATS as unknown as ChatRoom[],
+  offers: {},
 
   setIsChatOpen: (open) => set({ isChatOpen: open }),
   setActiveRoomId: (id) => set({ activeRoomId: id }),
   setMobileView: (view) => set({ mobileView: view }),
   setChats: (updater) =>
-    set((state) => ({
-      chats: typeof updater === "function" ? updater(state.chats) : updater,
-    })),
+    set((state) => {
+      const chats =
+        typeof updater === "function" ? updater(state.chats) : updater;
+      return {
+        chats,
+        offers: buildOfferLedgerFromChats(chats),
+      };
+    }),
 
   activateRoomById: (roomId, partnerName) =>
     set((state) => {
@@ -432,74 +551,294 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
     }),
 
   applyOfferModification: (payload) =>
+    set((state) => {
+      const roomId = payload.roomId;
+      const nextOffers: Record<string, OfferLedgerEntry> = {
+        ...state.offers,
+        [payload.offerId]: {
+          status: "pending",
+          offerPrice: payload.newPrice,
+          modifiedCount: payload.modifiedCount,
+        },
+      };
+
+      return {
+        offers: nextOffers,
+        chats: state.chats.map((room) => {
+          if (room.id !== roomId) return room;
+
+          const hasNewMsg = room.messages.some(
+            (message) => message.id === payload.messageId,
+          );
+
+          const updatedMessages = room.messages.map((message) => {
+            if (
+              message.type === "special_transaction" &&
+              message.specialData?.offerId === payload.offerId
+            ) {
+              return {
+                ...message,
+                specialData: {
+                  ...message.specialData,
+                  offerPrice: payload.newPrice,
+                  modifiedCount: payload.modifiedCount,
+                  initialStatus: "countered" as const,
+                },
+              };
+            }
+            return message;
+          });
+
+          const modificationNotice: Message = {
+            id: payload.messageId,
+            sender: "me",
+            text: payload.messageContent,
+            timestamp: payload.messageCreatedAt ?? new Date().toISOString(),
+            type: "text",
+          };
+
+          return {
+            ...room,
+            lastMessage: payload.messageContent,
+            messages: hasNewMsg
+              ? updatedMessages
+              : [...updatedMessages, modificationNotice],
+          };
+        }),
+      };
+    }),
+
+  applyOfferAccepted: (offerId, memberOrderId) =>
+    set((state) => {
+      if (isOfferAlreadyInStatus(state.offers, state.chats, offerId, "accepted")) {
+        return state;
+      }
+
+      const roomId = findRoomIdByOfferId(state.chats, offerId);
+      const nextOffers: Record<string, OfferLedgerEntry> = {
+        ...state.offers,
+        [offerId]: {
+          ...state.offers[offerId],
+          status: "accepted",
+          memberOrderId,
+        },
+      };
+
+      if (!roomId) {
+        return { offers: nextOffers };
+      }
+
+      return {
+        offers: nextOffers,
+        chats: state.chats.map((room) => {
+          if (room.id !== roomId) return room;
+
+          const updatedMessages = room.messages.map((message) => {
+            if (
+              message.type === "special_transaction" &&
+              message.specialData?.offerId === offerId
+            ) {
+              return {
+                ...message,
+                specialData: {
+                  ...message.specialData,
+                  initialStatus: "accepted" as const,
+                },
+              };
+            }
+            return message;
+          });
+
+          return {
+            ...room,
+            lastMessage: "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）",
+            messages: updatedMessages,
+          };
+        }),
+      };
+    }),
+
+  applyOfferRejected: (offerId) =>
+    set((state) => {
+      if (isOfferAlreadyInStatus(state.offers, state.chats, offerId, "rejected")) {
+        return state;
+      }
+
+      const roomId = findRoomIdByOfferId(state.chats, offerId);
+      const nextOffers: Record<string, OfferLedgerEntry> = {
+        ...state.offers,
+        [offerId]: {
+          ...state.offers[offerId],
+          status: "rejected",
+        },
+      };
+
+      if (!roomId) {
+        return { offers: nextOffers };
+      }
+
+      return {
+        offers: nextOffers,
+        chats: state.chats.map((room) => {
+          if (room.id !== roomId) return room;
+
+          const updatedMessages = room.messages.map((message) => {
+            if (
+              message.type === "special_transaction" &&
+              message.specialData?.offerId === offerId
+            ) {
+              return {
+                ...message,
+                specialData: {
+                  ...message.specialData,
+                  initialStatus: "rejected" as const,
+                },
+              };
+            }
+            return message;
+          });
+
+          return {
+            ...room,
+            lastMessage: "❌ 賣家已拒絕此出價",
+            messages: updatedMessages,
+          };
+        }),
+      };
+    }),
+
+  applyOfferPriceSync: (payload) =>
+    set((state) => {
+      const roomId = findRoomIdByOfferId(state.chats, payload.offerId);
+      const nextOffers: Record<string, OfferLedgerEntry> = {
+        ...state.offers,
+        [payload.offerId]: {
+          ...state.offers[payload.offerId],
+          status: state.offers[payload.offerId]?.status ?? "pending",
+          offerPrice: payload.offerPrice,
+          modifiedCount: payload.modifiedCount,
+        },
+      };
+
+      if (!roomId) {
+        return { offers: nextOffers };
+      }
+
+      return {
+        offers: nextOffers,
+        chats: state.chats.map((room) => {
+          if (room.id !== roomId) return room;
+
+          return {
+            ...room,
+            messages: room.messages.map((message) => {
+              if (
+                message.type === "special_transaction" &&
+                message.specialData?.offerId === payload.offerId
+              ) {
+                return {
+                  ...message,
+                  specialData: {
+                    ...message.specialData,
+                    offerPrice: payload.offerPrice,
+                    modifiedCount: payload.modifiedCount,
+                    initialStatus: "countered" as const,
+                  },
+                };
+              }
+              return message;
+            }),
+          };
+        }),
+      };
+    }),
+
+  appendRoomMessage: (roomId, message) =>
     set((state) => ({
       chats: state.chats.map((room) => {
-        if (room.id !== payload.roomId) return room;
+        if (room.id !== roomId) return room;
+        if (room.messages.some((existing) => existing.id === message.id)) {
+          return room;
+        }
 
-        const hasNewMsg = room.messages.some((m) => m.id === payload.messageId);
-
-        const updatedMessages = room.messages.map((m) => {
-          if (
-            m.type === "special_transaction" &&
-            m.specialData?.offerId === payload.offerId
-          ) {
-            return {
-              ...m,
-              specialData: {
-                ...m.specialData,
-                offerPrice: payload.newPrice,
-                modifiedCount: payload.modifiedCount,
-                initialStatus: "countered" as const,
-              },
-            };
-          }
-          return m;
-        });
-
-        const modificationNotice: Message = {
-          id: payload.messageId,
-          sender: "me",
-          text: payload.messageContent,
-          timestamp: payload.messageCreatedAt ?? new Date().toISOString(),
-          type: "text",
-        };
+        const lastMessage = room.messages.at(-1);
+        const messageTime = new Date(message.timestamp).getTime();
+        const lastTime = lastMessage
+          ? new Date(lastMessage.timestamp).getTime()
+          : 0;
+        const messages =
+          !lastMessage || messageTime >= lastTime
+            ? [...room.messages, message]
+            : [...room.messages, message].sort(
+                (a, b) =>
+                  new Date(a.timestamp).getTime() -
+                  new Date(b.timestamp).getTime(),
+              );
 
         return {
           ...room,
-          lastMessage: payload.messageContent,
-          messages: hasNewMsg
-            ? updatedMessages
-            : [...updatedMessages, modificationNotice],
+          messages,
+          lastMessage: message.text,
+          timestamp: message.timestamp,
         };
       }),
     })),
 
-  applyOfferAccepted: (payload) =>
+  markRoomRead: (roomId) =>
+    set((state) => ({
+      chats: state.chats.map((room) =>
+        room.id === roomId ? { ...room, unreadCount: 0 } : room,
+      ),
+    })),
+
+  finalizeOptimisticMessage: (roomId, optimisticId, confirmed) =>
     set((state) => ({
       chats: state.chats.map((room) => {
-        if (room.id !== payload.roomId) return room;
+        if (room.id !== roomId) return room;
 
-        const updatedMessages = room.messages.map((m) => {
-          if (
-            m.type === "special_transaction" &&
-            m.specialData?.offerId === payload.offerId
-          ) {
-            return {
-              ...m,
-              specialData: {
-                ...m.specialData,
-                initialStatus: "accepted" as const,
-              },
-            };
-          }
-          return m;
-        });
+        const withoutOptimistic = room.messages.filter(
+          (message) => message.id !== optimisticId,
+        );
+        const alreadyPersisted = withoutOptimistic.some(
+          (message) => message.id === confirmed.id,
+        );
+        const messages = alreadyPersisted
+          ? withoutOptimistic
+          : [...withoutOptimistic, confirmed].sort(
+              (a, b) =>
+                new Date(a.timestamp).getTime() -
+                new Date(b.timestamp).getTime(),
+            );
 
         return {
           ...room,
-          lastMessage: "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）",
-          messages: updatedMessages,
+          messages,
+          lastMessage: confirmed.text,
+          timestamp: confirmed.timestamp,
         };
       }),
+    })),
+
+  rollbackOptimisticMessage: (roomId, optimisticId) =>
+    set((state) => ({
+      chats: state.chats.map((room) => {
+        if (room.id !== roomId) return room;
+
+        const messages = room.messages.filter(
+          (message) => message.id !== optimisticId,
+        );
+        const lastMessage = messages.at(-1)?.text ?? room.lastMessage ?? "";
+
+        return {
+          ...room,
+          messages,
+          lastMessage,
+        };
+      }),
+    })),
+
+  reconcileOfferLedger: () =>
+    set((state) => ({
+      offers: buildOfferLedgerFromChats(state.chats),
     })),
 }));

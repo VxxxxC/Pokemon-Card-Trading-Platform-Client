@@ -6,6 +6,20 @@
 - **Frontend:** ✅ **Wired** — live search, updated filters, grid card baseline
 - **Your focus:** Grid card polish (listing count, price spread, seller chip), filter styling pass. Product detail **catalog** done — see [marketplace-product-detail/frontend.md](../marketplace-product-detail/frontend.md)
 
+## Changelog (2026-07-04) — SSR bootstrap + load performance
+
+| Area | What changed |
+|------|----------------|
+| **Server page** | `app/marketplace/page.tsx` — Server Component; fetches `getMarketplaceBootstrap` + `getOptionalAuthUser` in parallel; no client POSTs on first paint |
+| **`MarketplacePageClient.tsx`** | Client UI extracted from former monolithic `page.tsx`; receives `initialData` + `currentUserId` props |
+| **`useMarketplaceSearch`** | Optional `initialData` — grid renders immediately from SSR; returns **`rarities`**; filter/page changes call `searchMarketplaceProducts` only |
+| **Own-listing session** | `currentUserId` fetched **once** on page (SSR); passed to every `MarketplaceCard` via prop — avoids N× `getCurrentUserProfile` |
+| **`MarketplaceCard.currentUserId`** | Optional prop; when set, skips per-card `useCurrentUserId()` hook |
+| **Rarity fetch** | Single bootstrap/SSR load; both `AccordionFilters` instances get `rarities` + `disableRarityFetch` |
+| **Viewport** | `useSyncExternalStore` + `matchMedia` — correct `pageSize` on first paint (no mobile→desktop refetch flash) |
+| **Desktop note** | SSR uses `pageSize: 9`; desktop (`11`) may trigger **one** extra search POST after hydration |
+| **`MarketplaceCard` subtitle** | Set code before card number — `{SET} · {cardNo}` (e.g. `SV2A · 062`) from `listing.set` |
+
 ## Changelog (2026-07-04) — unified keyword search
 
 | Area | What changed |
@@ -18,8 +32,8 @@
 
 | Area | What changed |
 |------|----------------|
-| **`MarketplaceCard` own-listing guard** | Compares `listing.sellerId` with `useCurrentUserId()`; gold ring + **我的掛單** badge + seller **(你)** + disabled buy button |
-| **`useCurrentUserId`** | New hook — `getCurrentUserProfile()` on mount; used by grid card (product detail uses SSR `currentUserId` instead) |
+| **`MarketplaceCard` own-listing guard** | Compares `listing.sellerId` with `currentUserId` (from page SSR prop or optional per-card hook fallback); gold ring + **我的掛單** badge + seller **(你)** + disabled buy button |
+| **`useCurrentUserId`** | Hook — `getCurrentUserProfile()` on mount; used by grid card **only when parent omits `currentUserId` prop** (e.g. mock storefront pages) |
 
 ## Changelog (2026-07-03)
 
@@ -36,17 +50,18 @@
 
 | Feature | Location |
 |---------|----------|
-| Server-side search + pagination | `useMarketplaceSearch` → `searchMarketplaceProducts` |
+| **SSR initial load** | `app/marketplace/page.tsx` → `getMarketplaceBootstrap` → `MarketplacePageClient` |
+| Server-side search + pagination | `useMarketplaceSearch` → `searchMarketplaceProducts` (or bootstrap on first load) |
 | Debounced keyword (350ms) | `app/lib/hooks/useMarketplaceSearch.ts` |
 | Unified keyword (name / set / card / display_id) | `query` → `parseCatalogSearchQuery` → `p_keyword` (or structured set+card for combos) |
-| Rarity facet (all catalog values) | `getMarketplaceRarities` → `AccordionFilters` → `p_rarities` |
+| Rarity facet (all catalog values) | Bootstrap / `getMarketplaceRarities` → `AccordionFilters` (`rarities` prop + `disableRarityFetch`) → `p_rarities` |
 | Grade facet (create-listing options) | `GRADING_OPTION_GROUPS` / `GRADING_OPTIONS` → option ids → `parseGradeFilters()` |
 | Seller source (會員 / 認證商戶) | `MARKETPLACE_SELLER_SOURCE_OPTIONS` → `mapSellerModes()` |
 | Price range slider | `priceRange` → `p_price_min` / `p_price_max` |
 | Sort (最新 / 價格) | `sortKey` in `useMarketStore` |
 | Pagination + results summary | `Pagination` + `meta.rangeStart` / `rangeEnd` / `total` |
 | Grid card rarity | `RarityBadge` on image when `listing.rarity` present |
-| Loading / empty / error states | `app/marketplace/page.tsx`, `MarketplaceEmptyState.tsx` |
+| Loading / empty / error states | `MarketplacePageClient.tsx`, `MarketplaceEmptyState.tsx` |
 | URL sync (`?q=`, `?rarity=`) | Case-insensitive rarity match; preserves catalog value |
 | Homepage hero typeahead | `useHeroMarketplaceSearch` (unchanged) |
 
@@ -60,8 +75,9 @@
 | Image overlay bottom-left | **我的掛單** badge when `listing.sellerId === currentUserId` |
 | Image overlay top-right | `WishlistButton` |
 | Card wrapper | Gold ring when own listing |
-| Body | Name, card no, price, delta, seller — **no grade row**; seller shows **(你)** when own listing |
+| Body | Name; **set code · card no** (`listing.set` + `listing.cardNo`); price, delta, seller — **no grade row**; seller shows **(你)** when own listing |
 | Footer CTA | `BuyButton` for others; disabled **我的掛單 · 無法出價** for own listing |
+| `MarketplaceListing.set` | `product.setCode` from `toMarketplaceListing` — displayed uppercase before card number |
 | `MarketplaceListing.grade` | Still on type for `BuyButton` / mocks; not rendered |
 
 ### Filters: `app/components/marketplace/filters/AccordionFilters.tsx`
@@ -69,19 +85,23 @@
 | Section | Source | State key |
 |---------|--------|-----------|
 | 刊登來源 | `MARKETPLACE_SELLER_SOURCE_OPTIONS` | `activeTypes` (`MEMBER`, `MERCHANT`) |
-| 稀有度 | `getMarketplaceRarities()` on mount (or `rarities` prop override) | `activeRarities` |
+| 稀有度 | `rarities` prop from page bootstrap (or internal fetch if prop omitted) | `activeRarities` |
 | 鑑定／品相 | `GRADING_OPTION_GROUPS` + `getGradingOptionsByGroup` | `activeGrades` (option **ids**) |
 
 **Removed:** 裸卡品相分級 / `activeConditions` — raw conditions live under 鑑定／品相 → 裸卡 group.
 
-### Primary page: `app/marketplace/page.tsx`
+**Props:** `rarities` + `disableRarityFetch` — marketplace page passes both so filters never self-fetch.
+
+### Primary page: `app/marketplace/page.tsx` + `app/marketplace/MarketplacePageClient.tsx`
 
 | Area | Notes |
 |------|-------|
-| `toMarketplaceListing` | `rarity: product.rarity` direct; `grade` still mapped for downstream compat |
-| `useMarketplaceSearch` wiring | `rarities`, `grades` (ids), `sellerTypes`, `priceRange`, `sortKey`, `page` |
+| Server `page.tsx` | `getMarketplaceBootstrap({ page: 1, pageSize: 9, sortKey: "最新" })` + `getOptionalAuthUser()` |
+| `MarketplacePageClient` | All interactive UI; `toMarketplaceListing` maps `set: product.setCode`, `cardNo` from catalog |
+| `useMarketplaceSearch` wiring | `{ initialData }` from SSR; `rarities`, `grades` (ids), `sellerTypes`, `priceRange`, `sortKey`, `page` |
+| `currentUserId` | SSR prop → every `MarketplaceCard` |
 | `hasActiveFilters` | query, rarities, grades, seller types, price range — **no** conditions |
-| Desktop + mobile `AccordionFilters` | Same props; type section visible on main marketplace |
+| Desktop + mobile `AccordionFilters` | Same props; `rarities` + `disableRarityFetch`; type section visible on main marketplace |
 
 ### Store: `app/store/useMarketStore.ts`
 
@@ -103,9 +123,12 @@
 | Rarities | Loaded via same `AccordionFilters` DB fetch |
 
 ```ts
+// MarketplacePageClient — preferred (SSR):
+<MarketplaceCard listing={item} currentUserId={currentUserId} />
+
+// Fallback when parent does not pass currentUserId (e.g. mock storefront):
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 
-// Inside MarketplaceCard:
 const currentUserId = useCurrentUserId();
 const isOwnListing =
   currentUserId != null &&
@@ -118,7 +141,11 @@ const isOwnListing =
 ## Module layout
 
 ```ts
-import { searchMarketplaceProducts, getMarketplaceRarities } from "@/app/actions/marketplace";
+import {
+  searchMarketplaceProducts,
+  getMarketplaceBootstrap,
+  getMarketplaceRarities,
+} from "@/app/actions/marketplace";
 import { parseGradeFilters, mapSellerModes } from "@/app/lib/marketplace/searchParsers";
 import { MARKETPLACE_SELLER_SOURCE_OPTIONS } from "@/lib/marketplace/filter-options";
 import {
@@ -129,22 +156,30 @@ import {
 import type { MarketplaceProductRow } from "@/app/lib/marketplace/types";
 ```
 
-## Hook API (unchanged shape)
+## Hook API
 
 ```ts
-const { products, meta, isLoading, error, priceBounds, refetch } =
-  useMarketplaceSearch({
-    query,
-    rarities: activeRarities,
-    grades: activeGrades,        // grading option ids
-    sellerTypes: activeTypes,      // MEMBER | MERCHANT
-    priceMin: priceRange[0],
-    priceMax: priceRange[1],
-    sortKey,
-    page: currentPage,
-    pageSize: itemsPerPage,
-  });
+const { products, meta, isLoading, error, priceBounds, rarities, refetch } =
+  useMarketplaceSearch(
+    {
+      query,
+      rarities: activeRarities,
+      grades: activeGrades,        // grading option ids
+      sellerTypes: activeTypes,      // MEMBER | MERCHANT
+      priceMin: priceRange[0],
+      priceMax: priceRange[1],
+      sortKey,
+      page: currentPage,
+      pageSize: itemsPerPage,
+    },
+    {
+      initialData, // optional — from SSR getMarketplaceBootstrap
+    },
+  );
 ```
+
+- **`initialData` present:** `isLoading` starts `false`; products/meta/bounds/rarities hydrated from server.
+- **`initialData` absent:** hook calls `getMarketplaceBootstrap` once on mount, then searches on filter changes only.
 
 **If you add filter fields:** update `MarketplaceSearchFilters`, `filtersKey()`, hook RPC call, page wiring, and `AccordionFilters`.
 
@@ -175,6 +210,8 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 - [x] Empty state + reset filters
 - [x] Homepage hero → `/marketplace?q=…`
 - [x] Own listing on grid card — badge, ring, disabled buy (when lowest listing is seller's)
+- [x] SSR bootstrap — grid + filters hydrate without initial client POST storm
+- [x] Set code · card number on grid card subtitle
 - [ ] Listing count / price spread on card
 - [ ] Product detail order book / chart / history ([detail handoff](../marketplace-product-detail/frontend.md))
 - [ ] Raw condition-specific filter (blocked — no `listings.condition` column)
@@ -183,20 +220,22 @@ const { products, meta, isLoading, error, priceBounds, refetch } =
 
 - `app/actions/marketplace.ts` — server actions + envelopes
 - `parseGradeFilters` / `mapSellerModes` / grading option id format
-- `getMarketplaceRarities` data source
-- `useMarketplaceSearch` filter → RPC param mapping
+- `getMarketplaceBootstrap` / SSR page wiring
+- `useMarketplaceSearch` filter → RPC param mapping and `initialData` contract
 
 ## Manual test plan
 
 1. Apply migrations (`INTEGRATION_QUEUE.md`) — include **`20260704220000_marketplace_search_keyword.sql`** for unified keyword.
-2. `/marketplace` — rarity section shows DB values (not only SAR/UR/SR/AR).
-3. Toggle **認證商戶** — only `seller_persona = merchant` listings match.
-4. Toggle **PSA 10** under 鑑定／品相 — only PSA 10 listings match.
-5. Toggle **裸卡 A** — matches all RAW listings (condition not in DB yet).
-6. Grid card — rarity chip on image; no PSA/CGC badge.
-7. `?rarity=SAR` (or any catalog value) — pre-selects matching chip.
-8. Reset filters — clears rarities, grades, seller types, query, price slider.
-9. Merchant storefront `/marketplace/[id]` — grade filter still works on mock data.
-10. Log in as seller with lowest-price listing on a product — grid card shows **我的掛單**; buy button disabled.
-11. Search `062` or a `display_id` fragment — unified keyword returns matching in-stock products.
-12. Search `sv2a-062` — structured combo still narrows to set + card (AND).
+2. `/marketplace` — first paint shows product grid without long spinner (SSR bootstrap).
+3. Network tab on cold load — **0** marketplace POSTs before interaction (desktop may POST once for `pageSize` 11).
+4. Rarity section shows DB values (not only SAR/UR/SR/AR).
+5. Toggle **認證商戶** — only `seller_persona = merchant` listings match.
+6. Toggle **PSA 10** under 鑑定／品相 — only PSA 10 listings match.
+7. Toggle **裸卡 A** — matches all RAW listings (condition not in DB yet).
+8. Grid card — rarity chip on image; subtitle shows **SET · cardNo**; no PSA/CGC badge.
+9. `?rarity=SAR` (or any catalog value) — pre-selects matching chip.
+10. Reset filters — clears rarities, grades, seller types, query, price slider.
+11. Merchant storefront `/marketplace/[id]` — grade filter still works on mock data.
+12. Log in as seller with lowest-price listing on a product — grid card shows **我的掛單**; buy button disabled.
+13. Search `062` or a `display_id` fragment — unified keyword returns matching in-stock products.
+14. Search `sv2a-062` — structured combo still narrows to set + card (AND).

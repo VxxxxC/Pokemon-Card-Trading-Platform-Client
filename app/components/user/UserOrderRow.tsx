@@ -1,7 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  cancelMemberOrder,
+  completeMemberOrder,
+} from "@/app/actions/orders";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import {
   SaleOrder,
@@ -12,6 +27,18 @@ import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 
 interface UserOrderRowProps {
   order: SaleOrder;
+  statusBadge?: React.ReactNode;
+  orderNumber?: string | null;
+  detailOrderId?: string;
+  onOpenReview?: (orderId: string, revieweeId: string) => void;
+  dbOrderContext?: {
+    orderId: string;
+    revieweeId: string;
+    dbStatus: string;
+    hasReviewedByMe: boolean;
+    canCancel: boolean;
+    onRefresh: () => void;
+  };
 }
 
 function OrderStatusBadge({ status }: { status: OrderStatus }) {
@@ -39,16 +66,79 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
   );
 }
 
-export function UserOrderRow({ order }: UserOrderRowProps) {
+export function UserOrderRow({
+  order,
+  statusBadge,
+  orderNumber,
+  detailOrderId,
+  onOpenReview,
+  dbOrderContext,
+}: UserOrderRowProps) {
   const router = useRouter();
+  const [isActionLoading, setIsActionLoading] = useState(false);
+  const displayOrderNumber = orderNumber ?? order.id;
+  const navigateOrderId = detailOrderId ?? order.id;
 
   const isBuyer = order.userContext === "BUYER";
   const counterpartLabel = isBuyer ? "賣家" : "買家";
   const counterpartName = isBuyer ? order.sellerName : order.buyerName;
 
+  const isPendingDbOrder = dbOrderContext?.dbStatus === "pending";
+  const showReviewCta =
+    dbOrderContext?.dbStatus === "completed" &&
+    !dbOrderContext.hasReviewedByMe &&
+    Boolean(onOpenReview);
+
+  const handleComplete = async () => {
+    if (!dbOrderContext || !onOpenReview || isActionLoading) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    const result = await completeMemberOrder(dbOrderContext.orderId);
+    setIsActionLoading(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("交易已確認完成！");
+    dbOrderContext.onRefresh();
+    onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
+  };
+
+  const handleCancel = async () => {
+    if (!dbOrderContext || isActionLoading) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    const result = await cancelMemberOrder(dbOrderContext.orderId);
+    setIsActionLoading(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("交易已取消，商品已重新上架");
+    dbOrderContext.onRefresh();
+  };
+
+  const handleOpenReview = () => {
+    if (!dbOrderContext || !onOpenReview || isActionLoading) {
+      return;
+    }
+
+    onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
+  };
+
   return (
     <div
-      onClick={() => router.push("/profile/user/orderDetail/" + order.id)}
+      onClick={() =>
+        router.push("/profile/user/orderDetail/" + navigateOrderId)
+      }
       className="flex items-center justify-between py-3 px-4 bg-bg-card hover:bg-bg-elevated border border-[rgba(237,232,224,0.08)] rounded-xl cursor-pointer transition-all duration-200 animate-fadeIn"
     >
       {/* Left side: Role Badge + Card Name + Status Badge + PSA Grade + Sub context */}
@@ -64,7 +154,7 @@ export function UserOrderRow({ order }: UserOrderRowProps) {
               賣出
             </span>
           )}
-          <OrderStatusBadge status={order.status} />
+          {statusBadge ?? <OrderStatusBadge status={order.status} />}
 
           <h3 className="text-[14.5px] font-bold text-text-primary truncate max-w-[160px] sm:max-w-xs md:max-w-md">
             {order.cardName}
@@ -80,13 +170,93 @@ export function UserOrderRow({ order }: UserOrderRowProps) {
           </span>
           <span className="hidden sm:inline text-white/5">|</span>
           <span className="text-[11px] font-mono tracking-tight text-brand">
-            {"訂單編號: #" + order.id}
+            {"訂單編號: #" + displayOrderNumber}
           </span>
+          {order.createdAt ? (
+            <>
+              <span className="hidden sm:inline text-white/5">|</span>
+              <span className="text-[11px] font-mono tracking-tight text-text-disabled">
+                {"建立時間：" + order.createdAt}
+              </span>
+            </>
+          ) : null}
         </div>
       </div>
 
-      {/* Price */}
+      {/* Price + order actions */}
       <div className="flex items-center gap-3 shrink-0">
+        {(isPendingDbOrder || showReviewCta) && (
+          <div
+            className="flex flex-col gap-1.5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {isPendingDbOrder && (
+              <>
+                <button
+                  type="button"
+                  disabled={isActionLoading}
+                  onClick={handleComplete}
+                  className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-success/15 text-success border border-success/25 hover:bg-success/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {isActionLoading ? "處理中…" : "確認完成交易"}
+                </button>
+                {dbOrderContext?.canCancel && (
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      disabled={isActionLoading}
+                      className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-[rgba(239,68,68,0.10)] text-warning border border-warning/20 hover:bg-[rgba(239,68,68,0.18)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {isActionLoading ? "處理中…" : "取消交易"}
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-sm rounded-2xl border border-[#ef4444]/30 bg-[#26211C] p-6 text-[#eae1da]">
+                      <AlertDialogHeader className="text-left">
+                        <AlertDialogTitle className="text-[15px] font-black">
+                          確認取消交易
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-[11px] font-mono uppercase tracking-wider text-[#8A8680]">
+                          Cancel Order
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <p className="py-3 text-[12.5px] leading-relaxed text-[#d4c4b7]">
+                        您即將取消與{" "}
+                        <span className="font-bold text-brand">
+                          {counterpartName}
+                        </span>{" "}
+                        的待處理訂單（
+                        <span className="font-mono text-warning">
+                          HK$ {order.amount.toLocaleString("zh-TW")}
+                        </span>
+                        ）。確認後商品將重新上架至市集。
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        <AlertDialogAction
+                          onClick={() => void handleCancel()}
+                          disabled={isActionLoading}
+                          className="h-11 rounded-xl bg-[#ef4444] font-black text-white hover:bg-[#dc2626] disabled:opacity-50"
+                        >
+                          {isActionLoading ? "處理中…" : "確認取消"}
+                        </AlertDialogAction>
+                        <AlertDialogCancel className="h-10 rounded-xl border border-white/10 bg-[#120F0C]">
+                          返回
+                        </AlertDialogCancel>
+                      </div>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
+            )}
+            {showReviewCta && (
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={handleOpenReview}
+                className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                ✍️ 給予對手評價
+              </button>
+            )}
+          </div>
+        )}
         <div className="text-right">
           <span className="text-[15.5px] font-mono font-black text-brand block">
             {"HK$ " + order.amount.toLocaleString("zh-TW")}

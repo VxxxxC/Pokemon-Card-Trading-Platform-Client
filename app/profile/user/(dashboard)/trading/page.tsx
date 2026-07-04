@@ -6,11 +6,155 @@ import React, {
   useMemo,
   useSyncExternalStore,
   Suspense,
+  useCallback,
 } from "react";
 import { useSearchParams } from "next/navigation";
-import { SaleOrder } from "@/app/lib/types/trading";
+import {
+  getUserTradingOrders,
+  type UserTradingOrder,
+} from "@/app/actions/orders";
+import { ReviewModal } from "@/app/components/trading/ReviewModal";
+import { SaleOrder, OrderStatus } from "@/app/lib/types/trading";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { UserOrderRow } from "@/app/components/user/UserOrderRow";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
+type PersonaFilter = "all" | "buy" | "sell";
+type TabStatusFilter = "all" | "pending" | "completed" | "cancelled";
+
+const TAB_STATUS_FROM_PARAM: Record<string, TabStatusFilter> = {
+  全部: "all",
+  待處理: "pending",
+  已完成: "completed",
+  已取消: "cancelled",
+};
+
+const PERSONA_OPTIONS: { value: PersonaFilter; label: string }[] = [
+  { value: "all", label: "全部" },
+  { value: "buy", label: "買單" },
+  { value: "sell", label: "賣單" },
+];
+
+const STATUS_OPTIONS: { value: TabStatusFilter; label: string }[] = [
+  { value: "all", label: "全部" },
+  { value: "pending", label: "待處理" },
+  { value: "completed", label: "已完成" },
+  { value: "cancelled", label: "已取消" },
+];
+
+const ACTION_REQUIRED_STATUSES = new Set([
+  "pending",
+  "meetup_arranged",
+  "in_custody",
+]);
+
+const PENDING_ACTION_STATUSES = new Set(["pending"]);
+
+type ActiveReviewState = {
+  orderId: string;
+  revieweeId: string;
+} | null;
+
+const MOCK_ACTION_REQUIRED_STATUSES = new Set<OrderStatus>([
+  "payment",
+  "custody",
+  "shipped",
+]);
+
+type TradingOrderRow =
+  | { source: "db"; rowKey: string; order: UserTradingOrder }
+  | { source: "mock"; rowKey: string; order: SaleOrder };
+
+function parseSortableDate(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function matchesPersonaFilter(
+  persona: PersonaFilter,
+  userContext: "BUYER" | "SELLER",
+): boolean {
+  if (persona === "buy") {
+    return userContext === "BUYER";
+  }
+  if (persona === "sell") {
+    return userContext === "SELLER";
+  }
+  return true;
+}
+
+function matchesTabStatusFilter(
+  tabStatus: TabStatusFilter,
+  mockStatus: OrderStatus,
+): boolean {
+  if (tabStatus === "pending") {
+    return (
+      mockStatus === "payment" ||
+      mockStatus === "custody" ||
+      mockStatus === "shipped" ||
+      mockStatus === "grading"
+    );
+  }
+  if (tabStatus === "completed") {
+    return mockStatus === "released";
+  }
+  if (tabStatus === "cancelled") {
+    return mockStatus === "cancelled";
+  }
+  return true;
+}
+
+function matchesSearchQuery(order: SaleOrder, searchQuery: string): boolean {
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return (
+    order.cardName.toLowerCase().includes(normalizedQuery) ||
+    order.cardNo.toLowerCase().includes(normalizedQuery) ||
+    order.buyerName.toLowerCase().includes(normalizedQuery) ||
+    order.sellerName.toLowerCase().includes(normalizedQuery) ||
+    order.id.toLowerCase().includes(normalizedQuery)
+  );
+}
+
+function filterMockOrders(
+  persona: PersonaFilter,
+  tabStatus: TabStatusFilter,
+  searchQuery: string,
+): SaleOrder[] {
+  return USER_MOCK_ORDERS_DB.filter((order) => {
+    return (
+      matchesPersonaFilter(persona, order.userContext) &&
+      matchesTabStatusFilter(tabStatus, order.status) &&
+      matchesSearchQuery(order, searchQuery)
+    );
+  });
+}
+
+function mockStatusToBadgeKey(status: OrderStatus): string {
+  switch (status) {
+    case "payment":
+      return "pending";
+    case "custody":
+    case "shipped":
+      return "in_custody";
+    case "grading":
+      return "grading";
+    case "released":
+      return "completed";
+    case "cancelled":
+      return "cancelled";
+    default:
+      return status;
+  }
+}
 
 export const USER_MOCK_ORDERS_DB: SaleOrder[] = [
   {
@@ -120,26 +264,111 @@ export const USER_MOCK_ORDERS_DB: SaleOrder[] = [
   },
 ];
 
+function renderStatusBadge(status: string) {
+  switch (status) {
+    case "pending":
+    case "meetup_arranged":
+      return (
+        <Badge variant="secondary" className="bg-amber-950 text-amber-400">
+          待處理
+        </Badge>
+      );
+    case "in_custody":
+      return (
+        <Badge variant="secondary" className="bg-blue-950 text-blue-400">
+          保管中
+        </Badge>
+      );
+    case "grading":
+      return (
+        <Badge variant="secondary" className="bg-purple-950 text-purple-400">
+          鑑定中
+        </Badge>
+      );
+    case "completed":
+      return <Badge variant="success">已完成</Badge>;
+    case "cancelled":
+      return <Badge variant="destructive">已取消</Badge>;
+    default:
+      return null;
+  }
+}
+
+function formatListingGrade(order: UserTradingOrder): string {
+  const { gradingCompany, gradingScore } = order.listing;
+  if (gradingScore) {
+    return `${gradingCompany} ${gradingScore}`;
+  }
+  if (gradingCompany && gradingCompany.toLowerCase() !== "raw") {
+    return gradingCompany;
+  }
+  return "Raw 裸卡";
+}
+
+function formatOrderDateTime(createdAt: string | null): string {
+  if (!createdAt) {
+    return "";
+  }
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) {
+    return createdAt;
+  }
+  return date.toLocaleString("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function mapTradingOrderToSaleOrder(order: UserTradingOrder): SaleOrder {
+  const isBuyer = order.persona === "buy";
+  const counterpartyName = order.counterparty.displayName;
+
+  return {
+    id: order.id,
+    buyerId: order.buyerId,
+    buyerName: isBuyer ? "" : counterpartyName,
+    sellerId: order.sellerId,
+    sellerName: isBuyer ? counterpartyName : "",
+    cardName: order.product.cardName,
+    cardNo: order.product.cardNumber ?? order.product.displayId ?? "",
+    grade: formatListingGrade(order),
+    amount: order.finalPrice,
+    status: "payment",
+    createdAt: formatOrderDateTime(order.createdAt),
+    orderType: "C2C",
+    userContext: isBuyer ? "BUYER" : "SELLER",
+    productListingId: order.id,
+    hasAuthenticationToggle: order.listing.useAuthentication,
+  };
+}
+
 function UserTradingPageContent() {
   const searchParams = useSearchParams();
-  const initialFilter = searchParams.get("filter") || "全部";
+  const initialTabStatus =
+    TAB_STATUS_FROM_PARAM[searchParams.get("filter") ?? ""] ?? "all";
 
-  const [filter, setFilter] = useState(initialFilter);
+  const [persona, setPersona] = useState<PersonaFilter>("all");
+  const [tabStatus, setTabStatus] = useState<TabStatusFilter>(initialTabStatus);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dbOrders, setDbOrders] = useState<UserTradingOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(8);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [activeReview, setActiveReview] = useState<ActiveReviewState>(null);
 
-  // Polymorphic Actor Filters
-  const [showBuyOrders, setShowBuyOrders] = useState(true);
-  const [showSellOrders, setShowSellOrders] = useState(true);
-
-  // Sync state if URL query param changes dynamically (e.g. click "View All" link)
   useEffect(() => {
     const queryFilter = searchParams.get("filter");
-    if (queryFilter && queryFilter !== filter) {
-      queueMicrotask(() => setFilter(queryFilter));
+    if (queryFilter && TAB_STATUS_FROM_PARAM[queryFilter]) {
+      const nextStatus = TAB_STATUS_FROM_PARAM[queryFilter];
+      queueMicrotask(() => setTabStatus(nextStatus));
     }
-  }, [searchParams, filter]);
+  }, [searchParams]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -156,68 +385,121 @@ function UserTradingPageContent() {
 
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [filter, searchQuery, showBuyOrders, showSellOrders]);
+  }, [persona, tabStatus, searchQuery]);
 
-  const filteredOrders = useMemo(() => {
-    return USER_MOCK_ORDERS_DB.filter((order) => {
-      // 1. Base State Check (Filter Status)
-      let matchFilter = true;
-      if (filter === "待處理") {
-        matchFilter =
-          order.status === "payment" ||
-          order.status === "custody" ||
-          order.status === "shipped" ||
-          order.status === "grading";
-      } else if (filter === "已完成") {
-        matchFilter = order.status === "released";
-      } else if (filter === "已取消") {
-        matchFilter = order.status === "cancelled";
+  useEffect(() => {
+    let cancelled = false;
+    const debounceMs = searchQuery.trim() ? 300 : 0;
+
+    const timer = window.setTimeout(async () => {
+      setIsLoading(true);
+      setFetchError(null);
+
+      const result = await getUserTradingOrders({
+        persona,
+        tabStatus,
+        searchQuery: searchQuery.trim() || undefined,
+      });
+
+      if (cancelled) {
+        return;
       }
 
-      // 2. Identity Context Matrix Alignment
-      let matchContext = false;
-      if (showBuyOrders && order.userContext === "BUYER") {
-        matchContext = true;
-      }
-      if (showSellOrders && order.userContext === "SELLER") {
-        matchContext = true;
-      }
-
-      // 3. Search Query Expansion
-      const normalizedQuery = searchQuery.trim().toLowerCase();
-      let matchSearch = true;
-      if (normalizedQuery) {
-        matchSearch =
-          order.cardName.toLowerCase().includes(normalizedQuery) ||
-          order.cardNo.toLowerCase().includes(normalizedQuery) ||
-          order.buyerName.toLowerCase().includes(normalizedQuery) ||
-          order.sellerName.toLowerCase().includes(normalizedQuery) ||
-          order.id.toLowerCase().includes(normalizedQuery);
+      if (result.success) {
+        setDbOrders(result.data);
+        setFetchError(null);
+      } else {
+        setDbOrders([]);
+        setFetchError(result.error);
       }
 
-      return matchFilter && matchContext && matchSearch;
+      setIsLoading(false);
+    }, debounceMs);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [persona, tabStatus, searchQuery, refreshKey]);
+
+  const handleOpenReview = useCallback(
+    (orderId: string, revieweeId: string) => {
+      setActiveReview({ orderId, revieweeId });
+    },
+    [],
+  );
+
+  const handleCloseReview = useCallback(() => {
+    setActiveReview(null);
+    setRefreshKey((key) => key + 1);
+  }, []);
+
+  const handleRefreshOrders = useCallback(() => {
+    setRefreshKey((key) => key + 1);
+  }, []);
+
+  const filteredMockOrders = useMemo(
+    () => filterMockOrders(persona, tabStatus, searchQuery),
+    [persona, tabStatus, searchQuery],
+  );
+
+  const displayRows = useMemo((): TradingOrderRow[] => {
+    const dbRows: TradingOrderRow[] = dbOrders.map((order) => ({
+      source: "db",
+      rowKey: `db-${order.id}`,
+      order,
+    }));
+
+    const mockRows: TradingOrderRow[] = filteredMockOrders.map((order) => ({
+      source: "mock",
+      rowKey: `mock-${order.id}`,
+      order,
+    }));
+
+    return [...dbRows, ...mockRows].sort((left, right) => {
+      const leftDate =
+        left.source === "db"
+          ? parseSortableDate(left.order.createdAt)
+          : parseSortableDate(left.order.createdAt);
+      const rightDate =
+        right.source === "db"
+          ? parseSortableDate(right.order.createdAt)
+          : parseSortableDate(right.order.createdAt);
+      return rightDate - leftDate;
     });
-  }, [filter, searchQuery, showBuyOrders, showSellOrders]);
+  }, [dbOrders, filteredMockOrders]);
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
-  const paginatedOrders = useMemo(() => {
+  const totalPages = Math.ceil(displayRows.length / itemsPerPage);
+  const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
-    return filteredOrders.slice(start, end);
-  }, [filteredOrders, currentPage, itemsPerPage]);
+    return displayRows.slice(start, end);
+  }, [displayRows, currentPage, itemsPerPage]);
 
-  const needsAction = USER_MOCK_ORDERS_DB.filter((o) => {
-    const isSeller = o.userContext === "SELLER";
-    if (isSeller) {
-      return o.status === "custody" || o.status === "payment";
-    } else {
-      return o.status === "payment" || o.status === "shipped";
-    }
-  });
+  const needsAction = useMemo(() => {
+    const dbActionCount = dbOrders.filter((order) =>
+      ACTION_REQUIRED_STATUSES.has(order.status ?? ""),
+    ).length;
+
+    const mockActionCount = USER_MOCK_ORDERS_DB.filter((order) => {
+      if (!MOCK_ACTION_REQUIRED_STATUSES.has(order.status)) {
+        return false;
+      }
+
+      if (order.userContext === "SELLER") {
+        return order.status === "custody" || order.status === "payment";
+      }
+
+      return order.status === "payment" || order.status === "shipped";
+    }).length;
+
+    return dbActionCount + mockActionCount;
+  }, [dbOrders]);
 
   return (
-    <div className="space-y-5 animate-fadeIn">
-      {needsAction.length > 0 && (
+    <>
+      <div className="space-y-5 animate-fadeIn">
+      {needsAction > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl animate-fadeIn">
           <svg
             width="16"
@@ -236,9 +518,17 @@ function UserTradingPageContent() {
           </svg>
           <p className="font-sans text-[13px] text-text-primary">
             <span className="font-semibold text-warning">
-              {needsAction.length + " 件交易"}
+              {needsAction + " 件交易"}
             </span>{" "}
             需要您的處理：完成付款、寄出卡牌或確認收貨。
+          </p>
+        </div>
+      )}
+
+      {fetchError && (
+        <div className="px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl">
+          <p className="font-sans text-[13px] text-warning">
+            無法載入線上訂單：{fetchError}（仍顯示示範訂單）
           </p>
         </div>
       )}
@@ -272,7 +562,7 @@ function UserTradingPageContent() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單ID..."
+              placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單編號..."
               className="pl-10 pr-10 w-full flex-1 h-10 bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
             />
             {searchQuery && (
@@ -293,99 +583,125 @@ function UserTradingPageContent() {
         aria-labelledby="user-trading-heading"
         className="space-y-4"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2
-            id="user-trading-heading"
-            className="font-sans font-semibold text-[16px] text-text-primary"
-          >
-            {"交易管理（" + filteredOrders.length + "）"}
-          </h2>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2
+              id="user-trading-heading"
+              className="font-sans font-semibold text-[16px] text-text-primary"
+            >
+              {"交易管理（" + displayRows.length + "）"}
+            </h2>
 
-          <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
-            {["全部", "待處理", "已完成", "已取消"].map((f) => {
-              const isActive = filter === f;
-              let btnClass =
-                "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
-              if (isActive) {
-                if (f === "待處理") {
-                  btnClass =
-                    "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
-                } else {
-                  btnClass =
-                    "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
-                }
-              }
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFilter(f)}
-                  className={
-                    "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " +
-                    btnClass
-                  }
-                >
-                  {f}
-                </button>
-              );
-            })}
+            <Tabs
+              value={tabStatus}
+              onValueChange={(value) => setTabStatus(value as TabStatusFilter)}
+            >
+              <TabsList className="bg-[#17130f] border border-white/5 h-auto p-1">
+                {STATUS_OPTIONS.map((option) => (
+                  <TabsTrigger
+                    key={option.value}
+                    value={option.value}
+                    className={cn(
+                      "font-mono text-[11px] px-3 py-1 rounded-lg data-active:bg-[rgba(212,165,116,0.08)] data-active:text-brand",
+                      option.value === "pending" &&
+                        "data-active:bg-[rgba(239,68,68,0.06)] data-active:text-warning",
+                    )}
+                  >
+                    {option.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
-        </div>
 
-        {/* 🎯 Polymorphic Dual-Role Controller Row */}
-        <div className="flex items-center gap-4 px-4 py-2.5 bg-[#17130f] border border-white/5 rounded-xl animate-fadeIn mt-2 w-full sm:w-auto">
-          <span className="font-sans text-[11px] text-text-secondary font-medium mr-2">
-            交易方：
-          </span>
-          <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showBuyOrders}
-              onChange={(e) => setShowBuyOrders(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
-            />
-            買單
-          </label>
-          <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showSellOrders}
-              onChange={(e) => setShowSellOrders(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
-            />
-            賣單
-          </label>
+          <Tabs
+            value={persona}
+            onValueChange={(value) => setPersona(value as PersonaFilter)}
+          >
+            <TabsList className="bg-[#17130f] border border-white/5 h-auto p-1 w-full sm:w-auto">
+              {PERSONA_OPTIONS.map((option) => (
+                <TabsTrigger
+                  key={option.value}
+                  value={option.value}
+                  className="font-sans text-[12px] px-4 py-1.5 data-active:text-text-primary"
+                >
+                  {option.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className="space-y-3 min-h-[200px]">
-          {paginatedOrders.length === 0 ? (
+          {isLoading && displayRows.length === 0 ? (
+            <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
+              <div className="mx-auto w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : paginatedRows.length === 0 ? (
             <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
               <p className="font-sans text-[13px] text-text-disabled">
                 沒有符合當前篩選與關鍵字的交易訂單記錄。
               </p>
             </div>
           ) : (
-            paginatedOrders.map((order) => (
-              <UserOrderRow key={order.id} order={order} />
-            ))
+            paginatedRows.map((row) =>
+              row.source === "db" ? (
+                <UserOrderRow
+                  key={row.rowKey}
+                  order={mapTradingOrderToSaleOrder(row.order)}
+                  detailOrderId={row.order.id}
+                  orderNumber={row.order.orderNumber}
+                  statusBadge={renderStatusBadge(row.order.status ?? "")}
+                  onOpenReview={handleOpenReview}
+                  dbOrderContext={{
+                    orderId: row.order.id,
+                    revieweeId: row.order.counterparty.id,
+                    dbStatus: row.order.status ?? "",
+                    hasReviewedByMe: row.order.hasReviewedByMe,
+                    canCancel:
+                      row.order.persona === "sell" &&
+                      PENDING_ACTION_STATUSES.has(row.order.status ?? ""),
+                    onRefresh: handleRefreshOrders,
+                  }}
+                />
+              ) : (
+                <UserOrderRow
+                  key={row.rowKey}
+                  order={row.order}
+                  statusBadge={renderStatusBadge(
+                    mockStatusToBadgeKey(row.order.status),
+                  )}
+                />
+              ),
+            )
           )}
         </div>
 
-        <div className="pt-2">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={(page) => setCurrentPage(page)}
-            itemLabel="筆訂單記錄"
-            totalItems={filteredOrders.length}
-            itemsPerPage={itemsPerPage}
-            enableScroll={true}
-            scrollBlock="start"
-            scrollToViewId="orders-list"
-          />
-        </div>
+        {displayRows.length > 0 && (
+          <div className="pt-2">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={(page) => setCurrentPage(page)}
+              itemLabel="筆訂單記錄"
+              totalItems={displayRows.length}
+              itemsPerPage={itemsPerPage}
+              enableScroll={true}
+              scrollBlock="start"
+              scrollToViewId="orders-list"
+            />
+          </div>
+        )}
       </section>
-    </div>
+      </div>
+
+      <ReviewModal
+        isOpen={activeReview !== null}
+        onClose={handleCloseReview}
+        orderId={activeReview?.orderId ?? ""}
+        revieweeId={activeReview?.revieweeId ?? ""}
+      />
+    </>
   );
 }
 

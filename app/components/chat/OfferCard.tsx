@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -8,8 +8,14 @@ import {
   acceptOffer,
   getOfferCardContext,
   modifyOffer,
+  rejectOffer,
   type OfferCardContext,
 } from "@/app/actions/offers";
+import {
+  invalidateOfferCardContextCache,
+  readCachedOfferCardContext,
+  writeCachedOfferCardContext,
+} from "@/app/lib/chat/offerCardContextCache";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
   AlertDialog,
@@ -77,6 +83,25 @@ function mergeOfferContext(
   };
 }
 
+function isRenderableOfferContext(
+  context: OfferCardContext | null | undefined,
+): boolean {
+  return Boolean(
+    context?.offer.id &&
+      context.cardName &&
+      context.sellerId &&
+      context.buyerName,
+  );
+}
+
+function isTerminalOfferStatus(
+  status: Tables<"offers">["status"] | undefined,
+): boolean {
+  return (
+    status === "accepted" || status === "rejected" || status === "cancelled"
+  );
+}
+
 function OfferCardThumbnail({
   imageUrl,
   cardName,
@@ -116,7 +141,7 @@ function OfferCardThumbnail({
   );
 }
 
-export function OfferCard({
+export function OfferCardComponent({
   message,
   currentUserId,
   roomId,
@@ -131,6 +156,9 @@ export function OfferCard({
   const applyOfferAccepted = useHkCardVaultStore(
     (state) => state.applyOfferAccepted,
   );
+  const applyOfferRejected = useHkCardVaultStore(
+    (state) => state.applyOfferRejected,
+  );
 
   const resolvedRoomId =
     roomId ?? message.room_id?.trim() ?? activeRoomId;
@@ -139,7 +167,9 @@ export function OfferCard({
   const [context, setContext] = useState<OfferCardContext | null>(
     initialContext,
   );
-  const [isLoadingContext, setIsLoadingContext] = useState(Boolean(offerId));
+  const [isLoadingContext, setIsLoadingContext] = useState(
+    () => Boolean(offerId) && !isRenderableOfferContext(initialContext),
+  );
   const [contextError, setContextError] = useState<string | null>(null);
 
   const [offerPrice, setOfferPrice] = useState(
@@ -158,30 +188,48 @@ export function OfferCard({
   const [isModifying, setIsModifying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  const loadContext = useCallback(async () => {
-    if (!offerId) {
-      setContextError("此訊息未綁定出價紀錄");
+  const applyFetchedContext = useCallback((data: OfferCardContext) => {
+    setContext(data);
+    setOfferPrice(data.offer.offer_price);
+    setOfferStatus(data.offer.status);
+    setModifiedCount(data.offer.modified_count);
+    setModifyInput(data.offer.offer_price);
+    writeCachedOfferCardContext(data.offer.id, data);
+  }, []);
+
+  const loadContext = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!offerId) {
+        setContextError("此訊息未綁定出價紀錄");
+        setIsLoadingContext(false);
+        return;
+      }
+
+      const cached = readCachedOfferCardContext(offerId);
+      if (cached) {
+        applyFetchedContext(cached);
+        setContextError(null);
+        setIsLoadingContext(false);
+        return;
+      }
+
+      if (!options?.silent) {
+        setIsLoadingContext(true);
+      }
+      setContextError(null);
+
+      const result = await getOfferCardContext(offerId);
+      if (!result.success) {
+        setContextError(result.error);
+        setIsLoadingContext(false);
+        return;
+      }
+
+      applyFetchedContext(result.data);
       setIsLoadingContext(false);
-      return;
-    }
-
-    setIsLoadingContext(true);
-    setContextError(null);
-
-    const result = await getOfferCardContext(offerId);
-    if (!result.success) {
-      setContextError(result.error);
-      setIsLoadingContext(false);
-      return;
-    }
-
-    setContext(result.data);
-    setOfferPrice(result.data.offer.offer_price);
-    setOfferStatus(result.data.offer.status);
-    setModifiedCount(result.data.offer.modified_count);
-    setModifyInput(result.data.offer.offer_price);
-    setIsLoadingContext(false);
-  }, [offerId]);
+    },
+    [applyFetchedContext, offerId],
+  );
 
   useEffect(() => {
     if (initialContext) {
@@ -192,8 +240,27 @@ export function OfferCard({
       setModifyInput(initialContext.offer.offer_price);
     }
 
+    if (!offerId) {
+      setIsLoadingContext(false);
+      return;
+    }
+
+    const hydrated = isRenderableOfferContext(initialContext);
+    const terminal = isTerminalOfferStatus(initialContext?.offer.status);
+
+    if (hydrated && terminal) {
+      setIsLoadingContext(false);
+      return;
+    }
+
+    if (hydrated) {
+      setIsLoadingContext(false);
+      void loadContext({ silent: true });
+      return;
+    }
+
     void loadContext();
-  }, [initialContext, loadContext]);
+  }, [initialContext, loadContext, offerId]);
 
   const isBuyer =
     currentUserId != null &&
@@ -250,11 +317,8 @@ export function OfferCard({
       }
 
       setOfferStatus("accepted");
-      applyOfferAccepted({
-        roomId: resolvedRoomId,
-        offerId,
-        messageId: result.data.messageId,
-      });
+      applyOfferAccepted(offerId, result.data.order.id);
+      invalidateOfferCardContextCache(offerId);
 
       toast.success("🤝 交易協定已達成！", {
         description: "您已成功接受此出價，商品已進入 Hold 貨狀態。",
@@ -269,13 +333,32 @@ export function OfferCard({
   };
 
   const handleReject = async () => {
-    if (isRejecting) return;
+    if (!offerId || isRejecting) return;
+
     setIsRejecting(true);
     try {
+      const result = await rejectOffer(offerId);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      const { offer } = result.data;
       setOfferStatus("rejected");
+      if (context) {
+        setContext(mergeOfferContext(context, offer));
+      }
+
+      applyOfferRejected(offerId);
+      invalidateOfferCardContextCache(offerId);
+
       toast.warning("❌ 已拒絕此議價", {
-        description: "拒絕出價後端 RPC 尚未部署，此為前端預覽狀態。",
+        description: "買家將收到拒絕通知。",
       });
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "拒絕出價時發生錯誤";
+      toast.error(msg);
     } finally {
       setIsRejecting(false);
     }
@@ -324,6 +407,7 @@ export function OfferCard({
         messageId,
         messageContent,
       });
+      invalidateOfferCardContextCache(offerId);
 
       toast.info("🛠️ 出價已修改", {
         description: `已修改報價為 HK$ ${newPrice.toLocaleString()}。`,
@@ -659,3 +743,5 @@ export function OfferCard({
     </Card>
   );
 }
+
+export const OfferCard = memo(OfferCardComponent);

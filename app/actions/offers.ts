@@ -70,6 +70,23 @@ export type ModifyOfferResult =
     }
   | { success: false; error: string };
 
+type RpcRejectOfferArgs = {
+  p_offer_id: string;
+  p_seller_id: string;
+};
+
+type RejectOfferPayload = {
+  offer: OfferRow;
+  messageId: string;
+};
+
+export type RejectOfferResult =
+  | {
+      success: true;
+      data: RejectOfferPayload;
+    }
+  | { success: false; error: string };
+
 export type OfferCardOfferState = {
   id: string;
   buyer_id: string;
@@ -192,6 +209,27 @@ function parseRpcAcceptOfferPayload(data: unknown): AcceptOfferPayload | null {
 }
 
 function parseRpcModifyOfferPayload(data: unknown): ModifyOfferPayload | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  if (!payload.offer || typeof payload.offer !== "object") {
+    return null;
+  }
+
+  if (typeof payload.message_id !== "string") {
+    return null;
+  }
+
+  return {
+    offer: payload.offer as OfferRow,
+    messageId: payload.message_id,
+  };
+}
+
+function parseRpcRejectOfferPayload(data: unknown): RejectOfferPayload | null {
   if (!data || typeof data !== "object") {
     return null;
   }
@@ -501,6 +539,62 @@ export async function modifyOffer(
     console.error("[modifyOffer]", error);
     const message =
       error instanceof Error ? error.message : "修改出價時發生錯誤";
+    return { success: false, error: message };
+  }
+}
+
+export async function rejectOffer(offerId: string): Promise<RejectOfferResult> {
+  const trimmedOfferId = offerId.trim();
+  if (!trimmedOfferId) {
+    return { success: false, error: "找不到此出價紀錄" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再拒絕出價" };
+    }
+
+    const rpcArgs: RpcRejectOfferArgs = {
+      p_offer_id: trimmedOfferId,
+      p_seller_id: user.id,
+    };
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_reject_offer",
+          args: RpcRejectOfferArgs,
+        ) => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("rpc_reject_offer", rpcArgs);
+
+    if (error) {
+      console.error("[rejectOffer] rpc", error.message);
+      return { success: false, error: error.message };
+    }
+
+    const parsed = parseRpcRejectOfferPayload(data);
+    if (!parsed) {
+      console.error("[rejectOffer] invalid rpc payload", data);
+      return { success: false, error: "拒絕出價回傳資料格式異常" };
+    }
+
+    return {
+      success: true,
+      data: parsed,
+    };
+  } catch (error) {
+    console.error("[rejectOffer]", error);
+    const message =
+      error instanceof Error ? error.message : "拒絕出價時發生錯誤";
     return { success: false, error: message };
   }
 }
