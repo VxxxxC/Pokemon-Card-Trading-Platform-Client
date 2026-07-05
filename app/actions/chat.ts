@@ -155,6 +155,7 @@ async function fetchInboxViaTables(
           offer_price,
           status,
           modified_count,
+          use_authentication,
           listings!offers_listing_id_fkey (
             product_id,
             images,

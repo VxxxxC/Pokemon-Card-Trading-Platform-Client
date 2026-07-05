@@ -1,0 +1,478 @@
+"use server";
+
+import { isSupabaseConfigured } from "@/lib/supabase/env";
+import {
+  parseRewardGrantRows,
+  type UnacknowledgedRewardGrant,
+} from "@/lib/constants/rewards";
+import {
+  groupUserRewardCoupons,
+  parseRewardCouponCenter,
+  parseUserRewardCouponRows,
+  type RewardCouponCenterView,
+} from "@/lib/rewards/mapUserRewardCoupon";
+import { createClient } from "@/lib/supabase/server";
+
+type GamificationStatsResult =
+  | {
+      success: true;
+      data: {
+        pointsBalance: number;
+        currentStreak: number;
+        longestStreak: number;
+        lastCheckIn: string | null;
+        checkedInToday: boolean;
+      };
+    }
+  | { success: false; error: string };
+
+type DailyCheckInResult =
+  | {
+      success: true;
+      data: {
+        pointsEarned: number;
+        pointsBalance: number;
+        currentStreak: number;
+        longestStreak: number;
+        cycleDay: number;
+        newlyGranted: UnacknowledgedRewardGrant[];
+      };
+    }
+  | { success: false; error: string };
+
+type UnacknowledgedRewardsResult =
+  | { success: true; data: UnacknowledgedRewardGrant[] }
+  | { success: false; error: string };
+
+type AcknowledgeRewardsResult =
+  | { success: true; updated: number }
+  | { success: false; error: string };
+
+type GrantPointsFromTemplateResult =
+  | {
+      success: true;
+      data: {
+        pointsGranted: number;
+        pointsBalance: number;
+        templateId: string;
+      };
+    }
+  | { success: false; error: string };
+
+type UserRewardCouponsResult =
+  | { success: true; data: RewardCouponCenterView }
+  | { success: false; error: string };
+
+const EMPTY_COUPON_CENTER: RewardCouponCenterView = {
+  wallet: { redeemable: [], redeemed: [], expired: [] },
+  locked: [],
+};
+
+const COUPON_TEMPLATE_TYPES = new Set(["discount_coupon", "free_shipping"]);
+
+function isCouponRpcUnavailable(error: { message: string }): boolean {
+  const msg = error.message.toLowerCase();
+  return (
+    (msg.includes("get_reward_coupon_center") ||
+      msg.includes("get_user_reward_coupons")) &&
+    (msg.includes("does not exist") || msg.includes("could not find"))
+  );
+}
+
+function isCheckedInTodayHk(lastCheckIn: string | null): boolean {
+  if (!lastCheckIn) return false;
+  const last = new Date(lastCheckIn);
+  const now = new Date();
+  const hk = (d: Date) =>
+    d.toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
+  return hk(last) === hk(now);
+}
+
+export async function getGamificationStats(): Promise<GamificationStatsResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (fn: "get_gamification_stats_for_me") => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("get_gamification_stats_for_me");
+
+    if (error) {
+      console.error("[getGamificationStats]", error.message);
+      return { success: false, error: "無法載入積分資料" };
+    }
+
+    const payload = data as Record<string, unknown> | null;
+    const lastCheckIn =
+      typeof payload?.last_check_in === "string" ? payload.last_check_in : null;
+
+    return {
+      success: true,
+      data: {
+        pointsBalance: Number(payload?.points_balance ?? 0),
+        currentStreak: Number(payload?.current_streak ?? 0),
+        longestStreak: Number(payload?.longest_streak ?? 0),
+        lastCheckIn,
+        checkedInToday: isCheckedInTodayHk(lastCheckIn),
+      },
+    };
+  } catch (error) {
+    console.error("[getGamificationStats]", error);
+    return { success: false, error: "無法載入積分資料" };
+  }
+}
+
+export async function executeDailyCheckIn(): Promise<DailyCheckInResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再簽到" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (fn: "execute_daily_check_in") => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("execute_daily_check_in");
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const payload = data as Record<string, unknown> | null;
+    if (!payload?.success) {
+      return { success: false, error: "簽到失敗" };
+    }
+
+    return {
+      success: true,
+      data: {
+        pointsEarned: Number(payload.points_earned ?? 0),
+        pointsBalance: Number(payload.points_balance ?? 0),
+        currentStreak: Number(payload.current_streak ?? 0),
+        longestStreak: Number(payload.longest_streak ?? 0),
+        cycleDay: Number(payload.cycle_day ?? 1),
+        newlyGranted: parseRewardGrantRows(payload.newly_granted),
+      },
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "簽到時發生錯誤";
+    console.error("[executeDailyCheckIn]", error);
+    return { success: false, error: message };
+  }
+}
+
+export async function getUnacknowledgedRewardGrants(): Promise<UnacknowledgedRewardsResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: [] };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (fn: "get_unacknowledged_reward_grants") => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("get_unacknowledged_reward_grants");
+
+    if (error) {
+      console.error("[getUnacknowledgedRewardGrants]", error.message);
+      return { success: false, error: "無法載入獎勵通知" };
+    }
+
+    return {
+      success: true,
+      data: parseRewardGrantRows(data),
+    };
+  } catch (error) {
+    console.error("[getUnacknowledgedRewardGrants]", error);
+    return { success: false, error: "無法載入獎勵通知" };
+  }
+}
+
+export async function acknowledgeRewardGrants(
+  userRewardIds: string[],
+): Promise<AcknowledgeRewardsResult> {
+  const ids = userRewardIds.filter(Boolean);
+  if (ids.length === 0) {
+    return { success: true, updated: 0 };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "acknowledge_reward_grants",
+          args: { p_user_reward_ids: string[] },
+        ) => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("acknowledge_reward_grants", { p_user_reward_ids: ids });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const payload = data as Record<string, unknown> | null;
+    return {
+      success: true,
+      updated: Number(payload?.updated ?? 0),
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "確認獎勵時發生錯誤";
+    console.error("[acknowledgeRewardGrants]", error);
+    return { success: false, error: message };
+  }
+}
+
+export async function grantPointsFromTemplate(
+  templateId: string,
+): Promise<GrantPointsFromTemplateResult> {
+  const trimmed = templateId.trim();
+  if (!trimmed) {
+    return { success: false, error: "無效的獎勵模板" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "fn_grant_points_from_template",
+          args: { p_user_id: string; p_template_id: string },
+        ) => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("fn_grant_points_from_template", {
+      p_user_id: user.id,
+      p_template_id: trimmed,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const payload = data as Record<string, unknown> | null;
+    if (!payload?.success) {
+      return { success: false, error: "領取積分失敗" };
+    }
+
+    return {
+      success: true,
+      data: {
+        pointsGranted: Number(payload.points_granted ?? 0),
+        pointsBalance: Number(payload.points_balance ?? 0),
+        templateId: String(payload.template_id ?? trimmed),
+      },
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "領取積分時發生錯誤";
+    console.error("[grantPointsFromTemplate]", error);
+    return { success: false, error: message };
+  }
+}
+
+/** Fire-and-forget: evaluate auto-grant templates (e.g. profile_complete HK$2 coupon). */
+export async function syncAutoGrantRewards(): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return;
+    }
+
+    await (
+      supabase as unknown as {
+        rpc: (fn: "run_auto_grant_rewards_for_me") => Promise<{
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("run_auto_grant_rewards_for_me");
+  } catch (error) {
+    console.error("[syncAutoGrantRewards]", error);
+  }
+}
+
+export async function getUserRewardCoupons(): Promise<UserRewardCouponsResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: EMPTY_COUPON_CENTER };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (fn: "get_reward_coupon_center") => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("get_reward_coupon_center");
+
+    if (error) {
+      if (isCouponRpcUnavailable(error)) {
+        return getUserRewardCouponsViaTable(supabase, user.id);
+      }
+      console.error("[getUserRewardCoupons]", error.message);
+      return { success: false, error: "無法載入折價券" };
+    }
+
+    return {
+      success: true,
+      data: parseRewardCouponCenter(data),
+    };
+  } catch (error) {
+    console.error("[getUserRewardCoupons]", error);
+    return { success: false, error: "無法載入折價券" };
+  }
+}
+
+async function getUserRewardCouponsViaTable(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<UserRewardCouponsResult> {
+  await (
+    supabase as unknown as {
+      rpc: (fn: "run_auto_grant_rewards_for_me") => Promise<unknown>;
+    }
+  ).rpc("run_auto_grant_rewards_for_me");
+
+  const { data, error } = await supabase
+    .from("user_rewards")
+    .select(
+      `
+      id,
+      is_used,
+      calculated_expiry,
+      used_at,
+      template:reward_templates (
+        title,
+        description,
+        type,
+        reward_value
+      )
+    `,
+    )
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getUserRewardCouponsViaTable]", error.message);
+    return { success: false, error: "無法載入折價券" };
+  }
+
+  type CouponRewardRow = {
+    id: string;
+    is_used: boolean | null;
+    calculated_expiry: string | null;
+    used_at: string | null;
+    template:
+      | {
+          title: string;
+          description: string | null;
+          type: string;
+          reward_value: unknown;
+        }
+      | {
+          title: string;
+          description: string | null;
+          type: string;
+          reward_value: unknown;
+        }[]
+      | null;
+  };
+
+  const couponRows = parseUserRewardCouponRows(
+    ((data ?? []) as CouponRewardRow[])
+      .map((row) => {
+        const template = Array.isArray(row.template)
+          ? (row.template[0] ?? null)
+          : row.template;
+        return { ...row, template };
+      })
+      .filter((row) => {
+        const templateType = row.template?.type;
+        return templateType != null && COUPON_TEMPLATE_TYPES.has(templateType);
+      }),
+  );
+
+  return {
+    success: true,
+    data: {
+      wallet: groupUserRewardCoupons(couponRows),
+      locked: [],
+    },
+  };
+}

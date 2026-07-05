@@ -6,6 +6,17 @@
 - **Frontend:** 🟡 Partial — buyer make/modify + seller accept/**reject** + DB text send + **Realtime Scheme A** + **order completion card + review CTA** + **long-thread perf** wired; mock rooms retained; checkout-after-accept polish pending
 - **Your focus:** `OfferCard` styling polish; post-accept checkout navigation; inbox refresh-on-page-reload UX; profile review history UI
 
+## Changelog (2026-07-05, platform authentication opt-in)
+
+| Area | Shipped |
+|------|---------|
+| **`ExecutionSlideOver`** | **平台鑑定加購** `Switch` → `makeOffer(..., useAuthentication)` |
+| **`makeOffer` / `openOfferChatSession`** | `useAuthentication` on Zustand `specialData` for instant card hydration |
+| **`OfferCard`** | Badge **含平台鑑定加購 (HK$ 150)**; pending alert; seller accept dialog note |
+| **`getOfferCardContext`** | `offer.use_authentication` on fetch + cache |
+| **Inbox mapping** | `mapDbChats` / `chat.ts` offers select includes `use_authentication` |
+| **`SpecialTransactionMessage`** | Passes `useAuthentication` into `OfferCard` initial context |
+
 ## Changelog (2026-07-04, later)
 
 | Area | Shipped |
@@ -81,7 +92,7 @@
 | `app/lib/chat/offerCardImage.ts` | Image URL resolution |
 | `lib/supabase/client.ts` | Browser Supabase client for Realtime |
 | `app/store/useHkCardVaultStore.ts` | `offers` ledger, `openOfferChatSession`, `applyOfferModification`, **`applyOfferAccepted`**, **`applyOfferRejected`**, `applyOfferPriceSync`, **`appendRoomMessage`**, **`finalizeOptimisticMessage`**, **`rollbackOptimisticMessage`**, **`markRoomRead`** |
-| `app/components/transactions/ExecutionSlideOver.tsx` | Buyer submit → `makeOffer` |
+| `app/components/transactions/ExecutionSlideOver.tsx` | Buyer submit → `makeOffer(listingId, price, useAuthentication?)` |
 | `app/sw.ts` | Serwist worker — `disableDevLogs: true` (silences dev `No route found` spam) |
 
 ---
@@ -89,7 +100,7 @@
 ## Buyer flow — make offer (✅)
 
 1. Product detail → order book row → `ExecutionSlideOver`
-2. `makeOffer(listingId, price)` → `openOfferChatSession({ offerId: offer.id, ... })`
+2. Optional **平台鑑定加購** toggle → `makeOffer(listingId, price, useAuthentication)` → `openOfferChatSession({ offerId, useAuthentication, ... })`
 3. `GlobalChatOverlay` opens; DB sync merges real room into lobby
 
 ### `openOfferChatSession` required fields
@@ -100,6 +111,7 @@
 | `roomId` | `result.data.room.id` |
 | `modifiedCount` | `offer.modified_count ?? 0` |
 | `messageId` | `result.data.message.id` |
+| `useAuthentication` | `offer.use_authentication` (or slide-over toggle) |
 
 ---
 
@@ -332,6 +344,7 @@ Same partner with many past offers + completions:
 ### Buyer
 
 - [x] Submit offer from slide-over → chat opens with offer card
+- [x] **平台鑑定加購** toggle persists `offers.use_authentication` and shows on `OfferCard`
 - [x] **修改出價** updates price + `modified_count` in DB and UI
 - [x] Second modify attempt blocked (RPC + hidden button)
 - [x] Listing thumbnail shows Bunny image when `listings.images` populated
@@ -340,6 +353,7 @@ Same partner with many past offers + completions:
 ### Seller
 
 - [x] Sees offer card with correct price / card name from DB inbox
+- [x] Sees **含平台鑑定加購** badge + escrow notice when buyer opted in
 - [x] **接受出價** calls `acceptOffer` with loading state
 - [x] After accept: read-only card + hold message
 - [x] **拒絕出價** calls `rejectOffer` with loading state
@@ -362,9 +376,10 @@ Same partner with many past offers + completions:
 
 ## Manual test script
 
-1. `bunx supabase db push` (through **`20260704300000`** for `member_order_id` on inbox messages)
+1. `bunx supabase db push` (through **`20260705140000`** for auth opt-in on make-offer)
 2. Supabase Dashboard → confirm **Realtime** for `chat_messages` (migration `20260704240000` adds publication if missing)
-3. Log in as **buyer** → make offer → chat opens
+3. Log in as **buyer** → make offer **with** auth toggle on → chat opens → `OfferCard` shows auth badge
+4. Repeat with toggle off → no auth badge; accept → order detail uses meetup UI
 4. Close/reopen chat → same DB room appears in lobby (with mocks)
 5. **修改出價** once → new price + text bubble; seller (other browser) sees price update live
 6. Type a plain message → **發送** → bubble appears immediately; counterparty sees it without reopening chat
@@ -392,8 +407,8 @@ Per `.cursorrules` backend-driven UI protocol:
 |---------|-----|
 | Toast: `permission denied` | Run migrations `20260704190000`, `20260704200000`, `20260704210000` |
 | Toast: `function get_user_chat_inbox() does not exist` | `bunx supabase db push` |
-| Toast: `new row violates row-level security policy` (send) | Apply `20260704210000` (`rpc_send_chat_message`); redeploy / restart dev server |
-| Toast: `function rpc_send_chat_message does not exist` | `bunx supabase db query --linked -f supabase/migrations/20260704210000_rpc_send_chat_message.sql` |
+| Toast: `new row violates row-level security policy` (send) | Apply `20260704210500` (`rpc_send_chat_message`); redeploy / restart dev server |
+| Toast: `function rpc_send_chat_message does not exist` | `bunx supabase db query --linked -f supabase/migrations/20260704210500_rpc_send_chat_message.sql` |
 | Toast: `column r.listing_id does not exist` (accept) | Apply `20260704230000_rpc_accept_offer_fix_listing_id.sql` |
 | Toast: reject RPC errors | Apply `20260704190500_rpc_reject_offer.sql` |
 | **修改出價** click does nothing | Ensure `AlertDialog` above chat (`z-[550]`); use uncontrolled dialog + `render={<button />}` on trigger |

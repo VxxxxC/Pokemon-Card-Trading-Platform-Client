@@ -1,69 +1,111 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
+import {
+  executeDailyCheckIn,
+  getGamificationStats,
+} from "@/app/actions/rewards";
+import { useRewardNotificationStore } from "@/app/store/useRewardNotificationStore";
+import {
+  CHECK_IN_STEPS,
+  getCheckInCycleDayFromStreak,
+} from "@/lib/constants/rewards";
 
-interface CheckInDay {
-  dayNum: number;
-  points: number;
-  label: string;
-}
+export type CheckInCardStats = {
+  pointsBalance: number;
+  currentStreak: number;
+  checkedInToday: boolean;
+};
 
-const CHECK_IN_STEPS: CheckInDay[] = [
-  { dayNum: 1, points: 10, label: "第1天" },
-  { dayNum: 2, points: 15, label: "第2天" },
-  { dayNum: 3, points: 20, label: "第3天" },
-  { dayNum: 4, points: 25, label: "第4天" },
-  { dayNum: 5, points: 30, label: "第5天" },
-  { dayNum: 6, points: 40, label: "第6天" },
-  { dayNum: 7, points: 100, label: "大禮包" },
-];
+type CheckInCardProps = {
+  onStatsChange?: (stats: CheckInCardStats) => void;
+};
 
-export function CheckInCard() {
-  const [hasCheckedIn, setHasCheckedIn] = useState<boolean>(false);
-  const [consecutiveDays, setConsecutiveDays] = useState<number>(3); // 模擬已連續 3 天
-  const [userPoints, setUserPoints] = useState<number>(380); // 模擬用戶初始積分
+export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
+  const [hasCheckedIn, setHasCheckedIn] = useState(false);
+  const [consecutiveDays, setConsecutiveDays] = useState(0);
+  const [userPoints, setUserPoints] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const enqueueGrants = useRewardNotificationStore((s) => s.enqueue);
 
-  // 利用 useSyncExternalStore 完美取代 useState + useEffect 隔離線！
-  // 第一個參數是訂閱函數（這裏不需要訂閱外部 store，傳入空 no-op 即可）
-  // 第二個參數是客戶端快照（Client 活化後回傳 true）
-  // 第三個參數是服務端快照（Server SSR 生成時回傳 false）
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
 
-  if (!isMounted) {
+  const loadStats = useCallback(async () => {
+    setIsLoading(true);
+    const result = await getGamificationStats();
+    setIsLoading(false);
+
+    if (!result.success) return;
+
+    setUserPoints(result.data.pointsBalance);
+    setConsecutiveDays(result.data.currentStreak);
+    setHasCheckedIn(result.data.checkedInToday);
+    onStatsChange?.({
+      pointsBalance: result.data.pointsBalance,
+      currentStreak: result.data.currentStreak,
+      checkedInToday: result.data.checkedInToday,
+    });
+  }, [onStatsChange]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const timer = window.setTimeout(() => {
+      void loadStats();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [isMounted, loadStats]);
+
+  const handleCheckInExecute = async () => {
+    if (hasCheckedIn || isSubmitting) return;
+
+    setIsSubmitting(true);
+    const result = await executeDailyCheckIn();
+    setIsSubmitting(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    setHasCheckedIn(true);
+    setConsecutiveDays(result.data.currentStreak);
+    setUserPoints(result.data.pointsBalance);
+    onStatsChange?.({
+      pointsBalance: result.data.pointsBalance,
+      currentStreak: result.data.currentStreak,
+      checkedInToday: true,
+    });
+
+    toast.success("簽到成功", {
+      description: `今日 +${result.data.pointsEarned} PTS · 連續 ${result.data.currentStreak} 天`,
+    });
+
+    if (result.data.newlyGranted.length > 0) {
+      enqueueGrants(result.data.newlyGranted);
+    }
+  };
+
+  if (!isMounted || isLoading) {
     return (
       <div className="w-full h-48 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl animate-pulse animate-duration-1000" />
     );
   }
 
-  const handleCheckInExecute = () => {
-    if (hasCheckedIn) return;
-
-    const todayStep = CHECK_IN_STEPS[consecutiveDays];
-    const rewardPoints = todayStep ? todayStep.points : 10;
-
-    setHasCheckedIn(true);
-    setConsecutiveDays((prev) => prev + 1);
-    setUserPoints((prev) => prev + rewardPoints);
-
-    toast.success("⚡ 簽到成功！", {
-      description: `獲得今日獎勵 +${rewardPoints} 交易積分。連續簽到天數已拉伸至 ${consecutiveDays + 1} 天！`,
-      action: {
-        label: "進入專區 🎟️",
-        onClick: () => {
-          window.location.href = "/profile/user/rewards";
-        },
-      },
-    });
-  };
+  const todayCycleDay = getCheckInCycleDayFromStreak(
+    hasCheckedIn ? consecutiveDays : consecutiveDays + 1,
+  );
+  const completedCount = hasCheckedIn ? todayCycleDay : todayCycleDay - 1;
 
   return (
     <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-5 shadow-[0_4px_16px_rgba(0,0,0,0.3)] space-y-4">
-      {/* 頂部資產快報 */}
       <div className="flex justify-between items-center border-b border-[rgba(237,232,224,0.06)] pb-3">
         <div className="space-y-0.5">
           <h3 className="font-sans font-black text-[15px] text-[#eae1da] flex items-center gap-1.5">
@@ -81,14 +123,11 @@ export function CheckInCard() {
         </div>
       </div>
 
-      {/* 7天連續簽到步進網格 */}
       <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 pt-1">
         {CHECK_IN_STEPS.map((step, idx) => {
-          // 狀態判定演算法
-          const isCompleted = idx < consecutiveDays;
-          const isToday = idx === consecutiveDays && !hasCheckedIn;
-          const isFuture =
-            idx > consecutiveDays || (idx === consecutiveDays && hasCheckedIn);
+          const isCompleted = idx < completedCount;
+          const isToday = idx === completedCount && !hasCheckedIn && !isSubmitting;
+          const isFuture = !isCompleted && !isToday;
 
           return (
             <div
@@ -107,7 +146,6 @@ export function CheckInCard() {
                 {step.label}
               </span>
 
-              {/* 積分與狀態圓核 */}
               <div className="my-1 flex items-center justify-center">
                 {isCompleted ? (
                   <svg
@@ -117,6 +155,7 @@ export function CheckInCard() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="3.5"
+                    aria-hidden="true"
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -139,18 +178,21 @@ export function CheckInCard() {
         })}
       </div>
 
-      {/* 執行打卡按鈕 */}
       <button
         type="button"
-        disabled={hasCheckedIn}
-        onClick={handleCheckInExecute}
+        disabled={hasCheckedIn || isSubmitting}
+        onClick={() => void handleCheckInExecute()}
         className={`w-full h-11 rounded-xl font-sans font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] cursor-pointer shadow-md ${
-          hasCheckedIn
+          hasCheckedIn || isSubmitting
             ? "bg-[#17130f] border border-[rgba(237,232,224,0.06)] text-[#50453b] cursor-not-allowed"
             : "bg-brand text-[#1A1612] hover:bg-[#e8b896]"
         }`}
       >
-        {hasCheckedIn ? "✓ 明日請繼續保持收藏習慣" : "⚡ 立即簽到打卡獲取積分"}
+        {hasCheckedIn
+          ? "明日請繼續保持收藏習慣"
+          : isSubmitting
+            ? "簽到中…"
+            : "立即簽到打卡獲取積分"}
       </button>
     </div>
   );

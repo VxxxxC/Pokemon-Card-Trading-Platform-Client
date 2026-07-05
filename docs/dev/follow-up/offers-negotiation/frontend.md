@@ -13,4 +13,5 @@
 | `OfferCard.tsx` | Primary offer card (accept / modify) |
 | `SpecialTransactionMessage.tsx` | Adapter to `OfferCard` |
 | `GlobalChatOverlay.tsx` | DB inbox sync + mock merge |
-| `ExecutionSlideOver.tsx` | Buyer `makeOffer` entry |
+| `ExecutionSlideOver.tsx` | Buyer `makeOffer` entry + **平台鑑定加購** toggle → `offers.use_authentication` |
+| `OfferCard.tsx` | Shows auth badge / seller accept copy when `use_authentication` |

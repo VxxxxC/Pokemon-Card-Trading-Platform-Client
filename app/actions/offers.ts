@@ -17,6 +17,7 @@ type RpcMakeOfferArgs = {
   p_buyer_id: string;
   p_offer_price: number;
   p_content: string;
+  p_use_authentication: boolean;
 };
 
 type RpcMakeOfferPayload = {
@@ -94,6 +95,7 @@ export type OfferCardOfferState = {
   status: Tables<"offers">["status"];
   modified_count: number;
   room_id: string;
+  use_authentication: boolean;
 };
 
 export type OfferCardContext = {
@@ -121,6 +123,7 @@ type OfferCardQueryRow = {
   modified_count?: number | null;
   room_id: string;
   listing_id: string;
+  use_authentication: boolean;
   listings: {
     id: string;
     product_id: string;
@@ -276,6 +279,7 @@ export async function getOfferCardContext(
           modified_count,
           room_id,
           listing_id,
+          use_authentication,
           listings!inner (
             id,
             product_id,
@@ -336,6 +340,7 @@ export async function getOfferCardContext(
           status: data.status,
           modified_count: readModifiedCount(data),
           room_id: data.room_id,
+          use_authentication: data.use_authentication,
         },
         listingId: data.listing_id,
         productId: catalog.id,
@@ -360,6 +365,7 @@ export async function getOfferCardContext(
 export async function makeOffer(
   listingId: string,
   offerPrice: number,
+  useAuthentication = false,
 ): Promise<MakeOfferResult> {
   const trimmedListingId = listingId.trim();
   if (!trimmedListingId) {
@@ -386,6 +392,7 @@ export async function makeOffer(
       p_buyer_id: user.id,
       p_offer_price: offerPrice,
       p_content: formatOfferMessageContent(offerPrice),
+      p_use_authentication: useAuthentication,
     };
 
     const { data, error } = await (

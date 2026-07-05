@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useMemo, useSyncExternalStore } from "react";
+import React, { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { GrUserSettings } from "react-icons/gr";
-import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import { CheckInCard, type CheckInCardStats } from "@/app/components/rewards/CheckInCard";
 import { PortfolioStatsSkeleton } from "@/app/components/shared/PortfolioSkeletons";
 import { MOCK_MEMBER_REVIEWS } from "@/app/lib/mock-data/member-rating";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -112,6 +112,11 @@ function RewardsTicketButton() {
 }
 
 export default function UserOverviewPage() {
+  const [accountPoints, setAccountPoints] = useState<number | null>(null);
+  const handleCheckInStatsChange = useCallback((stats: CheckInCardStats) => {
+    setAccountPoints(stats.pointsBalance);
+  }, []);
+
   const isPortfolioLoading = portfolioStats.length === 0;
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -224,7 +229,7 @@ export default function UserOverviewPage() {
                 帳戶總積分餘額
               </span>
               <p className="font-mono font-black text-[22px] text-brand leading-none mt-0.5 tracking-tight">
-                {mockUser.points.toLocaleString()}{" "}
+                {(accountPoints ?? 0).toLocaleString()}{" "}
                 <span className="font-sans text-[11px] font-bold text-text-primary ml-0.5">
                   PTS
                 </span>
@@ -339,7 +344,7 @@ export default function UserOverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] lg:gap-8 items-start gap-6 lg:gap-0">
         <div className="space-y-6">
           <div className="block lg:hidden space-y-4">
-            <CheckInCard />
+            <CheckInCard onStatsChange={handleCheckInStatsChange} />
             <RewardsTicketButton />
           </div>
 
@@ -447,7 +452,7 @@ export default function UserOverviewPage() {
         </div>
 
         <div className="hidden lg:block space-y-4">
-          <CheckInCard />
+          <CheckInCard onStatsChange={handleCheckInStatsChange} />
           <RewardsTicketButton />
         </div>
       </div>

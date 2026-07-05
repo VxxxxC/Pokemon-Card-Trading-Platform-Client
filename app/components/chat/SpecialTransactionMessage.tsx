@@ -16,6 +16,7 @@ export interface SpecialTransactionProps {
   imageUrl?: string;
   offerPrice: number;
   initialModifiedCount?: number;
+  useAuthentication?: boolean;
   initialStatus: "pending" | "accepted" | "rejected" | "countered";
   isMe: boolean;
   currentUserId: string | null;
@@ -43,6 +44,7 @@ function buildHydratedContext(
       status: mapInitialStatusToOfferStatus(props.initialStatus),
       modified_count: props.initialModifiedCount ?? 0,
       room_id: props.roomId ?? "",
+      use_authentication: props.useAuthentication ?? false,
     },
     listingId: props.cardId,
     productId: props.cardId,
@@ -104,6 +106,7 @@ export function buildOfferCardHydrationFromSpecialData(
     imageUrl: specialData.imageUrl,
     offerPrice: specialData.offerPrice,
     initialModifiedCount: specialData.modifiedCount ?? 0,
+    useAuthentication: specialData.useAuthentication,
     initialStatus: specialData.initialStatus ?? "pending",
     isMe: false,
     currentUserId: null,

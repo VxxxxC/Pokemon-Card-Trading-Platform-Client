@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+
+import { getUserRewardCoupons } from "@/app/actions/rewards";
+import type {
+  CouponCenterTab,
+  LockedRewardView,
+  UserCouponTab,
+  UserCouponView,
+} from "@/lib/rewards/mapUserRewardCoupon";
 
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
 // 🟢 核心對接：引入全域統一的奢華黑金分頁組件
 import { Pagination } from "@/app/components/ui/Pagination";
@@ -18,16 +27,6 @@ interface PlatformMission {
   rewardPoints: number;
   status: "claimable" | "claimed" | "ongoing";
   progressLabel: string;
-}
-
-interface UserCoupon {
-  id: string;
-  name: string;
-  code: string;
-  valueLabel: string;
-  minSpendLabel: string;
-  expiryDate: string;
-  type: "shipping" | "cash" | "auth_discount";
 }
 
 const INITIAL_MISSIONS: PlatformMission[] = [
@@ -65,233 +64,24 @@ const INITIAL_MISSIONS: PlatformMission[] = [
   },
 ];
 
-// ── 🟢 數據庫容量大擴張：注滿大量 mock 數據，完美供 6 Items/Page 進行極限分頁測試 ──
-const MOCK_COUPONS: Record<
-  "redeemable" | "redeemed" | "expired",
-  UserCoupon[]
-> = {
-  redeemable: [
-    {
-      id: "CPN-A-01",
-      name: "端午現貨節 · 免運費券",
-      code: "SF-FREE-DUANWU",
-      valueLabel: "免運費",
-      minSpendLabel: "C2C現貨滿 HK$300 適用",
-      expiryDate: "2026年 6月30日",
-      type: "shipping",
-    },
-    {
-      id: "CPN-A-02",
-      name: "專業道館認證商戶 · 現金折價券",
-      code: "B2C-CASH-100",
-      valueLabel: "HK$ 100",
-      minSpendLabel: "認證商戶正價商品滿 HK$1,500 適用",
-      expiryDate: "2026年 6月15日",
-      type: "cash",
-    },
-    {
-      id: "CPN-A-03",
-      name: "官方高級鑑定託管手續費券",
-      code: "AUTH-DISC-50",
-      valueLabel: "5 折",
-      minSpendLabel: "高價值卡牌官方複驗鑑定時適用",
-      expiryDate: "2026年 7月10日",
-      type: "auth_discount",
-    },
-    {
-      id: "CPN-A-04",
-      name: "七夕珍藏流通大禮包券",
-      code: "QIXI-TCG-200",
-      valueLabel: "HK$ 200",
-      minSpendLabel: "全網 C2C 交易滿 HK$2,000 適用",
-      expiryDate: "2026年 7月30日",
-      type: "cash",
-    },
-    {
-      id: "CPN-A-05",
-      name: "夏日祭典 · 散件交易手續費減免券",
-      code: "SUMMER-FEE-80",
-      valueLabel: "8 折",
-      minSpendLabel: "任意稀有度 SAR / UR 散件上架適用",
-      expiryDate: "2026年 8月15日",
-      type: "auth_discount",
-    },
-    {
-      id: "CPN-A-06",
-      name: "港島線卡友見面會 · 專屬現場津貼券",
-      code: "HK-MEETUP-50",
-      valueLabel: "HK$ 50",
-      minSpendLabel: "現場線下面交安全中介單滿 HK$500 適用",
-      expiryDate: "2026年 6月20日",
-      type: "cash",
-    },
-    {
-      id: "CPN-A-07",
-      name: "寶可夢 151 復刻狂歡現金折價券",
-      code: "POKE-151-300",
-      valueLabel: "HK$ 300",
-      minSpendLabel: "限定寶可夢 151 擴充包合約滿 HK$3,000 適用",
-      expiryDate: "2026年 7月05日",
-      type: "cash",
-    },
-    {
-      id: "CPN-A-08",
-      name: "中元慶典 · 閃電發貨免郵補貼券",
-      code: "GHOST-FAST-SHIP",
-      valueLabel: "免運費",
-      minSpendLabel: "標記為閃電發貨賣家滿 HK$400 適用",
-      expiryDate: "2026年 8月31日",
-      type: "shipping",
-    },
-    {
-      id: "CPN-A-09",
-      name: "認證牌組推薦官 · 專屬持倉補貼",
-      code: "DECK-MASTER-150",
-      valueLabel: "HK$ 150",
-      minSpendLabel: "購入認證商戶套裝牌組滿 HK$1,800 適用",
-      expiryDate: "2026年 6月25日",
-      type: "cash",
-    },
-    {
-      id: "CPN-A-10",
-      name: "超夢 ex 特典鑑定全額手續費減免券",
-      code: "MEWTWO-AUTH-100",
-      valueLabel: "免費鑑定",
-      minSpendLabel: "限鑑定特定品相超夢 ex SAR 資產適用",
-      expiryDate: "2026年 7月15日",
-      type: "auth_discount",
-    },
-  ],
-  redeemed: [
-    {
-      id: "CPN-B-01",
-      name: "新手註冊私藏放卡開路禮",
-      code: "WELCOME-TCG-50",
-      valueLabel: "HK$ 50",
-      minSpendLabel: "無門檻全網散件流通通用",
-      expiryDate: "已於 2026/05/20 使用",
-      type: "cash",
-    },
-    {
-      id: "CPN-B-02",
-      name: "2025聖誕狂歡限時免郵券",
-      code: "XMAS-2025-MAIL",
-      valueLabel: "免運費",
-      minSpendLabel: "聖誕節當日全網現貨訂單適用",
-      expiryDate: "已於 2025/12/25 使用",
-      type: "shipping",
-    },
-    {
-      id: "CPN-B-03",
-      name: "新年元旦迎新全網通用折價券",
-      code: "NEWYEAR-2026-100",
-      valueLabel: "HK$ 100",
-      minSpendLabel: "滿 HK$1,000 通用",
-      expiryDate: "已於 2026/01/01 使用",
-      type: "cash",
-    },
-    {
-      id: "CPN-B-04",
-      name: "火紅葉綠懷舊專題滿減券",
-      code: "FIRE-LEAF-120",
-      valueLabel: "HK$ 120",
-      minSpendLabel: "滿 HK$1,200 適用",
-      expiryDate: "已於 2026/03/10 使用",
-      type: "cash",
-    },
-    {
-      id: "CPN-B-05",
-      name: "豐緣地區神獸特別流通補貼券",
-      code: "HOENN-LEGEND-80",
-      valueLabel: "HK$ 80",
-      minSpendLabel: "購買裂空座/固拉多相關卡牌適用",
-      expiryDate: "已於 2026/04/15 使用",
-      type: "cash",
-    },
-    {
-      id: "CPN-B-06",
-      name: "關都御三家典藏手續費券",
-      code: "KANTO-STARTER-50",
-      valueLabel: "5 折",
-      minSpendLabel: "噴火龍/水箭龜/妙蛙花送評適用",
-      expiryDate: "已於 2026/05/02 使用",
-      type: "auth_discount",
-    },
-    {
-      id: "CPN-B-07",
-      name: "閃電發貨服務首次升級體驗券",
-      code: "FAST-FIRST-FREE",
-      valueLabel: "免運費",
-      minSpendLabel: "無門檻限體驗閃電物流適用",
-      expiryDate: "已於 2026/05/18 使用",
-      type: "shipping",
-    },
-  ],
-  expired: [
-    {
-      id: "CPN-C-01",
-      name: "2026春季黑炎卡師大賽特別券",
-      code: "SPRING-BLACK-FLAME",
-      valueLabel: "HK$ 200",
-      minSpendLabel: "滿 HK$2,000 適用",
-      expiryDate: "已於 2026/04/30 過期",
-      type: "cash",
-    },
-    {
-      id: "CPN-C-02",
-      name: "2025冬季超級聯賽應援折價券",
-      code: "WINTER-LEAGUE-150",
-      valueLabel: "HK$ 150",
-      minSpendLabel: "滿 HK$1,500 適用",
-      expiryDate: "已於 2026/02/28 過期",
-      type: "cash",
-    },
-    {
-      id: "CPN-C-03",
-      name: "情人節沙奈朵特別企劃現金券",
-      code: "VALENTINE-GARD-80",
-      valueLabel: "HK$ 80",
-      minSpendLabel: "滿 HK$800 適用",
-      expiryDate: "已於 2026/02/15 過期",
-      type: "cash",
-    },
-    {
-      id: "CPN-C-04",
-      name: "甲賀忍蛙 Stellar 登場紀念手續費券",
-      code: "FROG-STELLAR-50",
-      valueLabel: "5 折",
-      minSpendLabel: "星晶特殊規格複驗適用",
-      expiryDate: "2026/03/31 過期",
-      type: "auth_discount",
-    },
-    {
-      id: "CPN-C-05",
-      name: "白銀山巔峰對決流通津貼券",
-      code: "SILVER-MT-300",
-      valueLabel: "HK$ 300",
-      minSpendLabel: "滿 HK$3,500 適用",
-      expiryDate: "已於 2025/11/30 過期",
-      type: "cash",
-    },
-    {
-      id: "CPN-C-06",
-      name: "動漫節前瞻現貨採購預熱券",
-      code: "ACG-PRE-50",
-      valueLabel: "HK$ 50",
-      minSpendLabel: "滿 HK$600 通用",
-      expiryDate: "已於 2026/01/15 過期",
-      type: "cash",
-    },
-    {
-      id: "CPN-C-07",
-      name: "洛奇亞海神降臨鑑定節專用券",
-      code: "LUGIA-SEA-FREE",
-      valueLabel: "免費鑑定",
-      minSpendLabel: "限海神系列合約卡牌送評適用",
-      expiryDate: "已於 2026/05/10 過期",
-      type: "auth_discount",
-    },
-  ],
+const EMPTY_WALLET: Record<UserCouponTab, UserCouponView[]> = {
+  redeemable: [],
+  redeemed: [],
+  expired: [],
+};
+
+const COUPON_CENTER_TABS: CouponCenterTab[] = [
+  "redeemable",
+  "locked",
+  "redeemed",
+  "expired",
+];
+
+const COUPON_TAB_LABELS: Record<CouponCenterTab, string> = {
+  redeemable: "可領取 / 可使用",
+  locked: "可解鎖",
+  redeemed: "歷史已使用",
+  expired: "不可領用 (已過期)",
 };
 
 // 🟢 嚴格依照意圖：設定每頁 6 個 Item 的 Chunk 限制線
@@ -299,9 +89,12 @@ const ITEMS_PER_PAGE = 6;
 
 export default function MemberRewardsPage() {
   const [_missions] = useState<PlatformMission[]>(INITIAL_MISSIONS);
-  const [activeTab, setActiveTab] = useState<
-    "redeemable" | "redeemed" | "expired"
-  >("redeemable");
+  const [walletCoupons, setWalletCoupons] =
+    useState<Record<UserCouponTab, UserCouponView[]>>(EMPTY_WALLET);
+  const [lockedRewards, setLockedRewards] = useState<LockedRewardView[]>([]);
+  const [isCouponLoading, setIsCouponLoading] = useState(true);
+  const [couponLoadError, setCouponLoadError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<CouponCenterTab>("redeemable");
 
   // ── 🟢 核心加裝：React 19 零 useEffect 狀態指紋分頁引擎 ──
   // 當 activeTab 切換時，過濾指紋改變，分頁數會主動、非阻塞式歸位回第 1 頁，打穿溢出 Bug
@@ -319,7 +112,35 @@ export default function MemberRewardsPage() {
     setCouponPageState({ page, forKey: couponFilterFingerprint });
   };
 
-  const isCouponLoading = MOCK_COUPONS[activeTab] === undefined;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCoupons() {
+      setIsCouponLoading(true);
+      setCouponLoadError(null);
+
+      const result = await getUserRewardCoupons();
+
+      if (cancelled) return;
+
+      if (result.success) {
+        setWalletCoupons(result.data.wallet);
+        setLockedRewards(result.data.locked);
+      } else {
+        setCouponLoadError(result.error);
+        setWalletCoupons(EMPTY_WALLET);
+        setLockedRewards([]);
+      }
+
+      setIsCouponLoading(false);
+    }
+
+    void loadCoupons();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 完美進行 SSR 環境水合防線看守
   const isMounted = useSyncExternalStore(
@@ -329,7 +150,8 @@ export default function MemberRewardsPage() {
   );
 
   // 🟢 數據衍生切片層 (Memoized Coupon Slice)
-  const activeCoupons = MOCK_COUPONS[activeTab] || [];
+  const activeCoupons =
+    activeTab === "locked" ? lockedRewards : walletCoupons[activeTab] || [];
   const totalCouponPages = Math.ceil(activeCoupons.length / ITEMS_PER_PAGE);
   const paginatedCoupons = activeCoupons.slice(
     (currentCouponPage - 1) * ITEMS_PER_PAGE,
@@ -389,22 +211,20 @@ export default function MemberRewardsPage() {
           </div>
 
           {/* 完美的平滑無彈跳 Tab 控制器 */}
-          <div className="flex border-b border-[rgba(237,232,224,0.08)]">
-            {(["redeemable", "redeemed", "expired"] as const).map((tab) => {
-              const labels = {
-                redeemable: "可領取 / 可使用",
-                redeemed: "歷史已使用",
-                expired: "不可領用 (已過期)",
-              };
-              const count = MOCK_COUPONS[tab].length;
+          <div className="flex border-b border-[rgba(237,232,224,0.08)] overflow-x-auto scrollbar-none">
+            {COUPON_CENTER_TABS.map((tab) => {
+              const count =
+                tab === "locked"
+                  ? lockedRewards.length
+                  : walletCoupons[tab].length;
               const isActive = activeTab === tab;
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`pb-3 px-4 font-sans text-[13.5px] font-semibold transition-all relative cursor-pointer ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
+                  className={`pb-3 px-4 font-sans text-[13.5px] font-semibold transition-all relative cursor-pointer shrink-0 ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
                 >
-                  {labels[tab]} ({count})
+                  {COUPON_TAB_LABELS[tab]} ({count})
                   {isActive && (
                     <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
                   )}
@@ -415,7 +235,11 @@ export default function MemberRewardsPage() {
 
           {/* 券流列表流 */}
           <div className="pt-2">
-            {isCouponLoading ? (
+            {couponLoadError ? (
+              <div className="py-12 text-center bg-[#26211C]/30 border border-[rgba(237,232,224,0.04)] rounded-2xl text-error font-sans text-[13px]">
+                {couponLoadError}
+              </div>
+            ) : isCouponLoading ? (
               <CouponGridSkeleton />
             ) : (
               <div className="space-y-6">
@@ -423,10 +247,68 @@ export default function MemberRewardsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {paginatedCoupons.length === 0 ? (
                     <div className="col-span-full py-12 text-center bg-[#26211C]/30 border border-[rgba(237,232,224,0.04)] rounded-2xl text-text-disabled font-sans text-[13px]">
-                      目前沒有該狀態下的折價券券證
+                      {activeTab === "locked"
+                        ? "目前沒有可預覽的解鎖獎勵"
+                        : "目前沒有該狀態下的折價券券證"}
                     </div>
+                  ) : activeTab === "locked" ? (
+                    (paginatedCoupons as LockedRewardView[]).map((reward) => (
+                      <div
+                        key={reward.id}
+                        className="bg-[#26211C] border border-[rgba(237,232,224,0.1)] border-dashed rounded-2xl p-4 flex flex-col justify-between space-y-4 relative overflow-hidden opacity-90"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#50453b]" />
+                        <div className="pl-2 space-y-2">
+                          <div className="flex items-baseline gap-1.5">
+                            <p className="font-mono font-black text-[22px] tracking-tight text-[#d4c4b7]">
+                              {reward.valueLabel}
+                            </p>
+                            <span className="font-mono text-[9px] text-[#50453b] uppercase">
+                              LOCKED
+                            </span>
+                          </div>
+                          <div>
+                            <h4 className="font-sans font-bold text-[13.5px] text-[#eae1da] truncate">
+                              {reward.name}
+                            </h4>
+                            <p className="font-sans text-[11px] text-[#d4c4b7] mt-0.5">
+                              {reward.minSpendLabel}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="pl-2 pt-3 border-t border-[rgba(237,232,224,0.06)] space-y-3 font-mono text-[11px]">
+                          <div>
+                            <span className="text-[#50453b] block text-[9px] uppercase">
+                              解鎖條件
+                            </span>
+                            <span className="text-[#eae1da] font-semibold">
+                              {reward.requirementLabel}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div>
+                              <span className="text-[#50453b] block text-[9px] uppercase">
+                                進度
+                              </span>
+                              <span className="text-brand font-bold">
+                                {reward.progressLabel}
+                              </span>
+                            </div>
+                            <Link
+                              href={reward.ctaHref}
+                              className="text-brand font-bold hover:underline"
+                            >
+                              去完成 →
+                            </Link>
+                          </div>
+                          <p className="text-[#50453b] text-[10px]">
+                            {reward.footerNote}
+                          </p>
+                        </div>
+                      </div>
+                    ))
                   ) : (
-                    paginatedCoupons.map((coupon) => (
+                    (paginatedCoupons as UserCouponView[]).map((coupon) => (
                       <div
                         key={coupon.id}
                         className={`bg-[#26211C] border rounded-2xl p-4 flex flex-col justify-between space-y-4 relative overflow-hidden group ${
@@ -518,6 +400,7 @@ export default function MemberRewardsPage() {
 
       {/* 底部全域手機導航 */}
       <BottomNav />
+      <RewardNotificationHost />
     </div>
   );
 }

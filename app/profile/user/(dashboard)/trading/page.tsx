@@ -3,14 +3,15 @@
 import React, {
   useState,
   useEffect,
-  useMemo,
   useSyncExternalStore,
   Suspense,
   useCallback,
 } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  getUserTradingOrders,
+  searchUserTradingOrders,
+  type TradingOrdersFilterCounts,
+  type TradingOrdersPaginationMeta,
   type UserTradingOrder,
 } from "@/app/actions/orders";
 import { ReviewModal } from "@/app/components/trading/ReviewModal";
@@ -44,116 +45,44 @@ const STATUS_OPTIONS: { value: TabStatusFilter; label: string }[] = [
   { value: "cancelled", label: "已取消" },
 ];
 
-const ACTION_REQUIRED_STATUSES = new Set([
-  "pending",
-  "meetup_arranged",
-  "in_custody",
-]);
-
 const PENDING_ACTION_STATUSES = new Set(["pending"]);
+
+const EMPTY_PAGINATION_META: TradingOrdersPaginationMeta = {
+  total: 0,
+  page: 1,
+  pageSize: 8,
+  totalPages: 0,
+  rangeStart: 0,
+  rangeEnd: 0,
+};
+
+const EMPTY_FILTER_COUNTS: TradingOrdersFilterCounts = {
+  persona: { all: 0, buy: 0, sell: 0 },
+  status: { all: 0, pending: 0, completed: 0, cancelled: 0 },
+  needsAction: 0,
+};
 
 type ActiveReviewState = {
   orderId: string;
   revieweeId: string;
 } | null;
 
-const MOCK_ACTION_REQUIRED_STATUSES = new Set<OrderStatus>([
-  "payment",
-  "custody",
-  "shipped",
-]);
-
-type TradingOrderRow =
-  | { source: "db"; rowKey: string; order: UserTradingOrder }
-  | { source: "mock"; rowKey: string; order: SaleOrder };
-
-function parseSortableDate(value: string | null | undefined): number {
-  if (!value) {
-    return 0;
-  }
-  const parsed = new Date(value).getTime();
-  return Number.isNaN(parsed) ? 0 : parsed;
+function formatPersonaTabLabel(
+  value: PersonaFilter,
+  label: string,
+  counts: TradingOrdersFilterCounts,
+): string {
+  const count = counts.persona[value];
+  return count > 0 ? `${label} (${count})` : label;
 }
 
-function matchesPersonaFilter(
-  persona: PersonaFilter,
-  userContext: "BUYER" | "SELLER",
-): boolean {
-  if (persona === "buy") {
-    return userContext === "BUYER";
-  }
-  if (persona === "sell") {
-    return userContext === "SELLER";
-  }
-  return true;
-}
-
-function matchesTabStatusFilter(
-  tabStatus: TabStatusFilter,
-  mockStatus: OrderStatus,
-): boolean {
-  if (tabStatus === "pending") {
-    return (
-      mockStatus === "payment" ||
-      mockStatus === "custody" ||
-      mockStatus === "shipped" ||
-      mockStatus === "grading"
-    );
-  }
-  if (tabStatus === "completed") {
-    return mockStatus === "released";
-  }
-  if (tabStatus === "cancelled") {
-    return mockStatus === "cancelled";
-  }
-  return true;
-}
-
-function matchesSearchQuery(order: SaleOrder, searchQuery: string): boolean {
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  return (
-    order.cardName.toLowerCase().includes(normalizedQuery) ||
-    order.cardNo.toLowerCase().includes(normalizedQuery) ||
-    order.buyerName.toLowerCase().includes(normalizedQuery) ||
-    order.sellerName.toLowerCase().includes(normalizedQuery) ||
-    order.id.toLowerCase().includes(normalizedQuery)
-  );
-}
-
-function filterMockOrders(
-  persona: PersonaFilter,
-  tabStatus: TabStatusFilter,
-  searchQuery: string,
-): SaleOrder[] {
-  return USER_MOCK_ORDERS_DB.filter((order) => {
-    return (
-      matchesPersonaFilter(persona, order.userContext) &&
-      matchesTabStatusFilter(tabStatus, order.status) &&
-      matchesSearchQuery(order, searchQuery)
-    );
-  });
-}
-
-function mockStatusToBadgeKey(status: OrderStatus): string {
-  switch (status) {
-    case "payment":
-      return "pending";
-    case "custody":
-    case "shipped":
-      return "in_custody";
-    case "grading":
-      return "grading";
-    case "released":
-      return "completed";
-    case "cancelled":
-      return "cancelled";
-    default:
-      return status;
-  }
+function formatStatusTabLabel(
+  value: TabStatusFilter,
+  label: string,
+  counts: TradingOrdersFilterCounts,
+): string {
+  const count = counts.status[value];
+  return count > 0 ? `${label} (${count})` : label;
 }
 
 export const USER_MOCK_ORDERS_DB: SaleOrder[] = [
@@ -342,7 +271,7 @@ function mapTradingOrderToSaleOrder(order: UserTradingOrder): SaleOrder {
     orderType: "C2C",
     userContext: isBuyer ? "BUYER" : "SELLER",
     productListingId: order.id,
-    hasAuthenticationToggle: order.listing.useAuthentication,
+    hasAuthenticationToggle: order.useAuthentication,
   };
 }
 
@@ -355,6 +284,10 @@ function UserTradingPageContent() {
   const [tabStatus, setTabStatus] = useState<TabStatusFilter>(initialTabStatus);
   const [searchQuery, setSearchQuery] = useState("");
   const [dbOrders, setDbOrders] = useState<UserTradingOrder[]>([]);
+  const [paginationMeta, setPaginationMeta] =
+    useState<TradingOrdersPaginationMeta>(EMPTY_PAGINATION_META);
+  const [filterCounts, setFilterCounts] =
+    useState<TradingOrdersFilterCounts>(EMPTY_FILTER_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -385,7 +318,7 @@ function UserTradingPageContent() {
 
   useEffect(() => {
     queueMicrotask(() => setCurrentPage(1));
-  }, [persona, tabStatus, searchQuery]);
+  }, [itemsPerPage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -395,10 +328,12 @@ function UserTradingPageContent() {
       setIsLoading(true);
       setFetchError(null);
 
-      const result = await getUserTradingOrders({
+      const result = await searchUserTradingOrders({
         persona,
         tabStatus,
         searchQuery: searchQuery.trim() || undefined,
+        page: currentPage,
+        pageSize: itemsPerPage,
       });
 
       if (cancelled) {
@@ -407,9 +342,13 @@ function UserTradingPageContent() {
 
       if (result.success) {
         setDbOrders(result.data);
+        setPaginationMeta(result.meta);
+        setFilterCounts(result.filters);
         setFetchError(null);
       } else {
         setDbOrders([]);
+        setPaginationMeta({ ...EMPTY_PAGINATION_META, pageSize: itemsPerPage });
+        setFilterCounts(EMPTY_FILTER_COUNTS);
         setFetchError(result.error);
       }
 
@@ -420,7 +359,14 @@ function UserTradingPageContent() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [persona, tabStatus, searchQuery, refreshKey]);
+  }, [
+    persona,
+    tabStatus,
+    searchQuery,
+    refreshKey,
+    currentPage,
+    itemsPerPage,
+  ]);
 
   const handleOpenReview = useCallback(
     (orderId: string, revieweeId: string) => {
@@ -438,63 +384,7 @@ function UserTradingPageContent() {
     setRefreshKey((key) => key + 1);
   }, []);
 
-  const filteredMockOrders = useMemo(
-    () => filterMockOrders(persona, tabStatus, searchQuery),
-    [persona, tabStatus, searchQuery],
-  );
-
-  const displayRows = useMemo((): TradingOrderRow[] => {
-    const dbRows: TradingOrderRow[] = dbOrders.map((order) => ({
-      source: "db",
-      rowKey: `db-${order.id}`,
-      order,
-    }));
-
-    const mockRows: TradingOrderRow[] = filteredMockOrders.map((order) => ({
-      source: "mock",
-      rowKey: `mock-${order.id}`,
-      order,
-    }));
-
-    return [...dbRows, ...mockRows].sort((left, right) => {
-      const leftDate =
-        left.source === "db"
-          ? parseSortableDate(left.order.createdAt)
-          : parseSortableDate(left.order.createdAt);
-      const rightDate =
-        right.source === "db"
-          ? parseSortableDate(right.order.createdAt)
-          : parseSortableDate(right.order.createdAt);
-      return rightDate - leftDate;
-    });
-  }, [dbOrders, filteredMockOrders]);
-
-  const totalPages = Math.ceil(displayRows.length / itemsPerPage);
-  const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    return displayRows.slice(start, end);
-  }, [displayRows, currentPage, itemsPerPage]);
-
-  const needsAction = useMemo(() => {
-    const dbActionCount = dbOrders.filter((order) =>
-      ACTION_REQUIRED_STATUSES.has(order.status ?? ""),
-    ).length;
-
-    const mockActionCount = USER_MOCK_ORDERS_DB.filter((order) => {
-      if (!MOCK_ACTION_REQUIRED_STATUSES.has(order.status)) {
-        return false;
-      }
-
-      if (order.userContext === "SELLER") {
-        return order.status === "custody" || order.status === "payment";
-      }
-
-      return order.status === "payment" || order.status === "shipped";
-    }).length;
-
-    return dbActionCount + mockActionCount;
-  }, [dbOrders]);
+  const needsAction = filterCounts.needsAction;
 
   return (
     <>
@@ -528,7 +418,7 @@ function UserTradingPageContent() {
       {fetchError && (
         <div className="px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl">
           <p className="font-sans text-[13px] text-warning">
-            無法載入線上訂單：{fetchError}（仍顯示示範訂單）
+            無法載入線上訂單：{fetchError}
           </p>
         </div>
       )}
@@ -561,8 +451,11 @@ function UserTradingPageContent() {
               id="user-order-search"
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單編號..."
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="輸入訂單編號、卡牌名稱、卡號、系列代碼或交易對手姓名..."
               className="pl-10 pr-10 w-full flex-1 h-10 bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
             />
             {searchQuery && (
@@ -589,12 +482,15 @@ function UserTradingPageContent() {
               id="user-trading-heading"
               className="font-sans font-semibold text-[16px] text-text-primary"
             >
-              {"交易管理（" + displayRows.length + "）"}
+              {"交易管理（" + paginationMeta.total + "）"}
             </h2>
 
             <Tabs
               value={tabStatus}
-              onValueChange={(value) => setTabStatus(value as TabStatusFilter)}
+              onValueChange={(value) => {
+                setTabStatus(value as TabStatusFilter);
+                setCurrentPage(1);
+              }}
             >
               <TabsList className="bg-[#17130f] border border-white/5 h-auto p-1">
                 {STATUS_OPTIONS.map((option) => (
@@ -607,7 +503,7 @@ function UserTradingPageContent() {
                         "data-active:bg-[rgba(239,68,68,0.06)] data-active:text-warning",
                     )}
                   >
-                    {option.label}
+                    {formatStatusTabLabel(option.value, option.label, filterCounts)}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -616,7 +512,10 @@ function UserTradingPageContent() {
 
           <Tabs
             value={persona}
-            onValueChange={(value) => setPersona(value as PersonaFilter)}
+            onValueChange={(value) => {
+              setPersona(value as PersonaFilter);
+              setCurrentPage(1);
+            }}
           >
             <TabsList className="bg-[#17130f] border border-white/5 h-auto p-1 w-full sm:w-auto">
               {PERSONA_OPTIONS.map((option) => (
@@ -625,7 +524,7 @@ function UserTradingPageContent() {
                   value={option.value}
                   className="font-sans text-[12px] px-4 py-1.5 data-active:text-text-primary"
                 >
-                  {option.label}
+                  {formatPersonaTabLabel(option.value, option.label, filterCounts)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -633,59 +532,49 @@ function UserTradingPageContent() {
         </div>
 
         <div className="space-y-3 min-h-[200px]">
-          {isLoading && displayRows.length === 0 ? (
+          {isLoading && dbOrders.length === 0 ? (
             <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
               <div className="mx-auto w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
             </div>
-          ) : paginatedRows.length === 0 ? (
+          ) : dbOrders.length === 0 ? (
             <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
               <p className="font-sans text-[13px] text-text-disabled">
                 沒有符合當前篩選與關鍵字的交易訂單記錄。
               </p>
             </div>
           ) : (
-            paginatedRows.map((row) =>
-              row.source === "db" ? (
-                <UserOrderRow
-                  key={row.rowKey}
-                  order={mapTradingOrderToSaleOrder(row.order)}
-                  detailOrderId={row.order.id}
-                  orderNumber={row.order.orderNumber}
-                  statusBadge={renderStatusBadge(row.order.status ?? "")}
-                  onOpenReview={handleOpenReview}
-                  dbOrderContext={{
-                    orderId: row.order.id,
-                    revieweeId: row.order.counterparty.id,
-                    dbStatus: row.order.status ?? "",
-                    hasReviewedByMe: row.order.hasReviewedByMe,
-                    canCancel:
-                      row.order.persona === "sell" &&
-                      PENDING_ACTION_STATUSES.has(row.order.status ?? ""),
-                    onRefresh: handleRefreshOrders,
-                  }}
-                />
-              ) : (
-                <UserOrderRow
-                  key={row.rowKey}
-                  order={row.order}
-                  statusBadge={renderStatusBadge(
-                    mockStatusToBadgeKey(row.order.status),
-                  )}
-                />
-              ),
-            )
+            dbOrders.map((order) => (
+              <UserOrderRow
+                key={order.id}
+                order={mapTradingOrderToSaleOrder(order)}
+                detailOrderId={order.id}
+                orderNumber={order.orderNumber}
+                statusBadge={renderStatusBadge(order.status ?? "")}
+                onOpenReview={handleOpenReview}
+                dbOrderContext={{
+                  orderId: order.id,
+                  revieweeId: order.counterparty.id,
+                  dbStatus: order.status ?? "",
+                  hasReviewedByMe: order.hasReviewedByMe,
+                  canCancel:
+                    order.persona === "sell" &&
+                    PENDING_ACTION_STATUSES.has(order.status ?? ""),
+                  onRefresh: handleRefreshOrders,
+                }}
+              />
+            ))
           )}
         </div>
 
-        {displayRows.length > 0 && (
+        {paginationMeta.total > 0 && (
           <div className="pt-2">
             <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
+              currentPage={paginationMeta.page}
+              totalPages={paginationMeta.totalPages}
               onPageChange={(page) => setCurrentPage(page)}
               itemLabel="筆訂單記錄"
-              totalItems={displayRows.length}
-              itemsPerPage={itemsPerPage}
+              totalItems={paginationMeta.total}
+              itemsPerPage={paginationMeta.pageSize}
               enableScroll={true}
               scrollBlock="start"
               scrollToViewId="orders-list"

@@ -14,10 +14,11 @@
 | Marketplace product detail (catalog) | ✅ Ready | ✅ Wired (baseline) | `app/actions/marketplace.ts` (`getMarketplaceProductDetail`), `app/lib/marketplace/types.ts` (`MarketplaceProductDetail`), `lib/catalog/element-types.ts`, `app/marketplace/product/[id]/page.tsx`, `ProductDetailClient.tsx`, `app/marketplace/MarketplaceChrome.tsx` | `app/marketplace/product/[id]/`, `MarketplaceCard.tsx` | [backend](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
 | Marketplace product detail (listings / chart / history) | ✅ Ready | ✅ Wired | `get_marketplace_product_listings` RPC, `getMarketplaceProductListings`, **`getMarketplaceListingDetail`**, `getMarketplaceProductTradeHistory`, **`getMarketplaceProductMarketPrices`**, **`getMarketplaceProductMarketPrice`**, `lib/marketplace/market-price.ts`, `lib/listings/images.ts`, `useMarketplaceProductMarketPrice`, `useMarketplaceListingDetail`, `getOptionalAuthUser` (`page.tsx`), migrations `20260703170000`, `20260703180000`, `20260703210000`, `20260703220000` | `ProductDetailClient.tsx` (banner, chart, market grade chips, order book, trade history, **own-listing guard**), `AskOrderBookRow.tsx`, `ExecutionSlideOver.tsx` (on-demand listing photo grid) | [marketplace-product-detail](./follow-up/marketplace-product-detail/backend.md) · [frontend](./follow-up/marketplace-product-detail/frontend.md) |
 | Market pricing aggregation (Cron Job 2) | ✅ Ready | ✅ Wired | `app/api/cron/aggregate-prices/route.ts`, `lib/marketplace/market-price.ts`, `lib/supabase/admin.ts`, `product_price_snapshots`, `product_grading_market_prices`, migrations `20260703210000`, `20260703220000` | Product detail chart + market price banner (`ProductDetailClient.tsx`) | [backend](./follow-up/market-pricing-cron/backend.md) · [frontend](./follow-up/market-pricing-cron/frontend.md) |
-| Offers & negotiation (make / modify / accept / reject) | ✅ Ready | 🟡 Partial | `app/actions/offers.ts`, migrations `20260704130000`–`20260704250000`, `rpc_make_offer`, `rpc_modify_offer`, **`rpc_accept_offer`** (injects `order_number`), `rpc_reject_offer` | `ExecutionSlideOver.tsx`, `OfferCard.tsx`, `SpecialTransactionMessage.tsx` | [backend](./follow-up/offers-negotiation/backend.md) · [frontend](./follow-up/offers-negotiation/frontend.md) |
-| Chat inbox + OfferCard (DB + mock + Realtime) | ✅ Ready | 🟡 Partial | `app/actions/chat.ts`, `app/actions/offers.ts`, `app/actions/reviews.ts` (`resolveChatCompletionOrderId`), `app/lib/chat/*`, `app/lib/hooks/useChatRoomRealtime.ts`, `app/lib/hooks/useRoomReviewedOrderIds.ts`, `lib/supabase/client.ts`, migrations through **`20260704300000`** | `GlobalChatOverlay.tsx`, `GlobalChatConsole.tsx`, `OfferCard.tsx`, `SystemOrderCompletedMessage.tsx`, `ReviewModal.tsx` | [backend](./follow-up/chat-offers-inbox/backend.md) · [frontend](./follow-up/chat-offers-inbox/frontend.md) |
-| User trading orders (list + actions) | ✅ Ready | 🟡 Partial | `app/actions/orders.ts` (`getUserTradingOrders`, **`cancelMemberOrder`**, **`completeMemberOrder`**, `hasReviewedByMe`), migrations `20260704250000`, **`20260704210000_order_actions_rpc`**, `20260704260000`, `20260704300000` | `app/profile/user/(dashboard)/trading/page.tsx`, `UserOrderRow.tsx` (cancel **AlertDialog**, `建立時間`), `components/ui/badge.tsx`, `components/ui/tabs.tsx`, chat `SystemOrderCompletedMessage` | [backend](./follow-up/user-trading-orders/backend.md) · [frontend](./follow-up/user-trading-orders/frontend.md) |
+| Offers & negotiation (make / modify / accept / reject) | ✅ Ready | 🟡 Partial | `app/actions/offers.ts` (`makeOffer` + **`p_use_authentication`**), migrations `20260704130000`–`20260704250000`, **`20260705130000`**, **`20260705140000`**, `rpc_make_offer`, `rpc_modify_offer`, **`rpc_accept_offer`** (inherits offer auth → `member_orders`), `rpc_reject_offer` | `ExecutionSlideOver.tsx` (**鑑定加購** toggle), `OfferCard.tsx` (auth badge), `SpecialTransactionMessage.tsx` | [backend](./follow-up/offers-negotiation/backend.md) · [frontend](./follow-up/offers-negotiation/frontend.md) |
+| Chat inbox + OfferCard (DB + mock + Realtime) | ✅ Ready | 🟡 Partial | `app/actions/chat.ts` (inbox offers join **`use_authentication`**), `app/actions/offers.ts`, `app/actions/reviews.ts` (`resolveChatCompletionOrderId`), `app/lib/chat/*`, `app/lib/hooks/useChatRoomRealtime.ts`, `app/lib/hooks/useRoomReviewedOrderIds.ts`, `lib/supabase/client.ts`, migrations through **`20260705140000`** | `GlobalChatOverlay.tsx`, `GlobalChatConsole.tsx`, `OfferCard.tsx`, `SystemOrderCompletedMessage.tsx`, `ReviewModal.tsx` | [backend](./follow-up/chat-offers-inbox/backend.md) · [frontend](./follow-up/chat-offers-inbox/frontend.md) |
+| User trading orders (list + detail + actions) | ✅ Ready | 🟡 Partial | `app/actions/orders.ts` (`searchUserTradingOrders` RPC, `getUserTradingOrders` wrapper, **`getMemberOrderDetail`**, **`cancelMemberOrder`**, **`completeMemberOrder`**), migrations `20260704250000`, **`20260704210000_order_actions_rpc`**, `20260704260000`, `20260704300000`, **`20260705120000`**, **`20260705130000`** | `app/profile/user/(dashboard)/trading/page.tsx`, `app/profile/user/orderDetail/[id]/page.tsx`, `MemberOrderDetailView.tsx`, **`MemberAuthOrderTimeline`**, **`MemberAuthOrderInvoice`**, `MemberP2pOrderTimeline.tsx`, `MemberP2pOrderInvoice.tsx`, `UserOrderRow.tsx`, `components/ui/badge.tsx`, `components/ui/tabs.tsx`, chat `SystemOrderCompletedMessage` | [backend](./follow-up/user-trading-orders/backend.md) · [frontend](./follow-up/user-trading-orders/frontend.md) |
 | Transaction reviews (submit + modal + **double-blind**) | ✅ Ready | ✅ Wired (trading + chat) | `app/actions/reviews.ts` (`getUserReviewedMemberOrderIds`), migrations **`20260704270000`**–**`20260704290000`**, `rpc_submit_transaction_review` (`revealed`), `fn_try_reveal_order_reviews`, `rpc_get_user_reviewed_member_order_ids` | `ReviewModal.tsx`, trading page + `GlobalChatConsole` / `SystemOrderCompletedMessage` review CTA | [backend](./follow-up/transaction-reviews/backend.md) · [frontend](./follow-up/transaction-reviews/frontend.md) |
+| Member rewards & gamification (check-in, coupons, auto-grant) | ✅ Ready | 🟡 Partial | `app/actions/rewards.ts`, `lib/constants/rewards.ts`, `lib/rewards/mapUserRewardCoupon.ts`, migrations **`20260705180000`**–**`20260705188000`**, RPCs `execute_daily_check_in`, `get_gamification_stats_for_me`, **`get_reward_coupon_center`**, `get_unacknowledged_reward_grants` | `CheckInCard.tsx`, `RewardUnlockedModal.tsx`, `RewardNotificationHost.tsx`, `UserProfileDashboardShell`, `/profile/user` hero PTS, `/profile/user/rewards` **4-tab coupon center** (wallet + **可解鎖** locked catalog) | [backend](./follow-up/member-rewards-gamification/backend.md) · [frontend](./follow-up/member-rewards-gamification/frontend.md) |
 | Wishlist toggle | ⏳ Planned | ✅ UI done | `app/actions/Wishlist.ts` (planned) | `WishlistButton.tsx`, `WishlistTable.tsx` | [wishlist](./follow-up/wishlist/) |
 | Create listing submit (box/set + hobby) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` non-card paths | — |
 
@@ -64,6 +65,17 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260704270000_transaction_reviews_rls.sql` — `transaction_reviews` RLS + rating refresh trigger
 - `supabase/migrations/20260704280000_rpc_submit_transaction_review.sql` — **`rpc_submit_transaction_review`**, **`rpc_get_user_reviewed_member_order_ids`**
 - `supabase/migrations/20260704290000_transaction_reviews_double_blind.sql` — **double-blind** (`is_public = false` until both rate); `fn_try_reveal_order_reviews`; rating trigger only on public reviews
+- `supabase/migrations/20260705120000_search_user_trading_orders.sql` — paginated **`search_user_trading_orders`** RPC + facet counts
+- `supabase/migrations/20260705130000_member_orders_offers_use_authentication.sql` — **`offers.use_authentication`**, **`member_orders.use_authentication`**; **`rpc_accept_offer`** copies buyer opt-in from offer → order; list RPC uses order-level flag
+- `supabase/migrations/20260705140000_rpc_make_offer_use_authentication.sql` — **`rpc_make_offer(p_use_authentication)`** persists buyer auth choice on offer row
+- `supabase/migrations/20260705180000_reward_type_points_enum.sql` — **`reward_type`** adds `'points'` (must run before points templates)
+- `supabase/migrations/20260705181000_points_ledger_and_check_in.sql` — **`gamification_stats.points_balance`**, **`point_ledger`**, **`execute_daily_check_in`**
+- `supabase/migrations/20260705182000_auto_grant_rewards.sql` — auto-grant engine, **`user_rewards.acknowledged_at`**, notification RPCs
+- `supabase/migrations/20260705183000_reward_template_claim_limits.sql` — template stock + seed coupons
+- `supabase/migrations/20260705184000_archive_lucky_draw_add_hk2_coupon.sql` — archive lucky draw; seed **HK$2 profile coupon**
+- `supabase/migrations/20260705186000_rpc_get_user_reward_coupons.sql` — **`get_user_reward_coupons()`** (coupon inventory)
+- `supabase/migrations/20260705187000_rpc_get_gamification_stats.sql` — **`get_gamification_stats_for_me()`**
+- `supabase/migrations/20260705188000_rpc_get_reward_coupon_center.sql` — **`get_reward_coupon_center()`** wallet + locked catalog; **`fn_reward_template_progress_detail`**
 
 ### Quick verify
 
@@ -159,32 +171,33 @@ FROM search_marketplace_products(p_page := 1, p_page_size := 10);
 
 **Offers & negotiation (manual):**
 
-1. Apply migrations `20260704130000` through **`20260704210000`** (`bunx supabase db push`, or `db query -f` for `20260704210000` if push blocked).
-2. Log in as **buyer** → product detail → order book row → `ExecutionSlideOver` → **發送叫價至聊天室**.
-3. Global chat opens; `OfferCard` shows **待確認** with listing thumbnail.
-4. **修改出價** once → price updates; second attempt blocked.
+1. Apply migrations `20260704130000` through **`20260705140000`** (`bunx supabase db push`).
+2. Log in as **buyer** → product detail → order book row → `ExecutionSlideOver` → optional **平台鑑定加購** toggle → **發送叫價至聊天室**.
+3. Global chat opens; `OfferCard` shows **待確認** with listing thumbnail; when auth toggled on → badge **含平台鑑定加購 (HK$ 150)** + pending alert for both parties.
+4. **修改出價** once → price updates; second attempt blocked. Auth flag unchanged on modify (offer row only).
 5. Send a plain text message → **發送** → persists in DB room; survives chat reopen.
-6. Log in as **seller** → open chat (DB room in lobby + mock rooms) → **接受出價** on `OfferCard`.
-7. Listing `inactive` on marketplace; `member_orders` row `pending` with 14-day `expires_at`.
+6. Log in as **seller** → open chat (DB room in lobby + mock rooms) → **接受出價** on `OfferCard` (accept dialog notes auth add-on when applicable).
+7. Listing `inactive` on marketplace; `member_orders` row `pending` with 14-day `expires_at`; `use_authentication` matches offer.
+8. Order detail: auth orders → `MemberAuthOrderTimeline` + `MemberAuthOrderInvoice`; meetup-only → P2P timeline + simplified invoice.
 
 See [offers-negotiation](./follow-up/offers-negotiation/backend.md) · [chat-offers-inbox backend](./follow-up/chat-offers-inbox/backend.md) · [chat-offers-inbox frontend](./follow-up/chat-offers-inbox/frontend.md).
 
 **User trading orders (manual):**
 
-1. Apply migration `20260704250000` (`bunx supabase db push`); regen `types/supabase.ts`.
+1. Apply migrations through **`20260705130000`** (`bunx supabase db push`); regen `types/supabase.ts`.
 2. Log in → accept an offer (seller) → `member_orders` row with `order_number` like `ORD-2026-XXXXXX`.
-3. Open **`/profile/user/trading`** — live order appears alongside mock rows.
+3. Open **`/profile/user/trading`** — live orders (RPC only; no mock on list).
 4. Toggle persona / status tabs; search by order number or card name.
-5. Click row → `/profile/user/orderDetail/<uuid>` (detail page still mock — see [user-trading-orders frontend](./follow-up/user-trading-orders/frontend.md)).
+5. Click row → **`/profile/user/orderDetail/<uuid>`** — branches on `order.useAuthentication`: P2P meetup vs auth escrow timeline + invoice. See [user-trading-orders frontend](./follow-up/user-trading-orders/frontend.md).
 
 See [user-trading-orders backend](./follow-up/user-trading-orders/backend.md) · [user-trading-orders frontend](./follow-up/user-trading-orders/frontend.md).
 
 **User trading orders — cancel / complete / review (manual):**
 
 1. Apply migrations through **`20260704290000`** (use `db query --linked -f` if `db push` blocked by duplicate `20260704210000` timestamp).
-2. Pending order on **`/profile/user/trading`** → **確認完成交易** → `ReviewModal` → submit review.
+2. Pending order on **`/profile/user/trading`** or **order detail** → **確認完成交易** → `ReviewModal` → submit review.
 3. Seller pending order → **取消交易** → confirm dialog → **確認取消** → listing `active` on marketplace.
-4. **已完成** tab → **✍️ 給予對手評價** when `hasReviewedByMe === false`.
+4. **已完成** tab or completed detail → **✍️ 給予對手評價** when `hasReviewedByMe === false`.
 
 **Transaction reviews — double-blind (manual):**
 
@@ -193,3 +206,14 @@ See [user-trading-orders backend](./follow-up/user-trading-orders/backend.md) ·
 3. Party B submits review → toast `雙方評價已公開`; both rows `is_public = true`; `profiles.rating_score` updates for both reviewees.
 
 See [transaction-reviews backend](./follow-up/transaction-reviews/backend.md) · [transaction-reviews frontend](./follow-up/transaction-reviews/frontend.md).
+
+**Member rewards & gamification (manual):**
+
+1. Apply migrations through **`20260705188000`** (`bunx supabase db push`); `bun run supabase:types`.
+2. Log in → **`/profile/user`** — check-in card shows DB PTS; hero **帳戶總積分餘額** matches after load.
+3. Click **立即簽到打卡** — toast with PTS; second attempt same day blocked.
+4. Profile **incomplete** → **`/profile/user/rewards`** → **可解鎖** tab shows HK$2 / HK$10 coupons with requirement + progress + **去完成 →**.
+5. Complete profile (username + avatar) in settings → coupon moves to **可領取 / 可使用**; `RewardUnlockedModal` may appear on dashboard.
+6. Wallet tabs (redeemable / redeemed / expired) from `get_reward_coupon_center().wallet`.
+
+See [member-rewards-gamification backend](./follow-up/member-rewards-gamification/backend.md) · [member-rewards-gamification frontend](./follow-up/member-rewards-gamification/frontend.md).

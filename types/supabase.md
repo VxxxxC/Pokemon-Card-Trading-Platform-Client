@@ -44,7 +44,7 @@ type UserRole = Enums<"user_role">;
 | `offer_status` | `pending`, `accepted`, `rejected`, `cancelled` |
 | `report_state` | `pending`, `reviewing`, `resolved`, `dismissed` |
 | `review_persona` | `member`, `merchant` |
-| `reward_type` | `discount_coupon`, `free_shipping`, `lucky_draw_ticket` |
+| `reward_type` | `discount_coupon`, `free_shipping`, `lucky_draw_ticket`, `points` |
 | `seller_persona_type` | `member`, `merchant` |
 | `sync_state` | `synced`, `partial`, `needs_review` |
 | `transaction_type` | `escrow_payment`, `commission_deduction`, `shipping_subsidy`, `refund`, `payout` |
@@ -56,12 +56,26 @@ type UserRole = Enums<"user_role">;
 
 | Function | Args | Returns |
 |----------|------|---------|
+| `acknowledge_reward_grants` | `{ p_user_reward_ids: string[] }` | `Json` |
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
+| `execute_daily_check_in` | `never;` | `Json` |
+| `fn_apply_point_transaction` | `{ p_amount: number p_description?: string p_source_ref?: string p_source_type: string p_user_id: st…` | `number` |
+| `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
+| `fn_issue_reward_from_template` | `{ p_grant_dedup_key?: string p_template_id: string p_user_id: string }` | `string` |
+| `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
+| `fn_reward_template_has_stock` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] }` | `boolean` |
+| `fn_reward_template_progress_detail` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `Json` |
+| `fn_template_is_eligible` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `{ eligible: boolean grant_dedup_key: string }[]` |
+| `fn_try_auto_grant_rewards` | `{ p_user_id: string };` | `Json` |
 | `fn_try_reveal_order_reviews` | `{ p_order_id: string; p_order_kind: string }` | `boolean` |
 | `generate_profile_username` | `never;` | `string` |
+| `get_gamification_stats_for_me` | `never;` | `Json` |
 | `get_marketplace_price_bounds` | `never` | `{ max_price: number min_price: number }[]` |
 | `get_marketplace_product_listings` | `{ p_grade_filters?: Json p_only_graded?: boolean p_page?: number p_page_size?: number p_product_id:…` | `{ created_at: string filtered_lowest_price: number grading_company: string grading_score: string li…` |
+| `get_reward_coupon_center` | `never;` | `Json` |
+| `get_unacknowledged_reward_grants` | `never;` | `Json` |
 | `get_user_chat_inbox` | `never;` | `Json` |
+| `get_user_reward_coupons` | `never;` | `Json` |
 | `is_chat_room_member` | `{ p_room_id: string; p_user_id?: string }` | `boolean` |
 | `is_display_name_available` | `{ name: string };` | `boolean` |
 | `listing_grade_sort_score` | `{ grading_company: string; grading_score: string }` | `number` |
@@ -69,12 +83,14 @@ type UserRole = Enums<"user_role">;
 | `rpc_cancel_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_complete_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
-| `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json` |
+| `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_send_chat_message` | `{ p_content: string; p_room_id: string; p_sender_id: string }` | `Json` |
 | `rpc_submit_transaction_review` | `{ p_comment?: string p_order_id: string p_rating: number p_reviewee_id: string p_user_id?: string }` | `Json` |
+| `run_auto_grant_rewards_for_me` | `never;` | `Json` |
 | `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_keyword?: string p_name_query?: string p_page?: n…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
+| `search_user_trading_orders` | `{ p_page?: number p_page_size?: number p_persona?: string p_search_query?: string p_tab_status?: st…` | `{ buyer_id: string card_number: string catalog_image_url: string count_needs_action: number count_p…` |
 
 ---
 
@@ -127,6 +143,7 @@ type UserRole = Enums<"user_role">;
 | `current_streak` | `number | null` | Yes |
 | `last_check_in` | `string | null` | Yes |
 | `longest_streak` | `number | null` | Yes |
+| `points_balance` | `number` | No |
 | `updated_at` | `string | null` | Yes |
 | `user_id` | `string` | No |
 
@@ -221,6 +238,7 @@ type UserRole = Enums<"user_role">;
 | `seller_id` | `string` | No |
 | `status` | `member_order_state | null` | Yes |
 | `updated_at` | `string | null` | Yes |
+| `use_authentication` | `boolean` | No |
 
 **Foreign keys:** `buyer_id` → `profiles`
 
@@ -274,6 +292,8 @@ type UserRole = Enums<"user_role">;
 | Column | Type | Nullable |
 |--------|------|----------|
 | `business_details` | `Json | null` | Yes |
+| `cancelled_trades_count` | `number` | No |
+| `completed_trades_count` | `number` | No |
 | `created_at` | `string | null` | Yes |
 | `merchant_id` | `string` | No |
 | `rating_score` | `number | null` | Yes |
@@ -302,8 +322,26 @@ type UserRole = Enums<"user_role">;
 | `room_id` | `string` | No |
 | `status` | `offer_status | null` | Yes |
 | `updated_at` | `string | null` | Yes |
+| `use_authentication` | `boolean` | No |
 
 **Foreign keys:** `buyer_id` → `profiles`
+
+---
+
+### `point_ledger`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `amount` | `number` | No |
+| `balance_after` | `number` | No |
+| `created_at` | `string` | No |
+| `description` | `string | null` | Yes |
+| `id` | `string` | No |
+| `source_ref` | `string | null` | Yes |
+| `source_type` | `string` | No |
+| `user_id` | `string` | No |
+
+**Foreign keys:** `user_id` → `profiles`
 
 ---
 
@@ -435,12 +473,14 @@ type UserRole = Enums<"user_role">;
 
 | Column | Type | Nullable |
 |--------|------|----------|
+| `claimed_count` | `number` | No |
 | `created_at` | `string | null` | Yes |
 | `description` | `string | null` | Yes |
 | `fixed_expiry_date` | `string | null` | Yes |
 | `id` | `string` | No |
 | `is_active` | `boolean | null` | Yes |
 | `is_infinite` | `boolean | null` | Yes |
+| `max_claims` | `number | null` | Yes |
 | `reward_value` | `Json` | No |
 | `title` | `string` | No |
 | `trigger_conditions` | `Json` | No |
@@ -493,8 +533,10 @@ type UserRole = Enums<"user_role">;
 
 | Column | Type | Nullable |
 |--------|------|----------|
+| `acknowledged_at` | `string | null` | Yes |
 | `calculated_expiry` | `string | null` | Yes |
 | `created_at` | `string | null` | Yes |
+| `grant_dedup_key` | `string` | No |
 | `id` | `string` | No |
 | `is_used` | `boolean | null` | Yes |
 | `template_id` | `string` | No |
@@ -507,7 +549,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**22 tables**
+**23 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -523,6 +565,7 @@ type UserRole = Enums<"user_role">;
 | `merchant_orders` | Escrow orders |
 | `merchant_shops` | Merchant storefront |
 | `offers` | Negotiation |
+| `point_ledger` | — |
 | `product_catalog` | Catalog |
 | `product_grading_market_prices` | — |
 | `product_price_snapshots` | Catalog / pricing |

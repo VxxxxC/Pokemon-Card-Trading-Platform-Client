@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { makeOffer } from "@/app/actions/offers";
+import { Switch } from "@/components/ui/switch";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
@@ -32,6 +33,7 @@ export function ExecutionSlideOver({
   productId,
 }: ExecutionSlideOverProps) {
   const [customPrice, setCustomPrice] = useState("");
+  const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mockRole = useUIStore((state) => state.mockRole);
@@ -62,6 +64,7 @@ export function ExecutionSlideOver({
     if (isOpen && order) {
       queueMicrotask(() => {
         setCustomPrice(order.price.toString());
+        setUseAuthentication(false);
       });
     }
   }, [isOpen, listingId, order?.price]);
@@ -95,7 +98,11 @@ export function ExecutionSlideOver({
         return;
       }
 
-      const result = await makeOffer(listingId, Number(customPrice));
+      const result = await makeOffer(
+        listingId,
+        Number(customPrice),
+        useAuthentication,
+      );
       if (!result.success) {
         toast.error(result.error);
         return;
@@ -123,6 +130,7 @@ export function ExecutionSlideOver({
         messageContent: message.content,
         messageCreatedAt: message.created_at ?? new Date().toISOString(),
         offerStatus: offer.status ?? "pending",
+        useAuthentication: offer.use_authentication,
       });
 
       onClose();
@@ -281,6 +289,24 @@ export function ExecutionSlideOver({
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </Link>
+
+            <div className="bg-[#17130f] border border-white/5 rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1 space-y-1">
+                  <span className="font-mono text-[11px] text-[#d4c4b7] block uppercase tracking-wide">
+                    平台鑑定加購
+                  </span>
+                  <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
+                    啟用後由平台第三方鑑定機構複驗品相與真偽（HK$150）
+                  </p>
+                </div>
+                <Switch
+                  checked={useAuthentication}
+                  onCheckedChange={setUseAuthentication}
+                  className="data-checked:bg-brand data-unchecked:bg-[#39342f]"
+                />
+              </div>
+            </div>
 
             <div className="space-y-1.5 animate-fadeIn">
               <label

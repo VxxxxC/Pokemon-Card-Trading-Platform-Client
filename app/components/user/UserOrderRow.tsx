@@ -156,21 +156,23 @@ export function UserOrderRow({
           )}
           {statusBadge ?? <OrderStatusBadge status={order.status} />}
 
-          <h3 className="text-[14.5px] font-bold text-text-primary truncate max-w-[160px] sm:max-w-xs md:max-w-md">
-            {order.cardName}
+          <h3 className="text-[14.5px] font-mono font-black text-brand truncate max-w-[160px] sm:max-w-xs md:max-w-md">
+            {"#" + displayOrderNumber}
           </h3>
-          <span className="font-sans text-[10px] font-black text-brand bg-brand/5 border border-brand/20 px-1.5 py-0.5 rounded">
-            {order.grade}
-          </span>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-text-disabled">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[12px] text-text-secondary font-medium truncate max-w-[200px] sm:max-w-xs">
+              {order.cardName}
+            </span>
+            <span className="font-sans text-[10px] font-black text-brand bg-brand/5 border border-brand/20 px-1.5 py-0.5 rounded shrink-0">
+              {order.grade}
+            </span>
+          </div>
+          <span className="hidden sm:inline text-white/5">|</span>
           <span className="text-[12px] text-text-secondary font-medium">
             {counterpartLabel}：{counterpartName}
-          </span>
-          <span className="hidden sm:inline text-white/5">|</span>
-          <span className="text-[11px] font-mono tracking-tight text-brand">
-            {"訂單編號: #" + displayOrderNumber}
           </span>
           {order.createdAt ? (
             <>

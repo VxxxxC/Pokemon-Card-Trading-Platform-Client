@@ -6,6 +6,7 @@ import type { Database } from "@/types/supabase";
 type CatalogType = Database["public"]["Enums"]["catalog_type"];
 
 const CARD_TYPES: CatalogType[] = ["single_card"];
+// Box / gift / pack — see lib/constants/commerce.ts (V2: + lucky_bag on catalog_type)
 const BOX_SET_TYPES: CatalogType[] = [
   "booster_box",
   "gift_set",

@@ -5,6 +5,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
+import { UserProfileDashboardShell } from "@/app/components/rewards/UserProfileDashboardShell";
 
 export const metadata: Metadata = {
   title: "我的帳號 · 總覽 — HKCardVault",
@@ -29,11 +30,8 @@ export default function UserProfileLayout({
       <MobileHeader />
 
       <main className="mt-5 flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
-        {/* 4柱石分流導航列 */}
         <ProfileTabNav tabs={USER_TABS} />
-
-        {/* 渲染子頁面內容 */}
-        {children}
+        <UserProfileDashboardShell>{children}</UserProfileDashboardShell>
       </main>
 
       <BottomNav />

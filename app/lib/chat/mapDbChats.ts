@@ -27,6 +27,7 @@ export type DbOfferSnippet = {
   offer_price: number;
   status: Tables<"offers">["status"];
   modified_count: number;
+  use_authentication: boolean;
   listings: {
     product_id: string;
     images: unknown;
@@ -98,6 +99,7 @@ function buildSpecialData(
     offerId: offer.id,
     modifiedCount: offer.modified_count ?? 0,
     imageUrl: imageUrl || undefined,
+    useAuthentication: offer.use_authentication,
     initialStatus: mapOfferStatusToInitialStatus(
       offer.status,
       offer.modified_count ?? 0,

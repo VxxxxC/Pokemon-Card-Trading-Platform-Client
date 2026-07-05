@@ -4,7 +4,18 @@
 
 - **Backend:** ✅ Ready (`makeOffer` · `modifyOffer` · `acceptOffer` · **`rejectOffer`** · `getOfferCardContext` · `getUserChatInbox` · `sendMessage`; inbox **`member_order_id`**; review helpers used by chat UI)
 - **Frontend:** 🟡 Partial — offer card RPCs + DB inbox + text send + **Realtime Scheme A** + **completion card + review CTA** + **long-thread perf** wired; polish / checkout-after-accept pending
-- **Partner:** Apply migrations `20260704170000`–**`20260704300000`**; verify inbox + send + accept/reject + completion messages after push (see **Migrations** below)
+- **Partner:** Apply migrations `20260704170000`–**`20260705140000`**; verify inbox + send + accept/reject + auth opt-in + completion messages after push (see **Migrations** below)
+
+## Changelog (2026-07-05, P2P platform authentication opt-in)
+
+| Change | Detail |
+|--------|--------|
+| **`offers.use_authentication`** | Migration **`20260705130000`** — buyer opt-in at offer time (default `false`) |
+| **`member_orders.use_authentication`** | Same migration — copied from offer on **`rpc_accept_offer`** |
+| **`rpc_make_offer(p_use_authentication)`** | Migration **`20260705140000`** — persists flag on INSERT into `offers` |
+| **`makeOffer(listingId, price, useAuthentication?)`** | Server action passes `p_use_authentication` to RPC |
+| **`getOfferCardContext`** | Selects `offers.use_authentication` → `OfferCardContext.offer.use_authentication` |
+| **`search_user_trading_orders`** | Migration **`20260705130000`** — fulfillment mode from **`member_orders.use_authentication`** (not listing) |
 
 ## Changelog (2026-07-04, completion + inbox order id)
 
@@ -44,10 +55,10 @@
 
 ```
 Buyer — make offer
-  ExecutionSlideOver → makeOffer(listingId, price)
-    → rpc_make_offer
+  ExecutionSlideOver → makeOffer(listingId, price, useAuthentication?)
+    → rpc_make_offer(p_use_authentication)
       → chat_rooms (find/create by buyer_id + seller_id)
-      → offers (pending, listing_id, offer_price)
+      → offers (pending, listing_id, offer_price, use_authentication)
       → chat_messages (content + offer_id)
     ← { room, offer, message }
 
@@ -62,7 +73,7 @@ Seller — accept
     → rpc_accept_offer
       → offers.status = accepted
       → listings.status = inactive
-      → member_orders (14-day TTL)
+      → member_orders (14-day TTL, use_authentication from offer)
       → chat_messages (SYSTEM_OFFER_ACCEPTED, offer_id, member_order_id)
 
 Seller — reject
@@ -124,10 +135,12 @@ Party — send text message
 | `supabase/migrations/20260704190000_chat_rooms_messages_rls.sql` | RLS + grants |
 | `supabase/migrations/20260704190500_rpc_reject_offer.sql` | **`rpc_reject_offer`** |
 | `supabase/migrations/20260704200000_get_user_chat_inbox_rpc.sql` | Inbox RPC + grant fix |
-| `supabase/migrations/20260704210000_rpc_send_chat_message.sql` | `rpc_send_chat_message`, `is_chat_room_member`, INSERT policy fix |
+| `supabase/migrations/20260704210500_rpc_send_chat_message.sql` | `rpc_send_chat_message`, `is_chat_room_member`, INSERT policy fix |
 | `supabase/migrations/20260704230000_rpc_accept_offer_fix_listing_id.sql` | **`rpc_accept_offer`** listing_id fix (post–Scheme B) |
 | `supabase/migrations/20260704240000_chat_messages_realtime.sql` | Adds `chat_messages` to **`supabase_realtime`** publication |
 | `supabase/migrations/20260704300000_get_user_chat_inbox_member_order_id.sql` | Inbox RPC + table select expose **`member_order_id`** on messages |
+| `supabase/migrations/20260705130000_member_orders_offers_use_authentication.sql` | **`offers` / `member_orders.use_authentication`**; **`rpc_accept_offer`** inherit; list RPC update |
+| `supabase/migrations/20260705140000_rpc_make_offer_use_authentication.sql` | **`rpc_make_offer(p_use_authentication)`** |
 
 > **Note:** `20260704190000_rpc_reject_offer.sql` was renamed to **`20260704190500`** to avoid duplicate migration version with RLS migration.
 
@@ -156,20 +169,26 @@ bun run supabase:types   # if scripted; else bunx supabase gen types typescript
 | `20260704190000` | Chat/offers RLS policies (initial `chat_messages_party_insert`) |
 | `20260704190500` | **`rpc_reject_offer`** |
 | `20260704200000` | `get_user_chat_inbox()` RPC + `REVOKE PUBLIC` grants |
-| `20260704210000` | **`rpc_send_chat_message`** + `is_chat_room_member` — **required for text send** |
+| `20260704210500` | **`rpc_send_chat_message`** + `is_chat_room_member` — **required for text send** |
 | `20260704230000` | **`rpc_accept_offer`** fix — use `offers.listing_id` (fixes `column r.listing_id does not exist`) |
 | `20260704240000` | **`chat_messages`** in Realtime publication — required for live inbox |
 | **`20260704300000`** | **`member_order_id`** on inbox messages — **required for completion card + review CTA on load** |
+| **`20260705130000`** | **`use_authentication`** on offers + member_orders; accept RPC inherit |
+| **`20260705140000`** | **`rpc_make_offer`** auth param — **required for buyer toggle** |
 
 ---
 
 ## Server actions
 
-### `makeOffer(listingId, offerPrice)`
+### `makeOffer(listingId, offerPrice, useAuthentication?)`
+
+Third arg optional (default `false`). Maps to `p_use_authentication` on RPC.
 
 Success: `{ success: true, data: { room, offer, message } }`
 
 RPC content: `出價 HK$ ${price.toLocaleString()}`
+
+Offer row includes `use_authentication` in returned `offer` JSON.
 
 ### `modifyOffer(offerId, newPrice)`
 
@@ -201,6 +220,8 @@ Success: `{ success: true, data: { offer, messageId } }`
 Success: `{ success: true, data: OfferCardContext }`
 
 Joins: `offers` → `listings` (via `listing_id`) → `product_catalog`; `chat_rooms` for `seller_id`
+
+Fields: `offer.use_authentication` included in `OfferCardContext.offer`
 
 Image: `listings.images[0]` (Bunny CDN) → `product_catalog.image_url`
 

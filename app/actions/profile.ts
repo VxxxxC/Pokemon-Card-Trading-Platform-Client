@@ -12,6 +12,7 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/types/supabase";
+import { syncAutoGrantRewards } from "@/app/actions/rewards";
 
 type ProfileRow = Pick<
   Tables<"profiles">,
@@ -242,5 +243,9 @@ export async function updateUserProfile(
 
   revalidatePath("/profile/user/settings");
   revalidatePath("/profile/user");
+  revalidatePath("/profile/user/rewards");
+
+  void syncAutoGrantRewards();
+
   return null;
 }

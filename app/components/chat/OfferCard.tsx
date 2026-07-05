@@ -41,6 +41,7 @@ import {
   isCatalogImageUrl,
   isValidOfferCardImageUrl,
 } from "@/app/lib/chat/offerCardImage";
+import { MEMBER_AUTH_SERVICE_FEE } from "@/app/lib/member-order/p2p";
 import type { Tables } from "@/types/supabase";
 
 export type OfferCardMessage = {
@@ -79,6 +80,7 @@ function mergeOfferContext(
       offer_price: offer.offer_price,
       status: offer.status,
       modified_count: readModifiedCountFromRow(offer),
+      use_authentication: offer.use_authentication,
     },
   };
 }
@@ -273,6 +275,7 @@ export function OfferCardComponent({
   const isPending = offerStatus === "pending";
   const isAccepted = offerStatus === "accepted";
   const isRejected = offerStatus === "rejected";
+  const useAuthentication = context?.offer.use_authentication ?? false;
 
   const statusBadge = useMemo(() => {
     if (isAccepted) {
@@ -512,6 +515,12 @@ export function OfferCardComponent({
                 HK$ {offerPrice.toLocaleString()}
               </span>
             </p>
+            {useAuthentication ? (
+              <p className="inline-flex items-center gap-1 rounded border border-brand/25 bg-brand/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand">
+                🔍 含平台鑑定加購 (HK${" "}
+                {MEMBER_AUTH_SERVICE_FEE.toLocaleString()})
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -524,6 +533,14 @@ export function OfferCardComponent({
             </button>
           </div>
         </div>
+
+        {useAuthentication && isPending ? (
+          <Alert className="border-brand/25 bg-brand/10 text-brand">
+            <AlertDescription className="text-[11.5px] leading-relaxed">
+              買家已加購平台第三方鑑定服務；成交後將走託管鑑定流程，非面交直收。
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         {isAccepted ? (
           <Alert className="border-[#10b981]/30 bg-[#10b981]/10 text-[#10b981]">
@@ -584,6 +601,13 @@ export function OfferCardComponent({
                       {context.buyerName}
                     </span>{" "}
                     的出價。確認後商品將進入 Hold 貨狀態。
+                    {useAuthentication ? (
+                      <>
+                        {" "}
+                        此出價含平台鑑定加購（HK${" "}
+                        {MEMBER_AUTH_SERVICE_FEE.toLocaleString()}），成交後將啟動託管鑑定流程。
+                      </>
+                    ) : null}
                   </p>
                   <div className="flex flex-col gap-2">
                     <AlertDialogAction

@@ -23,6 +23,7 @@ export interface SpecialTransactionData {
   offerId?: string;
   modifiedCount?: number;
   imageUrl?: string;
+  useAuthentication?: boolean;
   initialStatus?: "pending" | "accepted" | "rejected" | "countered";
 }
 
@@ -220,6 +221,7 @@ interface HkCardVaultStore {
     messageContent: string;
     messageCreatedAt: string;
     offerStatus: "pending" | "accepted" | "rejected" | "cancelled";
+    useAuthentication?: boolean;
   }) => void;
 
   applyOfferModification: (payload: {
@@ -499,6 +501,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           offerId: payload.offerId,
           modifiedCount,
           initialStatus,
+          useAuthentication: payload.useAuthentication ?? false,
         },
       };
 

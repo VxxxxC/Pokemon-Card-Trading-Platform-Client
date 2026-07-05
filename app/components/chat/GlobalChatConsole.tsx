@@ -267,6 +267,7 @@ const MessageThread = memo(function MessageThread({
                 imageUrl={msg.specialData.imageUrl}
                 offerPrice={msg.specialData.offerPrice}
                 initialModifiedCount={msg.specialData.modifiedCount ?? 0}
+                useAuthentication={msg.specialData.useAuthentication}
                 initialStatus={msg.specialData.initialStatus || "pending"}
                 isMe={msg.sender === "me"}
                 currentUserId={currentUserId}
@@ -378,6 +379,7 @@ const MobileMessageThread = memo(function MobileMessageThread({
                 imageUrl={msg.specialData.imageUrl}
                 offerPrice={msg.specialData.offerPrice}
                 initialModifiedCount={msg.specialData.modifiedCount ?? 0}
+                useAuthentication={msg.specialData.useAuthentication}
                 initialStatus={msg.specialData.initialStatus || "pending"}
                 isMe={msg.sender === "me"}
                 currentUserId={currentUserId}
