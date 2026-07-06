@@ -3,8 +3,9 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { addToCollection } from "@/app/actions/collection";
 import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listing";
-import { useUIStore } from "@/app/store/useUIStore";
+import { useUIStore, type SellFromCollectionPrefill } from "@/app/store/useUIStore";
 import { useListingSubmitStore } from "@/app/store/useListingSubmitStore";
 import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
 import type { ProductCatalogSuggestion } from "@/app/actions/productCatalog";
@@ -55,6 +56,25 @@ function revokePhotoSlots(slots: LocalPhotoSlot[]) {
   }
 }
 
+function suggestionFromSellPrefill(
+  prefill: SellFromCollectionPrefill,
+): ProductCatalogSuggestion {
+  return {
+    id: prefill.productId,
+    name: prefill.catalog.name,
+    nameJa: prefill.catalog.name,
+    nameEn: null,
+    nameZh: null,
+    setCode: prefill.catalog.setCode,
+    cardNumber: prefill.catalog.cardNumber ?? null,
+    displayId: prefill.catalog.displayId ?? null,
+    imageUrl: prefill.catalog.imageUrl ?? "",
+    type: "single_card",
+    rarity: prefill.catalog.rarity ?? null,
+    pokemonStage: null,
+  };
+}
+
 // 嚴格定義全域資產數據合約
 export interface GlobalAssetPayload {
   id: string;
@@ -77,6 +97,7 @@ export interface GlobalAssetPayload {
 export function AddAssetModal() {
   const isOpen = useUIStore((state) => state.isAddAssetOpen);
   const globalMode = useUIStore((state) => state.addAssetMode);
+  const sellPrefill = useUIStore((state) => state.addAssetSellPrefill);
   const closeAddAssetModal = useUIStore((state) => state.closeAddAssetModal);
 
   // 模式 Toggle 狀態
@@ -147,7 +168,11 @@ export function AddAssetModal() {
     };
   }, []);
 
-  const displayMode = mode === "hobby" ? "收藏愛好" : "新增商品";
+  const displayMode = sellPrefill
+    ? "上架出售收藏"
+    : mode === "hobby"
+      ? "收藏愛好"
+      : "新增商品";
 
   const filledPhotoCount = useMemo(
     () => photoSlots.filter((slot) => slot.file).length,
@@ -177,16 +202,31 @@ export function AddAssetModal() {
     setPrevIsOpen(isOpen);
     if (isOpen) {
       catalogSearch.clearSearch();
-      setMode(globalMode);
-      setItemType("card"); // 🏛️ Memory Guard Synchronization: Reset itemType back to "card" when opening modal
-      setSet("");
-      setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
-      setPurchasePrice("");
-      setSellingPrice("");
-      setHobbyImages([]);
-      resetPhotoSlots();
-      setConditionDesc("");
-      setActiveSlotIndex(null);
+      if (sellPrefill) {
+        const suggestion = suggestionFromSellPrefill(sellPrefill);
+        catalogSearch.selectSuggestion(suggestion);
+        setMode("merch");
+        setItemType("card");
+        setSet(sellPrefill.catalog.setCode);
+        setSelectedGradingId(sellPrefill.gradingOptionId);
+        setSellingPrice(String(sellPrefill.sellingPrice));
+        setPurchasePrice("");
+        setHobbyImages([]);
+        resetPhotoSlots();
+        setConditionDesc("");
+        setActiveSlotIndex(null);
+      } else {
+        setMode(globalMode);
+        setItemType("card");
+        setSet("");
+        setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
+        setPurchasePrice("");
+        setSellingPrice("");
+        setHobbyImages([]);
+        resetPhotoSlots();
+        setConditionDesc("");
+        setActiveSlotIndex(null);
+      }
     }
   }
 
@@ -361,6 +401,35 @@ export function AddAssetModal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (mode === "hobby") {
+      if (!catalogSearch.selected) {
+        toast.error("⚠️ 請從搜尋結果中選擇一張卡牌");
+        return;
+      }
+
+      const parsedPurchasePrice = Number(purchasePrice);
+      if (!Number.isFinite(parsedPurchasePrice) || parsedPurchasePrice < 0) {
+        toast.error("⚠️ 請輸入有效的入手成本");
+        return;
+      }
+
+      const result = await addToCollection({
+        productId: catalogSearch.selected.id,
+        gradingOptionId: selectedGradingId,
+        purchasePrice: parsedPurchasePrice,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("★ 已成功收錄進您的私藏愛好清單");
+      handleCloseAndReset();
+      window.dispatchEvent(new CustomEvent("collection-should-refresh"));
+      return;
+    }
+
     if (mode === "merch" && itemType === "card") {
       const imageFiles = photoSlots
         .map((slot) => slot.file)
@@ -399,6 +468,7 @@ export function AddAssetModal() {
         return;
       }
 
+      const hadSellPrefill = Boolean(sellPrefill);
       const gradingFields = gradingOptionToFields(selectedGrading);
 
       const payload: GlobalAssetPayload = {
@@ -425,12 +495,20 @@ export function AddAssetModal() {
         new CustomEvent("global-asset-successfully-added", { detail: payload }),
       );
 
-      toast.success("🏪 商品已成功錄入並直接上架交易所大盤");
+      if (hadSellPrefill) {
+        window.dispatchEvent(new CustomEvent("collection-should-refresh"));
+      }
+
+      toast.success(
+        hadSellPrefill
+          ? "🏛️ 收藏品已成功上架發售"
+          : "🏪 商品已成功錄入並直接上架交易所大盤",
+      );
       handleCloseAndReset();
       return;
     }
 
-    if (!catalogSearch.query) {
+    if (!catalogSearch.query && !sellPrefill) {
       toast.error("⚠️ 請填寫欲搜尋及上架的商品型號或名稱！");
       return;
     }
@@ -466,35 +544,27 @@ export function AddAssetModal() {
         "PBR-Compiled",
       grade: itemType === "box_set" ? "SEALED" : gradingFields!.gradeLabel,
       grader: itemType === "box_set" ? "SEALED" : gradingFields!.grader,
-      purchasePrice: mode === "hobby" ? Number(purchasePrice) || 0 : 0,
-      currentValue: mode === "hobby" ? Number(purchasePrice) || 0 : 0, // 🟢 移除當前估值欄位，預設與入手成本一致
-      sellingPrice: mode === "merch" ? Number(sellingPrice) : 0,
-      status: mode === "hobby" ? "holding" : "listed",
-      isHobbyOnly: mode === "hobby",
+      purchasePrice: 0,
+      currentValue: 0,
+      sellingPrice: Number(sellingPrice),
+      status: "listed",
+      isHobbyOnly: false,
       images:
-        mode === "merch"
-          ? photoSlots
-              .filter((slot) => slot.previewUrl)
-              .map((slot, index) => ({
-                url: slot.previewUrl!,
-                order: index + 1,
-              }))
-          : hobbyImages.length > 0
-            ? hobbyImages
-            : ["https://picsum.photos/seed/placeholder/600/420"],
+        photoSlots
+          .filter((slot) => slot.previewUrl)
+          .map((slot, index) => ({
+            url: slot.previewUrl!,
+            order: index + 1,
+          })),
       condition: itemType === "box_set" ? "SEALED" : gradingFields!.condition,
-      conditionDesc: mode === "merch" ? conditionDesc : undefined,
+      conditionDesc: conditionDesc || undefined,
     };
 
     window.dispatchEvent(
       new CustomEvent("global-asset-successfully-added", { detail: payload }),
     );
 
-    toast.success(
-      mode === "hobby"
-        ? "★ 已成功收錄進您的私藏愛好清單"
-        : "🏪 商品已成功錄入並直接上架交易所大盤",
-    );
+    toast.success("🏪 商品已成功錄入並直接上架交易所大盤");
 
     handleCloseAndReset();
   };
@@ -515,6 +585,7 @@ export function AddAssetModal() {
           className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-none pb-1 text-[13px]"
         >
           {/* Symmetrical Item-Type Sharding Switch Chassis */}
+          {!sellPrefill ? (
           <div className="relative flex bg-[#17130f] rounded-xl p-1 border border-[rgba(237,232,224,0.08)] w-full max-w-xs mb-4 select-none mx-auto lg:mx-0">
             <div
               className="absolute top-1 bottom-1 rounded-lg bg-[rgba(212,165,116,0.14)] border border-[rgba(212,165,116,0.22)] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
@@ -557,8 +628,16 @@ export function AddAssetModal() {
               密封盒組 (BOX/SET)
             </button>
           </div>
+          ) : null}
+
+          {sellPrefill ? (
+            <p className="font-mono text-[11px] text-[#8A8680] leading-relaxed">
+              卡牌與規格已從收藏庫帶入。請上傳 4–6 張實物相片並確認放售價格。
+            </p>
+          ) : null}
 
           {/* === 1. CARD QUERY CONVERGENCE (Both Modes Share This Unified Box) === */}
+          {!sellPrefill ? (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="font-mono text-[12px] text-[#d4c4b7] block">
@@ -647,6 +726,7 @@ export function AddAssetModal() {
               )}
             </div>
           </div>
+          ) : null}
 
           {catalogSearch.selected && itemType === "card" && (
             <div className="flex items-center gap-3 rounded-xl border border-brand/20 bg-[rgba(212,165,116,0.06)] p-3">
@@ -679,6 +759,7 @@ export function AddAssetModal() {
           )}
 
           {/* === 2. OPTIONAL EXPANSION SET === */}
+          {!sellPrefill ? (
           <div className="space-y-1.5">
             <label className="font-sans font-bold text-[#d4c4b7]">
               擴充包系列{" "}
@@ -694,9 +775,10 @@ export function AddAssetModal() {
               className="w-full h-10 bg-[#17130f] border border-white/5 rounded-xl px-3 text-[#eae1da] placeholder-[#50453b] focus:outline-none"
             />
           </div>
+          ) : null}
 
           {/* === 3. UNIFIED GRADING SELECT === */}
-          {itemType === "card" && (
+          {itemType === "card" && !sellPrefill && (
             <div className="space-y-1.5 bg-[#1e1a17] p-3.5 rounded-xl border border-white/[0.04]">
               <label className="font-mono text-[11px] text-[#d4c4b7]">
                 鑑定／品相
@@ -727,74 +809,24 @@ export function AddAssetModal() {
           )}
 
           {/* === 4. PHOTO UPLOAD SECTION === */}
+          {mode === "merch" ? (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="font-sans font-bold text-[#d4c4b7]">
                 實體品相相片{" "}
-                {mode === "merch"
-                  ? itemType === "box_set"
-                    ? `(必須至少 1 張)`
-                    : `(必須 ${LISTING_IMAGE_MIN}–${LISTING_IMAGE_MAX} 張)`
-                  : `(${hobbyImages.length}/${LISTING_IMAGE_MAX})`}{" "}
-                {mode === "merch" && <span className="text-brand">*</span>}
+                {itemType === "box_set"
+                  ? `(必須至少 1 張)`
+                  : `(必須 ${LISTING_IMAGE_MIN}–${LISTING_IMAGE_MAX} 張)`}{" "}
+                <span className="text-brand">*</span>
               </label>
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
-                {mode === "merch" && itemType === "card"
+                {itemType === "card"
                   ? `${filledPhotoCount}/${LISTING_IMAGE_MAX}`
                   : `Max ${LISTING_IMAGE_MAX} Photos`}
               </span>
             </div>
 
-            {mode === "hobby" ? (
-              <div className="grid grid-cols-4 gap-2 bg-[#17130f] p-3 rounded-xl border border-white/5 min-h-[76px]">
-                {hobbyImages.map((url, index) => (
-                  <div
-                    key={index}
-                    className="relative aspect-[3/4] bg-[#26211C] rounded-lg border border-white/10 overflow-hidden group"
-                  >
-                    <Image
-                      src={url}
-                      alt="實體特寫"
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveHobbyImage(index)}
-                      className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/70 text-white hover:bg-brand hover:text-[#1A1612] flex items-center justify-center font-sans text-[9px] font-black cursor-pointer transition-colors focus:outline-none"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-
-                {hobbyImages.length < LISTING_IMAGE_MAX && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveSlotIndex(null);
-                      fileInputRef.current?.click();
-                    }}
-                    className="aspect-[3/4] rounded-lg border border-dashed border-white/10 hover:border-brand/40 bg-[#26211C]/30 hover:bg-[#26211C]/60 flex flex-col items-center justify-center gap-1 text-[#8A8680] hover:text-brand transition-all cursor-pointer focus:outline-none"
-                  >
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    <span className="text-[9px] font-bold">上載</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2">
                 {photoSlots.map((photo, i) => {
                   const isRequired =
                     itemType === "box_set" ? i < 1 : i < LISTING_IMAGE_MIN;
@@ -858,9 +890,9 @@ export function AddAssetModal() {
                     </div>
                   );
                 })}
-              </div>
-            )}
+            </div>
           </div>
+          ) : null}
 
           {/* === 5. MODE-SPECIFIC VALUE FIELDS === */}
           {mode === "hobby" ? (
@@ -941,9 +973,11 @@ export function AddAssetModal() {
             >
               {isSubmitting
                 ? "上載中…"
-                : mode === "hobby"
-                  ? "★ 收錄至私藏愛好"
-                  : "🚀 立即發佈商品上架"}
+                : sellPrefill
+                  ? "🚀 確認上架發售"
+                  : mode === "hobby"
+                    ? "★ 收錄至私藏愛好"
+                    : "🚀 立即發佈商品上架"}
             </button>
             <button
               type="button"
@@ -963,5 +997,5 @@ export function AddAssetModal() {
 export const triggerGlobalAddAssetModal = (
   defaultMode: "hobby" | "merch" = "hobby",
 ) => {
-  useUIStore.getState().openAddAssetModal(defaultMode);
+  useUIStore.getState().openAddAssetModal({ mode: defaultMode });
 };

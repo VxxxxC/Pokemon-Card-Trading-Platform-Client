@@ -23,6 +23,7 @@ import {
   uploadListingImageToBunny,
 } from "@/lib/storage/bunny";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
 
@@ -292,5 +293,57 @@ export async function createCardListing(
     }
 
     return { success: false, error: "商品上架時發生錯誤" };
+  }
+}
+
+export type IncrementListingViewResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function incrementListingView(
+  listingId: string,
+): Promise<IncrementListingViewResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "服務尚未設定" };
+  }
+
+  const trimmedId = listingId.trim();
+  if (!trimmedId) {
+    return { success: false, error: "無效的掛單" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_increment_listing_view",
+          args: { p_listing_id: string },
+        ) => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("rpc_increment_listing_view", {
+      p_listing_id: trimmedId,
+    });
+
+    if (error) {
+      console.error("[incrementListingView]", error.message);
+      return { success: false, error: "無法更新瀏覽次數" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[incrementListingView]", error);
+    return { success: false, error: "無法更新瀏覽次數" };
   }
 }

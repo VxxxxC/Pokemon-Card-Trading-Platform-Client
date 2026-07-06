@@ -115,7 +115,34 @@ RLS: owner `SELECT` + `UPDATE` (ack only).
 
 See `lib/constants/rewards.ts` → `SEED_REWARD_TEMPLATE_IDS`. `LUCKY_DRAW_ARCHIVED = true`.
 
-## RPC reference
+### 2026-07-06 (points SSOT — mission claim + redemption RPCs)
+
+| Change | Detail |
+|--------|--------|
+| **`20260706170000`** | `fn_claim_mission_points`, `fn_redeem_member_points` — both delegate to `fn_apply_point_transaction` only |
+
+## Points balance SSOT
+
+| Rule | Detail |
+|------|--------|
+| **Canonical balance** | `gamification_stats.points_balance` |
+| **Audit** | `point_ledger` (`balance_after` per row) |
+| **Not balance** | `user_rewards` — grant receipts / coupon instances only |
+| **Not on profiles** | Do not add `profiles.points_balance` (dual-write drift) |
+
+All earn/spend paths must call `fn_apply_point_transaction` (directly or via SECURITY DEFINER RPC):
+
+| Path | RPC / function |
+|------|----------------|
+| Daily check-in | `execute_daily_check_in` |
+| Template auto-grant (type=points) | `fn_issue_reward_from_template` |
+| Manual template claim | `fn_grant_points_from_template` |
+| Mission claim (future UI) | `fn_claim_mission_points` |
+| Points spend / redemption (future) | `fn_redeem_member_points` (negative amount internally) |
+| Admin adjust (future) | service_role → `fn_apply_point_transaction` with `admin_adjust` |
+
+`fn_apply_point_transaction` is **service_role only** for direct calls; app code uses the RPCs above.
+
 
 | RPC | Caller | Returns |
 |-----|--------|---------|
@@ -128,6 +155,8 @@ See `lib/constants/rewards.ts` → `SEED_REWARD_TEMPLATE_IDS`. `LUCKY_DRAW_ARCHI
 | `acknowledge_reward_grants(p_user_reward_ids uuid[])` | authenticated | `{ success, updated }` |
 | `run_auto_grant_rewards_for_me()` | authenticated | JSON array of newly issued grants |
 | `fn_grant_points_from_template(p_user_id, p_template_id)` | authenticated | Manual points claim from template |
+| `fn_claim_mission_points(p_mission_id, p_points, p_description?)` | authenticated | Mission reward — `mission_claim` ledger row |
+| `fn_redeem_member_points(p_amount, p_description?, p_source_ref?)` | authenticated | Spend PTS — `redemption` ledger row (negative amount) |
 
 Check-in ladder (HK timezone, 7-day cycle) must match `CHECK_IN_POINT_LADDER` in `lib/constants/rewards.ts`:
 

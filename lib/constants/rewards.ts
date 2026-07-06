@@ -24,7 +24,7 @@ export const CHECK_IN_STEPS = Object.entries(CHECK_IN_POINT_LADDER).map(
   }),
 );
 
-/** point_ledger.source_type — 須與 DB CHECK / RPC 一致 */
+/** point_ledger.source_type — 須與 DB CHECK / RPC 一致；餘額只經 fn_apply_point_transaction 更新 */
 export const POINT_LEDGER_SOURCES = {
   DAILY_CHECK_IN: 'daily_check_in',
   REWARD_TEMPLATE: 'reward_template',

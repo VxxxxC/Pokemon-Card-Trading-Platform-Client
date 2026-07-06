@@ -220,25 +220,146 @@ interface Order {
 
 ## 7. 遊戲化與願望清單 (Gamification & Wishlist)
 
+### 7.1 簽到 / 積分
+
 | 方法 | 路徑 / Action | 請求 | 回應 | 權限 |
 |------|---------------|------|------|------|
 | `POST` | `[Server Action] executeCheckIn` | `{}` | `{ streakDay, pointsAwarded, pointsBalance }` | USER+ |
-| `GET` | `/api/wishlist` | — | `WishlistEntry[]` | 本人 |
-| `POST` | `[Server Action] addWishlist` | `{ cardRef, trackedPrice }` | `WishlistEntry` | USER+ |
-| `DELETE` | `[Server Action] removeWishlist` | `{ cardRef }` | `{ ok: true }` | 本人 |
-| `GET` | `/api/portfolio/networth` | — | `{ totalValueHkd, itemCount }` | USER+ |
+
+### 7.2 願望清單 (`product_watchlists`)
+
+> SSOT：`docs/dev/database.md` §2.6 · 實作：`app/actions/wishlist.ts`  
+> 無 REST `/api/wishlist` — 前端直接呼叫 Server Actions。
+
+| 方法 | Action | 請求 | 回應 | 權限 |
+|------|--------|------|------|------|
+| `POST` | `toggleWishlist` | `{ productId, gradingCompany, gradingScore?, trackedPrice? }` | `{ success, data: { isFavored } }` | USER+ |
+| `POST` | `removeFromWishlist` | `{ productId, gradingCompany, gradingScore }` | `{ success, data: { ok: true } }` | 本人 |
+| `POST` | `updateWishlistTarget` | `{ productId, gradingCompany, gradingScore, targetPrice, alertEnabled? }` | `{ success, data: { ok: true } }` | 本人 |
+| `POST` | `updateWishlistGrade` | `{ productId, gradingCompany, gradingScore, nextGradingCompany, nextGradingScore? }` | `{ success, data: { ok: true } }` | 本人 |
+| `GET` | `getWishlistEntries` | — | `{ success, data: WishlistEntry[] }` | 本人 |
+| `GET` | `getUserWishlistFavoredKeys` | — | `{ success, data: string[] }` | 本人 |
+| `GET` | `getUserWishlistProductIds` | — | `{ success, data: string[] }` | 本人 |
 
 ```ts
-// 對齊 CheckInCard CHECK_IN_STEPS：7 日積分 10/15/20/25/30/40/100
-// 對齊 WishlistTable.WISHLIST_REGISTRY
-interface WishlistEntry {
-  id: string; cardRef: string; name: string; cardCode: string;
-  rarity: 'SAR'|'UR'|'SR'|'AR'|'CSR';
-  trackedPrice: number; currentPrice: number; trend30d: number;
-}
+// app/lib/wishlist/types.ts — 對齊 WishlistTable
+type WishlistEntry = {
+  productId: string;
+  displayId: string | null;
+  name: string;
+  cardCode: string;
+  rarity: string | null;
+  imageUrl: string | null;
+  gradingCompany: string;
+  gradingScore: string;
+  gradeLabel: string;
+  trackedPrice: number | null;       // 加入時快照
+  targetPrice: number | null;        // Phase 3 警報門檻
+  lowestListingPrice: number | null; // 平台現價（active listings, 同規格）
+  currentMarketPrice: number | null; // SNKRDUNK 均價（後端回傳；表格不顯示）
+  trend30d: number | null;
+  chartPoints: { date: string; price: number }[];
+};
 ```
 
-> **Guest 守衛：** `portfolio/networth`、`wishlist`、`executeCheckIn` 對 `GUEST` 一律回 `401`（對齊 `PortfolioRewards.tsx` 登入閘門與 `HeroSearch.tsx` 簽到顯隱：`showCheckIn = USER | ADMIN`）。
+**價格語意：** UI 購買參考僅用 `lowestListingPrice`；`chartPoints` / `trend30d` 為 SNKRDUNK 30D 參考。`trackedPrice` 僅作 ±「自追蹤」副標。
+
+**Favored key：** `productId::gradingCompany::gradingScore`（`buildWishlistFavoredKey`）。
+
+### 7.3 投資組合（Collection — Server Actions）
+
+| Action | 輸入 | 輸出 | 權限 |
+|--------|------|------|------|
+| `getCollectionPortfolioSummary` | — | `CollectionPortfolioSummary` | USER+ |
+| `getCollectionEntries` | `{ page?, pageSize?, filter?, query? }` | `CollectionEntriesPage` | USER+ |
+| `addToCollection` | `{ productId, gradingOptionId, purchasePrice }` | `{ collectionId }` | USER+ |
+| `removeFromCollection` | `{ collectionId }` | `{ ok: true }` | USER+ |
+| `updateCollectionGrade` | `{ collectionId, nextGradingOptionId }` | `{ ok: true }` | USER+ |
+| `updateCollectionPurchasePrice` | `{ collectionId, purchasePrice }` | `{ ok: true }` | USER+ |
+
+```ts
+type CollectionListFilter = "all" | "graded" | "raw" | "listed";
+
+type GetCollectionEntriesInput = {
+  page?: number;       // default 1
+  pageSize?: number;   // default 20, max 50
+  filter?: CollectionListFilter;
+  query?: string;      // name / card code / set code
+};
+
+type CollectionEntriesPage = {
+  entries: CollectionEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+type CollectionPortfolioSummary = {
+  totalMarketValue: number;   // Σ resolveCollectionMarketValue
+  totalPurchasePrice: number; // Σ purchase_price
+  unrealizedPnl: number;    // totalMarketValue - totalPurchasePrice
+  pnlPercent: number;
+  cardCount: number;
+  gradedCount: number;
+  rawCount: number;
+  listedCount: number;        // active listing + grade match
+};
+
+type CollectionEntry = {
+  collectionId: string;
+  productId: string;
+  name: string;
+  cardCode: string;
+  setCode: string;
+  rarity: string | null;
+  imageUrl: string | null;           // product_catalog.image_url
+  gradingCompany: string;
+  gradingScore: string;
+  gradeLabel: string;
+  gradingOptionId: string;
+  purchasePrice: number;
+  currentMarketValue: number | null;
+  valuationSource: "snkrdunk" | "platform" | "purchase_price" | null;
+  trend30d: number | null;           // exact grade SNKRDUNK only; list rows omit chart JSON
+  status: "holding" | "listed";      // derived from user active listings
+  activeListingId: string | null;
+};
+```
+
+**身家估值 / 未實現損益：** `getCollectionPortfolioSummary`；每卡用 `resolveCollectionMarketValue`（同規格 SNKRDUNK → 平台同規格最低掛單 → 入手價）。唔用其他 grade 參考價。  
+**表格：** `getCollectionEntries` 伺服器端 filter + 分頁；僅 hydrate 當前頁。  
+**出售：** `openAddAssetModal({ mode: "merch", sellPrefill })` → `submitCardListingWithProgress`（保留 collection row）。
+
+### 7.4 賣家庫存（Inventory — Server Actions）
+
+| Action | 輸入 | 輸出 | 權限 |
+|--------|------|------|------|
+| `getUserInventorySummary` | — | `{ totalListings, activeCount, soldCount, inactiveCount }` | USER+ (seller) |
+| `getUserInventoryGroups` | `{ query?, page?, pageSize? }` | paginated `InventoryProductGroup[]` | USER+ |
+| `incrementListingView` | `listingId` | `{ success }` | USER+ (buyer view) |
+
+**分組：** `listings.product_id` = `product_catalog.id`；每組多個 listing（不同 grade/price）。  
+**統計：** `listing_stats.views`、`listing_stats.offers_count`（累計叫價，僅 `rpc_make_offer` +1）。
+
+### 7.5 會員總覽（Member Dashboard — Server Action）
+
+| Action | 輸入 | 輸出 | 權限 |
+|--------|------|------|------|
+| `getMemberDashboardOverview` | — | `{ profile, tradingStats }` | USER+ |
+
+```ts
+type MemberDashboardTradingStats = {
+  completedTradesCount: number;  // profiles.completed_trades_count (C2C buy+sell completed + B2C buy completed_and_transferred; not cancelled/refunded)
+  heldCardCount: number;           // collection + orphan active listings (deduped)
+  listedForSaleCount: number;    // collection listed + orphan active
+  totalMarketValue: number;      // resolveCollectionMarketValue (same as collection tab)
+};
+```
+
+**總覽列表上限：** 待處理訂單 / 最近評價各 `pageSize: 5`（`MEMBER_DASHBOARD_PREVIEW_LIMIT`）；經 `searchUserTradingOrders` / `getPublicProfileReviews` 並行拉取，唔包在 overview action 內。
+
+> **Guest 守衛：** `getWishlistEntries` / `getCollectionPortfolioSummary` / `getCollectionEntries` / collection & wishlist mutations / `getUserInventorySummary` / `getUserInventoryGroups` / `getMemberDashboardOverview` / `executeCheckIn` 無 session 時回 `{ success: false, error: "請先登入" }`。
 
 ---
 

@@ -1,11 +1,121 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type {
+  GetPublicProfileReviewsInput,
+  GetPublicProfileReviewsResult,
+  PublicProfileReviewItem,
+  PublicProfileReviewsPage,
+  ReviewPersona,
+  ReviewSortKey,
+} from "@/app/lib/reviews/types";
+import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
 
+export type {
+  GetPublicProfileReviewsInput,
+  GetPublicProfileReviewsResult,
+  PublicProfileReviewItem,
+  PublicProfileReviewsPage,
+  ReviewPersona,
+  ReviewSortKey,
+} from "@/app/lib/reviews/types";
+
 const MAX_COMMENT_LENGTH = 200;
+
+const PROFILE_ID_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const EMPTY_REVIEWS_PAGE: PublicProfileReviewsPage = {
+  reviews: [],
+  aggregateRating: 0,
+  publicReviewCount: 0,
+  totalCount: 0,
+  page: 1,
+  pageSize: 10,
+  totalPages: 0,
+  rangeStart: 0,
+  rangeEnd: 0,
+};
+
+type SearchPublicProfileReviewsRpcArgs = {
+  p_profile_id: string;
+  p_persona: ReviewPersona;
+  p_sort: ReviewSortKey;
+  p_page: number;
+  p_page_size: number;
+};
+
+type SearchPublicProfileReviewsRpcRow = {
+  review_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  is_merchant_tx: boolean;
+  reviewer_id: string;
+  reviewer_display_name: string;
+  reviewer_username: string | null;
+  reviewer_avatar_path: string | null;
+  aggregate_rating: number | null;
+  public_review_count: number;
+  total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  range_start: number;
+  range_end: number;
+};
+
+function formatReviewDateLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return `${date.getFullYear()}年 ${date.getMonth() + 1}月`;
+}
+
+function mapPublicProfileReviewRow(
+  row: SearchPublicProfileReviewsRpcRow,
+): PublicProfileReviewItem {
+  return {
+    id: row.review_id,
+    rating: row.rating,
+    comment: row.comment,
+    createdAt: row.created_at,
+    dateLabel: formatReviewDateLabel(row.created_at),
+    isMerchantTx: row.is_merchant_tx,
+    reviewerId: row.reviewer_id,
+    reviewerDisplayName: row.reviewer_display_name,
+    reviewerUsername: row.reviewer_username,
+    reviewerAvatarUrl: resolveAvatarUrl(row.reviewer_avatar_path),
+  };
+}
+
+function mapPublicProfileReviewsPage(
+  rows: SearchPublicProfileReviewsRpcRow[],
+  page: number,
+  pageSize: number,
+): PublicProfileReviewsPage {
+  if (rows.length === 0) {
+    return { ...EMPTY_REVIEWS_PAGE, page, pageSize };
+  }
+
+  const head = rows[0];
+
+  return {
+    reviews: rows.map(mapPublicProfileReviewRow),
+    aggregateRating: Number(head.aggregate_rating ?? 0),
+    publicReviewCount: Number(head.public_review_count ?? 0),
+    totalCount: Number(head.total_count ?? 0),
+    page: head.page ?? page,
+    pageSize: head.page_size ?? pageSize,
+    totalPages: head.total_pages ?? 0,
+    rangeStart: head.range_start ?? 0,
+    rangeEnd: head.range_end ?? 0,
+  };
+}
 
 type RpcSubmitTransactionReviewArgs = {
   p_order_id: string;
@@ -208,6 +318,111 @@ export async function resolveChatCompletionOrderId(
   }
 }
 
+export async function getPublicProfileReviews(
+  input: GetPublicProfileReviewsInput,
+): Promise<GetPublicProfileReviewsResult> {
+  const profileId = input.profileId.trim();
+  const persona = input.persona ?? "member";
+  const sort = input.sort ?? "date-desc";
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 10));
+
+  if (!profileId) {
+    return { success: false, error: "找不到此用戶", notFound: true };
+  }
+
+  if (!PROFILE_ID_UUID_RE.test(profileId)) {
+    return { success: false, error: "找不到此用戶", notFound: true };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return {
+      success: true,
+      data: { ...EMPTY_REVIEWS_PAGE, page, pageSize },
+    };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const rpcArgs: SearchPublicProfileReviewsRpcArgs = {
+      p_profile_id: profileId,
+      p_persona: persona,
+      p_sort: sort,
+      p_page: page,
+      p_page_size: pageSize,
+    };
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "search_public_profile_reviews",
+          args: SearchPublicProfileReviewsRpcArgs,
+        ) => Promise<{
+          data: SearchPublicProfileReviewsRpcRow[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("search_public_profile_reviews", rpcArgs);
+
+    if (error) {
+      console.error("[getPublicProfileReviews] rpc", error.message);
+      return { success: false, error: "無法載入評價紀錄" };
+    }
+
+    const rows = (data ?? []) as SearchPublicProfileReviewsRpcRow[];
+
+    if (rows.length === 0 && page === 1) {
+      const { data: profileRow, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, rating_score")
+        .eq("id", profileId)
+        .maybeSingle<Pick<Tables<"profiles">, "id" | "rating_score">>();
+
+      if (profileError) {
+        console.error("[getPublicProfileReviews] profile", profileError.message);
+        return { success: false, error: "無法載入評價紀錄" };
+      }
+
+      if (!profileRow) {
+        return { success: false, error: "找不到此用戶", notFound: true };
+      }
+
+      let aggregateRating = Number(profileRow.rating_score ?? 0);
+
+      if (persona === "merchant") {
+        const { data: shopRow } = await supabase
+          .from("merchant_shops")
+          .select("rating_score")
+          .eq("merchant_id", profileId)
+          .maybeSingle<Pick<Tables<"merchant_shops">, "rating_score">>();
+
+        aggregateRating = Number(shopRow?.rating_score ?? 0);
+      }
+
+      return {
+        success: true,
+        data: {
+          ...EMPTY_REVIEWS_PAGE,
+          aggregateRating,
+          page,
+          pageSize,
+        },
+      };
+    }
+
+    return {
+      success: true,
+      data: mapPublicProfileReviewsPage(rows, page, pageSize),
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "無法載入評價紀錄";
+    console.error("[getPublicProfileReviews]", error);
+    return { success: false, error: message };
+  }
+}
+
 export async function getUserReviewedMemberOrderIds(
   orderIds: string[],
 ): Promise<GetUserReviewedMemberOrderIdsResult> {
@@ -332,6 +547,7 @@ export async function submitTransactionReview(
 
     revalidatePath("/profile/user/trading");
     revalidatePath(`/profile/user/${revieweeId}`);
+    revalidatePath(`/profile/${revieweeId}/rating`);
 
     return { success: true, revealed: parsed.revealed === true };
   } catch (error) {

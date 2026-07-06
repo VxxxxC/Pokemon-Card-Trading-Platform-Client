@@ -244,27 +244,32 @@ export type Database = {
       }
       listing_stats: {
         Row: {
-          likes: number | null
           listing_id: string
-          trade_records_count: number | null
+          offers_count: number
           updated_at: string | null
-          views: number | null
+          views: number
         }
         Insert: {
-          likes?: number | null
           listing_id: string
-          trade_records_count?: number | null
+          offers_count?: number
           updated_at?: string | null
-          views?: number | null
+          views?: number
         }
         Update: {
-          likes?: number | null
           listing_id?: string
-          trade_records_count?: number | null
+          offers_count?: number
           updated_at?: string | null
-          views?: number | null
+          views?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listing_stats_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listings: {
         Row: {
@@ -818,15 +823,36 @@ export type Database = {
       }
       product_watchlists: {
         Row: {
+          alert_enabled: boolean
+          created_at: string
+          grading_company: string
+          grading_score: string
+          last_alerted_at: string | null
           product_id: string
+          target_price: number | null
+          tracked_price: number | null
           user_id: string
         }
         Insert: {
+          alert_enabled?: boolean
+          created_at?: string
+          grading_company?: string
+          grading_score?: string
+          last_alerted_at?: string | null
           product_id: string
+          target_price?: number | null
+          tracked_price?: number | null
           user_id: string
         }
         Update: {
+          alert_enabled?: boolean
+          created_at?: string
+          grading_company?: string
+          grading_score?: string
+          last_alerted_at?: string | null
           product_id?: string
+          target_price?: number | null
+          tracked_price?: number | null
           user_id?: string
         }
         Relationships: [
@@ -1057,22 +1083,31 @@ export type Database = {
       user_collections: {
         Row: {
           created_at: string
+          grading_company: string
+          grading_score: string
+          id: string
           product_id: string
-          quantity: number
+          purchase_price: number
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          grading_company?: string
+          grading_score?: string
+          id?: string
           product_id: string
-          quantity?: number
+          purchase_price?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          grading_company?: string
+          grading_score?: string
+          id?: string
           product_id?: string
-          quantity?: number
+          purchase_price?: number
           updated_at?: string
           user_id?: string
         }
@@ -1164,6 +1199,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: number
+      }
+      fn_bump_listing_offers_count: {
+        Args: { p_listing_id: string }
+        Returns: undefined
       }
       fn_grant_points_from_template: {
         Args: { p_template_id: string; p_user_id: string }
@@ -1277,6 +1316,10 @@ export type Database = {
         Args: { p_order_ids: string[] }
         Returns: string[]
       }
+      rpc_increment_listing_view: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
       rpc_make_offer:
         | {
             Args: {
@@ -1323,6 +1366,34 @@ export type Database = {
           p_user_id?: string
         }
         Returns: Json
+      }
+      search_public_profile_reviews: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_persona: Database["public"]["Enums"]["review_persona"]
+          p_profile_id: string
+          p_sort?: string
+        }
+        Returns: {
+          aggregate_rating: number | null
+          comment: string | null
+          created_at: string
+          is_merchant_tx: boolean
+          page: number
+          page_size: number
+          public_review_count: number
+          range_end: number
+          range_start: number
+          rating: number
+          review_id: string
+          reviewer_avatar_path: string | null
+          reviewer_display_name: string
+          reviewer_id: string
+          reviewer_username: string | null
+          total_count: number
+          total_pages: number
+        }[]
       }
       run_auto_grant_rewards_for_me: { Args: never; Returns: Json }
       search_marketplace_products: {

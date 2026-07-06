@@ -340,7 +340,7 @@ export default function MerchantOverviewPage() {
             最近收到的信用評價
           </h2>
           <Link
-            href={`/profile/${mockMerchant.id}/rating`}
+            href={`/profile/${mockMerchant.id}/rating?persona=merchant`}
             className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors font-bold"
           >
             查看更多評價 →

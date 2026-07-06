@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { getUserWishlistFavoredKeys } from "@/app/actions/wishlist";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { MarketplaceEmptyState } from "@/app/components/marketplace/MarketplaceEmptyState";
@@ -134,6 +135,32 @@ export function MarketplacePageClient({
       ? [initialData.priceBounds.minPrice, initialData.priceBounds.maxPrice]
       : null,
   );
+  const [favoredKeys, setFavoredKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setFavoredKeys(new Set());
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      const result = await getUserWishlistFavoredKeys();
+      if (cancelled) return;
+      if (!result.success) {
+        setFavoredKeys(new Set());
+        return;
+      }
+      setFavoredKeys(new Set(result.data));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId]);
 
   const itemsPerPage = isMobileViewport ? 9 : 11;
 
@@ -526,6 +553,7 @@ export function MarketplacePageClient({
                   key={item.id}
                   listing={item}
                   currentUserId={currentUserId}
+                  favoredKeys={favoredKeys}
                 />
               );
 

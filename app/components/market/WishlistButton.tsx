@@ -1,42 +1,133 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { toggleWishlist } from "@/app/actions/wishlist";
+import { buildWishlistFavoredKey } from "@/lib/wishlist/grading";
 
 interface WishlistButtonProps {
-  listingId: string;
+  productId?: string;
+  gradingCompany?: string;
+  gradingScore?: string | null;
+  trackedPrice?: number | null;
   initialIsFavored?: boolean;
+  /** When `null`, skip API and show login toast immediately. */
+  currentUserId?: string | null;
   className?: string;
+  /** @deprecated Use productId */
+  listingId?: string;
+}
+
+function showWishlistLoginToast(onAuth: () => void) {
+  toast.error("請先登入以使用願望清單", {
+    description: "登入或註冊後即可追蹤卡價與願望清單。",
+    duration: 8000,
+    action: {
+      label: "登入 / 註冊",
+      onClick: onAuth,
+    },
+  });
 }
 
 export function WishlistButton({
-  listingId: _listingId,
+  productId,
+  gradingCompany = "RAW",
+  gradingScore = "A",
+  trackedPrice = null,
   initialIsFavored = false,
+  currentUserId,
   className = "",
+  listingId,
 }: WishlistButtonProps) {
-  // TODO: [API] Replace local toggle with Supabase mutation — insert/delete from `wishlists` table with user auth check
+  const router = useRouter();
+  const resolvedProductId = (productId ?? listingId ?? "").trim();
+  void listingId;
+
   const [isFavored, setIsFavored] = useState(initialIsFavored);
-  void _listingId;
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setIsFavored(initialIsFavored);
+  }, [initialIsFavored]);
+
+  const handleToggle = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!resolvedProductId) return;
+
+      if (currentUserId === null) {
+        showWishlistLoginToast(() => router.push("/auth"));
+        return;
+      }
+
+      const previous = isFavored;
+      setIsFavored(!previous);
+
+      startTransition(async () => {
+        const result = await toggleWishlist({
+          productId: resolvedProductId,
+          gradingCompany,
+          gradingScore,
+          trackedPrice:
+            trackedPrice != null && trackedPrice > 0 ? trackedPrice : null,
+        });
+
+        if (!result.success) {
+          setIsFavored(previous);
+          if (result.error === "請先登入") {
+            showWishlistLoginToast(() => router.push("/auth"));
+          } else {
+            toast.error(result.error);
+          }
+          return;
+        }
+
+        setIsFavored(result.data.isFavored);
+
+        if (result.data.isFavored) {
+          toast.success("已加入願望清單", {
+            description: "已開始追蹤此卡價格走勢。",
+            action: {
+              label: "查看清單",
+              onClick: () => router.push("/profile/user/collection"),
+            },
+          });
+        }
+      });
+    },
+    [
+      currentUserId,
+      gradingCompany,
+      gradingScore,
+      isFavored,
+      resolvedProductId,
+      router,
+      trackedPrice,
+    ],
+  );
 
   return (
     <button
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsFavored((prev) => !prev);
-      }}
+      type="button"
+      onClick={handleToggle}
+      disabled={isPending}
       aria-label={isFavored ? "從願望清單移除" : "加入願望清單"}
+      aria-pressed={isFavored}
       className={[
         "group/star flex items-center justify-center w-8 h-8 rounded-full",
         "bg-[#17130f]/70 backdrop-blur-sm border border-[rgba(237,232,224,0.12)]",
         "active:scale-90 transition-all duration-200",
         isFavored ? "shadow-[0_0_10px_rgba(212,165,116,0.3)]" : "",
+        isPending ? "opacity-70" : "",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
       {isFavored ? (
-        /* Solid star — favored */
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
@@ -51,7 +142,6 @@ export function WishlistButton({
           />
         </svg>
       ) : (
-        /* Outline star — unfavored */
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -69,5 +159,17 @@ export function WishlistButton({
         </svg>
       )}
     </button>
+  );
+}
+
+export function isWishlistFavored(
+  favoredKeys: ReadonlySet<string> | undefined,
+  productId: string,
+  gradingCompany: string,
+  gradingScore: string | null | undefined,
+): boolean {
+  if (!favoredKeys || favoredKeys.size === 0) return false;
+  return favoredKeys.has(
+    buildWishlistFavoredKey(productId, gradingCompany, gradingScore),
   );
 }

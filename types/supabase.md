@@ -60,6 +60,7 @@ type UserRole = Enums<"user_role">;
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
 | `execute_daily_check_in` | `never;` | `Json` |
 | `fn_apply_point_transaction` | `{ p_amount: number p_description?: string p_source_ref?: string p_source_type: string p_user_id: st…` | `number` |
+| `fn_bump_listing_offers_count` | `{ p_listing_id: string }` | `undefined` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
 | `fn_issue_reward_from_template` | `{ p_grant_dedup_key?: string p_template_id: string p_user_id: string }` | `string` |
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
@@ -83,6 +84,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_cancel_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_complete_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
+| `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
@@ -188,11 +190,12 @@ type UserRole = Enums<"user_role">;
 
 | Column | Type | Nullable |
 |--------|------|----------|
-| `likes` | `number | null` | Yes |
 | `listing_id` | `string` | No |
-| `trade_records_count` | `number | null` | Yes |
+| `offers_count` | `number` | No |
 | `updated_at` | `string | null` | Yes |
-| `views` | `number | null` | Yes |
+| `views` | `number` | No |
+
+**Foreign keys:** `listing_id` → `listings`
 
 ---
 
@@ -419,7 +422,14 @@ type UserRole = Enums<"user_role">;
 
 | Column | Type | Nullable |
 |--------|------|----------|
+| `alert_enabled` | `boolean` | No |
+| `created_at` | `string` | No |
+| `grading_company` | `string` | No |
+| `grading_score` | `string` | No |
+| `last_alerted_at` | `string | null` | Yes |
 | `product_id` | `string` | No |
+| `target_price` | `number | null` | Yes |
+| `tracked_price` | `number | null` | Yes |
 | `user_id` | `string` | No |
 
 **Foreign keys:** `user_id` → `profiles`
@@ -518,8 +528,11 @@ type UserRole = Enums<"user_role">;
 | Column | Type | Nullable |
 |--------|------|----------|
 | `created_at` | `string` | No |
+| `grading_company` | `string` | No |
+| `grading_score` | `string` | No |
+| `id` | `string` | No |
 | `product_id` | `string` | No |
-| `quantity` | `number` | No |
+| `purchase_price` | `number` | No |
 | `updated_at` | `string` | No |
 | `user_id` | `string` | No |
 

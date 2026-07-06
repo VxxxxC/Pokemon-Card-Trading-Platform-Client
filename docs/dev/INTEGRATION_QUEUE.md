@@ -16,11 +16,15 @@
 | Market pricing aggregation (Cron Job 2) | ✅ Ready | ✅ Wired | `app/api/cron/aggregate-prices/route.ts`, `lib/marketplace/market-price.ts`, `lib/supabase/admin.ts`, `product_price_snapshots`, `product_grading_market_prices`, migrations `20260703210000`, `20260703220000` | Product detail chart + market price banner (`ProductDetailClient.tsx`) | [backend](./follow-up/market-pricing-cron/backend.md) · [frontend](./follow-up/market-pricing-cron/frontend.md) |
 | Offers & negotiation (make / modify / accept / reject) | ✅ Ready | 🟡 Partial | `app/actions/offers.ts` (`makeOffer` + **`p_use_authentication`**), migrations `20260704130000`–`20260704250000`, **`20260705130000`**, **`20260705140000`**, `rpc_make_offer`, `rpc_modify_offer`, **`rpc_accept_offer`** (inherits offer auth → `member_orders`), `rpc_reject_offer` | `ExecutionSlideOver.tsx` (**鑑定加購** toggle), `OfferCard.tsx` (auth badge), `SpecialTransactionMessage.tsx` | [backend](./follow-up/offers-negotiation/backend.md) · [frontend](./follow-up/offers-negotiation/frontend.md) |
 | Chat inbox + OfferCard (DB + mock + Realtime) | ✅ Ready | 🟡 Partial | `app/actions/chat.ts` (inbox offers join **`use_authentication`**), `app/actions/offers.ts`, `app/actions/reviews.ts` (`resolveChatCompletionOrderId`), `app/lib/chat/*`, `app/lib/hooks/useChatRoomRealtime.ts`, `app/lib/hooks/useRoomReviewedOrderIds.ts`, `lib/supabase/client.ts`, migrations through **`20260705140000`** | `GlobalChatOverlay.tsx`, `GlobalChatConsole.tsx`, `OfferCard.tsx`, `SystemOrderCompletedMessage.tsx`, `ReviewModal.tsx` | [backend](./follow-up/chat-offers-inbox/backend.md) · [frontend](./follow-up/chat-offers-inbox/frontend.md) |
-| User trading orders (list + detail + actions) | ✅ Ready | 🟡 Partial | `app/actions/orders.ts` (`searchUserTradingOrders` RPC, `getUserTradingOrders` wrapper, **`getMemberOrderDetail`**, **`cancelMemberOrder`**, **`completeMemberOrder`**), migrations `20260704250000`, **`20260704210000_order_actions_rpc`**, `20260704260000`, `20260704300000`, **`20260705120000`**, **`20260705130000`** | `app/profile/user/(dashboard)/trading/page.tsx`, `app/profile/user/orderDetail/[id]/page.tsx`, `MemberOrderDetailView.tsx`, **`MemberAuthOrderTimeline`**, **`MemberAuthOrderInvoice`**, `MemberP2pOrderTimeline.tsx`, `MemberP2pOrderInvoice.tsx`, `UserOrderRow.tsx`, `components/ui/badge.tsx`, `components/ui/tabs.tsx`, chat `SystemOrderCompletedMessage` | [backend](./follow-up/user-trading-orders/backend.md) · [frontend](./follow-up/user-trading-orders/frontend.md) |
+| User trading orders (list + detail + actions) | ✅ Ready | 🟡 Partial | `app/actions/orders.ts` (`searchUserTradingOrders` RPC, `getUserTradingOrders` wrapper, **`getMemberOrderDetail`**, **`cancelMemberOrder`**, **`completeMemberOrder`**), migrations `20260704250000`, **`20260704210000_order_actions_rpc`**, `20260704260000`, `20260704300000`, **`20260705120000`**, **`20260705130000`** | `app/profile/user/(dashboard)/trading/page.tsx`, **`app/profile/user/(dashboard)/page.tsx`** (pending preview max 5), `app/profile/user/orderDetail/[id]/page.tsx`, `MemberOrderDetailView.tsx`, **`MemberAuthOrderTimeline`**, **`MemberAuthOrderInvoice`**, `MemberP2pOrderTimeline.tsx`, `MemberP2pOrderInvoice.tsx`, `UserOrderRow.tsx`, `components/ui/badge.tsx`, `components/ui/tabs.tsx`, chat `SystemOrderCompletedMessage` | [backend](./follow-up/user-trading-orders/backend.md) · [frontend](./follow-up/user-trading-orders/frontend.md) |
 | Transaction reviews (submit + modal + **double-blind**) | ✅ Ready | ✅ Wired (trading + chat) | `app/actions/reviews.ts` (`getUserReviewedMemberOrderIds`), migrations **`20260704270000`**–**`20260704290000`**, `rpc_submit_transaction_review` (`revealed`), `fn_try_reveal_order_reviews`, `rpc_get_user_reviewed_member_order_ids` | `ReviewModal.tsx`, trading page + `GlobalChatConsole` / `SystemOrderCompletedMessage` review CTA | [backend](./follow-up/transaction-reviews/backend.md) · [frontend](./follow-up/transaction-reviews/frontend.md) |
+| Public profile rating list (dual persona) | ✅ Ready | 🟡 Partial | `app/actions/reviews.ts` (`getPublicProfileReviews`), migration **`20260706150000`** ✅ remote, `search_public_profile_reviews`, persona-split rating triggers | `app/profile/[id]/rating/page.tsx`, `usePublicProfileReviews.ts`, **`app/profile/user/(dashboard)/page.tsx`** (live reviews preview + rating CTA) | [backend](./follow-up/transaction-reviews/backend.md) · [frontend](./follow-up/profile-rating-list/frontend.md) · **[partner report](./follow-up/profile-rating-list/PARTNER_REPORT.md)** |
 | Member rewards & gamification (check-in, coupons, auto-grant) | ✅ Ready | 🟡 Partial | `app/actions/rewards.ts`, `lib/constants/rewards.ts`, `lib/rewards/mapUserRewardCoupon.ts`, migrations **`20260705180000`**–**`20260705188000`**, RPCs `execute_daily_check_in`, `get_gamification_stats_for_me`, **`get_reward_coupon_center`**, `get_unacknowledged_reward_grants` | `CheckInCard.tsx`, `RewardUnlockedModal.tsx`, `RewardNotificationHost.tsx`, `UserProfileDashboardShell`, `/profile/user` hero PTS, `/profile/user/rewards` **4-tab coupon center** (wallet + **可解鎖** locked catalog) | [backend](./follow-up/member-rewards-gamification/backend.md) · [frontend](./follow-up/member-rewards-gamification/frontend.md) |
-| Wishlist toggle | ⏳ Planned | ✅ UI done | `app/actions/Wishlist.ts` (planned) | `WishlistButton.tsx`, `WishlistTable.tsx` | [wishlist](./follow-up/wishlist/) |
-| Create listing submit (box/set + hobby) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` non-card paths | — |
+| Wishlist toggle + collection table | ✅ Ready (Phase 1–2) | ✅ Wired | `app/actions/wishlist.ts`, migration `20260706100000`, `lib/wishlist/grading.ts`, `app/lib/wishlist/types.ts`, `app/lib/hooks/useWishlist.ts` | `WishlistButton.tsx`, `WishlistTable.tsx`, `MarketplaceCard.tsx`, `MarketplacePageClient.tsx`, `collection/page.tsx` | [backend](./follow-up/wishlist/backend.md) · [frontend](./follow-up/wishlist/frontend.md) — ⏳ Phase 3 OneSignal; ⏳ `WishlistTicker` mock |
+| User collection portfolio (hobby + sell prefill) | ✅ Ready (pushed) | ✅ Wired | `app/actions/collection.ts` (`getCollectionPortfolioSummary`, paginated `getCollectionEntries`), migration `20260706110000` ✅ remote, `lib/collection/build-entries.ts`, `lib/collection/constants.ts`, `lib/marketplace/portfolio-pricing.ts` (`resolveCollectionMarketValue`), `app/lib/collection/types.ts`, `app/lib/hooks/useCollection.ts` | `CollectionTable.tsx`, `collection/page.tsx`, `AddAssetModal.tsx`, `useUIStore.ts` (`openAddAssetModal` unified) | [backend](./follow-up/user-collection/backend.md) · [frontend](./follow-up/user-collection/frontend.md) — ⏳ wishlist pagination; ⏳ home `PortfolioRewards` |
+| User inventory (seller listings by product) | ✅ Ready | ✅ Wired (user) | `app/actions/inventory.ts`, `app/actions/listings.ts` (`incrementListingView`), `lib/listings/build-inventory-groups.ts`, migrations `20260706120000`–`20260706140000` ✅ remote | `inventory/page.tsx`, `useInventory.ts`, `InventoryAccordion.tsx`, `ExecutionSlideOver.tsx` | [backend](./follow-up/user-inventory/backend.md) · [frontend](./follow-up/user-inventory/frontend.md) · **[partner report](./follow-up/user-inventory/PARTNER_REPORT.md)** — ⏳ merchant inventory page |
+| Member profile dashboard (overview) | ✅ Ready | ✅ Wired | `app/actions/member-dashboard.ts`, `lib/dashboard/*`, `lib/titles/member-title-progress.ts`, `lib/constants/titles.ts`, migration `20260706160000`; overview reads `gamification_stats.points_balance` | `page.tsx`, `useMemberDashboard.ts`, `useMemberTitleDisplay.ts`, `TitleBadgeIcon.tsx` | [backend](./follow-up/member-dashboard/backend.md) · [frontend](./follow-up/member-dashboard/frontend.md) · **[partner report](./follow-up/member-dashboard/PARTNER_REPORT.md)** — ⏳ merchant dashboard titles |
+| Create listing submit (box/set only) | ⏳ Planned | ⏳ Pending | — | `AddAssetModal.tsx` box/set merch path | — |
 
 ## Prerequisites (shared)
 
@@ -76,6 +80,14 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260705186000_rpc_get_user_reward_coupons.sql` — **`get_user_reward_coupons()`** (coupon inventory)
 - `supabase/migrations/20260705187000_rpc_get_gamification_stats.sql` — **`get_gamification_stats_for_me()`**
 - `supabase/migrations/20260705188000_rpc_get_reward_coupon_center.sql` — **`get_reward_coupon_center()`** wallet + locked catalog; **`fn_reward_template_progress_detail`**
+- `supabase/migrations/20260706100000_product_watchlists_wishlist_extend.sql` — **`product_watchlists`** wishlist columns (`grading_*`, `tracked_price`, `target_price`, alert fields) + grade UNIQUE + owner RLS
+- `supabase/migrations/20260706110000_user_collections_portfolio_extend.sql` — **`user_collections`** portfolio columns (`id`, `grading_*`, `purchase_price`); drop `quantity`; reputation `COUNT(*)`
+- `supabase/migrations/20260706120000_listing_stats_inventory_extend.sql` — **`listing_stats`** slim (`views`, `offers_count`); seller RLS; init trigger
+- `supabase/migrations/20260706130000_listing_stats_rpc_sync.sql` — **`rpc_make_offer`** bumps cumulative `offers_count`
+- `supabase/migrations/20260706140000_rpc_increment_listing_view.sql` — view counter for `ExecutionSlideOver`
+- `supabase/migrations/20260706150000_profile_reviews_persona_split.sql` — dual-persona rating split + `search_public_profile_reviews`
+- `supabase/migrations/20260706160000_member_completed_trades_buy_and_sell.sql` — C2C seller counts toward `profiles.completed_trades_count`; reconcile backfill (excludes cancelled/refunded)
+- `supabase/migrations/20260706170000_points_mission_redemption_rpcs.sql` — `fn_claim_mission_points`, `fn_redeem_member_points` → `fn_apply_point_transaction` SSOT
 
 ### Quick verify
 
@@ -217,3 +229,28 @@ See [transaction-reviews backend](./follow-up/transaction-reviews/backend.md) ·
 6. Wallet tabs (redeemable / redeemed / expired) from `get_reward_coupon_center().wallet`.
 
 See [member-rewards-gamification backend](./follow-up/member-rewards-gamification/backend.md) · [member-rewards-gamification frontend](./follow-up/member-rewards-gamification/frontend.md).
+
+**Wishlist (manual):**
+
+1. Apply migration `20260706100000_product_watchlists_wishlist_extend.sql` (`bunx supabase db push`); `bun run supabase:types`.
+2. Log in → `/marketplace` → star a card → success toast + **查看清單** link.
+3. Open **`/profile/user/collection`** — row shows thumbnail, grade, **平台現價** (or **暫無放售**), target price, **30D 走勢 (SNKRDUNK 參考)**.
+4. Change grade via dropdown → platform price + trend refresh for new grade.
+5. Edit target price via pencil → persists after refresh.
+6. `⋯` → **從願望清單移除** → row gone; marketplace star unfilled.
+7. Log out → star → toast with **登入 / 註冊** action (no DB write when `currentUserId={null}`).
+
+See [wishlist backend](./follow-up/wishlist/backend.md) · [wishlist frontend](./follow-up/wishlist/frontend.md).
+
+**User collection portfolio (manual):**
+
+1. Migration `20260706110000_user_collections_portfolio_extend.sql` applied (`bunx supabase db push`); `bun run supabase:types`.
+2. Log in → **`/profile/user/collection`** → **收錄新卡** → select catalog + grade + 入手成本 → row in holdings table (catalog thumbnail).
+3. **AI 總身家估值** from `getCollectionPortfolioSummary` (separate from table pagination). Valuation per card: **exact-grade SNKRDUNK → same-grade platform MIN → purchase_price** (`resolveCollectionMarketValue`). No cross-grade fallback. Rows using purchase_price show **入手價估計** in table.
+4. Header stats: 持有 / 已鑑定 / Raw / **已上架** (`listedCount`). Table: server pagination + filter/search.
+5. Change grade via dropdown → 現市價格 + **30D 走勢** update (exact grade SNKRDUNK only).
+6. `⋯` → **出售收藏品** → `openAddAssetModal({ mode: "merch", sellPrefill })` → upload 4–6 photos → confirm price → listing created.
+7. Filter **已上架** → row shows **已上架**; sell action hidden for listed rows.
+8. `⋯` → **移除出資產庫** → row removed.
+
+See [user-collection backend](./follow-up/user-collection/backend.md) · [user-collection frontend](./follow-up/user-collection/frontend.md).

@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { WishlistButton } from "@/app/components/market/WishlistButton";
+import { WishlistButton, isWishlistFavored } from "@/app/components/market/WishlistButton";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
@@ -36,6 +36,8 @@ interface MarketplaceCardProps {
   listing: MarketplaceListing;
   /** When provided, skips per-card profile fetch (pass from grid parent). */
   currentUserId?: string | null;
+  /** Product+grade keys from `getUserWishlistFavoredKeys` for star hydration. */
+  favoredKeys?: ReadonlySet<string>;
 }
 
 function resolveProductDetailHref(listing: MarketplaceListing): string {
@@ -69,29 +71,43 @@ function hasDisplayableRarity(
 export function MarketplaceCard({
   listing,
   currentUserId: currentUserIdProp,
+  favoredKeys,
 }: MarketplaceCardProps) {
   if (currentUserIdProp !== undefined) {
     return (
-      <MarketplaceCardView listing={listing} currentUserId={currentUserIdProp} />
+      <MarketplaceCardView
+        listing={listing}
+        currentUserId={currentUserIdProp}
+        favoredKeys={favoredKeys}
+      />
     );
   }
 
-  return <MarketplaceCardWithSession listing={listing} />;
+  return <MarketplaceCardWithSession listing={listing} favoredKeys={favoredKeys} />;
 }
 
 function MarketplaceCardWithSession({
   listing,
-}: Pick<MarketplaceCardProps, "listing">) {
+  favoredKeys,
+}: Pick<MarketplaceCardProps, "listing" | "favoredKeys">) {
   const currentUserId = useCurrentUserId();
-  return <MarketplaceCardView listing={listing} currentUserId={currentUserId} />;
+  return (
+    <MarketplaceCardView
+      listing={listing}
+      currentUserId={currentUserId}
+      favoredKeys={favoredKeys}
+    />
+  );
 }
 
 function MarketplaceCardView({
   listing,
   currentUserId,
+  favoredKeys,
 }: {
   listing: MarketplaceListing;
   currentUserId: string | null;
+  favoredKeys?: ReadonlySet<string>;
 }) {
   const router = useRouter();
   const isOwnListing =
@@ -106,6 +122,13 @@ function MarketplaceCardView({
     ? `${listing.set.toUpperCase()} · ${displayCardNo}`
     : displayCardNo;
   const displayName = resolveListingDisplayName(listing);
+  const wishlistProductId = listing.productId ?? listing.id;
+  const wishlistIsFavored = isWishlistFavored(
+    favoredKeys,
+    wishlistProductId,
+    listing.grade.authority,
+    listing.grade.score,
+  );
 
   const openProductDetail = () => {
     router.push(productDetailHref);
@@ -172,7 +195,14 @@ function MarketplaceCardView({
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <WishlistButton listingId={listing.id} />
+            <WishlistButton
+              productId={wishlistProductId}
+              gradingCompany={listing.grade.authority}
+              gradingScore={listing.grade.score}
+              trackedPrice={listing.price > 0 ? listing.price : null}
+              initialIsFavored={wishlistIsFavored}
+              currentUserId={currentUserId}
+            />
           </div>
         </div>
 

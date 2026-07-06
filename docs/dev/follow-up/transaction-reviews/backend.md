@@ -6,6 +6,13 @@
 - **Frontend:** ✅ Wired on `/profile/user/trading` (`ReviewModal` + dual-track triggers)
 - **Partner:** Profile page review display, chat `SYSTEM_ORDER_COMPLETED` review nudge, regen `types/supabase.ts` after migrations
 
+## Changelog (2026-07-06)
+
+| Change | Detail |
+|--------|--------|
+| **`20260706150000`** | Dual-persona rating split — `reviewee_persona` from order context; separate `profiles` / `merchant_shops` `rating_score`; `search_public_profile_reviews` RPC |
+| **`getPublicProfileReviews`** | Server action — paginated public reviews by `profiles.id` + `persona` |
+
 ## Changelog (2026-07-04)
 
 | Change | Detail |
@@ -24,6 +31,7 @@
 | File | Purpose |
 |------|---------|
 | `supabase/migrations/20260704290000_transaction_reviews_double_blind.sql` | **Current** — double-blind reveal + RPC upgrade + rating trigger fix |
+| `supabase/migrations/20260706150000_profile_reviews_persona_split.sql` | Persona-split ratings + `search_public_profile_reviews` |
 | `supabase/migrations/20260704280000_rpc_submit_transaction_review.sql` | Initial review RPCs |
 | `supabase/migrations/20260704270000_transaction_reviews_rls.sql` | RLS grants, read policies, rating refresh trigger |
 | `supabase/migrations/20260704260000_merchant_order_reputation_stats.sql` | Reputation stats on order status change (C2C + B2C) |
@@ -74,7 +82,13 @@ rpc_submit_transaction_review(
 | `member_orders` | `status = 'completed'` | `seller_id` / `buyer_id` |
 | `merchant_orders` | `escrow_status = 'completed_and_transferred'` | `merchant_id` / `buyer_id` |
 
-`reviewee_persona` derived from `profiles.role` (`merchant` vs `member`).
+`reviewee_persona` derived from **order context** (not `profiles.role`):
+
+| Order | Persona |
+|-------|---------|
+| `member_orders` (C2C) | always `member` |
+| `merchant_orders`, reviewee = merchant | `merchant` |
+| `merchant_orders`, reviewee = buyer | `member` |
 
 ## RPC: `fn_try_reveal_order_reviews` (internal)
 
@@ -90,6 +104,36 @@ rpc_get_user_reviewed_member_order_ids(p_order_ids UUID[]) → SETOF UUID
 ```
 
 Returns `member_order_id` values where `reviewer_id = auth.uid()`.
+
+## RPC: `search_public_profile_reviews`
+
+```sql
+search_public_profile_reviews(
+  p_profile_id UUID,
+  p_persona review_persona,   -- 'member' | 'merchant'
+  p_sort TEXT DEFAULT 'date-desc',
+  p_page INT DEFAULT 1,
+  p_page_size INT DEFAULT 10
+) → TABLE (review rows + aggregate_rating + pagination)
+```
+
+- `SECURITY DEFINER`; `GRANT EXECUTE TO anon, authenticated`
+- Only `is_public = true` reviews for `reviewee_id = p_profile_id` and matching `reviewee_persona`
+- Member aggregate from `profiles.rating_score`; merchant from `merchant_shops.rating_score`
+
+## Server action: `getPublicProfileReviews`
+
+```ts
+import { getPublicProfileReviews } from "@/app/actions/reviews";
+
+const result = await getPublicProfileReviews({
+  profileId: string,   // profiles.id UUID
+  persona: "member" | "merchant",
+  sort: "date-desc" | "date-asc" | "rating-desc" | "rating-asc",
+  page: number,
+  pageSize: number,
+});
+```
 
 ## Server action: `submitTransactionReview`
 
@@ -119,6 +163,7 @@ bunx supabase db query --linked --yes -f supabase/migrations/20260704260000_merc
 bunx supabase db query --linked --yes -f supabase/migrations/20260704270000_transaction_reviews_rls.sql
 bunx supabase db query --linked --yes -f supabase/migrations/20260704280000_rpc_submit_transaction_review.sql
 bunx supabase db query --linked --yes -f supabase/migrations/20260704290000_transaction_reviews_double_blind.sql
+bunx supabase db query --linked --yes -f supabase/migrations/20260706150000_profile_reviews_persona_split.sql
 ```
 
 **Required for reviews:** `20260704280000` + **`20260704290000`** (double-blind). `20260704270000` recommended for RLS alignment.

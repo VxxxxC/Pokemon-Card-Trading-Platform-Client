@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { makeOffer } from "@/app/actions/offers";
+import { incrementListingView } from "@/app/actions/listings";
 import { Switch } from "@/components/ui/switch";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
@@ -47,6 +48,22 @@ export function ExecutionSlideOver({
     listingId,
     enabled: isOpen && listingId != null,
   });
+
+  const lastViewedListingIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !listingId) {
+      lastViewedListingIdRef.current = null;
+      return;
+    }
+
+    if (lastViewedListingIdRef.current === listingId) {
+      return;
+    }
+
+    lastViewedListingIdRef.current = listingId;
+    void incrementListingView(listingId);
+  }, [isOpen, listingId]);
 
   const catalogFallbackImages =
     card.images.length > 0

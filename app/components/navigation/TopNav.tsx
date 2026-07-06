@@ -203,7 +203,7 @@ export function TopNav() {
               /* 情況 A: 已登入 ➔ 顯示快捷新增商品上架 [+] 掣 */
               <button
                 type="button"
-                onClick={() => openAddAssetModal("merch")}
+                onClick={() => openAddAssetModal({ mode: "merch" })}
                 className="flex-row h-9 w-28 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] rounded-xl flex items-center justify-center shadow-md active:scale-[0.95] transition-all cursor-pointer focus:outline-none group animate-fadeIn"
                 title="新增商品"
               >

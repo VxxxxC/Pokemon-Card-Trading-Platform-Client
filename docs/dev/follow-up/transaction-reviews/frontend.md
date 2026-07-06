@@ -125,7 +125,8 @@ const result = await getUserReviewedMemberOrderIds([orderId]);
 
 ### Remaining (frontend)
 
-- [ ] **Profile page** — display `rating_score` + **public only** reviews (`is_public = true`)
+- [x] **Profile rating list** — `/profile/[id]/rating` wired with `getPublicProfileReviews` + `?persona=`
+- [ ] **Profile page** — display `rating_score` + **public only** reviews (`is_public = true`) on `[id]/page.tsx` preview strip
 - [ ] **Order detail** — wire `/profile/user/orderDetail/[id]` with review entry point
 - [ ] **Design pass** — align `ReviewModal` tokens with Stitch / design system
 - [ ] **Merchant (B2C)** — review flow when merchant order list ships

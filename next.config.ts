@@ -26,6 +26,11 @@ const nextConfig: NextConfig = {
         hostname: "www.pokemon-card.com",
         pathname: "/assets/images/**",
       },
+      {
+        protocol: "https",
+        hostname: "hkcardvault.b-cdn.net",
+        pathname: "/assets/badges/**",
+      },
     ],
   },
 };

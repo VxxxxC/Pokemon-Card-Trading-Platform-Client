@@ -1,0 +1,2 @@
+export const INVENTORY_DEFAULT_PAGE_SIZE = 6;
+export const INVENTORY_MAX_PAGE_SIZE = 50;

@@ -2,27 +2,59 @@ import { create } from "zustand";
 
 export type DemoRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
 
+export type SellFromCollectionPrefill = {
+  collectionId: string;
+  productId: string;
+  catalog: {
+    name: string;
+    displayId?: string | null;
+    cardNumber?: string | null;
+    setCode: string;
+    imageUrl?: string | null;
+    rarity?: string | null;
+  };
+  gradingOptionId: string;
+  sellingPrice: number;
+};
+
+export type OpenAddAssetModalInput = {
+  mode: "hobby" | "merch";
+  sellPrefill?: SellFromCollectionPrefill | null;
+};
+
 interface UIStore {
-    isAddAssetOpen: boolean;
-    addAssetMode: "hobby" | "merch";
-    mockRole: DemoRole;
-    isIosPwaModalOpen: boolean; // 🟢 新增：iOS PWA 引導窗開關狀態
-    openAddAssetModal: (mode: "hobby" | "merch") => void;
-    closeAddAssetModal: () => void;
-    setMockRole: (role: DemoRole) => void;
-    openIosPwaModal: () => void; // 🟢 新增：打開引導 Action
-    closeIosPwaModal: () => void; // 🟢 新增：關閉引導 Action
+  isAddAssetOpen: boolean;
+  addAssetMode: "hobby" | "merch";
+  addAssetSellPrefill: SellFromCollectionPrefill | null;
+  mockRole: DemoRole;
+  isIosPwaModalOpen: boolean;
+  openAddAssetModal: (input: OpenAddAssetModalInput) => void;
+  closeAddAssetModal: () => void;
+  setMockRole: (role: DemoRole) => void;
+  openIosPwaModal: () => void;
+  closeIosPwaModal: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-    isAddAssetOpen: false,
-    addAssetMode: "hobby",
-    mockRole: "GUEST",
-    isIosPwaModalOpen: false, // 預設關閉
-    openAddAssetModal: (mode) =>
-        set({ isAddAssetOpen: true, addAssetMode: mode }),
-    closeAddAssetModal: () => set({ isAddAssetOpen: false }),
-    setMockRole: (role) => set({ mockRole: role }),
-    openIosPwaModal: () => set({ isIosPwaModalOpen: true }), // 活化 Action
-    closeIosPwaModal: () => set({ isIosPwaModalOpen: false }), // 活化 Action
+  isAddAssetOpen: false,
+  addAssetMode: "hobby",
+  addAssetSellPrefill: null,
+  mockRole: "GUEST",
+  isIosPwaModalOpen: false,
+  openAddAssetModal: (input) => {
+    const sellPrefill = input.sellPrefill ?? null;
+    set({
+      isAddAssetOpen: true,
+      addAssetMode: sellPrefill ? "merch" : input.mode,
+      addAssetSellPrefill: sellPrefill,
+    });
+  },
+  closeAddAssetModal: () =>
+    set({
+      isAddAssetOpen: false,
+      addAssetSellPrefill: null,
+    }),
+  setMockRole: (role) => set({ mockRole: role }),
+  openIosPwaModal: () => set({ isIosPwaModalOpen: true }),
+  closeIosPwaModal: () => set({ isIosPwaModalOpen: false }),
 }));

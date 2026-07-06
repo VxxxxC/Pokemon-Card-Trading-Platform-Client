@@ -47,5 +47,5 @@ export const ESCROW_STEPS: EscrowStep[] = [
 ];
 
 export type OrderStatus = 'payment' | 'custody' | 'shipped' | 'grading' | 'released';
-export type ListingStatus = 'active' | 'sold' | 'draft' | 'pending';
+export type ListingStatus = 'active' | 'sold' | 'draft' | 'pending' | 'inactive';
 export type KycStatus = 'pending' | 'approved' | 'rejected';

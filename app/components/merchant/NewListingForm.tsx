@@ -141,6 +141,7 @@ export function NewListingForm() {
     const conditionValue = itemType === "box_set" ? "SEALED" : selectedCondition;
 
     toast.success(`「${cardQueryValue || "新商品"}」已提交上架，鑑定等級：${gradeValue}，品相分級：${conditionValue}（待後端接通）`);
+    window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
   }
 
   return (

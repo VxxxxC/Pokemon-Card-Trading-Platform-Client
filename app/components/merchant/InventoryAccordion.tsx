@@ -44,6 +44,7 @@ export interface SKUGroup {
   cardName: string;
   cardNo: string;
   thumbnailSeed: string;
+  imageUrl?: string | null;
   items: CardInstance[];
 }
 
@@ -54,6 +55,7 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
   sold:    { label: "已售出",  className: "text-text-secondary bg-bg-elevated" },
   draft:   { label: "草稿",    className: "text-warning bg-[rgba(239,68,68,0.10)]" },
   pending: { label: "審核中",  className: "text-brand bg-[rgba(212,165,116,0.12)]" },
+  inactive: { label: "未上架", className: "text-text-secondary bg-bg-elevated" },
 };
 
 const REMARKS_PRESETS = [
@@ -456,7 +458,10 @@ export function InventoryAccordion({ skuGroups, analytics = true }: InventoryAcc
             >
               <div className="relative w-14 h-20 rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
                 <Image
-                  src={`https://picsum.photos/seed/${sku.thumbnailSeed}/112/160`}
+                  src={
+                    sku.imageUrl?.trim() ||
+                    `https://picsum.photos/seed/${sku.thumbnailSeed}/112/160`
+                  }
                   alt={`${sku.cardName} 縮圖`}
                   fill
                   sizes="56px"

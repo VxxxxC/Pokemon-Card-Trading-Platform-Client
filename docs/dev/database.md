@@ -21,8 +21,8 @@
 | `app/components/merchant/NewListingForm.tsx` | `itemType`、`photos:{url,remark}[6]`、級聯分級 | `listings` |
 | `app/store/useHkCardVaultStore.ts` | `Message`、`ChatRoom`、`SpecialTransactionData` | `messages` / `chat_rooms` |
 | `app/checkout/[id]/page.tsx` | `AVAILABLE_COUPONS`、`authFee=150`、`finalTotal` 公式 | `orders` / `coupons` |
-| `app/components/market/WishlistTable.tsx` | `WISHLIST_REGISTRY:{id,trackedPrice}[]` | `wishlists` |
-| `app/components/rewards/CheckInCard.tsx` | `CHECK_IN_STEPS`（7 日積分階梯） | `user_check_ins` |
+| `app/components/market/WishlistTable.tsx` | `WishlistEntry` from `getWishlistEntries` | `product_watchlists` |
+| `app/components/rewards/CheckInCard.tsx` | `CHECK_IN_STEPS`（7 日積分階梯） | `gamification_stats` / `point_ledger` |
 | `app/store/useUIStore.ts` | `DemoRole = 'GUEST' \| 'USER' \| 'MERCHANT' \| 'ADMIN'` | RLS 角色守衛 |
 
 ---
@@ -87,7 +87,7 @@ CREATE TABLE public.profiles (
   level_tier      INTEGER NOT NULL DEFAULT 1,            -- 身份等級（對齊 UserProfile.levelTier）
   xp_current      INTEGER NOT NULL DEFAULT 0,
   xp_required     INTEGER NOT NULL DEFAULT 100,
-  points_balance  INTEGER NOT NULL DEFAULT 0,            -- 簽到/獎勵積分
+  -- 積分餘額見 gamification_stats.points_balance（唔放 profiles，避免雙寫）
   shop_name       TEXT,                                  -- MERCHANT 專屬店名（對齊 MerchantProfile.shopName）
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -96,6 +96,40 @@ CREATE TABLE public.profiles (
 CREATE INDEX idx_profiles_role ON public.profiles (role);
 CREATE INDEX idx_profiles_handle ON public.profiles (handle);
 ```
+
+### 2.1b `gamification_stats` — 簽到 streak + 積分餘額 SSOT
+
+> **實際 migration：** `20260705181000_points_ledger_and_check_in.sql`  
+> 可用 PTS **唔** 存於 `profiles`；所有加減經 `fn_apply_point_transaction`。
+
+```sql
+CREATE TABLE public.gamification_stats (
+  user_id         UUID PRIMARY KEY REFERENCES public.profiles (id) ON DELETE CASCADE,
+  points_balance  INTEGER NOT NULL DEFAULT 0,   -- 可用餘額（簽到 / 任務 / 模板發放 − 兌換）
+  current_streak  INTEGER NOT NULL DEFAULT 0,
+  longest_streak  INTEGER NOT NULL DEFAULT 0,
+  last_check_in   TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+### 2.1c `point_ledger` — 積分變動 audit
+
+```sql
+CREATE TABLE public.point_ledger (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
+  amount          INTEGER NOT NULL,              -- 正=入帳，負=扣減
+  balance_after   INTEGER NOT NULL,
+  source_type     TEXT NOT NULL,                 -- daily_check_in | reward_template | mission_claim | admin_adjust | redemption
+  source_ref      UUID,
+  description     TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+`user_rewards` 記錄已發放獎勵實例（coupon / points 模板 dedup），**唔** 作積分總帳。
 
 ### 2.2 `card_catalog` — 卡牌官方資料快取（TCGdex / JustTCG 回填）
 
@@ -150,6 +184,19 @@ CREATE INDEX idx_listings_seller ON public.listings (seller_id);
 CREATE INDEX idx_listings_status ON public.listings (status) WHERE status = 'active';
 CREATE INDEX idx_listings_item_type ON public.listings (item_type);
 ```
+
+### 2.3.1 `listing_stats` — 掛單統計（生產 schema）
+
+> SSOT：`types/supabase.ts` · migration `20260706120000_listing_stats_inventory_extend.sql`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `listing_id` | UUID PK FK → `listings.id` | ON DELETE CASCADE |
+| `views` | INTEGER NOT NULL DEFAULT 0 | `rpc_increment_listing_view` on slide-over open |
+| `offers_count` | INTEGER NOT NULL DEFAULT 0 | Cumulative offers; +1 in `rpc_make_offer` only |
+| `updated_at` | TIMESTAMPTZ | |
+
+Init trigger on `listings` INSERT. Seller RLS: read own stats via `listings.seller_id = auth.uid()`.
 
 ### 2.4 `orders` — 全額託管訂單（嚴禁訂金欄位）
 
@@ -232,20 +279,47 @@ CREATE TABLE public.messages (
 CREATE INDEX idx_messages_room ON public.messages (room_id, created_at);
 ```
 
-### 2.6 `wishlists` — 願望清單追價
+### 2.6 `product_watchlists` — 願望清單追價（live SSOT）
+
+> 取代早期設計稿 `wishlists`（`card_catalog` + `card_ref`）。Live DB 使用 `product_catalog.id` + grade 維度。
 
 ```sql
+-- Live 表擴展（見 migration 20260706100000_product_watchlists_wishlist_extend.sql）
+CREATE TABLE public.product_watchlists (
+  user_id           UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
+  product_id        UUID NOT NULL REFERENCES public.product_catalog (id) ON DELETE CASCADE,
+  grading_company   TEXT NOT NULL DEFAULT 'RAW',
+  grading_score     TEXT NOT NULL DEFAULT 'A',
+  tracked_price     NUMERIC(12,2) NULL,     -- 加入時 snapshot
+  target_price      NUMERIC(12,2) NULL,     -- 目標價（Phase 2 UI；Phase 3 OneSignal alert）
+  alert_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+  last_alerted_at   TIMESTAMPTZ NULL,       -- push 冷卻（Phase 3 預留）
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, product_id, grading_company, grading_score)
+);
+
+CREATE INDEX idx_product_watchlists_alert
+  ON public.product_watchlists (product_id, grading_company, grading_score)
+  WHERE target_price IS NOT NULL AND alert_enabled = TRUE;
+```
+
+**30D 走勢**：read-time JOIN `product_grading_market_prices`（matching grade），唔 FK。
+
+**購買 alert（Phase 3）**：比對同 grade active `listings.price` ≤ `target_price` → OneSignal push。
+
+### 2.6.1 ~~`wishlists`~~（設計稿 — 未部署，已棄用）
+
+```sql
+-- DEPRECATED: 以下 DDL 僅作歷史參考，請使用 product_watchlists
 CREATE TABLE public.wishlists (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
   catalog_id    UUID REFERENCES public.card_catalog (id) ON DELETE CASCADE,
-  card_ref      TEXT NOT NULL,                             -- 對齊 WISHLIST_REGISTRY.id（例 'sv2a-189'）
-  tracked_price NUMERIC(12,2) NOT NULL,                    -- 開始追蹤時的價格
+  card_ref      TEXT NOT NULL,
+  tracked_price NUMERIC(12,2) NOT NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (user_id, card_ref)
 );
-
-CREATE INDEX idx_wishlists_user ON public.wishlists (user_id);
 ```
 
 ### 2.7 `user_check_ins` — 7 日簽到防作弊
@@ -271,20 +345,20 @@ CREATE INDEX idx_check_ins_user ON public.user_check_ins (user_id, check_in_date
 CREATE TABLE public.user_collections (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
-  catalog_id      UUID REFERENCES public.card_catalog (id) ON DELETE SET NULL,
-  item_type       item_type NOT NULL DEFAULT 'card',
-  name            TEXT NOT NULL,
-  grader          grader_authority NOT NULL DEFAULT 'RAW',
-  grade_score     TEXT,
-  condition       card_condition NOT NULL DEFAULT 'A',
-  purchase_price  NUMERIC(12,2) NOT NULL DEFAULT 0,        -- 入手價（僅收藏愛好用）
-  current_value   NUMERIC(12,2) NOT NULL DEFAULT 0,        -- 市價快照
-  photos          JSONB NOT NULL DEFAULT '[]'::jsonb,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  product_id      UUID NOT NULL REFERENCES public.product_catalog (id) ON DELETE CASCADE,
+  grading_company TEXT NOT NULL DEFAULT 'RAW',
+  grading_score   TEXT NOT NULL DEFAULT 'A',
+  purchase_price  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_collections_user ON public.user_collections (user_id);
+CREATE INDEX idx_user_collections_user_created ON public.user_collections (user_id, created_at DESC);
 ```
+
+> **縮圖：** 唔存 `photos`；UI 用 `product_catalog.image_url`。  
+> **市價（collection）：** `resolveCollectionMarketValue` — 同規格 SNKRDUNK → 平台同規格最低掛單 → `purchase_price`（唔用其他 grade）。  
+> **已上架狀態：** derive from 用戶 active `listings`（同 grade match）；`listedCount` on summary；出售走 `openAddAssetModal({ mode: "merch", sellPrefill })`。
 
 ### 2.9 `coupons` — 平台優惠券庫
 
@@ -426,15 +500,14 @@ CREATE POLICY messages_party_insert ON public.messages
   ));
 ```
 
-### 3.5 `wishlists` / `user_check_ins` / `user_collections`
+### 3.5 `product_watchlists` / `user_check_ins` / `user_collections`
 
 ```sql
-ALTER TABLE public.wishlists        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_watchlists    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_check_ins   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_collections ENABLE ROW LEVEL SECURITY;
 
--- 一律「僅本人」存取（GUEST 完全無權，對齊前端登入閘門）
-CREATE POLICY wishlists_owner ON public.wishlists
+CREATE POLICY product_watchlists_owner ON public.product_watchlists
   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY check_ins_owner ON public.user_check_ins
@@ -464,40 +537,20 @@ CREATE POLICY kyc_admin_update ON public.kyc_applications
 
 ## 4. 防作弊與一致性程序 (Stored Procedures)
 
-### 4.1 簽到原子化（防客戶端竄改時間戳）
+### 4.1 簽到與積分（防併發、SSOT）
+
+> **實作：** `execute_daily_check_in()` in `20260705181000` / `20260705182000`  
+> 簽到 streak 寫入 `gamification_stats`；PTS 經 `fn_apply_point_transaction` → `points_balance` + `point_ledger`。
 
 ```sql
--- 對齊 server.md：使用 Asia/Hong_Kong 伺服器時區，拒絕客戶端時間
-CREATE OR REPLACE FUNCTION public.execute_daily_check_in()
-RETURNS public.user_check_ins LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_today   DATE := timezone('Asia/Hong_Kong', now())::date;
-  v_streak  INTEGER;
-  v_points  INTEGER;
-  v_row     public.user_check_ins;
-BEGIN
-  -- 行鎖防併發重複簽到
-  PERFORM 1 FROM public.profiles WHERE id = auth.uid() FOR UPDATE;
-
-  SELECT COALESCE(MAX(streak_day), 0) INTO v_streak
-  FROM public.user_check_ins
-  WHERE user_id = auth.uid()
-    AND check_in_date = v_today - INTERVAL '1 day';
-
-  v_streak := CASE WHEN v_streak >= 7 THEN 1 ELSE v_streak + 1 END;
-  v_points := (ARRAY[10,15,20,25,30,40,100])[v_streak];  -- 對齊 CHECK_IN_STEPS
-
-  INSERT INTO public.user_check_ins (user_id, check_in_date, streak_day, points_awarded)
-  VALUES (auth.uid(), v_today, v_streak, v_points)
-  RETURNING * INTO v_row;
-
-  UPDATE public.profiles SET points_balance = points_balance + v_points
-  WHERE id = auth.uid();
-
-  RETURN v_row;
-END;
-$$;
+-- 概念流程（簡化；完整邏輯見 migration）
+-- 1. FOR UPDATE gamification_stats WHERE user_id = auth.uid()
+-- 2. 計算 HK 時區 streak + 當日 PTS（對齊 CHECK_IN_POINT_LADDER）
+-- 3. fn_apply_point_transaction(uid, v_points, 'daily_check_in', ...)
+-- 4. fn_recalculate_reputation_tags(uid); fn_try_auto_grant_rewards(uid)
 ```
+
+任務領取 / 積分兌換須經專用 RPC（`fn_claim_mission_points`、`fn_redeem_member_points`），同樣只呼叫 `fn_apply_point_transaction`，**禁止** 直接 `UPDATE gamification_stats.points_balance`。
 
 ---
 
@@ -511,7 +564,7 @@ $$;
 | `listings` | `item_type` | B-tree | 多分類篩選不互污 |
 | `orders` | `buyer_id` / `seller_id` | B-tree | 雙端訂單中心查詢 |
 | `messages` | `(room_id, created_at)` | B-tree | 聊天訊息時序拉取 |
-| `wishlists` | `(user_id, card_ref)` | UNIQUE | 防重複追蹤 |
+| `product_watchlists` | `(user_id, product_id, grading_company, grading_score)` | UNIQUE | 防重複追蹤（同卡多 grade） |
 | `user_check_ins` | `(user_id, check_in_date)` | UNIQUE | 同日防重複簽到 |
 
 ---

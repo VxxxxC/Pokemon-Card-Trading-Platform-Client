@@ -1,0 +1,164 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import {
+  getWishlistEntries,
+  removeFromWishlist,
+  updateWishlistGrade,
+  updateWishlistTarget,
+} from "@/app/actions/wishlist";
+import type { WishlistEntry } from "@/app/lib/wishlist/types";
+import type { GradingOption } from "@/lib/grading/options";
+import { wishlistGradeFromGradingOption } from "@/lib/wishlist/grading";
+
+type UseWishlistResult = {
+  entries: WishlistEntry[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => void;
+  removeEntry: (entry: WishlistEntry) => Promise<boolean>;
+  updateTargetPrice: (
+    entry: WishlistEntry,
+    targetPrice: number | null,
+  ) => Promise<boolean>;
+  updateGrade: (
+    entry: WishlistEntry,
+    option: GradingOption,
+  ) => Promise<boolean>;
+};
+
+export function useWishlist(): UseWishlistResult {
+  const [entries, setEntries] = useState<WishlistEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const refetch = useCallback(() => {
+    setReloadToken((value) => value + 1);
+  }, []);
+
+  const refreshEntries = useCallback(async (): Promise<boolean> => {
+    const result = await getWishlistEntries();
+    if (!result.success) {
+      setError(result.error);
+      toast.error(result.error);
+      return false;
+    }
+    setEntries(result.data);
+    setError(null);
+    return true;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setIsLoading(true);
+      const result = await getWishlistEntries();
+
+      if (cancelled) return;
+
+      if (!result.success) {
+        setEntries([]);
+        setError(result.error);
+        setIsLoading(false);
+        return;
+      }
+
+      setEntries(result.data);
+      setError(null);
+      setIsLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadToken]);
+
+  const removeEntry = useCallback(async (entry: WishlistEntry) => {
+    const result = await removeFromWishlist({
+      productId: entry.productId,
+      gradingCompany: entry.gradingCompany,
+      gradingScore: entry.gradingScore,
+    });
+
+    if (!result.success) {
+      setError(result.error);
+      toast.error(result.error);
+      return false;
+    }
+
+    setEntries((current) =>
+      current.filter(
+        (row) =>
+          !(
+            row.productId === entry.productId &&
+            row.gradingCompany === entry.gradingCompany &&
+            row.gradingScore === entry.gradingScore
+          ),
+      ),
+    );
+    setError(null);
+    toast.success("已從願望清單移除");
+    return true;
+  }, []);
+
+  const updateTargetPrice = useCallback(
+    async (entry: WishlistEntry, targetPrice: number | null) => {
+      const result = await updateWishlistTarget({
+        productId: entry.productId,
+        gradingCompany: entry.gradingCompany,
+        gradingScore: entry.gradingScore,
+        targetPrice,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return false;
+      }
+
+      toast.success(
+        targetPrice == null ? "已清除目標價" : "目標價已更新",
+      );
+      await refreshEntries();
+      return true;
+    },
+    [refreshEntries],
+  );
+
+  const updateGrade = useCallback(
+    async (entry: WishlistEntry, option: GradingOption) => {
+      const next = wishlistGradeFromGradingOption(option);
+      const result = await updateWishlistGrade({
+        productId: entry.productId,
+        gradingCompany: entry.gradingCompany,
+        gradingScore: entry.gradingScore,
+        nextGradingCompany: next.gradingCompany,
+        nextGradingScore: next.gradingScore,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return false;
+      }
+
+      const refreshed = await refreshEntries();
+      if (refreshed) {
+        toast.success("追蹤規格已更新");
+      }
+      return refreshed;
+    },
+    [refreshEntries],
+  );
+
+  return {
+    entries,
+    isLoading,
+    error,
+    refetch,
+    removeEntry,
+    updateTargetPrice,
+    updateGrade,
+  };
+}
