@@ -130,26 +130,23 @@ export function AddAssetModal() {
   const [selectedGradingId, setSelectedGradingId] = useState(
     DEFAULT_GRADING_OPTION_ID,
   );
+  const [acceptsBuyerAuth, setAcceptsBuyerAuth] = useState(false);
   const selectedGrading = useMemo(
     () => getGradingOption(selectedGradingId),
     [selectedGradingId],
   );
   const isRawCardListing = isRawGradingOption(selectedGrading);
 
-  useEffect(() => {
-    if (isRawCardListing) {
-      setAcceptsBuyerAuth(true);
-    } else {
-      setAcceptsBuyerAuth(false);
-    }
-  }, [isRawCardListing, selectedGradingId]);
+  const handleGradingChange = (gradingId: string) => {
+    setSelectedGradingId(gradingId);
+    setAcceptsBuyerAuth(isRawGradingOption(getGradingOption(gradingId)));
+  };
 
   // 收藏愛好專屬欄位
   const [purchasePrice, setPurchasePrice] = useState("");
 
   // 新增商品專屬欄位
   const [sellingPrice, setSellingPrice] = useState("");
-  const [acceptsBuyerAuth, setAcceptsBuyerAuth] = useState(true);
 
   // 圖片預覽槽（僅於提交時上傳至 Bunny.net）
   const [photoSlots, setPhotoSlots] = useState<LocalPhotoSlot[]>(
@@ -233,7 +230,9 @@ export function AddAssetModal() {
         setSet(sellPrefill.catalog.setCode);
         setSelectedGradingId(sellPrefill.gradingOptionId);
         setSellingPrice(String(sellPrefill.sellingPrice));
-        setAcceptsBuyerAuth(true);
+        setAcceptsBuyerAuth(
+          isRawGradingOption(getGradingOption(sellPrefill.gradingOptionId)),
+        );
         setPurchasePrice("");
         setHobbyImages([]);
         resetPhotoSlots();
@@ -246,7 +245,7 @@ export function AddAssetModal() {
         setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
         setPurchasePrice("");
         setSellingPrice("");
-        setAcceptsBuyerAuth(true);
+        setAcceptsBuyerAuth(false);
         setHobbyImages([]);
         resetPhotoSlots();
         setConditionDesc("");
@@ -856,7 +855,7 @@ export function AddAssetModal() {
               <Select
                 value={selectedGradingId}
                 onValueChange={(val) =>
-                  setSelectedGradingId(val ?? DEFAULT_GRADING_OPTION_ID)
+                  handleGradingChange(val ?? DEFAULT_GRADING_OPTION_ID)
                 }
               >
                 <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">

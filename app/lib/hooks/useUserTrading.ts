@@ -91,7 +91,7 @@ export function useUserTrading(
 
   const mountLoggedRef = useRef(false);
   const skippedInitialFetchRef = useRef(false);
-  const initialListKeyRef = useRef(
+  const [initialListKey] = useState(() =>
     buildListKey(persona, tabStatus, "", TRADING_DEFAULT_PAGE_SIZE),
   );
   const initialPageRef = useRef(options.initialData?.meta?.page ?? 1);
@@ -99,7 +99,7 @@ export function useUserTrading(
   const debouncedQueryRef = useRef(searchQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const listKey = buildListKey(persona, tabStatus, debouncedQuery, pageSize);
-  const isInitialListKey = listKey === initialListKeyRef.current;
+  const isInitialListKey = listKey === initialListKey;
 
   useEffect(() => {
     debouncedQueryRef.current = searchQuery;

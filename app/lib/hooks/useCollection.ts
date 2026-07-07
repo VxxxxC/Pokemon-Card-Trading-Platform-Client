@@ -90,7 +90,7 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
   const [error, setError] = useState<string | null>(null);
   const [pageByListKey, setPageByListKey] = useState<Record<string, number>>({});
   const mountLoggedRef = useRef(false);
-  const initialListKeyRef = useRef(`all::${pageSize}`);
+  const [initialListKey] = useState(() => `all::${pageSize}`);
   const didInitialBootstrapRef = useRef(hasInitialBootstrap);
 
   const debouncedQueryRef = useRef(query);
@@ -98,7 +98,7 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
 
   const listKey = `${filter}:${debouncedQuery}:${pageSize}`;
   const page = pageByListKey[listKey] ?? options.page ?? 1;
-  const isInitialListKey = listKey === initialListKeyRef.current;
+  const isInitialListKey = listKey === initialListKey;
 
   const setPage = useCallback(
     (nextPage: number) => {

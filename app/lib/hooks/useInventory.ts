@@ -73,13 +73,13 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
   const [error, setError] = useState<string | null>(null);
   const mountLoggedRef = useRef(false);
   const didInitialBootstrapRef = useRef(hasInitialBootstrap);
-  const initialListKeyRef = useRef(`:${pageSize}`);
+  const [initialListKey] = useState(() => `:${pageSize}`);
   const initialPageRef = useRef(options.initialData?.page?.page ?? 1);
 
   const debouncedQueryRef = useRef(query);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const listKey = `${debouncedQuery}:${pageSize}`;
-  const isInitialListKey = listKey === initialListKeyRef.current;
+  const isInitialListKey = listKey === initialListKey;
 
   useEffect(() => {
     debouncedQueryRef.current = query;
