@@ -3,13 +3,14 @@
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { TradingOrdersFilterCounts } from "@/app/actions/orders";
+import type { TradingOrdersFilterCounts, UserTradingOrder } from "@/app/actions/orders";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { UserOrderRow } from "@/app/components/user/UserOrderRow";
 import {
   useUserTrading,
   type TradingInitialData,
 } from "@/app/lib/hooks/useUserTrading";
+import { getMemberAuthOrderActions } from "@/app/lib/member-order/auth-escrow";
 import { mapTradingOrderToSaleOrder } from "@/app/lib/member-order/map-sale-order";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,25 +61,48 @@ function formatStatusTabLabel(
   return count > 0 ? `${label} (${count})` : label;
 }
 
-function renderStatusBadge(status: string) {
-  switch (status) {
+function renderStatusBadge(order: UserTradingOrder) {
+  if (order.useAuthentication && order.status === "pending" && order.escrowStatus) {
+    switch (order.escrowStatus) {
+      case "payment":
+        return (
+          <Badge variant="secondary" className="bg-amber-950 text-amber-400">
+            待付款
+          </Badge>
+        );
+      case "custody":
+        return (
+          <Badge variant="secondary" className="bg-blue-950 text-blue-400">
+            待寄平台
+          </Badge>
+        );
+      case "grading":
+        return (
+          <Badge variant="secondary" className="bg-purple-950 text-purple-400">
+            鑑定中
+          </Badge>
+        );
+      case "shipped":
+        return (
+          <Badge variant="secondary" className="bg-cyan-950 text-cyan-400">
+            運送中
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary" className="bg-amber-950 text-amber-400">
+            待處理
+          </Badge>
+        );
+    }
+  }
+
+  switch (order.status ?? "") {
     case "pending":
     case "meetup_arranged":
       return (
         <Badge variant="secondary" className="bg-amber-950 text-amber-400">
           待處理
-        </Badge>
-      );
-    case "in_custody":
-      return (
-        <Badge variant="secondary" className="bg-blue-950 text-blue-400">
-          保管中
-        </Badge>
-      );
-    case "grading":
-      return (
-        <Badge variant="secondary" className="bg-purple-950 text-purple-400">
-          鑑定中
         </Badge>
       );
     case "completed":
@@ -306,26 +330,41 @@ export function UserTradingClient({
                 </p>
               </div>
             ) : (
-              orders.map((order) => (
+              orders.map((order) => {
+                const authActions = order.useAuthentication
+                  ? getMemberAuthOrderActions({
+                      persona: order.persona,
+                      useAuthentication: order.useAuthentication,
+                      escrowStatus: order.escrowStatus,
+                      status: order.status,
+                    })
+                  : null;
+
+                return (
                 <UserOrderRow
                   key={order.id}
                   order={mapTradingOrderToSaleOrder(order)}
                   detailOrderId={order.id}
                   orderNumber={order.orderNumber}
-                  statusBadge={renderStatusBadge(order.status ?? "")}
+                  statusBadge={renderStatusBadge(order)}
                   onOpenReview={handleOpenReview}
                   dbOrderContext={{
                     orderId: order.id,
                     revieweeId: order.counterparty.id,
                     dbStatus: order.status ?? "",
                     hasReviewedByMe: order.hasReviewedByMe,
+                    useAuthentication: order.useAuthentication,
+                    escrowStatus: order.escrowStatus,
+                    canPay: authActions?.canPay ?? false,
                     canCancel:
-                      order.persona === "sell" &&
-                      PENDING_ACTION_STATUSES.has(order.status ?? ""),
+                      authActions?.canCancel ??
+                      (order.persona === "sell" &&
+                        PENDING_ACTION_STATUSES.has(order.status ?? "")),
                     onRefresh: handleRefreshOrders,
                   }}
                 />
-              ))
+              );
+              })
             )}
           </div>
 

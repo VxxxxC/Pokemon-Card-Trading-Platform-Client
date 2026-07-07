@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { makeOffer } from "@/app/actions/offers";
 import { incrementListingView } from "@/app/actions/listings";
 import { Switch } from "@/components/ui/switch";
+import { BUYER_AUTH_DISABLED_COPY } from "@/lib/listings/auth-service-copy";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
@@ -77,6 +78,8 @@ export function ExecutionSlideOver({
         ? catalogFallbackImages
         : [];
 
+  const listingAcceptsBuyerAuth = detail?.useAuthentication !== false;
+
   useEffect(() => {
     if (isOpen && order) {
       queueMicrotask(() => {
@@ -85,6 +88,12 @@ export function ExecutionSlideOver({
       });
     }
   }, [isOpen, listingId, order?.price]);
+
+  useEffect(() => {
+    if (!listingAcceptsBuyerAuth) {
+      setUseAuthentication(false);
+    }
+  }, [listingAcceptsBuyerAuth]);
 
   if (!isOpen || !order) return null;
 
@@ -96,6 +105,11 @@ export function ExecutionSlideOver({
 
     if (!customPrice || Number(customPrice) <= 0) {
       toast.error("⚠️ 請輸入有效的預期出價金額");
+      return;
+    }
+
+    if (useAuthentication && !listingAcceptsBuyerAuth) {
+      toast.error("此賣家不接受平台鑑定加購");
       return;
     }
 
@@ -314,13 +328,16 @@ export function ExecutionSlideOver({
                     平台鑑定加購
                   </span>
                   <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
-                    啟用後由平台第三方鑑定機構複驗品相與真偽（HK$150）
+                    {listingAcceptsBuyerAuth
+                      ? "啟用後由平台第三方鑑定機構複驗品相與真偽（HK$150）"
+                      : BUYER_AUTH_DISABLED_COPY}
                   </p>
                 </div>
                 <Switch
                   checked={useAuthentication}
                   onCheckedChange={setUseAuthentication}
-                  className="data-checked:bg-brand data-unchecked:bg-[#39342f]"
+                  disabled={!listingAcceptsBuyerAuth || isDetailLoading}
+                  className="data-checked:bg-brand data-unchecked:bg-[#39342f] disabled:opacity-40"
                 />
               </div>
             </div>

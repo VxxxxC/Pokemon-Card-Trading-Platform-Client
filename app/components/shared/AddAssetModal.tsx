@@ -15,6 +15,7 @@ import {
   getGradingOption,
   getGradingOptionsByGroup,
   gradingOptionToFields,
+  isRawGradingOption,
 } from "@/lib/grading/options";
 import type { ListingImage } from "@/lib/listings/images";
 import {
@@ -35,6 +36,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  LISTING_AUTH_SERVICE_TOOLTIP_BODY,
+  LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
+} from "@/lib/listings/auth-service-copy";
+import { CircleHelp } from "lucide-react";
 
 type LocalPhotoSlot = {
   file: File | null;
@@ -121,12 +134,22 @@ export function AddAssetModal() {
     () => getGradingOption(selectedGradingId),
     [selectedGradingId],
   );
+  const isRawCardListing = isRawGradingOption(selectedGrading);
+
+  useEffect(() => {
+    if (isRawCardListing) {
+      setAcceptsBuyerAuth(true);
+    } else {
+      setAcceptsBuyerAuth(false);
+    }
+  }, [isRawCardListing, selectedGradingId]);
 
   // 收藏愛好專屬欄位
   const [purchasePrice, setPurchasePrice] = useState("");
 
   // 新增商品專屬欄位
   const [sellingPrice, setSellingPrice] = useState("");
+  const [acceptsBuyerAuth, setAcceptsBuyerAuth] = useState(true);
 
   // 圖片預覽槽（僅於提交時上傳至 Bunny.net）
   const [photoSlots, setPhotoSlots] = useState<LocalPhotoSlot[]>(
@@ -210,6 +233,7 @@ export function AddAssetModal() {
         setSet(sellPrefill.catalog.setCode);
         setSelectedGradingId(sellPrefill.gradingOptionId);
         setSellingPrice(String(sellPrefill.sellingPrice));
+        setAcceptsBuyerAuth(true);
         setPurchasePrice("");
         setHobbyImages([]);
         resetPhotoSlots();
@@ -222,6 +246,7 @@ export function AddAssetModal() {
         setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
         setPurchasePrice("");
         setSellingPrice("");
+        setAcceptsBuyerAuth(true);
         setHobbyImages([]);
         resetPhotoSlots();
         setConditionDesc("");
@@ -461,6 +486,7 @@ export function AddAssetModal() {
         gradingOptionId: selectedGradingId,
         price: Number(sellingPrice),
         sellerDescription: conditionDesc || undefined,
+        useAuthentication: isRawCardListing ? acceptsBuyerAuth : false,
         imageFiles,
       });
 
@@ -568,6 +594,50 @@ export function AddAssetModal() {
 
     handleCloseAndReset();
   };
+
+  const showListingAuthToggle =
+    mode === "merch" && itemType === "card" && isRawCardListing;
+
+  const listingAuthToggle = showListingAuthToggle ? (
+    <div className="bg-[#17130f] border border-brand/20 rounded-xl p-4 space-y-2 animate-fadeIn">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-sans font-bold text-[#d4c4b7] text-[12.5px]">
+            接受買家加購平台鑑定
+          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger
+                type="button"
+                className="shrink-0 text-[#8A8680] hover:text-brand"
+                aria-label="平台鑑定託管說明"
+              >
+                <CircleHelp className="size-4" />
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                className="max-w-xs whitespace-pre-line text-left leading-relaxed"
+              >
+                <span className="font-bold block mb-1">
+                  {LISTING_AUTH_SERVICE_TOOLTIP_TITLE}
+                </span>
+                {LISTING_AUTH_SERVICE_TOOLTIP_BODY}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <Switch
+          checked={acceptsBuyerAuth}
+          onCheckedChange={setAcceptsBuyerAuth}
+          className="data-checked:bg-brand data-unchecked:bg-[#39342f] shrink-0"
+        />
+      </div>
+      <p className="text-[11px] text-text-secondary leading-relaxed">
+        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$150
+        由買家承擔）。
+      </p>
+    </div>
+  ) : null;
 
   return (
     <div className="fixed inset-0 z-[350] flex items-center justify-center p-4">
@@ -807,6 +877,8 @@ export function AddAssetModal() {
               </Select>
             </div>
           )}
+
+          {listingAuthToggle}
 
           {/* === 4. PHOTO UPLOAD SECTION === */}
           {mode === "merch" ? (

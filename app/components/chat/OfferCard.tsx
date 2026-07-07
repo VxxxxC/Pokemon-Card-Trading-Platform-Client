@@ -499,6 +499,15 @@ export function OfferCardComponent({
       </CardHeader>
 
       <CardContent className="space-y-3 pt-3">
+        {useAuthentication && isPending && isSeller ? (
+          <Alert className="border-brand/35 bg-brand/15 text-brand shadow-sm">
+            <AlertDescription className="text-[12px] font-semibold leading-relaxed">
+              🔍 買家要求平台鑑定加購服務（HK$
+              {MEMBER_AUTH_SERVICE_FEE.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <div className="flex gap-3">
           <div className="relative h-[88px] w-[64px] shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#17130f]">
             <OfferCardThumbnail
@@ -534,10 +543,10 @@ export function OfferCardComponent({
           </div>
         </div>
 
-        {useAuthentication && isPending ? (
+        {useAuthentication && isPending && !isSeller ? (
           <Alert className="border-brand/25 bg-brand/10 text-brand">
             <AlertDescription className="text-[11.5px] leading-relaxed">
-              買家已加購平台第三方鑑定服務；成交後將走託管鑑定流程，非面交直收。
+              您已加購平台第三方鑑定服務；賣家接受後將走託管鑑定流程。
             </AlertDescription>
           </Alert>
         ) : null}

@@ -1,4 +1,6 @@
 import type { Tables } from "@/types/supabase";
+import { getAuthEscrowStepIndexFromStatus } from "@/app/lib/member-order/auth-escrow";
+import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
 
 export type MemberOrderDbStatus = NonNullable<
   Tables<"member_orders">["status"]
@@ -26,7 +28,12 @@ export function isMeetupOnlyMemberOrder(useAuthentication: boolean): boolean {
 
 export function getAuthEscrowStepIndex(
   status: MemberOrderDbStatus | null | undefined,
+  escrowStatus?: MemberEscrowStatus | null,
 ): number {
+  if (escrowStatus) {
+    return getAuthEscrowStepIndexFromStatus(escrowStatus, status);
+  }
+
   if (status === "completed") {
     return 4;
   }

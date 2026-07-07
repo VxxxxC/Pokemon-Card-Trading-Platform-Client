@@ -1,21 +1,28 @@
 "use client";
 
-import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import {
-  getAuthEscrowStepIndex,
-  type MemberOrderDbStatus,
-} from "@/app/lib/member-order/p2p";
+  getAuthEscrowStepIndexFromStatus,
+  type MemberEscrowStatus,
+} from "@/app/lib/member-order/auth-escrow";
+import { ESCROW_STEPS } from "@/app/lib/types/rbac";
+import type { MemberOrderDbStatus } from "@/app/lib/member-order/p2p";
 import { cn } from "@/lib/utils";
 
 type MemberAuthOrderTimelineProps = {
   status: MemberOrderDbStatus | null | undefined;
+  escrowStatus?: MemberEscrowStatus | null;
 };
 
 export function MemberAuthOrderTimeline({
   status,
+  escrowStatus,
 }: MemberAuthOrderTimelineProps) {
-  const currentStepIdx = getAuthEscrowStepIndex(status);
-  const isCancelled = status === "cancelled";
+  const currentStepIdx = getAuthEscrowStepIndexFromStatus(
+    escrowStatus,
+    status,
+  );
+  const isCancelled =
+    status === "cancelled" || escrowStatus === "cancelled";
 
   return (
     <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">

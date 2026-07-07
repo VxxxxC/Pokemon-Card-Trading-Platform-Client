@@ -82,6 +82,7 @@ function parseCreateCardListingForm(formData: FormData): {
     gradingOptionId: string;
     price: number;
     sellerDescription?: string;
+    useAuthentication: boolean;
   };
   uploads: ParsedImageUpload[];
   preUploaded: PreUploadedListingImage[] | null;
@@ -95,6 +96,11 @@ function parseCreateCardListingForm(formData: FormData): {
   )
     .trim()
     .slice(0, LISTING_DESCRIPTION_MAX);
+  const useAuthenticationRaw = formData.get("useAuthentication");
+  const useAuthentication =
+    useAuthenticationRaw === null
+      ? true
+      : useAuthenticationRaw === "true" || useAuthenticationRaw === "on";
 
   const rawImageEntries = formData.getAll("images");
   const uploads = parseImageUploadsFromFormData(formData);
@@ -109,6 +115,7 @@ function parseCreateCardListingForm(formData: FormData): {
       gradingOptionId,
       price,
       sellerDescription: sellerDescription || undefined,
+      useAuthentication,
     },
     uploads,
     preUploaded,
@@ -259,7 +266,7 @@ export async function createCardListing(
         seller_description: fields.sellerDescription ?? null,
         status: "active",
         seller_persona: resolveSellerPersona(profile.role),
-        use_authentication: false,
+        use_authentication: fields.useAuthentication,
       })
       .select("id, product_id, price, grading_company, grading_score, images, status")
       .single<ListingRow>();

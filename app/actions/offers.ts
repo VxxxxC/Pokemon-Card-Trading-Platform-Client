@@ -150,9 +150,10 @@ function readModifiedCount(offer: {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function formatOfferMessageContent(offerPrice: number): string {
-  return `出價 HK$ ${offerPrice.toLocaleString()}`;
-}
+import {
+  formatAuthOfferMessageContent,
+  formatStandardOfferMessageContent,
+} from "@/lib/listings/auth-service-copy";
 
 function formatModifyOfferMessageContent(newPrice: number): string {
   return `修改了出價需求：HK$ ${newPrice.toLocaleString()}`;
@@ -391,7 +392,9 @@ export async function makeOffer(
       p_listing_id: trimmedListingId,
       p_buyer_id: user.id,
       p_offer_price: offerPrice,
-      p_content: formatOfferMessageContent(offerPrice),
+      p_content: useAuthentication
+        ? formatAuthOfferMessageContent(offerPrice)
+        : formatStandardOfferMessageContent(offerPrice),
       p_use_authentication: useAuthentication,
     };
 

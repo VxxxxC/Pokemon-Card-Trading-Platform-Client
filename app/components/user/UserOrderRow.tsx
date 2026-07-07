@@ -25,6 +25,7 @@ import {
   STATUS_STEP_INDEX,
 } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
+import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
 
 interface UserOrderRowProps {
   order: SaleOrder;
@@ -37,6 +38,9 @@ interface UserOrderRowProps {
     revieweeId: string;
     dbStatus: string;
     hasReviewedByMe: boolean;
+    useAuthentication?: boolean;
+    escrowStatus?: MemberEscrowStatus | null;
+    canPay?: boolean;
     canCancel: boolean;
     onRefresh: () => void;
   };
@@ -84,10 +88,15 @@ export function UserOrderRow({
   const counterpartLabel = isBuyer ? "賣家" : "買家";
   const counterpartName = isBuyer ? order.sellerName : order.buyerName;
 
+  const isAuthOrder = Boolean(dbOrderContext?.useAuthentication);
   const isPendingDbOrder = dbOrderContext?.dbStatus === "pending";
-  const canCompleteOrder = isPendingDbOrder && isBuyer;
+  const canCompleteOrder = isPendingDbOrder && isBuyer && !isAuthOrder;
+  const canPayAuthOrder = Boolean(dbOrderContext?.canPay);
   const showPendingActions =
-    isPendingDbOrder && (isBuyer || Boolean(dbOrderContext?.canCancel));
+    isPendingDbOrder &&
+    (canCompleteOrder ||
+      canPayAuthOrder ||
+      Boolean(dbOrderContext?.canCancel));
   const showReviewCta =
     dbOrderContext?.dbStatus === "completed" &&
     !dbOrderContext.hasReviewedByMe &&
@@ -199,6 +208,20 @@ export function UserOrderRow({
           >
             {showPendingActions && (
               <>
+                {canPayAuthOrder && (
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() =>
+                      router.push(
+                        "/profile/user/orderDetail/" + navigateOrderId,
+                      )
+                    }
+                    className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    前往付款
+                  </button>
+                )}
                 {canCompleteOrder && (
                   <MemberOrderCompleteConfirmDialog
                     disabled={isActionLoading}

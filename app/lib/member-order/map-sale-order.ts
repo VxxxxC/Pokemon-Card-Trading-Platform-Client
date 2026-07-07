@@ -1,5 +1,31 @@
 import type { UserTradingOrder } from "@/app/actions/orders";
-import type { SaleOrder } from "@/app/lib/types/trading";
+import type { SaleOrder, OrderStatus } from "@/app/lib/types/trading";
+import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
+
+function mapAuthOrderStatus(
+  dbStatus: UserTradingOrder["status"],
+  escrowStatus: MemberEscrowStatus | null,
+): OrderStatus {
+  if (dbStatus === "cancelled") {
+    return "cancelled";
+  }
+
+  if (dbStatus === "completed") {
+    return "released";
+  }
+
+  if (
+    escrowStatus === "payment" ||
+    escrowStatus === "custody" ||
+    escrowStatus === "grading" ||
+    escrowStatus === "shipped" ||
+    escrowStatus === "released"
+  ) {
+    return escrowStatus;
+  }
+
+  return "payment";
+}
 
 function formatListingGrade(order: UserTradingOrder): string {
   const { gradingCompany, gradingScore } = order.listing;
@@ -33,6 +59,12 @@ function formatOrderDateTime(createdAt: string | null): string {
 export function mapTradingOrderToSaleOrder(order: UserTradingOrder): SaleOrder {
   const isBuyer = order.persona === "buy";
   const counterpartyName = order.counterparty.displayName;
+  const p2pStatus: OrderStatus =
+    order.status === "cancelled"
+      ? "cancelled"
+      : order.status === "completed"
+        ? "released"
+        : "payment";
 
   return {
     id: order.id,
@@ -44,7 +76,9 @@ export function mapTradingOrderToSaleOrder(order: UserTradingOrder): SaleOrder {
     cardNo: order.product.cardNumber ?? order.product.displayId ?? "",
     grade: formatListingGrade(order),
     amount: order.finalPrice,
-    status: "payment",
+    status: order.useAuthentication
+      ? mapAuthOrderStatus(order.status, order.escrowStatus)
+      : p2pStatus,
     createdAt: formatOrderDateTime(order.createdAt),
     orderType: "C2C",
     userContext: isBuyer ? "BUYER" : "SELLER",

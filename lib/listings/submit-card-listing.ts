@@ -17,6 +17,7 @@ export type SubmitCardListingInput = {
   gradingOptionId: string;
   price: number;
   sellerDescription?: string;
+  useAuthentication?: boolean;
   imageFiles: File[];
 };
 
@@ -75,6 +76,10 @@ export async function submitCardListingWithProgress(
     if (input.sellerDescription?.trim()) {
       formData.append("sellerDescription", input.sellerDescription.trim());
     }
+    formData.append(
+      "useAuthentication",
+      String(input.useAuthentication ?? true),
+    );
     formData.append("uploadedImages", JSON.stringify(uploadedImages));
 
     const result = await createCardListing(formData);

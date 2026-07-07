@@ -168,6 +168,16 @@ export function getGradingOption(id: string): GradingOption {
   return gradingOptionById.get(id) ?? gradingOptionById.get(DEFAULT_GRADING_OPTION_ID)!;
 }
 
+/** True when the listing grade is 裸卡 (A–D); platform auth add-on only applies to raw cards. */
+export function isRawGradingOption(option: GradingOption): boolean {
+  return option.group === "RAW";
+}
+
+export function isRawGradingOptionId(id: string): boolean {
+  const option = gradingOptionById.get(id);
+  return option != null && isRawGradingOption(option);
+}
+
 export function getGradingOptionsByGroup(
   group: GradingOption["group"],
 ): GradingOption[] {

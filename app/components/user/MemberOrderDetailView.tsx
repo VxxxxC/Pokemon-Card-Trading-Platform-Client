@@ -9,8 +9,12 @@ import { toast } from "sonner";
 import {
   cancelMemberOrder,
   completeMemberOrder,
+  confirmBuyerReceived,
+  submitInboundTracking,
   type MemberOrderDetail,
 } from "@/app/actions/orders";
+import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDevPanel";
+import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
@@ -71,6 +75,7 @@ export function MemberOrderDetailView({
   const displayOrderNumber = order.orderNumber ?? order.id;
   const createdAtLabel = formatMemberOrderDateTime(order.createdAt);
   const useMeetupUi = isMeetupOnlyMemberOrder(order.useAuthentication);
+  const [inboundTrackingInput, setInboundTrackingInput] = useState("");
 
   const galleryImages =
     order.listingImageUrls.length > 0
@@ -145,6 +150,46 @@ export function MemberOrderDetailView({
 
     toast.success("交易已取消，商品已重新上架");
     onRefresh();
+  };
+
+  const handleSubmitInbound = async () => {
+    if (isActionLoading) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    const result = await submitInboundTracking(order.id, inboundTrackingInput);
+    setIsActionLoading(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("入庫物流單號已提交");
+    onRefresh();
+  };
+
+  const handleConfirmReceipt = async () => {
+    if (isActionLoading) {
+      return;
+    }
+
+    setIsActionLoading(true);
+    const result = await confirmBuyerReceived(order.id);
+    setIsActionLoading(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success("已確認收貨，交易完成！");
+    onRefresh();
+
+    if (onOpenReview) {
+      onOpenReview(order.id, order.counterparty.id);
+    }
   };
 
   const handleOpenReview = () => {
@@ -297,7 +342,127 @@ export function MemberOrderDetailView({
         </div>
       ) : (
         <div className="space-y-4">
-          <MemberAuthOrderTimeline status={order.status} />
+          <MemberAuthOrderTimeline
+            status={order.status}
+            escrowStatus={order.escrowStatus}
+          />
+
+          {order.escrowStatus === "payment" && order.canPay ? (
+            <MemberAuthMockPaymentPanel
+              orderId={order.id}
+              finalPrice={order.finalPrice}
+              paymentAmount={order.paymentAmount}
+              disabled={isActionLoading}
+              onSuccess={onRefresh}
+            />
+          ) : null}
+
+          {order.escrowStatus === "custody" && isSeller ? (
+            <div className="space-y-3 rounded-xl border border-white/5 bg-[#17130f] p-4">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                請將卡牌寄往平台倉庫，並填寫順豐物流單號。
+              </p>
+              {order.inboundTrackingNo ? (
+                <p className="font-mono text-[12px] text-brand">
+                  已提交單號：{order.inboundTrackingNo}
+                </p>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={inboundTrackingInput}
+                    onChange={(event) =>
+                      setInboundTrackingInput(event.target.value)
+                    }
+                    placeholder="寄往平台的順豐單號"
+                    className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+                  />
+                  <button
+                    type="button"
+                    disabled={isActionLoading || !inboundTrackingInput.trim()}
+                    onClick={() => void handleSubmitInbound()}
+                    className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-semibold text-[13px] disabled:opacity-50"
+                  >
+                    提交入庫物流單號
+                  </button>
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {order.escrowStatus === "custody" && isBuyer ? (
+            <p className="text-[12.5px] text-text-secondary">
+              等待賣家將卡牌寄至平台倉庫…
+            </p>
+          ) : null}
+
+          {order.escrowStatus === "shipped" ? (
+            <div className="space-y-2 rounded-xl border border-white/5 bg-[#17130f] p-4">
+              {order.outboundTrackingNo ? (
+                <p className="font-mono text-[12px] text-brand">
+                  平台代發物流：{order.outboundTrackingNo}
+                </p>
+              ) : (
+                <p className="text-[12px] text-text-secondary">
+                  平台鑑定通過，待上載寄出物流單號。
+                </p>
+              )}
+              {order.canConfirmReceipt ? (
+                <button
+                  type="button"
+                  disabled={isActionLoading}
+                  onClick={() => void handleConfirmReceipt()}
+                  className="w-full h-10 rounded-xl bg-success text-white font-semibold text-[13px] disabled:opacity-50"
+                >
+                  確認收貨
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
+          {order.status === "cancelled" && order.useAuthentication ? (
+            <p className="text-[12px] text-text-secondary">
+              鑑定失敗或交易已取消，模擬全額退款已標記（測試模式）。
+            </p>
+          ) : null}
+
+          {isPending && order.canCancel && isSeller ? (
+            <AlertDialog>
+              <AlertDialogTrigger
+                disabled={isActionLoading}
+                className="w-full h-10 rounded-xl border border-red-400/30 text-red-300 text-[13px] font-semibold disabled:opacity-50"
+              >
+                取消交易
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-[#26211C] border border-white/10">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-[15px] font-black">
+                    確認取消交易
+                  </AlertDialogTitle>
+                </AlertDialogHeader>
+                <p className="text-[12.5px] text-text-secondary">
+                  確認後訂單將取消，商品將重新上架。
+                </p>
+                <div className="flex flex-col gap-2">
+                  <AlertDialogAction
+                    onClick={() => void handleCancel()}
+                    className="h-11 rounded-xl bg-[#ef4444] font-black text-white"
+                  >
+                    確認取消
+                  </AlertDialogAction>
+                  <AlertDialogCancel className="h-10 rounded-xl border border-white/10">
+                    返回
+                  </AlertDialogCancel>
+                </div>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
+
+          <MemberAuthAdminDevPanel
+            orderId={order.id}
+            escrowStatus={order.escrowStatus}
+            onRefresh={onRefresh}
+          />
 
           {showReviewCta && (
             <button

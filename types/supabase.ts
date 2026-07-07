@@ -240,6 +240,13 @@ export type Database = {
             referencedRelation: "listings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_listing_bookmarks_listing_id"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
+          },
         ]
       }
       listing_stats: {
@@ -268,6 +275,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "listings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_stats_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: true
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
           },
         ]
       }
@@ -336,45 +350,75 @@ export type Database = {
       }
       member_orders: {
         Row: {
+          auth_result: string | null
           buyer_id: string
           created_at: string | null
+          escrow_status:
+            | Database["public"]["Enums"]["member_escrow_status"]
+            | null
           expires_at: string
           extended_count: number
           final_price: number
           id: string
+          inbound_tracking_no: string | null
           listing_id: string
+          logistics_proof_path: string | null
           meetup_details: Json | null
+          mock_payment_session_id: string | null
           order_number: string | null
+          outbound_tracking_no: string | null
+          payment_confirmed_at: string | null
+          platform_received_at: string | null
           seller_id: string
           status: Database["public"]["Enums"]["member_order_state"] | null
           updated_at: string | null
           use_authentication: boolean
         }
         Insert: {
+          auth_result?: string | null
           buyer_id: string
           created_at?: string | null
+          escrow_status?:
+            | Database["public"]["Enums"]["member_escrow_status"]
+            | null
           expires_at?: string
           extended_count?: number
           final_price: number
           id?: string
+          inbound_tracking_no?: string | null
           listing_id: string
+          logistics_proof_path?: string | null
           meetup_details?: Json | null
+          mock_payment_session_id?: string | null
           order_number?: string | null
+          outbound_tracking_no?: string | null
+          payment_confirmed_at?: string | null
+          platform_received_at?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["member_order_state"] | null
           updated_at?: string | null
           use_authentication?: boolean
         }
         Update: {
+          auth_result?: string | null
           buyer_id?: string
           created_at?: string | null
+          escrow_status?:
+            | Database["public"]["Enums"]["member_escrow_status"]
+            | null
           expires_at?: string
           extended_count?: number
           final_price?: number
           id?: string
+          inbound_tracking_no?: string | null
           listing_id?: string
+          logistics_proof_path?: string | null
           meetup_details?: Json | null
+          mock_payment_session_id?: string | null
           order_number?: string | null
+          outbound_tracking_no?: string | null
+          payment_confirmed_at?: string | null
+          platform_received_at?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["member_order_state"] | null
           updated_at?: string | null
@@ -394,6 +438,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_member_orders_listing_id"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
           },
           {
             foreignKeyName: "fk_member_orders_seller"
@@ -499,6 +550,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_merchant_orders_listing_id"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
           },
           {
             foreignKeyName: "fk_merchant_orders_merchant_id"
@@ -610,6 +668,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
           },
           {
             foreignKeyName: "offers_room_id_fkey"
@@ -1181,7 +1246,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      marketplace_product_summaries: {
+        Row: {
+          card_number: string | null
+          catalog_type: Database["public"]["Enums"]["catalog_type"] | null
+          display_id: string | null
+          grading_company: string | null
+          grading_score: string | null
+          highest_price: number | null
+          image_url: string | null
+          latest_listing_at: string | null
+          listing_count: number | null
+          lowest_listing_created_at: string | null
+          lowest_listing_id: string | null
+          lowest_price: number | null
+          name_en: string | null
+          name_ja: string | null
+          name_zh: string | null
+          product_id: string | null
+          product_name: string | null
+          rarity: string | null
+          seller_id: string | null
+          seller_name: string | null
+          seller_persona:
+            | Database["public"]["Enums"]["seller_persona_type"]
+            | null
+          set_code: string | null
+          use_authentication: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_listings_seller_id"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       acknowledge_reward_grants: {
@@ -1204,6 +1313,10 @@ export type Database = {
         Args: { p_listing_id: string }
         Returns: undefined
       }
+      fn_claim_mission_points: {
+        Args: { p_description?: string; p_mission_id: string; p_points: number }
+        Returns: Json
+      }
       fn_grant_points_from_template: {
         Args: { p_template_id: string; p_user_id: string }
         Returns: Json
@@ -1216,9 +1329,25 @@ export type Database = {
         }
         Returns: string
       }
+      fn_member_order_is_open: {
+        Args: {
+          p_escrow_status: Database["public"]["Enums"]["member_escrow_status"]
+          p_status: Database["public"]["Enums"]["member_order_state"]
+          p_use_authentication: boolean
+        }
+        Returns: boolean
+      }
       fn_recalculate_reputation_tags: {
         Args: { p_user_id: string }
         Returns: undefined
+      }
+      fn_redeem_member_points: {
+        Args: {
+          p_amount: number
+          p_description?: string
+          p_source_ref?: string
+        }
+        Returns: Json
       }
       fn_reward_template_has_stock: {
         Args: {
@@ -1249,6 +1378,7 @@ export type Database = {
         Returns: boolean
       }
       generate_profile_username: { Args: never; Returns: string }
+      get_chat_room_thread: { Args: { p_room_id: string }; Returns: Json }
       get_gamification_stats_for_me: { Args: never; Returns: Json }
       get_marketplace_price_bounds: {
         Args: never
@@ -1287,14 +1417,16 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
+      get_marketplace_rarities: {
+        Args: never
+        Returns: {
+          rarity: string
+        }[]
+      }
       get_reward_coupon_center: { Args: never; Returns: Json }
       get_unacknowledged_reward_grants: { Args: never; Returns: Json }
       get_user_chat_inbox: { Args: never; Returns: Json }
       get_user_chat_inbox_lobby: { Args: never; Returns: Json }
-      get_chat_room_thread: {
-        Args: { p_room_id: string }
-        Returns: Json
-      }
       get_user_reward_coupons: { Args: never; Returns: Json }
       is_chat_room_member: {
         Args: { p_room_id: string; p_user_id?: string }
@@ -1305,6 +1437,7 @@ export type Database = {
         Args: { grading_company: string; grading_score: string }
         Returns: number
       }
+      refresh_marketplace_product_summaries: { Args: never; Returns: undefined }
       rpc_accept_offer: {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
@@ -1313,8 +1446,24 @@ export type Database = {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
       }
+      rpc_complete_member_auth_grading: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       rpc_complete_member_order: {
         Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
+      rpc_confirm_buyer_received: {
+        Args: { p_buyer_id: string; p_order_id: string }
+        Returns: Json
+      }
+      rpc_confirm_platform_received: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
+      rpc_fail_member_auth_order: {
+        Args: { p_order_id: string }
         Returns: Json
       }
       rpc_get_user_reviewed_member_order_ids: {
@@ -1345,6 +1494,14 @@ export type Database = {
             }
             Returns: Json
           }
+      rpc_mock_pay_member_auth_order: {
+        Args: {
+          p_buyer_id: string
+          p_mock_session_id?: string
+          p_order_id: string
+        }
+        Returns: Json
+      }
       rpc_modify_offer: {
         Args: {
           p_buyer_id: string
@@ -1362,6 +1519,14 @@ export type Database = {
         Args: { p_content: string; p_room_id: string; p_sender_id: string }
         Returns: Json
       }
+      rpc_submit_inbound_tracking: {
+        Args: { p_order_id: string; p_seller_id: string; p_tracking_no: string }
+        Returns: Json
+      }
+      rpc_submit_outbound_tracking: {
+        Args: { p_order_id: string; p_tracking_no: string }
+        Returns: Json
+      }
       rpc_submit_transaction_review: {
         Args: {
           p_comment?: string
@@ -1371,34 +1536,6 @@ export type Database = {
           p_user_id?: string
         }
         Returns: Json
-      }
-      search_public_profile_reviews: {
-        Args: {
-          p_page?: number
-          p_page_size?: number
-          p_persona: Database["public"]["Enums"]["review_persona"]
-          p_profile_id: string
-          p_sort?: string
-        }
-        Returns: {
-          aggregate_rating: number | null
-          comment: string | null
-          created_at: string
-          is_merchant_tx: boolean
-          page: number
-          page_size: number
-          public_review_count: number
-          range_end: number
-          range_start: number
-          rating: number
-          review_id: string
-          reviewer_avatar_path: string | null
-          reviewer_display_name: string
-          reviewer_id: string
-          reviewer_username: string | null
-          total_count: number
-          total_pages: number
-        }[]
       }
       run_auto_grant_rewards_for_me: { Args: never; Returns: Json }
       search_marketplace_products: {
@@ -1448,6 +1585,110 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
+      search_marketplace_products_browse: {
+        Args: { p_page?: number; p_page_size?: number; p_sort?: string }
+        Returns: {
+          card_number: string
+          catalog_type: Database["public"]["Enums"]["catalog_type"]
+          display_id: string
+          grading_company: string
+          grading_score: string
+          highest_price: number
+          image_url: string
+          latest_listing_at: string
+          listing_count: number
+          lowest_listing_created_at: string
+          lowest_listing_id: string
+          lowest_price: number
+          name_en: string
+          name_ja: string
+          name_zh: string
+          page: number
+          page_size: number
+          product_id: string
+          product_name: string
+          range_end: number
+          range_start: number
+          rarity: string
+          seller_id: string
+          seller_name: string
+          seller_persona: Database["public"]["Enums"]["seller_persona_type"]
+          set_code: string
+          total_count: number
+          total_pages: number
+          use_authentication: boolean
+        }[]
+      }
+      search_marketplace_seller_listings: {
+        Args: {
+          p_grade_filters?: Json
+          p_name_query?: string
+          p_page?: number
+          p_page_size?: number
+          p_price_max?: number
+          p_price_min?: number
+          p_rarities?: string[]
+          p_seller_id: string
+          p_sort?: string
+        }
+        Returns: {
+          card_number: string
+          created_at: string
+          display_id: string
+          grading_company: string
+          grading_score: string
+          image_url: string
+          listing_id: string
+          name_en: string
+          name_ja: string
+          name_zh: string
+          page: number
+          page_size: number
+          price: number
+          product_id: string
+          product_name: string
+          range_end: number
+          range_start: number
+          rarity: string
+          seller_id: string
+          seller_max_price: number
+          seller_min_price: number
+          seller_name: string
+          seller_persona: Database["public"]["Enums"]["seller_persona_type"]
+          set_code: string
+          total_count: number
+          total_pages: number
+          use_authentication: boolean
+        }[]
+      }
+      search_public_profile_reviews: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_persona: Database["public"]["Enums"]["review_persona"]
+          p_profile_id: string
+          p_sort?: string
+        }
+        Returns: {
+          aggregate_rating: number
+          comment: string
+          created_at: string
+          is_merchant_tx: boolean
+          page: number
+          page_size: number
+          public_review_count: number
+          range_end: number
+          range_start: number
+          rating: number
+          review_id: string
+          reviewer_avatar_path: string
+          reviewer_display_name: string
+          reviewer_id: string
+          reviewer_username: string
+          total_count: number
+          total_pages: number
+        }[]
+      }
       search_user_trading_orders: {
         Args: {
           p_page?: number
@@ -1473,6 +1714,7 @@ export type Database = {
           counterparty_username: string
           created_at: string
           display_id: string
+          escrow_status: Database["public"]["Enums"]["member_escrow_status"]
           expires_at: string
           final_price: number
           grading_company: string
@@ -1513,6 +1755,13 @@ export type Database = {
         | "refunded"
       kyc_state: "pending" | "verified" | "rejected"
       listing_status: "active" | "sold" | "inactive"
+      member_escrow_status:
+        | "payment"
+        | "custody"
+        | "grading"
+        | "shipped"
+        | "released"
+        | "cancelled"
       member_order_state:
         | "pending"
         | "meetup_arranged"
@@ -1681,6 +1930,14 @@ export const Constants = {
       ],
       kyc_state: ["pending", "verified", "rejected"],
       listing_status: ["active", "sold", "inactive"],
+      member_escrow_status: [
+        "payment",
+        "custody",
+        "grading",
+        "shipped",
+        "released",
+        "cancelled",
+      ],
       member_order_state: [
         "pending",
         "meetup_arranged",

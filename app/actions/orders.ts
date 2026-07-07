@@ -10,6 +10,14 @@ import {
   tradingPerfLog,
   tradingPerfNow,
 } from "@/lib/member-order/perf-log";
+import {
+  calculateMemberAuthPaymentTotal,
+  createMemberAuthPaymentSession,
+} from "@/lib/payments/member-auth-payment";
+import {
+  getMemberAuthOrderActions,
+  type MemberEscrowStatus,
+} from "@/app/lib/member-order/auth-escrow";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { parseListingImageUrls } from "@/lib/listings/images";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +58,7 @@ type SearchUserTradingOrdersRpcRow = {
   grading_company: string;
   grading_score: string | null;
   use_authentication: boolean;
+  escrow_status: MemberEscrowStatus | null;
   listing_images: unknown;
   product_name_ja: string;
   product_name_zh: string | null;
@@ -104,6 +113,7 @@ export type UserTradingOrder = {
   persona: "buy" | "sell";
   hasReviewedByMe: boolean;
   useAuthentication: boolean;
+  escrowStatus: MemberEscrowStatus | null;
   counterparty: UserTradingOrderCounterparty;
   listing: {
     gradingCompany: string;
@@ -159,6 +169,13 @@ export type GetUserTradingOrdersResult =
 export type MemberOrderDetail = UserTradingOrder & {
   listingId: string;
   listingImageUrls: string[];
+  inboundTrackingNo: string | null;
+  outboundTrackingNo: string | null;
+  paymentAmount: number;
+  listingAcceptsBuyerAuth: boolean;
+  canPay: boolean;
+  canSubmitInbound: boolean;
+  canConfirmReceipt: boolean;
   canCancel: boolean;
 };
 
@@ -177,6 +194,9 @@ type MemberOrderDetailQueryRow = {
   expires_at: string;
   listing_id: string;
   use_authentication: boolean;
+  escrow_status: MemberEscrowStatus | null;
+  inbound_tracking_no: string | null;
+  outbound_tracking_no: string | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -297,6 +317,7 @@ function mapRpcRow(row: SearchUserTradingOrdersRpcRow): UserTradingOrder {
     persona: row.persona === "sell" ? "sell" : "buy",
     hasReviewedByMe: row.has_reviewed_by_me,
     useAuthentication: row.use_authentication,
+    escrowStatus: row.escrow_status,
     counterparty: toCounterparty({
       id: row.counterparty_id,
       displayName: row.counterparty_display_name ?? "未知用戶",
@@ -423,9 +444,16 @@ function mapMemberOrderDetailRow(
   hasReviewedByMe: boolean,
 ): MemberOrderDetail {
   const isBuyer = row.buyer_id === viewerId;
+  const persona = isBuyer ? "buy" : "sell";
   const counterpartyProfile = isBuyer ? row.seller : row.buyer;
   const catalog = row.listings.product_catalog;
   const listingImageUrls = parseListingImageUrls(row.listings.images);
+  const authActions = getMemberAuthOrderActions({
+    persona,
+    useAuthentication: row.use_authentication,
+    escrowStatus: row.escrow_status,
+    status: row.status,
+  });
 
   return {
     id: row.id,
@@ -436,9 +464,10 @@ function mapMemberOrderDetailRow(
     status: row.status,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
-    persona: isBuyer ? "buy" : "sell",
+    persona,
     hasReviewedByMe,
     useAuthentication: row.use_authentication,
+    escrowStatus: row.escrow_status,
     counterparty: toCounterparty({
       id: counterpartyProfile.id,
       displayName: counterpartyProfile.display_name ?? "未知用戶",
@@ -461,9 +490,16 @@ function mapMemberOrderDetailRow(
     },
     listingId: row.listing_id,
     listingImageUrls,
-    canCancel:
-      row.seller_id === viewerId &&
-      row.status === "pending",
+    inboundTrackingNo: row.inbound_tracking_no,
+    outboundTrackingNo: row.outbound_tracking_no,
+    paymentAmount: calculateMemberAuthPaymentTotal(Number(row.final_price)),
+    listingAcceptsBuyerAuth: row.listings.use_authentication,
+    canPay: authActions.canPay,
+    canSubmitInbound: authActions.canSubmitInbound,
+    canConfirmReceipt: authActions.canConfirmReceipt,
+    canCancel: row.use_authentication
+      ? authActions.canCancel
+      : row.seller_id === viewerId && row.status === "pending",
   };
 }
 
@@ -509,6 +545,9 @@ export async function getMemberOrderDetail(
           expires_at,
           listing_id,
           use_authentication,
+          escrow_status,
+          inbound_tracking_no,
+          outbound_tracking_no,
           listings!inner (
             grading_company,
             grading_score,
@@ -679,5 +718,173 @@ export async function completeMemberOrder(
       error instanceof Error ? error.message : "確認完成時發生錯誤";
     console.error("[completeMemberOrder]", error);
     return { success: false, error: message };
+  }
+}
+
+export async function mockPayMemberAuthOrder(
+  orderId: string,
+): Promise<MemberOrderActionResult> {
+  const trimmedOrderId = orderId.trim();
+  if (!trimmedOrderId) {
+    return { success: false, error: "找不到此訂單" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再付款" };
+    }
+
+    const session = createMemberAuthPaymentSession({
+      orderId: trimmedOrderId,
+      cardPrice: 0,
+    });
+
+    const { error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_mock_pay_member_auth_order",
+          args: {
+            p_order_id: string;
+            p_buyer_id: string;
+            p_mock_session_id?: string;
+          },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("rpc_mock_pay_member_auth_order", {
+      p_order_id: trimmedOrderId,
+      p_buyer_id: user.id,
+      p_mock_session_id: session.sessionId,
+    });
+
+    if (error) {
+      console.error("[mockPayMemberAuthOrder]", error.message);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/profile/user/trading");
+    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[mockPayMemberAuthOrder]", error);
+    return { success: false, error: "模擬付款失敗，請稍後再試" };
+  }
+}
+
+export async function submitInboundTracking(
+  orderId: string,
+  trackingNo: string,
+): Promise<MemberOrderActionResult> {
+  const trimmedOrderId = orderId.trim();
+  const trimmedTracking = trackingNo.trim();
+
+  if (!trimmedOrderId) {
+    return { success: false, error: "找不到此訂單" };
+  }
+  if (!trimmedTracking) {
+    return { success: false, error: "請輸入有效的順豐物流單號" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再提交" };
+    }
+
+    const { error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_submit_inbound_tracking",
+          args: {
+            p_order_id: string;
+            p_seller_id: string;
+            p_tracking_no: string;
+          },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("rpc_submit_inbound_tracking", {
+      p_order_id: trimmedOrderId,
+      p_seller_id: user.id,
+      p_tracking_no: trimmedTracking,
+    });
+
+    if (error) {
+      console.error("[submitInboundTracking]", error.message);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/profile/user/trading");
+    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[submitInboundTracking]", error);
+    return { success: false, error: "上載物流單號失敗" };
+  }
+}
+
+export async function confirmBuyerReceived(
+  orderId: string,
+): Promise<MemberOrderActionResult> {
+  const trimmedOrderId = orderId.trim();
+  if (!trimmedOrderId) {
+    return { success: false, error: "找不到此訂單" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再確認收貨" };
+    }
+
+    const { error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_confirm_buyer_received",
+          args: { p_order_id: string; p_buyer_id: string },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("rpc_confirm_buyer_received", {
+      p_order_id: trimmedOrderId,
+      p_buyer_id: user.id,
+    });
+
+    if (error) {
+      console.error("[confirmBuyerReceived]", error.message);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath("/profile/user/trading");
+    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[confirmBuyerReceived]", error);
+    return { success: false, error: "確認收貨失敗" };
   }
 }
