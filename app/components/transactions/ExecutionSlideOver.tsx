@@ -12,6 +12,7 @@ import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
+import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import {
   formatSellerIdentityLabel,
   resolveSellerProfilePath,
@@ -41,6 +42,10 @@ export function ExecutionSlideOver({
   const [customPrice, setCustomPrice] = useState("");
   const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ImageViewer integration states
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const userAuthRole = useUIStore((state) => state.userAuthRole);
   const isGuest = userAuthRole === "GUEST";
@@ -305,14 +310,18 @@ export function ExecutionSlideOver({
                   {images.map((img, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-[3/4] rounded-lg overflow-hidden bg-[#120f0c] border border-white/5"
+                      onClick={() => {
+                        setViewerIndex(idx);
+                        setIsViewerOpen(true);
+                      }}
+                      className="relative aspect-[3/4] rounded-lg overflow-hidden bg-[#120f0c] border border-white/5 cursor-zoom-in"
                     >
                       <Image
                         src={img}
                         alt={`${card.name} 實物照 ${idx + 1}`}
                         fill
                         sizes="(max-width: 640px) 28vw, 120px"
-                        className="object-cover"
+                        className="object-cover hover:scale-105 transition-transform duration-300"
                         unoptimized
                       />
                     </div>
@@ -404,6 +413,13 @@ export function ExecutionSlideOver({
           </div>
         </div>
       </div>
+
+      <ImageViewer
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+        images={images}
+        initialIndex={viewerIndex}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useSyncExternalStore, useState, useEffect } from "react";
+import React, { useSyncExternalStore, useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,6 +10,7 @@ import { useMerchantStore } from "@/app/store/useMerchantStore";
 import { OrderStatus, STATUS_STEP_INDEX } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import { toast } from "sonner";
+import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import {
   type CarouselApi,
   Carousel,
@@ -54,6 +55,10 @@ export default function MerchantOrderDetailPage() {
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
 
+  // ImageViewer integration states
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
   useEffect(() => {
     if (!api) return;
 
@@ -74,6 +79,11 @@ export default function MerchantOrderDetailPage() {
   }, [api]);
 
   const order = orders.find((o) => o.id === orderId);
+
+  const merchantImages = useMemo(() => {
+    if (!order) return [];
+    return Array.from({ length: 5 }, (_, photoIdx) => `https://picsum.photos/seed/${order.id}-p${photoIdx}/400/500`);
+  }, [order]);
 
   if (!isMounted) {
     return (
@@ -475,7 +485,7 @@ export default function MerchantOrderDetailPage() {
               opts={{ loop: true }}
             >
               <CarouselContent className="-ml-0 h-full">
-                {Array.from({ length: 5 }, (_, photoIdx) => {
+                {merchantImages.map((imageUrl, photoIdx) => {
                   const currentRemark =
                     current === photoIdx
                       ? (REMARKS_PRESETS[photoIdx] ?? "")
@@ -483,10 +493,14 @@ export default function MerchantOrderDetailPage() {
                   return (
                     <CarouselItem
                       key={photoIdx}
-                      className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
+                      onClick={() => {
+                        setViewerIndex(photoIdx);
+                        setIsViewerOpen(true);
+                      }}
+                      className="pl-0 relative w-full h-full overflow-hidden rounded-2xl cursor-zoom-in"
                     >
                       <Image
-                        src={`https://picsum.photos/seed/${order.id}-p${photoIdx}/400/500`}
+                        src={imageUrl}
                         alt={`${order.cardName} 實物照 ${photoIdx + 1}`}
                         fill
                         sizes="(max-width: 768px) 100vw, 400px"
@@ -530,6 +544,13 @@ export default function MerchantOrderDetailPage() {
           )}
         </div>
       </div>
+
+      <ImageViewer
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+        images={merchantImages}
+        initialIndex={viewerIndex}
+      />
     </div>
   );
 }

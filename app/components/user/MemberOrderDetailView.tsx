@@ -21,6 +21,7 @@ import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInv
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
+import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +64,10 @@ export function MemberOrderDetailView({
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+
+  // ImageViewer integration states
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
 
   const isSeller = order.persona === "sell";
   const isBuyer = !isSeller;
@@ -499,7 +504,11 @@ export function MemberOrderDetailView({
                   {galleryImages.map((imageUrl, photoIdx) => (
                     <CarouselItem
                       key={imageUrl + "-" + photoIdx}
-                      className="pl-0 relative w-full h-full overflow-hidden rounded-2xl"
+                      onClick={() => {
+                        setViewerIndex(photoIdx);
+                        setIsViewerOpen(true);
+                      }}
+                      className="pl-0 relative w-full h-full overflow-hidden rounded-2xl cursor-zoom-in"
                     >
                       <Image
                         src={imageUrl}
@@ -550,6 +559,13 @@ export function MemberOrderDetailView({
           返回交易管理
         </Link>
       </div>
+
+      <ImageViewer
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+        images={galleryImages}
+        initialIndex={viewerIndex}
+      />
     </div>
   );
 }

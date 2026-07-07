@@ -11,6 +11,7 @@ import type { MarketplaceSellerListingDetailView } from "@/app/lib/marketplace/t
 import { formatElementTypeZh } from "@/lib/catalog/element-types";
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
 import { IoChevronBack } from "react-icons/io5";
+import { ImageViewer } from "@/app/components/shared/ImageViewer";
 
 interface MerchantProductDetailPageClientProps {
   detail: MarketplaceSellerListingDetailView | null;
@@ -25,6 +26,7 @@ export function MerchantProductDetailPageClient({
 }: MerchantProductDetailPageClientProps) {
   const router = useRouter();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   if (!detail) {
     return (
@@ -83,13 +85,16 @@ export function MerchantProductDetailPageClient({
 
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 items-start">
           <section className="lg:col-span-5 lg:sticky lg:top-[5.5rem] space-y-3.5 mb-6 lg:mb-0">
-            <div className="relative w-full aspect-[5/3.8] bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden shadow-xl">
+            <div
+              onClick={() => setIsViewerOpen(true)}
+              className="relative w-full aspect-[5/3.8] bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden shadow-xl cursor-zoom-in"
+            >
               <Image
                 src={galleryPhotos[activeImageIndex] ?? galleryPhotos[0]}
                 alt={`${catalog.productName} 賣家實物特寫角度 ${activeImageIndex + 1}`}
                 fill
                 priority
-                className="object-cover"
+                className="object-cover hover:scale-[1.02] transition-transform duration-300"
               />
               <div className="absolute top-3 left-3 pointer-events-none">
                 <span className="inline-flex px-2 py-1 rounded bg-[#17130f]/85 backdrop-blur-sm border border-[rgba(237,232,224,0.15)] font-mono text-[9px] font-black text-brand uppercase tracking-widest">
@@ -103,7 +108,10 @@ export function MerchantProductDetailPageClient({
                 <button
                   key={`${img}-${i}`}
                   onMouseEnter={() => setActiveImageIndex(i)}
-                  onClick={() => setActiveImageIndex(i)}
+                  onClick={() => {
+                    setActiveImageIndex(i);
+                    setIsViewerOpen(true);
+                  }}
                   className={`relative aspect-[5/3.8] bg-[#26211C] rounded-xl overflow-hidden border transition-all cursor-pointer focus:outline-none ${
                     activeImageIndex === i
                       ? "border-brand ring-1 ring-brand/40 shadow-md"
@@ -247,6 +255,13 @@ export function MerchantProductDetailPageClient({
           </section>
         </div>
       </main>
+
+      <ImageViewer
+        isOpen={isViewerOpen}
+        onClose={() => setIsViewerOpen(false)}
+        images={galleryPhotos}
+        initialIndex={activeImageIndex}
+      />
     </div>
   );
 }
