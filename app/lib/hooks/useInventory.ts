@@ -3,21 +3,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  getInventoryPageBootstrap,
   getUserInventoryGroups,
-  getUserInventorySummary,
 } from "@/app/actions/inventory";
 import type {
+  InventoryPageBootstrap,
   InventoryProductGroup,
   InventorySummary,
 } from "@/app/lib/inventory/types";
+import {
+  logInventoryClientReady,
+  markInventoryClientMount,
+} from "@/app/lib/inventory/perf-log-client";
 import { INVENTORY_DEFAULT_PAGE_SIZE } from "@/lib/listings/constants";
 
 const SEARCH_DEBOUNCE_MS = 350;
+
+export type InventoryInitialData = Partial<InventoryPageBootstrap>;
 
 type UseInventoryOptions = {
   query?: string;
   page?: number;
   pageSize?: number;
+  initialData?: InventoryInitialData;
 };
 
 type UseInventoryResult = {
@@ -29,27 +37,49 @@ type UseInventoryResult = {
   summary: InventorySummary | null;
   isLoading: boolean;
   isSummaryLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   refetch: () => void;
   setPage: (page: number) => void;
 };
 
+function hasInventoryInitialBootstrap(
+  data: InventoryInitialData | undefined,
+): data is InventoryPageBootstrap {
+  return Boolean(data?.summary && data?.page);
+}
+
 export function useInventory(options: UseInventoryOptions = {}): UseInventoryResult {
   const query = options.query ?? "";
   const pageSize = options.pageSize ?? INVENTORY_DEFAULT_PAGE_SIZE;
+  const hasInitialBootstrap = hasInventoryInitialBootstrap(options.initialData);
 
-  const [page, setPage] = useState(options.page ?? 1);
-  const [groups, setGroups] = useState<InventoryProductGroup[]>([]);
-  const [totalGroups, setTotalGroups] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [summary, setSummary] = useState<InventorySummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [page, setPage] = useState(options.initialData?.page?.page ?? options.page ?? 1);
+  const [groups, setGroups] = useState<InventoryProductGroup[]>(
+    options.initialData?.page?.groups ?? [],
+  );
+  const [totalGroups, setTotalGroups] = useState(
+    options.initialData?.page?.totalGroups ?? 0,
+  );
+  const [totalPages, setTotalPages] = useState(
+    options.initialData?.page?.totalPages ?? 0,
+  );
+  const [summary, setSummary] = useState<InventorySummary | null>(
+    options.initialData?.summary ?? null,
+  );
+  const [isLoading, setIsLoading] = useState(!hasInitialBootstrap);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(!hasInitialBootstrap);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
+  const mountLoggedRef = useRef(false);
+  const didInitialBootstrapRef = useRef(hasInitialBootstrap);
+  const initialListKeyRef = useRef(`:${pageSize}`);
+  const initialPageRef = useRef(options.initialData?.page?.page ?? 1);
 
   const debouncedQueryRef = useRef(query);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const listKey = `${debouncedQuery}:${pageSize}`;
+  const isInitialListKey = listKey === initialListKeyRef.current;
 
   useEffect(() => {
     debouncedQueryRef.current = query;
@@ -63,50 +93,109 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
     queueMicrotask(() => setPage(1));
   }, [debouncedQuery, pageSize]);
 
+  useEffect(() => {
+    if (mountLoggedRef.current) return;
+    mountLoggedRef.current = true;
+    markInventoryClientMount(hasInitialBootstrap);
+    if (hasInitialBootstrap) {
+      logInventoryClientReady("bootstrap");
+    }
+  }, [hasInitialBootstrap]);
+
+  const refreshBootstrap = useCallback(async (): Promise<boolean> => {
+    const result = await getInventoryPageBootstrap({
+      page,
+      pageSize,
+      query: debouncedQuery,
+    });
+
+    if (!result.success) {
+      setError(result.error);
+      toast.error(result.error);
+      return false;
+    }
+
+    setSummary(result.data.summary);
+    setGroups(result.data.page.groups);
+    setTotalGroups(result.data.page.totalGroups);
+    setTotalPages(result.data.page.totalPages);
+    setPage(result.data.page.page);
+    setError(null);
+    return true;
+  }, [page, pageSize, debouncedQuery]);
+
   const refetch = useCallback(() => {
-    setReloadToken((value) => value + 1);
-  }, []);
+    void (async () => {
+      setIsRefreshing(true);
+      setIsSummaryLoading(true);
+      await refreshBootstrap();
+      setIsRefreshing(false);
+      setIsSummaryLoading(false);
+    })();
+  }, [refreshBootstrap]);
 
   useEffect(() => {
-    const handleRefresh = () => {
-      refetch();
-    };
+    if (hasInitialBootstrap || didInitialBootstrapRef.current) {
+      return;
+    }
 
-    window.addEventListener("inventory-should-refresh", handleRefresh);
-    return () => {
-      window.removeEventListener("inventory-should-refresh", handleRefresh);
-    };
-  }, [refetch]);
-
-  useEffect(() => {
     let cancelled = false;
 
-    const loadSummary = async () => {
+    (async () => {
       setIsSummaryLoading(true);
-      const result = await getUserInventorySummary();
+      setIsLoading(true);
+
+      const result = await getInventoryPageBootstrap({
+        page,
+        pageSize,
+        query: debouncedQuery,
+      });
+
       if (cancelled) return;
 
+      didInitialBootstrapRef.current = true;
+
       if (!result.success) {
+        setError(result.error);
         setSummary(null);
-        setIsSummaryLoading(false);
-        return;
+        setGroups([]);
+        setTotalGroups(0);
+        setTotalPages(0);
+      } else {
+        setSummary(result.data.summary);
+        setGroups(result.data.page.groups);
+        setTotalGroups(result.data.page.totalGroups);
+        setTotalPages(result.data.page.totalPages);
+        setPage(result.data.page.page);
+        setError(null);
       }
 
-      setSummary(result.data);
       setIsSummaryLoading(false);
-    };
-
-    void loadSummary();
+      setIsLoading(false);
+      logInventoryClientReady("bootstrap");
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [hasInitialBootstrap, page, pageSize, debouncedQuery]);
 
   useEffect(() => {
+    if (!didInitialBootstrapRef.current && !hasInitialBootstrap) {
+      return;
+    }
+
+    if (
+      hasInitialBootstrap &&
+      isInitialListKey &&
+      page === initialPageRef.current
+    ) {
+      return;
+    }
+
     let cancelled = false;
 
-    const loadGroups = async () => {
+    (async () => {
       setIsLoading(true);
       setError(null);
 
@@ -132,15 +221,20 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
       setTotalGroups(result.data.totalGroups);
       setTotalPages(result.data.totalPages);
       setPage(result.data.page);
+      setError(null);
       setIsLoading(false);
-    };
-
-    void loadGroups();
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, debouncedQuery, reloadToken]);
+  }, [
+    page,
+    pageSize,
+    debouncedQuery,
+    hasInitialBootstrap,
+    isInitialListKey,
+  ]);
 
   return {
     groups,
@@ -151,6 +245,7 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
     summary,
     isLoading,
     isSummaryLoading,
+    isRefreshing,
     error,
     refetch,
     setPage,

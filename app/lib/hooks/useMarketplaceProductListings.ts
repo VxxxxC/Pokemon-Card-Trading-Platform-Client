@@ -27,11 +27,22 @@ export type MarketplaceProductListingsFilters = {
   pageSize: number;
 };
 
+export type MarketplaceProductListingsInitialData = {
+  listings: MarketplaceProductListingRow[];
+  meta: MarketplacePaginationMeta;
+  lowestPrice: number | null;
+};
+
+type UseMarketplaceProductListingsOptions = {
+  initialData?: MarketplaceProductListingsInitialData;
+};
+
 type UseMarketplaceProductListingsResult = {
   listings: MarketplaceProductListingRow[];
   meta: MarketplacePaginationMeta;
   lowestPrice: number | null;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   refetch: () => void;
 };
@@ -49,15 +60,29 @@ function filtersKey(filters: MarketplaceProductListingsFilters): string {
 
 export function useMarketplaceProductListings(
   filters: MarketplaceProductListingsFilters,
+  options: UseMarketplaceProductListingsOptions = {},
 ): UseMarketplaceProductListingsResult {
-  const [listings, setListings] = useState<MarketplaceProductListingRow[]>([]);
-  const [meta, setMeta] = useState<MarketplacePaginationMeta>(EMPTY_META);
-  const [lowestPrice, setLowestPrice] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { initialData } = options;
+  const hasInitialData = Boolean(initialData);
+
+  const [listings, setListings] = useState<MarketplaceProductListingRow[]>(
+    initialData?.listings ?? [],
+  );
+  const [meta, setMeta] = useState<MarketplacePaginationMeta>(
+    initialData?.meta ?? EMPTY_META,
+  );
+  const [lowestPrice, setLowestPrice] = useState<number | null>(
+    initialData?.lowestPrice ?? null,
+  );
+  const [isFetching, setIsFetching] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
 
   const requestIdRef = useRef(0);
   const filtersRef = useRef(filters);
+  const skipNextFetchRef = useRef(hasInitialData);
+  const initialFiltersKeyRef = useRef(
+    hasInitialData ? filtersKey(filters) : null,
+  );
   const listingsKey = filtersKey(filters);
 
   filtersRef.current = filters;
@@ -107,7 +132,7 @@ export function useMarketplaceProductListings(
         setError("無法連線至大盤市場");
       } finally {
         if (requestId === requestIdRef.current) {
-          setIsLoading(false);
+          setIsFetching(false);
         }
       }
     },
@@ -115,10 +140,18 @@ export function useMarketplaceProductListings(
   );
 
   useEffect(() => {
+    if (
+      skipNextFetchRef.current &&
+      initialFiltersKeyRef.current === listingsKey
+    ) {
+      skipNextFetchRef.current = false;
+      return;
+    }
+
     const requestId = ++requestIdRef.current;
     const activeFilters = filtersRef.current;
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
     void runListingsFetch(requestId, activeFilters);
   }, [listingsKey, runListingsFetch]);
@@ -126,16 +159,19 @@ export function useMarketplaceProductListings(
   const refetch = useCallback(() => {
     const requestId = ++requestIdRef.current;
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
     void runListingsFetch(requestId, filtersRef.current);
   }, [runListingsFetch]);
+
+  const isLoading = isFetching && listings.length === 0;
 
   return {
     listings,
     meta,
     lowestPrice,
     isLoading,
+    isRefreshing: isFetching && listings.length > 0,
     error,
     refetch,
   };

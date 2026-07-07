@@ -8,21 +8,31 @@
 ## Architecture
 
 ```
-User overview page mount
-  → getMemberDashboardOverview() — single auth, internal Promise.all
-      profiles (completed_trades_count, rating, avatar, join date)
-      gamification_stats.points_balance → pointsBalance
-      user_collections + active listings
-      loadCollectionPricingContext(productIds)
-      computeMemberTradingStats (collection totals + orphan listings)
+GET /profile/user
+  → page.tsx (Suspense + UserOverviewSkeleton)
+  → UserOverviewPageData (Server Component)
+      getOptionalAuthUser() once
+      Promise.all:
+        getMemberDashboardOverview() — single supabase client, internal Promise.all
+          profiles, get_gamification_stats_for_me RPC → pointsBalance
+          user_collections (stats columns only)
+          active listings (reused in loadCollectionPricingContext — no duplicate seller query)
+          loadCollectionPricingContext(productIds, { userListingRows })
+          computeMemberTradingStats
+        searchUserTradingOrders({ tabStatus: 'pending', pageSize: 5 })
+        getPublicProfileReviews({ persona: 'member', pageSize: 5 })
+  → UserOverviewClient — initialData; skip mount-time fetches when SSR succeeded
 
-Parallel (client hook, not inside overview):
-  → searchUserTradingOrders({ tabStatus: 'pending', pageSize: 5 })
-  → getPublicProfileReviews({ persona: 'member', pageSize: 5 })
-
-Independent:
-  → CheckInCard → getGamificationStats / execute_daily_check_in (streak + post-check-in balance refresh)
+Deferred on client (non-blocking):
+  → CheckInCard — streak via getGamificationStats (idle); points from overview SSR
+  → RewardNotificationHost — dynamic import after requestIdleCallback
 ```
+
+### Performance instrumentation
+
+- Server: `[dashboard:perf]` in `lib/dashboard/perf-log.ts` — `overview.authMs`, `parallelFetchMs`, `pricingContextMs`, `totalMs`
+- Client: `app/lib/dashboard/perf-log-client.ts` — mount + ready timing
+- Enable in staging: `DASHBOARD_PERF_LOG=1` / `NEXT_PUBLIC_DASHBOARD_PERF_LOG=1`
 
 ### Section 2 trading stats semantics
 
@@ -42,11 +52,15 @@ Independent:
 | File | Purpose |
 |------|---------|
 | `app/actions/member-dashboard.ts` | `getMemberDashboardOverview` |
+| `app/profile/user/(dashboard)/UserOverviewPageData.tsx` | SSR bootstrap (overview + orders + reviews) |
+| `app/profile/user/(dashboard)/UserOverviewClient.tsx` | Client UI with `initialData` |
+| `app/profile/user/(dashboard)/UserOverviewSkeleton.tsx` | Streaming fallback |
+| `lib/dashboard/perf-log.ts` | Server perf diagnostics |
 | `app/lib/dashboard/types.ts` | `MemberDashboardProfile`, `MemberDashboardTradingStats` |
 | `lib/dashboard/constants.ts` | `MEMBER_DASHBOARD_PREVIEW_LIMIT = 5` |
 | `lib/dashboard/member-trading-stats.ts` | `computeMemberTradingStats`, `findOrphanActiveListings` |
 
-Reuses: `lib/collection/build-entries.ts` (`loadCollectionPricingContext`, `computePortfolioTotals`), `lib/marketplace/portfolio-pricing.ts` (`resolveCollectionMarketValue`).
+Reuses: `lib/collection/build-entries.ts` (`loadCollectionPricingContext` with optional `userListingRows`, `computePortfolioTotals`), `lib/marketplace/portfolio-pricing.ts` (`resolveCollectionMarketValue`).
 
 **Titles (Section 1):** `profiles.reputation_tag` via overview; display helpers in `lib/constants/titles.ts`, `lib/titles/member-title-progress.ts`, `useMemberTitleDisplay.ts`. No extra API.
 

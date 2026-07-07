@@ -210,3 +210,86 @@ export type MarketplaceMarketPriceResult =
 export type MarketplaceProductMarketPricesResult =
   | { success: true; data: MarketplaceMarketPriceGradeRow[] }
   | { success: false; error: string };
+
+export type MarketplaceSellerBadge = {
+  id: string;
+  label: string;
+  emoji: string;
+  desc: string;
+};
+
+export type MarketplaceSellerProfile = {
+  id: string;
+  username: string;
+  handle: string;
+  joinDate: string;
+  bio: string;
+  level: string;
+  verifiedBuyer: boolean;
+  completedTrades: number;
+  badges: MarketplaceSellerBadge[];
+};
+
+export type MarketplaceSellerProfileResult =
+  | { success: true; data: MarketplaceSellerProfile }
+  | { success: false; error: string };
+
+export type MarketplaceSellerListingRow = {
+  listingId: string;
+  productId: string;
+  productName: string;
+  nameJa: string;
+  nameEn: string | null;
+  nameZh: string | null;
+  setCode: string;
+  cardNumber: string | null;
+  displayId: string | null;
+  rarity: string | null;
+  imageUrl: string;
+  gradingCompany: string;
+  gradingScore: string | null;
+  price: number;
+  createdAt: string;
+  sellerId: string;
+  sellerName: string;
+  sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
+  useAuthentication: boolean;
+};
+
+export type MarketplaceSellerListingsInput = {
+  sellerId: string;
+  query?: string;
+  rarities?: string[];
+  gradeFilters?: GradeFilter[];
+  priceMin?: number;
+  priceMax?: number;
+  sortKey?: SortKey;
+  page?: number;
+  pageSize?: number;
+};
+
+export type MarketplaceSellerListingsData = {
+  listings: MarketplaceSellerListingRow[];
+  meta: MarketplacePaginationMeta;
+  priceBounds: { minPrice: number; maxPrice: number };
+};
+
+export type MarketplaceSellerListingsResult =
+  | { success: true; data: MarketplaceSellerListingsData }
+  | { success: false; error: string };
+
+export type MarketplaceSellerListingDetailView = {
+  seller: MarketplaceSellerProfile;
+  catalog: MarketplaceProductDetail;
+  storefrontListing: import("@/app/components/marketplace/MarketplaceCard").MarketplaceListing;
+  photos: string[];
+  batchLabel: string;
+  price: number;
+  gradingCompany: string;
+  gradingScore: string | null;
+  useAuthentication: boolean;
+};
+
+export type MarketplaceSellerListingDetailResult =
+  | { success: true; data: MarketplaceSellerListingDetailView }
+  | { success: false; error: string };

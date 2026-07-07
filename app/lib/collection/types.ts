@@ -71,3 +71,8 @@ export type CollectionUpdatePurchasePriceInput = {
   collectionId: string;
   purchasePrice: number;
 };
+
+export type CollectionPageBootstrap = {
+  summary: CollectionPortfolioSummary;
+  page: CollectionEntriesPage;
+};

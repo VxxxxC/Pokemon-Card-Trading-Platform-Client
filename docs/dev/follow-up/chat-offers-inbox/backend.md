@@ -6,6 +6,16 @@
 - **Frontend:** 🟡 Partial — offer card RPCs + DB inbox + text send + **Realtime Scheme A** + **completion card + review CTA** + **long-thread perf** wired; polish / checkout-after-accept pending
 - **Partner:** Apply migrations `20260704170000`–**`20260705140000`**; verify inbox + send + accept/reject + auth opt-in + completion messages after push (see **Migrations** below)
 
+## Changelog (2026-07-07, inbox Phase 2 performance)
+
+| Change | Detail |
+|--------|--------|
+| **`get_user_chat_inbox_lobby()`** | Migration **`20260707170000`** — rooms + last message preview only |
+| **`get_chat_room_thread(p_room_id)`** | Same migration — lazy-load full thread + offers for one room |
+| **`getUserChatInboxLobby` / `getChatRoomThread`** | Server actions; lobby prefetch on auth + thread hydrate on room select |
+| **`chat_rooms` dedupe + unique index** | Consolidates legacy duplicate `(buyer_id, seller_id)` rows; `UNIQUE` index + message index |
+| **`rpc_make_offer` race-safe upsert** | `INSERT … ON CONFLICT (buyer_id, seller_id)` instead of SELECT-then-INSERT |
+
 ## Changelog (2026-07-05, P2P platform authentication opt-in)
 
 | Change | Detail |
@@ -98,10 +108,10 @@ Order complete (cross-flow — user-trading-orders)
     → frontend: SystemOrderCompletedMessage + review CTA (transaction-reviews)
 
 Chat inbox load
-  GlobalChatOverlay → getUserChatInbox()
-    → get_user_chat_inbox() RPC  [preferred]
-    ← { rooms, messages, offers }
-    → assembleDbChatRooms() → merge with mock (RM-MOCK-*)
+  GlobalChatOverlay → prefetch getUserChatInboxLobby() on auth
+  On chat open → refresh lobby (lightweight)
+  On room select → getChatRoomThread(roomId) lazy hydrate
+  → assembleDbChatLobbyRooms / assembleDbChatThreadRoom → merge with mock (RM-MOCK-*)
 
 Party — send text message
   GlobalChatConsole → sendMessage(roomId, body)   [UUID rooms only; client fires async after optimistic UI]
@@ -118,7 +128,7 @@ Party — send text message
 | File | Purpose |
 |------|---------|
 | `app/actions/offers.ts` | `makeOffer`, `modifyOffer`, `acceptOffer`, **`rejectOffer`**, `getOfferCardContext` |
-| `app/actions/chat.ts` | `getUserChatInbox`, `sendMessage` |
+| `app/actions/chat.ts` | `getUserChatInboxLobby`, `getChatRoomThread`, `getUserChatInbox` (lobby alias), `sendMessage` |
 | `app/actions/reviews.ts` | **`getUserReviewedMemberOrderIds`**, **`resolveChatCompletionOrderId`** (chat completion card) |
 | `app/lib/chat/constants.ts` | `isMockChatRoomId`, `isDbChatRoomId` (UUID room gate) |
 | `app/lib/chat/mapDbChats.ts` | DB rows → Zustand `ChatRoom` / `Message`; `SYSTEM_OFFER_*` banners; **`SYSTEM_ORDER_COMPLETED`** card type |
@@ -174,7 +184,7 @@ bun run supabase:types   # if scripted; else bunx supabase gen types typescript
 | `20260704240000` | **`chat_messages`** in Realtime publication — required for live inbox |
 | **`20260704300000`** | **`member_order_id`** on inbox messages — **required for completion card + review CTA on load** |
 | **`20260705130000`** | **`use_authentication`** on offers + member_orders; accept RPC inherit |
-| **`20260705140000`** | **`rpc_make_offer`** auth param — **required for buyer toggle** |
+| **`20260707170000`** | **Inbox Phase 2** — lobby/thread RPC split, dedupe + indexes, `rpc_make_offer` upsert |
 
 ---
 
@@ -248,13 +258,27 @@ Resolution order:
 
 Used when inbox load omitted `member_order_id` (pre-`20260704300000` rows or stale RPC).
 
-### `getUserChatInbox()`
+### `getUserChatInboxLobby()`
 
 Success: `{ success: true, data: ChatRoom[] }`
 
 - Guest / unconfigured Supabase → `{ success: true, data: [] }`
-- Logged-in → RPC `get_user_chat_inbox()`; fallback to direct table queries
-- Errors include Supabase message: `無法載入聊天室：…`
+- Logged-in → RPC `get_user_chat_inbox_lobby()`; table fallback
+- Returns lobby rows with **`messages: []`** and preview `lastMessage` only
+
+### `getChatRoomThread(roomId)`
+
+Success: `{ success: true, data: ChatRoom }`
+
+- UUID room only; membership enforced in RPC / RLS fallback
+- Returns full mapped thread for one room (messages + offer cards)
+
+### `getUserChatInbox()` / `getUserChatInboxFull()`
+
+- **`getUserChatInbox()`** — alias of **`getUserChatInboxLobby()`** (Phase 2 default)
+- **`getUserChatInboxFull()`** — legacy full-history load via `get_user_chat_inbox()` RPC + table fallback
+
+Prefer **`getUserChatInboxLobby` + `getChatRoomThread`** for UI.
 
 ### `sendMessage(roomId, body)`
 

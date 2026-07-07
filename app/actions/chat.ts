@@ -1,11 +1,14 @@
 "use server";
 
 import {
+  assembleDbChatLobbyRooms,
   assembleDbChatRooms,
+  assembleDbChatThreadRoom,
   type DbChatMessageRow,
   type DbChatRoomBaseRow,
   type DbOfferSnippet,
 } from "@/app/lib/chat/mapDbChats";
+import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import type { ChatRoom } from "@/app/store/useHkCardVaultStore";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -33,8 +36,23 @@ export type GetUserChatInboxResult =
   | { success: true; data: ChatRoom[] }
   | { success: false; error: string };
 
+export type GetChatRoomThreadResult =
+  | { success: true; data: ChatRoom }
+  | { success: false; error: string };
+
 type InboxRpcPayload = {
   rooms: DbChatRoomBaseRow[];
+  messages: DbChatMessageRow[];
+  offers: DbOfferSnippet[];
+};
+
+type LobbyRpcPayload = {
+  rooms: DbChatRoomBaseRow[];
+  last_messages: DbChatMessageRow[];
+};
+
+type ThreadRpcPayload = {
+  room: DbChatRoomBaseRow | null;
   messages: DbChatMessageRow[];
   offers: DbOfferSnippet[];
 };
@@ -50,6 +68,44 @@ function parseInboxRpcPayload(data: unknown): InboxRpcPayload | null {
     rooms: Array.isArray(payload.rooms)
       ? (payload.rooms as DbChatRoomBaseRow[])
       : [],
+    messages: Array.isArray(payload.messages)
+      ? (payload.messages as DbChatMessageRow[])
+      : [],
+    offers: Array.isArray(payload.offers)
+      ? (payload.offers as DbOfferSnippet[])
+      : [],
+  };
+}
+
+function parseLobbyRpcPayload(data: unknown): LobbyRpcPayload | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  return {
+    rooms: Array.isArray(payload.rooms)
+      ? (payload.rooms as DbChatRoomBaseRow[])
+      : [],
+    last_messages: Array.isArray(payload.last_messages)
+      ? (payload.last_messages as DbChatMessageRow[])
+      : [],
+  };
+}
+
+function parseThreadRpcPayload(data: unknown): ThreadRpcPayload | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  return {
+    room:
+      payload.room && typeof payload.room === "object"
+        ? (payload.room as DbChatRoomBaseRow)
+        : null,
     messages: Array.isArray(payload.messages)
       ? (payload.messages as DbChatMessageRow[])
       : [],
@@ -83,10 +139,62 @@ async function fetchInboxViaRpc(
   return { payload: parsed, error: null };
 }
 
-async function fetchInboxViaTables(
+async function fetchLobbyViaRpc(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<{ payload: LobbyRpcPayload | null; error: string | null }> {
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (fn: "get_user_chat_inbox_lobby") => Promise<{
+        data: unknown;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("get_user_chat_inbox_lobby");
+
+  if (error) {
+    return { payload: null, error: error.message };
+  }
+
+  const parsed = parseLobbyRpcPayload(data);
+  if (!parsed) {
+    return { payload: null, error: "聊天室回傳資料格式異常" };
+  }
+
+  return { payload: parsed, error: null };
+}
+
+async function fetchThreadViaRpc(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  roomId: string,
+): Promise<{ payload: ThreadRpcPayload | null; error: string | null }> {
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        fn: "get_chat_room_thread",
+        args: { p_room_id: string },
+      ) => Promise<{
+        data: unknown;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("get_chat_room_thread", { p_room_id: roomId });
+
+  if (error) {
+    return { payload: null, error: error.message };
+  }
+
+  const parsed = parseThreadRpcPayload(data);
+  if (!parsed || !parsed.room) {
+    return { payload: null, error: "聊天室回傳資料格式異常" };
+  }
+
+  return { payload: parsed, error: null };
+}
+
+async function fetchRoomRowsForUser(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
-): Promise<{ payload: InboxRpcPayload | null; error: string | null }> {
+): Promise<{ rooms: DbChatRoomBaseRow[]; error: string | null }> {
   const { data: rooms, error: roomsError } = await supabase
     .from("chat_rooms")
     .select(
@@ -112,29 +220,65 @@ async function fetchInboxViaTables(
     .order("created_at", { ascending: false });
 
   if (roomsError) {
-    return { payload: null, error: roomsError.message };
+    return { rooms: [], error: roomsError.message };
   }
 
-  const roomRows = (rooms ?? []) as DbChatRoomBaseRow[];
-  if (roomRows.length === 0) {
-    return { payload: { rooms: [], messages: [], offers: [] }, error: null };
+  return { rooms: (rooms ?? []) as DbChatRoomBaseRow[], error: null };
+}
+
+async function fetchLastMessagesForRooms(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  roomIds: string[],
+): Promise<{ messages: DbChatMessageRow[]; error: string | null }> {
+  if (roomIds.length === 0) {
+    return { messages: [], error: null };
   }
 
-  const roomIds = roomRows.map((room) => room.id);
-
-  const { data: messages, error: messagesError } = await supabase
+  const { data, error } = await supabase
     .from("chat_messages")
     .select(
       "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
     )
     .in("room_id", roomIds)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
-  if (messagesError) {
-    return { payload: null, error: messagesError.message };
+  if (error) {
+    return { messages: [], error: error.message };
   }
 
-  const messageRows = (messages ?? []) as DbChatMessageRow[];
+  const lastByRoom = new Map<string, DbChatMessageRow>();
+  for (const row of (data ?? []) as DbChatMessageRow[]) {
+    if (!lastByRoom.has(row.room_id)) {
+      lastByRoom.set(row.room_id, row);
+    }
+  }
+
+  return { messages: Array.from(lastByRoom.values()), error: null };
+}
+
+async function fetchMessagesForRoom(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  roomId: string,
+): Promise<{ messages: DbChatMessageRow[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("chat_messages")
+    .select(
+      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
+    )
+    .eq("room_id", roomId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    return { messages: [], error: error.message };
+  }
+
+  return { messages: (data ?? []) as DbChatMessageRow[], error: null };
+}
+
+async function fetchOffersForMessageRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  messageRows: DbChatMessageRow[],
+): Promise<{ offers: DbOfferSnippet[]; error: string | null }> {
   const offerIds = [
     ...new Set(
       messageRows
@@ -143,13 +287,14 @@ async function fetchInboxViaTables(
     ),
   ];
 
-  const offerRows: DbOfferSnippet[] = [];
+  if (offerIds.length === 0) {
+    return { offers: [], error: null };
+  }
 
-  if (offerIds.length > 0) {
-    const { data: offers, error: offersError } = await supabase
-      .from("offers")
-      .select(
-        `
+  const { data: offers, error: offersError } = await supabase
+    .from("offers")
+    .select(
+      `
           id,
           buyer_id,
           offer_price,
@@ -169,21 +314,167 @@ async function fetchInboxViaTables(
             )
           )
         `,
-      )
-      .in("id", offerIds);
+    )
+    .in("id", offerIds);
 
-    if (offersError) {
-      return { payload: null, error: offersError.message };
-    }
+  if (offersError) {
+    return { offers: [], error: offersError.message };
+  }
 
-    offerRows.push(...((offers ?? []) as DbOfferSnippet[]));
+  return { offers: (offers ?? []) as DbOfferSnippet[], error: null };
+}
+
+async function fetchInboxViaTables(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<{ payload: InboxRpcPayload | null; error: string | null }> {
+  const { rooms, error: roomsError } = await fetchRoomRowsForUser(
+    supabase,
+    userId,
+  );
+
+  if (roomsError) {
+    return { payload: null, error: roomsError };
+  }
+
+  if (rooms.length === 0) {
+    return { payload: { rooms: [], messages: [], offers: [] }, error: null };
+  }
+
+  const roomIds = rooms.map((room) => room.id);
+
+  const { data: allMessages, error: allMessagesError } = await supabase
+    .from("chat_messages")
+    .select(
+      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
+    )
+    .in("room_id", roomIds)
+    .order("created_at", { ascending: true });
+
+  if (allMessagesError) {
+    return {
+      payload: null,
+      error: allMessagesError.message,
+    };
+  }
+
+  const messageRows = (allMessages ?? []) as DbChatMessageRow[];
+  const { offers, error: offersError } = await fetchOffersForMessageRows(
+    supabase,
+    messageRows,
+  );
+
+  if (offersError) {
+    return { payload: null, error: offersError };
   }
 
   return {
     payload: {
-      rooms: roomRows,
+      rooms,
       messages: messageRows,
-      offers: offerRows,
+      offers,
+    },
+    error: null,
+  };
+}
+
+async function fetchLobbyViaTables(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<{ payload: LobbyRpcPayload | null; error: string | null }> {
+  const { rooms, error: roomsError } = await fetchRoomRowsForUser(
+    supabase,
+    userId,
+  );
+
+  if (roomsError) {
+    return { payload: null, error: roomsError };
+  }
+
+  if (rooms.length === 0) {
+    return { payload: { rooms: [], last_messages: [] }, error: null };
+  }
+
+  const { messages: lastMessages, error: messagesError } =
+    await fetchLastMessagesForRooms(
+      supabase,
+      rooms.map((room) => room.id),
+    );
+
+  if (messagesError) {
+    return { payload: null, error: messagesError };
+  }
+
+  return {
+    payload: {
+      rooms,
+      last_messages: lastMessages,
+    },
+    error: null,
+  };
+}
+
+async function fetchThreadViaTables(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  roomId: string,
+): Promise<{ payload: ThreadRpcPayload | null; error: string | null }> {
+  const { data: room, error: roomError } = await supabase
+    .from("chat_rooms")
+    .select(
+      `
+        id,
+        buyer_id,
+        seller_id,
+        created_at,
+        updated_at,
+        buyer:profiles!fk_chat_rooms_buyer (
+          id,
+          display_name,
+          role
+        ),
+        seller:profiles!fk_chat_rooms_seller_id (
+          id,
+          display_name,
+          role
+        )
+      `,
+    )
+    .eq("id", roomId)
+    .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+    .maybeSingle();
+
+  if (roomError) {
+    return { payload: null, error: roomError.message };
+  }
+
+  if (!room) {
+    return { payload: null, error: "找不到聊天室或無權限" };
+  }
+
+  const { messages, error: messagesError } = await fetchMessagesForRoom(
+    supabase,
+    roomId,
+  );
+
+  if (messagesError) {
+    return { payload: null, error: messagesError };
+  }
+
+  const { offers, error: offersError } = await fetchOffersForMessageRows(
+    supabase,
+    messages,
+  );
+
+  if (offersError) {
+    return { payload: null, error: offersError };
+  }
+
+  return {
+    payload: {
+      room: room as DbChatRoomBaseRow,
+      messages,
+      offers,
     },
     error: null,
   };
@@ -292,7 +583,135 @@ export async function sendMessage(
   }
 }
 
+export async function getUserChatInboxLobby(): Promise<GetUserChatInboxResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: [] };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: true, data: [] };
+    }
+
+    let payload: LobbyRpcPayload | null = null;
+    let loadError: string | null = null;
+
+    const rpcResult = await fetchLobbyViaRpc(supabase);
+    if (rpcResult.payload) {
+      payload = rpcResult.payload;
+    } else {
+      loadError = rpcResult.error;
+      const tableResult = await fetchLobbyViaTables(supabase, user.id);
+      if (tableResult.payload) {
+        payload = tableResult.payload;
+        loadError = null;
+      } else {
+        loadError = tableResult.error ?? loadError;
+      }
+    }
+
+    if (!payload) {
+      console.error("[getUserChatInboxLobby]", loadError);
+      return {
+        success: false,
+        error: `無法載入聊天室：${loadError ?? "未知錯誤"}`,
+      };
+    }
+
+    const inbox = assembleDbChatLobbyRooms(
+      payload.rooms,
+      payload.last_messages,
+      user.id,
+    );
+
+    return { success: true, data: inbox };
+  } catch (error) {
+    console.error("[getUserChatInboxLobby]", error);
+    return { success: false, error: "載入聊天室時發生錯誤" };
+  }
+}
+
+export async function getChatRoomThread(
+  roomId: string,
+): Promise<GetChatRoomThreadResult> {
+  const trimmedRoomId = roomId.trim();
+
+  if (!trimmedRoomId || !isDbChatRoomId(trimmedRoomId)) {
+    return { success: false, error: "請選擇有效的聊天室" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "服務尚未設定" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    let payload: ThreadRpcPayload | null = null;
+    let loadError: string | null = null;
+
+    const rpcResult = await fetchThreadViaRpc(supabase, trimmedRoomId);
+    if (rpcResult.payload) {
+      payload = rpcResult.payload;
+    } else {
+      loadError = rpcResult.error;
+      const tableResult = await fetchThreadViaTables(
+        supabase,
+        user.id,
+        trimmedRoomId,
+      );
+      if (tableResult.payload) {
+        payload = tableResult.payload;
+        loadError = null;
+      } else {
+        loadError = tableResult.error ?? loadError;
+      }
+    }
+
+    if (!payload?.room) {
+      console.error("[getChatRoomThread]", loadError);
+      return {
+        success: false,
+        error: `無法載入對話：${loadError ?? "未知錯誤"}`,
+      };
+    }
+
+    const offersById = new Map(
+      payload.offers.map((offer) => [offer.id, offer]),
+    );
+
+    const threadRoom = assembleDbChatThreadRoom(
+      payload.room,
+      payload.messages,
+      offersById,
+      user.id,
+    );
+
+    return { success: true, data: threadRoom };
+  } catch (error) {
+    console.error("[getChatRoomThread]", error);
+    return { success: false, error: "載入對話時發生錯誤" };
+  }
+}
+
+/** @deprecated Prefer getUserChatInboxLobby + getChatRoomThread for performance */
 export async function getUserChatInbox(): Promise<GetUserChatInboxResult> {
+  return getUserChatInboxLobby();
+}
+
+export async function getUserChatInboxFull(): Promise<GetUserChatInboxResult> {
   if (!isSupabaseConfigured()) {
     return { success: true, data: [] };
   }
@@ -325,7 +744,7 @@ export async function getUserChatInbox(): Promise<GetUserChatInboxResult> {
     }
 
     if (!payload) {
-      console.error("[getUserChatInbox]", loadError);
+      console.error("[getUserChatInboxFull]", loadError);
       return {
         success: false,
         error: `無法載入聊天室：${loadError ?? "未知錯誤"}`,
@@ -345,7 +764,7 @@ export async function getUserChatInbox(): Promise<GetUserChatInboxResult> {
 
     return { success: true, data: inbox };
   } catch (error) {
-    console.error("[getUserChatInbox]", error);
+    console.error("[getUserChatInboxFull]", error);
     return { success: false, error: "載入聊天室時發生錯誤" };
   }
 }

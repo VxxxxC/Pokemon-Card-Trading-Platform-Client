@@ -1,5 +1,13 @@
 import type { ChatRoom } from "@/app/store/useHkCardVaultStore";
-import { isMockChatRoomId } from "@/app/lib/chat/constants";
+import {
+  isDbChatRoomId,
+  isMockChatRoomId,
+} from "@/app/lib/chat/constants";
+
+export type MergeChatRoomsOptions = {
+  /** Drop RM-MOCK-* demo rooms after a successful DB sync */
+  stripMockRooms?: boolean;
+};
 
 function sortRoomsByActivity(rooms: ChatRoom[]): ChatRoom[] {
   return [...rooms].sort(
@@ -8,36 +16,148 @@ function sortRoomsByActivity(rooms: ChatRoom[]): ChatRoom[] {
   );
 }
 
+export function normalizePartnerId(partnerId: string): string {
+  return partnerId.trim().toLowerCase();
+}
+
+export function findRoomByPartnerId(
+  rooms: ChatRoom[],
+  partnerId: string,
+): ChatRoom | undefined {
+  const key = normalizePartnerId(partnerId);
+  if (!key) return undefined;
+  return rooms.find(
+    (room) => normalizePartnerId(room.partnerId) === key,
+  );
+}
+
+export function normalizePartnerName(partnerName: string): string {
+  return partnerName.trim().toLowerCase();
+}
+
+export function findRoomByPartnerName(
+  rooms: ChatRoom[],
+  partnerName: string,
+): ChatRoom | undefined {
+  const key = normalizePartnerName(partnerName);
+  if (!key) return undefined;
+  return rooms.find(
+    (room) => normalizePartnerName(room.partnerName) === key,
+  );
+}
+
+function dedupeMessagesByOfferId(messages: ChatRoom["messages"]): ChatRoom["messages"] {
+  const seenOfferIds = new Set<string>();
+
+  return messages.filter((message) => {
+    const offerId = message.specialData?.offerId;
+    if (message.type !== "special_transaction" || !offerId) {
+      return true;
+    }
+    if (seenOfferIds.has(offerId)) {
+      return false;
+    }
+    seenOfferIds.add(offerId);
+    return true;
+  });
+}
+
 function mergeRoomMessages(local: ChatRoom, db: ChatRoom): ChatRoom {
   const dbMessageIds = new Set(db.messages.map((message) => message.id));
   const optimisticOnly = local.messages.filter(
     (message) => !dbMessageIds.has(message.id),
   );
 
-  const messages = [...db.messages, ...optimisticOnly].sort(
-    (a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+  const messages = dedupeMessagesByOfferId(
+    [...db.messages, ...optimisticOnly].sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    ),
   );
 
   const lastMessage = messages.at(-1)?.text ?? db.lastMessage;
+  const timestamp =
+    messages.at(-1)?.timestamp ?? db.timestamp ?? local.timestamp;
 
   return {
     ...db,
     messages,
     lastMessage,
-    unreadCount: local.unreadCount,
+    timestamp,
+    unreadCount: Math.max(local.unreadCount, db.unreadCount),
+    threadHydrated: local.threadHydrated === true || db.threadHydrated === true,
   };
 }
 
+function pickCanonicalRoom(a: ChatRoom, b: ChatRoom): ChatRoom {
+  const aIsDb = isDbChatRoomId(a.id);
+  const bIsDb = isDbChatRoomId(b.id);
+
+  if (aIsDb && !bIsDb) {
+    return mergeRoomMessages(b, a);
+  }
+  if (!aIsDb && bIsDb) {
+    return mergeRoomMessages(a, b);
+  }
+
+  const aTime = new Date(a.timestamp).getTime();
+  const bTime = new Date(b.timestamp).getTime();
+
+  if (aTime >= bTime) {
+    return mergeRoomMessages(b, a);
+  }
+
+  return mergeRoomMessages(a, b);
+}
+
+function dedupeByPartner(rooms: ChatRoom[]): ChatRoom[] {
+  const result: ChatRoom[] = [];
+
+  for (const room of rooms) {
+    const partnerIdKey = normalizePartnerId(room.partnerId);
+    const partnerNameKey = normalizePartnerName(room.partnerName);
+
+    const existingIndex = result.findIndex((candidate) => {
+      const candidateIdKey = normalizePartnerId(candidate.partnerId);
+      const candidateNameKey = normalizePartnerName(candidate.partnerName);
+
+      if (partnerIdKey && candidateIdKey === partnerIdKey) {
+        return true;
+      }
+
+      return Boolean(
+        partnerNameKey &&
+          candidateNameKey &&
+          candidateNameKey === partnerNameKey,
+      );
+    });
+
+    if (existingIndex === -1) {
+      result.push(room);
+      continue;
+    }
+
+    result[existingIndex] = pickCanonicalRoom(result[existingIndex], room);
+  }
+
+  return result;
+}
+
 /**
- * Keeps mock demo rooms and merges Supabase rooms on top.
- * DB rows win for matching room IDs; session-only rooms are preserved.
+ * Merges Supabase inbox rooms with local session state.
+ * DB rows win for matching room IDs; partner duplicates collapse to one room.
  */
 export function mergeChatRoomsWithDb(
   currentRooms: ChatRoom[],
   dbRooms: ChatRoom[],
+  options?: MergeChatRoomsOptions,
 ): ChatRoom[] {
-  const mockRooms = currentRooms.filter((room) => isMockChatRoomId(room.id));
+  const stripMock =
+    options?.stripMockRooms ?? (dbRooms.length > 0 ? true : false);
+
+  const mockRooms = stripMock
+    ? []
+    : currentRooms.filter((room) => isMockChatRoomId(room.id));
   const localRealRooms = currentRooms.filter(
     (room) => !isMockChatRoomId(room.id),
   );
@@ -51,9 +171,19 @@ export function mergeChatRoomsWithDb(
 
   const ephemeralRooms = localRealRooms.filter((room) => !dbById.has(room.id));
 
-  return sortRoomsByActivity([
-    ...mockRooms,
-    ...mergedDbRooms,
-    ...ephemeralRooms,
-  ]);
+  const deduped = dedupeByPartner([...mergedDbRooms, ...ephemeralRooms]);
+
+  return sortRoomsByActivity([...mockRooms, ...deduped]);
+}
+
+/** Merge a lazy-loaded thread into an existing room row. */
+export function mergeRoomThreadFromDb(
+  currentRooms: ChatRoom[],
+  threadRoom: ChatRoom,
+): ChatRoom[] {
+  return currentRooms.map((room) =>
+    room.id === threadRoom.id
+      ? { ...mergeRoomMessages(room, threadRoom), threadHydrated: true }
+      : room,
+  );
 }

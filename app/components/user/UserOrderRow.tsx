@@ -7,6 +7,7 @@ import {
   cancelMemberOrder,
   completeMemberOrder,
 } from "@/app/actions/orders";
+import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,14 +85,17 @@ export function UserOrderRow({
   const counterpartName = isBuyer ? order.sellerName : order.buyerName;
 
   const isPendingDbOrder = dbOrderContext?.dbStatus === "pending";
+  const canCompleteOrder = isPendingDbOrder && isBuyer;
+  const showPendingActions =
+    isPendingDbOrder && (isBuyer || Boolean(dbOrderContext?.canCancel));
   const showReviewCta =
     dbOrderContext?.dbStatus === "completed" &&
     !dbOrderContext.hasReviewedByMe &&
     Boolean(onOpenReview);
 
-  const handleComplete = async () => {
+  const handleComplete = async (): Promise<boolean> => {
     if (!dbOrderContext || !onOpenReview || isActionLoading) {
-      return;
+      return false;
     }
 
     setIsActionLoading(true);
@@ -100,12 +104,13 @@ export function UserOrderRow({
 
     if (!result.success) {
       toast.error(result.error);
-      return;
+      return false;
     }
 
     toast.success("交易已確認完成！");
     dbOrderContext.onRefresh();
     onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
+    return true;
   };
 
   const handleCancel = async () => {
@@ -187,21 +192,21 @@ export function UserOrderRow({
 
       {/* Price + order actions */}
       <div className="flex items-center gap-3 shrink-0">
-        {(isPendingDbOrder || showReviewCta) && (
+        {(showPendingActions || showReviewCta) && (
           <div
             className="flex flex-col gap-1.5"
             onClick={(event) => event.stopPropagation()}
           >
-            {isPendingDbOrder && (
+            {showPendingActions && (
               <>
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={handleComplete}
-                  className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-success/15 text-success border border-success/25 hover:bg-success/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {isActionLoading ? "處理中…" : "確認完成交易"}
-                </button>
+                {canCompleteOrder && (
+                  <MemberOrderCompleteConfirmDialog
+                    disabled={isActionLoading}
+                    isActionLoading={isActionLoading}
+                    onConfirm={handleComplete}
+                    triggerClassName="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-success/15 text-success border border-success/25 hover:bg-success/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  />
+                )}
                 {dbOrderContext?.canCancel && (
                   <AlertDialog>
                     <AlertDialogTrigger

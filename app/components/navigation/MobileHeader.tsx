@@ -13,20 +13,30 @@ export function MobileHeader() {
   );
 
   // 🟢 從 Zustand 引流狀態
-  const { chats, setIsChatOpen, setMobileView, activateRoomById } =
+  const { chats, setIsChatOpen, setMobileView, activateRoomById, openChatWithPartner } =
     useHkCardVaultStore();
 
   // 廣播接收監聽器 ➔ 自動同步至狀態大腦
   useEffect(() => {
     const handleGlobalOpenChat = (e: Event) => {
       const customEvent = e as CustomEvent<{
-        roomId: string;
+        partnerId?: string;
         partnerName?: string;
+        roomId?: string;
       }>;
-      if (customEvent.detail?.roomId) {
+      const detail = customEvent.detail;
+      if (detail?.partnerId) {
+        openChatWithPartner(
+          detail.partnerId,
+          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
+        );
+        setMobileView("CHAT");
+        return;
+      }
+      if (detail?.roomId) {
         activateRoomById(
-          customEvent.detail.roomId,
-          customEvent.detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
+          detail.roomId,
+          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
         );
         setMobileView("CHAT");
       }
@@ -35,7 +45,7 @@ export function MobileHeader() {
     window.addEventListener("open-global-chat", handleGlobalOpenChat);
     return () =>
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
-  }, [activateRoomById, setMobileView]);
+  }, [activateRoomById, openChatWithPartner, setMobileView]);
 
   const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
 

@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { buildPendingChatRoomId } from "@/app/lib/chat/constants";
+import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
 import { INITIAL_CHATS } from "@/app/lib/mock-data/chatrooms";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
 import type { Tables } from "@/types/supabase";
@@ -50,6 +52,8 @@ export interface ChatRoom {
   unreadCount: number;
   timestamp: string;
   messages: Message[];
+  /** Set true after getChatRoomThread succeeds for this room */
+  threadHydrated?: boolean;
 }
 
 function isValidSpecialTransactionData(
@@ -193,6 +197,9 @@ interface HkCardVaultStore {
    */
   activateRoomById: (roomId: string, partnerName: string) => void;
 
+  /** Resolve an existing room by counterparty profile id, or open a pending stub. */
+  openChatWithPartner: (partnerId: string, partnerName: string) => void;
+
   injectSpecialTransaction: (payload: {
     sellerName: string;
     sellerId: string;
@@ -309,6 +316,47 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           },
         ],
       };
+      return {
+        chats: [stub, ...state.chats],
+        activeRoomId: roomId,
+        isChatOpen: true,
+        mobileView: "CHAT" as const,
+      };
+    }),
+
+  openChatWithPartner: (partnerId, partnerName) =>
+    set((state) => {
+      const existing = findRoomByPartnerId(state.chats, partnerId);
+      if (existing) {
+        return {
+          activeRoomId: existing.id,
+          isChatOpen: true,
+          mobileView: "CHAT" as const,
+          chats: state.chats.map((c) =>
+            c.id === existing.id ? { ...c, unreadCount: 0 } : c,
+          ),
+        };
+      }
+
+      const roomId = buildPendingChatRoomId(partnerId);
+      const stub: ChatRoom = {
+        id: roomId,
+        partnerId,
+        partnerName,
+        partnerTier: "認證用戶",
+        lastMessage: "已開啟對話",
+        unreadCount: 0,
+        timestamp: new Date().toISOString(),
+        messages: [
+          {
+            id: "sys-" + Date.now(),
+            sender: "system",
+            text: "🔒 已建立與 " + partnerName + " 的安全對話通道。",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      };
+
       return {
         chats: [stub, ...state.chats],
         activeRoomId: roomId,
@@ -757,8 +805,14 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
     }),
 
   appendRoomMessage: (roomId, message) =>
-    set((state) => ({
-      chats: state.chats.map((room) => {
+    set((state) => {
+      const isIncoming =
+        message.sender === "them" || message.sender === "system";
+      const shouldIncrementUnread =
+        isIncoming &&
+        (state.activeRoomId !== roomId || !state.isChatOpen);
+
+      const chats = state.chats.map((room) => {
         if (room.id !== roomId) return room;
         if (room.messages.some((existing) => existing.id === message.id)) {
           return room;
@@ -783,9 +837,17 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           messages,
           lastMessage: message.text,
           timestamp: message.timestamp,
+          unreadCount: shouldIncrementUnread
+            ? room.unreadCount + 1
+            : room.unreadCount,
         };
-      }),
-    })),
+      });
+
+      return {
+        chats,
+        offers: buildOfferLedgerFromChats(chats),
+      };
+    }),
 
   markRoomRead: (roomId) =>
     set((state) => ({

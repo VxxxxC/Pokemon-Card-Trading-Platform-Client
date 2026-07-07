@@ -1290,6 +1290,11 @@ export type Database = {
       get_reward_coupon_center: { Args: never; Returns: Json }
       get_unacknowledged_reward_grants: { Args: never; Returns: Json }
       get_user_chat_inbox: { Args: never; Returns: Json }
+      get_user_chat_inbox_lobby: { Args: never; Returns: Json }
+      get_chat_room_thread: {
+        Args: { p_room_id: string }
+        Returns: Json
+      }
       get_user_reward_coupons: { Args: never; Returns: Json }
       is_chat_room_member: {
         Args: { p_room_id: string; p_user_id?: string }

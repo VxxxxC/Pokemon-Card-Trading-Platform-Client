@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getMarketplaceBootstrap,
+  getMarketplaceFilterMetadata,
   searchMarketplaceProducts,
 } from "@/app/actions/marketplace";
 import {
@@ -14,13 +15,21 @@ import type {
   MarketplaceProductRow,
 } from "@/app/lib/marketplace/types";
 import type { SortKey } from "@/app/store/useMarketStore";
+import {
+  isMarketplaceClientPerfLogEnabled,
+  logMarketplaceClientSearchSummary,
+  markMarketplaceClientMount,
+  marketplaceClientPerfLog,
+  recordMarketplaceClientSearch,
+} from "@/app/lib/marketplace/perf-log-client";
+import { MARKETPLACE_GRID_PAGE_SIZE } from "@/lib/marketplace/constants";
 
 const QUERY_DEBOUNCE_MS = 350;
 
 const EMPTY_META: MarketplacePaginationMeta = {
   total: 0,
   page: 1,
-  pageSize: 12,
+  pageSize: MARKETPLACE_GRID_PAGE_SIZE,
   totalPages: 0,
   rangeStart: 0,
   rangeEnd: 0,
@@ -41,14 +50,21 @@ export type MarketplaceSearchFilters = {
 export type MarketplaceSearchInitialData = {
   products: MarketplaceProductRow[];
   meta: MarketplacePaginationMeta;
-  priceBounds: { minPrice: number; maxPrice: number };
-  rarities: string[];
+  priceBounds?: { minPrice: number; maxPrice: number };
+  rarities?: string[];
 };
+
+function hasMarketplaceSearchInitialData(
+  data: MarketplaceSearchInitialData | undefined,
+): data is MarketplaceSearchInitialData {
+  return Boolean(data?.products);
+}
 
 type UseMarketplaceSearchResult = {
   products: MarketplaceProductRow[];
   meta: MarketplacePaginationMeta;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   priceBounds: { minPrice: number; maxPrice: number } | null;
   rarities: string[];
@@ -71,20 +87,71 @@ function filtersKey(filters: MarketplaceSearchFilters): string {
 
 type UseMarketplaceSearchOptions = {
   initialData?: MarketplaceSearchInitialData;
+  /** When set, price filters equal to full bounds are omitted from search RPC. */
+  absolutePriceBounds?: { minPrice: number; maxPrice: number } | null;
 };
+
+function resolveSearchPriceFilters(
+  filters: MarketplaceSearchFilters,
+  absolutePriceBounds?: { minPrice: number; maxPrice: number } | null,
+): { priceMin?: number; priceMax?: number } {
+  if (!absolutePriceBounds) {
+    if (filters.priceMin <= 0 && filters.priceMax >= 100_000) {
+      return {};
+    }
+    return {
+      priceMin: filters.priceMin > 0 ? filters.priceMin : undefined,
+      priceMax: filters.priceMax < 100_000 ? filters.priceMax : undefined,
+    };
+  }
+
+  const priceMin =
+    filters.priceMin > absolutePriceBounds.minPrice
+      ? filters.priceMin
+      : undefined;
+  const priceMax =
+    filters.priceMax < absolutePriceBounds.maxPrice
+      ? filters.priceMax
+      : undefined;
+
+  return { priceMin, priceMax };
+}
+
+function toSearchInput(
+  filters: MarketplaceSearchFilters,
+  absolutePriceBounds?: { minPrice: number; maxPrice: number } | null,
+) {
+  const { priceMin, priceMax } = resolveSearchPriceFilters(
+    filters,
+    absolutePriceBounds,
+  );
+
+  return {
+    query: filters.query,
+    rarities: filters.rarities,
+    gradeFilters: parseGradeFilters(filters.grades),
+    sellerModes: mapSellerModes(filters.sellerTypes),
+    priceMin,
+    priceMax,
+    sortKey: filters.sortKey,
+    page: filters.page,
+    pageSize: filters.pageSize,
+  };
+}
 
 export function useMarketplaceSearch(
   filters: MarketplaceSearchFilters,
   options: UseMarketplaceSearchOptions = {},
 ): UseMarketplaceSearchResult {
-  const { initialData } = options;
+  const { initialData, absolutePriceBounds } = options;
+  const hasInitialProducts = hasMarketplaceSearchInitialData(initialData);
   const [products, setProducts] = useState<MarketplaceProductRow[]>(
     initialData?.products ?? [],
   );
   const [meta, setMeta] = useState<MarketplacePaginationMeta>(
     initialData?.meta ?? EMPTY_META,
   );
-  const [isLoading, setIsLoading] = useState(!initialData);
+  const [isFetching, setIsFetching] = useState(!hasInitialProducts);
   const [error, setError] = useState<string | null>(null);
   const [priceBounds, setPriceBounds] = useState<{
     minPrice: number;
@@ -93,15 +160,43 @@ export function useMarketplaceSearch(
   const [rarities, setRarities] = useState<string[]>(
     initialData?.rarities ?? [],
   );
-  const [isReady, setIsReady] = useState(Boolean(initialData));
+  const [isReady, setIsReady] = useState(hasInitialProducts);
 
   const requestIdRef = useRef(0);
   const filtersRef = useRef(filters);
-  const bootstrapStartedRef = useRef(Boolean(initialData));
-  const skipNextSearchRef = useRef(Boolean(initialData));
+  const bootstrapStartedRef = useRef(hasInitialProducts);
+  const skipNextSearchRef = useRef(hasInitialProducts);
   const [debouncedQuery, setDebouncedQuery] = useState(filters.query);
 
   filtersRef.current = filters;
+
+  useEffect(() => {
+    markMarketplaceClientMount();
+    const summaryTimer = window.setTimeout(() => {
+      logMarketplaceClientSearchSummary();
+    }, 2000);
+
+    return () => window.clearTimeout(summaryTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasInitialProducts) return;
+    if (initialData?.priceBounds && initialData.rarities) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const result = await getMarketplaceFilterMetadata();
+      if (cancelled || !result.success) return;
+
+      setPriceBounds(result.data.priceBounds);
+      setRarities(result.data.rarities);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasInitialProducts, initialData?.priceBounds, initialData?.rarities]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -114,19 +209,19 @@ export function useMarketplaceSearch(
   const searchKey = filtersKey({ ...filters, query: debouncedQuery });
 
   const runSearch = useCallback(
-    async (requestId: number, activeFilters: MarketplaceSearchFilters) => {
+    async (
+      requestId: number,
+      activeFilters: MarketplaceSearchFilters,
+      perfDetails?: string,
+    ) => {
+      if (perfDetails) {
+        recordMarketplaceClientSearch(perfDetails);
+      }
+
       try {
-        const result = await searchMarketplaceProducts({
-          query: activeFilters.query,
-          rarities: activeFilters.rarities,
-          gradeFilters: parseGradeFilters(activeFilters.grades),
-          sellerModes: mapSellerModes(activeFilters.sellerTypes),
-          priceMin: activeFilters.priceMin,
-          priceMax: activeFilters.priceMax,
-          sortKey: activeFilters.sortKey,
-          page: activeFilters.page,
-          pageSize: activeFilters.pageSize,
-        });
+        const result = await searchMarketplaceProducts(
+          toSearchInput(activeFilters, absolutePriceBounds),
+        );
 
         if (requestId !== requestIdRef.current) return;
 
@@ -147,35 +242,27 @@ export function useMarketplaceSearch(
         setError("無法連線至大盤市場");
       } finally {
         if (requestId === requestIdRef.current) {
-          setIsLoading(false);
+          setIsFetching(false);
         }
       }
     },
-    [],
+    [absolutePriceBounds],
   );
 
   useEffect(() => {
-    if (initialData || bootstrapStartedRef.current) return;
+    if (hasInitialProducts || bootstrapStartedRef.current) return;
     bootstrapStartedRef.current = true;
 
     let cancelled = false;
 
     void (async () => {
-      setIsLoading(true);
+      setIsFetching(true);
       setError(null);
 
       const activeFilters = { ...filtersRef.current, query: filtersRef.current.query };
-      const result = await getMarketplaceBootstrap({
-        query: activeFilters.query,
-        rarities: activeFilters.rarities,
-        gradeFilters: parseGradeFilters(activeFilters.grades),
-        sellerModes: mapSellerModes(activeFilters.sellerTypes),
-        priceMin: activeFilters.priceMin,
-        priceMax: activeFilters.priceMax,
-        sortKey: activeFilters.sortKey,
-        page: activeFilters.page,
-        pageSize: activeFilters.pageSize,
-      });
+      const result = await getMarketplaceBootstrap(
+        toSearchInput(activeFilters, absolutePriceBounds),
+      );
 
       if (cancelled) return;
 
@@ -183,7 +270,7 @@ export function useMarketplaceSearch(
         setProducts([]);
         setMeta(EMPTY_META);
         setError(result.error);
-        setIsLoading(false);
+        setIsFetching(false);
         setIsReady(true);
         return;
       }
@@ -193,7 +280,7 @@ export function useMarketplaceSearch(
       setPriceBounds(result.data.priceBounds);
       setRarities(result.data.rarities);
       setError(null);
-      setIsLoading(false);
+      setIsFetching(false);
       setIsReady(true);
       skipNextSearchRef.current = true;
     })();
@@ -201,12 +288,17 @@ export function useMarketplaceSearch(
     return () => {
       cancelled = true;
     };
-  }, [initialData]);
+  }, [hasInitialProducts, absolutePriceBounds]);
 
   useEffect(() => {
     if (!isReady) return;
 
     if (skipNextSearchRef.current) {
+      if (isMarketplaceClientPerfLogEnabled()) {
+        marketplaceClientPerfLog(
+          `skipSearch searchKey=${searchKey} reason=initialData`,
+        );
+      }
       skipNextSearchRef.current = false;
       return;
     }
@@ -214,24 +306,36 @@ export function useMarketplaceSearch(
     const requestId = ++requestIdRef.current;
     const activeFilters = { ...filtersRef.current, query: debouncedQuery };
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
-    void runSearch(requestId, activeFilters);
+    void runSearch(
+      requestId,
+      activeFilters,
+      `searchKey=${searchKey} page=${activeFilters.page} pageSize=${activeFilters.pageSize} source=filterChange`,
+    );
   }, [searchKey, runSearch, debouncedQuery, isReady]);
 
   const refetch = useCallback(() => {
     const requestId = ++requestIdRef.current;
     const activeFilters = { ...filtersRef.current, query: debouncedQuery };
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
-    void runSearch(requestId, activeFilters);
+    void runSearch(
+      requestId,
+      activeFilters,
+      `searchKey=${filtersKey({ ...activeFilters, query: debouncedQuery })} page=${activeFilters.page} pageSize=${activeFilters.pageSize} source=refetch`,
+    );
   }, [debouncedQuery, runSearch]);
+
+  const isLoading = isFetching && products.length === 0;
+  const isRefreshing = isFetching && products.length > 0;
 
   return {
     products,
     meta,
     isLoading,
+    isRefreshing,
     error,
     priceBounds,
     rarities,

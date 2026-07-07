@@ -133,6 +133,21 @@ export function decodeOfferRealtimeEvent(
   return null;
 }
 
+/** Initial buyer offer row — needs full thread hydrate for OfferCard rendering */
+export function isInitialOfferRealtimeMessage(
+  row: RealtimeChatMessageRow,
+): boolean {
+  if (!row.offer_id) {
+    return false;
+  }
+
+  if (decodeOfferRealtimeEvent(row)) {
+    return false;
+  }
+
+  return !row.content.startsWith("修改了出價需求：");
+}
+
 export function getLastPersistedMessageTimestamp(
   messages: Message[],
 ): string | null {

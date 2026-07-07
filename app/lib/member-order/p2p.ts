@@ -74,7 +74,7 @@ export function getP2pTimelineStep(
       return {
         label: "進行中",
         description:
-          "買賣雙方約定時間交收，請在面交現場點清錢貨後點擊確認結案",
+          "買賣雙方約定時間交收，請在面交現場點清錢貨後由買家確認結案",
         tone: "active",
       };
   }

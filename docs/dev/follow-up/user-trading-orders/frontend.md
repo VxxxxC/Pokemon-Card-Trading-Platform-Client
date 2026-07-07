@@ -8,6 +8,26 @@
 
 ## Changelog
 
+### 2026-07-07 (SSR + useUserTrading)
+
+| Area | What changed |
+|------|----------------|
+| **Page split** | `page.tsx` → Suspense shell; `UserTradingPageData` SSR bootstrap; `UserTradingClient` UI |
+| **`useUserTrading`** | `initialData`, debounced search, responsive pageSize, `refetch` / `isRefreshing` |
+| **Removed** | `USER_MOCK_ORDERS_DB`, `useSyncExternalStore` mount gate, duplicate mappers |
+| **`ReviewModal`** | `next/dynamic` — load on review action only |
+| **Perf report** | [PERF_REPORT.md](./PERF_REPORT.md) |
+
+### 2026-07-07 (buyer-only complete + handover confirm dialog)
+
+| Area | What changed |
+|------|----------------|
+| **Complete permission** | Only **buyer** may call `completeMemberOrder` / `rpc_complete_member_order` (migration `20260707130000`) |
+| **`MemberOrderCompleteConfirmDialog`** | New shared `AlertDialog` — buyer must tick 3 inspection checkboxes + acknowledge legal disclaimer before **確認完成交收** |
+| **`UserOrderRow`** | Complete CTA buyer-only; opens confirm dialog (seller pending row shows **取消交易** only) |
+| **`MemberOrderDetailView`** | Same buyer-only complete + dialog; seller copy: wait for buyer to confirm |
+| **`app/lib/member-order/p2p.ts`** | Timeline copy: 由買家確認結案 |
+
 ### 2026-07-05 (platform authentication — order detail branch)
 
 | Area | What changed |
@@ -30,7 +50,7 @@
 | **`MemberAuthOrderTimeline`** | Five-step auth escrow timeline when `useAuthentication === true` |
 | **`MemberAuthOrderInvoice`** | Auth receipt with shipping / subsidy / service fee rows |
 | **`app/lib/member-order/p2p.ts`** | `getP2pTimelineStep`, `isMeetupOnlyMemberOrder`, `MEMBER_AUTH_*` fee constants, formatters |
-| **Actions on detail** | Pending: **確認完成交易** (both parties) + **取消交易** (seller, `canCancel`); completed: **✍️ 給予對手評價** + page-level `ReviewModal` |
+| **Actions on detail** | Pending: **確認完成交易** (**buyer only**, handover confirm dialog) + **取消交易** (seller, `canCancel`); completed: **✍️ 給予對手評價** + page-level `ReviewModal` |
 | **Perspective** | **買入交易** / **賣出交易** from `order.persona`; counterparty label fixed (was always showing buyer) |
 
 ### 2026-07-05
@@ -55,7 +75,7 @@
 | **Trading list page** | shadcn `Tabs` persona/status; **`activeReview` + single `ReviewModal`** at page root |
 | **Data source** | `getUserTradingOrders` + mock merge; **`hasReviewedByMe`** drives 补評 button |
 | **Status badges** | `renderStatusBadge()` maps DB + mock statuses to shadcn `Badge` variants |
-| **`UserOrderRow`** | Pending: **確認完成交易** / **取消交易** (seller, with confirm dialog); completed: **✍️ 給予對手評價**; `onOpenReview` callback |
+| **`UserOrderRow`** | Pending: **確認完成交易** (buyer, handover confirm dialog) / **取消交易** (seller, cancel `AlertDialog`); completed: **✍️ 給予對手評價**; `onOpenReview` callback |
 | **`UserOrderRow` cancel UX** | shadcn `AlertDialog` — **確認取消交易** shows counterparty, amount, re-list notice before `cancelMemberOrder` |
 | **`UserOrderRow` meta** | **`建立時間`** — `formatOrderDateTime(order.createdAt)` (date + 24h time) on row 2 |
 | **`ReviewModal`** | `app/components/trading/ReviewModal.tsx` — see [transaction-reviews](../transaction-reviews/) |
@@ -64,7 +84,17 @@
 
 ## UI touchpoints
 
-### Primary page: `app/profile/user/(dashboard)/trading/page.tsx`
+### Primary page: `/profile/user/trading`
+
+| File | Role |
+|------|------|
+| `app/profile/user/(dashboard)/trading/page.tsx` | Server `Suspense` shell + `searchParams.filter` |
+| `app/profile/user/(dashboard)/trading/UserTradingPageData.tsx` | SSR `searchUserTradingOrders` bootstrap |
+| `app/profile/user/(dashboard)/trading/UserTradingClient.tsx` | Search, tabs, order list, `ReviewModal` |
+| `app/profile/user/(dashboard)/trading/UserTradingSkeleton.tsx` | Streaming fallback |
+| `app/lib/hooks/useUserTrading.ts` | Data hook (`initialData`, `refetch`, responsive pageSize) |
+| `app/lib/member-order/map-sale-order.ts` | `mapTradingOrderToSaleOrder` |
+| `app/lib/member-order/perf-log-client.ts` | Client mount timing |
 
 Route: **`/profile/user/trading`**
 
@@ -73,8 +103,8 @@ Route: **`/profile/user/trading`**
 | `persona` | `'all' \| 'buy' \| 'sell'` | 全部 / 買單 / 賣單 |
 | `tabStatus` | `'all' \| 'pending' \| 'completed' \| 'cancelled'` | 狀態分頁 |
 | `searchQuery` | `string` | 搜尋（300ms debounce → server action） |
-| `currentPage` | `number` | Server page (resets on filter/search change) |
-| `itemsPerPage` | `number` | 5 mobile / 8 desktop → RPC `pageSize` |
+| `currentPage` | `number` | Managed by `useUserTrading` `setPage` |
+| `itemsPerPage` | `number` | 5 mobile / 8 desktop (hook-managed) |
 | `paginationMeta` | `TradingOrdersPaginationMeta` | `total`, `totalPages`, `rangeStart`, `rangeEnd` |
 | `filterCounts` | `TradingOrdersFilterCounts` | Tab counts + needs-action banner |
 
@@ -118,12 +148,21 @@ createdAt: formatOrderDateTime(order.createdAt),
 // zh-TW locale — e.g. "2026/07/04 22:30" (24h)
 ```
 
-**Pending actions (seller `canCancel`):**
+**Pending actions (buyer complete / seller cancel):**
 
-| Button | Flow |
-|--------|------|
-| **確認完成交易** | Direct click → `completeMemberOrder` → refresh → `ReviewModal` |
-| **取消交易** | Opens `AlertDialog` → **確認取消** → `cancelMemberOrder` → refresh; **返回** dismisses |
+| Button | Who | Flow |
+|--------|-----|------|
+| **確認完成交易** | Buyer only | Opens `MemberOrderCompleteConfirmDialog` → tick 3 inspection items + read legal disclaimer → **確認完成交收** → `completeMemberOrder` → refresh → `ReviewModal` |
+| **取消交易** | Seller (`canCancel`) | Opens cancel `AlertDialog` → **確認取消** → `cancelMemberOrder` → refresh; **返回** dismisses |
+
+**`MemberOrderCompleteConfirmDialog`** (`app/components/user/MemberOrderCompleteConfirmDialog.tsx`):
+
+| Block | Copy |
+|-------|------|
+| Title | 確認完成交收 |
+| Checklist (all required) | 官方卡牌編號與稀有度標籤（如 SAR/UR/SR）；實物表面狀態（卡角、刮痕等細節）；確信此卡為正品 |
+| Legal | 平台作為第三方提供商，在此確認後將不再受理任何關於此卡真偽、品相的售後爭議與賠償要求。此操作不可逆轉。 |
+| Confirm CTA | Disabled until all checkboxes ticked |
 
 Cancel dialog copy references counterparty name, `HK$` amount, and that the listing returns to marketplace. Styling matches offer reject dialog in `OfferCard` (red border / destructive action).
 
@@ -162,7 +201,7 @@ Set at offer time via `ExecutionSlideOver` toggle → inherited on accept. See [
 
 | DB `status` | UI headline | Description |
 |-------------|-------------|-------------|
-| `pending`, `meetup_arranged` | 進行中 | 雙方交收溝通中，請在面交現場點清錢貨後點擊確認 |
+| `pending`, `meetup_arranged` | 進行中 | 買賣雙方約定時間交收，請在面交現場點清錢貨後由買家確認結案 |
 | `completed` | 已完成 | 交易已順利結束，雙盲評價已解鎖 |
 | `cancelled` | 已取消 | 交易已中止，商品已重新上架大盤 |
 
@@ -170,15 +209,11 @@ Set at offer time via `ExecutionSlideOver` toggle → inherited on accept. See [
 
 **Invoice (auth):** See `MemberAuthOrderInvoice` — 順豐運費、平台補貼、鑑定服務費 (HK$150).
 
-**Pending actions (detail):** Same RPCs as list row — `completeMemberOrder`, `cancelMemberOrder` (seller + `canCancel`); complete success opens `ReviewModal`.
+**Pending actions (detail):** Buyer → `MemberOrderCompleteConfirmDialog` → `completeMemberOrder`; seller → `cancelMemberOrder` when `canCancel`; complete success opens `ReviewModal`.
 
-### Mock data (temporary)
+### Mock data
 
-| Export | Used by |
-|--------|---------|
-| `USER_MOCK_ORDERS_DB` | `app/profile/user/(dashboard)/page.tsx` (overview pending strip only) |
-
-Removed from trading list — live RPC only.
+Removed — overview and trading list both use live `searchUserTradingOrders`.
 
 ### Badge mapping: `renderStatusBadge(status)`
 
@@ -194,7 +229,28 @@ Mock statuses mapped via `mockStatusToBadgeKey()` (`payment` → `pending`, `cus
 
 ## API usage
 
-**List:**
+**List (hook — preferred):**
+
+```ts
+import { useUserTrading } from "@/app/lib/hooks/useUserTrading";
+
+const {
+  orders,
+  paginationMeta,
+  filterCounts,
+  isLoading,
+  isRefreshing,
+  refetch,
+  setPage,
+} = useUserTrading({
+  persona,
+  tabStatus,
+  searchQuery,
+  initialData, // from UserTradingPageData SSR
+});
+```
+
+**List (direct action):**
 
 ```ts
 import { searchUserTradingOrders } from "@/app/actions/orders";
@@ -225,13 +281,16 @@ if (result.success) {
 }
 ```
 
-No dedicated hook yet — inline `useEffect` on list + detail pages.
+No dedicated detail hook — inline fetch on detail page.
+
+**Perf report:** [PERF_REPORT.md](./PERF_REPORT.md)
 
 ## Acceptance checklist
 
 ### List page (done / baseline)
 
-- [x] Persona `Tabs` replace buy/sell checkboxes
+- [x] SSR HTML includes first page orders + tab counts (`initialData`)
+- [x] Hydrate 後首屏唔重複 RPC（initial list key 命中）
 - [x] Status `Tabs` drive `tabStatus` filter
 - [x] Search debounced; calls `searchUserTradingOrders` with server pagination
 - [x] Live orders render with order number headline, card name + grade, counterparty, price, **建立時間**
@@ -239,7 +298,7 @@ No dedicated hook yet — inline `useEffect` on list + detail pages.
 - [x] Pagination driven by `paginationMeta` (`total`, `rangeStart`/`rangeEnd`)
 - [x] Needs-action banner uses `filterCounts.needsAction`
 - [x] `?filter=待處理` deep-link syncs status tab
-- [x] Pending DB orders: **確認完成交易** (both parties) + **取消交易** (seller, confirm dialog)
+- [x] Pending DB orders: **確認完成交易** (buyer, handover confirm dialog) + **取消交易** (seller, cancel dialog)
 - [x] Cancel: **取消交易** opens confirm dialog; **確認取消** calls RPC; **返回** aborts
 - [x] Complete success → `ReviewModal` opens (Track A)
 - [x] Completed + `!hasReviewedByMe` → **✍️ 給予對手評價** (Track B)
@@ -252,7 +311,7 @@ No dedicated hook yet — inline `useEffect` on list + detail pages.
 - [x] Invoice — meetup: subtotal + total; auth: fee breakdown via `MemberAuthOrderInvoice`
 - [x] **買入交易** / **賣出交易** badge from `persona`
 - [x] Counterparty block shows correct 買家/賣家 label
-- [x] Pending: **確認完成交易** + seller **取消交易** (`canCancel`)
+- [x] Pending: buyer **確認完成交易** (handover dialog) + seller **取消交易** (`canCancel`)
 - [x] Complete success → `ReviewModal`; completed + `!hasReviewedByMe` → 补評 CTA
 - [x] Listing image carousel from `listingImageUrls` (fallback catalog image)
 
@@ -266,19 +325,20 @@ No dedicated hook yet — inline `useEffect` on list + detail pages.
 
 ### Manual test
 
-1. Apply migrations through **`20260705140000`**.
+1. Apply migrations through **`20260707130000`**.
 2. Log in → make offer **with auth toggle on** → seller accept → pending order on **`/profile/user/trading`**.
 3. Detail page shows auth timeline + invoice; repeat flow with toggle off → meetup UI.
-4. **確認完成交易** → review modal → submit 5-star review.
-4. Seller: pending order → **取消交易** → confirm dialog → **確認取消** → listing reappears on marketplace.
-5. Toggle persona/status tabs; search by order number / card name.
-6. **已完成** tab → 补評 button only when `!hasReviewedByMe`.
-7. Row 1 shows **`#orderNumber`** as the dominant label; row 2 shows card name, grade badge, counterparty, **建立時間**.
-8. Verify **建立時間** on DB order rows (locale date + 24h time).
-9. Complete order in chat → `SystemOrderCompletedMessage` card → **查看我的訂單** closes chat and lands on trading list.
-10. Click row → **`/profile/user/orderDetail/<uuid>`** — meetup vs auth UI per `useAuthentication`.
-11. On detail: seller **取消交易** → confirm → listing reappears; either party **確認完成交易** → review modal.
-12. Completed detail → **✍️ 給予對手評價** when `!hasReviewedByMe`.
+4. **Buyer:** **確認完成交易** → handover confirm dialog (tick all 3 + legal) → **確認完成交收** → review modal → submit 5-star review.
+5. **Seller:** pending order → **取消交易** → confirm dialog → **確認取消** → listing reappears on marketplace.
+6. Toggle persona/status tabs; search by order number / card name.
+7. **已完成** tab → 补評 button only when `!hasReviewedByMe`.
+8. Row 1 shows **`#orderNumber`** as the dominant label; row 2 shows card name, grade badge, counterpart, **建立時間**.
+9. Verify **建立時間** on DB order rows (locale date + 24h time).
+10. Complete order in chat → `SystemOrderCompletedMessage` card → **查看我的訂單** closes chat and lands on trading list.
+11. Click row → **`/profile/user/orderDetail/<uuid>`** — meetup vs auth UI per `useAuthentication`.
+12. On detail: seller **取消交易** → confirm → listing reappears; **buyer** **確認完成交易** → handover dialog → review modal.
+13. Seller pending detail: no complete button; copy says wait for buyer confirmation.
+14. Completed detail → **✍️ 給予對手評價** when `!hasReviewedByMe`.
 
 ## Related flows
 

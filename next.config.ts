@@ -29,7 +29,11 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "hkcardvault.b-cdn.net",
-        pathname: "/assets/badges/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+        pathname: "/storage/v1/object/public/**",
       },
     ],
   },

@@ -162,6 +162,6 @@ bun run build:ci
 | Item | Owner | Notes |
 |------|-------|-------|
 | OneSignal push cron | Backend | Phase 3 |
-| `WishlistTicker` home strip | Frontend | Still mock |
-| Home `NewArrivals` / `PremiumMarket` stars | Frontend | Pass real `productId` + grade |
+| `WishlistTicker` home strip | Frontend | ✅ Wired — `getHomeWishlistPreview`, `resolveWishlistDisplayValue` |
+| Home `NewArrivals` / `PremiumMarket` stars | Frontend | ✅ Wired — real `productId` + grade |
 | Distance-to-target UI | Frontend | Show `lowestListingPrice` vs `targetPrice` gap |

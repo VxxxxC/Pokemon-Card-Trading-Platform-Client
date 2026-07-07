@@ -10,6 +10,11 @@ import {
   type CollectionRow,
 } from "@/lib/collection/build-entries";
 import { computeMemberTradingStats } from "@/lib/dashboard/member-trading-stats";
+import {
+  dashboardPerfLog,
+  dashboardPerfNow,
+  isDashboardPerfLogEnabled,
+} from "@/lib/dashboard/perf-log";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -31,6 +36,11 @@ type DashboardProfileRow = Pick<
   | "reputation_tag"
   | "completed_trades_count"
 >;
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+const COLLECTION_STATS_COLUMNS =
+  "id, product_id, grading_company, grading_score, purchase_price";
 
 const EMPTY_TRADING_STATS: MemberDashboardTradingStats = {
   completedTradesCount: 0,
@@ -64,12 +74,13 @@ function mapProfileRow(row: DashboardProfileRow): MemberDashboardProfile {
   };
 }
 
-async function fetchCollectionRows(userId: string): Promise<CollectionRow[]> {
-  const supabase = await createClient();
-
+async function fetchCollectionRows(
+  supabase: SupabaseServerClient,
+  userId: string,
+): Promise<CollectionRow[]> {
   const { data, error } = await supabase
     .from("user_collections")
-    .select("*")
+    .select(COLLECTION_STATS_COLUMNS)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -81,9 +92,10 @@ async function fetchCollectionRows(userId: string): Promise<CollectionRow[]> {
   return (data ?? []) as CollectionRow[];
 }
 
-async function fetchActiveSellerListings(userId: string): Promise<ListingPriceRow[]> {
-  const supabase = await createClient();
-
+async function fetchActiveSellerListings(
+  supabase: SupabaseServerClient,
+  userId: string,
+): Promise<ListingPriceRow[]> {
   const { data, error } = await supabase
     .from("listings")
     .select("id, product_id, grading_company, grading_score, price")
@@ -98,21 +110,25 @@ async function fetchActiveSellerListings(userId: string): Promise<ListingPriceRo
   return (data ?? []) as ListingPriceRow[];
 }
 
-async function fetchGamificationPointsBalance(userId: string): Promise<number> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("gamification_stats")
-    .select("points_balance")
-    .eq("user_id", userId)
-    .maybeSingle<{ points_balance: number }>();
+async function fetchGamificationPointsBalance(
+  supabase: SupabaseServerClient,
+): Promise<number> {
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (fn: "get_gamification_stats_for_me") => Promise<{
+        data: unknown;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("get_gamification_stats_for_me");
 
   if (error) {
     console.error("[fetchGamificationPointsBalance]", error.message);
     return 0;
   }
 
-  return data?.points_balance ?? 0;
+  const payload = data as Record<string, unknown> | null;
+  return Number(payload?.points_balance ?? 0);
 }
 
 export async function getMemberDashboardOverview(): Promise<
@@ -122,29 +138,43 @@ export async function getMemberDashboardOverview(): Promise<
     return { success: false, error: "請先登入" };
   }
 
+  const totalStart = isDashboardPerfLogEnabled() ? dashboardPerfNow() : 0;
+
   const supabase = await createClient();
+  const authStart = isDashboardPerfLogEnabled() ? dashboardPerfNow() : 0;
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (isDashboardPerfLogEnabled()) {
+    dashboardPerfLog(`overview.authMs=${Math.round(dashboardPerfNow() - authStart)}`);
+  }
 
   if (!user) {
     return { success: false, error: "請先登入" };
   }
 
   try {
+    const parallelStart = isDashboardPerfLogEnabled() ? dashboardPerfNow() : 0;
     const [profileResult, collectionRows, activeListings, pointsBalance] =
       await Promise.all([
-      supabase
-        .from("profiles")
-        .select(
-          "id, display_name, username, avatar_path, created_at, rating_score, reputation_tag, completed_trades_count",
-        )
-        .eq("id", user.id)
-        .maybeSingle<DashboardProfileRow>(),
-      fetchCollectionRows(user.id),
-      fetchActiveSellerListings(user.id),
-      fetchGamificationPointsBalance(user.id),
-    ]);
+        supabase
+          .from("profiles")
+          .select(
+            "id, display_name, username, avatar_path, created_at, rating_score, reputation_tag, completed_trades_count",
+          )
+          .eq("id", user.id)
+          .maybeSingle<DashboardProfileRow>(),
+        fetchCollectionRows(supabase, user.id),
+        fetchActiveSellerListings(supabase, user.id),
+        fetchGamificationPointsBalance(supabase),
+      ]);
+
+    if (isDashboardPerfLogEnabled()) {
+      dashboardPerfLog(
+        `overview.parallelFetchMs=${Math.round(dashboardPerfNow() - parallelStart)} collections=${collectionRows.length} listings=${activeListings.length}`,
+      );
+    }
 
     if (profileResult.error || !profileResult.data) {
       return { success: false, error: "無法取得用戶資料" };
@@ -154,6 +184,12 @@ export async function getMemberDashboardOverview(): Promise<
     const completedTradesCount = profileResult.data.completed_trades_count ?? 0;
 
     if (collectionRows.length === 0 && activeListings.length === 0) {
+      if (isDashboardPerfLogEnabled()) {
+        dashboardPerfLog(
+          `overview.totalMs=${Math.round(dashboardPerfNow() - totalStart)} path=empty`,
+        );
+      }
+
       return {
         success: true,
         data: {
@@ -174,9 +210,17 @@ export async function getMemberDashboardOverview(): Promise<
       ]),
     ];
 
+    const pricingStart = isDashboardPerfLogEnabled() ? dashboardPerfNow() : 0;
     const context = await loadCollectionPricingContext(supabase, user.id, productIds, {
       includeChartData: false,
+      userListingRows: activeListings,
     });
+
+    if (isDashboardPerfLogEnabled()) {
+      dashboardPerfLog(
+        `overview.pricingContextMs=${Math.round(dashboardPerfNow() - pricingStart)} products=${productIds.length}`,
+      );
+    }
 
     const tradingStats = computeMemberTradingStats({
       completedTradesCount,
@@ -184,6 +228,12 @@ export async function getMemberDashboardOverview(): Promise<
       activeListings,
       context,
     });
+
+    if (isDashboardPerfLogEnabled()) {
+      dashboardPerfLog(
+        `overview.totalMs=${Math.round(dashboardPerfNow() - totalStart)} path=full`,
+      );
+    }
 
     return {
       success: true,

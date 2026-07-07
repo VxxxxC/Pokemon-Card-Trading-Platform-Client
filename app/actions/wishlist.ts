@@ -15,6 +15,12 @@ import {
   normalizeWishlistGrading,
 } from "@/lib/wishlist/grading";
 import { formatMarketGradeLabel } from "@/lib/marketplace/market-price";
+import { HOME_WISHLIST_LIMIT } from "@/lib/home/constants";
+import {
+  homePerfLog,
+  homePerfNow,
+  isHomePerfLogEnabled,
+} from "@/lib/home/perf-log";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
@@ -164,14 +170,21 @@ function lowestListingForGrade(
 
 async function buildWishlistEntriesForUser(
   userId: string,
+  limit?: number,
 ): Promise<WishlistEntry[]> {
   const supabase = await createClient();
 
-  const { data: watchRows, error: watchError } = await supabase
+  let watchQuery = supabase
     .from("product_watchlists")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
+
+  if (limit != null && limit > 0) {
+    watchQuery = watchQuery.limit(limit);
+  }
+
+  const { data: watchRows, error: watchError } = await watchQuery;
 
   if (watchError) {
     console.error("[getWishlistEntries]", watchError.message);
@@ -544,6 +557,48 @@ export async function getUserWishlistProductIds(): Promise<
   }
 }
 
+async function fetchWishlistFavoredKeysForUser(
+  userId: string,
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_watchlists")
+    .select("product_id, grading_company, grading_score")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[fetchWishlistFavoredKeysForUser]", error.message);
+    return [];
+  }
+
+  return ((data ?? []) as Pick<
+    WatchlistRow,
+    "product_id" | "grading_company" | "grading_score"
+  >[]).map((row) =>
+    buildWishlistFavoredKey(
+      row.product_id,
+      row.grading_company,
+      row.grading_score,
+    ),
+  );
+}
+
+export async function getWishlistFavoredKeysForUser(
+  userId: string,
+): Promise<string[]> {
+  const trimmedUserId = userId.trim();
+  if (!trimmedUserId || !isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    return await fetchWishlistFavoredKeysForUser(trimmedUserId);
+  } catch (error) {
+    console.error("[getWishlistFavoredKeysForUser]", error);
+    return [];
+  }
+}
+
 export async function getUserWishlistFavoredKeys(): Promise<
   WishlistResult<string[]>
 > {
@@ -553,28 +608,7 @@ export async function getUserWishlistFavoredKeys(): Promise<
   }
 
   try {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("product_watchlists")
-      .select("product_id, grading_company, grading_score")
-      .eq("user_id", userId);
-
-    if (error) {
-      console.error("[getUserWishlistFavoredKeys]", error.message);
-      return { success: false, error: "無法載入願望清單" };
-    }
-
-    const keys = ((data ?? []) as Pick<
-      WatchlistRow,
-      "product_id" | "grading_company" | "grading_score"
-    >[]).map((row) =>
-      buildWishlistFavoredKey(
-        row.product_id,
-        row.grading_company,
-        row.grading_score,
-      ),
-    );
-
+    const keys = await fetchWishlistFavoredKeysForUser(userId);
     return { success: true, data: keys };
   } catch (error) {
     console.error("[getUserWishlistFavoredKeys]", error);
@@ -595,6 +629,34 @@ export async function getWishlistEntries(): Promise<
     return { success: true, data: entries };
   } catch (error) {
     console.error("[getWishlistEntries]", error);
+    return { success: false, error: "無法載入願望清單" };
+  }
+}
+
+export async function getHomeWishlistPreview(
+  limit = HOME_WISHLIST_LIMIT,
+): Promise<WishlistResult<WishlistEntry[]>> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: [] };
+  }
+
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return { success: true, data: [] };
+  }
+
+  const startedAt = isHomePerfLogEnabled() ? homePerfNow() : 0;
+
+  try {
+    const entries = await buildWishlistEntriesForUser(userId, limit);
+    if (isHomePerfLogEnabled()) {
+      homePerfLog(
+        `wishlist=${Math.round(homePerfNow() - startedAt)}ms count=${entries.length}`,
+      );
+    }
+    return { success: true, data: entries };
+  } catch (error) {
+    console.error("[getHomeWishlistPreview]", error);
     return { success: false, error: "無法載入願望清單" };
   }
 }

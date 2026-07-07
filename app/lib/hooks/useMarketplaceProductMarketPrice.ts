@@ -18,28 +18,50 @@ export type MarketplaceProductMarketPriceFilters = {
   productId: string;
 };
 
+export type MarketplaceProductMarketPriceInitialData = {
+  grades: MarketplaceMarketPriceGradeRow[];
+};
+
+type UseMarketplaceProductMarketPriceOptions = {
+  initialData?: MarketplaceProductMarketPriceInitialData;
+};
+
 type UseMarketplaceProductMarketPriceResult = {
   availableGrades: Pick<MarketplaceMarketPriceGradeRow, "gradeKey" | "label">[];
   selectedGradeKey: string | null;
   setSelectedGradeKey: (gradeKey: string) => void;
   marketPrice: MarketplaceMarketPrice;
   isLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   refetch: () => void;
 };
 
 export function useMarketplaceProductMarketPrice(
   filters: MarketplaceProductMarketPriceFilters,
+  options: UseMarketplaceProductMarketPriceOptions = {},
 ): UseMarketplaceProductMarketPriceResult {
+  const { initialData } = options;
+  const hasInitialData = initialData !== undefined;
+
   const [availableGrades, setAvailableGrades] = useState<
     MarketplaceMarketPriceGradeRow[]
-  >([]);
-  const [selectedGradeKey, setSelectedGradeKey] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  >(initialData?.grades ?? []);
+  const [selectedGradeKey, setSelectedGradeKey] = useState<string | null>(() => {
+    if (!initialData?.grades.length) return null;
+    return pickDefaultMarketPriceGradeKey(
+      initialData.grades.map((grade) => grade.gradeKey),
+    );
+  });
+  const [isFetching, setIsFetching] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
 
   const requestIdRef = useRef(0);
   const productIdRef = useRef(filters.productId);
+  const skipNextFetchRef = useRef(hasInitialData);
+  const initialProductIdRef = useRef(
+    hasInitialData ? filters.productId : null,
+  );
   const productId = filters.productId;
 
   productIdRef.current = productId;
@@ -76,15 +98,23 @@ export function useMarketplaceProductMarketPrice(
       setError("無法連線至大盤市場");
     } finally {
       if (requestId === requestIdRef.current) {
-        setIsLoading(false);
+        setIsFetching(false);
       }
     }
   }, []);
 
   useEffect(() => {
+    if (
+      skipNextFetchRef.current &&
+      initialProductIdRef.current === productId
+    ) {
+      skipNextFetchRef.current = false;
+      return;
+    }
+
     const requestId = ++requestIdRef.current;
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
     void runMarketPricesFetch(requestId);
   }, [productId, runMarketPricesFetch]);
@@ -92,10 +122,12 @@ export function useMarketplaceProductMarketPrice(
   const refetch = useCallback(() => {
     const requestId = ++requestIdRef.current;
 
-    setIsLoading(true);
+    setIsFetching(true);
     setError(null);
     void runMarketPricesFetch(requestId);
   }, [runMarketPricesFetch]);
+
+  const isLoading = isFetching && availableGrades.length === 0;
 
   const selectedGrade =
     availableGrades.find((grade) => grade.gradeKey === selectedGradeKey) ?? null;
@@ -117,6 +149,7 @@ export function useMarketplaceProductMarketPrice(
     setSelectedGradeKey,
     marketPrice,
     isLoading,
+    isRefreshing: isFetching && availableGrades.length > 0,
     error,
     refetch,
   };

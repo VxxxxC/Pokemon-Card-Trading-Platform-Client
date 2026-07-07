@@ -31,6 +31,7 @@ export function TopNav() {
     setIsChatOpen,
     setActiveRoomId,
     activateRoomById,
+    openChatWithPartner,
   } = useHkCardVaultStore();
 
   // 點擊外面收起下拉選單
@@ -51,13 +52,22 @@ export function TopNav() {
   useEffect(() => {
     const handleGlobalOpenChat = (e: Event) => {
       const customEvent = e as CustomEvent<{
-        roomId: string;
+        partnerId?: string;
         partnerName?: string;
+        roomId?: string;
       }>;
-      if (customEvent.detail?.roomId) {
+      const detail = customEvent.detail;
+      if (detail?.partnerId) {
+        openChatWithPartner(
+          detail.partnerId,
+          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
+        );
+        return;
+      }
+      if (detail?.roomId) {
         activateRoomById(
-          customEvent.detail.roomId,
-          customEvent.detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
+          detail.roomId,
+          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
         );
       }
     };
@@ -65,7 +75,7 @@ export function TopNav() {
     window.addEventListener("open-global-chat", handleGlobalOpenChat);
     return () =>
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
-  }, [activateRoomById]);
+  }, [activateRoomById, openChatWithPartner]);
 
   const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
 

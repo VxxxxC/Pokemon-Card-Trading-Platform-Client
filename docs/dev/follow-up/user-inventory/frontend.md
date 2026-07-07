@@ -13,13 +13,16 @@
 
 | File | Role |
 |------|------|
-| `app/profile/user/(dashboard)/inventory/page.tsx` | Summary cards, search, accordion, pagination |
-| `app/lib/hooks/useInventory.ts` | Data hook (summary + groups) |
+| `app/profile/user/(dashboard)/inventory/page.tsx` | `Suspense` shell |
+| `app/profile/user/(dashboard)/inventory/UserInventoryPageData.tsx` | SSR bootstrap |
+| `app/profile/user/(dashboard)/inventory/UserInventoryClient.tsx` | Summary, search, accordion, pagination |
+| `app/profile/user/(dashboard)/inventory/UserInventorySkeleton.tsx` | Streaming fallback |
+| `app/lib/hooks/useInventory.ts` | Data hook (`initialData`, `isRefreshing`, `isSummaryLoading`) |
+| `app/lib/inventory/perf-log-client.ts` | Client mount timing |
 | `app/components/merchant/InventoryAccordion.tsx` | `inactive` → **未上架**; optional `imageUrl` on `SKUGroup` |
 | `app/components/transactions/ExecutionSlideOver.tsx` | Fires `incrementListingView` on open |
-| `app/components/merchant/NewListingForm.tsx` | Dispatches `inventory-should-refresh` on mock submit |
 
-Merchant inventory (`app/profile/merchant/(dashboard)/inventory/page.tsx`) still uses mock data — can reuse `useInventory` when wired.
+Merchant inventory (`app/profile/merchant/(dashboard)/inventory/page.tsx`) still uses mock data — can reuse `useInventory` when wired. `NewListingForm` is **not** mounted on the user inventory page (removed 2026-07-07).
 
 ---
 
@@ -35,18 +38,29 @@ const {
   totalPages,
   summary,
   isLoading,
+  isSummaryLoading,
+  isRefreshing,
   setPage,
   refetch,
-} = useInventory({ query: searchQuery, pageSize: 6 });
+} = useInventory({
+  query: searchQuery,
+  pageSize: 6,
+  initialData, // from SSR UserInventoryPageData
+});
 ```
 
-Listen for `inventory-should-refresh` to refetch after listing create (same pattern as collection).
+SSR path: `UserInventoryPageData` calls `getInventoryPageBootstrap` and passes `initialData` — hook skips mount fetch.
+
+Listen for `inventory-should-refresh` to refetch when listings change elsewhere (e.g. collection flow). The user inventory page no longer includes an on-page listing form.
+
+**Perf report:** [PERF_REPORT.md](./PERF_REPORT.md)
 
 ---
 
 ## Acceptance checklist
 
-- [ ] Logged-in seller sees real listings grouped by product (card)
+- [ ] Summary cards show `—` while `isSummaryLoading`; SSR shows values immediately
+- [ ] Hydrate 後首屏唔再雙 fetch（有 `initialData`）
 - [ ] Multiple listings for same card appear under one accordion group
 - [ ] Summary: 現貨 / 上架中 / 已售出 counts match DB
 - [ ] Search filters by card name or card number
@@ -55,3 +69,4 @@ Listen for `inventory-should-refresh` to refetch after listing create (same patt
 - [ ] `views` and `offersCount` reflect `listing_stats`
 - [ ] Opening `ExecutionSlideOver` increments views (after migration)
 - [ ] Empty state when no listings
+- [ ] 頁面無「新增商品」accordion / `NewListingForm`

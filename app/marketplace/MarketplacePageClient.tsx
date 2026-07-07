@@ -30,6 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import {
+  isMarketplaceClientPerfLogEnabled,
+  marketplaceClientPerfLog,
+} from "@/app/lib/marketplace/perf-log-client";
+import { MARKETPLACE_GRID_PAGE_SIZE } from "@/lib/marketplace/constants";
 
 const MOBILE_VIEWPORT_QUERY = "(max-width: 1279px)";
 
@@ -84,11 +89,15 @@ function toMarketplaceListing(
 export type MarketplacePageClientProps = {
   currentUserId: string | null;
   initialData?: MarketplaceSearchInitialData;
+  initialFavoredKeys?: string[];
+  bootstrapError?: string;
 };
 
 export function MarketplacePageClient({
   currentUserId,
   initialData,
+  initialFavoredKeys,
+  bootstrapError,
 }: MarketplacePageClientProps) {
   const _isMounted = useSyncExternalStore(
     () => () => {},
@@ -131,15 +140,17 @@ export function MarketplacePageClient({
 
   const [pageState, setPageState] = useState({ page: 1, forKey: "" });
   const [priceRange, setPriceRange] = useState<[number, number] | null>(() =>
-    initialData
+    initialData?.priceBounds
       ? [initialData.priceBounds.minPrice, initialData.priceBounds.maxPrice]
       : null,
   );
   const [favoredKeys, setFavoredKeys] = useState<ReadonlySet<string>>(
-    () => new Set(),
+    () => new Set(initialFavoredKeys ?? []),
   );
 
   useEffect(() => {
+    if (initialFavoredKeys !== undefined) return;
+
     if (!currentUserId) {
       setFavoredKeys(new Set());
       return;
@@ -160,14 +171,19 @@ export function MarketplacePageClient({
     return () => {
       cancelled = true;
     };
-  }, [currentUserId]);
+  }, [currentUserId, initialFavoredKeys]);
 
-  const itemsPerPage = isMobileViewport ? 9 : 11;
+  const itemsPerPage = MARKETPLACE_GRID_PAGE_SIZE;
 
   const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeTypes.join(",")}|${priceRange?.join(",") ?? ""}`;
   const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
 
-  const { products, meta, isLoading, error, priceBounds, rarities } =
+  const [resolvedPriceBounds, setResolvedPriceBounds] = useState<{
+    minPrice: number;
+    maxPrice: number;
+  } | null>(initialData?.priceBounds ?? null);
+
+  const { products, meta, isLoading, isRefreshing, error, priceBounds, rarities } =
     useMarketplaceSearch(
       {
         query,
@@ -180,8 +196,56 @@ export function MarketplacePageClient({
         page: currentPage,
         pageSize: itemsPerPage,
       },
-      { initialData },
+      { initialData, absolutePriceBounds: resolvedPriceBounds },
     );
+
+  useEffect(() => {
+    if (!priceBounds) return;
+    setResolvedPriceBounds(priceBounds);
+  }, [priceBounds]);
+
+  const interactiveLoggedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isMarketplaceClientPerfLogEnabled()) return;
+
+    const navigation = performance.getEntriesByType(
+      "navigation",
+    )[0] as PerformanceNavigationTiming | undefined;
+
+    if (navigation) {
+      marketplaceClientPerfLog(
+        `ttfb=${Math.round(navigation.responseStart)}ms domContentLoaded=${Math.round(navigation.domContentLoadedEventEnd)}ms load=${Math.round(navigation.loadEventEnd)}ms`,
+      );
+    }
+
+    if (typeof PerformanceObserver === "undefined") return;
+
+    try {
+      const lcpObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        const last = entries[entries.length - 1];
+        if (!last) return;
+        marketplaceClientPerfLog(
+          `lcp=${Math.round(last.startTime)}ms element=${last.name || "unknown"}`,
+        );
+        lcpObserver.disconnect();
+      });
+      lcpObserver.observe({ type: "largest-contentful-paint", buffered: true });
+    } catch {
+      // LCP observer unsupported in this browser
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isMarketplaceClientPerfLogEnabled()) return;
+    if (interactiveLoggedRef.current || isLoading) return;
+
+    interactiveLoggedRef.current = true;
+    marketplaceClientPerfLog(
+      `timeToInteractive=${Math.round(performance.now())}ms viewport=${isMobileViewport ? "mobile" : "desktop"} pageSize=${itemsPerPage} hasInitialData=${Boolean(initialData)}`,
+    );
+  }, [isLoading, isMobileViewport, itemsPerPage, initialData]);
 
   const derivedListings = useMemo(
     () => products.map(toMarketplaceListing),
@@ -265,6 +329,8 @@ export function MarketplacePageClient({
     (priceRange !== null &&
       (priceRange[0] !== absoluteMinPrice ||
         priceRange[1] !== absoluteMaxPrice));
+
+  const displayError = error ?? bootstrapError ?? null;
 
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
@@ -529,15 +595,27 @@ export function MarketplacePageClient({
         </aside>
 
         <div id="product-cards" className="flex-1 space-y-6">
-          {error && (
+          {displayError && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[13px] text-red-200">
-              {error}
+              {displayError}
             </div>
           )}
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-24">
-              <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={`marketplace-skeleton-${index}`}
+                  className="bg-[#26211C] rounded-2xl border border-white/5 overflow-hidden animate-pulse"
+                >
+                  <div className="w-full aspect-[3/4] bg-white/5" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 w-3/4 rounded bg-white/5" />
+                    <div className="h-3 w-1/2 rounded bg-white/5" />
+                    <div className="h-5 w-1/3 rounded bg-white/5" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : !isLoading && (paginatedListings.length === 0 || meta.total === 0) ? (
             <MarketplaceEmptyState
@@ -546,7 +624,17 @@ export function MarketplacePageClient({
               onResetFilters={handleResetAllFilters}
             />
           ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5">
+          <div className="relative">
+            {isRefreshing ? (
+              <div className="absolute inset-0 z-10 bg-[#17130f]/35 backdrop-blur-[1px] flex items-start justify-center pt-20 pointer-events-none">
+                <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+              </div>
+            ) : null}
+          <div
+            className={`grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-5 transition-opacity duration-200 ${
+              isRefreshing ? "opacity-60" : "opacity-100"
+            }`}
+          >
             {paginatedListings.flatMap((item, idx) => {
               const card = (
                 <MarketplaceCard
@@ -554,6 +642,7 @@ export function MarketplacePageClient({
                   listing={item}
                   currentUserId={currentUserId}
                   favoredKeys={favoredKeys}
+                  imagePriority={idx < 4}
                 />
               );
 
@@ -594,6 +683,7 @@ export function MarketplacePageClient({
                 </div>,
               ];
             })}
+          </div>
           </div>
           )}
 

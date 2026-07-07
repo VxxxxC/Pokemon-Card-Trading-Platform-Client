@@ -37,7 +37,7 @@
 |------|---------|
 | **`OfferCard`** | Scheme B offer card: persona guard, state machine, listing thumbnail, accept/modify/**reject** RPC |
 | **`SpecialTransactionMessage`** | Thin adapter → `OfferCard` when `offerId` present |
-| **`GlobalChatOverlay`** | On open → `getUserChatInbox()` → `mergeChatRoomsWithDb` (mock + DB); mounts **`useChatRoomRealtime`** |
+| **`GlobalChatOverlay`** | Prefetch **`getUserChatInboxLobby()`** on auth; refresh on open; **`getChatRoomThread(roomId)`** on room select; mounts **`useChatRoomRealtime`** |
 | **Buyer modify** | `modifyOffer` + `applyOfferModification` in Zustand; `AlertDialog` trigger + `z-[550]` overlay fix |
 | **Seller accept** | `acceptOffer` + `applyOfferAccepted(offerId, memberOrderId)` in Zustand |
 | **Seller reject** | `rejectOffer` + `applyOfferRejected(offerId)` in Zustand |
@@ -55,7 +55,7 @@
 | Area | Owner | Notes |
 |------|-------|-------|
 | Checkout link after accept | Product | Old `SpecialTransactionMessage` had `/checkout/[cardId]` — `OfferCard` shows hold banner only |
-| Page refresh inbox | Frontend | DB rooms reload on chat open; full-page persistence not automatic |
+| Page refresh inbox | Frontend | Lobby prefetches on login; thread lazy-loads per room (Phase 2) |
 | Realtime replication | Infra | Migration **`20260704240000`** adds publication; confirm in Dashboard if push already applied |
 | Inbox `member_order_id` | Backend/Infra | Apply **`20260704300000`** — without it, review CTA relies on slower server fallbacks |
 
@@ -73,7 +73,7 @@
 | File | Role |
 |------|------|
 | `app/actions/offers.ts` | `makeOffer`, `modifyOffer`, `acceptOffer`, **`rejectOffer`**, `getOfferCardContext` |
-| `app/actions/chat.ts` | `getUserChatInbox`, `sendMessage` |
+| `app/actions/chat.ts` | `getUserChatInboxLobby`, `getChatRoomThread`, `sendMessage` |
 | `app/actions/reviews.ts` | `getUserReviewedMemberOrderIds`, **`resolveChatCompletionOrderId`** (chat completion card fallback) |
 | `app/components/chat/OfferCard.tsx` | **Primary** offer card UI + RPC wiring; memoized; conditional fetch |
 | `app/components/chat/SystemOrderCompletedMessage.tsx` | **Order completion card** + review CTA; memoized |

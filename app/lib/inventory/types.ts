@@ -28,6 +28,11 @@ export type InventoryGroupsPage = {
   totalPages: number;
 };
 
+export type InventoryPageBootstrap = {
+  summary: InventorySummary;
+  page: InventoryGroupsPage;
+};
+
 export type InventoryDbListingStatus = "active" | "sold" | "inactive";
 
 export function mapListingStatusToUi(

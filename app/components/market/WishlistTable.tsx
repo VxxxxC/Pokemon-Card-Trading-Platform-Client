@@ -36,24 +36,10 @@ function wishlistRowKey(entry: WishlistEntry): string {
   return `${entry.productId}::${entry.gradingCompany}::${entry.gradingScore}`;
 }
 
-function getSparklinePoints(
-  chartPoints: WishlistEntry["chartPoints"],
-  width = 60,
-  height = 24,
-): string {
-  if (!chartPoints || chartPoints.length < 2) return "0,12 60,12";
-  const prices = chartPoints.map((point) => point.price);
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
-  const range = max - min === 0 ? 1 : max - min;
-  return chartPoints
-    .map((point, index) => {
-      const x = (index / (chartPoints.length - 1)) * width;
-      const y = height - ((point.price - min) / range) * (height - 4) - 2;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
+import {
+  getSparklinePoints,
+  hasWishlistTrendData,
+} from "@/lib/wishlist/sparkline";
 
 function MiniSparkline({
   points,
@@ -411,9 +397,15 @@ export function WishlistTable({
               const rowKey = wishlistRowKey(entry);
               const platformPrice = entry.lowestListingPrice;
               const trackedPrice = entry.trackedPrice;
-              const hasTrend =
-                entry.trend30d != null && entry.chartPoints.length >= 2;
-              const sparklinePoints = getSparklinePoints(entry.chartPoints);
+              const hasTrend = hasWishlistTrendData(
+                entry.trend30d,
+                entry.chartPoints,
+              );
+              const sparklinePoints = getSparklinePoints(
+                entry.chartPoints,
+                60,
+                24,
+              );
               const sparklineDirection =
                 entry.trend30d != null && entry.trend30d >= 0 ? "up" : "down";
               const diffFromTracked =

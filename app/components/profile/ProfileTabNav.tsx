@@ -27,6 +27,7 @@ export function ProfileTabNav({ tabs }: ProfileTabNavProps) {
           <Link
             key={href}
             href={href}
+            prefetch
             className={`flex items-center gap-1.5 shrink-0 px-3.5 py-2.5 font-mono text-[12px] font-medium border-b-2 -mb-px transition-colors ${
               isActive
                 ? "text-brand border-brand"

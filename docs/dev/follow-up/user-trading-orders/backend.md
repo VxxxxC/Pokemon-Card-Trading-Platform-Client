@@ -8,6 +8,22 @@
 
 ## Changelog
 
+### 2026-07-07 (trading list perf)
+
+| Change | Detail |
+|--------|--------|
+| **SSR bootstrap** | `UserTradingPageData` calls `searchUserTradingOrders` on server; `useUserTrading` `initialData` |
+| **Perf logging** | `[trading:perf]` in `searchUserTradingOrders` — `rpcMs`, `totalMs`, `needsAction` |
+| **Constants** | `lib/member-order/constants.ts` — page sizes, tab URL mapping |
+
+### 2026-07-07 (buyer-only complete)
+
+| Change | Detail |
+|--------|--------|
+| **Migration `20260707130000`** | `rpc_complete_member_order` — only `buyer_id = p_user_id`; seller complete path removed from `fn_enforce_member_order_transitions` |
+| **RPC error** | Non-buyer or invalid state → `操作失敗：僅買家可確認完成交易，或訂單狀態不合法。` |
+| **Frontend** | `MemberOrderCompleteConfirmDialog` — buyer handover checklist + legal disclaimer before RPC (see [frontend.md](./frontend.md)) |
+
 ### 2026-07-05 (order detail)
 
 | Change | Detail |
@@ -36,7 +52,7 @@
 |--------|--------|
 | **Migration `20260704250000`** | `member_orders.order_number` + `merchant_orders.order_number` (UNIQUE + indexes); RLS `member_orders_participant_read`; `rpc_accept_offer` auto-generates `ORD-2026-XXXXXX` on accept |
 | **`getUserTradingOrders`** | Persona / tab status / fuzzy search + **`hasReviewedByMe`** via `rpc_get_user_reviewed_member_order_ids`; returns **`createdAt`** from `member_orders.created_at` |
-| **Migration `20260704210000_order_actions_rpc`** | `fn_enforce_member_order_transitions` (seller may complete); `rpc_cancel_member_order`, `rpc_complete_member_order` |
+| **Migration `20260704210000_order_actions_rpc`** | `fn_enforce_member_order_transitions`; `rpc_cancel_member_order`, `rpc_complete_member_order` (superseded for complete by **`20260707130000`** — buyer-only) |
 | **`cancelMemberOrder` / `completeMemberOrder`** | Server actions in `app/actions/orders.ts` |
 | **Migration `20260704260000`** | `fn_aggregate_user_reputation_stats` on `member_orders` + `merchant_orders` → `profiles` trade counts |
 | **Migration `20260704300000`** | `get_user_chat_inbox()` includes `member_order_id` on messages — enables chat `SYSTEM_ORDER_COMPLETED` card + review CTA |
@@ -51,6 +67,8 @@
 | `supabase/migrations/20260704260000_merchant_order_reputation_stats.sql` | Reputation aggregation triggers |
 | `supabase/migrations/20260705120000_search_user_trading_orders.sql` | Paginated search RPC + facet counts |
 | `app/actions/orders.ts` | **`searchUserTradingOrders`**, `getUserTradingOrders` (wrapper), **`getMemberOrderDetail`**, **`cancelMemberOrder`**, **`completeMemberOrder`** |
+| `lib/member-order/constants.ts` | Page sizes, persona/status options, URL tab mapping |
+| `lib/member-order/perf-log.ts` | Server perf instrumentation |
 | `app/actions/chat.ts` | Inbox message select includes `member_order_id` (table fallback path) |
 | `app/actions/offers.ts` | *(unchanged)* `acceptOffer` → `rpc_accept_offer` — benefits from migration |
 | `supabase/migrations/20260704300000_get_user_chat_inbox_member_order_id.sql` | Inbox RPC returns `member_order_id` on `chat_messages` |
@@ -283,14 +301,14 @@ import {
 import { cancelMemberOrder, completeMemberOrder } from "@/app/actions/orders";
 
 await cancelMemberOrder(orderId);   // seller only — RPC validates
-await completeMemberOrder(orderId); // buyer or seller
+await completeMemberOrder(orderId); // buyer only — RPC validates
 // { success: true } | { success: false, error: string }
 ```
 
-| Action | RPC | Revalidate |
-|--------|-----|------------|
-| `cancelMemberOrder` | `rpc_cancel_member_order(p_order_id, p_user_id)` | `/marketplace`, `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
-| `completeMemberOrder` | `rpc_complete_member_order(p_order_id, p_user_id)` | `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
+| Action | RPC | Who | Revalidate |
+|--------|-----|-----|------------|
+| `cancelMemberOrder` | `rpc_cancel_member_order(p_order_id, p_user_id)` | Seller | `/marketplace`, `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
+| `completeMemberOrder` | `rpc_complete_member_order(p_order_id, p_user_id)` | **Buyer** | `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
 
 RPC side effects:
 
@@ -322,6 +340,7 @@ bunx supabase gen types typescript --local > types/supabase.ts
 - **`20260705130000_member_orders_offers_use_authentication.sql`** (offer + order auth flag; accept inherit; list RPC)
 - **`20260705140000_rpc_make_offer_use_authentication.sql`** (buyer toggle at make-offer)
 - **`20260705185000_rpc_complete_member_order_listing_sold.sql`** (complete → `listings.status = sold` + backfill)
+- **`20260707130000_complete_member_order_buyer_only.sql`** (complete restricted to buyer; trigger guard updated)
 
 **Chat inbox wiring (complete-order UI in chat):**
 
@@ -408,7 +427,7 @@ Open **`/profile/user/orderDetail/<uuid>`** as buyer or seller — expect 404-st
 
 ### 3. Complete → chat system message
 
-1. Call `completeMemberOrder(orderId)` from trading page or chat.
+1. Log in as **buyer** → call `completeMemberOrder(orderId)` from trading page or order detail (after UI confirm dialog).
 2. SQL check:
 
 ```sql

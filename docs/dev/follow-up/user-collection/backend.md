@@ -26,26 +26,22 @@
 ## Architecture
 
 ```
+GET /profile/user/collection
+  → page.tsx (Suspense + UserCollectionSkeleton)
+  → UserCollectionPageData (Server Component)
+      getCollectionPageBootstrap({ page: 1, filter: 'all' })
+        loadUserCollectionView — single fetchAllCollectionRows + single loadCollectionPricingContext
+        → summary + page 1 entries
+  → UserCollectionClient — initialData; skip mount bootstrap when SSR succeeded
+
+Client interactions:
+  → filter / search / pagination → getCollectionEntries (reuses loadUserCollectionView internally)
+  → collection-should-refresh / mutations → getCollectionPageBootstrap (summary + current page)
+  → wishlist section → getWishlistEntries (deferred via requestIdleCallback)
+
 AddAssetModal (hobby submit)
   → addToCollection({ productId, gradingOptionId, purchasePrice })
   → INSERT user_collections
-
-Collection page mount / refresh
-  → getCollectionPortfolioSummary() — all rows; resolveCollectionMarketValue per row
-  → getCollectionEntries({ page, pageSize, filter, query }) — filter/count in memory, hydrate current page only
-  → JOIN product_catalog (name, image_url, rarity, set_code)
-  → JOIN product_grading_market_prices (exact grade) → trend30d only
-  → resolveCollectionMarketValue: SNKRDUNK exact grade → platform same-grade MIN → purchase_price
-  → User active listings (same grade) → status listed + activeListingId + listedCount
-
-Grade change
-  → updateCollectionGrade({ collectionId, nextGradingOptionId })
-  → client refetch → repriced currentMarketValue + trend
-
-Sell from collection (frontend only)
-  → openAddAssetModal({ mode: "merch", sellPrefill })
-  → submitCardListingWithProgress (existing listings flow)
-  → collection row retained; status derives as listed
 ```
 
 ### Price domains (collection vs wishlist)
@@ -68,8 +64,11 @@ Sell from collection (frontend only)
 | File | Purpose |
 |------|---------|
 | `supabase/migrations/20260706110000_user_collections_portfolio_extend.sql` | DDL, RLS, reputation fn patch |
-| `app/actions/collection.ts` | Summary, paginated list, mutations |
-| `app/lib/collection/types.ts` | `CollectionEntry`, `CollectionPortfolioSummary`, pagination DTOs |
+| `app/actions/collection.ts` | `getCollectionPageBootstrap`, summary, paginated list, mutations |
+| `lib/collection/load-user-collection.ts` | Shared single-pass view loader |
+| `lib/collection/perf-log.ts` | `[collection:perf]` server diagnostics |
+| `app/profile/user/(dashboard)/collection/UserCollectionPageData.tsx` | SSR bootstrap |
+| `app/lib/collection/types.ts` | `CollectionEntry`, `CollectionPortfolioSummary`, `CollectionPageBootstrap` |
 | `lib/collection/build-entries.ts` | Shared pricing context, filter/search, portfolio totals |
 | `lib/collection/constants.ts` | `COLLECTION_DEFAULT_PAGE_SIZE` (20), `COLLECTION_MAX_PAGE_SIZE` (50) |
 | `lib/marketplace/portfolio-pricing.ts` | `resolveCollectionMarketValue`, `findExactMarketPriceRow`, grade listing match |
@@ -104,6 +103,7 @@ All return `{ success: true, data }` or `{ success: false, error: string }`.
 
 | Action | Input | Output |
 |--------|-------|--------|
+| `getCollectionPageBootstrap` | `{ page?, pageSize?, filter?, query? }` | `{ summary, page }` |
 | `getCollectionPortfolioSummary` | — | `CollectionPortfolioSummary` |
 | `getCollectionEntries` | `{ page?, pageSize?, filter?, query? }` | `CollectionEntriesPage` |
 | `addToCollection` | `{ productId, gradingOptionId, purchasePrice }` | `{ collectionId }` |

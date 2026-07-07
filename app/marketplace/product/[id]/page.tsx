@@ -1,27 +1,15 @@
-import { notFound } from "next/navigation";
-import { getMarketplaceProductDetail } from "@/app/actions/marketplace";
-import { getOptionalAuthUser } from "@/lib/auth/session";
-import { ProductDetailClient } from "./ProductDetailClient";
+import { Suspense } from "react";
+import { ProductDetailPageData } from "./ProductDetailPageData";
+import { ProductDetailSkeleton } from "./ProductDetailSkeleton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ProductDetailPage({ params }: PageProps) {
-  const { id } = await params;
-  const [result, user] = await Promise.all([
-    getMarketplaceProductDetail(id),
-    getOptionalAuthUser(),
-  ]);
-
-  if (!result.success) {
-    notFound();
-  }
-
+export default function ProductDetailPage({ params }: PageProps) {
   return (
-    <ProductDetailClient
-      product={result.data}
-      currentUserId={user?.id ?? null}
-    />
+    <Suspense fallback={<ProductDetailSkeleton />}>
+      <ProductDetailPageData params={params} />
+    </Suspense>
   );
 }

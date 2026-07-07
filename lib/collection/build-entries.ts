@@ -26,26 +26,46 @@ export type CollectionPricingContext = {
 const CATALOG_LIST_COLUMNS =
   "id, name_zh, name_en, name_ja, card_number, display_id, set_code, rarity, image_url";
 
+export type CollectionPricingContextOptions = {
+  includeChartData?: boolean;
+  /** When provided, skips a duplicate seller listings query. */
+  userListingRows?: ListingPriceRow[];
+};
+
 export async function loadCollectionPricingContext(
   supabase: Awaited<
     ReturnType<typeof import("@/lib/supabase/server").createClient>
   >,
   userId: string,
   productIds: string[],
-  options: { includeChartData?: boolean } = {},
+  options: CollectionPricingContextOptions = {},
 ): Promise<CollectionPricingContext> {
   if (productIds.length === 0) {
     return {
       catalogById: new Map(),
       marketRows: [],
       platformListingRows: [],
-      userListingRows: [],
+      userListingRows: options.userListingRows ?? [],
     };
   }
 
-  const marketSelect = options.includeChartData
+  const { includeChartData = false, userListingRows } = options;
+
+  const marketSelect = includeChartData
     ? "product_id, grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data"
     : "product_id, grading_company, grading_score, market_avg_price, market_trend_30d";
+
+  const userListingsPromise =
+    userListingRows !== undefined
+      ? Promise.resolve({
+          data: userListingRows,
+          error: null as null,
+        })
+      : supabase
+          .from("listings")
+          .select("id, product_id, grading_company, grading_score, price")
+          .eq("seller_id", userId)
+          .eq("status", "active");
 
   const [catalogResult, marketResult, platformListingsResult, userListingsResult] =
     await Promise.all([
@@ -59,11 +79,7 @@ export async function loadCollectionPricingContext(
         .select("id, product_id, grading_company, grading_score, price")
         .in("product_id", productIds)
         .eq("status", "active"),
-      supabase
-        .from("listings")
-        .select("id, product_id, grading_company, grading_score, price")
-        .eq("seller_id", userId)
-        .eq("status", "active"),
+      userListingsPromise,
     ]);
 
   if (catalogResult.error) {

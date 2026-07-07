@@ -3,7 +3,7 @@
 ## Status
 
 - **Backend:** ✅ Ready (see [backend.md](./backend.md))
-- **Frontend:** ✅ Marketplace star · ✅ Collection wishlist table · ⏳ Home ticker / mock grids
+- **Frontend:** ✅ Marketplace star · ✅ Collection wishlist table · ✅ Home `WishlistTicker` + merchant/C2C strips
 - **Your focus:** Polish `WishlistTable` styling, home surfaces, optional target-gap indicator
 
 ## Changelog (2026-07-06)
@@ -105,8 +105,8 @@ After grade change, `refreshEntries()` reloads **平台現價** + **30D 走勢**
 
 | Surface | Status |
 |---------|--------|
-| `WishlistTicker.tsx` (home) | Mock data |
-| `NewArrivals.tsx`, `PremiumMarket.tsx`, `CardItem.tsx` | Star uses `listingId` only; defaults `RAW`/`A` |
+| `WishlistTicker.tsx` (home) | ✅ Live — `getHomeWishlistPreview(9)`, 3-step price (`lib/wishlist/pricing.ts`), SNKRDUNK trend |
+| `NewArrivals.tsx`, `PremiumMarket.tsx` | ✅ Live listings from `getHomeMemberListings` / `getHomeMerchantListings` |
 | Target vs platform gap label | e.g. 「距離目標 HK$xxx」— not built |
 | OneSignal alert UI | Phase 3 |
 
@@ -124,7 +124,7 @@ After grade change, `refreshEntries()` reloads **平台現價** + **30D 走勢**
 - [x] No platform listing → **暫無放售**
 - [x] SNKRDUNK trend only in 30D column (top ~100 cards)
 - [x] `⋯` remove works
-- [ ] Home wishlist ticker live
+- [x] Home wishlist ticker live
 - [ ] OneSignal push (Phase 3)
 
 ---

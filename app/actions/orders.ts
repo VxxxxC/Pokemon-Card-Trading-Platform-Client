@@ -2,6 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
+import {
+  TRADING_DEFAULT_PAGE_SIZE,
+} from "@/lib/member-order/constants";
+import {
+  isTradingPerfLogEnabled,
+  tradingPerfLog,
+  tradingPerfNow,
+} from "@/lib/member-order/perf-log";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { parseListingImageUrls } from "@/lib/listings/images";
 import { createClient } from "@/lib/supabase/server";
@@ -196,8 +204,14 @@ type MemberOrderDetailQueryRow = {
   };
 };
 
-const DEFAULT_PAGE_SIZE = 8;
 const MAX_PAGE_SIZE = 50;
+
+function resolveTradingPageSize(pageSize?: number): number {
+  return Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, Math.floor(pageSize ?? TRADING_DEFAULT_PAGE_SIZE)),
+  );
+}
 
 function displayCardName(catalog: {
   name_ja: string;
@@ -318,10 +332,8 @@ export async function searchUserTradingOrders(
   }
 
   const page = Math.max(1, input.page ?? 1);
-  const pageSize = Math.min(
-    MAX_PAGE_SIZE,
-    Math.max(1, input.pageSize ?? DEFAULT_PAGE_SIZE),
-  );
+  const pageSize = resolveTradingPageSize(input.pageSize);
+  const totalStart = isTradingPerfLogEnabled() ? tradingPerfNow() : 0;
 
   try {
     const supabase = await createClient();
@@ -348,6 +360,8 @@ export async function searchUserTradingOrders(
       p_page_size: pageSize,
     };
 
+    const rpcStart = isTradingPerfLogEnabled() ? tradingPerfNow() : 0;
+
     const { data, error } = await (
       supabase as unknown as {
         rpc: (
@@ -366,12 +380,20 @@ export async function searchUserTradingOrders(
     }
 
     const rows = (data ?? []) as SearchUserTradingOrdersRpcRow[];
+    const meta = toPaginationMeta(rows[0], page, pageSize);
+    const filters = toFilterCounts(rows[0]);
+
+    if (isTradingPerfLogEnabled()) {
+      tradingPerfLog(
+        `search.rpcMs=${Math.round(tradingPerfNow() - rpcStart)} totalMs=${Math.round(tradingPerfNow() - totalStart)} orders=${rows.length} total=${meta.total} needsAction=${filters.needsAction} persona=${input.persona} tab=${input.tabStatus}`,
+      );
+    }
 
     return {
       success: true,
       data: rows.map(mapRpcRow),
-      meta: toPaginationMeta(rows[0], page, pageSize),
-      filters: toFilterCounts(rows[0]),
+      meta,
+      filters,
     };
   } catch (error) {
     console.error("[searchUserTradingOrders]", error);

@@ -9,17 +9,18 @@
 
 | Section | File | Data |
 |---------|------|------|
-| Profile hero | `app/profile/user/(dashboard)/page.tsx` | `useMemberDashboard().profile` + `useMemberTitleDisplay` + PTS |
+| SSR bootstrap | `UserOverviewPageData.tsx` | `Promise.all` overview + pending orders + reviews |
+| Profile hero | `UserOverviewClient.tsx` | `useMemberDashboard({ initialData })` + `useMemberTitleDisplay` + PTS |
 | Main title / stepper / progress | same | `lib/constants/titles.ts` + `profiles.reputation_tag` |
 | Activity badges | same | `TitleBadgeIcon` + `badgeUrl` from `titles.ts` |
-| Trading stats (3 cards) | same | `tradingStats` |
-| Check-in | `CheckInCard.tsx` | unchanged (independent fetch) |
-| Pending orders (max 5) | same | `searchUserTradingOrders` via hook |
-| Recent reviews (max 5) | same | `getPublicProfileReviews` via hook |
+| Trading stats (3 cards) | same | `tradingStats` from SSR `initialData` |
+| Check-in | `CheckInCard.tsx` | `initialPointsBalance` from overview; streak deferred (`deferStatsLoad`) |
+| Pending orders (max 5) | same | SSR `initialData.pendingOrders` |
+| Recent reviews (max 5) | same | SSR `initialData.reviews` |
 
 | Hook / util | Purpose |
 |-------------|---------|
-| `app/lib/hooks/useMemberDashboard.ts` | Parallel overview + orders + reviews; `pointsBalance` from overview |
+| `app/lib/hooks/useMemberDashboard.ts` | `initialData` from SSR; optional background refetch on `refetch()` |
 | `app/lib/member-order/map-sale-order.ts` | `UserTradingOrder` → `SaleOrder` for `UserOrderRow` |
 | `app/lib/hooks/useMemberTitleDisplay.ts` | Main title, 4-tier stepper, trade progress, activity badges |
 | `app/components/profile/TitleBadgeIcon.tsx` | CDN badge SVG via `next/image` |
@@ -39,7 +40,9 @@
 - [x] Main title from `reputation_tag` / `getMainTitle` (4-tier `MEMBER_TITLES`)
 - [x] Progress bar: completed trades toward next title threshold (not XP)
 - [x] Activity badges from `reputation_tag.activity_badges` with CDN icons
-- [x] Hero PTS: `overview.pointsBalance` on load; `CheckInCard` refreshes after check-in
+- [x] Hero PTS: overview SSR `pointsBalance` on load; `CheckInCard` refreshes after check-in
+- [x] Overview SSR: Hero + stats visible in HTML before hydrate (no mount-time action waterfall)
+- [x] `RewardNotificationHost` deferred via dynamic import + idle callback
 - [x] Stepper uses `MEMBER_TITLES[].badgeUrl` via `TitleBadgeIcon`
 - [ ] Merchant dashboard titles — follow-up
 

@@ -185,7 +185,7 @@ bunx supabase db query --linked --yes -f supabase/migrations/20260706150000_prof
 ### 1. Complete order → submit review (double-blind)
 
 1. Seller accepts offer → `member_orders.status = 'pending'`.
-2. Either party calls `completeMemberOrder(orderId)`.
+2. **Buyer** calls `completeMemberOrder(orderId)` (UI: handover confirm dialog).
 3. **Party A** submits review → `revealed: false`; SQL:
 
 ```sql

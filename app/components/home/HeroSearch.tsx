@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
-import { useUIStore } from "@/app/store/useUIStore";
 import { useHeroMarketplaceSearch } from "@/app/lib/hooks/useHeroMarketplaceSearch";
 import type { MarketplaceProductRow } from "@/app/lib/marketplace/types";
 
@@ -29,9 +28,8 @@ function suggestionQuery(product: MarketplaceProductRow): string {
   );
 }
 
-export function HeroSearch() {
+export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
   const router = useRouter();
-  const mockRole = useUIStore((state) => state.mockRole);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -46,7 +44,6 @@ export function HeroSearch() {
     searchNow,
     hasMore,
   } = useHeroMarketplaceSearch();
-  const showCheckIn = mockRole === "USER" || mockRole === "ADMIN";
 
   const showDropdown =
     isDropdownOpen &&
@@ -245,7 +242,7 @@ export function HeroSearch() {
 
         {showCheckIn && (
           <div className="w-full lg:w-[550px] shrink-0">
-            <CheckInCard />
+            <CheckInCard deferStatsLoad />
           </div>
         )}
       </div>

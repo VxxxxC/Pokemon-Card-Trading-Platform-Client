@@ -281,6 +281,59 @@ function mapRoomToStore(
   };
 }
 
+function mapLastMessagePreview(row: DbChatMessageRow): string {
+  switch (row.content) {
+    case "SYSTEM_OFFER_ACCEPTED":
+      return "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）";
+    case "SYSTEM_OFFER_REJECTED":
+      return "❌ 賣家已拒絕此出價";
+    case "SYSTEM_ORDER_COMPLETED":
+      return "✅ 交易已順利完成";
+    case "SYSTEM_ORDER_CANCELLED":
+      return "❌ 此筆訂單已取消";
+    default:
+      return row.content;
+  }
+}
+
+/** Lobby-only assembly — room list + preview text; messages load on room select. */
+export function assembleDbChatLobbyRooms(
+  rooms: DbChatRoomBaseRow[],
+  lastMessages: DbChatMessageRow[],
+  currentUserId: string,
+): ChatRoom[] {
+  const lastByRoom = new Map(lastMessages.map((message) => [message.room_id, message]));
+
+  return rooms.map((room) => {
+    const base = mapRoomToStore(room, [], currentUserId);
+    const last = lastByRoom.get(room.id);
+    if (!last) {
+      return base;
+    }
+
+    return {
+      ...base,
+      lastMessage: mapLastMessagePreview(last),
+      timestamp: last.created_at ?? base.timestamp,
+      messages: [],
+    };
+  });
+}
+
+export function assembleDbChatThreadRoom(
+  room: DbChatRoomBaseRow,
+  messages: DbChatMessageRow[],
+  offersById: Map<string, DbOfferSnippet>,
+  currentUserId: string,
+): ChatRoom {
+  const hydratedMessages = messages.map((message) => ({
+    ...message,
+    offers: message.offer_id ? offersById.get(message.offer_id) ?? null : null,
+  }));
+
+  return mapRoomToStore(room, hydratedMessages, currentUserId);
+}
+
 export function assembleDbChatRooms(
   rooms: DbChatRoomBaseRow[],
   messages: DbChatMessageRow[],

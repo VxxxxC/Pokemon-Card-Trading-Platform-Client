@@ -10,11 +10,16 @@ type ReviewFetchState = {
   reviewedIds: ReadonlySet<string>;
 };
 
+export type RoomReviewedOrderIdsState = {
+  reviewedOrderIds: ReadonlySet<string>;
+  isReviewLoading: boolean;
+};
+
 export function useRoomReviewedOrderIds(
   roomMessages: Message[],
   offers: Record<string, OfferLedgerEntry>,
   submittedReviewOrderIds: ReadonlySet<string>,
-): ReadonlySet<string> | null {
+): RoomReviewedOrderIdsState {
   const roomOrderIds = useMemo(
     () => collectMemberOrderIdsFromChatRoom(roomMessages, offers),
     [offers, roomMessages],
@@ -61,18 +66,27 @@ export function useRoomReviewedOrderIds(
 
   return useMemo(() => {
     if (roomOrderIds.length === 0) {
-      const merged = new Set(submittedReviewOrderIds);
-      return merged;
+      return {
+        reviewedOrderIds: new Set(submittedReviewOrderIds),
+        isReviewLoading: false,
+      };
     }
 
     if (!fetchState || fetchState.key !== roomOrderIdsKey) {
-      return null;
+      return {
+        reviewedOrderIds: new Set(submittedReviewOrderIds),
+        isReviewLoading: true,
+      };
     }
 
     const merged = new Set(fetchState.reviewedIds);
     for (const orderId of submittedReviewOrderIds) {
       merged.add(orderId);
     }
-    return merged;
+
+    return {
+      reviewedOrderIds: merged,
+      isReviewLoading: false,
+    };
   }, [fetchState, roomOrderIds.length, roomOrderIdsKey, submittedReviewOrderIds]);
 }

@@ -7,6 +7,15 @@
 - **Migrations:** ✅ Pushed to remote (`20260706120000`–`20260706140000`)
 - **Partner report:** [PARTNER_REPORT.md](./PARTNER_REPORT.md)
 
+## Changelog (2026-07-07)
+
+| Change | Detail |
+|--------|--------|
+| **`getInventoryPageBootstrap`** | Single listings fetch → summary + paginated groups |
+| **`loadUserInventoryView`** | Shared helper in `lib/listings/load-user-inventory.ts` |
+| **Perf logging** | `[inventory:perf]` via `lib/listings/perf-log.ts` |
+| **Thin wrappers** | `getUserInventorySummary` / `getUserInventoryGroups` reuse helper |
+
 ## Changelog (2026-07-06)
 
 | Change | Detail |
@@ -24,19 +33,19 @@
 
 ```
 Inventory page mount / refresh
-  → getUserInventorySummary()
-  → getUserInventoryGroups({ page, pageSize, query })
+  → getInventoryPageBootstrap({ page, pageSize, query })   // preferred — single fetch
+  → loadUserInventoryView
   → listings WHERE seller_id = auth.uid()
   → JOIN product_catalog (name, image_url, card_number)
   → JOIN listing_stats (views, offers_count)
-  → groupListingsByProduct() → SKUGroup[]
+  → summarizeInventoryListings + groupListingsByProduct() → summary + SKUGroup[]
 
-ExecutionSlideOver open (authenticated)
-  → incrementListingView(listingId)
-  → rpc_increment_listing_view → listing_stats.views +1
+Filter / search / page change (client)
+  → getUserInventoryGroups({ page, pageSize, query })    // groups only; reuses helper
 
-Buyer makeOffer
-  → rpc_make_offer → listing_stats.offers_count +1 (same transaction)
+Legacy / isolated callers
+  → getUserInventorySummary()
+  → getUserInventoryGroups({ page, pageSize, query })
 ```
 
 ---
@@ -48,7 +57,9 @@ Buyer makeOffer
 | `supabase/migrations/20260706120000_listing_stats_inventory_extend.sql` | Schema, FK, init trigger, seller RLS |
 | `supabase/migrations/20260706130000_listing_stats_rpc_sync.sql` | `fn_bump_listing_offers_count`, patch `rpc_make_offer` |
 | `supabase/migrations/20260706140000_rpc_increment_listing_view.sql` | View counter RPC |
-| `app/actions/inventory.ts` | Summary + paginated product groups |
+| `app/actions/inventory.ts` | Bootstrap + summary + paginated product groups |
+| `lib/listings/load-user-inventory.ts` | Shared `loadUserInventoryView` |
+| `lib/listings/perf-log.ts` | Server perf instrumentation |
 | `app/actions/listings.ts` | `incrementListingView` |
 | `app/lib/inventory/types.ts` | DTOs + `mapListingStatusToUi` |
 | `lib/listings/build-inventory-groups.ts` | Grouping, search match, summary counts |
@@ -71,6 +82,25 @@ Buyer makeOffer
 ---
 
 ## Action contracts
+
+### `getInventoryPageBootstrap(input?)`
+
+```ts
+getInventoryPageBootstrap({
+  query?: string,
+  page?: number,       // default 1
+  pageSize?: number,   // default 6, max 50
+})
+
+// Success
+{
+  success: true,
+  data: {
+    summary: InventorySummary,
+    page: InventoryGroupsPage,
+  },
+}
+```
 
 ### `getUserInventorySummary()`
 

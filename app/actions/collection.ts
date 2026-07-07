@@ -4,26 +4,27 @@ import { revalidatePath } from "next/cache";
 import type {
   CollectionAddInput,
   CollectionEntriesPage,
-  CollectionEntry,
-  CollectionListFilter,
+  CollectionPageBootstrap,
   CollectionPortfolioSummary,
   CollectionRemoveInput,
   CollectionUpdateGradeInput,
   CollectionUpdatePurchasePriceInput,
   GetCollectionEntriesInput,
 } from "@/app/lib/collection/types";
+import type { CollectionRow } from "@/lib/collection/build-entries";
 import {
   COLLECTION_DEFAULT_PAGE_SIZE,
   COLLECTION_MAX_PAGE_SIZE,
 } from "@/lib/collection/constants";
 import {
-  computePortfolioTotals,
-  isListedCollectionRow,
-  loadCollectionPricingContext,
-  mapCollectionRowToEntry,
-  matchesCollectionSearch,
-  type CollectionRow,
-} from "@/lib/collection/build-entries";
+  loadUserCollectionView,
+  type UserCollectionViewInput,
+} from "@/lib/collection/load-user-collection";
+import {
+  collectionPerfLog,
+  collectionPerfNow,
+  isCollectionPerfLogEnabled,
+} from "@/lib/collection/perf-log";
 import { getGradingOption } from "@/lib/grading/options";
 import { wishlistGradeFromGradingOption } from "@/lib/wishlist/grading";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -51,12 +52,7 @@ function revalidateCollectionPaths(): void {
   revalidatePath("/profile/user/collection");
 }
 
-function normalizePageInput(input: GetCollectionEntriesInput): {
-  page: number;
-  pageSize: number;
-  filter: CollectionListFilter;
-  query: string;
-} {
+function normalizePageInput(input: GetCollectionEntriesInput): UserCollectionViewInput {
   const page = Math.max(1, Math.floor(input.page ?? 1));
   const pageSize = Math.min(
     COLLECTION_MAX_PAGE_SIZE,
@@ -68,44 +64,45 @@ function normalizePageInput(input: GetCollectionEntriesInput): {
   return { page, pageSize, filter, query };
 }
 
-async function fetchAllCollectionRows(userId: string): Promise<CollectionRow[]> {
+async function loadViewForUser(userId: string, input: UserCollectionViewInput) {
   const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("user_collections")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("[fetchAllCollectionRows]", error.message);
-    throw new Error("無法載入收藏庫");
-  }
-
-  return (data ?? []) as CollectionRow[];
+  return loadUserCollectionView(supabase, userId, input, "collection");
 }
 
-function applyCollectionFilters(
-  rows: CollectionRow[],
-  filter: CollectionListFilter,
-  query: string,
-  catalogById: Map<string, import("@/lib/marketplace/portfolio-pricing").CatalogRow>,
-  userListingRows: import("@/lib/marketplace/portfolio-pricing").ListingPriceRow[],
-): CollectionRow[] {
-  return rows.filter((row) => {
-    if (filter === "graded" && row.grading_company === "RAW") return false;
-    if (filter === "raw" && row.grading_company !== "RAW") return false;
-    if (filter === "listed" && !isListedCollectionRow(row, userListingRows)) {
-      return false;
+export async function getCollectionPageBootstrap(
+  input: GetCollectionEntriesInput = {},
+): Promise<CollectionResult<CollectionPageBootstrap>> {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
+    return { success: false, error: "請先登入" };
+  }
+
+  const viewInput = normalizePageInput(input);
+  const totalStart = isCollectionPerfLogEnabled() ? collectionPerfNow() : 0;
+
+  try {
+    const rowsStart = isCollectionPerfLogEnabled() ? collectionPerfNow() : 0;
+    const supabase = await createClient();
+    const view = await loadUserCollectionView(supabase, userId, viewInput, "bootstrap");
+
+    if (isCollectionPerfLogEnabled()) {
+      const rowsMs = Math.round(collectionPerfNow() - rowsStart);
+      collectionPerfLog(
+        `bootstrap.totalMs=${Math.round(collectionPerfNow() - totalStart)} rowsMs=${rowsMs} cards=${view.summary.cardCount} listed=${view.page.total} filter=${viewInput.filter}`,
+      );
     }
 
-    if (query) {
-      const catalog = catalogById.get(row.product_id);
-      if (!matchesCollectionSearch(row, catalog, query)) return false;
-    }
-
-    return true;
-  });
+    return {
+      success: true,
+      data: {
+        summary: view.summary,
+        page: view.page,
+      },
+    };
+  } catch (error) {
+    console.error("[getCollectionPageBootstrap]", error);
+    return { success: false, error: "無法載入收藏庫" };
+  }
 }
 
 export async function getCollectionPortfolioSummary(): Promise<
@@ -117,49 +114,14 @@ export async function getCollectionPortfolioSummary(): Promise<
   }
 
   try {
-    const rows = await fetchAllCollectionRows(userId);
-    if (rows.length === 0) {
-      return {
-        success: true,
-        data: {
-          totalMarketValue: 0,
-          totalPurchasePrice: 0,
-          unrealizedPnl: 0,
-          pnlPercent: 0,
-          cardCount: 0,
-          gradedCount: 0,
-          rawCount: 0,
-          listedCount: 0,
-        },
-      };
-    }
-
-    const productIds = [...new Set(rows.map((row) => row.product_id))];
-    const supabase = await createClient();
-    const context = await loadCollectionPricingContext(supabase, userId, productIds, {
-      includeChartData: false,
+    const view = await loadViewForUser(userId, {
+      page: 1,
+      pageSize: COLLECTION_DEFAULT_PAGE_SIZE,
+      filter: "all",
+      query: "",
     });
 
-    const totals = computePortfolioTotals(rows, context);
-    const unrealizedPnl = totals.totalMarketValue - totals.totalPurchasePrice;
-    const pnlPercent =
-      totals.totalPurchasePrice > 0
-        ? Number(((unrealizedPnl / totals.totalPurchasePrice) * 100).toFixed(2))
-        : 0;
-
-    return {
-      success: true,
-      data: {
-        totalMarketValue: totals.totalMarketValue,
-        totalPurchasePrice: totals.totalPurchasePrice,
-        unrealizedPnl,
-        pnlPercent,
-        cardCount: totals.cardCount,
-        gradedCount: totals.gradedCount,
-        rawCount: totals.rawCount,
-        listedCount: totals.listedCount,
-      },
-    };
+    return { success: true, data: view.summary };
   } catch (error) {
     console.error("[getCollectionPortfolioSummary]", error);
     return { success: false, error: "無法載入身家摘要" };
@@ -174,71 +136,11 @@ export async function getCollectionEntries(
     return { success: false, error: "請先登入" };
   }
 
-  const { page, pageSize, filter, query } = normalizePageInput(input);
+  const viewInput = normalizePageInput(input);
 
   try {
-    const rows = await fetchAllCollectionRows(userId);
-    if (rows.length === 0) {
-      return {
-        success: true,
-        data: {
-          entries: [],
-          total: 0,
-          page: 1,
-          pageSize,
-          totalPages: 0,
-        },
-      };
-    }
-
-    const allProductIds = [...new Set(rows.map((row) => row.product_id))];
-    const supabase = await createClient();
-
-    const filterContext = await loadCollectionPricingContext(
-      supabase,
-      userId,
-      allProductIds,
-      { includeChartData: false },
-    );
-
-    const filtered = applyCollectionFilters(
-      rows,
-      filter,
-      query,
-      filterContext.catalogById,
-      filterContext.userListingRows,
-    );
-
-    const total = filtered.length;
-    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
-    const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
-    const pageRows = filtered.slice(
-      (safePage - 1) * pageSize,
-      safePage * pageSize,
-    );
-
-    const pageProductIds = [...new Set(pageRows.map((row) => row.product_id))];
-    const pageContext =
-      pageProductIds.length === allProductIds.length
-        ? filterContext
-        : await loadCollectionPricingContext(supabase, userId, pageProductIds, {
-            includeChartData: false,
-          });
-
-    const entries: CollectionEntry[] = pageRows.map((row) =>
-      mapCollectionRowToEntry(row, pageContext),
-    );
-
-    return {
-      success: true,
-      data: {
-        entries,
-        total,
-        page: safePage,
-        pageSize,
-        totalPages,
-      },
-    };
+    const view = await loadViewForUser(userId, viewInput);
+    return { success: true, data: view.page };
   } catch (error) {
     console.error("[getCollectionEntries]", error);
     return { success: false, error: "無法載入收藏庫" };

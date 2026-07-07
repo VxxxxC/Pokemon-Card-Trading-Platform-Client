@@ -28,9 +28,12 @@
 
 | File | Role |
 |------|------|
-| `app/profile/user/(dashboard)/collection/page.tsx` | Summary odometer, search, filters, wires both tables |
+| `app/profile/user/(dashboard)/collection/page.tsx` | Suspense shell |
+| `app/profile/user/(dashboard)/collection/UserCollectionPageData.tsx` | SSR `getCollectionPageBootstrap` |
+| `app/profile/user/(dashboard)/collection/UserCollectionClient.tsx` | Summary odometer, search, filters, tables |
+| `app/profile/user/(dashboard)/collection/UserCollectionSkeleton.tsx` | Streaming fallback |
 | `app/components/market/CollectionTable.tsx` | Holdings table UI |
-| `app/lib/hooks/useCollection.ts` | Summary + paginated fetch, debounced search, remove, update grade |
+| `app/lib/hooks/useCollection.ts` | `initialData`, filter/page fetch, `isRefreshing` |
 | `app/components/shared/AddAssetModal.tsx` | Hobby submit + sell-prefill merch mode |
 | `app/store/useUIStore.ts` | `SellFromCollectionPrefill`, `OpenAddAssetModalInput`, `openAddAssetModal` |
 | `app/components/market/WishlistTable.tsx` | Unchanged wishlist section on same page |
@@ -59,7 +62,7 @@ const {
   removeEntry,
   updateGrade,
   refetch,
-} = useCollection({ filter: listFilter, query });
+} = useCollection({ filter: listFilter, query, initialData });
 
 <CollectionTable
   entries={entries}
@@ -174,6 +177,8 @@ Modal behaviour when `addAssetSellPrefill` is set:
 - [x] Purchase-price fallback: row shows **入手價估計**; portfolio total still includes card
 - [x] After listing,「已上架」filter shows row; sell action hidden when listed
 - [x] Remove deletes row
+- [x] SSR: portfolio header + table page 1 in HTML before hydrate
+- [x] Mount server actions: 1 bootstrap; wishlist deferred below fold
 - [x] `bun run build:ci` passes
 - [ ] Home portfolio widget live
 - [ ] Inline purchase price edit

@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { getOfferCardContext } from "@/app/actions/offers";
+import { hydrateChatRoomThread } from "@/app/lib/chat/hydrateChatRoomThread";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import {
   decodeOfferRealtimeEvent,
   getLastPersistedMessageTimestamp,
+  isInitialOfferRealtimeMessage,
   mapChatMessageRowToStoreMessage,
   parseModifyOfferPriceFromContent,
   type RealtimeChatMessageRow,
@@ -75,7 +77,18 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
         applyOfferAccepted,
         applyOfferRejected,
         applyOfferPriceSync,
+        activeRoomId,
+        isChatOpen,
       } = useHkCardVaultStore.getState();
+
+      if (
+        isInitialOfferRealtimeMessage(row) &&
+        isChatOpen &&
+        activeRoomId === row.room_id
+      ) {
+        await hydrateChatRoomThread(row.room_id, { force: true });
+        return;
+      }
 
       const message = mapChatMessageRowToStoreMessage(row, currentUserId);
       appendRoomMessage(row.room_id, message);
@@ -167,16 +180,39 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
       processingRef.current = true;
 
       try {
-        const dbRooms = useHkCardVaultStore
-          .getState()
-          .chats.filter((room) => isDbChatRoomId(room.id));
-
-        for (const room of dbRooms) {
-          if (cancelled) {
-            return;
+        const state = useHkCardVaultStore.getState();
+        const dbRooms = state.chats.filter((room) => {
+          if (!isDbChatRoomId(room.id)) {
+            return false;
           }
-          await reconcileRoom(room.id);
-        }
+          if (room.id === state.activeRoomId && state.isChatOpen) {
+            return true;
+          }
+          if (room.unreadCount > 0) {
+            return true;
+          }
+          return false;
+        });
+
+        const concurrency = 5;
+        let nextIndex = 0;
+
+        const workers = Array.from(
+          { length: Math.min(concurrency, dbRooms.length) },
+          async () => {
+            while (nextIndex < dbRooms.length) {
+              if (cancelled) {
+                return;
+              }
+
+              const room = dbRooms[nextIndex];
+              nextIndex += 1;
+              await reconcileRoom(room.id);
+            }
+          },
+        );
+
+        await Promise.all(workers);
       } finally {
         processingRef.current = false;
       }
@@ -253,6 +289,7 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
       .map((room) => room.id)
       .sort()
       .join(",");
+    let reconcileTimer: ReturnType<typeof setTimeout> | null = null;
 
     const unsubscribeStore = useHkCardVaultStore.subscribe((state) => {
       if (cancelled || !currentUserIdRef.current) {
@@ -270,7 +307,12 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
       }
 
       prevDbRoomIds = nextDbRoomIds;
-      void reconcileMissedMessages();
+      if (reconcileTimer) {
+        clearTimeout(reconcileTimer);
+      }
+      reconcileTimer = setTimeout(() => {
+        void reconcileMissedMessages();
+      }, 500);
     });
 
     const {
@@ -298,6 +340,9 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
 
     return () => {
       cancelled = true;
+      if (reconcileTimer) {
+        clearTimeout(reconcileTimer);
+      }
       unsubscribeStore();
       authSubscription.unsubscribe();
       void teardownChannel();

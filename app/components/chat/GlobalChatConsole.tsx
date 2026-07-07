@@ -50,6 +50,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
 
 export type { Message };
 
@@ -155,6 +156,8 @@ function buildMessageRenderList(messages: Message[]) {
   return items;
 }
 
+const THREAD_WINDOW_SIZE = 120;
+
 type RenderItem = ReturnType<typeof buildMessageRenderList>[number];
 
 type MessageThreadProps = {
@@ -167,6 +170,7 @@ type MessageThreadProps = {
   offers: Record<string, OfferLedgerEntry>;
   onOpenReview: (orderId: string, revieweeId: string) => void;
   reviewedOrderIds: ReadonlySet<string> | null;
+  isReviewLoading: boolean;
 };
 
 function renderOrderCompletedCard(
@@ -179,6 +183,7 @@ function renderOrderCompletedCard(
   onOpenReview: (orderId: string, revieweeId: string) => void,
   maxWidthClass: string,
   reviewedOrderIds: ReadonlySet<string> | null,
+  isReviewLoading: boolean,
 ) {
   if (msg.type !== "system_order_completed") {
     return null;
@@ -200,6 +205,7 @@ function renderOrderCompletedCard(
         revieweeId={partnerId}
         partnerName={partnerName}
         reviewedOrderIds={reviewedOrderIds}
+        isReviewLoading={isReviewLoading}
         onOpenReview={onOpenReview}
       />
     </div>
@@ -217,6 +223,7 @@ const MessageThread = memo(function MessageThread({
   offers,
   onOpenReview,
   reviewedOrderIds,
+  isReviewLoading,
 }: MessageThreadProps) {
   return (
     <>
@@ -237,6 +244,7 @@ const MessageThread = memo(function MessageThread({
           onOpenReview,
           "max-w-[90%]",
           reviewedOrderIds,
+          isReviewLoading,
         );
         if (orderCompletedCard) {
           return orderCompletedCard;
@@ -329,6 +337,7 @@ const MobileMessageThread = memo(function MobileMessageThread({
   offers,
   onOpenReview,
   reviewedOrderIds,
+  isReviewLoading,
 }: MessageThreadProps) {
   return (
     <>
@@ -349,6 +358,7 @@ const MobileMessageThread = memo(function MobileMessageThread({
           onOpenReview,
           "max-w-[90%]",
           reviewedOrderIds,
+          isReviewLoading,
         );
         if (orderCompletedCard) {
           return orderCompletedCard;
@@ -444,7 +454,38 @@ const KNOWN_PARTNERS = [
   "Marnie_Simp",
 ];
 
-export function GlobalChatConsole() {
+function ChatLobbyLoadingRows() {
+  return (
+    <>
+      {[0, 1, 2].map((index) => (
+        <div
+          key={"chat-lobby-loading-" + index}
+          className="w-full p-2 rounded-xl flex items-center gap-2 animate-pulse"
+          aria-hidden="true"
+        >
+          <div className="w-7 h-7 rounded-full bg-[#26211C] shrink-0" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="h-3 w-2/3 rounded bg-[#26211C]" />
+            <div className="h-2.5 w-1/2 rounded bg-[#26211C]/70" />
+          </div>
+        </div>
+      ))}
+      <p className="font-mono text-[10px] text-text-disabled text-center pt-1 select-none">
+        載入對話中…
+      </p>
+    </>
+  );
+}
+
+type GlobalChatConsoleProps = {
+  inboxLoading?: boolean;
+  threadLoadingRoomId?: string | null;
+};
+
+export function GlobalChatConsole({
+  inboxLoading = false,
+  threadLoadingRoomId = null,
+}: GlobalChatConsoleProps) {
   const {
     isChatOpen,
     setIsChatOpen,
@@ -454,7 +495,7 @@ export function GlobalChatConsole() {
     setActiveRoomId,
     mobileView,
     setMobileView,
-    activateRoomById,
+    openChatWithPartner,
     appendRoomMessage,
     finalizeOptimisticMessage,
     rollbackOptimisticMessage,
@@ -469,7 +510,7 @@ export function GlobalChatConsole() {
       setActiveRoomId: state.setActiveRoomId,
       mobileView: state.mobileView,
       setMobileView: state.setMobileView,
-      activateRoomById: state.activateRoomById,
+      openChatWithPartner: state.openChatWithPartner,
       appendRoomMessage: state.appendRoomMessage,
       finalizeOptimisticMessage: state.finalizeOptimisticMessage,
       rollbackOptimisticMessage: state.rollbackOptimisticMessage,
@@ -490,7 +531,7 @@ export function GlobalChatConsole() {
       return;
     }
 
-    toast.error("⚠️ 舉報信號已受理", {
+    toast.success("⚠️ 舉報信號已受理", {
       description:
         "【" +
         reportCategory +
@@ -504,7 +545,12 @@ export function GlobalChatConsole() {
     setReportDetails("");
   };
 
-  const [inputText, setInputText] = useState("");
+  const [composerByRoomId, setComposerByRoomId] = useState<
+    Record<string, string>
+  >({});
+  const [expandedForRoomId, setExpandedForRoomId] = useState<string | null>(
+    null,
+  );
   const sendInFlightRef = useRef(false);
   const [activeReview, setActiveReview] = useState<{
     orderId: string;
@@ -542,9 +588,12 @@ export function GlobalChatConsole() {
     if (!targetUsername.trim()) return;
 
     const trimmedUsername = targetUsername.trim();
-    const existingRoom = chats.find(
-      (r) => r.partnerName.toLowerCase() === trimmedUsername.toLowerCase(),
-    );
+    const partnerKey = trimmedUsername.toLowerCase();
+    const existingRoom =
+      findRoomByPartnerId(chats, partnerKey) ??
+      chats.find(
+        (r) => r.partnerName.toLowerCase() === partnerKey,
+      );
 
     if (existingRoom) {
       setActiveRoomId(existingRoom.id);
@@ -553,14 +602,19 @@ export function GlobalChatConsole() {
       setMobileView("CHAT");
       toast.success(`已切換至與 ${existingRoom.partnerName} 的對話`);
     } else {
-      const newRoomId = "room_" + Math.random().toString(36).substring(2, 9);
-      activateRoomById(newRoomId, trimmedUsername);
+      openChatWithPartner(partnerKey, trimmedUsername);
       setIsNewChatComboOpen(false);
       setTargetUsername("");
       setMobileView("CHAT");
       toast.success(`成功與 ${trimmedUsername} 建立新對話通道`);
     }
-  }, [targetUsername, chats, setActiveRoomId, activateRoomById, setMobileView]);
+  }, [
+    targetUsername,
+    chats,
+    setActiveRoomId,
+    openChatWithPartner,
+    setMobileView,
+  ]);
 
   const reportButtonClass =
     "flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:px-2 lg:py-1 lg:text-[11px] lg:font-medium lg:text-text-disabled/70 lg:hover:text-red-500 lg:hover:bg-red-500/10 cursor-pointer select-none";
@@ -604,6 +658,19 @@ export function GlobalChatConsole() {
     }
   }, [activeRoomMessageCount, activeRoomId, isChatOpen]);
 
+  const inputText = composerByRoomId[activeRoomId] ?? "";
+  const setInputText = useCallback(
+    (text: string) => {
+      setComposerByRoomId((current) => ({
+        ...current,
+        [activeRoomId]: text,
+      }));
+    },
+    [activeRoomId],
+  );
+
+  const threadExpanded = expandedForRoomId === activeRoomId;
+
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -617,29 +684,51 @@ export function GlobalChatConsole() {
   }, [chats, lobbySearchQuery]);
 
   const activeRoom = useMemo(
-    () => chats.find((room) => room.id === activeRoomId) ?? chats[0],
+    () => chats.find((room) => room.id === activeRoomId) ?? null,
     [activeRoomId, chats],
   );
 
-  const reviewedOrderIds = useRoomReviewedOrderIds(
+  const { reviewedOrderIds, isReviewLoading } = useRoomReviewedOrderIds(
     activeRoom?.messages ?? [],
     offers,
     submittedReviewOrderIds,
   );
 
-  const renderList = useMemo(
+  const fullRenderList = useMemo(
     () => buildMessageRenderList(activeRoom?.messages ?? []),
     [activeRoom?.messages],
   );
+
+  const renderList = useMemo(() => {
+    if (threadExpanded || fullRenderList.length <= THREAD_WINDOW_SIZE) {
+      return fullRenderList;
+    }
+    return fullRenderList.slice(-THREAD_WINDOW_SIZE);
+  }, [fullRenderList, threadExpanded]);
+
+  const hiddenMessageCount = fullRenderList.length - renderList.length;
+
+  const isThreadLoading =
+    Boolean(activeRoomId) && threadLoadingRoomId === activeRoomId;
 
   if (!isMounted) return null;
   if (!isChatOpen) return null;
   if (!activeRoom) return null;
 
+  const canPersistMessages = isDbChatRoomId(activeRoomId);
+  const composerPlaceholder = canPersistMessages
+    ? "回覆給 " + activeRoom.partnerName + "..."
+    : "等待對話同步…";
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     const text = inputText.trim();
     if (!text || sendInFlightRef.current) return;
+
+    if (!canPersistMessages) {
+      toast.error("對話尚未建立，請等待同步或透過出價/個人檔案開啟對話");
+      return;
+    }
 
     const optimisticId = `opt-${Date.now()}`;
     const sentAt = new Date().toISOString();
@@ -653,10 +742,6 @@ export function GlobalChatConsole() {
 
     setInputText("");
     appendRoomMessage(activeRoomId, optimisticMsg);
-
-    if (!isDbChatRoomId(activeRoomId)) {
-      return;
-    }
 
     sendInFlightRef.current = true;
 
@@ -790,7 +875,10 @@ export function GlobalChatConsole() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-1.5 space-y-1 scrollbar-none">
-              {filteredLobbyRooms.map((room: ChatRoom) => (
+              {inboxLoading ? (
+                <ChatLobbyLoadingRows />
+              ) : (
+                filteredLobbyRooms.map((room: ChatRoom) => (
                 <button
                   key={room.id}
                   type="button"
@@ -820,7 +908,8 @@ export function GlobalChatConsole() {
                     )}
                   </div>
                 </button>
-              ))}
+              ))
+              )}
             </div>
           </div>
 
@@ -859,8 +948,24 @@ export function GlobalChatConsole() {
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
+              className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col relative"
             >
+              {isThreadLoading ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#17130f]/80 z-10">
+                  <p className="font-mono text-[11px] text-text-disabled select-none">
+                    載入對話內容…
+                  </p>
+                </div>
+              ) : null}
+              {hiddenMessageCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setExpandedForRoomId(activeRoomId)}
+                  className="mx-auto mb-2 shrink-0 rounded-full border border-white/10 bg-[#26211C]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-disabled hover:border-brand/30 hover:text-brand"
+                >
+                  顯示更早的 {hiddenMessageCount} 則訊息
+                </button>
+              ) : null}
               <MessageThread
                 renderList={renderList}
                 currentUserId={currentUserId}
@@ -871,6 +976,7 @@ export function GlobalChatConsole() {
                 offers={offers}
                 onOpenReview={handleOpenReview}
                 reviewedOrderIds={reviewedOrderIds}
+                isReviewLoading={isReviewLoading}
               />
             </div>
 
@@ -884,12 +990,13 @@ export function GlobalChatConsole() {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={"回覆給 " + activeRoom.partnerName + "..."}
-                className="flex-1 h-9 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-lg px-3 text-[12px] text-text-primary focus:outline-none"
+                placeholder={composerPlaceholder}
+                disabled={!canPersistMessages}
+                className="flex-1 h-9 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-lg px-3 text-[12px] text-text-primary focus:outline-none disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!inputText.trim()}
+                disabled={!canPersistMessages || !inputText.trim()}
                 className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
               >
                 發送 ⚡
@@ -1013,11 +1120,15 @@ export function GlobalChatConsole() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#17130f] scrollbar-none">
-                {filteredLobbyRooms.map((room: ChatRoom) => (
+                {inboxLoading ? (
+                  <ChatLobbyLoadingRows />
+                ) : (
+                  filteredLobbyRooms.map((room: ChatRoom) => (
                   <button
                     key={room.id}
                     onClick={() => {
                       setActiveRoomId(room.id);
+                      markRoomRead(room.id);
                       setMobileView("CHAT");
                     }}
                     className="w-full text-left p-3.5 rounded-2xl bg-[#26211C] border border-[rgba(237,232,224,0.04)] flex items-start gap-3.5 relative focus:outline-none"
@@ -1042,7 +1153,8 @@ export function GlobalChatConsole() {
                       </p>
                     </div>
                   </button>
-                ))}
+                ))
+                )}
               </div>
             </div>
           ) : (
@@ -1089,8 +1201,24 @@ export function GlobalChatConsole() {
 
               <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col"
+                className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col relative"
               >
+                {isThreadLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#17130f]/80 z-10">
+                    <p className="font-mono text-[11px] text-text-disabled select-none">
+                      載入對話內容…
+                    </p>
+                  </div>
+                ) : null}
+                {hiddenMessageCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedForRoomId(activeRoomId)}
+                    className="mx-auto mb-2 shrink-0 rounded-full border border-white/10 bg-[#26211C]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-disabled hover:border-brand/30 hover:text-brand"
+                  >
+                    顯示更早的 {hiddenMessageCount} 則訊息
+                  </button>
+                ) : null}
                 <MobileMessageThread
                   renderList={renderList}
                   currentUserId={currentUserId}
@@ -1101,6 +1229,7 @@ export function GlobalChatConsole() {
                   offers={offers}
                   onOpenReview={handleOpenReview}
                   reviewedOrderIds={reviewedOrderIds}
+                  isReviewLoading={isReviewLoading}
                 />
               </div>
 
@@ -1114,12 +1243,13 @@ export function GlobalChatConsole() {
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder={"回覆 " + activeRoom.partnerName + "..."}
-                  className="flex-1 h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-text-primary focus:outline-none"
+                  placeholder={composerPlaceholder}
+                  disabled={!canPersistMessages}
+                  className="flex-1 h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-text-primary focus:outline-none disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  disabled={!inputText.trim()}
+                  disabled={!canPersistMessages || !inputText.trim()}
                   className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
                 >
                   發送

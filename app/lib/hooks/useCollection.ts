@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   getCollectionEntries,
-  getCollectionPortfolioSummary,
+  getCollectionPageBootstrap,
   removeFromCollection,
   updateCollectionGrade,
 } from "@/app/actions/collection";
@@ -12,8 +12,13 @@ import type {
   CollectionEntriesPage,
   CollectionEntry,
   CollectionListFilter,
+  CollectionPageBootstrap,
   CollectionPortfolioSummary,
 } from "@/app/lib/collection/types";
+import {
+  logCollectionClientReady,
+  markCollectionClientMount,
+} from "@/app/lib/collection/perf-log-client";
 import { COLLECTION_DEFAULT_PAGE_SIZE } from "@/lib/collection/constants";
 import type { GradingOption } from "@/lib/grading/options";
 import { wishlistGradeFromGradingOption } from "@/lib/wishlist/grading";
@@ -27,11 +32,14 @@ export const COLLECTION_FILTER_LABELS: Record<string, CollectionListFilter> = {
   已上架: "listed",
 };
 
+export type CollectionInitialData = Partial<CollectionPageBootstrap>;
+
 type UseCollectionOptions = {
   filter?: CollectionListFilter;
   query?: string;
   page?: number;
   pageSize?: number;
+  initialData?: CollectionInitialData;
 };
 
 type UseCollectionResult = {
@@ -43,6 +51,7 @@ type UseCollectionResult = {
   summary: CollectionPortfolioSummary | null;
   isLoading: boolean;
   isSummaryLoading: boolean;
+  isRefreshing: boolean;
   error: string | null;
   refetch: () => void;
   setPage: (page: number) => void;
@@ -53,26 +62,43 @@ type UseCollectionResult = {
   ) => Promise<boolean>;
 };
 
+function hasCollectionInitialBootstrap(
+  data: CollectionInitialData | undefined,
+): data is CollectionPageBootstrap {
+  return Boolean(data?.summary && data?.page);
+}
+
 export function useCollection(options: UseCollectionOptions = {}): UseCollectionResult {
   const filter = options.filter ?? "all";
   const query = options.query ?? "";
   const pageSize = options.pageSize ?? COLLECTION_DEFAULT_PAGE_SIZE;
+  const hasInitialBootstrap = hasCollectionInitialBootstrap(options.initialData);
 
-  const [entries, setEntries] = useState<CollectionEntry[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [summary, setSummary] = useState<CollectionPortfolioSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [entries, setEntries] = useState<CollectionEntry[]>(
+    options.initialData?.page?.entries ?? [],
+  );
+  const [total, setTotal] = useState(options.initialData?.page?.total ?? 0);
+  const [totalPages, setTotalPages] = useState(
+    options.initialData?.page?.totalPages ?? 0,
+  );
+  const [summary, setSummary] = useState<CollectionPortfolioSummary | null>(
+    options.initialData?.summary ?? null,
+  );
+  const [isLoading, setIsLoading] = useState(!hasInitialBootstrap);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(!hasInitialBootstrap);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
   const [pageByListKey, setPageByListKey] = useState<Record<string, number>>({});
+  const mountLoggedRef = useRef(false);
+  const initialListKeyRef = useRef(`all::${pageSize}`);
+  const didInitialBootstrapRef = useRef(hasInitialBootstrap);
 
   const debouncedQueryRef = useRef(query);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
 
   const listKey = `${filter}:${debouncedQuery}:${pageSize}`;
   const page = pageByListKey[listKey] ?? options.page ?? 1;
+  const isInitialListKey = listKey === initialListKeyRef.current;
 
   const setPage = useCallback(
     (nextPage: number) => {
@@ -89,9 +115,14 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
     return () => window.clearTimeout(timer);
   }, [query]);
 
-  const refetch = useCallback(() => {
-    setReloadToken((value) => value + 1);
-  }, []);
+  useEffect(() => {
+    if (mountLoggedRef.current) return;
+    mountLoggedRef.current = true;
+    markCollectionClientMount(hasInitialBootstrap);
+    if (hasInitialBootstrap) {
+      logCollectionClientReady("bootstrap");
+    }
+  }, [hasInitialBootstrap]);
 
   const applyPageResult = useCallback(
     (data: CollectionEntriesPage) => {
@@ -109,8 +140,8 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
     [listKey],
   );
 
-  const refreshPage = useCallback(async (): Promise<boolean> => {
-    const result = await getCollectionEntries({
+  const refreshBootstrap = useCallback(async (): Promise<boolean> => {
+    const result = await getCollectionPageBootstrap({
       page,
       pageSize,
       filter,
@@ -123,46 +154,80 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
       return false;
     }
 
-    applyPageResult(result.data);
+    setSummary(result.data.summary);
+    applyPageResult(result.data.page);
     setError(null);
     return true;
   }, [page, pageSize, filter, debouncedQuery, applyPageResult]);
 
-  const refreshSummary = useCallback(async (): Promise<boolean> => {
-    const result = await getCollectionPortfolioSummary();
-    if (!result.success) {
-      setError(result.error);
-      return false;
-    }
-    setSummary(result.data);
-    return true;
-  }, []);
+  const refetch = useCallback(() => {
+    void (async () => {
+      setIsRefreshing(true);
+      await refreshBootstrap();
+      setIsRefreshing(false);
+    })();
+  }, [refreshBootstrap]);
 
   useEffect(() => {
+    if (hasInitialBootstrap || didInitialBootstrapRef.current) {
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
       setIsSummaryLoading(true);
-      const result = await getCollectionPortfolioSummary();
+      setIsLoading(true);
+
+      const result = await getCollectionPageBootstrap({
+        page,
+        pageSize,
+        filter,
+        query: debouncedQuery,
+      });
+
       if (cancelled) return;
 
+      didInitialBootstrapRef.current = true;
+
       if (!result.success) {
-        setSummary(null);
         setError(result.error);
-        setIsSummaryLoading(false);
-        return;
+        setSummary(null);
+        setEntries([]);
+        setTotal(0);
+        setTotalPages(0);
+      } else {
+        setSummary(result.data.summary);
+        applyPageResult(result.data.page);
+        setError(null);
       }
 
-      setSummary(result.data);
       setIsSummaryLoading(false);
+      setIsLoading(false);
+      logCollectionClientReady("bootstrap");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [
+    hasInitialBootstrap,
+    page,
+    pageSize,
+    filter,
+    debouncedQuery,
+    applyPageResult,
+  ]);
 
   useEffect(() => {
+    if (!didInitialBootstrapRef.current && !hasInitialBootstrap) {
+      return;
+    }
+
+    if (hasInitialBootstrap && isInitialListKey) {
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
@@ -193,7 +258,15 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, filter, debouncedQuery, reloadToken, applyPageResult]);
+  }, [
+    page,
+    pageSize,
+    filter,
+    debouncedQuery,
+    hasInitialBootstrap,
+    isInitialListKey,
+    applyPageResult,
+  ]);
 
   const removeEntry = useCallback(
     async (entry: CollectionEntry) => {
@@ -209,10 +282,12 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
 
       setError(null);
       toast.success("已從資產庫移除");
-      await Promise.all([refreshPage(), refreshSummary()]);
-      return true;
+      setIsRefreshing(true);
+      const refreshed = await refreshBootstrap();
+      setIsRefreshing(false);
+      return refreshed;
     },
-    [refreshPage, refreshSummary],
+    [refreshBootstrap],
   );
 
   const updateGrade = useCallback(
@@ -237,10 +312,12 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
       }
 
       setError(null);
-      await Promise.all([refreshPage(), refreshSummary()]);
-      return true;
+      setIsRefreshing(true);
+      const refreshed = await refreshBootstrap();
+      setIsRefreshing(false);
+      return refreshed;
     },
-    [refreshPage, refreshSummary],
+    [refreshBootstrap],
   );
 
   return {
@@ -252,6 +329,7 @@ export function useCollection(options: UseCollectionOptions = {}): UseCollection
     summary,
     isLoading,
     isSummaryLoading,
+    isRefreshing,
     error,
     refetch,
     setPage,

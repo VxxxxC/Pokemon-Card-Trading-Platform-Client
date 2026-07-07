@@ -186,6 +186,7 @@ export function OfferCardComponent({
 
   const [modifyInput, setModifyInput] = useState(offerPrice);
   const [modifyDialogKey, setModifyDialogKey] = useState(0);
+  const [modifyDialogOpen, setModifyDialogOpen] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
@@ -257,7 +258,6 @@ export function OfferCardComponent({
 
     if (hydrated) {
       setIsLoadingContext(false);
-      void loadContext({ silent: true });
       return;
     }
 
@@ -679,7 +679,11 @@ export function OfferCardComponent({
           ) : null}
 
           {isBuyer && modifiedCount < 1 ? (
-            <AlertDialog key={`modify-offer-${modifyDialogKey}`}>
+            <AlertDialog
+              key={`modify-offer-${modifyDialogKey}`}
+              open={modifyDialogOpen}
+              onOpenChange={setModifyDialogOpen}
+            >
               <AlertDialogTrigger
                 disabled={isModifying}
                 render={
@@ -739,8 +743,13 @@ export function OfferCardComponent({
                     type="button"
                     disabled={isModifying}
                     className="h-11 rounded-xl bg-orange-500 font-black text-[#17130f] hover:bg-orange-400 disabled:opacity-50"
-                    onClick={() => {
-                      void handleModifyOffer();
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void handleModifyOffer().then((success) => {
+                        if (success) {
+                          setModifyDialogOpen(false);
+                        }
+                      });
                     }}
                   >
                     {isModifying ? (

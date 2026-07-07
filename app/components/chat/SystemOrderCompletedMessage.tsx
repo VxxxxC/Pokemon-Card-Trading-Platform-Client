@@ -29,6 +29,7 @@ export type SystemOrderCompletedMessageProps = {
   partnerName?: string;
   onOpenReview?: (orderId: string, revieweeId: string) => void;
   reviewedOrderIds?: ReadonlySet<string> | null;
+  isReviewLoading?: boolean;
 };
 
 function pickInitialOrderId(
@@ -54,6 +55,7 @@ function SystemOrderCompletedMessageComponent({
   partnerName,
   onOpenReview,
   reviewedOrderIds = null,
+  isReviewLoading = false,
 }: SystemOrderCompletedMessageProps) {
   const setIsChatOpen = useHkCardVaultStore((state) => state.setIsChatOpen);
   const [resolvedOrderId, setResolvedOrderId] = useState(() =>
@@ -76,7 +78,8 @@ function SystemOrderCompletedMessageComponent({
     Boolean(resolvedOrderId) &&
     Boolean(reviewedOrderIds?.has(resolvedOrderId));
 
-  const showReviewCta = Boolean(onOpenReview) && !hasReviewedByMe;
+  const showReviewCta =
+    Boolean(onOpenReview) && !hasReviewedByMe && !isReviewLoading;
 
   const resolveOrderIdForAction = useCallback(async (): Promise<string> => {
     const cachedOrderId = resolvedOrderId.trim();
@@ -209,16 +212,6 @@ function SystemOrderCompletedMessageComponent({
       </CardContent>
 
       <CardFooter className="flex flex-wrap gap-2 border-t border-white/5 bg-transparent px-4 py-3">
-        {showReviewCta ? (
-          <button
-            type="button"
-            onClick={() => void handleOpenReview()}
-            disabled={isOpeningReview}
-            className="inline-flex h-8 items-center rounded-lg bg-brand px-3 text-[11px] font-bold text-[#17130f] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {reviewButtonLabel}
-          </button>
-        ) : null}
         <Link
           href="/profile/user/trading"
           onClick={() => setIsChatOpen(false)}

@@ -2,9 +2,10 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { WishlistButton, isWishlistFavored } from "@/app/components/market/WishlistButton";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
+import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import type { Tables } from "@/types/supabase";
@@ -38,6 +39,7 @@ interface MarketplaceCardProps {
   currentUserId?: string | null;
   /** Product+grade keys from `getUserWishlistFavoredKeys` for star hydration. */
   favoredKeys?: ReadonlySet<string>;
+  imagePriority?: boolean;
 }
 
 function resolveProductDetailHref(listing: MarketplaceListing): string {
@@ -72,6 +74,7 @@ export function MarketplaceCard({
   listing,
   currentUserId: currentUserIdProp,
   favoredKeys,
+  imagePriority = false,
 }: MarketplaceCardProps) {
   if (currentUserIdProp !== undefined) {
     return (
@@ -79,23 +82,32 @@ export function MarketplaceCard({
         listing={listing}
         currentUserId={currentUserIdProp}
         favoredKeys={favoredKeys}
+        imagePriority={imagePriority}
       />
     );
   }
 
-  return <MarketplaceCardWithSession listing={listing} favoredKeys={favoredKeys} />;
+  return (
+    <MarketplaceCardWithSession
+      listing={listing}
+      favoredKeys={favoredKeys}
+      imagePriority={imagePriority}
+    />
+  );
 }
 
 function MarketplaceCardWithSession({
   listing,
   favoredKeys,
-}: Pick<MarketplaceCardProps, "listing" | "favoredKeys">) {
+  imagePriority,
+}: Pick<MarketplaceCardProps, "listing" | "favoredKeys" | "imagePriority">) {
   const currentUserId = useCurrentUserId();
   return (
     <MarketplaceCardView
       listing={listing}
       currentUserId={currentUserId}
       favoredKeys={favoredKeys}
+      imagePriority={imagePriority}
     />
   );
 }
@@ -104,12 +116,13 @@ function MarketplaceCardView({
   listing,
   currentUserId,
   favoredKeys,
+  imagePriority,
 }: {
   listing: MarketplaceListing;
   currentUserId: string | null;
   favoredKeys?: ReadonlySet<string>;
+  imagePriority?: boolean;
 }) {
-  const router = useRouter();
   const isOwnListing =
     currentUserId != null &&
     listing.sellerId != null &&
@@ -130,10 +143,6 @@ function MarketplaceCardView({
     listing.grade.score,
   );
 
-  const openProductDetail = () => {
-    router.push(productDetailHref);
-  };
-
   return (
     <div
       className={
@@ -147,17 +156,10 @@ function MarketplaceCardView({
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className="group bg-[#26211C] rounded-2xl overflow-hidden border border-[rgba(237,232,224,0.08)] shadow-[0_2px_8px_rgba(0,0,0,0.40)] hover:shadow-[0_4px_24px_rgba(0,0,0,0.65)] flex flex-col justify-between"
     >
-      <div
-        role="link"
-        tabIndex={0}
-        onClick={openProductDetail}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openProductDetail();
-          }
-        }}
-        className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+      <Link
+        href={productDetailHref}
+        prefetch
+        className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 block"
         aria-label={`查看 ${displayName} 商品詳情`}
       >
         <div className="relative w-full aspect-[3/4] overflow-hidden rounded-t-2xl bg-[#1A1612]">
@@ -170,8 +172,9 @@ function MarketplaceCardView({
             }
             fill
             className="object-full group-hover:scale-[1.03] transition-transform duration-300 p-2 rounded-2xl"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            unoptimized
+            sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
+            priority={imagePriority ?? false}
+            loading={imagePriority ? undefined : "lazy"}
           />
           <div className="absolute inset-0 bg-linear-to-tr from-transparent via-[rgba(212,165,116,0.08)] to-[rgba(255,255,255,0.15)] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none mix-blend-overlay" />
           <div className="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0)_20%,rgba(255,255,255,0.15)_40%,rgba(255,255,255,0)_60%)] -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
@@ -215,6 +218,12 @@ function MarketplaceCardView({
               <span className="font-mono text-[11px] text-[#d4c4b7] block truncate">
                 {displaySetAndCardNo}
               </span>
+              <div className="mt-1.5">
+                <GradeBadge
+                  authority={listing.grade.authority}
+                  score={listing.grade.score}
+                />
+              </div>
             </div>
           </div>
 
@@ -246,7 +255,7 @@ function MarketplaceCardView({
             </div>
           </div>
         </div>
-      </div>
+      </Link>
 
       {/* 換上全域即時通訊按鈕，從此在大盤分頁點擊直接彈出交易 SlideOver！ */}
       <div

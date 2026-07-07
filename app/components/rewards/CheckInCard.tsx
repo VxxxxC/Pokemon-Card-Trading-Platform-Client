@@ -20,13 +20,24 @@ export type CheckInCardStats = {
 
 type CheckInCardProps = {
   onStatsChange?: (stats: CheckInCardStats) => void;
+  /** Skip initial fetch when overview SSR already provided points. */
+  initialPointsBalance?: number;
+  /** Defer gamification stats until idle (streak / check-in state). */
+  deferStatsLoad?: boolean;
 };
 
-export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
+export function CheckInCard({
+  onStatsChange,
+  initialPointsBalance,
+  deferStatsLoad = false,
+}: CheckInCardProps = {}) {
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [consecutiveDays, setConsecutiveDays] = useState(0);
-  const [userPoints, setUserPoints] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [userPoints, setUserPoints] = useState(initialPointsBalance ?? 0);
+  const [isLoading, setIsLoading] = useState(initialPointsBalance === undefined);
+  const [isStreakLoading, setIsStreakLoading] = useState(
+    deferStatsLoad && initialPointsBalance !== undefined,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const enqueueGrants = useRewardNotificationStore((s) => s.enqueue);
 
@@ -37,9 +48,19 @@ export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
   );
 
   const loadStats = useCallback(async () => {
-    setIsLoading(true);
+    if (initialPointsBalance === undefined) {
+      setIsLoading(true);
+    } else {
+      setIsStreakLoading(true);
+    }
+
     const result = await getGamificationStats();
-    setIsLoading(false);
+
+    if (initialPointsBalance === undefined) {
+      setIsLoading(false);
+    } else {
+      setIsStreakLoading(false);
+    }
 
     if (!result.success) return;
 
@@ -51,17 +72,28 @@ export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
       currentStreak: result.data.currentStreak,
       checkedInToday: result.data.checkedInToday,
     });
-  }, [onStatsChange]);
+  }, [initialPointsBalance, onStatsChange]);
 
   useEffect(() => {
     if (!isMounted) return;
 
-    const timer = window.setTimeout(() => {
+    const runLoad = () => {
       void loadStats();
-    }, 0);
+    };
 
-    return () => window.clearTimeout(timer);
-  }, [isMounted, loadStats]);
+    if (deferStatsLoad) {
+      if (typeof window.requestIdleCallback === "function") {
+        const id = window.requestIdleCallback(runLoad, { timeout: 2000 });
+        return () => window.cancelIdleCallback(id);
+      }
+
+      const timer = setTimeout(runLoad, 1500);
+      return () => clearTimeout(timer);
+    }
+
+    const timer = setTimeout(runLoad, 0);
+    return () => clearTimeout(timer);
+  }, [isMounted, loadStats, deferStatsLoad]);
 
   const handleCheckInExecute = async () => {
     if (hasCheckedIn || isSubmitting) return;
@@ -103,6 +135,7 @@ export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
     hasCheckedIn ? consecutiveDays : consecutiveDays + 1,
   );
   const completedCount = hasCheckedIn ? todayCycleDay : todayCycleDay - 1;
+  const streakReady = !isStreakLoading;
 
   return (
     <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-5 shadow-[0_4px_16px_rgba(0,0,0,0.3)] space-y-4">
@@ -125,8 +158,9 @@ export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
 
       <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 pt-1">
         {CHECK_IN_STEPS.map((step, idx) => {
-          const isCompleted = idx < completedCount;
-          const isToday = idx === completedCount && !hasCheckedIn && !isSubmitting;
+          const isCompleted = streakReady && idx < completedCount;
+          const isToday =
+            streakReady && idx === completedCount && !hasCheckedIn && !isSubmitting;
           const isFuture = !isCompleted && !isToday;
 
           return (
@@ -180,19 +214,21 @@ export function CheckInCard({ onStatsChange }: CheckInCardProps = {}) {
 
       <button
         type="button"
-        disabled={hasCheckedIn || isSubmitting}
+        disabled={hasCheckedIn || isSubmitting || isStreakLoading}
         onClick={() => void handleCheckInExecute()}
         className={`w-full h-11 rounded-xl font-sans font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] cursor-pointer shadow-md ${
-          hasCheckedIn || isSubmitting
+          hasCheckedIn || isSubmitting || isStreakLoading
             ? "bg-[#17130f] border border-[rgba(237,232,224,0.06)] text-[#50453b] cursor-not-allowed"
             : "bg-brand text-[#1A1612] hover:bg-[#e8b896]"
         }`}
       >
-        {hasCheckedIn
-          ? "明日請繼續保持收藏習慣"
-          : isSubmitting
-            ? "簽到中…"
-            : "立即簽到打卡獲取積分"}
+        {isStreakLoading
+          ? "載入簽到狀態…"
+          : hasCheckedIn
+            ? "明日請繼續保持收藏習慣"
+            : isSubmitting
+              ? "簽到中…"
+              : "立即簽到打卡獲取積分"}
       </button>
     </div>
   );

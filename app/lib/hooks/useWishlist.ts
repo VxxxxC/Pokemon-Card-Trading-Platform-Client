@@ -12,6 +12,11 @@ import type { WishlistEntry } from "@/app/lib/wishlist/types";
 import type { GradingOption } from "@/lib/grading/options";
 import { wishlistGradeFromGradingOption } from "@/lib/wishlist/grading";
 
+type UseWishlistOptions = {
+  deferLoad?: boolean;
+  initialEntries?: WishlistEntry[];
+};
+
 type UseWishlistResult = {
   entries: WishlistEntry[];
   isLoading: boolean;
@@ -28,9 +33,12 @@ type UseWishlistResult = {
   ) => Promise<boolean>;
 };
 
-export function useWishlist(): UseWishlistResult {
-  const [entries, setEntries] = useState<WishlistEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function useWishlist(options: UseWishlistOptions = {}): UseWishlistResult {
+  const { deferLoad = false, initialEntries } = options;
+  const hasInitialEntries = initialEntries !== undefined;
+
+  const [entries, setEntries] = useState<WishlistEntry[]>(initialEntries ?? []);
+  const [isLoading, setIsLoading] = useState(!hasInitialEntries && !deferLoad);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -51,9 +59,13 @@ export function useWishlist(): UseWishlistResult {
   }, []);
 
   useEffect(() => {
+    if (hasInitialEntries && reloadToken === 0) {
+      return;
+    }
+
     let cancelled = false;
 
-    (async () => {
+    const runLoad = async () => {
       setIsLoading(true);
       const result = await getWishlistEntries();
 
@@ -69,12 +81,32 @@ export function useWishlist(): UseWishlistResult {
       setEntries(result.data);
       setError(null);
       setIsLoading(false);
-    })();
+    };
+
+    if (deferLoad && reloadToken === 0) {
+      if (typeof window.requestIdleCallback === "function") {
+        const id = window.requestIdleCallback(() => void runLoad(), {
+          timeout: 2000,
+        });
+        return () => {
+          cancelled = true;
+          window.cancelIdleCallback(id);
+        };
+      }
+
+      const timer = window.setTimeout(() => void runLoad(), 1500);
+      return () => {
+        cancelled = true;
+        window.clearTimeout(timer);
+      };
+    }
+
+    void runLoad();
 
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, deferLoad, hasInitialEntries]);
 
   const removeEntry = useCallback(async (entry: WishlistEntry) => {
     const result = await removeFromWishlist({

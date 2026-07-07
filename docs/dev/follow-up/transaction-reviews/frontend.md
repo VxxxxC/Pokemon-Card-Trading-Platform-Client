@@ -59,7 +59,7 @@ const [activeReview, setActiveReview] = useState<{
 
 | Trigger | When | Action |
 |---------|------|--------|
-| **A — 主動完結** | `dbStatus === 'pending'` | 「確認完成交易」→ `completeMemberOrder` → `onOpenReview` |
+| **A — 主動完結** | `dbStatus === 'pending'` && buyer | 「確認完成交易」→ `MemberOrderCompleteConfirmDialog` → `completeMemberOrder` → `onOpenReview` |
 | **B — 歷史補評** | `completed` && `!hasReviewedByMe` | 「✍️ 給予對手評價」→ `onOpenReview` |
 | **取消** | `pending` && seller (`canCancel`) | `cancelMemberOrder` only |
 
@@ -133,12 +133,12 @@ const result = await getUserReviewedMemberOrderIds([orderId]);
 
 ### Manual test
 
-1. Apply migrations through **`20260704290000`** (see [backend.md](./backend.md)).
-2. Log in as **buyer** → complete order → submit review in modal → toast **待對方評價後將互相公開**.
+1. Apply migrations through **`20260707130000`** (see [backend.md](./backend.md)).
+2. Log in as **buyer** → **確認完成交易** → handover confirm dialog → complete order → submit review in modal → toast **待對方評價後將互相公開**.
 3. Log in as **seller** → **已完成** tab → **✍️ 給予對手評價** → submit → toast **雙方評價已公開**.
 4. Buyer cannot see seller's review before step 3 (no profile/list UI for counterparty private reviews yet).
 5. Try duplicate submit → error toast `您已評價過此筆交易`.
-6. **確認完成交易** flow (Track A): complete + modal still works for first reviewer.
+6. **確認完成交易** flow (Track A): buyer-only; handover dialog → complete + modal still works for first reviewer.
 7. Complete order → reopen chat → completion card + review CTA (if not reviewed) → submit → CTA hides.
 8. **查看我的訂單** from chat card → chat closes, lands on trading list.
 

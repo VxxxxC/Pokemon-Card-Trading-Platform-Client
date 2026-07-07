@@ -1,7 +1,22 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { MARKETPLACE_FILTER_CACHE_SECONDS } from "@/lib/marketplace/constants";
+import {
+  isDefaultBrowsableMarketplaceSearch,
+  MARKETPLACE_SEARCH_CACHE_SECONDS,
+} from "@/lib/marketplace/search-default";
+import {
+  isDefaultProductDetailListingsInput,
+} from "@/lib/marketplace/product-detail-default";
+import {
+  MARKETPLACE_PRODUCT_CATALOG_CACHE_SECONDS,
+  MARKETPLACE_PRODUCT_DEFAULT_LISTINGS_CACHE_SECONDS,
+  MARKETPLACE_PRODUCT_MARKET_PRICES_CACHE_SECONDS,
+} from "@/lib/marketplace/constants";
 import {
   normalizeMarketplaceText,
   parseCatalogSearchQuery,
@@ -29,8 +44,22 @@ import type {
   MarketplaceSearchInput,
   MarketplaceBootstrapData,
   MarketplaceBootstrapResult,
+  MarketplaceSellerListingsInput,
+  MarketplaceSellerListingsResult,
+  MarketplaceSellerProfileResult,
+  MarketplaceSellerListingDetailResult,
   SearchMarketplaceResult,
 } from "@/app/lib/marketplace/types";
+import {
+  loadMarketplaceSellerListingDetail,
+  resolveSellerListingCatalogKey,
+} from "@/lib/marketplace/load-seller-listing-detail";
+import { loadMarketplaceSellerProfile } from "@/lib/marketplace/load-seller-profile";
+import {
+  mapSellerListingRpcRow,
+  readSellerPriceBounds,
+  type SellerListingRpcRow,
+} from "@/lib/marketplace/map-seller-listing";
 import type { Database, Json, Tables } from "@/types/supabase";
 import type { SortKey } from "@/app/store/useMarketStore";
 import {
@@ -45,6 +74,11 @@ import {
 } from "@/lib/marketplace/market-price";
 import { normalizeGradingCompany } from "@/lib/grading/options";
 import { parseListingImageUrls } from "@/lib/listings/images";
+import {
+  isMarketplacePerfLogEnabled,
+  marketplacePerfLog,
+  marketplacePerfNow,
+} from "@/lib/marketplace/perf-log";
 
 export type {
   GradeFilter,
@@ -70,6 +104,11 @@ export type {
   MarketplaceSearchInput,
   MarketplaceBootstrapData,
   MarketplaceBootstrapResult,
+  MarketplaceSellerListingsInput,
+  MarketplaceSellerListingsResult,
+  MarketplaceSellerProfile,
+  MarketplaceSellerProfileResult,
+  MarketplaceSellerListingDetailResult,
   ProductListingSortKey,
   SearchMarketplaceResult,
 } from "@/app/lib/marketplace/types";
@@ -78,6 +117,7 @@ type SearchRpcArgs =
   Database["public"]["Functions"]["search_marketplace_products"]["Args"];
 type SearchRpcRow =
   Database["public"]["Functions"]["search_marketplace_products"]["Returns"][number];
+type BrowseRpcRow = SearchRpcRow;
 type ProductListingsRpcArgs =
   Database["public"]["Functions"]["get_marketplace_product_listings"]["Args"];
 type ProductListingsRpcRow =
@@ -265,6 +305,76 @@ function toTradeHistoryRow(
   };
 }
 
+async function runBrowseMarketplaceSearch(
+  sort: string,
+  page: number,
+  pageSize: number,
+): Promise<SearchMarketplaceResult> {
+  const supabase = createPublicClient();
+  const rpcStartedAt = isMarketplacePerfLogEnabled()
+    ? marketplacePerfNow()
+    : 0;
+
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        fn: "search_marketplace_products_browse",
+        args: { p_sort: string; p_page: number; p_page_size: number },
+      ) => Promise<{
+        data: BrowseRpcRow[] | null;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("search_marketplace_products_browse", {
+    p_sort: sort,
+    p_page: page,
+    p_page_size: pageSize,
+  });
+
+  if (isMarketplacePerfLogEnabled()) {
+    marketplacePerfLog(
+      `searchMarketplaceProductsBrowse page=${page} size=${pageSize} sort=${sort}=${Math.round(marketplacePerfNow() - rpcStartedAt)}ms`,
+    );
+  }
+
+  if (error) {
+    if (isMarketplacePerfLogEnabled()) {
+      marketplacePerfLog(
+        `searchMarketplaceProductsBrowse failed=${error.message}`,
+      );
+    }
+    return { success: false, error: "搜尋大盤市場時發生錯誤" };
+  }
+
+  const rows = (data ?? []) as BrowseRpcRow[];
+
+  return {
+    success: true,
+    data: rows.map(toProductRow),
+    meta: toPaginationMeta(rows[0], page, pageSize),
+  };
+}
+
+function getCachedBrowseMarketplaceSearch(
+  sort: string,
+  page: number,
+  pageSize: number,
+): Promise<SearchMarketplaceResult> {
+  return unstable_cache(
+    async () => {
+      const result = await runBrowseMarketplaceSearch(sort, page, pageSize);
+      if (!result.success) {
+        throw new Error("marketplace_browse_unavailable");
+      }
+      return result;
+    },
+    ["marketplace-browse", sort, String(page), String(pageSize)],
+    { revalidate: MARKETPLACE_SEARCH_CACHE_SECONDS },
+  )().catch(() =>
+    runBrowseMarketplaceSearch(sort, page, pageSize),
+  );
+}
+
 export async function searchMarketplaceProducts(
   input: MarketplaceSearchInput = {},
 ): Promise<SearchMarketplaceResult> {
@@ -273,6 +383,18 @@ export async function searchMarketplaceProducts(
     MAX_PAGE_SIZE,
     Math.max(1, input.pageSize ?? DEFAULT_PAGE_SIZE),
   );
+
+  if (isDefaultBrowsableMarketplaceSearch(input, page, pageSize)) {
+    try {
+      const sort = mapSortKey(input.sortKey);
+      const cached = await getCachedBrowseMarketplaceSearch(sort, page, pageSize);
+      if (cached.success) {
+        return cached;
+      }
+    } catch (error) {
+      console.error("[searchMarketplaceProducts] browse cache", error);
+    }
+  }
 
   const parsedQuery = parseCatalogSearchQuery(input.query);
 
@@ -308,6 +430,11 @@ export async function searchMarketplaceProducts(
       p_page_size: pageSize,
     };
 
+    const sort = mapSortKey(input.sortKey);
+    const rpcStartedAt = isMarketplacePerfLogEnabled()
+      ? marketplacePerfNow()
+      : 0;
+
     const { data, error } = await (
       supabase as unknown as {
         rpc: (
@@ -319,6 +446,12 @@ export async function searchMarketplaceProducts(
         }>;
       }
     ).rpc("search_marketplace_products", rpcArgs);
+
+    if (isMarketplacePerfLogEnabled()) {
+      marketplacePerfLog(
+        `searchMarketplaceProducts page=${page} size=${pageSize} sort=${sort}=${Math.round(marketplacePerfNow() - rpcStartedAt)}ms`,
+      );
+    }
 
     if (error) {
       console.error("[searchMarketplaceProducts]", error.message);
@@ -340,7 +473,10 @@ export async function searchMarketplaceProducts(
 
 export async function getMarketplacePriceBounds(): Promise<MarketplacePriceBoundsResult> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
+    const rpcStartedAt = isMarketplacePerfLogEnabled()
+      ? marketplacePerfNow()
+      : 0;
 
     const { data, error } = await (
       supabase as unknown as {
@@ -352,6 +488,12 @@ export async function getMarketplacePriceBounds(): Promise<MarketplacePriceBound
         }>;
       }
     ).rpc("get_marketplace_price_bounds");
+
+    if (isMarketplacePerfLogEnabled()) {
+      marketplacePerfLog(
+        `getMarketplacePriceBounds=${Math.round(marketplacePerfNow() - rpcStartedAt)}ms`,
+      );
+    }
 
     if (error) {
       console.error("[getMarketplacePriceBounds]", error.message);
@@ -383,27 +525,32 @@ export async function getMarketplaceBootstrap(
   }
 
   try {
-    const [boundsResult, raritiesResult, searchResult] = await Promise.all([
-      getMarketplacePriceBounds(),
-      getMarketplaceRarities(),
+    const bootstrapStartedAt = isMarketplacePerfLogEnabled()
+      ? marketplacePerfNow()
+      : 0;
+
+    const [filterMetadata, searchResult] = await Promise.all([
+      loadCachedMarketplaceFilterMetadata(),
       searchMarketplaceProducts(input),
     ]);
+
+    if (isMarketplacePerfLogEnabled()) {
+      marketplacePerfLog(
+        `bootstrap total=${Math.round(marketplacePerfNow() - bootstrapStartedAt)}ms (search + cached filter metadata)`,
+      );
+    }
 
     if (!searchResult.success) {
       return { success: false, error: searchResult.error };
     }
-
-    const priceBounds = boundsResult.success
-      ? boundsResult.data
-      : { minPrice: 0, maxPrice: 100_000 };
 
     return {
       success: true,
       data: {
         products: searchResult.data,
         meta: searchResult.meta,
-        priceBounds,
-        rarities: raritiesResult.success ? raritiesResult.data : [],
+        priceBounds: filterMetadata.priceBounds,
+        rarities: filterMetadata.rarities,
       },
     };
   } catch (error) {
@@ -415,6 +562,51 @@ export async function getMarketplaceBootstrap(
 export type MarketplaceRaritiesResult =
   | { success: true; data: string[] }
   | { success: false; error: string };
+
+async function runLoadProductCatalogDetail(
+  productKey: string,
+): Promise<MarketplaceProductDetailResult> {
+  const key = productKey.trim();
+  if (!key) {
+    return { success: false, error: "缺少商品識別碼" };
+  }
+
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("product_catalog")
+    .select("*")
+    .or(`id.eq.${key},display_id.eq.${key}`)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMarketplaceProductDetail]", error.message);
+    return { success: false, error: "無法載入商品資料" };
+  }
+
+  if (!data) {
+    return { success: false, error: "找不到此商品" };
+  }
+
+  return { success: true, data: toProductDetail(data) };
+}
+
+function getCachedProductCatalogDetail(
+  productKey: string,
+): Promise<MarketplaceProductDetailResult> {
+  const key = productKey.trim();
+
+  return unstable_cache(
+    async () => {
+      const result = await runLoadProductCatalogDetail(key);
+      if (!result.success) {
+        throw new Error("marketplace_product_detail_unavailable");
+      }
+      return result;
+    },
+    ["marketplace-product-detail", key],
+    { revalidate: MARKETPLACE_PRODUCT_CATALOG_CACHE_SECONDS },
+  )().catch(() => runLoadProductCatalogDetail(key));
+}
 
 export async function getMarketplaceProductDetail(
   productKey: string,
@@ -429,46 +621,14 @@ export async function getMarketplaceProductDetail(
   }
 
   try {
-    const supabase = await createClient();
-
-    const { data: byId, error: idError } = await supabase
-      .from("product_catalog")
-      .select("*")
-      .eq("id", key)
-      .maybeSingle();
-
-    if (idError) {
-      console.error("[getMarketplaceProductDetail]", idError.message);
-      return { success: false, error: "無法載入商品資料" };
-    }
-
-    if (byId) {
-      return { success: true, data: toProductDetail(byId) };
-    }
-
-    const { data: byDisplayId, error: displayError } = await supabase
-      .from("product_catalog")
-      .select("*")
-      .eq("display_id", key)
-      .maybeSingle();
-
-    if (displayError) {
-      console.error("[getMarketplaceProductDetail]", displayError.message);
-      return { success: false, error: "無法載入商品資料" };
-    }
-
-    if (!byDisplayId) {
-      return { success: false, error: "找不到此商品" };
-    }
-
-    return { success: true, data: toProductDetail(byDisplayId) };
+    return await getCachedProductCatalogDetail(key);
   } catch (error) {
     console.error("[getMarketplaceProductDetail]", error);
     return { success: false, error: "無法連線至商品目錄" };
   }
 }
 
-export async function getMarketplaceProductListings(
+async function runLoadProductListings(
   input: MarketplaceProductListingsInput,
 ): Promise<MarketplaceProductListingsResult> {
   const productId = input.productId.trim();
@@ -488,47 +648,96 @@ export async function getMarketplaceProductListings(
       ? input.gradeFilters
       : undefined;
 
-  try {
-    const supabase = await createClient();
+  const supabase = createPublicClient();
 
-    const rpcArgs: ProductListingsRpcArgs = {
-      p_product_id: productId,
-      p_grade_filters: gradeFilters,
-      p_only_graded: onlyGraded,
-      p_sort: sort,
-      p_page: page,
-      p_page_size: pageSize,
-    };
+  const rpcArgs: ProductListingsRpcArgs = {
+    p_product_id: productId,
+    p_grade_filters: gradeFilters,
+    p_only_graded: onlyGraded,
+    p_sort: sort,
+    p_page: page,
+    p_page_size: pageSize,
+  };
 
-    const { data, error } = await (
-      supabase as unknown as {
-        rpc: (
-          fn: "get_marketplace_product_listings",
-          args: ProductListingsRpcArgs,
-        ) => Promise<{
-          data: ProductListingsRpcRow[] | null;
-          error: { message: string } | null;
-        }>;
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        fn: "get_marketplace_product_listings",
+        args: ProductListingsRpcArgs,
+      ) => Promise<{
+        data: ProductListingsRpcRow[] | null;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("get_marketplace_product_listings", rpcArgs);
+
+  if (error) {
+    console.error("[getMarketplaceProductListings]", error.message);
+    return { success: false, error: "無法載入商品掛單" };
+  }
+
+  const rows = (data ?? []) as ProductListingsRpcRow[];
+  const lowestRaw = rows[0]?.filtered_lowest_price;
+
+  return {
+    success: true,
+    data: rows.map(toProductListingRow),
+    meta: toPaginationMeta(rows[0], page, pageSize),
+    lowestPrice:
+      lowestRaw != null && Number.isFinite(Number(lowestRaw))
+        ? Number(lowestRaw)
+        : null,
+  };
+}
+
+function getCachedDefaultProductListings(
+  productId: string,
+): Promise<MarketplaceProductListingsResult> {
+  return unstable_cache(
+    async () => {
+      const result = await runLoadProductListings({
+        productId,
+        sort: "price_asc",
+        onlyGraded: false,
+        page: 1,
+        pageSize: DEFAULT_PRODUCT_LISTINGS_PAGE_SIZE,
+      });
+      if (!result.success) {
+        throw new Error("marketplace_product_listings_unavailable");
       }
-    ).rpc("get_marketplace_product_listings", rpcArgs);
+      return result;
+    },
+    ["marketplace-product-listings-default", productId],
+    { revalidate: MARKETPLACE_PRODUCT_DEFAULT_LISTINGS_CACHE_SECONDS },
+  )().catch(() =>
+    runLoadProductListings({
+      productId,
+      sort: "price_asc",
+      onlyGraded: false,
+      page: 1,
+      pageSize: DEFAULT_PRODUCT_LISTINGS_PAGE_SIZE,
+    }),
+  );
+}
 
-    if (error) {
-      console.error("[getMarketplaceProductListings]", error.message);
-      return { success: false, error: "無法載入商品掛單" };
+export async function getMarketplaceProductListings(
+  input: MarketplaceProductListingsInput,
+): Promise<MarketplaceProductListingsResult> {
+  const productId = input.productId.trim();
+  if (!productId) {
+    return { success: false, error: "缺少商品識別碼" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法載入商品掛單" };
+  }
+
+  try {
+    if (isDefaultProductDetailListingsInput(input)) {
+      return await getCachedDefaultProductListings(productId);
     }
 
-    const rows = (data ?? []) as ProductListingsRpcRow[];
-    const lowestRaw = rows[0]?.filtered_lowest_price;
-
-    return {
-      success: true,
-      data: rows.map(toProductListingRow),
-      meta: toPaginationMeta(rows[0], page, pageSize),
-      lowestPrice:
-        lowestRaw != null && Number.isFinite(Number(lowestRaw))
-          ? Number(lowestRaw)
-          : null,
-    };
+    return await runLoadProductListings(input);
   } catch (error) {
     console.error("[getMarketplaceProductListings]", error);
     return { success: false, error: "無法連線至大盤市場" };
@@ -730,6 +939,57 @@ function toMarketPriceGradeRow(
   };
 }
 
+async function runLoadProductMarketPrices(
+  productId: string,
+): Promise<MarketplaceProductMarketPricesResult> {
+  const supabase = createPublicClient();
+
+  const { data, error } = await supabase
+    .from("product_grading_market_prices")
+    .select(
+      "grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data",
+    )
+    .eq("product_id", productId);
+
+  if (error) {
+    console.error("[getMarketplaceProductMarketPrices]", error.message);
+    return { success: false, error: "無法載入市場價格" };
+  }
+
+  const rows = (data ?? []) as Pick<
+    Tables<"product_grading_market_prices">,
+    | "grading_company"
+    | "grading_score"
+    | "market_avg_price"
+    | "market_trend_30d"
+    | "market_chart_data"
+  >[];
+
+  const grades = sortMarketPriceGradeRows(
+    rows
+      .map(toMarketPriceGradeRow)
+      .filter((row): row is MarketplaceMarketPriceGradeRow => row != null),
+  );
+
+  return { success: true, data: grades };
+}
+
+function getCachedProductMarketPrices(
+  productId: string,
+): Promise<MarketplaceProductMarketPricesResult> {
+  return unstable_cache(
+    async () => {
+      const result = await runLoadProductMarketPrices(productId);
+      if (!result.success) {
+        throw new Error("marketplace_product_market_prices_unavailable");
+      }
+      return result;
+    },
+    ["marketplace-product-market-prices", productId],
+    { revalidate: MARKETPLACE_PRODUCT_MARKET_PRICES_CACHE_SECONDS },
+  )().catch(() => runLoadProductMarketPrices(productId));
+}
+
 export async function getMarketplaceProductMarketPrices(
   productIdInput: string,
 ): Promise<MarketplaceProductMarketPricesResult> {
@@ -743,36 +1003,7 @@ export async function getMarketplaceProductMarketPrices(
   }
 
   try {
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("product_grading_market_prices")
-      .select(
-        "grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data",
-      )
-      .eq("product_id", productId);
-
-    if (error) {
-      console.error("[getMarketplaceProductMarketPrices]", error.message);
-      return { success: false, error: "無法載入市場價格" };
-    }
-
-    const rows = (data ?? []) as Pick<
-      Tables<"product_grading_market_prices">,
-      | "grading_company"
-      | "grading_score"
-      | "market_avg_price"
-      | "market_trend_30d"
-      | "market_chart_data"
-    >[];
-
-    const grades = sortMarketPriceGradeRows(
-      rows
-        .map(toMarketPriceGradeRow)
-        .filter((row): row is MarketplaceMarketPriceGradeRow => row != null),
-    );
-
-    return { success: true, data: grades };
+    return await getCachedProductMarketPrices(productId);
   } catch (error) {
     console.error("[getMarketplaceProductMarketPrices]", error);
     return { success: false, error: "無法連線至大盤市場" };
@@ -843,30 +1074,245 @@ export async function getMarketplaceProductMarketPrice(
 
 export async function getMarketplaceRarities(): Promise<MarketplaceRaritiesResult> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
+    const queryStartedAt = isMarketplacePerfLogEnabled()
+      ? marketplacePerfNow()
+      : 0;
 
-    const { data, error } = await supabase
-      .from("product_catalog")
-      .select("rarity")
-      .not("rarity", "is", null);
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "get_marketplace_rarities",
+        ) => Promise<{
+          data: { rarity: string }[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("get_marketplace_rarities");
+
+    if (isMarketplacePerfLogEnabled()) {
+      marketplacePerfLog(
+        `getMarketplaceRarities=${Math.round(marketplacePerfNow() - queryStartedAt)}ms`,
+      );
+    }
 
     if (error) {
       console.error("[getMarketplaceRarities]", error.message);
       return { success: false, error: "無法載入稀有度選項" };
     }
 
-    const rows = (data ?? []) as { rarity: string | null }[];
-    const unique = [
-      ...new Set(
-        rows
-          .map((row) => row.rarity?.trim())
-          .filter((rarity): rarity is string => Boolean(rarity)),
-      ),
-    ].sort((a, b) => a.localeCompare(b, "en"));
+    const rows = (data ?? []) as { rarity: string }[];
+    const unique = rows
+      .map((row) => row.rarity?.trim())
+      .filter((rarity): rarity is string => Boolean(rarity));
 
     return { success: true, data: unique };
   } catch (error) {
     console.error("[getMarketplaceRarities]", error);
     return { success: false, error: "無法連線至商品目錄" };
+  }
+}
+
+type MarketplaceFilterMetadata = {
+  priceBounds: { minPrice: number; maxPrice: number };
+  rarities: string[];
+};
+
+const loadCachedMarketplaceFilterMetadata = unstable_cache(
+  async (): Promise<MarketplaceFilterMetadata> => {
+    const [boundsResult, raritiesResult] = await Promise.all([
+      getMarketplacePriceBounds(),
+      getMarketplaceRarities(),
+    ]);
+
+    return {
+      priceBounds: boundsResult.success
+        ? boundsResult.data
+        : { minPrice: 0, maxPrice: 100_000 },
+      rarities: raritiesResult.success ? raritiesResult.data : [],
+    };
+  },
+  ["marketplace-filter-metadata"],
+  { revalidate: MARKETPLACE_FILTER_CACHE_SECONDS },
+);
+
+export type MarketplaceFilterMetadataResult =
+  | { success: true; data: MarketplaceFilterMetadata }
+  | { success: false; error: string };
+
+export async function getMarketplaceFilterMetadata(): Promise<MarketplaceFilterMetadataResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+
+  try {
+    const data = await loadCachedMarketplaceFilterMetadata();
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getMarketplaceFilterMetadata]", error);
+    return { success: false, error: "無法載入篩選資料" };
+  }
+}
+
+export async function getMarketplaceSellerProfile(
+  sellerKey: string,
+): Promise<MarketplaceSellerProfileResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+
+  try {
+    const profile = await loadMarketplaceSellerProfile(sellerKey);
+    if (!profile) {
+      return { success: false, error: "未找到該商戶" };
+    }
+
+    return { success: true, data: profile };
+  } catch (error) {
+    console.error("[getMarketplaceSellerProfile]", error);
+    return { success: false, error: "無法載入商戶資料" };
+  }
+}
+
+export async function searchMarketplaceSellerListings(
+  input: MarketplaceSellerListingsInput,
+): Promise<MarketplaceSellerListingsResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法連線至大盤市場" };
+  }
+
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, input.pageSize ?? DEFAULT_PAGE_SIZE),
+  );
+
+  const parsedQuery = parseCatalogSearchQuery(input.query);
+  const nameQuery =
+    parsedQuery.keyword ??
+    (parsedQuery.setCode && parsedQuery.cardNumber
+      ? `${parsedQuery.setCode}-${parsedQuery.cardNumber}`
+      : parsedQuery.setCode ?? parsedQuery.cardNumber ?? undefined);
+
+  try {
+    const supabase = createPublicClient();
+
+    const gradeFilters =
+      input.gradeFilters && input.gradeFilters.length > 0
+        ? input.gradeFilters
+        : undefined;
+
+    const rpcArgs = {
+      p_seller_id: input.sellerId,
+      p_name_query: nameQuery,
+      p_rarities:
+        input.rarities && input.rarities.length > 0 ? input.rarities : undefined,
+      p_grade_filters: gradeFilters,
+      p_price_min: input.priceMin ?? undefined,
+      p_price_max: input.priceMax ?? undefined,
+      p_sort: mapSortKey(input.sortKey),
+      p_page: page,
+      p_page_size: pageSize,
+    };
+
+    const rpcStartedAt = isMarketplacePerfLogEnabled()
+      ? marketplacePerfNow()
+      : 0;
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "search_marketplace_seller_listings",
+          args: typeof rpcArgs,
+        ) => Promise<{
+          data: SellerListingRpcRow[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("search_marketplace_seller_listings", rpcArgs);
+
+    if (isMarketplacePerfLogEnabled()) {
+      marketplacePerfLog(
+        `searchMarketplaceSellerListings seller=${input.sellerId} page=${page}=${Math.round(marketplacePerfNow() - rpcStartedAt)}ms`,
+      );
+    }
+
+    if (error) {
+      console.error("[searchMarketplaceSellerListings]", error.message);
+      return { success: false, error: "搜尋商戶櫥窗時發生錯誤" };
+    }
+
+    const rows = (data ?? []) as SellerListingRpcRow[];
+    const listings = rows.map(mapSellerListingRpcRow);
+
+    return {
+      success: true,
+      data: {
+        listings,
+        meta: toPaginationMeta(rows[0], page, pageSize),
+        priceBounds: readSellerPriceBounds(rows[0]),
+      },
+    };
+  } catch (error) {
+    console.error("[searchMarketplaceSellerListings]", error);
+    return { success: false, error: "無法連線至商戶櫥窗" };
+  }
+}
+
+export async function getMarketplaceSellerListingDetail(
+  sellerKey: string,
+  listingKey: string,
+): Promise<MarketplaceSellerListingDetailResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法連線至商戶櫥窗" };
+  }
+
+  const trimmedSeller = sellerKey.trim();
+  const trimmedListing = listingKey.trim();
+  if (!trimmedSeller || !trimmedListing) {
+    return { success: false, error: "未找到該私域現貨標的" };
+  }
+
+  try {
+    const productId = await resolveSellerListingCatalogKey(
+      trimmedSeller,
+      trimmedListing,
+    );
+    if (!productId) {
+      return { success: false, error: "未找到該私域現貨標的" };
+    }
+
+    const catalogResult = await getMarketplaceProductDetail(productId);
+    if (!catalogResult.success) {
+      return { success: false, error: "未找到該私域現貨標的" };
+    }
+
+    const detail = await loadMarketplaceSellerListingDetail(
+      trimmedSeller,
+      trimmedListing,
+      catalogResult.data,
+    );
+
+    if (!detail) {
+      return { success: false, error: "未找到該私域現貨標的" };
+    }
+
+    return {
+      success: true,
+      data: {
+        seller: detail.seller,
+        catalog: catalogResult.data,
+        storefrontListing: detail.storefrontListing,
+        photos: detail.photos,
+        batchLabel: detail.batchLabel,
+        price: Number(detail.listingRow.price),
+        gradingCompany: detail.listingRow.grading_company,
+        gradingScore: detail.listingRow.grading_score,
+        useAuthentication: detail.listingRow.use_authentication,
+      },
+    };
+  } catch (error) {
+    console.error("[getMarketplaceSellerListingDetail]", error);
+    return { success: false, error: "無法載入私域現貨標的" };
   }
 }

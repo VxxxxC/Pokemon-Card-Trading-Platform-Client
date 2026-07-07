@@ -11,6 +11,7 @@ import {
   completeMemberOrder,
   type MemberOrderDetail,
 } from "@/app/actions/orders";
+import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
@@ -104,9 +105,9 @@ export function MemberOrderDetailView({
     };
   }, [api]);
 
-  const handleComplete = async () => {
+  const handleComplete = async (): Promise<boolean> => {
     if (isActionLoading) {
-      return;
+      return false;
     }
 
     setIsActionLoading(true);
@@ -115,7 +116,7 @@ export function MemberOrderDetailView({
 
     if (!result.success) {
       toast.error(result.error);
-      return;
+      return false;
     }
 
     toast.success("交易已確認完成！");
@@ -124,6 +125,8 @@ export function MemberOrderDetailView({
     if (onOpenReview) {
       onOpenReview(order.id, order.counterparty.id);
     }
+
+    return true;
   };
 
   const handleCancel = async () => {
@@ -222,18 +225,18 @@ export function MemberOrderDetailView({
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 {isSeller
-                  ? "請與買家約定面交時間地點，現場點清錢貨後由任一方點擊確認完成。"
-                  : "請與賣家約定面交時間地點，現場點清錢貨後由任一方點擊確認完成。"}
+                  ? "請與買家約定面交時間地點，現場點清錢貨後待買家確認完成交易。"
+                  : "請與賣家約定面交時間地點，現場點清錢貨後點擊確認完成。"}
               </p>
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={() => void handleComplete()}
-                  className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isActionLoading ? "處理中…" : "確認完成交易"}
-                </button>
+                {isBuyer && (
+                  <MemberOrderCompleteConfirmDialog
+                    disabled={isActionLoading}
+                    isActionLoading={isActionLoading}
+                    onConfirm={handleComplete}
+                    triggerClassName="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                )}
                 {order.canCancel && (
                   <AlertDialog>
                     <AlertDialogTrigger
