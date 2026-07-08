@@ -43,10 +43,18 @@ interface MarketplaceCardProps {
 }
 
 function resolveProductDetailHref(listing: MarketplaceListing): string {
-  return (
-    listing.detailHref ??
-    `/marketplace/product/${listing.productId ?? listing.id}`
-  );
+  const explicitHref = listing.detailHref?.trim();
+  if (explicitHref) {
+    return explicitHref;
+  }
+
+  const sellerId = listing.sellerId?.trim();
+  const listingId = listing.id?.trim();
+  if (sellerId && listingId) {
+    return `/marketplace/${sellerId}/product/${listingId}`;
+  }
+
+  return `/marketplace/product/${listing.productId ?? listing.id}`;
 }
 
 function resolveListingDisplayName(listing: MarketplaceListing): string {

@@ -1,7 +1,10 @@
 "use client";
 
-import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
+import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
+import { useUIStore } from "@/app/store/useUIStore";
+import { mapMarketplaceListingToExecutionPayload } from "@/lib/marketplace/map-listing-to-execution";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
+import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 
 interface GlobalButtonProps {
   listing: MarketplaceListing;
@@ -13,27 +16,31 @@ interface GlobalButtonProps {
 const MOCK_BUYER_NAME = "九龍灣卡王";
 const MOCK_BUYER_ID = "USR-BUYER-MOCK-001";
 
-// ⚡ 立即購買按鈕 — 直接注入 accepted 狀態的 SpecialTransaction，跳過中間事件廣播層
 export function BuyButton({
   listing,
   className = "",
   label,
 }: GlobalButtonProps) {
-  const injectSpecialTransaction = useHkCardVaultStore(
-    (state) => state.injectSpecialTransaction,
+  const openExecutionSlideOver = useUIStore(
+    (state) => state.openExecutionSlideOver,
   );
+  const currentUserId = useCurrentUserId();
 
   const handleBuy = () => {
-    injectSpecialTransaction({
-      sellerName: listing.seller,
-      sellerId: listing.sellerId ?? "HKCV-SELLER-UNKNOWN",
-      cardName: listing.name,
-      cardId: listing.id,
-      offerPrice: listing.price,
-      buyerName: MOCK_BUYER_NAME,
-      buyerId: MOCK_BUYER_ID,
-      isInstantTake: true,
-    });
+    if (
+      currentUserId != null &&
+      listing.sellerId != null &&
+      listing.sellerId === currentUserId
+    ) {
+      return;
+    }
+
+    const payload = mapMarketplaceListingToExecutionPayload(listing);
+    if (!payload) {
+      return;
+    }
+
+    openExecutionSlideOver(payload);
   };
 
   return (

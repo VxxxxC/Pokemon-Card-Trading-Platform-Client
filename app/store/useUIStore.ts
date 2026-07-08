@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ExecutionSlideOverPayload } from "@/lib/marketplace/map-listing-to-execution";
 
 export type DemoRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
 
@@ -28,11 +29,15 @@ interface UIStore {
   addAssetSellPrefill: SellFromCollectionPrefill | null;
   mockRole: DemoRole;
   isIosPwaModalOpen: boolean;
+  isExecutionSlideOverOpen: boolean;
+  executionSlideOverPayload: ExecutionSlideOverPayload | null;
   openAddAssetModal: (input: OpenAddAssetModalInput) => void;
   closeAddAssetModal: () => void;
   setMockRole: (role: DemoRole) => void;
   openIosPwaModal: () => void;
   closeIosPwaModal: () => void;
+  openExecutionSlideOver: (payload: ExecutionSlideOverPayload) => void;
+  closeExecutionSlideOver: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -41,6 +46,8 @@ export const useUIStore = create<UIStore>((set) => ({
   addAssetSellPrefill: null,
   mockRole: "GUEST",
   isIosPwaModalOpen: false,
+  isExecutionSlideOverOpen: false,
+  executionSlideOverPayload: null,
   openAddAssetModal: (input) => {
     const sellPrefill = input.sellPrefill ?? null;
     set({
@@ -57,4 +64,14 @@ export const useUIStore = create<UIStore>((set) => ({
   setMockRole: (role) => set({ mockRole: role }),
   openIosPwaModal: () => set({ isIosPwaModalOpen: true }),
   closeIosPwaModal: () => set({ isIosPwaModalOpen: false }),
+  openExecutionSlideOver: (payload) =>
+    set({
+      isExecutionSlideOverOpen: true,
+      executionSlideOverPayload: payload,
+    }),
+  closeExecutionSlideOver: () =>
+    set({
+      isExecutionSlideOverOpen: false,
+      executionSlideOverPayload: null,
+    }),
 }));

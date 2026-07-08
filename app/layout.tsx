@@ -15,6 +15,7 @@ import { IosPwaModal } from "./components/pwa/IosPwaModal";
 import { resolveCurrentDemoRole } from "@/lib/auth/session";
 import { PasswordUpdatedToast } from "@/components/auth/PasswordUpdatedToast";
 import { GlobalChatOverlay } from "@/app/components/chat/GlobalChatOverlay";
+import { ExecutionSlideOverHost } from "@/app/components/transactions/ExecutionSlideOverHost";
 
 const APP_NAME = "HKCardVault";
 const APP_DEFAULT_TITLE = "HKCardVault — 寶可夢卡牌專業交易平台";
@@ -318,6 +319,7 @@ export default async function RootLayout({
         <AddAssetModal />
         <ListingSubmitOverlay />
         <GlobalChatOverlay />
+        <ExecutionSlideOverHost />
       </body>
     </html>
   );
