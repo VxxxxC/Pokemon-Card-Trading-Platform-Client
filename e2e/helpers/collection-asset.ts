@@ -145,3 +145,81 @@ export function wishlistSection(page: Page) {
 export function holdingsSection(page: Page) {
   return page.locator("section").filter({ has: page.locator("#cards-heading") });
 }
+
+export function sellPrefillModalForm(page: Page) {
+  return page.locator("form").filter({
+    has: page.getByText("卡牌與規格已從收藏庫帶入"),
+  });
+}
+
+export function holdingsRow(page: Page, productName: string) {
+  return holdingsSection(page)
+    .locator("tbody tr")
+    .filter({ hasText: productName })
+    .first();
+}
+
+export function holdingsRowByPurchasePrice(
+  page: Page,
+  productName: string,
+  purchasePrice: string | number,
+): ReturnType<typeof holdingsRow> {
+  const normalized = String(purchasePrice).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return holdingsSection(page)
+    .locator("tbody tr")
+    .filter({ hasText: productName })
+    .filter({ hasText: normalized })
+    .last();
+}
+
+export async function clickCollectionFilter(
+  page: Page,
+  label: string,
+): Promise<void> {
+  await holdingsSection(page)
+    .getByRole("button", { name: label, exact: true })
+    .click();
+}
+
+export async function openHoldingsRowMenu(
+  page: Page,
+  productName: string,
+): Promise<void> {
+  const row = holdingsRow(page, productName);
+  await row.getByRole("button").filter({ hasText: "⋯" }).click();
+}
+
+export async function addHobbyHoldingForFixture(
+  page: Page,
+  fixture: ListingMarketplaceFixture,
+  purchasePrice = "12345",
+): Promise<string> {
+  await gotoCollectionPage(page);
+  await expect(page.locator("#cards-heading")).toBeVisible({
+    timeout: 20_000,
+  });
+  await openHobbyAddAssetModal(page);
+  await searchAndSelectCatalogForFixture(page, fixture);
+  await addAssetModalForm(page).getByPlaceholder("0").fill(purchasePrice);
+  await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();
+  await expect(
+    page.getByText("已成功收錄進您的私藏愛好清單"),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(
+    holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice),
+  ).toBeVisible({
+    timeout: 20_000,
+  });
+  return purchasePrice;
+}
+
+export async function uploadSellPrefillPhotos(
+  page: Page,
+  photoPath: string = LISTING_PHOTO_FIXTURE,
+  count = 4,
+): Promise<void> {
+  const modal = sellPrefillModalForm(page);
+  const files = Array.from({ length: count }, () => photoPath);
+  await modal.locator('input[type="file"]').setInputFiles(files);
+  await expect(modal.getByText(`${count}/6`)).toBeVisible({ timeout: 10_000 });
+}

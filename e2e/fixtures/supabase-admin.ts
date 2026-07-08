@@ -492,6 +492,8 @@ export async function resolveE2eMarketplaceFixture(
     };
   }
 
+  await ensureListingActive(configuredListingId);
+
   const primary = await getListingMarketplaceFixture(
     configuredListingId,
     options,
@@ -882,4 +884,147 @@ export async function countActiveListingsForSellerProduct(
   }
 
   return count ?? 0;
+}
+
+export async function getLatestUserCollectionId(
+  userId: string,
+  productId: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error, status } = await admin
+    .from("user_collections")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("product_id", productId)
+    .is("sold_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return null;
+    }
+    throw new Error(`[getLatestUserCollectionId] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+export async function getListingSourceCollectionId(
+  listingId: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("listings")
+    .select("source_collection_id")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getListingSourceCollectionId] ${error.message}`);
+  }
+
+  return data?.source_collection_id ?? null;
+}
+
+export async function ensureListingActive(listingId: string): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin
+    .from("listings")
+    .update({ status: "active" })
+    .eq("id", listingId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return false;
+    }
+    throw new Error(`[ensureListingActive] ${error.message}`);
+  }
+
+  return true;
+}
+
+export async function getListingStatus(
+  listingId: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("listings")
+    .select("status")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getListingStatus] ${error.message}`);
+  }
+
+  return data?.status ?? null;
+}
+
+export async function deactivateActiveListingsForSellerProduct(
+  sellerId: string,
+  productId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("listings")
+    .select("id")
+    .eq("seller_id", sellerId)
+    .eq("product_id", productId)
+    .eq("status", "active");
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return;
+    }
+    throw new Error(
+      `[deactivateActiveListingsForSellerProduct] ${error.message}`,
+    );
+  }
+
+  for (const row of data ?? []) {
+    if (row.id) {
+      await setListingStatusInactive(row.id);
+    }
+  }
+}
+
+export async function markUserCollectionAsSold(params: {
+  userId: string;
+  collectionId: string;
+  listingId?: string | null;
+  soldPrice?: number;
+}): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("user_collections")
+    .update({
+      sold_at: new Date().toISOString(),
+      sold_listing_id: params.listingId ?? null,
+      sold_price: params.soldPrice ?? null,
+    })
+    .eq("id", params.collectionId)
+    .eq("user_id", params.userId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return false;
+    }
+    throw new Error(`[markUserCollectionAsSold] ${error.message}`);
+  }
+
+  return true;
 }

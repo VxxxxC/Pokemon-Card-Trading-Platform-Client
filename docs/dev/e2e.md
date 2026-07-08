@@ -153,6 +153,10 @@ GitHub Actions CI runs `build:ci` **without** Supabase env. E2E is **local-only*
 | `e2e/member-trading-p2p.spec.ts` | P2P offer accept → `member_orders` → trading list → complete → review |
 | `e2e/member-dashboard.spec.ts` | Overview, daily check-in, rewards coupon tabs |
 | `e2e/member-collection-wishlist.spec.ts` | Wishlist star/remove/sort + hobby 收錄 + merch 上架 + post-listing collection prompt |
+| `e2e/member-collection-operations.spec.ts` | Collection filter chips + grade update + remove + sell prefill + sold filter (seed) |
+| `e2e/member-trading-smoke.spec.ts` | Trading list smoke (buyer/seller) + cancel pending P2P order (`member-trading`) |
+| `e2e/member-offer-negotiation.spec.ts` | Seller reject offer + buyer modify offer (`member-trading`) |
+| `e2e/helpers/member-trading.ts` | Shared chat/trading steps (offer submit, accept, trading page) |
 | `e2e/member-auth-settings.spec.ts` | Guest auth redirect + profile settings save |
 | `e2e/member-inventory.spec.ts` | Seller inventory accordion smoke |
 | `e2e/public-profile-page.spec.ts` | Public profile bootstrap, listings/reviews CTAs, rating navigation, 404 |
@@ -259,6 +263,9 @@ Uses `hasMemberTradingFixtures()` (alias of `hasChatRealtimeFixtures()`).
 | `getBuyerProfileIdFromEnv()` | Resolve buyer `profiles.id` from `E2E_BUYER_EMAIL` |
 | `deleteProductWatchlistsForUser` / `deleteUserCollectionsForUserProduct` | E2E cleanup |
 | `countUserCollectionsForUserProduct` / `countActiveListingsForSellerProduct` | Holdings / inventory DB asserts |
+| `getLatestUserCollectionId` / `getListingSourceCollectionId` / `getListingStatus` | Collection sell + trading fixture guards |
+| `deactivateActiveListingsForSellerProduct` | Cleanup buyer orphan listings before sell-prefill test |
+| `markUserCollectionAsSold` | Seed **已售出** filter (skips when service role lacks grant) |
 | `getLatestActiveListingForSellerProduct` / `setListingStatusInactive` | Merch listing cleanup |
 
 When `member_orders` / `transaction_reviews` return permission denied for the service role, `member-trading-p2p` falls back to **UI assertions** (trading list, handover dialog, review toast).
@@ -292,6 +299,47 @@ When `member_orders` / `transaction_reviews` return permission denied for the se
 
 ```bash
 bun run test:e2e -- e2e/member-collection-wishlist.spec.ts --project=buyer
+```
+
+### Collection operations (`buyer`)
+
+`e2e/member-collection-operations.spec.ts` — extends collection coverage:
+
+| Test | Coverage |
+|------|----------|
+| Filter chips | 全部 / 已鑑定 / 未鑑定 / 已上架 / 已售出 smoke |
+| Grade update | Dropdown → 裸卡 A + **未鑑定** filter |
+| Remove holding | `⋯` → **移除出資產庫** |
+| Sell prefill | `⋯` → **出售收藏品** → Bunny upload → **已上架** filter + optional `source_collection_id` |
+| Sold filter | Service-role `sold_at` seed (skips if `user_collections` grant missing) |
+
+Uses unique purchase prices per run to target the correct holdings row when duplicate products exist.
+
+```bash
+bun run test:e2e -- e2e/member-collection-operations.spec.ts --project=buyer
+```
+
+### Trading smoke + cancel (`buyer` / `seller` / `member-trading`)
+
+`e2e/member-trading-smoke.spec.ts`:
+
+| Project | Test |
+|---------|------|
+| `buyer` | `/profile/user/trading` shell |
+| `seller` | Trading shell + **賣單** tab |
+| `member-trading` | Seller cancels pending P2P order from trading list |
+
+Requires **`E2E_LISTING_ID` → `active`** seller listing (skips when listing is `sold` / `hold` / etc.).
+
+### Offer negotiation (`member-trading`)
+
+`e2e/member-offer-negotiation.spec.ts` (serial):
+
+1. Seller **拒絕出價** → `offers.status = rejected` + buyer sees **● 已拒絕**
+2. Buyer **修改出價** HK$299 → HK$288 → seller sees updated `OfferCard`
+
+```bash
+bun run test:e2e -- e2e/member-offer-negotiation.spec.ts --project=member-trading
 ```
 
 ### Auth + settings (`guest` / `buyer`)
