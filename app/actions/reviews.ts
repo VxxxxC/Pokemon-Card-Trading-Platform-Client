@@ -373,6 +373,18 @@ export async function getPublicProfileReviews(
     const rows = (data ?? []) as SearchPublicProfileReviewsRpcRow[];
 
     if (rows.length === 0 && page === 1) {
+      if (input.cachedAggregateRating !== undefined) {
+        return {
+          success: true,
+          data: {
+            ...EMPTY_REVIEWS_PAGE,
+            aggregateRating: input.cachedAggregateRating,
+            page,
+            pageSize,
+          },
+        };
+      }
+
       const { data: profileRow, error: profileError } = await supabase
         .from("profiles")
         .select("id, rating_score")
@@ -547,6 +559,7 @@ export async function submitTransactionReview(
 
     revalidatePath("/profile/user/trading");
     revalidatePath(`/profile/user/${revieweeId}`);
+    revalidatePath(`/profile/${revieweeId}`);
     revalidatePath(`/profile/${revieweeId}/rating`);
 
     return { success: true, revealed: parsed.revealed === true };

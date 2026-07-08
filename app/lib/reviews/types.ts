@@ -37,6 +37,8 @@ export type GetPublicProfileReviewsInput = {
   sort?: ReviewSortKey;
   page?: number;
   pageSize?: number;
+  /** Skip profiles/merchant_shops rating lookup when RPC returns no review rows. */
+  cachedAggregateRating?: number;
 };
 
 export type GetPublicProfileReviewsResult =

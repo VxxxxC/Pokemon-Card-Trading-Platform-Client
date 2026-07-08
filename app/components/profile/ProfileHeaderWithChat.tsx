@@ -38,6 +38,7 @@ interface ProfileHeaderProps {
     handle: string;
     joinDate: string;
     avatarSeed: string;
+    avatarUrl?: string;
     level: string;
     completedTrades: number;
     bio: string;
@@ -110,7 +111,10 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
         <div className="flex items-end justify-between -mt-10 mb-4">
           <div className="relative w-24 h-24 rounded-full border-4 border-[#26211C] shadow-xl overflow-hidden bg-[#17130f]">
             <Image
-              src={`https://picsum.photos/seed/${member.avatarSeed}/100/100`}
+              src={
+                member.avatarUrl ??
+                `https://picsum.photos/seed/${member.avatarSeed}/100/100`
+              }
               alt="Avatar"
               fill
               className="object-cover"
@@ -171,7 +175,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
                 信用評分
               </span>
               <span className="font-mono text-[13px] text-[#eae1da] font-bold mt-1">
-                ⭐ {member.rating}{" "}
+                ⭐ {Number(member.rating).toFixed(1)}{" "}
                 <span className="text-[#8A8680] font-normal text-[11px]">
                   ({member.reviewCount} 評)
                 </span>

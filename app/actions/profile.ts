@@ -1,8 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
+import { searchMarketplaceSellerListings } from "@/app/actions/marketplace";
+import { getPublicProfileReviews } from "@/app/actions/reviews";
 import type { DemoRole } from "@/app/store/useUIStore";
+import type {
+  PublicProfileReviewItem,
+  ReviewPersona,
+} from "@/app/lib/reviews/types";
 import { resolveCurrentDemoRole } from "@/lib/auth/session";
+import {
+  loadMarketplaceSellerProfile,
+  type MarketplaceSellerBadge,
+} from "@/lib/marketplace/load-seller-profile";
+import { toMarketplaceCardListing } from "@/lib/marketplace/map-seller-listing";
 import { mapProfileUpdateError } from "@/lib/profile/errors";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import {
@@ -42,6 +54,131 @@ export type UserSettingsData = {
   avatarUrl: string;
   role: Tables<"profiles">["role"];
 };
+
+export type PublicProfilePageProfile = {
+  id: string;
+  username: string;
+  handle: string;
+  joinDate: string;
+  avatarUrl: string;
+  bio: string;
+  level: string;
+  verifiedBuyer: boolean;
+  completedTrades: number;
+  badges: MarketplaceSellerBadge[];
+  rating: number;
+  reviewCount: number;
+  role: Tables<"profiles">["role"];
+};
+
+export type PublicProfilePageBootstrap = {
+  profile: PublicProfilePageProfile;
+  reviewPersona: ReviewPersona;
+  listings: MarketplaceListing[];
+  totalListingCount: number;
+  recentReviews: PublicProfileReviewItem[];
+  warnings: {
+    listings?: string;
+    reviews?: string;
+  };
+};
+
+export type PublicProfilePageBootstrapResult =
+  | { success: true; data: PublicProfilePageBootstrap }
+  | { success: false; error: string; notFound?: boolean };
+
+export async function getPublicProfilePageBootstrap(
+  profileKey: string,
+): Promise<PublicProfilePageBootstrapResult> {
+  const trimmedKey = profileKey.trim();
+  if (!trimmedKey) {
+    return { success: false, error: "找不到此用戶", notFound: true };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "無法載入個人檔案" };
+  }
+
+  try {
+    const baseProfile = await loadMarketplaceSellerProfile(trimmedKey);
+    if (!baseProfile) {
+      return { success: false, error: "找不到此用戶", notFound: true };
+    }
+
+    const reviewPersona: ReviewPersona =
+      baseProfile.role === "merchant" ? "merchant" : "member";
+
+    const [listingsResult, reviewsResult] = await Promise.all([
+      searchMarketplaceSellerListings({
+        sellerId: baseProfile.id,
+        page: 1,
+        pageSize: 5,
+        sortKey: "最新",
+      }),
+      getPublicProfileReviews({
+        profileId: baseProfile.id,
+        persona: reviewPersona,
+        sort: "date-desc",
+        page: 1,
+        pageSize: 3,
+        cachedAggregateRating: baseProfile.ratingScore,
+      }),
+    ]);
+
+    const warnings: PublicProfilePageBootstrap["warnings"] = {};
+    if (!listingsResult.success) {
+      warnings.listings = listingsResult.error;
+    }
+    if (!reviewsResult.success) {
+      warnings.reviews = reviewsResult.error;
+    }
+
+    const listings = listingsResult.success
+      ? listingsResult.data.listings.map((row) => toMarketplaceCardListing(row))
+      : [];
+
+    const totalListingCount = listingsResult.success
+      ? listingsResult.data.meta.total
+      : 0;
+
+    const recentReviews = reviewsResult.success ? reviewsResult.data.reviews : [];
+    const aggregateRating = reviewsResult.success
+      ? reviewsResult.data.aggregateRating
+      : baseProfile.ratingScore;
+    const reviewCount = reviewsResult.success
+      ? reviewsResult.data.publicReviewCount
+      : 0;
+
+    return {
+      success: true,
+      data: {
+        profile: {
+          id: baseProfile.id,
+          username: baseProfile.username,
+          handle: baseProfile.handle,
+          joinDate: baseProfile.joinDate,
+          avatarUrl: baseProfile.avatarUrl,
+          bio: baseProfile.bio,
+          level: baseProfile.level,
+          verifiedBuyer: baseProfile.verifiedBuyer,
+          completedTrades: baseProfile.completedTrades,
+          badges: baseProfile.badges,
+          rating: aggregateRating,
+          reviewCount,
+          role: baseProfile.role,
+        },
+        reviewPersona,
+        listings,
+        totalListingCount,
+        recentReviews,
+        warnings,
+      },
+    };
+  } catch (error) {
+    console.error("[getPublicProfilePageBootstrap]", error);
+    return { success: false, error: "無法載入個人檔案" };
+  }
+}
 
 export async function getCurrentUserRole(): Promise<
   { success: true; data: DemoRole } | { success: false; error: string }

@@ -4,6 +4,7 @@ import {
   resolveReputationTagDisplay,
 } from "@/lib/constants/titles";
 import { formatSellerJoinDate, isUuid, resolveActivityBadgeEmoji } from "@/lib/marketplace/seller-profile";
+import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Json, Tables } from "@/types/supabase";
 
@@ -19,11 +20,14 @@ export type MarketplaceSellerProfile = {
   username: string;
   handle: string;
   joinDate: string;
+  avatarUrl: string;
   bio: string;
   level: string;
   verifiedBuyer: boolean;
   completedTrades: number;
   badges: MarketplaceSellerBadge[];
+  role: Tables<"profiles">["role"];
+  ratingScore: number;
 };
 
 type ProfileRow = Pick<
@@ -37,6 +41,7 @@ type ProfileRow = Pick<
   | "rating_score"
   | "reputation_tag"
   | "role"
+  | "avatar_path"
 >;
 
 type MerchantShopRow = Pick<
@@ -101,16 +106,23 @@ function mapProfileRow(
     profile.short_description?.trim() ||
     "此賣家尚未填寫櫥窗簡介。";
 
+  const ratingScore = isMerchant
+    ? Number(merchantShop?.rating_score ?? profile.rating_score ?? 0)
+    : Number(profile.rating_score ?? 0);
+
   return {
     id: profile.id,
     username,
     handle,
     joinDate: formatSellerJoinDate(profile.created_at),
+    avatarUrl: resolveAvatarUrl(profile.avatar_path),
     bio,
     level: resolveLevelLabel(profile, merchantShop),
     verifiedBuyer: isMerchant,
     completedTrades,
     badges: mapBadges(profile.reputation_tag),
+    role: profile.role,
+    ratingScore,
   };
 }
 
@@ -122,7 +134,7 @@ async function fetchProfileById(
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, display_name, username, short_description, created_at, completed_trades_count, rating_score, reputation_tag, role",
+      "id, display_name, username, short_description, created_at, completed_trades_count, rating_score, reputation_tag, role, avatar_path",
     )
     .eq("id", profileId)
     .maybeSingle<ProfileRow>();
@@ -162,7 +174,7 @@ async function fetchProfileByUsername(
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, display_name, username, short_description, created_at, completed_trades_count, rating_score, reputation_tag, role",
+      "id, display_name, username, short_description, created_at, completed_trades_count, rating_score, reputation_tag, role, avatar_path",
     )
     .ilike("username", username.trim())
     .maybeSingle<ProfileRow>();
