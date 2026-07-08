@@ -9,6 +9,21 @@ const SYSTEM_REJECT_TEXT = "❌ 賣家已拒絕此出價";
 const SYSTEM_ORDER_COMPLETED_TEXT = "✅ 交易已順利完成";
 const SYSTEM_ORDER_CANCELLED_TEXT = "❌ 此筆訂單已取消";
 
+export function isAmlSensitiveChatContent(content: string): boolean {
+  return content.includes("私下") && content.includes("過數");
+}
+
+export function resolvePersistedChatMessageSender(
+  row: Pick<RealtimeChatMessageRow, "sender_id" | "is_system_warning" | "content">,
+  currentUserId: string,
+): Message["sender"] {
+  if (row.is_system_warning || isAmlSensitiveChatContent(row.content)) {
+    return "system";
+  }
+
+  return row.sender_id === currentUserId ? "me" : "them";
+}
+
 export type OfferRealtimeEvent =
   | {
       type: "accepted";
@@ -71,16 +86,7 @@ export function mapChatMessageRowToStoreMessage(
     };
   }
 
-  const sender: Message["sender"] =
-    row.is_system_warning ||
-    content === "SYSTEM_OFFER_ACCEPTED" ||
-    content === "SYSTEM_OFFER_REJECTED" ||
-    content === "SYSTEM_ORDER_COMPLETED" ||
-    content === "SYSTEM_ORDER_CANCELLED"
-      ? "system"
-      : row.sender_id === currentUserId
-        ? "me"
-        : "them";
+  const sender = resolvePersistedChatMessageSender(row, currentUserId);
 
   return {
     id: row.id,

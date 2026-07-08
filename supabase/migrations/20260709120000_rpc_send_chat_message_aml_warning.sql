@@ -1,37 +1,5 @@
--- Plain-text chat send: SECURITY DEFINER avoids nested RLS failures on direct INSERT.
-
-CREATE OR REPLACE FUNCTION public.is_chat_room_member(
-  p_room_id UUID,
-  p_user_id UUID DEFAULT auth.uid()
-)
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.chat_rooms r
-    WHERE r.id = p_room_id
-      AND p_user_id IS NOT NULL
-      AND (r.buyer_id = p_user_id OR r.seller_id = p_user_id)
-  );
-$$;
-
-REVOKE ALL ON FUNCTION public.is_chat_room_member(UUID, UUID) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.is_chat_room_member(UUID, UUID) TO authenticated, service_role;
-
--- Replace nested-table INSERT policy (chat_rooms RLS inside chat_messages WITH CHECK).
-DROP POLICY IF EXISTS "chat_messages_party_insert" ON public.chat_messages;
-CREATE POLICY "chat_messages_party_insert"
-  ON public.chat_messages
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    sender_id = auth.uid()
-    AND public.is_chat_room_member(room_id, auth.uid())
-  );
+-- AML: flag chat messages soliciting offline payment (私下 + 過數).
+-- Forward-fix for DBs that already applied 20260704210500.
 
 CREATE OR REPLACE FUNCTION public.rpc_send_chat_message(
   p_room_id UUID,
@@ -67,7 +35,6 @@ BEGIN
     RAISE EXCEPTION '操作失敗：您不是此聊天室的成員。';
   END IF;
 
-  -- AML guard: flag诱导私下过数 / offline payment solicitation
   v_is_system_warning :=
     v_trimmed_content LIKE '%私下%'
     AND v_trimmed_content LIKE '%過數%';

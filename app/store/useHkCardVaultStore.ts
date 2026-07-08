@@ -273,7 +273,21 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
   chats: INITIAL_CHATS as unknown as ChatRoom[],
   offers: {},
 
-  setIsChatOpen: (open) => set({ isChatOpen: open }),
+  setIsChatOpen: (open) =>
+    set((state) => {
+      if (!open) {
+        return { isChatOpen: false };
+      }
+
+      const hasActiveRoom = state.chats.some(
+        (room) => room.id === state.activeRoomId,
+      );
+
+      return {
+        isChatOpen: true,
+        mobileView: hasActiveRoom ? state.mobileView : "LIST",
+      };
+    }),
   setActiveRoomId: (id) => set({ activeRoomId: id }),
   setMobileView: (view) => set({ mobileView: view }),
   setChats: (updater) =>
@@ -814,8 +828,19 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
       const chats = state.chats.map((room) => {
         if (room.id !== roomId) return room;
-        if (room.messages.some((existing) => existing.id === message.id)) {
-          return room;
+
+        const existingIndex = room.messages.findIndex(
+          (existing) => existing.id === message.id,
+        );
+        if (existingIndex !== -1) {
+          const messages = [...room.messages];
+          messages[existingIndex] = message;
+          return {
+            ...room,
+            messages,
+            lastMessage: message.text,
+            timestamp: message.timestamp,
+          };
         }
 
         const lastMessage = room.messages.at(-1);
@@ -864,16 +889,19 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         const withoutOptimistic = room.messages.filter(
           (message) => message.id !== optimisticId,
         );
-        const alreadyPersisted = withoutOptimistic.some(
+        const existingIndex = withoutOptimistic.findIndex(
           (message) => message.id === confirmed.id,
         );
-        const messages = alreadyPersisted
-          ? withoutOptimistic
-          : [...withoutOptimistic, confirmed].sort(
-              (a, b) =>
-                new Date(a.timestamp).getTime() -
-                new Date(b.timestamp).getTime(),
-            );
+        const messages =
+          existingIndex === -1
+            ? [...withoutOptimistic, confirmed].sort(
+                (a, b) =>
+                  new Date(a.timestamp).getTime() -
+                  new Date(b.timestamp).getTime(),
+              )
+            : withoutOptimistic.map((message, index) =>
+                index === existingIndex ? confirmed : message,
+              );
 
         return {
           ...room,

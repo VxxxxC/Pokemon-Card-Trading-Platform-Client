@@ -26,6 +26,7 @@ export type SendMessagePayload = {
   roomId: string;
   content: string;
   createdAt: string;
+  isSystemWarning: boolean;
 };
 
 export type SendMessageResult =
@@ -505,6 +506,7 @@ function parseRpcSendChatMessagePayload(
       typeof payload.created_at === "string"
         ? payload.created_at
         : new Date().toISOString(),
+    isSystemWarning: payload.is_system_warning === true,
   };
 }
 

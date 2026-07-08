@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { sendMessage } from "@/app/actions/chat";
+import { isAmlSensitiveChatContent } from "@/app/lib/chat/realtimeChatMessages";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
 import { SystemOrderCompletedMessage } from "./SystemOrderCompletedMessage";
@@ -711,14 +712,23 @@ export function GlobalChatConsole({
   const isThreadLoading =
     Boolean(activeRoomId) && threadLoadingRoomId === activeRoomId;
 
+  useEffect(() => {
+    if (!isChatOpen || activeRoom || mobileView !== "CHAT") {
+      return;
+    }
+
+    setMobileView("LIST");
+  }, [activeRoom, isChatOpen, mobileView, setMobileView]);
+
   if (!isMounted) return null;
   if (!isChatOpen) return null;
-  if (!activeRoom) return null;
 
-  const canPersistMessages = isDbChatRoomId(activeRoomId);
-  const composerPlaceholder = canPersistMessages
-    ? "回覆給 " + activeRoom.partnerName + "..."
-    : "等待對話同步…";
+  const canPersistMessages = Boolean(activeRoom) && isDbChatRoomId(activeRoomId);
+  const composerPlaceholder = !activeRoom
+    ? "請先選擇對話…"
+    : canPersistMessages
+      ? "回覆給 " + activeRoom.partnerName + "..."
+      : "等待對話同步…";
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -755,9 +765,11 @@ export function GlobalChatConsole({
         }
 
         const { data } = result;
+        const isSystemWarning =
+          data.isSystemWarning || isAmlSensitiveChatContent(data.content);
         finalizeOptimisticMessage(activeRoomId, optimisticId, {
           id: data.id,
-          sender: "me",
+          sender: isSystemWarning ? "system" : "me",
           text: data.content,
           timestamp: data.createdAt,
           type: "text",
@@ -915,6 +927,8 @@ export function GlobalChatConsole({
 
           {/* Right column: message thread */}
           <div className="flex-1 flex flex-col bg-[#17130f]">
+            {activeRoom ? (
+              <>
             <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse" />
@@ -1002,6 +1016,25 @@ export function GlobalChatConsole({
                 發送 ⚡
               </button>
             </form>
+              </>
+            ) : (
+              <div className="flex flex-1 flex-col">
+                <div className="h-12 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-end px-4 shrink-0">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-6 h-6 rounded-md bg-[#1A1612] hover:bg-[#39342f] text-text-secondary hover:text-[#eae1da] flex items-center justify-center font-sans text-[11px] focus:outline-none"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="flex flex-1 items-center justify-center p-6">
+                  <p className="font-mono text-[11px] text-text-disabled text-center select-none">
+                    請從左側選擇對話以開始
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -1014,7 +1047,7 @@ export function GlobalChatConsole({
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="lg:hidden fixed inset-0 z-[500] bg-[#17130f] flex flex-col"
         >
-          {mobileView === "LIST" ? (
+          {mobileView === "LIST" || !activeRoom ? (
             <div className="flex flex-col h-full">
               <div className="h-14 bg-[#26211C] border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between px-4 shrink-0 gap-2">
                 {/*

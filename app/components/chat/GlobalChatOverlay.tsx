@@ -52,10 +52,15 @@ export function GlobalChatOverlay() {
           const replacement =
             findRoomByPartnerId(merged, prevActive.partnerId) ??
             findRoomByPartnerName(merged, prevActive.partnerName);
-          if (replacement) {
-            setActiveRoomId(replacement.id);
-          }
+          setActiveRoomId(replacement?.id ?? "");
         }
+      } else if (
+        prevActiveId &&
+        !useHkCardVaultStore
+          .getState()
+          .chats.some((room) => room.id === prevActiveId)
+      ) {
+        setActiveRoomId("");
       }
     },
     [currentUserId, setActiveRoomId, setChats],
