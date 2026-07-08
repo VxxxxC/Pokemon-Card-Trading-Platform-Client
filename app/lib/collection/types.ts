@@ -2,7 +2,7 @@ import type { CollectionValuationSource } from "@/lib/marketplace/portfolio-pric
 
 export type { CollectionValuationSource };
 
-export type CollectionEntryStatus = "holding" | "listed";
+export type CollectionEntryStatus = "holding" | "listed" | "sold";
 
 export type CollectionEntry = {
   collectionId: string;
@@ -22,9 +22,11 @@ export type CollectionEntry = {
   trend30d: number | null;
   status: CollectionEntryStatus;
   activeListingId: string | null;
+  soldAt?: string | null;
+  soldPrice?: number | null;
 };
 
-export type CollectionListFilter = "all" | "graded" | "raw" | "listed";
+export type CollectionListFilter = "all" | "graded" | "raw" | "listed" | "sold";
 
 export type GetCollectionEntriesInput = {
   page?: number;

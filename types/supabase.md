@@ -61,6 +61,7 @@ type UserRole = Enums<"user_role">;
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
 | `execute_daily_check_in` | `never;` | `Json` |
 | `fn_apply_point_transaction` | `{ p_amount: number p_description?: string p_source_ref?: string p_source_type: string p_user_id: st…` | `number` |
+| `fn_archive_seller_collection_for_listing` | `{ p_final_price: number p_listing_id: string p_seller_id: string }` | `undefined` |
 | `fn_bump_listing_offers_count` | `{ p_listing_id: string }` | `undefined` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
@@ -233,6 +234,7 @@ type UserRole = Enums<"user_role">;
 | `seller_description` | `string | null` | Yes |
 | `seller_id` | `string` | No |
 | `seller_persona` | `seller_persona_type` | No |
+| `source_collection_id` | `string | null` | Yes |
 | `status` | `listing_status` | No |
 | `updated_at` | `string` | No |
 | `use_authentication` | `boolean` | No |
@@ -559,6 +561,9 @@ type UserRole = Enums<"user_role">;
 | `id` | `string` | No |
 | `product_id` | `string` | No |
 | `purchase_price` | `number` | No |
+| `sold_at` | `string | null` | Yes |
+| `sold_listing_id` | `string | null` | Yes |
+| `sold_price` | `number | null` | Yes |
 | `updated_at` | `string` | No |
 | `user_id` | `string` | No |
 

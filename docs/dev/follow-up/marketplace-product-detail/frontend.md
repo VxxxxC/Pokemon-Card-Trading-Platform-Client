@@ -6,6 +6,14 @@
 - **Frontend:** ✅ Catalog · ✅ order book · ✅ trade history · ✅ market price + chart · ✅ `ExecutionSlideOver` listing photos
 - **Your focus:** Polish, grid card market price (optional), slide-over tap-to-enlarge (optional)
 
+## Changelog (2026-07-08)
+
+| Area | Shipped |
+|------|---------|
+| **Global execution slide-over** | `ProductDetailClient` order book → `useUIStore.openExecutionSlideOver`; no per-page `<ExecutionSlideOver />` |
+| **`ExecutionSlideOverHost`** | Mounted in `app/layout.tsx` alongside `AddAssetModal` / `GlobalChatOverlay` |
+| **Mapper** | `lib/marketplace/map-listing-to-execution.ts` — `buildOrderBookExecutionPayload(product, listingId, order)` |
+
 ## Changelog (2026-07-04)
 
 | Area | Shipped |
@@ -32,7 +40,9 @@
 | File | Role |
 |------|------|
 | `app/marketplace/product/[id]/page.tsx` | Server catalog fetch + `currentUserId` from session |
-| `app/marketplace/product/[id]/ProductDetailClient.tsx` | Full client layout; `gateListingId` + `gateOrder` on row click; own-listing guard |
+| `app/marketplace/product/[id]/ProductDetailClient.tsx` | Full client layout; order book → `openExecutionSlideOver`; own-listing guard |
+| `app/components/transactions/ExecutionSlideOverHost.tsx` | Global slide-over host (root layout) |
+| `lib/marketplace/map-listing-to-execution.ts` | Order book + listing → execution payload |
 | `app/components/marketplace/AskOrderBookRow.tsx` | Order book row; `isOwnListing` visual + click guard |
 | `app/components/transactions/ExecutionSlideOver.tsx` | Negotiation slide-over; listing photo grid |
 | `app/lib/hooks/useMarketplaceProductListings.ts` | Order book (slim rows — no images) |
@@ -82,34 +92,19 @@ return (
 
 ```tsx
 // ProductDetailClient.tsx
-const isOwnListing =
-  currentUserId != null && row.order.sellerId === currentUserId;
+const openExecutionSlideOver = useUIStore((s) => s.openExecutionSlideOver);
 
 onOpenGate={(o) => {
   if (currentUserId != null && o.sellerId === currentUserId) return;
-  setGateOrder(o);
-  setGateListingId(row.listingId);
-  setIsGateOpen(true);
+  openExecutionSlideOver(
+    buildOrderBookExecutionPayload(product, row.listingId, o),
+  );
 }}
-
-<AskOrderBookRow
-  isOwnListing={isOwnListing}
-  ...
-/>
 ```
+
+Slide-over UI is rendered by **`ExecutionSlideOverHost`** in root layout (not on this page).
 
 Own rows: gold border, **我的掛單** badge, `cursor-default`, helper text below row. Slide-over never opens for own listings.
-
-```tsx
-<ExecutionSlideOver
-  isOpen={isGateOpen}
-  listingId={gateListingId}
-  order={gateOrder}
-  card={slideOverCard}
-  productId={product.productId}
-  onClose={() => { setIsGateOpen(false); setGateListingId(null); }}
-/>
-```
 
 `ExecutionSlideOver` opens immediately with row data; photos load in parallel (spinner skeleton grid → 3-column **3:4** thumbnails).
 
@@ -136,6 +131,7 @@ They are **not** synced. Market chips appear only when `availableGrades.length >
 - [x] Sold history + guest blur
 - [x] **`ExecutionSlideOver`** — on-demand listing images; 3:4 thumbnail grid (not carousel)
 - [x] **Own-listing guard** — order book + `AskOrderBookRow`; session `currentUserId` from server page
+- [x] **Global slide-over host** — order book + all `BuyButton` entry points share `ExecutionSlideOverHost`
 
 ### Remaining
 

@@ -1,18 +1,50 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import {
-  getMerchantProductDetailFixtures,
   hasBuyerAuthFixtures,
+  hasBunnyStorageFixtures,
   hasCoreMerchantFixtures,
 } from "./fixtures/test-data";
-import { getListingMarketplaceFixture } from "./fixtures/supabase-admin";
+import {
+  countActiveListingsForSellerProduct,
+  countProductWatchlistsForUser,
+  countUserCollectionsForUserProduct,
+  getBuyerProfileIdFromEnv,
+  getLatestActiveListingForSellerProduct,
+  resolveE2eMarketplaceFixture,
+  setListingStatusInactive,
+  deleteUserCollectionsForUserProduct,
+  type ListingMarketplaceFixture,
+} from "./fixtures/supabase-admin";
+import {
+  addAssetModalForm,
+  ensureProductInWishlist,
+  gotoCollectionPage,
+  holdingsSection,
+  openHobbyAddAssetModal,
+  openMerchAddAssetModal,
+  searchAndSelectCatalogForFixture,
+  uploadMerchPhotos,
+  wishlistSection,
+} from "./helpers/collection-asset";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
 
-async function dismissBlockingOverlays(page: Page): Promise<void> {
-  const pwaClose = page.getByRole("button", { name: "✕" }).first();
-  if (await pwaClose.isVisible().catch(() => false)) {
-    await pwaClose.click();
+async function loadMarketplaceFixture(): Promise<
+  ListingMarketplaceFixture | { skipReason: string }
+> {
+  const fixtureResult = await resolveE2eMarketplaceFixture();
+  if (!fixtureResult.ok) {
+    return { skipReason: fixtureResult.skipReason };
+  }
+
+  return fixtureResult.fixture;
+}
+
+function skipUnlessBuyerFixtures(testInfo: { project: { name: string } }): void {
+  test.skip(testInfo.project.name !== "buyer", "Buyer-only collection flow");
+  if (!hasBuyerAuthFixtures() || !hasCoreMerchantFixtures()) {
+    test.skip(true, "Missing buyer auth or core listing fixtures");
   }
 }
 
@@ -20,54 +52,24 @@ test.describe("Member collection and wishlist", () => {
   test("buyer can star a product and see it on collection page", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "buyer", "Buyer-only wishlist flow");
-    if (!hasBuyerAuthFixtures() || !hasCoreMerchantFixtures()) {
-      test.skip(true, "Missing buyer auth or core listing fixtures");
+    skipUnlessBuyerFixtures(testInfo);
+
+    const loaded = await loadMarketplaceFixture();
+    if ("skipReason" in loaded) {
+      test.skip(true, loaded.skipReason);
+      return;
     }
+    const fixture = loaded;
 
-    const { listingId } = getMerchantProductDetailFixtures();
-    const fixtureResult = await getListingMarketplaceFixture(listingId!);
-    if (!fixtureResult.ok) {
-      test.skip(true, fixtureResult.skipReason);
-    }
-    const fixture = fixtureResult.fixture;
-
-    await page.goto("/marketplace", { waitUntil: "domcontentloaded" });
-    await dismissBlockingOverlays(page);
-
-    const searchInput = page.getByPlaceholder("搜尋官方卡牌名稱、編號...");
-    await searchInput.fill(fixture.searchKeyword);
-    await page.getByRole("heading", { name: "大盤市場" }).click();
-
-    const productLink = page
-      .locator(`a[href="/marketplace/product/${fixture.productId}"]`)
-      .first();
-    await expect(productLink).toBeVisible({ timeout: 20_000 });
-
-    const wishlistButton = productLink
-      .locator("xpath=ancestor::article[1]")
-      .getByRole("button", {
-        name: /加入願望清單|從願望清單移除/,
-      })
-      .first();
-
-    const wishlistLabel = (await wishlistButton.getAttribute("aria-label")) ?? "";
-    if (wishlistLabel.includes("加入願望清單")) {
-      await wishlistButton.click();
-      await expect(page.getByText("已加入願望清單")).toBeVisible({
-        timeout: 15_000,
-      });
-    }
-
-    await page.goto("/profile/user/collection", {
-      waitUntil: "domcontentloaded",
-    });
-    await dismissBlockingOverlays(page);
+    await ensureProductInWishlist(page, fixture);
+    await gotoCollectionPage(page);
 
     await expect(page.getByText("追蹤願望清單")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText(fixture.productName).first()).toBeVisible({
+    await expect(
+      wishlistSection(page).getByText(fixture.productName).first(),
+    ).toBeVisible({
       timeout: 20_000,
     });
   });
@@ -80,14 +82,265 @@ test.describe("Member collection and wishlist", () => {
       test.skip(true, "Missing E2E_BUYER_EMAIL or E2E_BUYER_PASSWORD");
     }
 
-    await page.goto("/profile/user/collection", {
-      waitUntil: "domcontentloaded",
-    });
-    await dismissBlockingOverlays(page);
+    await gotoCollectionPage(page);
 
     await expect(page.getByText("追蹤願望清單")).toBeVisible({
       timeout: 20_000,
     });
     await expect(page.getByRole("button", { name: "收錄新卡" })).toBeVisible();
+  });
+
+  test("wishlist sort chips are interactive", async ({ page }, testInfo) => {
+    skipUnlessBuyerFixtures(testInfo);
+
+    await gotoCollectionPage(page);
+
+    await expect(page.getByRole("button", { name: "卡名 A→Z" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "最新加入" })).toBeVisible();
+
+    await page.getByRole("button", { name: "最新加入" }).click();
+
+    await expect(page.getByText("追蹤願望清單")).toBeVisible({
+      timeout: 20_000,
+    });
+  });
+
+  test("buyer can remove wishlist item from collection page", async ({
+    page,
+  }, testInfo) => {
+    skipUnlessBuyerFixtures(testInfo);
+
+    const loaded = await loadMarketplaceFixture();
+    if ("skipReason" in loaded) {
+      test.skip(true, loaded.skipReason);
+      return;
+    }
+    const fixture = loaded;
+    const buyerId = await getBuyerProfileIdFromEnv();
+
+    await ensureProductInWishlist(page, fixture);
+    await gotoCollectionPage(page);
+
+    await expect(
+      wishlistSection(page).getByText(fixture.productName).first(),
+    ).toBeVisible({ timeout: 20_000 });
+
+    const rowsBefore = await wishlistSection(page)
+      .getByText(fixture.productName)
+      .count();
+
+    await wishlistSection(page)
+      .getByLabel(`${fixture.productName} 更多操作`)
+      .first()
+      .click();
+    await page.getByRole("menuitem", { name: "從願望清單移除" }).click();
+
+    await expect(page.getByText("已從願望清單移除")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect
+      .poll(async () =>
+        wishlistSection(page).getByText(fixture.productName).count(),
+      )
+      .toBe(rowsBefore - 1);
+
+    if (buyerId) {
+      const remaining = await countProductWatchlistsForUser(
+        buyerId,
+        fixture.productId,
+      );
+      if (remaining > 0) {
+        await expect
+          .poll(async () =>
+            countProductWatchlistsForUser(buyerId, fixture.productId),
+          )
+          .toBe(0);
+      }
+    }
+  });
+
+  test("buyer can add hobby card from collection page", async ({
+    page,
+  }, testInfo) => {
+    skipUnlessBuyerFixtures(testInfo);
+
+    const loaded = await loadMarketplaceFixture();
+    if ("skipReason" in loaded) {
+      test.skip(true, loaded.skipReason);
+      return;
+    }
+    const fixture = loaded;
+
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (buyerId) {
+      await deleteUserCollectionsForUserProduct(buyerId, fixture.productId);
+    }
+
+    await gotoCollectionPage(page);
+    await expect(page.locator("#cards-heading")).toBeVisible({
+      timeout: 20_000,
+    });
+    await openHobbyAddAssetModal(page);
+    await searchAndSelectCatalogForFixture(page, fixture);
+    await addAssetModalForm(page).getByPlaceholder("0").fill("12345");
+    await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();
+
+    await expect(
+      page.getByText("已成功收錄進您的私藏愛好清單"),
+    ).toBeVisible({ timeout: 20_000 });
+
+    await expect(
+      holdingsSection(page).getByText(fixture.productName).first(),
+    ).toBeVisible({ timeout: 20_000 });
+
+    if (buyerId) {
+      await deleteUserCollectionsForUserProduct(buyerId, fixture.productId);
+    }
+  });
+});
+
+test.describe.serial("Member merch listing via AddAssetModal", () => {
+  test("merch listing skip collection prompt keeps orphan listing", async ({
+    page,
+  }, testInfo) => {
+    skipUnlessBuyerFixtures(testInfo);
+    if (!hasBunnyStorageFixtures()) {
+      test.skip(true, "Missing Bunny storage env for merch listing upload");
+    }
+
+    const loaded = await loadMarketplaceFixture();
+    if ("skipReason" in loaded) {
+      test.skip(true, loaded.skipReason);
+      return;
+    }
+    const fixture = loaded;
+
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (!buyerId) {
+      test.skip(true, "Unable to resolve buyer profile id");
+      return;
+    }
+
+    const collectionCountBefore = await countUserCollectionsForUserProduct(
+      buyerId,
+      fixture.productId,
+    );
+    const activeListingsBefore = await countActiveListingsForSellerProduct(
+      buyerId,
+      fixture.productId,
+    );
+
+    await gotoCollectionPage(page);
+    await expect(page.locator("#cards-heading")).toBeVisible({
+      timeout: 20_000,
+    });
+    const holdingsRowsBefore = await holdingsSection(page)
+      .locator("tbody tr")
+      .count();
+    await openMerchAddAssetModal(page);
+    await searchAndSelectCatalogForFixture(page, fixture);
+    await addAssetModalForm(page)
+      .getByPlaceholder("一口價放售金額...")
+      .fill("19999");
+    await uploadMerchPhotos(page);
+    await page.getByRole("button", { name: "🚀 立即發佈商品上架" }).click();
+
+    await expect(
+      page.getByText("商品已成功錄入並直接上架交易所大盤"),
+    ).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText("是否一併加入收藏庫？")).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole("button", { name: "略過" }).click();
+
+    await gotoCollectionPage(page);
+    const collectionCountAfter = await countUserCollectionsForUserProduct(
+      buyerId,
+      fixture.productId,
+    );
+    const holdingsRowsAfter = await holdingsSection(page)
+      .locator("tbody tr")
+      .count();
+    if (collectionCountBefore > 0 || collectionCountAfter > 0) {
+      expect(collectionCountAfter).toBe(collectionCountBefore);
+    } else {
+      expect(holdingsRowsAfter).toBe(holdingsRowsBefore);
+    }
+
+    await expect
+      .poll(async () =>
+        countActiveListingsForSellerProduct(buyerId, fixture.productId),
+      )
+      .toBeGreaterThan(activeListingsBefore);
+
+    const listingIdCreated = await getLatestActiveListingForSellerProduct(
+      buyerId,
+      fixture.productId,
+    );
+    if (listingIdCreated) {
+      await setListingStatusInactive(listingIdCreated);
+    }
+  });
+
+  test("merch listing accept collection prompt adds holdings row", async ({
+    page,
+  }, testInfo) => {
+    skipUnlessBuyerFixtures(testInfo);
+    if (!hasBunnyStorageFixtures()) {
+      test.skip(true, "Missing Bunny storage env for merch listing upload");
+    }
+
+    const loaded = await loadMarketplaceFixture();
+    if ("skipReason" in loaded) {
+      test.skip(true, loaded.skipReason);
+      return;
+    }
+    const fixture = loaded;
+
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (!buyerId) {
+      test.skip(true, "Unable to resolve buyer profile id");
+      return;
+    }
+
+    await deleteUserCollectionsForUserProduct(buyerId, fixture.productId);
+
+    await gotoCollectionPage(page);
+    await openMerchAddAssetModal(page);
+    await searchAndSelectCatalogForFixture(page, fixture);
+    await addAssetModalForm(page)
+      .getByPlaceholder("一口價放售金額...")
+      .fill("18888");
+    await uploadMerchPhotos(page);
+    await page.getByRole("button", { name: "🚀 立即發佈商品上架" }).click();
+
+    await expect(
+      page.getByText("商品已成功錄入並直接上架交易所大盤"),
+    ).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByText("是否一併加入收藏庫？")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await page.getByLabel("入手價 (HKD)").fill("8888");
+    await page.getByRole("button", { name: "加入收藏庫" }).click();
+
+    await expect(page.getByText("已加入收藏庫")).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await gotoCollectionPage(page);
+    await expect(
+      holdingsSection(page).getByText(fixture.productName).first(),
+    ).toBeVisible({ timeout: 20_000 });
+
+    const listingIdCreated = await getLatestActiveListingForSellerProduct(
+      buyerId,
+      fixture.productId,
+    );
+
+    await deleteUserCollectionsForUserProduct(buyerId, fixture.productId);
+    if (listingIdCreated) {
+      await setListingStatusInactive(listingIdCreated);
+    }
   });
 });

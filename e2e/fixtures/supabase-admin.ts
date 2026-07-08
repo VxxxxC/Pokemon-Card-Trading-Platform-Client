@@ -169,6 +169,8 @@ export type ListingMarketplaceFixture = {
   listingPrice: number;
   lowestPrice: number;
   searchKeyword: string;
+  /** Codes / product id — more reliable in AddAssetModal catalog search. */
+  catalogModalKeyword: string;
 };
 
 export type ListingMarketplaceFixtureResult =
@@ -266,6 +268,26 @@ function resolveSearchKeyword(
   if (cardNumber) return cardNumber;
 
   return null;
+}
+
+function resolveCatalogModalKeyword(
+  catalog: ProductCatalogSummary | null,
+  productId: string,
+): string | null {
+  if (catalog) {
+    const displayId = catalog.display_id?.trim();
+    if (displayId) return displayId;
+
+    const cardNumber = catalog.card_number?.trim();
+    if (cardNumber) return cardNumber;
+  }
+
+  const normalizedProductId = productId.trim();
+  if (normalizedProductId) {
+    return normalizedProductId;
+  }
+
+  return resolveSearchKeyword(catalog);
 }
 
 async function getLowestActiveListingPrice(
@@ -388,11 +410,19 @@ export async function getListingMarketplaceFixture(
 
   const preferredSearchKeyword = options.preferredSearchKeyword?.trim();
   const searchKeyword = resolveSearchKeyword(catalog, preferredSearchKeyword);
+  const catalogModalKeyword = resolveCatalogModalKeyword(catalog, row.product_id);
 
   if (!searchKeyword) {
     return {
       ok: false,
       skipReason: `Listing ${normalizedListingId} has no usable search keyword (display_id / card_number / name)`,
+    };
+  }
+
+  if (!catalogModalKeyword) {
+    return {
+      ok: false,
+      skipReason: `Listing ${normalizedListingId} has no usable catalog modal keyword`,
     };
   }
 
@@ -422,8 +452,81 @@ export async function getListingMarketplaceFixture(
       listingPrice: row.price,
       lowestPrice,
       searchKeyword,
+      catalogModalKeyword,
     },
   };
+}
+
+async function findActiveListingIdForSeller(
+  admin: ReturnType<typeof createE2eAdminClient>,
+  sellerId: string,
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("listings")
+    .select("id")
+    .eq("seller_id", sellerId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[findActiveListingIdForSeller] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+/**
+ * Prefer `E2E_LISTING_ID`; if that listing is no longer active, fall back to any
+ * active listing owned by `E2E_SELLER_ID` so local E2E env does not go stale.
+ */
+export async function resolveE2eMarketplaceFixture(
+  options: GetListingMarketplaceFixtureOptions = {},
+): Promise<ListingMarketplaceFixtureResult> {
+  const configuredListingId = readTrimmedEnv("E2E_LISTING_ID");
+  if (!configuredListingId) {
+    return {
+      ok: false,
+      skipReason: "Missing E2E_LISTING_ID for marketplace fixture lookup",
+    };
+  }
+
+  const primary = await getListingMarketplaceFixture(
+    configuredListingId,
+    options,
+  );
+  if (primary.ok) {
+    return primary;
+  }
+
+  const sellerId = options.expectedSellerId?.trim() ?? readTrimmedEnv("E2E_SELLER_ID");
+  if (!sellerId || !hasE2eAdminEnv()) {
+    return primary;
+  }
+
+  const admin = createE2eAdminClient();
+  const fallbackListingId = await findActiveListingIdForSeller(admin, sellerId);
+  if (!fallbackListingId || fallbackListingId === configuredListingId) {
+    return primary;
+  }
+
+  return getListingMarketplaceFixture(fallbackListingId, options);
+}
+
+function isSupabaseAccessDenied(
+  error: { message?: string } | null,
+  status?: number,
+): boolean {
+  if (status === 401 || status === 403) {
+    return true;
+  }
+
+  if (status === 400 && !error?.message?.trim()) {
+    return true;
+  }
+
+  return isAdminPermissionDenied(error);
 }
 
 export async function getLatestOfferForListing(params: {
@@ -462,8 +565,22 @@ export async function getLatestOfferForListing(params: {
   };
 }
 
-function isAdminPermissionDenied(error: { message?: string } | null): boolean {
-  return Boolean(error?.message?.toLowerCase().includes("permission denied"));
+function isAdminPermissionDenied(error: {
+  message?: string;
+  status?: number;
+} | null): boolean {
+  if (!error) {
+    return false;
+  }
+
+  if (error.status === 401 || error.status === 403) {
+    return true;
+  }
+
+  const message = error.message?.toLowerCase() ?? "";
+  return (
+    message.includes("permission denied") || message.includes("forbidden")
+  );
 }
 
 export type MemberOrderAuditRow = {
@@ -612,17 +729,156 @@ export async function countProductWatchlistsForUser(
 ): Promise<number> {
   const admin = createE2eAdminClient();
 
-  const { count, error } = await admin
+  const { count, error, status } = await admin
     .from("product_watchlists")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("product_id", productId);
 
   if (error) {
-    if (isAdminPermissionDenied(error)) {
+    if (isSupabaseAccessDenied(error, status)) {
       return 0;
     }
     throw new Error(`[countProductWatchlistsForUser] ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+export async function getBuyerProfileIdFromEnv(): Promise<string | null> {
+  const email = process.env.E2E_BUYER_EMAIL?.trim();
+  if (!email) {
+    return null;
+  }
+
+  return getProfileIdByEmail(email);
+}
+
+export async function deleteProductWatchlistsForUser(
+  userId: string,
+  productId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("product_watchlists")
+    .delete()
+    .eq("user_id", userId)
+    .eq("product_id", productId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[deleteProductWatchlistsForUser] ${error.message}`);
+  }
+}
+
+export async function deleteUserCollectionsForUserProduct(
+  userId: string,
+  productId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("user_collections")
+    .delete()
+    .eq("user_id", userId)
+    .eq("product_id", productId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[deleteUserCollectionsForUserProduct] ${error.message}`);
+  }
+}
+
+export async function countUserCollectionsForUserProduct(
+  userId: string,
+  productId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+
+  const { count, error, status } = await admin
+    .from("user_collections")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("product_id", productId)
+    .is("sold_at", null);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return 0;
+    }
+    throw new Error(`[countUserCollectionsForUserProduct] ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+export async function setListingStatusInactive(
+  listingId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin
+    .from("listings")
+    .update({ status: "inactive" })
+    .eq("id", listingId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return;
+    }
+    throw new Error(`[setListingStatusInactive] ${error.message}`);
+  }
+}
+
+export async function getLatestActiveListingForSellerProduct(
+  sellerId: string,
+  productId: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("listings")
+    .select("id")
+    .eq("seller_id", sellerId)
+    .eq("product_id", productId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getLatestActiveListingForSellerProduct] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+export async function countActiveListingsForSellerProduct(
+  sellerId: string,
+  productId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+
+  const { count, error } = await admin
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .eq("seller_id", sellerId)
+    .eq("product_id", productId)
+    .eq("status", "active");
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return 0;
+    }
+    throw new Error(`[countActiveListingsForSellerProduct] ${error.message}`);
   }
 
   return count ?? 0;

@@ -3,7 +3,9 @@ import { CardItem, type CardData } from "./CardItem";
 // TODO: [database] Replace with Supabase query — fetch top-rated/featured listings from `listings` table ordered by price or view count
 const featuredCards: CardData[] = [
   {
-    id: "sv2a-182",
+    id: "mock-listing-sv2a-182",
+    productId: "sv2a-182",
+    sellerId: "mock-seller-watanabe",
     name: "Charizard ex",
     set: "151",
     rarity: "SAR",
@@ -15,7 +17,9 @@ const featuredCards: CardData[] = [
     seller: "渡邊道館",
   },
   {
-    id: "sv2a-189",
+    id: "mock-listing-sv2a-189",
+    productId: "sv2a-189",
+    sellerId: "mock-seller-kyoto",
     name: "Mewtwo ex",
     set: "151",
     rarity: "SAR",
@@ -27,7 +31,9 @@ const featuredCards: CardData[] = [
     seller: "京都卡牌專門店",
   },
   {
-    id: "sv6a-109",
+    id: "mock-listing-sv6a-109",
+    productId: "sv6a-109",
+    sellerId: "mock-seller-osaka",
     name: "Umbreon ex",
     set: "Night Wanderer",
     rarity: "SAR",
@@ -39,7 +45,9 @@ const featuredCards: CardData[] = [
     seller: "大阪收藏家",
   },
   {
-    id: "sv2a-215",
+    id: "mock-listing-sv2a-215",
+    productId: "sv2a-215",
+    sellerId: "mock-seller-tokyo",
     name: "Pikachu",
     set: "151",
     rarity: "AR",
@@ -51,7 +59,9 @@ const featuredCards: CardData[] = [
     seller: "東京TCG市場",
   },
   {
-    id: "sv2a-233",
+    id: "mock-listing-sv2a-233",
+    productId: "sv2a-233",
+    sellerId: "mock-seller-nagoya",
     name: "Mimikyu ex",
     set: "151",
     rarity: "SAR",
@@ -63,7 +73,9 @@ const featuredCards: CardData[] = [
     seller: "名古屋交易商",
   },
   {
-    id: "sv2a-213",
+    id: "mock-listing-sv2a-213",
+    productId: "sv2a-213",
+    sellerId: "mock-seller-fukuoka",
     name: "Eevee",
     set: "151",
     rarity: "AR",

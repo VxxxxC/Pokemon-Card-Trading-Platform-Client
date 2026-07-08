@@ -37,7 +37,10 @@ Add these to **`.env`** (`playwright.config.ts` loads `.env` / `.env.local` for 
 | `E2E_BUYER_PASSWORD` | Buyer auth setup | Member account password |
 | `E2E_SELLER_EMAIL` | Seller auth setup (chat-realtime) | Same seller account as `E2E_SELLER_ID` |
 | `E2E_SELLER_PASSWORD` | Seller auth setup (chat-realtime) | Seller login password |
-| `SUPABASE_SERVICE_ROLE_KEY` | Global Chat + marketplace DB assertions | Service role key for `e2e/fixtures/supabase-admin.ts` |
+| `SUPABASE_SERVICE_ROLE_KEY` | DB asserts + cleanup | Service role key for `e2e/fixtures/supabase-admin.ts` |
+| `BUNNY_STORAGE_ZONE_NAME` | Merch listing E2E | `AddAssetModal` card photo upload |
+| `BUNNY_STORAGE_ACCESS_KEY` | Merch listing E2E | Bunny storage API key |
+| `BUNNY_CDN_HOSTNAME` | Merch listing E2E | CDN hostname for uploaded listing images |
 | `E2E_INVALID_SELLER_ID` | Negative tests (B1) | Optional; defaults to `00000000-0000-0000-0000-000000000000` |
 | `E2E_WRONG_SELLER_ID` | Cross-seller test (B3) | Another valid seller UUID who does **not** own `E2E_LISTING_ID` |
 
@@ -142,13 +145,14 @@ GitHub Actions CI runs `build:ci` **without** Supabase env. E2E is **local-only*
 | `e2e/fixtures/test-data.ts` | Merchant detail env fixture readers + `test.skip()` helpers |
 | `e2e/fixtures/chat-test-data.ts` | Global Chat env fixtures + `hasChatRealtimeFixtures()` |
 | `e2e/fixtures/supabase-admin.ts` | Service-role DB audit helpers (test-only) |
-| `e2e/fixtures/auth.setup.ts` | Buyer + seller login → storage state |
+| `e2e/helpers/collection-asset.ts` | Collection page + `AddAssetModal` UI steps (catalog search, photo upload) |
+| `e2e/fixtures/listing-photo.png` | Minimal PNG for merch listing photo slots |
 | `e2e/merchant-product-detail.spec.ts` | Route resolution, negatives, UI, BuyButton |
 | `e2e/global-chat-realtime.spec.ts` | AML filter, OfferCard realtime, accept-offer sync |
 | `e2e/marketplace-search-offer.spec.ts` | Marketplace keyword search, grid price, product page navigation, slide-over offer |
 | `e2e/member-trading-p2p.spec.ts` | P2P offer accept → `member_orders` → trading list → complete → review |
 | `e2e/member-dashboard.spec.ts` | Overview, daily check-in, rewards coupon tabs |
-| `e2e/member-collection-wishlist.spec.ts` | Wishlist star toggle + collection page smoke |
+| `e2e/member-collection-wishlist.spec.ts` | Wishlist star/remove/sort + hobby 收錄 + merch 上架 + post-listing collection prompt |
 | `e2e/member-auth-settings.spec.ts` | Guest auth redirect + profile settings save |
 | `e2e/member-inventory.spec.ts` | Seller inventory accordion smoke |
 | `e2e/public-profile-page.spec.ts` | Public profile bootstrap, listings/reviews CTAs, rating navigation, 404 |
@@ -181,6 +185,7 @@ Offer amount is hard-coded to **HK$299** to satisfy AML caps for accounts younge
 | Function | Purpose |
 |----------|---------|
 | `getListingMarketplaceFixture(listingId)` | Join listing + catalog + seller; returns `searchKeyword`, `lowestPrice`, `listingPrice`, etc. |
+| `resolveE2eMarketplaceFixture()` | Uses `E2E_LISTING_ID`; if that listing is `sold`, falls back to any **active** listing for `E2E_SELLER_ID` |
 
 ### Known limitations (documented, not auto-fixed in E2E)
 
@@ -251,6 +256,10 @@ Uses `hasMemberTradingFixtures()` (alias of `hasChatRealtimeFixtures()`).
 | `getReviewForMemberOrder({ memberOrderId, reviewerId })` | Assert `transaction_reviews` when grants exist |
 | `getGamificationStatsForProfile(profileId)` | Optional check-in poll (requires table grant) |
 | `countProductWatchlistsForUser(userId, productId)` | Optional wishlist DB assert |
+| `getBuyerProfileIdFromEnv()` | Resolve buyer `profiles.id` from `E2E_BUYER_EMAIL` |
+| `deleteProductWatchlistsForUser` / `deleteUserCollectionsForUserProduct` | E2E cleanup |
+| `countUserCollectionsForUserProduct` / `countActiveListingsForSellerProduct` | Holdings / inventory DB asserts |
+| `getLatestActiveListingForSellerProduct` / `setListingStatusInactive` | Merch listing cleanup |
 
 When `member_orders` / `transaction_reviews` return permission denied for the service role, `member-trading-p2p` falls back to **UI assertions** (trading list, handover dialog, review toast).
 
@@ -258,9 +267,32 @@ When `member_orders` / `transaction_reviews` return permission denied for the se
 
 `e2e/member-dashboard.spec.ts` — overview shell, `CheckInCard` (skips repeat check-in if already signed today), rewards coupon tab navigation.
 
-### Collection + wishlist (`buyer`)
+### Collection + wishlist + AddAsset (`buyer`)
 
-`e2e/member-collection-wishlist.spec.ts` — star on marketplace grid → `/profile/user/collection` wishlist table.
+`e2e/member-collection-wishlist.spec.ts` — `/profile/user/collection` + [`AddAssetModal`](../app/components/shared/AddAssetModal.tsx):
+
+| Test | Coverage |
+|------|----------|
+| Star → collection wishlist | Marketplace grid star → wishlist table row |
+| Page smoke | Holdings + wishlist sections + **收錄新卡** |
+| Wishlist sort chips | **卡名 A→Z** / **最新加入** toggle smoke |
+| Wishlist remove | `⋯` → **從願望清單移除** + DB `product_watchlists` count |
+| Hobby 收錄 | **收錄新卡** → catalog search → **★ 收錄至私藏愛好** → holdings row |
+| Merch 上架 (serial) | TopNav **新增商品** → 4 photos → listing toast → **是否一併加入收藏庫？** |
+| Merch skip prompt | **略過** → collection count unchanged; active listing created |
+| Merch accept prompt | **加入收藏庫** → holdings row + listing cleanup |
+
+**Merch tests** require Bunny env (`hasBunnyStorageFixtures()`); otherwise skipped. Uses `e2e/fixtures/listing-photo.png` for 4-slot upload.
+
+**Manual verify:**
+
+1. Wishlist: star on marketplace → collection **追蹤願望清單** → remove via `⋯`
+2. Hobby: **收錄新卡** → search → 入手成本 → row in **我的持有卡牌庫**
+3. Merch: TopNav **新增商品** → photos + price → post-listing dialog **略過** or **加入收藏庫**
+
+```bash
+bun run test:e2e -- e2e/member-collection-wishlist.spec.ts --project=buyer
+```
 
 ### Auth + settings (`guest` / `buyer`)
 

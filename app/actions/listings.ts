@@ -25,7 +25,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/types/supabase";
+import type { Tables, TablesInsert } from "@/types/supabase";
 
 type ListingRow = Pick<
   Tables<"listings">,
@@ -83,6 +83,7 @@ function parseCreateCardListingForm(formData: FormData): {
     price: number;
     sellerDescription?: string;
     useAuthentication: boolean;
+    sourceCollectionId?: string;
   };
   uploads: ParsedImageUpload[];
   preUploaded: PreUploadedListingImage[] | null;
@@ -101,6 +102,10 @@ function parseCreateCardListingForm(formData: FormData): {
     useAuthenticationRaw === null
       ? true
       : useAuthenticationRaw === "true" || useAuthenticationRaw === "on";
+  const sourceCollectionIdRaw = String(
+    formData.get("sourceCollectionId") ?? "",
+  ).trim();
+  const sourceCollectionId = sourceCollectionIdRaw || undefined;
 
   const rawImageEntries = formData.getAll("images");
   const uploads = parseImageUploadsFromFormData(formData);
@@ -116,6 +121,7 @@ function parseCreateCardListingForm(formData: FormData): {
       price,
       sellerDescription: sellerDescription || undefined,
       useAuthentication,
+      sourceCollectionId,
     },
     uploads,
     preUploaded,
@@ -254,20 +260,38 @@ export async function createCardListing(
     }
 
     const admin = createAdminClient();
+    const insertPayload: TablesInsert<"listings"> = {
+      product_id: fields.productId,
+      seller_id: user.id,
+      price: fields.price,
+      grading_company: grading.grader,
+      grading_score: grading.gradeScore,
+      images,
+      seller_description: fields.sellerDescription ?? null,
+      status: "active",
+      seller_persona: resolveSellerPersona(profile.role),
+      use_authentication: fields.useAuthentication,
+    };
+
+    if (fields.sourceCollectionId) {
+      const { data: collectionRow, error: collectionError } = await supabase
+        .from("user_collections")
+        .select("id")
+        .eq("id", fields.sourceCollectionId)
+        .eq("user_id", user.id)
+        .is("sold_at", null)
+        .maybeSingle<{ id: string }>();
+
+      if (collectionError || !collectionRow) {
+        return { success: false, error: "無法連結收藏庫項目，請重新從收藏庫發起出售" };
+      }
+
+      insertPayload.source_collection_id = collectionRow.id;
+    }
+
     const { data: listing, error: insertError } = await admin
       .from("listings")
-      .insert({
-        product_id: fields.productId,
-        seller_id: user.id,
-        price: fields.price,
-        grading_company: grading.grader,
-        grading_score: grading.gradeScore,
-        images,
-        seller_description: fields.sellerDescription ?? null,
-        status: "active",
-        seller_persona: resolveSellerPersona(profile.role),
-        use_authentication: fields.useAuthentication,
-      })
+      .insert(insertPayload)
       .select("id, product_id, price, grading_company, grading_score, images, status")
       .single<ListingRow>();
 

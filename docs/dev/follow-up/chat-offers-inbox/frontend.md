@@ -6,6 +6,15 @@
 - **Frontend:** 🟡 Partial — buyer make/modify + seller accept/**reject** + DB text send + **Realtime Scheme A** + **order completion card + review CTA** + **long-thread perf** wired; mock rooms retained; checkout-after-accept polish pending
 - **Your focus:** `OfferCard` styling polish; post-accept checkout navigation; inbox refresh-on-page-reload UX; profile review history UI
 
+## Changelog (2026-07-08) — global buy entry points
+
+| Area | Shipped |
+|------|---------|
+| **`ExecutionSlideOverHost`** | Root layout host; all buy CTAs share one `ExecutionSlideOver` instance |
+| **`BuyButton`** | Marketplace grid, home C2C, merchant storefront → `openExecutionSlideOver` |
+| **`map-listing-to-execution.ts`** | Listing / order-book → slide-over payload |
+| **Product detail** | Order book row uses same store (local mount removed) |
+
 ## Changelog (2026-07-05, platform authentication opt-in)
 
 | Area | Shipped |
@@ -92,6 +101,10 @@
 | `app/lib/chat/offerCardImage.ts` | Image URL resolution |
 | `lib/supabase/client.ts` | Browser Supabase client for Realtime |
 | `app/store/useHkCardVaultStore.ts` | `offers` ledger, `openOfferChatSession`, `applyOfferModification`, **`applyOfferAccepted`**, **`applyOfferRejected`**, `applyOfferPriceSync`, **`appendRoomMessage`**, **`finalizeOptimisticMessage`**, **`rollbackOptimisticMessage`**, **`markRoomRead`** |
+| `app/store/useUIStore.ts` | **`openExecutionSlideOver`** / **`closeExecutionSlideOver`** |
+| `app/components/transactions/ExecutionSlideOverHost.tsx` | Global host in `app/layout.tsx` |
+| `lib/marketplace/map-listing-to-execution.ts` | `MarketplaceListing` / order book → execution payload |
+| `app/components/transactions/GlobalTxButtons.tsx` | **`BuyButton`** → global slide-over; **`AuctionButton`** still mock |
 | `app/components/transactions/ExecutionSlideOver.tsx` | Buyer submit → `makeOffer(listingId, price, useAuthentication?)` |
 | `app/sw.ts` | Serwist worker — `disableDevLogs: true` (silences dev `No route found` spam) |
 
@@ -99,9 +112,17 @@
 
 ## Buyer flow — make offer (✅)
 
-1. Product detail → order book row → `ExecutionSlideOver`
-2. Optional **平台鑑定加購** toggle → `makeOffer(listingId, price, useAuthentication)` → `openOfferChatSession({ offerId, useAuthentication, ... })`
-3. `GlobalChatOverlay` opens; DB sync merges real room into lobby
+**Entry points** (all open the same global slide-over via `ExecutionSlideOverHost`):
+
+1. `/marketplace` — `MarketplaceCard` **⚡ 立即購買**
+2. `/` — `NewArrivals` **⚡ 立即購買**
+3. `/marketplace/product/[id]` — order book row
+4. `/marketplace/[sellerId]/product/[productId]` — storefront buy CTA
+
+**Submit:**
+
+1. Optional **平台鑑定加購** toggle → `makeOffer(listingId, price, useAuthentication)` → `openOfferChatSession({ offerId, useAuthentication, ... })`
+2. `GlobalChatOverlay` opens; DB sync merges real room into lobby
 
 ### `openOfferChatSession` required fields
 

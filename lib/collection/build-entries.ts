@@ -110,6 +110,37 @@ export function mapCollectionRowToEntry(
   context: CollectionPricingContext,
 ): CollectionEntry {
   const catalog = context.catalogById.get(row.product_id);
+
+  if (row.sold_at) {
+    const purchasePrice = toFiniteNumber(row.purchase_price) ?? 0;
+    const soldPrice = toFiniteNumber(row.sold_price);
+
+    return {
+      collectionId: row.id,
+      productId: row.product_id,
+      name: resolveProductName(catalog),
+      cardCode: resolveCardCode(catalog),
+      setCode: catalog?.set_code?.trim() ?? "",
+      rarity: catalog?.rarity ?? null,
+      imageUrl: catalog?.image_url ?? null,
+      gradingCompany: row.grading_company,
+      gradingScore: row.grading_score,
+      gradeLabel: formatMarketGradeLabel(row.grading_company, row.grading_score),
+      gradingOptionId: gradingOptionIdFromWishlistRow(
+        row.grading_company,
+        row.grading_score,
+      ),
+      purchasePrice,
+      currentMarketValue: soldPrice,
+      valuationSource: null,
+      trend30d: null,
+      status: "sold",
+      activeListingId: row.sold_listing_id,
+      soldAt: row.sold_at,
+      soldPrice,
+    };
+  }
+
   const market = findExactMarketPriceRow(
     context.marketRows,
     row.product_id,
@@ -174,6 +205,8 @@ export function computePortfolioTotals(
   let listedCount = 0;
 
   for (const row of rows) {
+    if (row.sold_at) continue;
+
     const purchasePrice = toFiniteNumber(row.purchase_price) ?? 0;
     totalPurchasePrice += purchasePrice;
 

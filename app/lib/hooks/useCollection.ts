@@ -30,6 +30,7 @@ export const COLLECTION_FILTER_LABELS: Record<string, CollectionListFilter> = {
   已鑑定: "graded",
   未鑑定: "raw",
   已上架: "listed",
+  已售出: "sold",
 };
 
 export type CollectionInitialData = Partial<CollectionPageBootstrap>;

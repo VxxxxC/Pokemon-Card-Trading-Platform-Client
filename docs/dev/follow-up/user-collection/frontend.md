@@ -128,15 +128,32 @@ Modal behaviour when `addAssetSellPrefill` is set:
 - Item-type switch **hidden**
 - Selling price **prefilled** with入手價 (editable)
 - Photo slots **required** (4–6, same as merch card listing)
-- Submit → `submitCardListingWithProgress` → `collection-should-refresh`
-- Collection row **not deleted**; filter「已上架」shows it
+- Submit → `submitCardListingWithProgress` with `sourceCollectionId: sellPrefill.collectionId` → `collection-should-refresh`
+- Collection row **not deleted**; filter「已上架」shows it; on trade complete row moves to **已售出**
+
+### Merch 直接上架 → 加入收藏庫？
+
+After merch card listing succeeds **without** `sellPrefill`:
+
+1. Listing toast + slide-over closes
+2. `CollectionAddAfterListingDialog` asks「是否一併加入收藏庫？」
+3. Confirm → `addToCollection` + `collection-should-refresh`
+4. Skip → orphan listing only (dashboard `findOrphanActiveListings` still counts it)
+
+### 已售出歷史
+
+Filter chip **已售出** (`filter: 'sold'`):
+
+- Rows with `sold_at IS NOT NULL`
+- Table shows **成交價** + date; sell CTA hidden
+- Portfolio odometer **always** uses active rows only (`sold_at IS NULL`)
 
 ### Table columns
 
 | Column | Source |
 |--------|--------|
 | 卡牌資料 | `name`, `cardCode`, `imageUrl`, link → `/marketplace/product/{productId}` |
-| 鑑定規格 / 狀態 | Editable grade badge; `status` pill (持有中 / 已上架) |
+| 鑑定規格 / 狀態 | Editable grade badge; `status` pill (持有中 / 已上架 / 已售出) |
 | 收錄價格 | `purchasePrice` |
 | 現市價格 | `currentMarketValue` + `valuationSource`; PnL vs purchase. Fallback 時顯示 **入手價估計** |
 | 30D 走勢 | `trend30d` % — exact-grade SNKRDUNK only (no sparkline on list rows) |
@@ -176,6 +193,8 @@ Modal behaviour when `addAssetSellPrefill` is set:
 - [x] Header shows 持有 / 已鑑定 / Raw / **已上架** counts from summary
 - [x] Purchase-price fallback: row shows **入手價估計**; portfolio total still includes card
 - [x] After listing,「已上架」filter shows row; sell action hidden when listed
+- [x] Merch-only listing → post-listing「加入收藏庫？」dialog
+- [x] Trade complete → row archived; **已售出** filter shows sold price/date; odometer excludes sold
 - [x] Remove deletes row
 - [x] SSR: portfolio header + table page 1 in HTML before hydrate
 - [x] Mount server actions: 1 bootstrap; wishlist deferred below fold

@@ -6,6 +6,17 @@
 - **Frontend:** ✅ Wired (see [frontend.md](./frontend.md))
 - **Migration:** ✅ `20260706110000_user_collections_portfolio_extend.sql`
 
+## Changelog (2026-07-09) — Collection × listing × sale sync
+
+| Change | Detail |
+|--------|--------|
+| **`user_collections.sold_*`** | `sold_at`, `sold_listing_id`, `sold_price` — archive on trade complete; excluded from `computePortfolioTotals` |
+| **`listings.source_collection_id`** | Optional FK when selling from collection (`sellPrefill`) |
+| **`fn_archive_seller_collection_for_listing`** | Called from `rpc_complete_member_order` + `rpc_confirm_buyer_received` (escrow) |
+| **FIFO fallback** | When no `source_collection_id`, archive oldest active row matching `product_id + grade` |
+| **Merch post-listing prompt** | `CollectionAddAfterListingDialog` — optional `addToCollection` after merch-only listing |
+| **Sold history filter** | `filter: 'sold'` on collection page |
+
 ## Changelog (2026-07-06)
 
 | Change | Detail |
@@ -63,7 +74,7 @@ AddAssetModal (hobby submit)
 
 | File | Purpose |
 |------|---------|
-| `supabase/migrations/20260706110000_user_collections_portfolio_extend.sql` | DDL, RLS, reputation fn patch |
+| `supabase/migrations/20260709130000_user_collections_sold_archive.sql` | Sold archive columns, `source_collection_id`, `fn_archive_seller_collection_for_listing`, RPC updates |
 | `app/actions/collection.ts` | `getCollectionPageBootstrap`, summary, paginated list, mutations |
 | `lib/collection/load-user-collection.ts` | Shared single-pass view loader |
 | `lib/collection/perf-log.ts` | `[collection:perf]` server diagnostics |
@@ -89,6 +100,9 @@ AddAssetModal (hobby submit)
 | `grading_company` | TEXT | Default `RAW` |
 | `grading_score` | TEXT | Default `A` |
 | `purchase_price` | NUMERIC(12,2) | User-entered 入手價 |
+| `sold_at` | TIMESTAMPTZ NULL | Non-null = archived sold; excluded from portfolio valuation |
+| `sold_listing_id` | UUID FK → `listings` ON DELETE SET NULL | Source listing on trade complete |
+| `sold_price` | NUMERIC(12,2) NULL | `member_orders.final_price` at archive time |
 | `created_at` / `updated_at` | TIMESTAMPTZ | Sort DESC on `created_at` |
 
 **RLS:** `collections_owner` — `auth.uid() = user_id` for all operations (`authenticated`).

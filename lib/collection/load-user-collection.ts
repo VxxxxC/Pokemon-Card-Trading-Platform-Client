@@ -35,6 +35,10 @@ export type UserCollectionView = {
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
+export type FetchCollectionRowsOptions = {
+  soldOnly?: boolean;
+};
+
 const EMPTY_SUMMARY: CollectionPortfolioSummary = {
   totalMarketValue: 0,
   totalPurchasePrice: 0,
@@ -54,22 +58,39 @@ const EMPTY_PAGE = (pageSize: number): CollectionEntriesPage => ({
   totalPages: 0,
 });
 
-export async function fetchAllCollectionRows(
+export async function fetchCollectionRows(
   supabase: SupabaseServerClient,
   userId: string,
+  options: FetchCollectionRowsOptions = {},
 ): Promise<CollectionRow[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("user_collections")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
+  if (options.soldOnly) {
+    query = query.not("sold_at", "is", null);
+  } else {
+    query = query.is("sold_at", null);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
-    console.error("[fetchAllCollectionRows]", error.message);
+    console.error("[fetchCollectionRows]", error.message);
     throw new Error("無法載入收藏庫");
   }
 
   return (data ?? []) as CollectionRow[];
+}
+
+/** @deprecated Use fetchCollectionRows with default options */
+export async function fetchAllCollectionRows(
+  supabase: SupabaseServerClient,
+  userId: string,
+): Promise<CollectionRow[]> {
+  return fetchCollectionRows(supabase, userId);
 }
 
 function applyCollectionFilters(
@@ -80,6 +101,12 @@ function applyCollectionFilters(
   userListingRows: ListingPriceRow[],
 ): CollectionRow[] {
   return rows.filter((row) => {
+    if (filter === "sold") {
+      if (!row.sold_at) return false;
+    } else if (row.sold_at) {
+      return false;
+    }
+
     if (filter === "graded" && row.grading_company === "RAW") return false;
     if (filter === "raw" && row.grading_company !== "RAW") return false;
     if (filter === "listed" && !isListedCollectionRow(row, userListingRows)) {
@@ -157,36 +184,46 @@ export async function loadUserCollectionView(
   perfLabel = "view",
 ): Promise<UserCollectionView> {
   const rowsStart = isCollectionPerfLogEnabled() ? collectionPerfNow() : 0;
-  const rows = await fetchAllCollectionRows(supabase, userId);
+  const isSoldView = input.filter === "sold";
+
+  const [activeRows, soldRows] = await Promise.all([
+    fetchCollectionRows(supabase, userId),
+    isSoldView ? fetchCollectionRows(supabase, userId, { soldOnly: true }) : Promise.resolve([]),
+  ]);
+
+  const displayRows = isSoldView ? soldRows : activeRows;
 
   if (isCollectionPerfLogEnabled()) {
     collectionPerfLog(
-      `${perfLabel}.rowsMs=${Math.round(collectionPerfNow() - rowsStart)} count=${rows.length}`,
+      `${perfLabel}.rowsMs=${Math.round(collectionPerfNow() - rowsStart)} active=${activeRows.length} sold=${soldRows.length}`,
     );
   }
 
-  if (rows.length === 0) {
+  if (activeRows.length === 0 && displayRows.length === 0) {
     return {
       summary: EMPTY_SUMMARY,
       page: EMPTY_PAGE(input.pageSize),
     };
   }
 
-  const productIds = [...new Set(rows.map((row) => row.product_id))];
+  const activeProductIds = [...new Set(activeRows.map((row) => row.product_id))];
+  const displayProductIds = [...new Set(displayRows.map((row) => row.product_id))];
+  const allProductIds = [...new Set([...activeProductIds, ...displayProductIds])];
+
   const pricingStart = isCollectionPerfLogEnabled() ? collectionPerfNow() : 0;
-  const context = await loadCollectionPricingContext(supabase, userId, productIds, {
+  const context = await loadCollectionPricingContext(supabase, userId, allProductIds, {
     includeChartData: false,
   });
 
   if (isCollectionPerfLogEnabled()) {
     collectionPerfLog(
-      `${perfLabel}.pricingContextMs=${Math.round(collectionPerfNow() - pricingStart)} products=${productIds.length}`,
+      `${perfLabel}.pricingContextMs=${Math.round(collectionPerfNow() - pricingStart)} products=${allProductIds.length}`,
     );
   }
 
-  const totals = computePortfolioTotals(rows, context);
+  const totals = computePortfolioTotals(activeRows, context);
   const summary = buildPortfolioSummary(totals);
-  const page = buildCollectionEntriesPage(rows, context, input);
+  const page = buildCollectionEntriesPage(displayRows, context, input);
 
   return { summary, page };
 }

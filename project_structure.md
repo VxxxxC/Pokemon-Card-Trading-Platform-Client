@@ -8,7 +8,7 @@
 - **TypeScript/TSX 檔案**: 230+ 個
 - **語言**: TypeScript/TSX, CSS, JSON, Markdown, SQL
 - **框架**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui, Zustand, Serwist (PWA)
-- **後端整合**: **進行中** — Supabase（Auth、RLS、RPC、Server Actions、Realtime、Cron）；出價協商 + DB 聊天收件匣 + 訂單列表搜尋 / 分頁 / 完結 / 評價已接後端（含 Realtime Scheme A、completion card、雙盲評價）；部分 checkout UI 仍用 mock data
+- **後端整合**: **進行中** — Supabase（Auth、RLS、RPC、Server Actions、Realtime、Cron）；出價協商買家入口（全域 `ExecutionSlideOver`）+ DB 聊天收件匣 + 訂單 / 鑑定託管 mock pay 已接後端；部分 checkout UI 仍用 mock data
 - **Package manager**: Bun only（`bun.lock`；見 `.cursorrules` §7）
 
 ---
@@ -52,7 +52,7 @@ Pokemon-Card-Trading-Platform-Client/
 app/
 ├── 根層級
 │   ├── page.tsx                     # 首頁
-│   ├── layout.tsx                   # 全局 Layout（含 GlobalChatOverlay、ListingSubmitOverlay）
+│   ├── layout.tsx                   # 全局 Layout（AddAssetModal、ListingSubmitOverlay、GlobalChatOverlay、ExecutionSlideOverHost）
 │   ├── not-found.tsx                # 404
 │   ├── globals.css
 │   ├── manifest.json
@@ -67,7 +67,8 @@ app/
 │   ├── listings.ts                  # 上架提交（Bunny + listings insert）
 │   ├── offers.ts                    # 出價 / 接受 / 拒絕 / 修改 / OfferCard context
 │   ├── chat.ts                      # getUserChatInbox, sendMessage → rpc_send_chat_message
-│   ├── orders.ts                    # searchUserTradingOrders (RPC), getUserTradingOrders, completeMemberOrder, cancelMemberOrder
+│   ├── orders.ts                    # searchUserTradingOrders (RPC), member order actions, mock pay / escrow
+│   ├── admin-member-orders.ts       # Dev/admin：鑑定託管狀態推進（mock flow）
 │   └── reviews.ts                   # submitTransactionReview, getUserReviewedMemberOrderIds, resolveChatCompletionOrderId
 │
 ├── api/
@@ -95,9 +96,13 @@ app/
 │   ├── MarketplaceChrome.tsx        # 商品詳情頁隱藏全局 Nav
 │   ├── product/[id]/
 │   │   ├── page.tsx                 # SSR catalog + ProductDetailClient
-│   │   └── ProductDetailClient.tsx  # 掛單簿、成交紀錄、市場價 banner、價格圖表
-│   ├── [id]/page.tsx                # 商戶櫥窗（mock）
-│   ├── [id]/product/[productId]/page.tsx
+│   │   └── ProductDetailClient.tsx  # 掛單簿、成交紀錄、市場價 banner、價格圖表；order book → 全域 ExecutionSlideOver
+│   ├── [id]/                        # 商戶櫥窗（Supabase storefront）
+│   │   ├── page.tsx
+│   │   ├── MerchantStorefrontPageClient.tsx
+│   │   └── product/[productId]/
+│   │       ├── page.tsx
+│   │       └── MerchantProductDetailPageClient.tsx  # BuyButton → 全域 slide-over
 │   └── payment-status/page.tsx
 │
 ├── profile/                         # 三層級檔案系統（見下方路由表）
@@ -137,7 +142,7 @@ app/
 │
 ├── store/                           # Zustand
 │   ├── useMarketStore.ts
-│   ├── useUIStore.ts
+│   ├── useUIStore.ts                # AddAsset modal、mockRole、**openExecutionSlideOver** / close
 │   ├── useHkCardVaultStore.ts       # 全局聊天 + offers 狀態帳本 + Scheme A store actions
 │   ├── useMerchantStore.ts
 │   ├── useMockDbStore.ts
@@ -145,10 +150,13 @@ app/
 │
 └── components/                      # App 層 UI（50+ 元件，按 domain 分目錄）
     ├── marketplace/                 # MarketplaceCard, AccordionFilters, AskOrderBookRow…
-    ├── home/                        # HeroSearch（接 catalog search）
+    ├── home/                        # HeroSearch、NewArrivals（BuyButton）、PremiumMarket…
     ├── shared/                      # AddAssetModal（上架）, MarketSkeletons…
     ├── navigation/                  # TopNav, BottomNav, MobileHeader…
-    ├── transactions/                # ExecutionSlideOver（買家出價入口）
+    ├── transactions/
+    │   ├── GlobalTxButtons.tsx      # BuyButton（→ 全域 slide-over）、AuctionButton（mock）
+    │   ├── ExecutionSlideOverHost.tsx  # root layout 掛載；讀 useUIStore payload
+    │   └── ExecutionSlideOver.tsx   # makeOffer + 鑑定加購 toggle + openOfferChatSession
     ├── trading/                     # ReviewModal（交易評價彈窗）
     ├── user/                        # UserOrderRow（#orderNumber 標題 + 完結 / 評價 / 取消）
     ├── chat/                        # GlobalChatOverlay, GlobalChatConsole (+ ReviewModal), OfferCard, SystemOrderCompletedMessage, SpecialTransactionMessage
@@ -180,6 +188,7 @@ lib/
 │   ├── filter-options.ts
 │   ├── product-listing-filters.ts   # 掛單簿 grade chip → RPC JSON
 │   ├── listing-display.ts           # 等級標籤、相對成交時間
+│   ├── map-listing-to-execution.ts  # MarketplaceListing / order book → ExecutionSlideOver payload
 │   └── market-price.ts              # 市場價聚合、grade 正規化、圖表資料
 │
 ├── catalog/
@@ -193,7 +202,14 @@ lib/
 │   ├── images.ts / image-files.ts
 │   ├── client-upload.ts
 │   ├── submit-card-listing.ts
+│   ├── auth-service-copy.ts         # 鑑定加購文案
 │   └── errors.ts
+│
+├── payments/
+│   └── member-auth-payment.ts       # 鑑定託管 mock pay stub（預留 Stripe）
+│
+├── member-order/
+│   └── auth-escrow.ts               # escrow 狀態常數 / 顯示輔助
 │
 ├── profile/
 │   ├── validation.ts
@@ -274,7 +290,15 @@ supabase/
     ├── 20260704280000_rpc_submit_transaction_review.sql       # 提交評價 + 批次已評價查詢 RPC
     ├── 20260704290000_transaction_reviews_double_blind.sql    # 雙盲公開評價
     ├── 20260704300000_get_user_chat_inbox_member_order_id.sql  # inbox 訊息含 member_order_id
-    └── 20260705120000_search_user_trading_orders.sql         # 訂單列表分頁搜尋 + tab facet counts
+    ├── 20260705120000_search_user_trading_orders.sql         # 訂單列表分頁搜尋 + tab facet counts
+    ├── 20260705130000_member_orders_offers_use_authentication.sql
+    ├── 20260705140000_rpc_make_offer_use_authentication.sql
+    ├── 20260706140000_rpc_increment_listing_view.sql          # ExecutionSlideOver 開啟計瀏覽
+    ├── 20260707160000_marketplace_seller_storefront.sql       # 商戶櫥窗 RPC
+    ├── 20260708100000_member_auth_escrow_status.sql           # 鑑定託管 escrow enum + 欄位
+    ├── 20260708110000_member_auth_trading_search.sql
+    └── 20260708120000_member_auth_aml_guards.sql              # P2P 限額 / 強制鑑定
+    # … 其餘見 supabase/migrations/（共 68+ 檔）
 ```
 
 **Regenerate types:** `bun run supabase:types` → `types/supabase.ts` + `types/supabase.md`
@@ -298,11 +322,19 @@ docs/dev/
     ├── product-catalog-search/
     ├── user-profile-settings/
     ├── role-based-routing/
-    ├── offers-negotiation/          # 出價 / 接受 / 修改（legacy handoff；見 chat-offers-inbox）
-    ├── chat-offers-inbox/           # DB 收件匣 + OfferCard + Realtime + 完結卡 / 評價 CTA + 長線程效能
-    ├── user-trading-orders/         # 我的訂單分頁搜尋 RPC + 完結 / 取消 + orderNumber 列布局
-    ├── transaction-reviews/         # 雙盲評價 + ReviewModal（交易頁 + 聊天）
-    ├── member-rewards-gamification/ # 簽到 / 積分 / 折價券 / auto-grant 通知
+    ├── offers-negotiation/          # 出價入口（BuyButton → 全域 slide-over）
+    ├── chat-offers-inbox/           # DB 收件匣 + OfferCard + Realtime + 完結卡 / 評價 CTA
+    ├── member-auth-escrow/          # C2C 鑑定託管 mock pay + escrow 狀態機
+    ├── marketplace-storefront/    # /marketplace/[sellerId] 商戶櫥窗
+    ├── home-sections/             # 首頁三區塊 SSR
+    ├── public-profile-page/       # /profile/[id] 公開檔案
+    ├── user-trading-orders/         # 我的訂單分頁搜尋 RPC + 完結 / 取消
+    ├── user-inventory/              # 賣家庫存 accordion
+    ├── user-collection/             # 收藏 portfolio
+    ├── member-dashboard/            # 用戶總覽 dashboard
+    ├── transaction-reviews/         # 雙盲評價 + ReviewModal
+    ├── profile-rating-list/         # 公開評價列表（雙 persona）
+    ├── member-rewards-gamification/ # 簽到 / 積分 / 折價券
     └── wishlist/
 ```
 
@@ -327,7 +359,9 @@ docs/dev/
 | `/auth/forgot-password/complete` | 郵件連結後重設 | Supabase Auth |
 | `/auth/reset-password` | 已登入改密碼 | Supabase Auth |
 | `/marketplace` | 大盤搜尋 | `search_marketplace_products` RPC |
-| `/marketplace/product/[id]` | 商品詳情 | catalog + 掛單 RPC + 成交紀錄 + 市場價 + 買家出價 |
+| `/marketplace/product/[id]` | 商品詳情 | catalog + 掛單 RPC + 成交紀錄 + 市場價 + 買家出價（全域 `ExecutionSlideOver`） |
+| `/marketplace/[id]` | 商戶櫥窗 | `search_marketplace_seller_listings` RPC |
+| `/marketplace/[id]/product/[productId]` | 店鋪單品詳情 | `getMarketplaceSellerListingDetail` + BuyButton |
 | `/profile/user/settings` | 用戶設定 | `getUserSettings` |
 | `/profile/user/trading` | 我的買賣訂單 | `searchUserTradingOrders` RPC + 伺服器分頁 / 搜尋 / tab counts + `UserOrderRow` |
 | `/checkout/[id]` | 結帳 | mock（待整合） |
@@ -347,7 +381,7 @@ docs/dev/
 | **市場價聚合 (Cron)** | `app/api/cron/aggregate-prices/`, `lib/marketplace/market-price.ts` | ✅ Wired |
 | **用戶設定** | `app/profile/user/settings/` | ✅ Supabase profiles |
 | **卡牌上架** | `AddAssetModal`, `listings.ts`, Bunny | ✅ Backend ready |
-| **出價協商** | `app/actions/offers.ts`, `app/components/chat/OfferCard.tsx` | 🟡 make / modify / accept / reject RPC 已接；checkout 導流待完成 |
+| **出價協商** | `offers.ts`, `GlobalTxButtons` → `ExecutionSlideOverHost` → `ExecutionSlideOver` → `OfferCard` | 🟡 買家入口已全域接線（grid / 首頁 C2C / 詳情掛單簿 / 店鋪）；accept 後 checkout 導流待完成 |
 | **聊天收件匣** | `app/actions/chat.ts`, `GlobalChatOverlay`, `GlobalChatConsole`, `useChatRoomRealtime` | 🟡 DB inbox + 文字發送 + Realtime + 完結卡 / 評價 CTA + 長線程效能優化；mock 房間保留 |
 | **用戶訂單** | `app/actions/orders.ts`, `app/profile/user/(dashboard)/trading/`, `UserOrderRow.tsx` | 🟡 分頁搜尋 RPC + 完結 / 取消 / 評價已接；訂單詳情頁仍 mock |
 | **交易評價** | `app/actions/reviews.ts`, `ReviewModal.tsx`, `SystemOrderCompletedMessage.tsx` | ✅ 雙盲提交已接（交易頁 + 聊天）；profile 評價展示待完成 |
@@ -402,6 +436,8 @@ bun run test:catalog-search  # 可選：驗證 catalog DB 連線
 | 客戶端 hook | `app/lib/hooks/` |
 | Supabase 型別 | `types/supabase.ts` |
 | Migration | `supabase/migrations/` |
+| 出價 slide-over mapper | `lib/marketplace/map-listing-to-execution.ts` |
+| 全域出價 UI host | `app/components/transactions/ExecutionSlideOverHost.tsx` |
 | 整合狀態 | `docs/dev/INTEGRATION_QUEUE.md` |
 | 出價協商 handoff | `docs/dev/follow-up/offers-negotiation/` |
 | 聊天收件匣 handoff | `docs/dev/follow-up/chat-offers-inbox/` |
@@ -415,6 +451,6 @@ bun run test:catalog-search  # 可選：驗證 catalog DB 連線
 
 ---
 
-**最後更新**: 2026-07-05  
-**版本**: Full-Depth v4.5  
+**最後更新**: 2026-07-08  
+**版本**: Full-Depth v4.6  
 **維護者**: HKCardVault 開發團隊

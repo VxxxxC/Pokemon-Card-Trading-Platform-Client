@@ -7,6 +7,8 @@ import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 
 export type CardData = {
   id: string;
+  productId?: string;
+  sellerId?: string;
   name: string;
   set: string;
   rarity: "SAR" | "UR" | "SR" | "AR";
@@ -25,6 +27,8 @@ export function CardItem({ card }: { card: CardData }) {
   // Convert CardData to MarketplaceListing for BuyButton compatibility
   const listing = {
     ...card,
+    productId: card.productId ?? card.id,
+    sellerId: card.sellerId,
     rarity: card.rarity as "SAR" | "UR" | "SR" | "AR",
   };
 

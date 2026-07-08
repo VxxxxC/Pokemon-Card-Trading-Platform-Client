@@ -55,7 +55,7 @@ const result = await getPublicProfileReviews({
 |--------|------|
 | User dashboard | `/profile/{profiles.id}/rating?persona=member` — **wired** via `useCurrentUserId()` |
 | Merchant dashboard | `/profile/{profiles.id}/rating?persona=merchant` — pending real UUID |
-| Public profile preview | `/profile/{profiles.id}/rating` (defaults to member) |
+| Public profile preview | `/profile/{profiles.id}/rating?persona=member|merchant` — **wired** from `/profile/[id]` |
 
 ## Acceptance checklist
 
@@ -65,7 +65,7 @@ const result = await getPublicProfileReviews({
 - [x] `isMerchantTx` badge when `merchant_order_id` present
 - [x] Reviewer avatar via `resolveAvatarUrl`
 - [x] Suspense boundary for `useSearchParams`
-- [ ] Public profile `[id]/page.tsx` recent reviews strip still mock — follow-up
+- [x] Public profile `[id]/page.tsx` recent reviews strip wired to DB
 - [x] User dashboard rating link uses real `profiles.id` (`useCurrentUserId`)
 - [ ] Merchant dashboard rating link still mock id — follow-up
 

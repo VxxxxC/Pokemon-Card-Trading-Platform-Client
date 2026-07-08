@@ -22,6 +22,7 @@ export function UserCollectionClient({
   bootstrapError,
 }: UserCollectionClientProps) {
   const [activeFilter, setActiveFilter] = useState("全部");
+  const [wishlistSort, setWishlistSort] = useState<"name" | "recent">("name");
   const [query, setQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [odometerValue, setOdometerValue] = useState(
@@ -57,6 +58,16 @@ export function UserCollectionClient({
     updateTargetPrice,
     updateGrade,
   } = useWishlist({ deferLoad: true });
+
+  const sortedWishlistEntries = useMemo(() => {
+    if (wishlistSort === "recent") {
+      return wishlistEntries;
+    }
+
+    return [...wishlistEntries].sort((left, right) =>
+      left.name.localeCompare(right.name, "zh-Hant"),
+    );
+  }, [wishlistEntries, wishlistSort]);
 
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
 
@@ -269,7 +280,7 @@ export function UserCollectionClient({
               </span>
             </h2>
             <div className="flex gap-1">
-              {["全部", "已鑑定", "未鑑定", "已上架"].map((f) => (
+              {["全部", "已鑑定", "未鑑定", "已上架", "已售出"].map((f) => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}
@@ -302,17 +313,39 @@ export function UserCollectionClient({
       </div>
 
       <section aria-labelledby="wishlist-heading" className="mt-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2
             id="wishlist-heading"
             className="font-sans font-semibold text-[16px] text-[#eae1da] flex items-center gap-2"
           >
             <span className="text-[#d4a574]">★</span> 追蹤願望清單
           </h2>
+          <div className="flex gap-1">
+            {(
+              [
+                { key: "name", label: "卡名 A→Z" },
+                { key: "recent", label: "最新加入" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setWishlistSort(option.key)}
+                className={`font-mono text-[10.5px] px-2.5 py-1 rounded-lg border transition-colors ${
+                  wishlistSort === option.key
+                    ? "text-[#d4a574] border-[#d4a574]/40 bg-[rgba(212,165,116,0.08)]"
+                    : "text-[#d4c4b7] border-[rgba(237,232,224,0.08)] hover:text-[#eae1da]"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-2">
           <WishlistTable
-            entries={wishlistEntries}
+            key={wishlistSort}
+            entries={sortedWishlistEntries}
             isLoading={isWishlistLoading}
             onRemove={async (entry) => {
               await removeWishlistEntry(entry);

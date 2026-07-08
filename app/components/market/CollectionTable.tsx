@@ -55,6 +55,10 @@ function StatusPill({ status }: { status: CollectionEntry["status"] }) {
       label: "已上架",
       className: "text-[#d4a574] bg-[rgba(212,165,116,0.12)]",
     },
+    sold: {
+      label: "已售出",
+      className: "text-[#8A8680] bg-[rgba(138,134,128,0.12)]",
+    },
   };
   const { label, className } = map[status];
   return (
@@ -335,7 +339,14 @@ export function CollectionTable({
                     <p className="font-mono font-semibold text-[14px] text-[#eae1da]">
                       {formatHkd(entry.currentMarketValue)}
                     </p>
-                    {entry.valuationSource === "purchase_price" ? (
+                    {entry.status === "sold" ? (
+                      <p className="font-mono text-[9px] text-[#8A8680]">
+                        成交價
+                        {entry.soldAt
+                          ? ` · ${new Date(entry.soldAt).toLocaleDateString("zh-HK")}`
+                          : ""}
+                      </p>
+                    ) : entry.valuationSource === "purchase_price" ? (
                       <p className="font-mono text-[9px] text-[#8A8680]">
                         入手價估計
                       </p>
@@ -380,7 +391,7 @@ export function CollectionTable({
                         >
                           查看公開市場
                         </DropdownMenuItem>
-                        {entry.status !== "listed" ? (
+                        {entry.status !== "listed" && entry.status !== "sold" ? (
                           <DropdownMenuItem
                             onClick={() => handleSell(entry)}
                             className="text-brand focus:bg-[#322a24] focus:text-brand font-bold"

@@ -72,6 +72,7 @@ const { listings, meta, error, priceBounds, isRefreshing } =
 |------|--------|
 | `hideTypeSection={true}` | No seller-source filter on storefront |
 | `MarketplaceCard` | Pass `currentUserId` from SSR |
+| `BuyButton` | Storefront + grid — opens global `ExecutionSlideOver` via `storefrontListing` prop |
 | `detailHref` | `/marketplace/{sellerId}/product/{listingId}` |
 | `delta` | Fixed at `0` for now |
 | Pagination | Not in UI yet — page size 50 |
@@ -83,7 +84,7 @@ const { listings, meta, error, priceBounds, isRefreshing } =
 - [ ] Search / rarity / grade / price / sort refetch via RPC
 - [ ] Reset clears filters and restores full seller price range
 - [ ] Chat button uses seller UUID for room id
-- [ ] Grid card → private detail page loads with buy CTA
+- [ ] Grid card → private detail page loads with buy CTA → opens global offer slide-over
 - [ ] `ExecutionSlideOver` storefront link resolves (catalog id in URL)
 - [ ] Invalid seller or missing listing → 404
 - [ ] CI build passes without `.env`

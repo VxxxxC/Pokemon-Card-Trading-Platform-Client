@@ -297,6 +297,7 @@ export type Database = {
           seller_description: string | null
           seller_id: string
           seller_persona: Database["public"]["Enums"]["seller_persona_type"]
+          source_collection_id: string | null
           status: Database["public"]["Enums"]["listing_status"]
           updated_at: string
           use_authentication: boolean
@@ -312,6 +313,7 @@ export type Database = {
           seller_description?: string | null
           seller_id: string
           seller_persona?: Database["public"]["Enums"]["seller_persona_type"]
+          source_collection_id?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
           updated_at?: string
           use_authentication?: boolean
@@ -327,6 +329,7 @@ export type Database = {
           seller_description?: string | null
           seller_id?: string
           seller_persona?: Database["public"]["Enums"]["seller_persona_type"]
+          source_collection_id?: string | null
           status?: Database["public"]["Enums"]["listing_status"]
           updated_at?: string
           use_authentication?: boolean
@@ -344,6 +347,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "product_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listings_source_collection_id_fkey"
+            columns: ["source_collection_id"]
+            isOneToOne: false
+            referencedRelation: "user_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -1153,6 +1163,9 @@ export type Database = {
           id: string
           product_id: string
           purchase_price: number
+          sold_at: string | null
+          sold_listing_id: string | null
+          sold_price: number | null
           updated_at: string
           user_id: string
         }
@@ -1163,6 +1176,9 @@ export type Database = {
           id?: string
           product_id: string
           purchase_price?: number
+          sold_at?: string | null
+          sold_listing_id?: string | null
+          sold_price?: number | null
           updated_at?: string
           user_id: string
         }
@@ -1173,6 +1189,9 @@ export type Database = {
           id?: string
           product_id?: string
           purchase_price?: number
+          sold_at?: string | null
+          sold_listing_id?: string | null
+          sold_price?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -1190,6 +1209,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "product_catalog"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_collections_sold_listing_id_fkey"
+            columns: ["sold_listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_collections_sold_listing_id_fkey"
+            columns: ["sold_listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
           },
         ]
       }
@@ -1308,6 +1341,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: number
+      }
+      fn_archive_seller_collection_for_listing: {
+        Args: {
+          p_final_price: number
+          p_listing_id: string
+          p_seller_id: string
+        }
+        Returns: undefined
       }
       fn_bump_listing_offers_count: {
         Args: { p_listing_id: string }

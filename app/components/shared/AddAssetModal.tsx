@@ -5,6 +5,10 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { addToCollection } from "@/app/actions/collection";
 import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listing";
+import {
+  CollectionAddAfterListingDialog,
+  type CollectionAddAfterListingPayload,
+} from "@/app/components/shared/CollectionAddAfterListingDialog";
 import { useUIStore, type SellFromCollectionPrefill } from "@/app/store/useUIStore";
 import { useListingSubmitStore } from "@/app/store/useListingSubmitStore";
 import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
@@ -147,6 +151,8 @@ export function AddAssetModal() {
 
   // 新增商品專屬欄位
   const [sellingPrice, setSellingPrice] = useState("");
+  const [collectionAddPrompt, setCollectionAddPrompt] =
+    useState<CollectionAddAfterListingPayload | null>(null);
 
   // 圖片預覽槽（僅於提交時上傳至 Bunny.net）
   const [photoSlots, setPhotoSlots] = useState<LocalPhotoSlot[]>(
@@ -254,7 +260,14 @@ export function AddAssetModal() {
     }
   }
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return (
+      <CollectionAddAfterListingDialog
+        payload={collectionAddPrompt}
+        onClose={() => setCollectionAddPrompt(null)}
+      />
+    );
+  }
 
   const buildNextPhotoSlots = (
     prev: LocalPhotoSlot[],
@@ -486,6 +499,7 @@ export function AddAssetModal() {
         price: Number(sellingPrice),
         sellerDescription: conditionDesc || undefined,
         useAuthentication: isRawCardListing ? acceptsBuyerAuth : false,
+        sourceCollectionId: sellPrefill?.collectionId,
         imageFiles,
       });
 
@@ -530,6 +544,14 @@ export function AddAssetModal() {
           : "🏪 商品已成功錄入並直接上架交易所大盤",
       );
       handleCloseAndReset();
+
+      if (!hadSellPrefill && catalogSearch.selected) {
+        setCollectionAddPrompt({
+          productId: catalogSearch.selected.id,
+          gradingOptionId: selectedGradingId,
+          productName: catalogSearch.selected.name,
+        });
+      }
       return;
     }
 
@@ -639,6 +661,7 @@ export function AddAssetModal() {
   ) : null;
 
   return (
+    <>
     <div className="fixed inset-0 z-[350] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/75 backdrop-blur-xs"
@@ -1061,6 +1084,11 @@ export function AddAssetModal() {
         </form>
       </div>
     </div>
+    <CollectionAddAfterListingDialog
+      payload={collectionAddPrompt}
+      onClose={() => setCollectionAddPrompt(null)}
+    />
+  </>
   );
 }
 

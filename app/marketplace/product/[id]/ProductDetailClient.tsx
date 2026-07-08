@@ -9,19 +9,19 @@ import { useRouter } from "next/navigation";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
-import { ExecutionSlideOver } from "@/app/components/transactions/ExecutionSlideOver";
 import type {
   MarketplaceMarketPriceGradeRow,
   MarketplaceProductDetail,
 } from "@/app/lib/marketplace/types";
 import type { MarketplaceProductListingsInitialData } from "@/app/lib/hooks/useMarketplaceProductListings";
-import type { SellOrder, UnifiedProductSpec } from "@/app/lib/mock-data/cards";
+import type { SellOrder } from "@/app/lib/mock-data/cards";
 import { useMarketplaceProductListings } from "@/app/lib/hooks/useMarketplaceProductListings";
 import { useMarketplaceProductMarketPrice } from "@/app/lib/hooks/useMarketplaceProductMarketPrice";
 import { useMarketplaceProductTradeHistory } from "@/app/lib/hooks/useMarketplaceProductTradeHistory";
 import { formatElementTypeZh } from "@/lib/catalog/element-types";
 import { GRADING_OPTIONS } from "@/lib/grading/options";
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
+import { buildOrderBookExecutionPayload } from "@/lib/marketplace/map-listing-to-execution";
 import { RelativeDateTime } from "@/components/shared/RelativeDateTime";
 import type { ProductListingSortKey } from "@/app/lib/marketplace/types";
 import { Switch } from "@/components/ui/switch";
@@ -66,31 +66,6 @@ function formatBreadcrumbLabel(product: MarketplaceProductDetail): string {
   return product.setCode;
 }
 
-function toExecutionSlideOverCard(
-  product: MarketplaceProductDetail,
-): UnifiedProductSpec {
-  return {
-    id: product.productId,
-    name: product.productName,
-    jpName: product.nameJa,
-    set: product.setCode,
-    rarity: (product.rarity ?? "SAR") as UnifiedProductSpec["rarity"],
-    delta: 0,
-    deltaDirection: "up",
-    images:
-      product.images.length > 0 ? product.images : [product.imageUrl],
-    type: formatElementTypeZh(product.elementType, "—"),
-    stage: formatSpecValue(product.pokemonStage),
-    weakness: "—",
-    retreatCost: "—",
-    moveDamage: "—",
-    artist: "—",
-    soldHistory: [],
-    chartPoints: [],
-    sellOrders: [],
-  };
-}
-
 export function ProductDetailClient({
   product,
   currentUserId = null,
@@ -99,16 +74,15 @@ export function ProductDetailClient({
 }: ProductDetailClientProps) {
   const router = useRouter();
   const mockRole = useUIStore((state) => state.mockRole);
+  const openExecutionSlideOver = useUIStore(
+    (state) => state.openExecutionSlideOver,
+  );
   const isGuest = mockRole === "GUEST";
 
   const images =
     product.images.length > 0 ? product.images : [product.imageUrl];
   const breadcrumbLabel = formatBreadcrumbLabel(product);
   const heroImage = images[0];
-
-  const [isGateOpen, setIsGateOpen] = useState(false);
-  const [gateOrder, setGateOrder] = useState<SellOrder | null>(null);
-  const [gateListingId, setGateListingId] = useState<string | null>(null);
 
   const [subSortKey, setSubSortKey] = useState<SubSortKey>("price_asc");
   const [onlyGraded, setOnlyGraded] = useState(false);
@@ -217,7 +191,6 @@ export function ProductDetailClient({
   const marketTrend30d = marketPriceData.marketTrend30d;
   const globalBestAskPrice = lowestPrice;
 
-  const slideOverCard = toExecutionSlideOverCard(product);
   const productPath = `/marketplace/product/${product.productId}`;
 
   return (
@@ -499,9 +472,13 @@ export function ProductDetailClient({
                           ) {
                             return;
                           }
-                          setGateOrder(o);
-                          setGateListingId(row.listingId);
-                          setIsGateOpen(true);
+                          openExecutionSlideOver(
+                            buildOrderBookExecutionPayload(
+                              product,
+                              row.listingId,
+                              o,
+                            ),
+                          );
                         }}
                         grade={row.order.customGrade}
                       />
@@ -635,18 +612,6 @@ export function ProductDetailClient({
           </section>
         </div>
       </main>
-
-      <ExecutionSlideOver
-        isOpen={isGateOpen}
-        onClose={() => {
-          setIsGateOpen(false);
-          setGateListingId(null);
-        }}
-        listingId={gateListingId}
-        order={gateOrder}
-        card={slideOverCard}
-        productId={product.productId}
-      />
     </div>
   );
 }

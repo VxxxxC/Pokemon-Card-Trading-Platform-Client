@@ -6,6 +6,13 @@
 - **Frontend:** ✅ **Wired** — live search, updated filters, grid card baseline
 - **Your focus:** Grid card polish (listing count, price spread, seller chip), filter styling pass. Product detail **catalog** done — see [marketplace-product-detail/frontend.md](../marketplace-product-detail/frontend.md)
 
+## Changelog (2026-07-08) — buy CTA wired
+
+| Area | What changed |
+|------|----------------|
+| **`BuyButton`** | **⚡ 立即購買** on grid cards opens global `ExecutionSlideOver` → `makeOffer` (replaces mock `injectSpecialTransaction`) |
+| **Own-listing** | `BuyButton` double-guards with `useCurrentUserId()` when card parent still shows button |
+
 ## Changelog (2026-07-04) — SSR bootstrap + load performance
 
 | Area | What changed |
@@ -76,7 +83,7 @@
 | Image overlay top-right | `WishlistButton` |
 | Card wrapper | Gold ring when own listing |
 | Body | Name; **set code · card no** (`listing.set` + `listing.cardNo`); price, delta, seller — **no grade row**; seller shows **(你)** when own listing |
-| Footer CTA | `BuyButton` for others; disabled **我的掛單 · 無法出價** for own listing |
+| Footer CTA | `BuyButton` → global `ExecutionSlideOver` + `makeOffer` for others; disabled **我的掛單 · 無法出價** for own listing |
 | `MarketplaceListing.set` | `product.setCode` from `toMarketplaceListing` — displayed uppercase before card number |
 | `MarketplaceListing.grade` | Still on type for `BuyButton` / mocks; not rendered |
 

@@ -1,6 +1,6 @@
 # Partner Report — Home Page Sections (`/`)
 
-**Date:** 2026-07-07 (updated)  
+**Date:** 2026-07-08 (updated)  
 **Flow:** Homepage wishlist strip + merchant carousel + C2C arrivals + auth-gated check-in  
 **Backend owner:** Backend track  
 **Frontend owner:** Partner (polish + smoke-test)  
@@ -23,12 +23,18 @@
 | Public listings `unstable_cache` (60s) | ✅ Shipped |
 | `favoredKeys` SSR on home listing stars | ✅ `getWishlistFavoredKeysForUser` in `page.tsx` |
 | Server + client perf instrumentation | ✅ `lib/home/perf-log.ts` + `app/lib/home/perf-log-client.ts` |
-| `BuyButton` on C2C strip | ⏳ Still mock transaction injector |
+| `BuyButton` on C2C strip | ✅ Wired — `NewArrivals` → global `ExecutionSlideOver` → `makeOffer` |
 | Merchant storefront deep links | ⏳ Product → `/marketplace/product/[id]`; seller → `/profile/[id]` |
 
 **Partner action:** Smoke-test `/` as guest and logged-in member; verify section data, empty states, wishlist price fallback, and pre-hydrated wishlist stars on merchant/C2C cards.
 
 ---
+
+## Changelog (2026-07-08)
+
+| Change | Detail |
+|--------|--------|
+| C2C **立即購買** | `NewArrivals` `BuyButton` → `useUIStore.openExecutionSlideOver` (same host as marketplace grid + product detail) |
 
 ## Changelog (2026-07-07 follow-up)
 
@@ -205,6 +211,7 @@ WishlistButton on merchant/C2C cards
 - [ ] Wishlist trend: sparkline + 30D% when SNKRDUNK chart exists; `—` otherwise
 - [ ] Pre-favorited cards show filled star on merchant/C2C strips (SSR `favoredKeys`)
 - [ ] Product links open `/marketplace/product/{productId}`
+- [ ] C2C **立即購買** opens global offer slide-over; logged-in submit reaches chat (`makeOffer`)
 - [ ] Section skeletons appear briefly (not full-page white screen)
 - [ ] `bun run build:ci` passes
 
@@ -216,7 +223,7 @@ WishlistButton on merchant/C2C cards
 
 ### P2 — Out of scope (existing backlog)
 
-- [ ] `BuyButton` — replace mock buyer with authed session (`GlobalTxButtons.tsx`)
+- [x] `BuyButton` — wired to global `ExecutionSlideOver` (`GlobalTxButtons.tsx`, 2026-07-08)
 - [ ] `PortfolioRewards` home widget — still commented out on shell
 - [ ] OneSignal wishlist price alerts (Phase 3)
 

@@ -97,4 +97,12 @@ export function hasPublicProfileFixtures(): boolean {
   return hasCoreMerchantFixtures();
 }
 
+export function hasBunnyStorageFixtures(): boolean {
+  return Boolean(
+    readEnv("BUNNY_STORAGE_ZONE_NAME") &&
+      readEnv("BUNNY_STORAGE_ACCESS_KEY") &&
+      readEnv("BUNNY_CDN_HOSTNAME"),
+  );
+}
+
 export { hasChatRealtimeFixtures as hasMemberTradingFixtures } from "./chat-test-data";
