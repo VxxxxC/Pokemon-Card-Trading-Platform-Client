@@ -88,3 +88,5 @@ export function buildMerchantProductDetailPath(
 ): string {
   return `/marketplace/${encodeURIComponent(sellerKey)}/product/${encodeURIComponent(productKey)}`;
 }
+
+export { hasChatRealtimeFixtures as hasMemberTradingFixtures } from "./chat-test-data";

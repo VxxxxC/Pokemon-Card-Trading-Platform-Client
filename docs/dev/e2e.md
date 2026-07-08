@@ -5,6 +5,7 @@ End-to-end tests for:
 1. **Merchant product detail** — `/marketplace/[id]/product/[productId]`
 2. **Global Chat realtime** — dual-browser buyer/seller state machine (`GlobalChatConsole`)
 3. **Marketplace search + make offer** — `/marketplace` keyword search → public product page → order book → `makeOffer`
+4. **Member flows** — P2P trading closure, dashboard/rewards, collection/wishlist, auth redirect + settings, inventory smoke
 
 Aligned with [`project_structure.md`](../../project_structure.md) and Supabase types in [`types/supabase.md`](../../types/supabase.md).
 
@@ -96,9 +97,18 @@ bun run test:e2e:headed
 
 # Single project
 bun run test:e2e -- --project=guest
+bun run test:e2e -- --project=buyer
+bun run test:e2e -- --project=seller
 bun run test:e2e -- --project=chat-realtime
+bun run test:e2e -- --project=member-trading
 bun run test:e2e -- e2e/marketplace-search-offer.spec.ts --project=buyer
 bun run test:e2e -- e2e/marketplace-search-offer.spec.ts --project=guest
+bun run test:e2e -- e2e/member-trading-p2p.spec.ts --project=member-trading
+bun run test:e2e -- e2e/member-dashboard.spec.ts --project=buyer
+bun run test:e2e -- e2e/member-collection-wishlist.spec.ts --project=buyer
+bun run test:e2e -- e2e/member-auth-settings.spec.ts --project=guest
+bun run test:e2e -- e2e/member-auth-settings.spec.ts --project=buyer
+bun run test:e2e -- e2e/member-inventory.spec.ts --project=seller
 ```
 
 `playwright.config.ts` starts `bun run dev` automatically unless a server is already running on `http://localhost:3000`.
@@ -110,9 +120,11 @@ bun run test:e2e -- e2e/marketplace-search-offer.spec.ts --project=guest
 | Project | Auth | Purpose |
 |---------|------|---------|
 | `setup` | — | Runs `e2e/fixtures/auth.setup.ts`; writes `e2e/.auth/buyer.json` + `seller.json` |
-| `guest` | None | Public marketplace flows |
+| `guest` | None | Public marketplace flows + guest auth redirect |
 | `buyer` | `e2e/.auth/buyer.json` | Logged-in buyer flows (depends on `setup`) |
+| `seller` | `e2e/.auth/seller.json` | Seller inventory smoke (depends on `setup`) |
 | `chat-realtime` | Dual context in spec | Buyer + seller realtime chat journey (depends on `setup`) |
+| `member-trading` | Dual context in spec | P2P accept → trading → complete → review (depends on `setup`) |
 
 `e2e/.auth/` is gitignored.
 
@@ -131,6 +143,11 @@ GitHub Actions CI runs `build:ci` **without** Supabase env. E2E is **local-only*
 | `e2e/merchant-product-detail.spec.ts` | Route resolution, negatives, UI, BuyButton |
 | `e2e/global-chat-realtime.spec.ts` | AML filter, OfferCard realtime, accept-offer sync |
 | `e2e/marketplace-search-offer.spec.ts` | Marketplace keyword search, grid price, product page navigation, slide-over offer |
+| `e2e/member-trading-p2p.spec.ts` | P2P offer accept → `member_orders` → trading list → complete → review |
+| `e2e/member-dashboard.spec.ts` | Overview, daily check-in, rewards coupon tabs |
+| `e2e/member-collection-wishlist.spec.ts` | Wishlist star toggle + collection page smoke |
+| `e2e/member-auth-settings.spec.ts` | Guest auth redirect + profile settings save |
+| `e2e/member-inventory.spec.ts` | Seller inventory accordion smoke |
 
 ## Marketplace search + make offer (`guest` / `buyer`)
 
@@ -195,6 +212,59 @@ Dual-browser Playwright journey: buyer and seller each get an isolated `BrowserC
 | `getListingMarketplaceFixture(listingId)` | Marketplace search/order-book fixture metadata |
 
 When `hasChatRealtimeFixtures()` is false, the spec calls `test.skip()`.
+
+## Member flows (`buyer` / `seller` / `member-trading`)
+
+Member E2E covers dashboard, rewards, collection/wishlist, auth redirect, settings, inventory smoke, and the **P2P trading closure** (no escrow).
+
+### Escrow exclusion
+
+Orders with `use_authentication = true` (Stripe / custody path) are **out of scope** until payment is enabled. Specs call `guardP2pMemberOrder()` and `test.skip()` when an escrow order is detected — do not auto-fix product gaps in `app/`.
+
+### P2P trading closure (`member-trading` project)
+
+Dual-browser serial journey (`e2e/member-trading-p2p.spec.ts`):
+
+1. Buyer submits HK$299 offer with authentication **off** (merchant detail slide-over)
+2. Seller accepts in Global Chat
+3. DB assert `member_orders` row (`use_authentication = false`)
+4. Buyer `/profile/user/trading` → order detail (no「前往付款」)
+5. Buyer completes handover (3 checkboxes) → `ReviewModal` → `transaction_reviews`
+
+```bash
+bun run test:e2e -- e2e/member-trading-p2p.spec.ts --project=member-trading
+```
+
+Uses `hasMemberTradingFixtures()` (alias of `hasChatRealtimeFixtures()`).
+
+### Member DB helpers (`e2e/fixtures/supabase-admin.ts`)
+
+| Function | Purpose |
+|----------|---------|
+| `getLatestMemberOrderForListing({ listingId, buyerId })` | Poll newest `member_orders` row (returns `null` if service role lacks table grant) |
+| `getMemberOrderById(orderId)` | Read order status / escrow fields |
+| `guardP2pMemberOrder(order)` | Skip escrow (`use_authentication`) orders |
+| `getReviewForMemberOrder({ memberOrderId, reviewerId })` | Assert `transaction_reviews` when grants exist |
+| `getGamificationStatsForProfile(profileId)` | Optional check-in poll (requires table grant) |
+| `countProductWatchlistsForUser(userId, productId)` | Optional wishlist DB assert |
+
+When `member_orders` / `transaction_reviews` return permission denied for the service role, `member-trading-p2p` falls back to **UI assertions** (trading list, handover dialog, review toast).
+
+### Dashboard + rewards (`buyer`)
+
+`e2e/member-dashboard.spec.ts` — overview shell, `CheckInCard` (skips repeat check-in if already signed today), rewards coupon tab navigation.
+
+### Collection + wishlist (`buyer`)
+
+`e2e/member-collection-wishlist.spec.ts` — star on marketplace grid → `/profile/user/collection` wishlist table.
+
+### Auth + settings (`guest` / `buyer`)
+
+`e2e/member-auth-settings.spec.ts` — guest BuyButton lock → `/auth?redirect=` → manual login → return; buyer settings `displayName` / `shortDescription` save.
+
+### Inventory smoke (`seller`)
+
+`e2e/member-inventory.spec.ts` — `/profile/user/inventory` accordion loads (`#listings-heading`).
 
 ## Troubleshooting
 

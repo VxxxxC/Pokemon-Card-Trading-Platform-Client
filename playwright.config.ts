@@ -65,12 +65,21 @@ export default defineConfig({
     },
     {
       name: "guest",
-      testIgnore: [/auth\.setup\.ts/, /global-chat-realtime\.spec\.ts/],
+      testIgnore: [
+        /auth\.setup\.ts/,
+        /global-chat-realtime\.spec\.ts/,
+        /member-trading-p2p\.spec\.ts/,
+      ],
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "buyer",
-      testIgnore: [/auth\.setup\.ts/, /global-chat-realtime\.spec\.ts/],
+      testIgnore: [
+        /auth\.setup\.ts/,
+        /global-chat-realtime\.spec\.ts/,
+        /member-trading-p2p\.spec\.ts/,
+        /member-inventory\.spec\.ts/,
+      ],
       dependencies: ["setup"],
       use: {
         ...devices["Desktop Chrome"],
@@ -78,10 +87,30 @@ export default defineConfig({
       },
     },
     {
+      name: "seller",
+      testIgnore: [
+        /auth\.setup\.ts/,
+        /global-chat-realtime\.spec\.ts/,
+        /member-trading-p2p\.spec\.ts/,
+      ],
+      dependencies: ["setup"],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/seller.json",
+      },
+    },
+    {
       name: "chat-realtime",
       testMatch: /global-chat-realtime\.spec\.ts/,
       dependencies: ["setup"],
       timeout: 180_000,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "member-trading",
+      testMatch: /member-trading-p2p\.spec\.ts/,
+      dependencies: ["setup"],
+      timeout: 240_000,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

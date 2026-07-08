@@ -430,12 +430,16 @@ export async function getLatestOfferForListing(params: {
   roomId: string;
   listingId: string;
   buyerId: string;
-}): Promise<{ id: string; status: string | null } | null> {
+}): Promise<{
+  id: string;
+  status: string | null;
+  use_authentication: boolean | null;
+} | null> {
   const admin = createE2eAdminClient();
 
   const { data, error } = await admin
     .from("offers")
-    .select("id, status")
+    .select("id, status, use_authentication")
     .eq("room_id", params.roomId)
     .eq("listing_id", params.listingId)
     .eq("buyer_id", params.buyerId)
@@ -451,5 +455,175 @@ export async function getLatestOfferForListing(params: {
     return null;
   }
 
-  return { id: data.id, status: data.status };
+  return {
+    id: data.id,
+    status: data.status,
+    use_authentication: data.use_authentication,
+  };
+}
+
+function isAdminPermissionDenied(error: { message?: string } | null): boolean {
+  return Boolean(error?.message?.toLowerCase().includes("permission denied"));
+}
+
+export type MemberOrderAuditRow = {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  status: string | null;
+  use_authentication: boolean;
+  escrow_status: string | null;
+  order_number: string | null;
+  final_price: number;
+};
+
+export type P2pOrderGuardResult =
+  | { ok: true; order: MemberOrderAuditRow }
+  | { ok: false; skipReason: string };
+
+export function guardP2pMemberOrder(
+  order: MemberOrderAuditRow,
+): P2pOrderGuardResult {
+  if (order.use_authentication) {
+    return {
+      ok: false,
+      skipReason:
+        "Escrow/auth member orders are excluded until Stripe is enabled",
+    };
+  }
+
+  return { ok: true, order };
+}
+
+export async function getLatestMemberOrderForListing(params: {
+  listingId: string;
+  buyerId: string;
+}): Promise<MemberOrderAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("member_orders")
+    .select(
+      "id, listing_id, buyer_id, seller_id, status, use_authentication, escrow_status, order_number, final_price",
+    )
+    .eq("listing_id", params.listingId)
+    .eq("buyer_id", params.buyerId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getLatestMemberOrderForListing] ${error.message}`);
+  }
+
+  return data as MemberOrderAuditRow | null;
+}
+
+export async function getMemberOrderById(
+  orderId: string,
+): Promise<MemberOrderAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("member_orders")
+    .select(
+      "id, listing_id, buyer_id, seller_id, status, use_authentication, escrow_status, order_number, final_price",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getMemberOrderById] ${error.message}`);
+  }
+
+  return data as MemberOrderAuditRow | null;
+}
+
+export async function getReviewForMemberOrder(params: {
+  memberOrderId: string;
+  reviewerId: string;
+}): Promise<{ id: string; rating: number } | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("transaction_reviews")
+    .select("id, rating")
+    .eq("member_order_id", params.memberOrderId)
+    .eq("reviewer_id", params.reviewerId)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getReviewForMemberOrder] ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return { id: data.id, rating: data.rating };
+}
+
+export async function getGamificationStatsForProfile(
+  profileId: string,
+): Promise<{
+  points_balance: number;
+  current_streak: number | null;
+  last_check_in: string | null;
+} | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("gamification_stats")
+    .select("points_balance, current_streak, last_check_in")
+    .eq("user_id", profileId)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getGamificationStatsForProfile] ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    points_balance: data.points_balance,
+    current_streak: data.current_streak,
+    last_check_in: data.last_check_in,
+  };
+}
+
+export async function countProductWatchlistsForUser(
+  userId: string,
+  productId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+
+  const { count, error } = await admin
+    .from("product_watchlists")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("product_id", productId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return 0;
+    }
+    throw new Error(`[countProductWatchlistsForUser] ${error.message}`);
+  }
+
+  return count ?? 0;
 }
