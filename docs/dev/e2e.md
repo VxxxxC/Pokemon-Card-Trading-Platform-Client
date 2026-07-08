@@ -1,0 +1,207 @@
+# Playwright E2E
+
+End-to-end tests for:
+
+1. **Merchant product detail** — `/marketplace/[id]/product/[productId]`
+2. **Global Chat realtime** — dual-browser buyer/seller state machine (`GlobalChatConsole`)
+3. **Marketplace search + make offer** — `/marketplace` keyword search → public product page → order book → `makeOffer`
+
+Aligned with [`project_structure.md`](../../project_structure.md) and Supabase types in [`types/supabase.md`](../../types/supabase.md).
+
+## Prerequisites
+
+1. Linked Supabase project with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env`
+2. Chromium (installed once):
+
+```bash
+bunx playwright install chromium
+```
+
+3. Fixture seller + listing IDs (see below)
+4. A **member** buyer account that does **not** own the fixture listing
+
+## Environment variables
+
+Add these to **`.env`** (`playwright.config.ts` loads `.env` / `.env.local` for the test runner; `bun run dev` uses the same files):
+
+| Variable | Required for | Description |
+|----------|--------------|-------------|
+| `E2E_SELLER_ID` | Core happy-path tests | Seller `profiles.id` (UUID) |
+| `E2E_SELLER_USERNAME` | Username route test (A2) | Same seller's `profiles.username` |
+| `E2E_LISTING_ID` | Core happy-path tests | Active `listings.id` owned by seller |
+| `E2E_LISTING_DISPLAY_ID` | Display ID route test (A3) | `product_catalog.display_id` for that listing (not used for marketplace search keyword) |
+| `E2E_LISTING_PRODUCT_ID` | Product ID route test (A4) | `product_catalog.id` / `listings.product_id` |
+| `E2E_BUYER_EMAIL` | Buyer auth setup | Member account email |
+| `E2E_BUYER_PASSWORD` | Buyer auth setup | Member account password |
+| `E2E_SELLER_EMAIL` | Seller auth setup (chat-realtime) | Same seller account as `E2E_SELLER_ID` |
+| `E2E_SELLER_PASSWORD` | Seller auth setup (chat-realtime) | Seller login password |
+| `SUPABASE_SERVICE_ROLE_KEY` | Global Chat + marketplace DB assertions | Service role key for `e2e/fixtures/supabase-admin.ts` |
+| `E2E_INVALID_SELLER_ID` | Negative tests (B1) | Optional; defaults to `00000000-0000-0000-0000-000000000000` |
+| `E2E_WRONG_SELLER_ID` | Cross-seller test (B3) | Another valid seller UUID who does **not** own `E2E_LISTING_ID` |
+
+When required variables are missing, tests call `test.skip()` with a reason instead of failing the suite.
+
+## How to collect fixture IDs
+
+### From the UI
+
+1. Start dev server: `bun run dev`
+2. Open `/marketplace/{sellerUuid}` (storefront)
+3. Click a grid card → URL becomes `/marketplace/{sellerId}/product/{listingId}`
+4. Copy `sellerId` → `E2E_SELLER_ID`, `listingId` → `E2E_LISTING_ID`
+5. Copy seller username from profile header → `E2E_SELLER_USERNAME`
+
+### From Supabase
+
+```sql
+-- Active listing with catalog metadata
+select
+  l.id as listing_id,
+  l.seller_id,
+  p.username as seller_username,
+  pc.id as product_id,
+  pc.display_id
+from listings l
+join profiles p on p.id = l.seller_id
+join product_catalog pc on pc.id = l.product_id
+where l.status = 'active'
+limit 5;
+```
+
+For `E2E_WRONG_SELLER_ID`, pick a different `profiles.id` that is not the listing owner.
+
+## Route resolution (backend contract)
+
+`[id]` resolves to `profiles.id` first, then `profiles.username` (case-insensitive `ilike`).
+
+`[productId]` accepts:
+
+1. `listings.id` (UUID) — must belong to the resolved seller
+2. `product_catalog.display_id`
+3. `product_catalog.id` — if multiple active listings exist for the same product, the **lowest price** listing is returned
+
+See `lib/marketplace/load-seller-listing-detail.ts` and `getMarketplaceSellerListingDetail` in `app/actions/marketplace.ts`.
+
+## Commands
+
+```bash
+# Run all E2E projects (setup → guest + buyer)
+bun run test:e2e
+
+# Interactive UI
+bun run test:e2e:ui
+
+# Headed browser
+bun run test:e2e:headed
+
+# Single project
+bun run test:e2e -- --project=guest
+bun run test:e2e -- --project=chat-realtime
+bun run test:e2e -- e2e/marketplace-search-offer.spec.ts --project=buyer
+bun run test:e2e -- e2e/marketplace-search-offer.spec.ts --project=guest
+```
+
+`playwright.config.ts` starts `bun run dev` automatically unless a server is already running on `http://localhost:3000`.
+
+**Important:** Use `http://localhost:3000` (not `127.0.0.1`) for Playwright `baseURL`. Next.js dev blocks HMR/client hydration from `127.0.0.1` by default, which breaks `BuyButton` click handlers in E2E.
+
+## Projects
+
+| Project | Auth | Purpose |
+|---------|------|---------|
+| `setup` | — | Runs `e2e/fixtures/auth.setup.ts`; writes `e2e/.auth/buyer.json` + `seller.json` |
+| `guest` | None | Public marketplace flows |
+| `buyer` | `e2e/.auth/buyer.json` | Logged-in buyer flows (depends on `setup`) |
+| `chat-realtime` | Dual context in spec | Buyer + seller realtime chat journey (depends on `setup`) |
+
+`e2e/.auth/` is gitignored.
+
+## CI note
+
+GitHub Actions CI runs `build:ci` **without** Supabase env. E2E is **local-only** for now. To run in CI later, add staging secrets and a separate workflow job.
+
+## Test file map
+
+| File | Coverage |
+|------|----------|
+| `e2e/fixtures/test-data.ts` | Merchant detail env fixture readers + `test.skip()` helpers |
+| `e2e/fixtures/chat-test-data.ts` | Global Chat env fixtures + `hasChatRealtimeFixtures()` |
+| `e2e/fixtures/supabase-admin.ts` | Service-role DB audit helpers (test-only) |
+| `e2e/fixtures/auth.setup.ts` | Buyer + seller login → storage state |
+| `e2e/merchant-product-detail.spec.ts` | Route resolution, negatives, UI, BuyButton |
+| `e2e/global-chat-realtime.spec.ts` | AML filter, OfferCard realtime, accept-offer sync |
+| `e2e/marketplace-search-offer.spec.ts` | Marketplace keyword search, grid price, product page navigation, slide-over offer |
+
+## Marketplace search + make offer (`guest` / `buyer`)
+
+Keyword search on `/marketplace` → verify grid `lowestPrice` → click card link to `/marketplace/product/[productId]` → order book seller row → `ExecutionSlideOver` → `發送叫價至聊天室` → assert `offers.status = pending`.
+
+### Required env
+
+| Variable | Notes |
+|----------|-------|
+| `E2E_SELLER_ID` / `E2E_LISTING_ID` | Active listing owned by seller |
+| `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` | Buyer project only (`setup` auth) |
+| `SUPABASE_SERVICE_ROLE_KEY` | `getListingMarketplaceFixture` + offer DB assert |
+
+`getListingMarketplaceFixture` picks `searchKeyword` from catalog **name_zh → name_ja → name_en → display_id → card_number** (names before codes, because codes like `DP4-42` can match unrelated products).
+
+Offer amount is hard-coded to **HK$299** to satisfy AML caps for accounts younger than 14 days.
+
+### Projects
+
+| Project | Coverage |
+|---------|----------|
+| `guest` | Search → grid price → public product page (no offer / no guest lock) |
+| `buyer` | Full 9-step serial funnel ending in pending `offers` row |
+
+### DB helper
+
+| Function | Purpose |
+|----------|---------|
+| `getListingMarketplaceFixture(listingId)` | Join listing + catalog + seller; returns `searchKeyword`, `lowestPrice`, `listingPrice`, etc. |
+
+### Known limitations (documented, not auto-fixed in E2E)
+
+- Grid `BuyButton` maps `listing.id` to `productId` in `MarketplacePageClient.toMarketplaceListing` — spec clicks the **card link**, not grid `BuyButton`.
+- `/checkout/[id]` is **not** wired from slide-over; terminal step is `makeOffer` only.
+
+## Global Chat realtime (`chat-realtime` project)
+
+Dual-browser Playwright journey: buyer and seller each get an isolated `BrowserContext` (`e2e/.auth/buyer.json` / `seller.json`). Tests use `SUPABASE_SERVICE_ROLE_KEY` to assert `chat_messages.is_system_warning` and `offers.status` without modifying app source.
+
+### Required env (in addition to merchant fixtures)
+
+| Variable | Notes |
+|----------|-------|
+| `E2E_SELLER_EMAIL` / `E2E_SELLER_PASSWORD` | Must match `E2E_SELLER_ID` (listing owner) |
+| `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` | Must **not** own `E2E_LISTING_ID` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Local `.env` only — never commit |
+
+### Journey overview
+
+1. **AML** — buyer sends sensitive text; assert `is_system_warning` + realtime UI on both sides
+2. **Offer** — buyer submits HK$4,500 via execution slide-over; seller sees `OfferCard` without reload
+3. **Accept** — seller accepts; assert `offers.status = accepted` + buyer UI shows accepted/Hold state
+
+### DB helpers (`e2e/fixtures/supabase-admin.ts`)
+
+| Function | Purpose |
+|----------|---------|
+| `ensureDbChatRoom(buyerId, sellerId)` | Find or insert user-centric `chat_rooms` row |
+| `getLatestChatMessage(roomId, contentContains?)` | Poll `chat_messages` for AML audit |
+| `getOfferStatus(offerId)` | Assert offer state machine |
+| `getProfileIdByEmail(email)` | Resolve buyer UUID from `E2E_BUYER_EMAIL` |
+| `getListingMarketplaceFixture(listingId)` | Marketplace search/order-book fixture metadata |
+
+When `hasChatRealtimeFixtures()` is false, the spec calls `test.skip()`.
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---------|----------------|
+| All tests skipped | `E2E_SELLER_ID` / `E2E_LISTING_ID` not set in `.env` |
+| Setup skipped, buyer tests fail auth | `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` missing or wrong |
+| Chat-realtime skipped | Missing seller creds, `SUPABASE_SERVICE_ROLE_KEY`, or core listing fixtures |
+| Login timeout in setup | Supabase env unset or invalid credentials |
+| 404 on happy path | Listing inactive, wrong seller, or ID mismatch |

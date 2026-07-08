@@ -16,6 +16,8 @@ package-lock.json
 
 # testing
 /coverage
+/test-results/
+e2e/.auth/
 
 # next.js
 /.next/
