@@ -89,4 +89,12 @@ export function buildMerchantProductDetailPath(
   return `/marketplace/${encodeURIComponent(sellerKey)}/product/${encodeURIComponent(productKey)}`;
 }
 
+export function buildPublicProfilePath(profileKey: string): string {
+  return `/profile/${encodeURIComponent(profileKey)}`;
+}
+
+export function hasPublicProfileFixtures(): boolean {
+  return hasCoreMerchantFixtures();
+}
+
 export { hasChatRealtimeFixtures as hasMemberTradingFixtures } from "./chat-test-data";

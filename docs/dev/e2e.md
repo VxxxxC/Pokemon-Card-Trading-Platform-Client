@@ -6,6 +6,7 @@ End-to-end tests for:
 2. **Global Chat realtime** — dual-browser buyer/seller state machine (`GlobalChatConsole`)
 3. **Marketplace search + make offer** — `/marketplace` keyword search → public product page → order book → `makeOffer`
 4. **Member flows** — P2P trading closure, dashboard/rewards, collection/wishlist, auth redirect + settings, inventory smoke
+5. **Public profile page** — `/profile/[id]` bootstrap, listings strip, reviews preview, rating navigation
 
 Aligned with [`project_structure.md`](../../project_structure.md) and Supabase types in [`types/supabase.md`](../../types/supabase.md).
 
@@ -109,6 +110,8 @@ bun run test:e2e -- e2e/member-collection-wishlist.spec.ts --project=buyer
 bun run test:e2e -- e2e/member-auth-settings.spec.ts --project=guest
 bun run test:e2e -- e2e/member-auth-settings.spec.ts --project=buyer
 bun run test:e2e -- e2e/member-inventory.spec.ts --project=seller
+bun run test:e2e -- e2e/public-profile-page.spec.ts --project=guest
+bun run test:e2e -- e2e/public-profile-page.spec.ts --project=buyer
 ```
 
 `playwright.config.ts` starts `bun run dev` automatically unless a server is already running on `http://localhost:3000`.
@@ -148,6 +151,7 @@ GitHub Actions CI runs `build:ci` **without** Supabase env. E2E is **local-only*
 | `e2e/member-collection-wishlist.spec.ts` | Wishlist star toggle + collection page smoke |
 | `e2e/member-auth-settings.spec.ts` | Guest auth redirect + profile settings save |
 | `e2e/member-inventory.spec.ts` | Seller inventory accordion smoke |
+| `e2e/public-profile-page.spec.ts` | Public profile bootstrap, listings/reviews CTAs, rating navigation, 404 |
 
 ## Marketplace search + make offer (`guest` / `buyer`)
 
@@ -265,6 +269,12 @@ When `member_orders` / `transaction_reviews` return permission denied for the se
 ### Inventory smoke (`seller`)
 
 `e2e/member-inventory.spec.ts` — `/profile/user/inventory` accordion loads (`#listings-heading`).
+
+### Public profile page (`guest` / `buyer`)
+
+`e2e/public-profile-page.spec.ts` — `/profile/[id]` SSR bootstrap shell (header metrics, listings strip, reviews preview), username route, invalid profile `not-found`, listing card → merchant product detail, 「查看更多評價」→ rating page with `?persona=`.
+
+Uses `E2E_SELLER_ID` / `E2E_SELLER_USERNAME` / `E2E_LISTING_ID` (same fixtures as merchant detail).
 
 ## Troubleshooting
 
