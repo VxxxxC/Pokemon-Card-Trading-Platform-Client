@@ -8,6 +8,7 @@ import {
   getOfferStatus,
   getProfileDisplayName,
   getProfileIdByEmail,
+  resetE2eListingTradingFixture,
   resolveE2eMarketplaceFixture,
 } from "./fixtures/supabase-admin";
 import { hasMemberTradingFixtures } from "./fixtures/test-data";
@@ -45,14 +46,6 @@ test.describe("Member offer negotiation", () => {
     const offerAmount = offerAmountFromListingPrice(listingPrice);
     const offerLabel = offerAmountLabelFromListingPrice(listingPrice);
 
-    const listingStatus = await getListingStatus(listingId);
-    if (listingStatus && listingStatus !== "active") {
-      test.skip(
-        true,
-        `Listing ${listingId} is ${listingStatus}; reset E2E_LISTING_ID to an active seller listing`,
-      );
-    }
-
     const fixtures = getChatRealtimeFixtures();
     const buyerEmail = fixtures.buyerEmail!;
     const buyerId = await getProfileIdByEmail(buyerEmail);
@@ -62,6 +55,17 @@ test.describe("Member offer negotiation", () => {
     }
 
     const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
+    await ensureListingActive(listingId);
+
+    const listingStatus = await getListingStatus(listingId);
+    if (listingStatus && listingStatus !== "active") {
+      test.skip(
+        true,
+        `Listing ${listingId} is ${listingStatus}; reset E2E_LISTING_ID to an active seller listing`,
+      );
+    }
+
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),
@@ -152,14 +156,6 @@ test.describe("Member offer negotiation", () => {
     const offerLabel = offerAmountLabelFromListingPrice(listingPrice);
     const modifyAmount = modifiedOfferAmountFromListingPrice(listingPrice);
 
-    const listingStatus = await getListingStatus(listingId);
-    if (listingStatus && listingStatus !== "active") {
-      test.skip(
-        true,
-        `Listing ${listingId} is ${listingStatus}; reset E2E_LISTING_ID to an active seller listing`,
-      );
-    }
-
     const fixtures = getChatRealtimeFixtures();
     const buyerEmail = fixtures.buyerEmail!;
     const buyerId = await getProfileIdByEmail(buyerEmail);
@@ -169,6 +165,17 @@ test.describe("Member offer negotiation", () => {
     }
 
     const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
+    await ensureListingActive(listingId);
+
+    const listingStatus = await getListingStatus(listingId);
+    if (listingStatus && listingStatus !== "active") {
+      test.skip(
+        true,
+        `Listing ${listingId} is ${listingStatus}; reset E2E_LISTING_ID to an active seller listing`,
+      );
+    }
+
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),

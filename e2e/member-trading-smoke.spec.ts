@@ -7,6 +7,7 @@ import {
   getProfileDisplayName,
   getProfileIdByEmail,
   resolveE2eMarketplaceFixture,
+  resetE2eListingTradingFixture,
 } from "./fixtures/supabase-admin";
 import { hasBuyerAuthFixtures, hasMemberTradingFixtures } from "./fixtures/test-data";
 import {
@@ -83,6 +84,7 @@ test.describe.serial("Member trading cancel pending order", () => {
     }
 
     const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),
@@ -139,6 +141,8 @@ test.describe.serial("Member trading cancel pending order", () => {
         buyerDisplayName,
         offerId,
         offerLabel,
+        buyerPage,
+        sellerDisplayName,
       );
 
       await gotoTradingPage(sellerPage);

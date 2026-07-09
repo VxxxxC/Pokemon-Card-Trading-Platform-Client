@@ -130,7 +130,7 @@ bun run test:e2e -- e2e/public-profile-page.spec.ts --project=buyer
 | `buyer` | `e2e/.auth/buyer.json` | Logged-in buyer flows (depends on `setup`) |
 | `seller` | `e2e/.auth/seller.json` | Seller inventory smoke (depends on `setup`) |
 | `chat-realtime` | Dual context in spec | Buyer + seller realtime chat journey (depends on `setup`) |
-| `member-trading` | Dual context in spec | P2P accept → trading → complete → review (depends on `setup`) |
+| `member-trading` | P2P accept → trading → complete → review; auth escrow mock pay; order detail; filters; cancel; negotiation (depends on `setup`) |
 
 `e2e/.auth/` is gitignored.
 
@@ -151,6 +151,10 @@ GitHub Actions CI runs `build:ci` **without** Supabase env. E2E is **local-only*
 | `e2e/global-chat-realtime.spec.ts` | AML filter, OfferCard realtime, accept-offer sync |
 | `e2e/marketplace-search-offer.spec.ts` | Marketplace keyword search, grid price, product page navigation, slide-over offer |
 | `e2e/member-trading-p2p.spec.ts` | P2P offer accept → `member_orders` → trading list → complete → review |
+| `e2e/member-auth-escrow.spec.ts` | Auth offer → accept → mock pay → dev one-click complete (`member-trading`) |
+| `e2e/member-order-detail-p2p.spec.ts` | P2P order detail handover CTA + 返回交易管理 |
+| `e2e/member-order-detail-auth.spec.ts` | Auth mock pay panel + seller inbound form (when DB grant allows) |
+| `e2e/member-trading-filters.spec.ts` | Trading status/persona tabs + search (`buyer` shell / `member-trading` data) |
 | `e2e/member-dashboard.spec.ts` | Overview, daily check-in, rewards coupon tabs |
 | `e2e/member-collection-wishlist.spec.ts` | Wishlist star/remove/sort + hobby 收錄 + merch 上架 + post-listing collection prompt |
 | `e2e/member-collection-operations.spec.ts` | Collection filter chips + grade update + remove + sell prefill + sold filter (seed) |
@@ -228,17 +232,36 @@ When `hasChatRealtimeFixtures()` is false, the spec calls `test.skip()`.
 
 ## Member flows (`buyer` / `seller` / `member-trading`)
 
-Member E2E covers dashboard, rewards, collection/wishlist, auth redirect, settings, inventory smoke, and the **P2P trading closure** (no escrow).
+Member E2E covers dashboard, rewards, collection/wishlist, auth redirect, settings, inventory smoke, **P2P trading closure**, and **auth escrow mock payment** (dev one-click completion).
 
-### Escrow exclusion
+### P2P vs auth escrow
 
-Orders with `use_authentication = true` (Stripe / custody path) are **out of scope** until payment is enabled. Specs call `guardP2pMemberOrder()` and `test.skip()` when an escrow order is detected — do not auto-fix product gaps in `app/`.
+| Path | `use_authentication` | Payment | Completion |
+|------|---------------------|---------|------------|
+| P2P | `false` | None (面交) | Buyer「確認完成交易」 |
+| Auth escrow | `true` | Mock pay panel (dev) | Dev「一鍵跑完 Mock 全流程」 |
+
+P2P specs call `guardP2pMemberOrder()` and skip when an auth order is detected. Auth specs call `guardAuthMemberOrder()` and require listing `use_authentication = true`.
+
+### Auth escrow closure (`member-trading` project)
+
+Dual-browser serial journey (`e2e/member-auth-escrow.spec.ts`):
+
+1. Buyer submits offer with **鑑定加購** ON
+2. Seller accepts in Global Chat
+3. Buyer trading list → **待付款** + **前往付款**
+4. Order detail → mock pay panel → **確認模擬付款** (trigger fixed in `20260709210000_member_orders_e2e_grants_auth_trigger.sql`)
+5. Dev panel → **一鍵跑完 Mock 全流程** → completed
+
+```bash
+bun run test:e2e -- e2e/member-auth-escrow.spec.ts --project=member-trading
+```
 
 ### P2P trading closure (`member-trading` project)
 
 Dual-browser serial journey (`e2e/member-trading-p2p.spec.ts`):
 
-1. Buyer submits HK$299 offer with authentication **off** (merchant detail slide-over)
+1. Buyer submits offer with authentication **off** (dynamic amount from `E2E_LISTING_ID` price)
 2. Seller accepts in Global Chat
 3. DB assert `member_orders` row (`use_authentication = false`)
 4. Buyer `/profile/user/trading` → order detail (no「前往付款」)
@@ -256,7 +279,9 @@ Uses `hasMemberTradingFixtures()` (alias of `hasChatRealtimeFixtures()`).
 |----------|---------|
 | `getLatestMemberOrderForListing({ listingId, buyerId })` | Poll newest `member_orders` row (returns `null` if service role lacks table grant) |
 | `getMemberOrderById(orderId)` | Read order status / escrow fields |
-| `guardP2pMemberOrder(order)` | Skip escrow (`use_authentication`) orders |
+| `guardP2pMemberOrder(order)` | Skip auth escrow (`use_authentication`) orders |
+| `guardAuthMemberOrder(order)` | Skip non-auth orders in escrow specs |
+| `getListingAcceptsAuthentication(listingId)` | Skip auth specs when listing disallows add-on |
 | `getReviewForMemberOrder({ memberOrderId, reviewerId })` | Assert `transaction_reviews` when grants exist |
 | `getGamificationStatsForProfile(profileId)` | Optional check-in poll (requires table grant) |
 | `countProductWatchlistsForUser(userId, productId)` | Optional wishlist DB assert |
@@ -265,6 +290,7 @@ Uses `hasMemberTradingFixtures()` (alias of `hasChatRealtimeFixtures()`).
 | `countUserCollectionsForUserProduct` / `countActiveListingsForSellerProduct` | Holdings / inventory DB asserts |
 | `getLatestUserCollectionId` / `getListingSourceCollectionId` / `getListingStatus` | Collection sell + trading fixture guards |
 | `deactivateActiveListingsForSellerProduct` | Cleanup buyer orphan listings before sell-prefill test |
+| `resetE2eListingTradingFixture({ listingId, buyerId, sellerId })` | Cancel pending `member_orders` + non-terminal `offers` on fixture listing; re-activate listing (`rpc_e2e_reset_listing_trading_fixture` with RPC fallback) |
 | `markUserCollectionAsSold` | Seed **已售出** filter (skips when service role lacks grant) |
 | `getLatestActiveListingForSellerProduct` / `setListingStatusInactive` | Merch listing cleanup |
 
@@ -329,7 +355,17 @@ bun run test:e2e -- e2e/member-collection-operations.spec.ts --project=buyer
 | `seller` | Trading shell + **賣單** tab |
 | `member-trading` | Seller cancels pending P2P order from trading list |
 
-Requires **`E2E_LISTING_ID` → `active`** seller listing (skips when listing is `sold` / `hold` / etc.).
+Requires **`E2E_LISTING_ID` → `active`** seller listing (skips when listing is `sold` / `hold` / etc.). Dual-browser trading specs call `resetE2eListingTradingFixture()` before each offer flow so auth/P2P runs do not collide on the same listing.
+
+### Fixture cleanup (`member-trading`)
+
+Before each offer accept / negotiation / cancel flow, helpers call `resetE2eListingTradingFixture()` which:
+
+1. Cancels pending `member_orders` for `E2E_LISTING_ID` + buyer
+2. Marks non-terminal `offers` (`pending` / `accepted`) as `cancelled`
+3. Sets listing back to `active`
+
+Requires migration `20260709200000_rpc_e2e_reset_listing_trading_fixture.sql` (`bunx supabase db push`). Falls back to `rpc_reject_offer` + `rpc_cancel_member_order` when RPC is not deployed.
 
 ### Offer negotiation (`member-trading`)
 
@@ -341,6 +377,21 @@ Requires **`E2E_LISTING_ID` → `active`** seller listing (skips when listing is
 ```bash
 bun run test:e2e -- e2e/member-offer-negotiation.spec.ts --project=member-trading
 ```
+
+### Order detail CTAs (`member-trading`)
+
+`e2e/member-order-detail-p2p.spec.ts` — P2P handover CTA, no mock pay; **返回交易管理** link.
+
+`e2e/member-order-detail-auth.spec.ts` — auth order at payment → mock pay panel visible; seller inbound form when service role can seed custody.
+
+### Trading filters (`buyer` / `member-trading`)
+
+`e2e/member-trading-filters.spec.ts`:
+
+| Project | Test |
+|---------|------|
+| `buyer` | Status tabs (全部/待處理/已完成/已取消), persona tabs (買單/賣單), `#user-order-search` |
+| `member-trading` | Pending P2P order under 待處理 + 買單; search by order number |
 
 ### Auth + settings (`guest` / `buyer`)
 

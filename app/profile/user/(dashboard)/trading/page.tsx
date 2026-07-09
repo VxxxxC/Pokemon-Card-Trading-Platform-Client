@@ -5,6 +5,8 @@ import {
 } from "./UserTradingPageData";
 import { UserTradingSkeleton } from "./UserTradingSkeleton";
 
+export const dynamic = "force-dynamic";
+
 type UserTradingPageProps = {
   searchParams: Promise<{ filter?: string }>;
 };

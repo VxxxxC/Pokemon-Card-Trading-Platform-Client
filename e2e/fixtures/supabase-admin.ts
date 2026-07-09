@@ -594,12 +594,30 @@ export type MemberOrderAuditRow = {
   use_authentication: boolean;
   escrow_status: string | null;
   order_number: string | null;
+  inbound_tracking_no?: string | null;
   final_price: number;
 };
 
 export type P2pOrderGuardResult =
   | { ok: true; order: MemberOrderAuditRow }
   | { ok: false; skipReason: string };
+
+export type AuthOrderGuardResult =
+  | { ok: true; order: MemberOrderAuditRow }
+  | { ok: false; skipReason: string };
+
+export function guardAuthMemberOrder(
+  order: MemberOrderAuditRow,
+): AuthOrderGuardResult {
+  if (!order.use_authentication) {
+    return {
+      ok: false,
+      skipReason: "Order is not an auth escrow member order",
+    };
+  }
+
+  return { ok: true, order };
+}
 
 export function guardP2pMemberOrder(
   order: MemberOrderAuditRow,
@@ -615,6 +633,30 @@ export function guardP2pMemberOrder(
   return { ok: true, order };
 }
 
+export async function getMemberOrderIdForOffer(
+  offerId: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("chat_messages")
+    .select("member_order_id")
+    .eq("offer_id", offerId)
+    .not("member_order_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getMemberOrderIdForOffer] ${error.message}`);
+  }
+
+  return data?.member_order_id ?? null;
+}
+
 export async function getLatestMemberOrderForListing(params: {
   listingId: string;
   buyerId: string;
@@ -624,7 +666,7 @@ export async function getLatestMemberOrderForListing(params: {
   const { data, error } = await admin
     .from("member_orders")
     .select(
-      "id, listing_id, buyer_id, seller_id, status, use_authentication, escrow_status, order_number, final_price",
+      "id, listing_id, buyer_id, seller_id, status, use_authentication, escrow_status, order_number, final_price, inbound_tracking_no",
     )
     .eq("listing_id", params.listingId)
     .eq("buyer_id", params.buyerId)
@@ -650,7 +692,7 @@ export async function getMemberOrderById(
   const { data, error } = await admin
     .from("member_orders")
     .select(
-      "id, listing_id, buyer_id, seller_id, status, use_authentication, escrow_status, order_number, final_price",
+      "id, listing_id, buyer_id, seller_id, status, use_authentication, escrow_status, order_number, final_price, inbound_tracking_no",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -951,6 +993,44 @@ export async function ensureListingActive(listingId: string): Promise<boolean> {
   return true;
 }
 
+export async function ensureListingP2pMode(listingId: string): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin
+    .from("listings")
+    .update({ use_authentication: false, status: "active" })
+    .eq("id", listingId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return false;
+    }
+    throw new Error(`[ensureListingP2pMode] ${error.message}`);
+  }
+
+  return true;
+}
+
+export async function ensureListingAcceptsAuthentication(
+  listingId: string,
+): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin
+    .from("listings")
+    .update({ use_authentication: true })
+    .eq("id", listingId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return false;
+    }
+    throw new Error(`[ensureListingAcceptsAuthentication] ${error.message}`);
+  }
+
+  return true;
+}
+
 export async function getListingStatus(
   listingId: string,
 ): Promise<string | null> {
@@ -970,6 +1050,50 @@ export async function getListingStatus(
   }
 
   return data?.status ?? null;
+}
+
+export async function getListingAcceptsAuthentication(
+  listingId: string,
+): Promise<boolean | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("listings")
+    .select("use_authentication")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return null;
+    }
+    throw new Error(`[getListingAcceptsAuthentication] ${error.message}`);
+  }
+
+  return data?.use_authentication ?? false;
+}
+
+export async function advanceAuthOrderToCustody(
+  orderId: string,
+): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin
+    .from("member_orders")
+    .update({
+      escrow_status: "custody",
+      payment_confirmed_at: new Date().toISOString(),
+    })
+    .eq("id", orderId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return false;
+    }
+    throw new Error(`[advanceAuthOrderToCustody] ${error.message}`);
+  }
+
+  return true;
 }
 
 export async function deactivateActiveListingsForSellerProduct(
@@ -1027,4 +1151,176 @@ export async function markUserCollectionAsSold(params: {
   }
 
   return true;
+}
+
+export type E2eListingTradingResetResult = {
+  ok: boolean;
+  method: "rpc" | "fallback" | "skipped";
+  cancelledOrders: number;
+  cancelledOffers: number;
+  error?: string;
+};
+
+function isMissingRpcError(message: string | undefined): boolean {
+  const normalized = message?.toLowerCase() ?? "";
+  return (
+    normalized.includes("could not find the function") ||
+    normalized.includes("function public.rpc_e2e_reset_listing_trading_fixture") ||
+    normalized.includes("schema cache")
+  );
+}
+
+export async function resetE2eListingTradingFixture(params: {
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+}): Promise<E2eListingTradingResetResult> {
+  if (!hasE2eAdminEnv()) {
+    return {
+      ok: false,
+      method: "skipped",
+      cancelledOrders: 0,
+      cancelledOffers: 0,
+      error: "Missing SUPABASE_SERVICE_ROLE_KEY",
+    };
+  }
+
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await (
+    admin as unknown as {
+      rpc: (
+        fn: "rpc_e2e_reset_listing_trading_fixture",
+        args: {
+          p_listing_id: string;
+          p_buyer_id: string;
+          p_seller_id: string;
+        },
+      ) => Promise<{
+        data: {
+          cancelled_orders?: number;
+          cancelled_offers?: number;
+        } | null;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("rpc_e2e_reset_listing_trading_fixture", {
+    p_listing_id: params.listingId,
+    p_buyer_id: params.buyerId,
+    p_seller_id: params.sellerId,
+  });
+
+  if (!error && data) {
+    return {
+      ok: true,
+      method: "rpc",
+      cancelledOrders: Number(data.cancelled_orders ?? 0),
+      cancelledOffers: Number(data.cancelled_offers ?? 0),
+    };
+  }
+
+  if (error && !isMissingRpcError(error.message)) {
+    return {
+      ok: false,
+      method: "rpc",
+      cancelledOrders: 0,
+      cancelledOffers: 0,
+      error: error.message,
+    };
+  }
+
+  let cancelledOffers = 0;
+  let cancelledOrders = 0;
+
+  const { data: pendingOffers, error: pendingOffersError } = await admin
+    .from("offers")
+    .select("id")
+    .eq("listing_id", params.listingId)
+    .eq("buyer_id", params.buyerId)
+    .eq("status", "pending");
+
+  if (pendingOffersError) {
+    return {
+      ok: false,
+      method: "fallback",
+      cancelledOrders: 0,
+      cancelledOffers: 0,
+      error: pendingOffersError.message,
+    };
+  }
+
+  for (const offer of pendingOffers ?? []) {
+    if (!offer.id) {
+      continue;
+    }
+
+    const { error: rejectError } = await (
+      admin as unknown as {
+        rpc: (
+          fn: "rpc_reject_offer",
+          args: { p_offer_id: string; p_seller_id: string },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("rpc_reject_offer", {
+      p_offer_id: offer.id,
+      p_seller_id: params.sellerId,
+    });
+
+    if (!rejectError) {
+      cancelledOffers += 1;
+    }
+  }
+
+  const roomId = await ensureDbChatRoom(params.buyerId, params.sellerId);
+  const { data: orderMessages, error: orderMessagesError } = await admin
+    .from("chat_messages")
+    .select("member_order_id")
+    .eq("room_id", roomId)
+    .not("member_order_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (orderMessagesError) {
+    return {
+      ok: false,
+      method: "fallback",
+      cancelledOrders,
+      cancelledOffers,
+      error: orderMessagesError.message,
+    };
+  }
+
+  const seenOrderIds = new Set<string>();
+  for (const message of orderMessages ?? []) {
+    const orderId = message.member_order_id;
+    if (!orderId || seenOrderIds.has(orderId)) {
+      continue;
+    }
+    seenOrderIds.add(orderId);
+
+    const { error: cancelError } = await (
+      admin as unknown as {
+        rpc: (
+          fn: "rpc_cancel_member_order",
+          args: { p_order_id: string; p_user_id: string },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("rpc_cancel_member_order", {
+      p_order_id: orderId,
+      p_user_id: params.sellerId,
+    });
+
+    if (!cancelError) {
+      cancelledOrders += 1;
+    }
+  }
+
+  await ensureListingActive(params.listingId);
+
+  return {
+    ok: true,
+    method: "fallback",
+    cancelledOrders,
+    cancelledOffers,
+  };
 }
