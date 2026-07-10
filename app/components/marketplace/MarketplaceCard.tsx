@@ -8,6 +8,7 @@ import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
+import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
 import type { Tables } from "@/types/supabase";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 
@@ -27,6 +28,9 @@ export type MarketplaceListing = {
   price: number; // HKD value
   delta: number;
   deltaDirection: "up" | "down";
+  marketAvgPrice?: number | null;
+  marketReferenceSource?: "snkrdunk" | "platform" | null;
+  priceVsMarketPct?: number | null;
   image: string;
   seller: string;
   sellerId?: string;
@@ -137,7 +141,6 @@ function MarketplaceCardView({
     listing.sellerId === currentUserId;
   const productDetailHref = resolveProductDetailHref(listing);
   const formattedPrice = `HK$ ${listing.price.toLocaleString("en-HK")}`;
-  const formattedDelta = `${listing.deltaDirection === "up" ? "▲" : "▼"} HK$ ${listing.delta.toLocaleString("en-HK")}`;
   const displayCardNo = listing.cardNo ?? listing.id;
   const displaySetAndCardNo = listing.set
     ? `${listing.set.toUpperCase()} · ${displayCardNo}`
@@ -241,13 +244,10 @@ function MarketplaceCardView({
                 <p className="font-mono font-bold tracking-tight text-[16px] text-[#eae1da] leading-none">
                   {formattedPrice}
                 </p>
-                <span
-                  className={`font-mono text-[11px] whitespace-nowrap flex items-center gap-0.5 ${
-                    listing.deltaDirection === "up" ? "text-[#10b981]" : "text-[#ef4444]"
-                  }`}
-                >
-                  {formattedDelta}
-                </span>
+                <PriceSpreadBadge
+                  priceVsMarketPct={listing.priceVsMarketPct}
+                  className="text-[11px]"
+                />
               </div>
             </div>
             <div className="text-right min-w-0 shrink-0">
@@ -280,7 +280,11 @@ function MarketplaceCardView({
             我的掛單 · 無法出價
           </button>
         ) : (
-          <BuyButton listing={listing} className="w-full" />
+          <BuyButton
+            listing={listing}
+            className="w-full"
+            currentUserId={currentUserId}
+          />
         )}
       </div>
     </motion.article>

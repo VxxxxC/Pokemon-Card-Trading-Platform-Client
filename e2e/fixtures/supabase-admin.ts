@@ -1324,3 +1324,55 @@ export async function resetE2eListingTradingFixture(params: {
     cancelledOffers,
   };
 }
+
+export type ReportAuditRow = {
+  id: string;
+  reporter_id: string;
+  target_id: string;
+  target_type: string;
+  reason: string;
+  status: string | null;
+};
+
+export async function deletePendingReports(params: {
+  reporterId: string;
+  targetId: string;
+}): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("reports")
+    .delete()
+    .eq("reporter_id", params.reporterId)
+    .eq("target_id", params.targetId)
+    .eq("status", "pending");
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[deletePendingReports] ${error.message}`);
+  }
+}
+
+export async function getLatestReport(params: {
+  reporterId: string;
+  targetId: string;
+}): Promise<ReportAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("reports")
+    .select("id, reporter_id, target_id, target_type, reason, status")
+    .eq("reporter_id", params.reporterId)
+    .eq("target_id", params.targetId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getLatestReport] ${error.message}`);
+  }
+
+  return (data as ReportAuditRow | null) ?? null;
+}

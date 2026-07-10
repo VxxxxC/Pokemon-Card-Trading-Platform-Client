@@ -69,7 +69,9 @@ export function AccordionFilters({
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const rarities = raritiesProp ?? catalogRarities;
+  const rarities = (raritiesProp ?? catalogRarities).filter(
+    (rarity) => rarity.toLowerCase() !== "common",
+  );
 
   return (
     <div className="space-y-1 bg-[#26211C] p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">

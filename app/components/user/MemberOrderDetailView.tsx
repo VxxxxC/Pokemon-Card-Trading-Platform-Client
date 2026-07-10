@@ -16,6 +16,7 @@ import {
 import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDevPanel";
 import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
+import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
@@ -243,16 +244,12 @@ export function MemberOrderDetailView({
                 </p>
               ) : null}
             </div>
-            <div className="relative w-10 h-10 rounded-full border border-white/10 overflow-hidden bg-[#17130f] shrink-0 shadow-xs mb-1">
-              <Image
-                src={
-                  order.product.imageUrl ||
-                  "https://picsum.photos/seed/" + order.id + "/40/40"
-                }
-                alt={counterpartName + " 的頭像"}
-                fill
-                className="object-cover"
-                unoptimized
+            <div className="relative w-10 h-10 shrink-0 shadow-xs mb-1">
+              <ProfileAvatar
+                avatarUrl={order.counterparty.avatarUrl}
+                displayName={counterpartName}
+                className="w-10 h-10 border border-white/10"
+                fallbackClassName="bg-[#17130f] text-brand text-xs font-bold"
               />
             </div>
             <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">

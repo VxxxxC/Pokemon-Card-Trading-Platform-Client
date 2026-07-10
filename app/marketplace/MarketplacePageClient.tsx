@@ -67,7 +67,7 @@ function toMarketplaceListing(
   product: MarketplaceProductRow,
 ): MarketplaceListing {
   return {
-    id: product.productId,
+    id: product.lowestListingId,
     productId: product.productId,
     cardNo: product.cardNumber ?? product.displayId ?? product.productId,
     name: product.productName,
@@ -79,6 +79,9 @@ function toMarketplaceListing(
     price: product.lowestPrice,
     delta: 0,
     deltaDirection: "up",
+    marketAvgPrice: product.marketAvgPrice,
+    marketReferenceSource: product.marketReferenceSource,
+    priceVsMarketPct: product.priceVsMarketPct,
     image: product.imageUrl,
     seller: product.sellerName,
     sellerId: product.sellerId,

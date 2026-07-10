@@ -9,26 +9,21 @@ import {
   useMemo,
   memo,
 } from "react";
+import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { sendMessage } from "@/app/actions/chat";
+import { submitUserReport } from "@/app/actions/reports";
 import { isAmlSensitiveChatContent } from "@/app/lib/chat/realtimeChatMessages";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
 import { SystemOrderCompletedMessage } from "./SystemOrderCompletedMessage";
-import { ReviewModal } from "@/app/components/trading/ReviewModal";
 import {
   useHkCardVaultStore,
   type Message,
@@ -37,21 +32,33 @@ import {
 import { useShallow } from "zustand/react/shallow";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import { useRoomReviewedOrderIds } from "@/app/lib/hooks/useRoomReviewedOrderIds";
+import { useChatThreadPagination } from "@/app/lib/hooks/useChatThreadPagination";
+import { useIsDesktopChat } from "@/app/lib/hooks/useIsDesktopChat";
 import {
   formatMessageTime,
   getDateSeparatorLabel,
 } from "@/app/lib/utils/chatUtils";
 import { IoMdCheckboxOutline } from "react-icons/io";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Link from "next/link";
+import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
+
+const ReviewModal = dynamic(
+  () =>
+    import("@/app/components/trading/ReviewModal").then(
+      (module) => module.ReviewModal,
+    ),
+  { ssr: false },
+);
+
+const ChatReportDialogBody = dynamic(
+  () =>
+    import("@/app/components/chat/ChatReportDialogBody").then(
+      (module) => module.ChatReportDialogBody,
+    ),
+  { ssr: false },
+);
 
 export type { Message };
 
@@ -59,6 +66,7 @@ export interface ChatRoom {
   id: string;
   partnerId: string;
   partnerName: string;
+  partnerAvatarUrl: string;
   partnerTier: string;
   lastMessage: string;
   unreadCount: number;
@@ -156,8 +164,6 @@ function buildMessageRenderList(messages: Message[]) {
   }
   return items;
 }
-
-const THREAD_WINDOW_SIZE = 120;
 
 type RenderItem = ReturnType<typeof buildMessageRenderList>[number];
 
@@ -478,13 +484,23 @@ function ChatLobbyLoadingRows() {
   );
 }
 
+function ChatLobbyRefreshingHint() {
+  return (
+    <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
+      更新中…
+    </p>
+  );
+}
+
 type GlobalChatConsoleProps = {
   inboxLoading?: boolean;
+  isLobbyRefreshing?: boolean;
   threadLoadingRoomId?: string | null;
 };
 
 export function GlobalChatConsole({
   inboxLoading = false,
+  isLobbyRefreshing = false,
   threadLoadingRoomId = null,
 }: GlobalChatConsoleProps) {
   const {
@@ -520,38 +536,16 @@ export function GlobalChatConsole({
   );
 
   const currentUserId = useCurrentUserId();
+  const isDesktopChat = useIsDesktopChat();
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState<string>("");
   const [reportDetails, setReportDetails] = useState<string>("");
-
-  const handleReportConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!reportCategory) {
-      e.preventDefault();
-      toast.error("❌ 請選擇舉報事項類別");
-      return;
-    }
-
-    toast.success("⚠️ 舉報信號已受理", {
-      description:
-        "【" +
-        reportCategory +
-        "】風控隊列已啟動，案件詳情已留存快照，合約風控官將於 15 分鐘內介入審查。",
-      className:
-        "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
-    });
-
-    setIsReportOpen(false);
-    setReportCategory("");
-    setReportDetails("");
-  };
+  const [isReportSubmitting, setIsReportSubmitting] = useState(false);
 
   const [composerByRoomId, setComposerByRoomId] = useState<
     Record<string, string>
   >({});
-  const [expandedForRoomId, setExpandedForRoomId] = useState<string | null>(
-    null,
-  );
   const sendInFlightRef = useRef(false);
   const [activeReview, setActiveReview] = useState<{
     orderId: string;
@@ -635,7 +629,7 @@ export function GlobalChatConsole({
       }
 
       if (
-        window.innerWidth >= 1024 &&
+        isDesktopChat &&
         desktopConsoleRef.current &&
         !desktopConsoleRef.current.contains(target)
       ) {
@@ -648,16 +642,10 @@ export function GlobalChatConsole({
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
     };
-  }, [isChatOpen, onClose]);
+  }, [isChatOpen, isDesktopChat, onClose]);
 
   const activeRoomMessageCount =
     chats.find((room) => room.id === activeRoomId)?.messages.length ?? 0;
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [activeRoomMessageCount, activeRoomId, isChatOpen]);
 
   const inputText = composerByRoomId[activeRoomId] ?? "";
   const setInputText = useCallback(
@@ -669,8 +657,6 @@ export function GlobalChatConsole({
     },
     [activeRoomId],
   );
-
-  const threadExpanded = expandedForRoomId === activeRoomId;
 
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -684,9 +670,74 @@ export function GlobalChatConsole({
     );
   }, [chats, lobbySearchQuery]);
 
+  const showLobbySkeleton =
+    inboxLoading && filteredLobbyRooms.length === 0;
+
   const activeRoom = useMemo(
     () => chats.find((room) => room.id === activeRoomId) ?? null,
     [activeRoomId, chats],
+  );
+
+  const handleReportConfirm = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+
+      if (!reportCategory) {
+        toast.error("❌ 請選擇舉報事項類別");
+        return;
+      }
+
+      if (!activeRoom || !isDbChatRoomId(activeRoomId)) {
+        toast.error("對話尚未建立，無法舉報");
+        return;
+      }
+
+      if (isReportSubmitting) {
+        return;
+      }
+
+      setIsReportSubmitting(true);
+
+      try {
+        const result = await submitUserReport({
+          reportedUserId: activeRoom.partnerId,
+          category: reportCategory,
+          details: reportDetails,
+          chatRoomId: activeRoomId,
+        });
+
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+
+        toast.success("⚠️ 舉報信號已受理", {
+          description:
+            "【" +
+            reportCategory +
+            "】風控隊列已啟動，案件詳情已留存快照。",
+          className:
+            "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
+        });
+
+        setIsReportOpen(false);
+        setReportCategory("");
+        setReportDetails("");
+      } catch (error) {
+        const msg =
+          error instanceof Error ? error.message : "提交舉報時發生錯誤";
+        toast.error(msg);
+      } finally {
+        setIsReportSubmitting(false);
+      }
+    },
+    [
+      activeRoom,
+      activeRoomId,
+      isReportSubmitting,
+      reportCategory,
+      reportDetails,
+    ],
   );
 
   const { reviewedOrderIds, isReviewLoading } = useRoomReviewedOrderIds(
@@ -700,17 +751,20 @@ export function GlobalChatConsole({
     [activeRoom?.messages],
   );
 
-  const renderList = useMemo(() => {
-    if (threadExpanded || fullRenderList.length <= THREAD_WINDOW_SIZE) {
-      return fullRenderList;
-    }
-    return fullRenderList.slice(-THREAD_WINDOW_SIZE);
-  }, [fullRenderList, threadExpanded]);
-
-  const hiddenMessageCount = fullRenderList.length - renderList.length;
+  const renderList = fullRenderList;
 
   const isThreadLoading =
     Boolean(activeRoomId) && threadLoadingRoomId === activeRoomId;
+
+  const { loadingOlder, handleScroll, showAllHistoryLoaded } =
+    useChatThreadPagination({
+      scrollRef,
+      activeRoomId,
+      activeRoom,
+      isThreadLoading,
+      isChatOpen,
+      messageCount: activeRoomMessageCount,
+    });
 
   useEffect(() => {
     if (!isChatOpen || activeRoom || mobileView !== "CHAT") {
@@ -787,16 +841,14 @@ export function GlobalChatConsole({
       });
   };
 
-  const chatConsoleLayer = (
-    <>
-      {/* 1. Desktop View */}
+  const chatConsoleLayer = isDesktopChat ? (
       <motion.div
         ref={desktopConsoleRef}
         data-chat-console="true"
-        initial={{ opacity: 0, y: 40, scale: 0.98 }}
+        initial={false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40, scale: 0.98 }}
-        className="hidden lg:flex fixed bottom-6 right-6 z-[500] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
+        className="flex fixed bottom-6 right-6 z-[500] w-[640px] h-[460px] bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-2xl shadow-[0_16px_48px_rgba(0,0,0,0.8)] overflow-hidden"
       >
           {/* Left column: room list */}
           <div className="w-[200px] border-r border-[rgba(237,232,224,0.06)] bg-[#1A1612] flex flex-col">
@@ -887,7 +939,8 @@ export function GlobalChatConsole({
             </div>
 
             <div className="flex-1 overflow-y-auto p-1.5 space-y-1 scrollbar-none">
-              {inboxLoading ? (
+              {isLobbyRefreshing ? <ChatLobbyRefreshingHint /> : null}
+              {showLobbySkeleton ? (
                 <ChatLobbyLoadingRows />
               ) : (
                 filteredLobbyRooms.map((room: ChatRoom) => (
@@ -905,9 +958,12 @@ export function GlobalChatConsole({
                       : "hover:bg-[#26211C]/40 border border-transparent")
                   }
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
-                    {room.partnerName[0]}
-                  </div>
+                  <ProfileAvatar
+                    avatarUrl={room.partnerAvatarUrl}
+                    displayName={room.partnerName}
+                    className="w-7 h-7 border border-brand/20 shrink-0"
+                    fallbackClassName="bg-[#17130f] text-[11px] font-bold text-brand"
+                  />
                   <div className="min-w-0 flex-1 flex flex-row items-center text-nowrap gap-x-1">
                     <div className="font-sans font-medium text-[12px] text-text-primary truncate">
                       {room.partnerName}
@@ -938,9 +994,12 @@ export function GlobalChatConsole({
                   onClick={onClose}
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
-                    {activeRoom.partnerName[0]}
-                  </div>
+                  <ProfileAvatar
+                    avatarUrl={activeRoom.partnerAvatarUrl}
+                    displayName={activeRoom.partnerName}
+                    className="w-7 h-7 border border-brand/20 shrink-0"
+                    fallbackClassName="bg-[#17130f] text-[11px] font-bold text-brand"
+                  />
                   <span className="font-sans font-bold text-[13px] text-text-primary">
                     {activeRoom.partnerName}
                   </span>
@@ -962,6 +1021,7 @@ export function GlobalChatConsole({
 
             <div
               ref={scrollRef}
+              onScroll={handleScroll}
               className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col relative"
             >
               {isThreadLoading ? (
@@ -971,14 +1031,15 @@ export function GlobalChatConsole({
                   </p>
                 </div>
               ) : null}
-              {hiddenMessageCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setExpandedForRoomId(activeRoomId)}
-                  className="mx-auto mb-2 shrink-0 rounded-full border border-white/10 bg-[#26211C]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-disabled hover:border-brand/30 hover:text-brand"
-                >
-                  顯示更早的 {hiddenMessageCount} 則訊息
-                </button>
+              {loadingOlder ? (
+                <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
+                  載入更早訊息…
+                </p>
+              ) : null}
+              {showAllHistoryLoaded ? (
+                <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
+                  已載入全部歷史訊息
+                </p>
               ) : null}
               <MessageThread
                 renderList={renderList}
@@ -1037,15 +1098,14 @@ export function GlobalChatConsole({
             )}
           </div>
         </motion.div>
-
-        {/* 2. Mobile View */}
+      ) : (
         <motion.div
           data-chat-console="true"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="lg:hidden fixed inset-0 z-[500] bg-[#17130f] flex flex-col"
+          className="fixed inset-0 z-[500] bg-[#17130f] flex flex-col"
         >
           {mobileView === "LIST" || !activeRoom ? (
             <div className="flex flex-col h-full">
@@ -1153,7 +1213,8 @@ export function GlobalChatConsole({
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#17130f] scrollbar-none">
-                {inboxLoading ? (
+                {isLobbyRefreshing ? <ChatLobbyRefreshingHint /> : null}
+                {showLobbySkeleton ? (
                   <ChatLobbyLoadingRows />
                 ) : (
                   filteredLobbyRooms.map((room: ChatRoom) => (
@@ -1166,9 +1227,12 @@ export function GlobalChatConsole({
                     }}
                     className="w-full text-left p-3.5 rounded-2xl bg-[#26211C] border border-[rgba(237,232,224,0.04)] flex items-start gap-3.5 relative focus:outline-none"
                   >
-                    <div className="w-9 h-9 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center font-bold text-brand text-[13px] shrink-0">
-                      {room.partnerName[0]}
-                    </div>
+                    <ProfileAvatar
+                      avatarUrl={room.partnerAvatarUrl}
+                      displayName={room.partnerName}
+                      className="w-9 h-9 border border-brand/20 shrink-0"
+                      fallbackClassName="bg-[#17130f] text-[13px] font-bold text-brand"
+                    />
                     <div className="min-w-0 flex-1 ">
                       <div className="flex flex-row text-nowrap gap-x-1">
                         <span className="font-sans font-semibold text-[13px] text-text-primary">
@@ -1209,9 +1273,12 @@ export function GlobalChatConsole({
                       onClick={onClose}
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                     >
-                      <div className="w-7 h-7 rounded-full bg-[#17130f] border border-brand/20 flex items-center justify-center text-[11px] font-bold text-brand shrink-0">
-                        {activeRoom.partnerName[0]}
-                      </div>
+                      <ProfileAvatar
+                        avatarUrl={activeRoom.partnerAvatarUrl}
+                        displayName={activeRoom.partnerName}
+                        className="w-7 h-7 border border-brand/20 shrink-0"
+                        fallbackClassName="bg-[#17130f] text-[11px] font-bold text-brand"
+                      />
                       <span className="font-sans font-bold text-[13px] text-text-primary">
                         {activeRoom.partnerName}
                       </span>
@@ -1234,6 +1301,7 @@ export function GlobalChatConsole({
 
               <div
                 ref={scrollRef}
+                onScroll={handleScroll}
                 className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#17130f] scrollbar-none flex flex-col relative"
               >
                 {isThreadLoading ? (
@@ -1243,14 +1311,15 @@ export function GlobalChatConsole({
                     </p>
                   </div>
                 ) : null}
-                {hiddenMessageCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setExpandedForRoomId(activeRoomId)}
-                    className="mx-auto mb-2 shrink-0 rounded-full border border-white/10 bg-[#26211C]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-text-disabled hover:border-brand/30 hover:text-brand"
-                  >
-                    顯示更早的 {hiddenMessageCount} 則訊息
-                  </button>
+                {loadingOlder ? (
+                  <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
+                    載入更早訊息…
+                  </p>
+                ) : null}
+                {showAllHistoryLoaded ? (
+                  <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
+                    已載入全部歷史訊息
+                  </p>
                 ) : null}
                 <MobileMessageThread
                   renderList={renderList}
@@ -1291,18 +1360,19 @@ export function GlobalChatConsole({
             </div>
           )}
         </motion.div>
-    </>
-  );
+      );
 
   return (
     <>
-      <ReviewModal
-        isOpen={activeReview !== null}
-        onClose={handleCloseReview}
-        orderId={activeReview?.orderId ?? ""}
-        revieweeId={activeReview?.revieweeId ?? ""}
-        onSubmitted={handleReviewSubmitted}
-      />
+      {activeReview ? (
+        <ReviewModal
+          isOpen={activeReview !== null}
+          onClose={handleCloseReview}
+          orderId={activeReview.orderId}
+          revieweeId={activeReview.revieweeId}
+          onSubmitted={handleReviewSubmitted}
+        />
+      ) : null}
 
       <AlertDialog
       open={isReportOpen}
@@ -1316,100 +1386,20 @@ export function GlobalChatConsole({
     >
       {isMounted ? createPortal(chatConsoleLayer, document.body) : null}
 
-      {/* Report dialog */}
-      <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_12px_40px_rgba(239,68,68,0.15)] rounded-2xl max-w-sm p-6 animate-scaleUp">
-        <AlertDialogHeader className="text-left place-items-start gap-1">
-          <AlertDialogTitle className="text-[16px] font-black text-[#eae1da] flex items-center gap-2">
-            🚩 提交交易違規舉報
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-[11px] font-mono leading-normal text-[#8A8680] uppercase tracking-wider">
-            Secure Risk Mediation Protocol
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        <div className="space-y-4 py-3 font-sans text-[13px] w-full">
-          <div className="space-y-1.5">
-            <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
-              選擇舉報事項類別
-            </label>
-            <Select
-              value={reportCategory}
-              onValueChange={(value) => setReportCategory(value ?? "")}
-            >
-              <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-xl text-[#eae1da] font-sans text-[12px] hover:bg-[#2c2722] transition-colors focus:ring-0 focus:border-brand/40">
-                <SelectValue placeholder="點擊展開合約違規類別" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
-                <SelectItem
-                  value="惡意欺詐 / 虛假交易"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
-                  🛑 惡意欺詐 / 虛假交易 (FRAUD)
-                </SelectItem>
-                <SelectItem
-                  value="言語辱罵 / 不當言論"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
-                  💬 言語辱罵 / 不當言論 (HARASS)
-                </SelectItem>
-                <SelectItem
-                  value="誘導私下交易"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
-                  🔒 誘導私下交易 / 逃避中介 (OFFLINE)
-                </SelectItem>
-                <SelectItem
-                  value="其他違規行為"
-                  className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                >
-                  ⚙️ 其他違規行為 (OTHER)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label
-              htmlFor="chat-report-details"
-              className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide"
-            >
-              舉報或投訴之詳細事實敍述
-            </label>
-            <textarea
-              id="chat-report-details"
-              value={reportDetails}
-              onChange={(e) => setReportDetails(e.target.value)}
-              placeholder="請具體提供案發事實（例如：對方提供虛假銀行轉帳截圖、使用冀辱性詞彙等），以利風控官快速調閱對話存證。"
-              rows={3}
-              className="w-full bg-[#17130f] border border-white/5 rounded-xl text-[12.5px] font-sans text-[#eae1da] placeholder:text-[#50453b] p-3 focus:outline-none focus:border-brand/40 transition-colors resize-none leading-relaxed"
-            />
-          </div>
-
-          <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
-            ⚠️
-            聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨账戶風控扣分限制。
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 pt-1 w-full">
-          <AlertDialogAction
-            type="button"
-            onClick={handleReportConfirm}
-            className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
-          >
-            🚀 確認提交安全審查
-          </AlertDialogAction>
-          <AlertDialogCancel
-            onClick={() => {
-              setReportCategory("");
-              setReportDetails("");
-            }}
-            className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
-          >
-            取消返回
-          </AlertDialogCancel>
-        </div>
-      </AlertDialogContent>
+      {isReportOpen ? (
+        <ChatReportDialogBody
+          reportCategory={reportCategory}
+          reportDetails={reportDetails}
+          isSubmitting={isReportSubmitting}
+          onCategoryChange={(value) => setReportCategory(value)}
+          onDetailsChange={setReportDetails}
+          onConfirm={handleReportConfirm}
+          onCancel={() => {
+            setReportCategory("");
+            setReportDetails("");
+          }}
+        />
+      ) : null}
     </AlertDialog>
     </>
   );

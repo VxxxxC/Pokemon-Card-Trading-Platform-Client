@@ -3,7 +3,9 @@
 
 export interface SellOrder {
   readonly sellerName: string;
+  readonly sellerUsername?: string | null;
   readonly sellerId: string;
+  readonly sellerAvatarUrl?: string;
   readonly price: number;
   readonly sellerRating: number;
   readonly reviewCount?: number;

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -15,7 +16,18 @@ import { roomNeedsThreadHydration } from "@/app/lib/chat/roomHydration";
 import { useChatRoomRealtime } from "@/app/lib/hooks/useChatRoomRealtime";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
-import { GlobalChatConsole } from "@/app/components/chat/GlobalChatConsole";
+import { ChatOverlaySkeleton } from "@/app/components/chat/ChatOverlaySkeleton";
+
+const GlobalChatConsole = dynamic(
+  () =>
+    import("@/app/components/chat/GlobalChatConsole").then(
+      (module) => module.GlobalChatConsole,
+    ),
+  {
+    ssr: false,
+    loading: () => <ChatOverlaySkeleton />,
+  },
+);
 
 export function GlobalChatOverlay() {
   const isChatOpen = useHkCardVaultStore((state) => state.isChatOpen);
@@ -28,6 +40,7 @@ export function GlobalChatOverlay() {
   const lastLobbySyncAtRef = useRef(0);
   const LOBBY_STALE_MS = 30_000;
   const [inboxLoading, setInboxLoading] = useState(false);
+  const [isLobbyRefreshing, setIsLobbyRefreshing] = useState(false);
   const [threadLoadingRoomId, setThreadLoadingRoomId] = useState<string | null>(
     null,
   );
@@ -67,8 +80,13 @@ export function GlobalChatOverlay() {
   );
 
   const syncInboxLobby = useCallback(
-    async (options?: { showLoading?: boolean; force?: boolean }) => {
-      const showLoading = options?.showLoading ?? isChatOpen;
+    async (options?: {
+      showLoading?: boolean;
+      force?: boolean;
+      backgroundRefresh?: boolean;
+    }) => {
+      const showLoading = options?.showLoading ?? false;
+      const backgroundRefresh = options?.backgroundRefresh ?? false;
       const now = Date.now();
 
       if (
@@ -82,6 +100,9 @@ export function GlobalChatOverlay() {
 
       if (showLoading) {
         setInboxLoading(true);
+      }
+      if (backgroundRefresh) {
+        setIsLobbyRefreshing(true);
       }
 
       try {
@@ -101,12 +122,17 @@ export function GlobalChatOverlay() {
         applyLobbyMerge(result.data);
         lastLobbySyncAtRef.current = Date.now();
       } finally {
-        if (requestId === inboxRequestIdRef.current && showLoading) {
-          setInboxLoading(false);
+        if (requestId === inboxRequestIdRef.current) {
+          if (showLoading) {
+            setInboxLoading(false);
+          }
+          if (backgroundRefresh) {
+            setIsLobbyRefreshing(false);
+          }
         }
       }
     },
-    [applyLobbyMerge, isChatOpen],
+    [applyLobbyMerge],
   );
 
   const hydrateActiveThread = useCallback(async (roomId: string) => {
@@ -155,10 +181,16 @@ export function GlobalChatOverlay() {
   useEffect(() => {
     if (!isChatOpen) {
       setInboxLoading(false);
+      setIsLobbyRefreshing(false);
       return;
     }
 
-    void syncInboxLobby({ showLoading: true, force: true });
+    const hasCachedRooms = useHkCardVaultStore.getState().chats.length > 0;
+
+    void syncInboxLobby({
+      showLoading: !hasCachedRooms,
+      backgroundRefresh: hasCachedRooms,
+    });
   }, [isChatOpen, syncInboxLobby]);
 
   useEffect(() => {
@@ -175,6 +207,7 @@ export function GlobalChatOverlay() {
         <GlobalChatConsole
           key="global-chat-console"
           inboxLoading={inboxLoading}
+          isLobbyRefreshing={isLobbyRefreshing}
           threadLoadingRoomId={threadLoadingRoomId}
         />
       ) : null}

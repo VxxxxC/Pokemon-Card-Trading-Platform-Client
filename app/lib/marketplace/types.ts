@@ -6,6 +6,8 @@ export type GradeFilter = {
   score: string | null;
 };
 
+export type MarketplaceTrendSource = "snkrdunk" | "platform";
+
 export type MarketplaceProductRow = {
   productId: string;
   productName: string;
@@ -30,6 +32,9 @@ export type MarketplaceProductRow = {
   sellerName: string;
   sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
   useAuthentication: boolean;
+  marketAvgPrice: number | null;
+  marketReferenceSource: MarketplaceTrendSource | null;
+  priceVsMarketPct: number | null;
 };
 
 export type MarketplacePaginationMeta = {
@@ -112,6 +117,8 @@ export type MarketplaceProductListingRow = {
   gradingScore: string | null;
   sellerId: string;
   sellerName: string;
+  sellerUsername: string | null;
+  sellerAvatarUrl: string;
   sellerRating: number;
   sellerTotalTrades: number;
   sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
@@ -127,6 +134,8 @@ export type MarketplaceListingDetail = {
   gradingCompany: string;
   gradingScore: string | null;
   sellerId: string;
+  sellerDisplayName: string;
+  sellerUsername: string | null;
   sellerDescription: string | null;
   images: string[];
   useAuthentication: boolean;
@@ -254,6 +263,9 @@ export type MarketplaceSellerListingRow = {
   sellerName: string;
   sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
   useAuthentication: boolean;
+  marketAvgPrice: number | null;
+  marketReferenceSource: MarketplaceTrendSource | null;
+  priceVsMarketPct: number | null;
 };
 
 export type MarketplaceSellerListingsInput = {

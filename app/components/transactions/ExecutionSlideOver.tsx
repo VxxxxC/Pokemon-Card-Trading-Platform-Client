@@ -13,6 +13,10 @@ import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
 import {
+  formatSellerIdentityLabel,
+  resolveSellerProfilePath,
+} from "@/lib/marketplace/seller-identity";
+import {
   type SellOrder,
   type UnifiedProductSpec,
 } from "@/app/lib/mock-data/cards";
@@ -45,7 +49,8 @@ export function ExecutionSlideOver({
     (state) => state.openOfferChatSession,
   );
 
-  const { detail, isLoading: isDetailLoading } = useMarketplaceListingDetail({
+  const { detail, isLoading: isDetailLoading, error: detailError } =
+    useMarketplaceListingDetail({
     listingId,
     enabled: isOpen && listingId != null,
   });
@@ -66,17 +71,24 @@ export function ExecutionSlideOver({
     void incrementListingView(listingId);
   }, [isOpen, listingId]);
 
-  const catalogFallbackImages =
-    card.images.length > 0
-      ? card.images
-      : ["https://picsum.photos/seed/fallback/400/500"];
+  if (!isOpen || !order) {
+    return null;
+  }
 
-  const images =
-    detail?.images && detail.images.length > 0
-      ? detail.images
-      : !isDetailLoading
-        ? catalogFallbackImages
-        : [];
+  const listingImages = detail?.images ?? [];
+  const images = listingImages;
+
+  const sellerDisplayName =
+    detail?.sellerDisplayName?.trim() || order.sellerName;
+  const sellerUsername = detail?.sellerUsername ?? order.sellerUsername ?? null;
+  const sellerLabel = formatSellerIdentityLabel(
+    sellerDisplayName,
+    sellerUsername,
+  );
+  const sellerProfileHref = resolveSellerProfilePath({
+    sellerId: order.sellerId,
+    sellerUsername,
+  });
 
   const listingAcceptsBuyerAuth = detail?.useAuthentication !== false;
 
@@ -248,10 +260,11 @@ export function ExecutionSlideOver({
                   對接賣家商號
                 </span>
                 <Link
-                  href={`/profile/${order.sellerId}`}
+                  href={sellerProfileHref}
+                  onClick={onClose}
                   className="font-sans font-black text-[14px] text-brand underline cursor-pointer bg-transparent border-none text-left focus:outline-none"
                 >
-                  {order.sellerName} (@{order.sellerId}) →
+                  {sellerLabel} →
                 </Link>
               </div>
 
@@ -279,6 +292,14 @@ export function ExecutionSlideOver({
                     />
                   ))}
                 </div>
+              ) : detailError ? (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] text-red-200">
+                  {detailError}
+                </p>
+              ) : images.length === 0 ? (
+                <p className="rounded-lg border border-white/10 bg-[#120f0c] px-3 py-4 text-center text-[12px] text-[#8A8680]">
+                  此掛單暫無賣家實物照
+                </p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {images.map((img, idx) => (
@@ -303,10 +324,11 @@ export function ExecutionSlideOver({
             {/* ── Storefront navigation card ── */}
             <Link
               href={`/marketplace/${order.sellerId}/product/${productId}`}
+              onClick={onClose}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-brand/20 bg-[#17130f] hover:bg-[#26211C] font-sans font-bold text-[12.5px] text-brand transition-colors cursor-pointer text-left focus:outline-none"
             >
               <span>
-                🏪 查看 {order.sellerName} 的{" "}
+                🏪 查看 {sellerLabel} 的{" "}
                 <span className="font-black underline">{card.name}</span>
               </span>
               <svg

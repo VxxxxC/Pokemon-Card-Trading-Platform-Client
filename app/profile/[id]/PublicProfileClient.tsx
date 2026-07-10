@@ -7,6 +7,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { ProfileHeaderWithChat } from "@/app/components/profile/ProfileHeaderWithChat";
 import { PublicReviewPreviewCard } from "@/app/components/profile/PublicReviewPreviewCard";
+import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
 import type { PublicProfilePageBootstrap } from "@/app/actions/profile";
 import { IoChevronBack } from "react-icons/io5";
 import { useRouter } from "next/navigation";
@@ -127,13 +128,19 @@ export function PublicProfileClient({
                   <h3 className="font-sans text-[12.5px] text-[#eae1da] truncate group-hover:text-brand transition-colors">
                     {item.name}
                   </h3>
-                  <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5">
-                    <span className="font-mono text-[10px] text-[#10b981] font-bold">
+                  <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5 gap-1">
+                    <span className="font-mono text-[10px] text-[#10b981] font-bold truncate">
                       {item.grade.authority} {item.grade.score}
                     </span>
-                    <span className="font-mono font-black text-[13px] text-brand">
-                      HK${item.price.toLocaleString()}
-                    </span>
+                    <div className="flex flex-col items-end min-w-0">
+                      <span className="font-mono font-black text-[13px] text-brand">
+                        HK${item.price.toLocaleString()}
+                      </span>
+                      <PriceSpreadBadge
+                        priceVsMarketPct={item.priceVsMarketPct}
+                        className="text-[10px]"
+                      />
+                    </div>
                   </div>
                 </Link>
               ))}

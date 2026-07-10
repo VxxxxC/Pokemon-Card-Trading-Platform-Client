@@ -43,6 +43,15 @@ type UserTradingClientProps = {
   bootstrapError?: string;
 };
 
+const TRADING_TAB_LIST_CLASS =
+  "bg-[#17130f] border border-white/5 h-auto p-1";
+
+const TRADING_TAB_TRIGGER_CLASS =
+  "font-mono text-[11px] px-3 py-1 rounded-lg data-active:bg-[rgba(212,165,116,0.08)] data-active:text-brand data-active:font-bold data-active:shadow-xs";
+
+const TRADING_TAB_TRIGGER_PENDING_CLASS =
+  "data-active:bg-[rgba(239,68,68,0.06)] data-active:text-warning";
+
 function formatPersonaTabLabel(
   value: PersonaFilter,
   label: string,
@@ -272,15 +281,15 @@ export function UserTradingClient({
                   setTabStatus(value as TabStatusFilter);
                 }}
               >
-                <TabsList className="bg-[#17130f] border border-white/5 h-auto p-1">
+                <TabsList className={TRADING_TAB_LIST_CLASS}>
                   {STATUS_OPTIONS.map((option) => (
                     <TabsTrigger
                       key={option.value}
                       value={option.value}
                       className={cn(
-                        "font-mono text-[11px] px-3 py-1 rounded-lg data-active:bg-[rgba(212,165,116,0.08)] data-active:text-brand",
+                        TRADING_TAB_TRIGGER_CLASS,
                         option.value === "pending" &&
-                          "data-active:bg-[rgba(239,68,68,0.06)] data-active:text-warning",
+                          TRADING_TAB_TRIGGER_PENDING_CLASS,
                       )}
                     >
                       {formatStatusTabLabel(
@@ -300,12 +309,14 @@ export function UserTradingClient({
                 setPersona(value as PersonaFilter);
               }}
             >
-              <TabsList className="bg-[#17130f] border border-white/5 h-auto p-1 w-full sm:w-auto">
+              <TabsList
+                className={cn(TRADING_TAB_LIST_CLASS, "w-full sm:w-auto")}
+              >
                 {PERSONA_OPTIONS.map((option) => (
                   <TabsTrigger
                     key={option.value}
                     value={option.value}
-                    className="font-sans text-[12px] px-4 py-1.5 data-active:text-text-primary"
+                    className={TRADING_TAB_TRIGGER_CLASS}
                   >
                     {formatPersonaTabLabel(
                       option.value,

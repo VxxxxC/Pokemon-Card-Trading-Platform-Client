@@ -4,6 +4,7 @@ export const INITIAL_CHATS = [
   {
     id: "RM-MOCK-A-BUYER-MERCHANT",
     partnerId: "HKCV-8839-44A",
+    partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "渡邊道館",
     partnerTier: "專業認證商戶",
     lastMessage: "· 渡邊道館 已接受您的出價。",
@@ -50,6 +51,7 @@ export const INITIAL_CHATS = [
   {
     id: "RM-MOCK-B-BUYER-USER",
     partnerId: "USR-MOCK-B-001",
+    partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "信和執雞大師",
     partnerTier: "認證用戶",
     lastMessage: "這張皮卡丘 AR 放很久了，最低就這個價啦，不能再便宜了。",
@@ -102,6 +104,7 @@ export const INITIAL_CHATS = [
   {
     id: "RM-MOCK-C-SELLER-USER",
     partnerId: "USR-MOCK-C-001",
+    partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "九龍灣卡王",
     partnerTier: "認證買家",
     lastMessage: "· 九龍灣卡王 向您提報了 HK$ 3,200 的預期出價。",
@@ -142,6 +145,7 @@ export const INITIAL_CHATS = [
   {
     id: "RM-MOCK-D-SPECULATOR",
     partnerId: "USR-MOCK-D-001",
+    partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "秋葉原海外直送店",
     partnerTier: "專業認證商戶",
     lastMessage: "日本直郵，大概 3-5 天到香港，含中介保險。",

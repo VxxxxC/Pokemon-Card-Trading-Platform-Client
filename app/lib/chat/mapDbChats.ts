@@ -5,11 +5,13 @@ import type {
 } from "@/app/store/useHkCardVaultStore";
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import type { Tables } from "@/types/supabase";
+import { resolveAvatarUrl } from "@/lib/profile/avatar";
 
 type ProfileSnippet = {
   id: string;
   display_name: string;
   role: Tables<"profiles">["role"];
+  avatar_path: string | null;
 };
 
 type CatalogSnippet = {
@@ -227,11 +229,13 @@ function mapRoomToStore(
     id: room.buyer_id,
     display_name: "買家",
     role: "member" as const,
+    avatar_path: null,
   };
   const seller = room.seller ?? {
     id: room.seller_id,
     display_name: "賣家",
     role: "merchant" as const,
+    avatar_path: null,
   };
 
   const isBuyer = currentUserId === room.buyer_id;
@@ -273,6 +277,7 @@ function mapRoomToStore(
     id: room.id,
     partnerId,
     partnerName,
+    partnerAvatarUrl: resolveAvatarUrl(partner.avatar_path),
     partnerTier: partnerTierForRole(partner.role),
     lastMessage,
     unreadCount: 0,

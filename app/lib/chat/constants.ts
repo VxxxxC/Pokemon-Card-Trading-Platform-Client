@@ -1,4 +1,7 @@
 export const MOCK_CHAT_ID_PREFIX = "RM-MOCK";
+
+/** Messages fetched per thread page (initial load + scroll-up) */
+export const CHAT_THREAD_PAGE_SIZE = 50;
 export const PENDING_CHAT_ID_PREFIX = "pending-";
 
 const DB_CHAT_ROOM_UUID_RE =

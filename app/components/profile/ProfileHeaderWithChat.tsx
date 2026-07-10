@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
+import { submitUserReport } from "@/app/actions/reports";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 
 interface Badge {
   id: string;
@@ -56,6 +58,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
   // 核心狀態欄位：舉報類別與詳細內文說明
   const [reportCategory, setReportCategory] = useState<string>("");
   const [reportDetails, setReportDetails] = useState<string>("");
+  const [isReportSubmitting, setIsReportSubmitting] = useState(false);
 
   useEffect(() => {
     if (chatParam === "open") {
@@ -78,22 +81,48 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
     );
   };
 
-  const handleReportConfirm = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleReportConfirm = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
     if (!reportCategory) {
-      e.preventDefault(); // 強行攔截關閉行為，留在對話框內
       toast.error("❌ 請選擇舉報事項類別");
       return;
     }
 
-    toast.error("⚠️ 舉報信號已受理", {
-      description: `【${reportCategory}】商戶風控隊列已啟動。已對該用戶實施鏈上行為快照，合約風控官將於 15 分鐘內介入審查。`,
-      className:
-        "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
-    });
+    if (isReportSubmitting) {
+      return;
+    }
 
-    setIsReportOpen(false);
-    setReportCategory("");
-    setReportDetails("");
+    setIsReportSubmitting(true);
+
+    try {
+      const result = await submitUserReport({
+        reportedUserId: member.id,
+        category: reportCategory,
+        details: reportDetails,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("⚠️ 舉報信號已受理", {
+        description: `【${reportCategory}】商戶風控隊列已啟動。已對該用戶實施鏈上行為快照。`,
+        className:
+          "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
+      });
+
+      setIsReportOpen(false);
+      setReportCategory("");
+      setReportDetails("");
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "提交舉報時發生錯誤";
+      toast.error(msg);
+    } finally {
+      setIsReportSubmitting(false);
+    }
   };
 
   const isMounted = useSyncExternalStore(
@@ -111,10 +140,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
         <div className="flex items-end justify-between -mt-10 mb-4">
           <div className="relative w-24 h-24 rounded-full border-4 border-[#26211C] shadow-xl overflow-hidden bg-[#17130f]">
             <Image
-              src={
-                member.avatarUrl ??
-                `https://picsum.photos/seed/${member.avatarSeed}/100/100`
-              }
+              src={member.avatarUrl ?? DEFAULT_AVATAR_URL}
               alt="Avatar"
               fill
               className="object-cover"
@@ -299,9 +325,10 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
                   <AlertDialogAction
                     type="button"
                     onClick={handleReportConfirm}
+                    disabled={isReportSubmitting}
                     className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13.5px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
                   >
-                    🚀 確認提交安全審查
+                    {isReportSubmitting ? "提交中…" : "🚀 確認提交安全審查"}
                   </AlertDialogAction>
                   <AlertDialogCancel
                     onClick={() => {

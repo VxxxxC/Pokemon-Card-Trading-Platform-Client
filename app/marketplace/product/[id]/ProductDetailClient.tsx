@@ -8,7 +8,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
-import { MarketChartSkeleton } from "@/app/components/shared/MarketSkeletons";
+import {
+  MarketChartSkeleton,
+  MarketIndexSkeleton,
+} from "@/app/components/shared/MarketSkeletons";
+import { ProductMarketDataEmptyPanel } from "./ProductMarketDataEmptyPanel";
 import type {
   MarketplaceMarketPriceGradeRow,
   MarketplaceProductDetail,
@@ -127,6 +131,8 @@ export function ProductDetailClient({
     setSelectedGradeKey: setSelectedMarketGradeKey,
     marketPrice: marketPriceData,
     isLoading: isMarketPriceLoading,
+    isRefreshing: isMarketPriceRefreshing,
+    error: marketPriceError,
   } = useMarketplaceProductMarketPrice(
     { productId: product.productId },
     initialMarketGrades !== undefined
@@ -173,7 +179,9 @@ export function ProductDetailClient({
         listingId: row.listingId,
         order: {
           sellerName: row.sellerName,
+          sellerUsername: row.sellerUsername,
           sellerId: row.sellerId,
+          sellerAvatarUrl: row.sellerAvatarUrl,
           price: row.price,
           sellerRating: row.sellerRating,
           reviewCount: row.sellerTotalTrades,
@@ -183,13 +191,16 @@ export function ProductDetailClient({
     [listings],
   );
 
-  const hasChartData = !isMarketPriceLoading && chartPoints.length > 0;
-  const hasMarketPriceData =
-    !isMarketPriceLoading && availableMarketGrades.length > 0;
-
   const marketPrice = marketPriceData.marketAvgPrice;
   const marketTrend30d = marketPriceData.marketTrend30d;
   const globalBestAskPrice = lowestPrice;
+
+  const hasAnyMarketGrades = availableMarketGrades.length > 0;
+  const hasChartData = !isMarketPriceLoading && chartPoints.length > 0;
+  const hasMarketAvg = marketPrice != null;
+
+  const marketIndexTitle = "交易所現貨參考均價 (MARKET AGGREGATED INDEX)";
+  const chartTitle = "全網 30 天已成交均價走勢";
 
   const productPath = `/marketplace/product/${product.productId}`;
 
@@ -258,80 +269,115 @@ export function ProductDetailClient({
               </div>
             </div>
 
-            <div className="bg-[#26211C] p-5 rounded-2xl border border-white/5 flex items-center justify-between shadow-md">
-              <div className="min-w-0 flex-1">
-                <span className="font-mono text-[10px] text-[#d4c4b7] uppercase tracking-wider block mb-1">
-                  交易所現貨參考均價 (MARKET AGGREGATED INDEX)
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <p className="font-mono font-black text-[30px] text-[#eae1da] leading-none">
-                    {marketPrice != null
-                      ? `HK$ ${marketPrice.toLocaleString("en-HK")}`
-                      : "—"}
-                  </p>
-                  {marketTrend30d != null ? (
-                    <span
-                      className={`inline-flex items-center gap-0.5 font-mono text-[12px] font-bold ${
-                        marketTrend30d > 0
-                          ? "text-[#10b981]"
-                          : marketTrend30d < 0
-                            ? "text-[#ef4444]"
-                            : "text-[#8A8680]"
-                      }`}
-                    >
-                      {marketTrend30d > 0 ? (
-                        <IoTrendingUp className="size-3.5 shrink-0" aria-hidden />
-                      ) : marketTrend30d < 0 ? (
-                        <IoTrendingDown className="size-3.5 shrink-0" aria-hidden />
-                      ) : null}
-                      {marketTrend30d > 0 ? "+" : ""}
-                      {marketTrend30d.toFixed(1)}%
-                    </span>
+            {isMarketPriceLoading ? (
+              <MarketIndexSkeleton />
+            ) : marketPriceError ? (
+              <ProductMarketDataEmptyPanel
+                title={marketIndexTitle}
+                message={marketPriceError}
+                compact
+              />
+            ) : !hasAnyMarketGrades ? (
+              <ProductMarketDataEmptyPanel
+                title={marketIndexTitle}
+                message="暫無市場參考均價資料。此卡牌尚未有 SNKRDUNK / 平台成交聚合資料。"
+                compact
+              />
+            ) : (
+              <div
+                className={`relative bg-[#26211C] p-5 rounded-2xl border border-white/5 flex items-center justify-between shadow-md transition-opacity duration-200 ${
+                  isMarketPriceRefreshing ? "opacity-60" : "opacity-100"
+                }`}
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="font-mono text-[10px] text-[#d4c4b7] uppercase tracking-wider block mb-1">
+                    {marketIndexTitle}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <p className="font-mono font-black text-[30px] text-[#eae1da] leading-none">
+                      {hasMarketAvg
+                        ? `HK$ ${marketPrice!.toLocaleString("en-HK")}`
+                        : "—"}
+                    </p>
+                    {marketTrend30d != null ? (
+                      <span
+                        className={`inline-flex items-center gap-0.5 font-mono text-[12px] font-bold ${
+                          marketTrend30d > 0
+                            ? "text-[#10b981]"
+                            : marketTrend30d < 0
+                              ? "text-[#ef4444]"
+                              : "text-[#8A8680]"
+                        }`}
+                      >
+                        {marketTrend30d > 0 ? (
+                          <IoTrendingUp className="size-3.5 shrink-0" aria-hidden />
+                        ) : marketTrend30d < 0 ? (
+                          <IoTrendingDown className="size-3.5 shrink-0" aria-hidden />
+                        ) : null}
+                        {marketTrend30d > 0 ? "+" : ""}
+                        {marketTrend30d.toFixed(1)}%
+                      </span>
+                    ) : null}
+                  </div>
+                  {!hasMarketAvg ? (
+                    <p className="font-sans text-[12px] text-text-disabled mt-1.5">
+                      此規格暫無參考均價
+                    </p>
+                  ) : null}
+                  {availableMarketGrades.length > 1 ? (
+                    <div className="flex items-center gap-2 overflow-x-auto pt-3 scrollbar-none -mx-1 px-1">
+                      {availableMarketGrades.map((gradeOption) => {
+                        const isActive =
+                          selectedMarketGradeKey === gradeOption.gradeKey;
+                        return (
+                          <button
+                            key={gradeOption.gradeKey}
+                            type="button"
+                            onClick={() =>
+                              setSelectedMarketGradeKey(gradeOption.gradeKey)
+                            }
+                            className={`font-mono text-[11px] font-bold h-7 px-3 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
+                              isActive
+                                ? "bg-brand border-brand text-[#1A1612] shadow-[0_2px_10px_rgba(212,165,116,0.25)]"
+                                : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
+                            }`}
+                          >
+                            {gradeOption.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   ) : null}
                 </div>
-                {availableMarketGrades.length > 1 ? (
-                  <div className="flex items-center gap-2 overflow-x-auto pt-3 scrollbar-none -mx-1 px-1">
-                    {availableMarketGrades.map((gradeOption) => {
-                      const isActive =
-                        selectedMarketGradeKey === gradeOption.gradeKey;
-                      return (
-                        <button
-                          key={gradeOption.gradeKey}
-                          type="button"
-                          onClick={() =>
-                            setSelectedMarketGradeKey(gradeOption.gradeKey)
-                          }
-                          className={`font-mono text-[11px] font-bold h-7 px-3 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
-                            isActive
-                              ? "bg-brand border-brand text-[#1A1612] shadow-[0_2px_10px_rgba(212,165,116,0.25)]"
-                              : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
-                          }`}
-                        >
-                          {gradeOption.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
               </div>
-            </div>
+            )}
 
-            {hasChartData ? (
+            {isMarketPriceLoading ? (
+              <MarketChartSkeleton />
+            ) : marketPriceError ? (
+              <ProductMarketDataEmptyPanel
+                title={chartTitle}
+                message="無法載入走勢圖"
+                badge="Live Index"
+              />
+            ) : !hasAnyMarketGrades ? (
+              <ProductMarketDataEmptyPanel
+                title={chartTitle}
+                message="暫無成交均價走勢資料"
+                badge="Live Index"
+              />
+            ) : hasChartData ? (
               <ProductPriceChart
                 chartPoints={chartPoints}
                 isGuest={isGuest}
                 productPath={productPath}
               />
-            ) : isMarketPriceLoading ? (
-              <MarketChartSkeleton />
-            ) : hasMarketPriceData ? (
-              <div className="bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)]">
-                <p className="font-sans text-[13px] text-text-disabled text-center py-8">
-                  此規格暫無走勢圖資料
-                </p>
-              </div>
             ) : (
-              <MarketChartSkeleton />
+              <ProductMarketDataEmptyPanel
+                title={chartTitle}
+                message="此規格暫無走勢圖資料"
+                badge="Live Index"
+              />
             )}
 
             <div

@@ -23,7 +23,7 @@ export function PriceTickerSkeleton() {
 // 📊 2. Product Detail 30-Day Historical Trend SVG Chart Skeleton
 export function MarketChartSkeleton() {
   return (
-    <div className="w-full h-[120px] bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-xl p-4 flex flex-col justify-between">
+    <div className="w-full lg:h-72 min-h-[120px] bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-xl p-4 flex flex-col justify-between">
       {/* Chart Top Metadata Bar */}
       <div className="flex justify-between items-center w-full">
         <Skeleton className="h-3.5 bg-[#17130f] w-1/4 rounded" />
@@ -44,6 +44,17 @@ export function MarketChartSkeleton() {
         <Skeleton className="h-2 bg-[#17130f] w-8 rounded" />
         <Skeleton className="h-2 bg-[#17130f] w-8 rounded" />
       </div>
+    </div>
+  );
+}
+
+// Product Detail market reference index card skeleton
+export function MarketIndexSkeleton() {
+  return (
+    <div className="bg-[#26211C] p-5 rounded-2xl border border-white/5 shadow-md w-full">
+      <Skeleton className="h-2.5 bg-[#17130f] w-48 rounded mb-3" />
+      <Skeleton className="h-9 bg-[#17130f] w-36 rounded mb-2" />
+      <Skeleton className="h-2.5 bg-[#17130f] w-24 rounded" />
     </div>
   );
 }

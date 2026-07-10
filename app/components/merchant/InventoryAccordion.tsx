@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { CiBullhorn } from "react-icons/ci";
 import type { ListingStatus } from "@/app/lib/types/rbac";
+import { LISTING_PHOTO_SLOT_LABELS } from "@/lib/listings/images";
 import { Pagination } from "@/app/components/ui/Pagination";
 import {
   Dialog,
@@ -321,11 +322,12 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
 
             <div>
               <p className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1.5">
-                實物照片 (必須 4–6 張) <span className="text-warning">*</span>
+                實物照片 (必須 6 張) <span className="text-warning">*</span>
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {Array.from({ length: 6 }, (_, i) => {
                   const presetRemark = i === 0 ? "卡牌正面全貌" : i === 1 ? "背面右上角帶微白點" : i === 2 ? "左下邊角銳利特寫" : i === 3 ? "封殼完美無裂紋" : "";
+                  const slotLabel = LISTING_PHOTO_SLOT_LABELS[i];
                   return (
                     <div key={i} className="flex flex-col">
                       <div
@@ -344,11 +346,14 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
                               <line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
                             <span className="font-mono text-[9px] text-text-disabled mt-0.5">
-                              {i < 4 ? "必填" : "選填"}
+                              必填
                             </span>
                           </>
                         )}
                       </div>
+                      <span className="font-mono text-[9px] text-text-disabled text-center mt-1">
+                        {slotLabel}
+                      </span>
                       <input
                         type="text"
                         name={`photo-remark-${i}`}

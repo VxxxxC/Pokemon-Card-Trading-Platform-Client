@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Camera } from "lucide-react";
+import { toast } from "sonner";
 import { GrUserSettings } from "react-icons/gr";
+import { updateUserAvatar } from "@/app/actions/profile";
 import { CheckInCard, type CheckInCardStats } from "@/app/components/rewards/CheckInCard";
 import { TitleBadgeIcon } from "@/app/components/profile/TitleBadgeIcon";
 import {
@@ -15,6 +18,8 @@ import { mapTradingOrderToSaleOrder } from "@/app/lib/member-order/map-sale-orde
 import { PortfolioStatsSkeleton } from "@/app/components/shared/PortfolioSkeletons";
 import { PublicReviewPreviewCard } from "@/app/components/profile/PublicReviewPreviewCard";
 import { UserOrderRow } from "@/app/components/user/UserOrderRow";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
+import { uploadProfileAvatar } from "@/lib/profile/client-upload";
 
 type UserOverviewClientProps = {
   currentUserId: string;
@@ -61,6 +66,9 @@ export function UserOverviewClient({
   const [accountPoints, setAccountPoints] = useState<number | null>(
     initialData.overview?.pointsBalance ?? null,
   );
+  const [avatarOverrideUrl, setAvatarOverrideUrl] = useState<string | null>(null);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const handleCheckInStatsChange = useCallback((stats: CheckInCardStats) => {
     setAccountPoints(stats.pointsBalance);
   }, []);
@@ -76,6 +84,7 @@ export function UserOverviewClient({
     isOverviewLoading,
     isOrdersLoading,
     isReviewsLoading,
+    refetch,
   } = useMemberDashboard({
     profileId: currentUserId,
     initialData,
@@ -91,9 +100,49 @@ export function UserOverviewClient({
   const displayName = profile?.displayName ?? "會員";
   const profileHandle = formatProfileHandle(profile?.username);
   const joinDateLabel = profile?.joinDateLabel ?? "";
-  const avatarUrl = profile?.avatarUrl ?? "/asset/default-avator.webp";
+  const avatarUrl = profile?.avatarUrl ?? DEFAULT_AVATAR_URL;
+  const displayAvatarUrl = avatarOverrideUrl ?? avatarUrl;
   const ratingScore = profile?.ratingScore ?? aggregateRating;
   const reviewCount = publicReviewCount;
+
+  const handleAvatarEditClick = useCallback(() => {
+    if (isAvatarUploading) return;
+    avatarFileInputRef.current?.click();
+  }, [isAvatarUploading]);
+
+  const handleAvatarFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      const localPreview = URL.createObjectURL(file);
+      setAvatarOverrideUrl(localPreview);
+      setIsAvatarUploading(true);
+
+      try {
+        const { cdnUrl } = await uploadProfileAvatar(file);
+        const result = await updateUserAvatar(cdnUrl);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        URL.revokeObjectURL(localPreview);
+        setAvatarOverrideUrl(cdnUrl);
+        toast.success("頭像已更新");
+        refetch();
+      } catch (error) {
+        URL.revokeObjectURL(localPreview);
+        setAvatarOverrideUrl(null);
+        toast.error(
+          error instanceof Error ? error.message : "頭像上載失敗，請稍後再試",
+        );
+      } finally {
+        setIsAvatarUploading(false);
+      }
+    },
+    [refetch],
+  );
 
   const portfolioStats = useMemo(() => {
     if (!tradingStats) {
@@ -158,14 +207,38 @@ export function UserOverviewClient({
         <div className="h-20 bg-gradient-to-r from-[#2e2925] via-[rgba(212,165,116,0.08)] to-[#2e2925]" />
         <div className="px-5 pb-5">
           <div className="flex items-end justify-between -mt-10 mb-3">
-            <div className="relative w-20 h-20 rounded-full border-2 border-bg-card shadow-[0_4px_12px_rgba(0,0,0,0.50)] overflow-hidden shrink-0 bg-[#17130f]">
-              <Image
-                src={avatarUrl}
-                alt={`${displayName} 的頭像`}
-                fill
-                className="object-cover"
-                unoptimized
+            <div className="relative w-20 h-20 shrink-0">
+              <div className="relative w-full h-full rounded-full border-2 border-bg-card shadow-[0_4px_12px_rgba(0,0,0,0.50)] overflow-hidden bg-[#17130f]">
+                <Image
+                  src={displayAvatarUrl}
+                  alt={`${displayName} 的頭像`}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+                {isAvatarUploading ? (
+                  <div className="absolute inset-0 z-[1] flex items-center justify-center bg-[#17130f]/70">
+                    <div className="w-5 h-5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                  </div>
+                ) : null}
+              </div>
+              <input
+                ref={avatarFileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                className="hidden"
+                onChange={handleAvatarFileChange}
               />
+              <button
+                type="button"
+                onClick={handleAvatarEditClick}
+                disabled={isAvatarUploading}
+                className="absolute -top-0.5 -right-0.5 z-10 w-6 h-6 rounded-full bg-[#17130f]/90 border border-[rgba(237,232,224,0.2)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="更換頭像"
+                aria-label="更換頭像"
+              >
+                <Camera size={12} aria-hidden="true" />
+              </button>
             </div>
           </div>
 

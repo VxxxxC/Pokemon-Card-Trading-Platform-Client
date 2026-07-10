@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type SellOrder } from "@/app/lib/mock-data/cards";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 
 interface AskOrderBookRowProps {
   order: SellOrder;
@@ -41,15 +42,12 @@ export function AskOrderBookRow({
       >
         {/* Left Hand Container (Avatar + Identity Stack) - NOW COMPLETELY INERT */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Avatar className="w-9 h-9 border border-white/10 rounded-full shrink-0 select-none">
-            <AvatarImage
-              src={`https://avatar.iran.liara.run/username?username=${order.sellerName}`}
-              alt={order.sellerName}
-            />
-            <AvatarFallback className="bg-[#26211C] text-brand text-xs font-bold font-mono">
-              {order.sellerName.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
+          <ProfileAvatar
+            avatarUrl={order.sellerAvatarUrl ?? DEFAULT_AVATAR_URL}
+            displayName={order.sellerName}
+            className="w-9 h-9 border border-white/10 shrink-0 select-none"
+            fallbackClassName="bg-[#26211C] text-brand text-xs font-bold font-mono"
+          />
 
           <div className="flex flex-col text-left min-w-0 space-y-0.5">
             <div className="flex items-center gap-2 min-w-0">

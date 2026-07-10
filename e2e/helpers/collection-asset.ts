@@ -98,7 +98,7 @@ export async function searchAndSelectCatalogForFixture(
 export async function uploadMerchPhotos(
   page: Page,
   photoPath: string = LISTING_PHOTO_FIXTURE,
-  count = 4,
+  count = 6,
 ): Promise<void> {
   const modal = addAssetModalForm(page);
   const files = Array.from({ length: count }, () => photoPath);
@@ -216,7 +216,7 @@ export async function addHobbyHoldingForFixture(
 export async function uploadSellPrefillPhotos(
   page: Page,
   photoPath: string = LISTING_PHOTO_FIXTURE,
-  count = 4,
+  count = 6,
 ): Promise<void> {
   const modal = sellPrefillModalForm(page);
   const files = Array.from({ length: count }, () => photoPath);

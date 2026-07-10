@@ -24,7 +24,7 @@ import {
 import type { ListingImage } from "@/lib/listings/images";
 import {
   LISTING_IMAGE_MAX,
-  LISTING_IMAGE_MIN,
+  LISTING_PHOTO_SLOT_LABELS,
 } from "@/lib/listings/images";
 import {
   LISTING_DESCRIPTION_MAX,
@@ -724,7 +724,7 @@ export function AddAssetModal() {
 
           {sellPrefill ? (
             <p className="font-mono text-[11px] text-[#8A8680] leading-relaxed">
-              卡牌與規格已從收藏庫帶入。請上傳 4–6 張實物相片並確認放售價格。
+              卡牌與規格已從收藏庫帶入。請上傳 6 張實物相片並確認放售價格。
             </p>
           ) : null}
 
@@ -910,7 +910,7 @@ export function AddAssetModal() {
                 實體品相相片{" "}
                 {itemType === "box_set"
                   ? `(必須至少 1 張)`
-                  : `(必須 ${LISTING_IMAGE_MIN}–${LISTING_IMAGE_MAX} 張)`}{" "}
+                  : `(必須 ${LISTING_IMAGE_MAX} 張)`}{" "}
                 <span className="text-brand">*</span>
               </label>
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider">
@@ -923,7 +923,9 @@ export function AddAssetModal() {
             <div className="grid grid-cols-3 gap-2">
                 {photoSlots.map((photo, i) => {
                   const isRequired =
-                    itemType === "box_set" ? i < 1 : i < LISTING_IMAGE_MIN;
+                    itemType === "box_set" ? i < 1 : i < LISTING_IMAGE_MAX;
+                  const slotLabel =
+                    itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[i] : null;
                   return (
                     <div key={i} className="flex flex-col">
                       <div
@@ -940,7 +942,7 @@ export function AddAssetModal() {
                           <>
                             <Image
                               src={photo.previewUrl}
-                              alt={`實體照 ${i + 1}`}
+                              alt={slotLabel ?? `實體照 ${i + 1}`}
                               fill
                               className="object-cover"
                               unoptimized
@@ -981,6 +983,11 @@ export function AddAssetModal() {
                           </>
                         )}
                       </div>
+                      {slotLabel ? (
+                        <span className="font-mono text-[9px] text-[#8A8680] text-center mt-1">
+                          {slotLabel}
+                        </span>
+                      ) : null}
                     </div>
                   );
                 })}

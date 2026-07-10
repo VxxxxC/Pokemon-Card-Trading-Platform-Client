@@ -1,5 +1,4 @@
-import { searchMarketplaceProducts } from "@/app/actions/marketplace";
-import { getWishlistFavoredKeysForUser } from "@/app/actions/wishlist";
+import { getMarketplaceBootstrap } from "@/app/actions/marketplace";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { MARKETPLACE_GRID_PAGE_SIZE } from "@/lib/marketplace/constants";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -15,21 +14,21 @@ export async function MarketplacePageData() {
     );
   }
 
-  const user = await getOptionalAuthUser();
-
-  const [searchResult, initialFavoredKeys] = await Promise.all([
-    searchMarketplaceProducts({
+  const [user, bootstrapResult] = await Promise.all([
+    getOptionalAuthUser(),
+    getMarketplaceBootstrap({
       page: 1,
       pageSize: MARKETPLACE_GRID_PAGE_SIZE,
       sortKey: "最新",
     }),
-    user ? getWishlistFavoredKeysForUser(user.id) : Promise.resolve([]),
   ]);
 
-  const initialData = searchResult.success
+  const initialData = bootstrapResult.success
     ? {
-        products: searchResult.data,
-        meta: searchResult.meta,
+        products: bootstrapResult.data.products,
+        meta: bootstrapResult.data.meta,
+        priceBounds: bootstrapResult.data.priceBounds,
+        rarities: bootstrapResult.data.rarities,
       }
     : undefined;
 
@@ -37,8 +36,7 @@ export async function MarketplacePageData() {
     <MarketplacePageClient
       currentUserId={user?.id ?? null}
       initialData={initialData}
-      initialFavoredKeys={initialFavoredKeys}
-      bootstrapError={searchResult.success ? undefined : searchResult.error}
+      bootstrapError={bootstrapResult.success ? undefined : bootstrapResult.error}
     />
   );
 }

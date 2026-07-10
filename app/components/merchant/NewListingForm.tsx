@@ -12,6 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  LISTING_IMAGE_MAX,
+  LISTING_PHOTO_SLOT_LABELS,
+} from "@/lib/listings/images";
 
 /** 平台主題輸入框基準樣式（黑金量產規格） */
 const INPUT_BASE =
@@ -121,9 +125,9 @@ export function NewListingForm() {
   function publishListing(formData: FormData) {
     const validPhotosCount = photos.filter((p) => p.url).length;
     if (itemType === "card") {
-      if (validPhotosCount < 4) {
+      if (validPhotosCount < LISTING_IMAGE_MAX) {
         toast.error(
-          "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須至少上載 4 張卡牌相片（正面與背面）。"
+          "⚠️ 新增商品失敗！大盤為保證品相真實性，強制規定必須上載全部 6 張卡牌相片（正面、背面及四個角）。"
         );
         return;
       }
@@ -377,11 +381,13 @@ export function NewListingForm() {
       {/* Photo Upload — adaptive limits */}
       <div>
         <p className="font-mono text-[12px] text-text-secondary block mb-1.5">
-          {itemType === "box_set" ? "實物照片 (必須至少 1 張)" : "實物照片 (必須 4–6 張)"} <span className="text-warning">*</span>
+          {itemType === "box_set" ? "實物照片 (必須至少 1 張)" : "實物照片 (必須 6 張)"} <span className="text-warning">*</span>
         </p>
         <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
           {photos.map((photo, i) => {
-            const isRequired = itemType === "box_set" ? i < 1 : i < 4;
+            const isRequired = itemType === "box_set" ? i < 1 : i < LISTING_IMAGE_MAX;
+            const slotLabel =
+              itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[i] : null;
             return (
               <div key={i} className="flex flex-col">
                 <div
@@ -402,7 +408,7 @@ export function NewListingForm() {
                     <>
                       <Image
                         src={photo.url}
-                        alt={`實體照 ${i + 1}`}
+                        alt={slotLabel ?? `實體照 ${i + 1}`}
                         fill
                         className="object-cover"
                         unoptimized
@@ -440,6 +446,11 @@ export function NewListingForm() {
                     </>
                   )}
                 </div>
+                {slotLabel ? (
+                  <span className="font-mono text-[9px] text-text-disabled text-center mt-1">
+                    {slotLabel}
+                  </span>
+                ) : null}
                 <input
                   type="text"
                   name={`photo-remark-${i}`}
@@ -462,7 +473,7 @@ export function NewListingForm() {
         <p className="font-mono text-[10px] text-text-disabled mt-1.5">
           {itemType === "box_set" 
             ? "請上載商品正面或外包裝實拍，確保封膜完整度與盒況透明。最大 10MB / 張。"
-            : "請拍攝正面、背面、卡角、刮痕細節，確保品相透明。最大 10MB / 張。"}
+            : "請拍攝正面、背面及四個角，確保品相透明。最大 10MB / 張。"}
         </p>
       </div>
 

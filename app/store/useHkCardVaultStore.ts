@@ -3,6 +3,7 @@ import { buildPendingChatRoomId } from "@/app/lib/chat/constants";
 import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
 import { INITIAL_CHATS } from "@/app/lib/mock-data/chatrooms";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import type { Tables } from "@/types/supabase";
 
 type OfferLedgerStatus = Tables<"offers">["status"];
@@ -47,13 +48,16 @@ export interface ChatRoom {
   id: string;
   partnerId: string;
   partnerName: string;
+  partnerAvatarUrl: string;
   partnerTier: string;
   lastMessage: string;
   unreadCount: number;
   timestamp: string;
   messages: Message[];
-  /** Set true after getChatRoomThread succeeds for this room */
+  /** Set true after the first thread page is loaded for this room */
   threadHydrated?: boolean;
+  /** Whether older messages remain to be loaded via scroll-up pagination */
+  threadHasMoreOlder?: boolean;
 }
 
 function isValidSpecialTransactionData(
@@ -317,6 +321,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         id: roomId,
         partnerId: roomId,
         partnerName,
+        partnerAvatarUrl: DEFAULT_AVATAR_URL,
         partnerTier: "認證用戶",
         lastMessage: "已開啟對話",
         unreadCount: 0,
@@ -357,6 +362,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         id: roomId,
         partnerId,
         partnerName,
+        partnerAvatarUrl: DEFAULT_AVATAR_URL,
         partnerTier: "認證用戶",
         lastMessage: "已開啟對話",
         unreadCount: 0,
@@ -430,6 +436,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           id: canonicalRoomId,
           partnerId,
           partnerName,
+          partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier,
           lastMessage: "已開啟即時議價對話",
           unreadCount: 0,
@@ -509,6 +516,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           id: canonicalRoomId,
           partnerId: payload.sellerId,
           partnerName: payload.sellerName,
+          partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier: "認證賣家",
           lastMessage: specialMsg.text,
           unreadCount: 0,
@@ -590,6 +598,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           id: payload.roomId,
           partnerId: payload.partnerId,
           partnerName: payload.partnerName,
+          partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier: "認證賣家",
           lastMessage: specialMsg.text,
           unreadCount: 0,

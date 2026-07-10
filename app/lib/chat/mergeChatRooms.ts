@@ -86,6 +86,8 @@ function mergeRoomMessages(local: ChatRoom, db: ChatRoom): ChatRoom {
     timestamp,
     unreadCount: Math.max(local.unreadCount, db.unreadCount),
     threadHydrated: local.threadHydrated === true || db.threadHydrated === true,
+    threadHasMoreOlder:
+      local.threadHasMoreOlder ?? db.threadHasMoreOlder,
   };
 }
 
@@ -176,14 +178,103 @@ export function mergeChatRoomsWithDb(
   return sortRoomsByActivity([...mockRooms, ...deduped]);
 }
 
-/** Merge a lazy-loaded thread into an existing room row. */
+/** Refresh the latest thread page without discarding older pages already loaded. */
+export function mergeLatestThreadPageFromDb(
+  currentRooms: ChatRoom[],
+  threadRoom: ChatRoom,
+  hasMoreOlder: boolean,
+): ChatRoom[] {
+  return currentRooms.map((room) => {
+    if (room.id !== threadRoom.id) {
+      return room;
+    }
+
+    const pageTimestamps = threadRoom.messages
+      .map((message) => new Date(message.timestamp).getTime())
+      .filter((value) => Number.isFinite(value));
+
+    if (pageTimestamps.length === 0) {
+      return {
+        ...mergeRoomMessages(room, threadRoom),
+        threadHydrated: true,
+        threadHasMoreOlder: hasMoreOlder,
+      };
+    }
+
+    const pageStartMs = Math.min(...pageTimestamps);
+    const olderMessages = room.messages.filter(
+      (message) => new Date(message.timestamp).getTime() < pageStartMs,
+    );
+    const refreshedTail = mergeRoomMessages(
+      { ...room, messages: [] },
+      threadRoom,
+    ).messages;
+
+    const messages = dedupeMessagesByOfferId(
+      [...olderMessages, ...refreshedTail].sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      ),
+    );
+
+    return {
+      ...room,
+      ...threadRoom,
+      messages,
+      lastMessage: messages.at(-1)?.text ?? threadRoom.lastMessage,
+      timestamp: messages.at(-1)?.timestamp ?? threadRoom.timestamp,
+      threadHydrated: true,
+      threadHasMoreOlder:
+        olderMessages.length > 0 ? true : hasMoreOlder,
+    };
+  });
+}
+
+/** Merge a lazy-loaded thread page into an existing room row. */
 export function mergeRoomThreadFromDb(
   currentRooms: ChatRoom[],
   threadRoom: ChatRoom,
+  hasMoreOlder: boolean,
 ): ChatRoom[] {
   return currentRooms.map((room) =>
     room.id === threadRoom.id
-      ? { ...mergeRoomMessages(room, threadRoom), threadHydrated: true }
+      ? {
+          ...mergeRoomMessages(room, threadRoom),
+          threadHydrated: true,
+          threadHasMoreOlder: hasMoreOlder,
+        }
       : room,
   );
+}
+
+/** Prepend an older thread page into an existing room row. */
+export function prependOlderRoomMessages(
+  currentRooms: ChatRoom[],
+  roomId: string,
+  olderMessages: ChatRoom["messages"],
+  hasMoreOlder: boolean,
+): ChatRoom[] {
+  return currentRooms.map((room) => {
+    if (room.id !== roomId) {
+      return room;
+    }
+
+    const existingIds = new Set(room.messages.map((message) => message.id));
+    const uniqueOlder = olderMessages.filter(
+      (message) => !existingIds.has(message.id),
+    );
+
+    const messages = dedupeMessagesByOfferId(
+      [...uniqueOlder, ...room.messages].sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      ),
+    );
+
+    return {
+      ...room,
+      messages,
+      threadHasMoreOlder: hasMoreOlder,
+    };
+  });
 }
