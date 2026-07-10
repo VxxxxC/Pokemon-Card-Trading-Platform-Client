@@ -4,14 +4,54 @@
 
 - **Backend:** ✅ Ready (`makeOffer` · `modifyOffer` · `acceptOffer` · **`rejectOffer`** · `getOfferCardContext` · `getUserChatInbox` · `sendMessage`; inbox **`member_order_id`**; review helpers used by chat UI)
 - **Frontend:** 🟡 Partial — offer card RPCs + DB inbox + text send + **Realtime Scheme A** + **completion card + review CTA** + **long-thread perf** wired; polish / checkout-after-accept pending
-- **Partner:** Apply migrations `20260704170000`–**`20260705140000`**; verify inbox + send + accept/reject + auth opt-in + completion messages after push (see **Migrations** below)
+- **Partner:** Apply migrations `20260704170000`–**`20260709310000`**; verify inbox + send + accept/reject + auth opt-in + completion messages + **user reports** after push (see **Migrations** below)
+- **Partner report:** [PARTNER_REPORT.md](./PARTNER_REPORT.md)
+
+## Changelog (2026-07-09, user reports)
+
+| Change | Detail |
+|--------|--------|
+| **`reports` table + RLS** | Migration **`20260709300000`** — idempotent table, `report_state` enum, reporter INSERT/SELECT policies, pending dedupe index |
+| **`service_role` GRANT on `reports`** | Migration **`20260709310000`** — E2E admin audit helpers |
+| **`submitUserReport`** | `app/actions/reports.ts` — chat room or profile report; validates party membership when `chatRoomId` provided |
+| **`formatReportReason`** | `app/lib/reports/formatReportReason.ts` — structured `reason` text with `[CATEGORY]`, `[SOURCE]`, optional `[ROOM_ID]`, `[DETAILS]` |
+
+### `submitUserReport` contract
+
+```ts
+submitUserReport({
+  reportedUserId: string;   // profiles.id UUID
+  category: string;         // UI Select value (required)
+  details?: string;       // max 2000 chars
+  chatRoomId?: string;      // DB chat_rooms.id — chat console only
+})
+// → { success: true, data: { reportId } } | { success: false, error }
+```
+
+**Verify (backend):**
+
+1. `bunx supabase db push` (migration `20260709300000`).
+2. Logged-in user inserts via action → row in `reports` with `status = pending`, `target_type = user`.
+3. Chat report: `reason` contains `[SOURCE] chat_room` and `[ROOM_ID]`.
+4. Profile report: `reason` contains `[SOURCE] profile` (no room id).
+5. Duplicate pending report same reporter+target → friendly error.
+6. Self-report / non-party chat room → structured error, no row.
+
+## Changelog (2026-07-09, thread pagination)
+
+| Change | Detail |
+|--------|--------|
+| **`get_chat_room_thread(p_room_id, p_limit, p_before_created_at)`** | Migration **`20260709220000`** — paginated thread fetch + `has_more` cursor |
+| **`getChatRoomThread(roomId, options?)`** | Initial page default `limit=50`; returns `{ data, hasMore }` |
+| **`loadOlderChatRoomMessages(roomId, beforeCreatedAt)`** | Scroll-up page fetch wrapper |
+| **`threadHasMoreOlder`** | Zustand `ChatRoom` flag — `false` when all history loaded |
 
 ## Changelog (2026-07-07, inbox Phase 2 performance)
 
 | Change | Detail |
 |--------|--------|
 | **`get_user_chat_inbox_lobby()`** | Migration **`20260707170000`** — rooms + last message preview only |
-| **`get_chat_room_thread(p_room_id)`** | Same migration — lazy-load full thread + offers for one room |
+| **`get_chat_room_thread(p_room_id)`** | Same migration — lazy-load thread page + offers for one room (paginated since `20260709220000`) |
 | **`getUserChatInboxLobby` / `getChatRoomThread`** | Server actions; lobby prefetch on auth + thread hydrate on room select |
 | **`chat_rooms` dedupe + unique index** | Consolidates legacy duplicate `(buyer_id, seller_id)` rows; `UNIQUE` index + message index |
 | **`rpc_make_offer` race-safe upsert** | `INSERT … ON CONFLICT (buyer_id, seller_id)` instead of SELECT-then-INSERT |
@@ -185,6 +225,7 @@ bun run supabase:types   # if scripted; else bunx supabase gen types typescript
 | **`20260704300000`** | **`member_order_id`** on inbox messages — **required for completion card + review CTA on load** |
 | **`20260705130000`** | **`use_authentication`** on offers + member_orders; accept RPC inherit |
 | **`20260707170000`** | **Inbox Phase 2** — lobby/thread RPC split, dedupe + indexes, `rpc_make_offer` upsert |
+| **`20260709220000`** | **Thread pagination** — `get_chat_room_thread` limit/cursor + `has_more` |
 
 ---
 
@@ -266,12 +307,20 @@ Success: `{ success: true, data: ChatRoom[] }`
 - Logged-in → RPC `get_user_chat_inbox_lobby()`; table fallback
 - Returns lobby rows with **`messages: []`** and preview `lastMessage` only
 
-### `getChatRoomThread(roomId)`
+### `getChatRoomThread(roomId, options?)`
 
-Success: `{ success: true, data: ChatRoom }`
+Success: `{ success: true, data: ChatRoom, hasMore: boolean }`
 
 - UUID room only; membership enforced in RPC / RLS fallback
-- Returns full mapped thread for one room (messages + offer cards)
+- `options.limit` (default **50**), `options.beforeCreatedAt` (ISO cursor for older pages)
+- Returns mapped thread page for one room (messages + offer cards)
+
+### `loadOlderChatRoomMessages(roomId, beforeCreatedAt)`
+
+Success: `{ success: true, data: ChatRoom, hasMore: boolean }`
+
+- Thin wrapper around `getChatRoomThread` with `beforeCreatedAt` cursor
+- Client: `loadOlderChatRoomThread` in `hydrateChatRoomThread.ts` prepends into Zustand
 
 ### `getUserChatInbox()` / `getUserChatInboxFull()`
 

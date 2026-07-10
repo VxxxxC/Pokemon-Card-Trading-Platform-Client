@@ -3,8 +3,8 @@
 ## Status
 
 - **Backend:** ✅ Ready — see [backend.md](./backend.md)
-- **Frontend:** ✅ **Baseline wired** — personal info + security; notifications **mock** (intentional)
-- **Your focus:** Dashboard hero avatar, merchant settings parity, notification wiring (later)
+- **Frontend:** ✅ **Baseline wired** — personal info + security; dashboard avatar upload; notifications **mock** (intentional)
+- **Your focus:** Merchant settings parity, notification wiring (later)
 
 ## What is already done
 
@@ -24,7 +24,7 @@
 |------|------|
 | `app/profile/user/settings/page.tsx` | Server Component — `getUserSettings()`, redirect if guest |
 | `app/profile/user/settings/UserSettingsClient.tsx` | Form, security, notifications (mock), session |
-| `app/profile/user/(dashboard)/page.tsx` | Gear link → `/profile/user/settings` — **hero still uses picsum mock** |
+| `app/profile/user/(dashboard)/UserOverviewClient.tsx` | Hero avatar + **edit overlay** (camera button → Bunny upload) |
 | `public/asset/default-avator.webp` | Default avatar asset |
 
 ## Server action usage (already integrated)
@@ -52,13 +52,13 @@ const [errors, formAction, isPending] = useActionState(updateUserProfile, null);
 |------|--------|-------|
 | Notification toggles | ⏳ Mock UI | TODO comments in `UserSettingsClient.tsx`; wait for `notification_settings` |
 | Email「修改」button | ⏳ Not wired | Display only |
-| Dashboard hero avatar | ⏳ `picsum.photos` | Use `getUserSettings` or `resolveAvatarUrl(profile.avatar_path)` |
+| Dashboard hero avatar | ✅ Wired | Live `profile.avatarUrl` + edit overlay uploads to Bunny via `uploadProfileAvatar` → `updateUserAvatar` |
 | Merchant settings profile | ⏳ Hardcoded | Separate page: `/profile/merchant/settings` |
 
 ## Optional polish (partner backlog)
 
-- [ ] Wire user dashboard hero to `initialData.avatarUrl` / `getCurrentUserProfile`
-- [ ] Avatar upload UI → Storage bucket `avatars` + `profiles.avatar_path` update
+- [x] Wire user dashboard hero to `profile.avatarUrl` from `useMemberDashboard`
+- [x] Dashboard avatar upload UI → Bunny CDN + `profiles.avatar_path` update
 - [ ] Loading skeleton on settings page (server fetch is fast; optional)
 - [ ] Merchant settings: mirror member pattern (`getMerchantSettings` TBD)
 - [ ] Footer「帳戶設定」link — role-aware (`/profile/user/settings` vs merchant)
@@ -66,6 +66,7 @@ const [errors, formAction, isPending] = useActionState(updateUserProfile, null);
 
 ## Acceptance checklist
 
+- [ ] `/profile/user` hero avatar edit → pick image → toast「頭像已更新」; persists after refresh
 - [ ] `/profile/user/settings` shows live `display_name`, `username`, `short_description`, email
 - [ ] Save updates DB; toast「個人資料已更新」; form reflects new values after refresh
 - [ ] Duplicate handle shows inline error + toast

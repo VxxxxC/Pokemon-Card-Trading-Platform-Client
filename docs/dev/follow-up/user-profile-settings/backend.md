@@ -2,26 +2,31 @@
 
 ## Status
 
-- **Backend:** ✅ Ready (read + update personal profile; default avatar)
-- **Frontend:** ✅ Wired (baseline) — personal info + security read-only email; notifications still mock
-- **Partner:** Wire dashboard hero avatar, merchant settings parity, notification prefs (future table)
+- **Backend:** ✅ Ready (read + update personal profile; default avatar; dashboard avatar upload to Bunny CDN)
+- **Frontend:** ✅ Wired (baseline + dashboard avatar edit overlay) — personal info + security read-only email; notifications still mock
+- **Partner:** Merchant settings parity, notification prefs (future table)
 
 ## Scope
 
 | In scope | Out of scope (future) |
 |----------|----------------------|
 | `getUserSettings` — profile + auth email | `notification_settings` table / toggles |
-| `updateUserProfile` — `display_name`, `username`, `short_description` | Avatar upload to Supabase Storage |
-| Default avatar via `profiles.avatar_path` DB default + `resolveAvatarUrl()` | Merchant shop settings (`merchant_shops`) |
-| RLS: owner can `UPDATE` own `profiles` row | Email change flow (`auth.updateUser` email) |
-| Username uniqueness (app + DB index) | Remove / relax `display_name` unique index (product decision) |
+| `updateUserProfile` — `display_name`, `username`, `short_description` | Avatar upload on settings page |
+| `updateUserAvatar` — persist Bunny CDN URL to `profiles.avatar_path` | Merchant shop settings (`merchant_shops`) |
+| `POST /api/profile/upload-avatar` — auth + Bunny PUT (`avatars/{userId}/{uuid}.ext`) | Email change flow (`auth.updateUser` email) |
+| Default avatar via `profiles.avatar_path` DB default + `resolveAvatarUrl()` | Remove / relax `display_name` unique index (product decision) |
+| RLS: owner can `UPDATE` own `profiles` row | Supabase Storage bucket `avatars` (avatars use Bunny CDN) |
+| Username uniqueness (app + DB index) | |
 
 ## Files created / modified (backend track)
 
 | File | Purpose |
 |------|---------|
-| `app/actions/profile.ts` | `getUserSettings`, `updateUserProfile`, `getCurrentUserProfile` |
+| `app/actions/profile.ts` | `getUserSettings`, `updateUserProfile`, `getCurrentUserProfile`, **`updateUserAvatar`** |
+| `app/api/profile/upload-avatar/route.ts` | Authenticated avatar image upload → Bunny CDN |
+| `lib/profile/client-upload.ts` | Client helper `uploadProfileAvatar(file)` |
 | `lib/profile/avatar.ts` | `DEFAULT_AVATAR_URL`, `resolveAvatarUrl()` |
+| `lib/storage/bunny.ts` | `buildAvatarObjectKey`, `uploadProfileAvatarToBunny`, `isAllowedBunnyCdnUrl` |
 | `lib/profile/validation.ts` | `validateUserProfileFields` (username format, bio length; display name = required non-empty only) |
 | `lib/profile/errors.ts` | `mapProfileUpdateError()` — RLS, unique, column errors |
 | `supabase/migrations/20260703100000_profiles_default_avatar.sql` | `avatar_path` default `/asset/default-avator.webp` |
@@ -35,7 +40,7 @@
 | `display_name` | 顯示名稱 | Required non-empty; **unique** index `profiles_display_name_lower_idx` still enforced at DB |
 | `username` | 用戶名 (Handle) | Auto-set on signup (`user_<random>` — see [auth-login-register](../auth-login-register/backend.md)); editable here; 3–24 chars `[A-Za-z0-9_-]`; unique when set |
 | `short_description` | 個人簡介 | Optional; max 280 chars |
-| `avatar_path` | (not on settings page yet) | Default `/asset/default-avator.webp` for new rows |
+| `avatar_path` | Dashboard avatar edit (not on settings page) | Default `/asset/default-avator.webp`; custom uploads stored as full Bunny CDN URL (`https://{BUNNY_CDN_HOSTNAME}/avatars/{userId}/…`) |
 | `auth.users.email` | 電郵地址 | Read-only in UI |
 
 ## Action contracts
@@ -83,14 +88,29 @@ import type { UserProfileFormErrors } from "@/lib/profile/validation";
 | Handle | `username` | No (empty → `null` in DB) |
 | 個人簡介 | `shortDescription` | No |
 
+### `updateUserAvatar(cdnUrl: string)`
+
+```ts
+import { updateUserAvatar } from "@/app/actions/profile";
+
+// Returns:
+{ success: true } | { success: false; error: string }
+
+// Validates cdnUrl hostname matches BUNNY_CDN_HOSTNAME
+// Success → revalidatePath("/profile/user", "/profile/user/settings", "/profile/{id}")
+//           + syncAutoGrantRewards() (profile_complete coupon)
+```
+
+Client flow: `uploadProfileAvatar(file)` → `updateUserAvatar(cdnUrl)`.
+
 ### `resolveAvatarUrl` (shared lib)
 
 ```ts
 import { resolveAvatarUrl, DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 
 // null / empty avatar_path → "/asset/default-avator.webp"
-// "/..." or "http..." → used as-is
-// other → Supabase Storage public URL (bucket `avatars`, future uploads)
+// "/..." or "http..." → used as-is (Bunny CDN URLs stored as full https URL)
+// other → Supabase Storage public URL (bucket `avatars`, legacy path)
 ```
 
 ## Env / migrations
@@ -113,6 +133,7 @@ bunx supabase db push
 2. Change display name + bio → **儲存更改** → DB updated; toast「個人資料已更新」.
 3. Set handle to taken username → error + toast「此用戶名稱已被使用」.
 4. New signup → `profiles.avatar_path` defaults to `/asset/default-avator.webp`.
+5. Dashboard avatar edit → Bunny upload + `avatar_path` updated to CDN URL; old `avatars/` object best-effort deleted.
 
 **SQL spot-check:**
 

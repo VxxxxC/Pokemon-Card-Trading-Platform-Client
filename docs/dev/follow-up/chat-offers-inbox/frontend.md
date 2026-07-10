@@ -5,6 +5,34 @@
 - **Backend:** ✅ Ready (see [backend.md](./backend.md))
 - **Frontend:** 🟡 Partial — buyer make/modify + seller accept/**reject** + DB text send + **Realtime Scheme A** + **order completion card + review CTA** + **long-thread perf** wired; mock rooms retained; checkout-after-accept polish pending
 - **Your focus:** `OfferCard` styling polish; post-accept checkout navigation; inbox refresh-on-page-reload UX; profile review history UI
+- **Partner report:** [PARTNER_REPORT.md](./PARTNER_REPORT.md)
+
+## Changelog (2026-07-09, user reports)
+
+| Area | Shipped |
+|------|---------|
+| **`GlobalChatConsole`** | Report dialog → `submitUserReport` with `chatRoomId`; guards mock/pending rooms |
+| **`ProfileHeaderWithChat`** | Profile report → `submitUserReport` (no room); success toast fixed |
+| **`ChatReportDialogBody`** | `isSubmitting` disables confirm button + loading label |
+
+**Acceptance checklist:**
+
+- [ ] DB chat room: select category → submit → success toast + dialog closes + `reports` row
+- [ ] Mock/pending room: submit blocked with 「對話尚未建立，無法舉報」
+- [ ] Profile page: report submits without `chatRoomId`
+- [ ] Duplicate pending report shows friendly error, dialog stays open
+- [ ] Submit button shows 「提交中…」 and is disabled during RPC
+
+See [PARTNER_REPORT.md](./PARTNER_REPORT.md) for executive summary, P0–P3 backlog, SQL smoke tests, and E2E command.
+
+## Changelog (2026-07-09, thread pagination)
+
+| Area | Shipped |
+|------|---------|
+| **`useChatThreadPagination`** | Scroll-up load older messages; stick-to-bottom for new messages; scroll position preserved on prepend |
+| **`loadOlderChatRoomThread`** | Client helper — prepends older page into Zustand |
+| **`GlobalChatConsole`** | Removed `THREAD_WINDOW_SIZE` display-only truncation; top loading / end-of-history hints |
+| **`threadHasMoreOlder`** | Room flag drives whether scroll-up fetch runs |
 
 ## Changelog (2026-07-08) — global buy entry points
 
@@ -91,7 +119,8 @@
 | `app/components/chat/GlobalChatOverlay.tsx` | DB sync on `isChatOpen`; mounts **`useChatRoomRealtime`** |
 | `app/components/chat/GlobalChatConsole.tsx` | Threads + send form; `ReviewModal`; `useRoomReviewedOrderIds`; memoized threads |
 | `app/lib/hooks/useChatRoomRealtime.ts` | Inbox-wide Realtime subscription + Scheme A decode + offline reconcile |
-| `app/lib/hooks/useRoomReviewedOrderIds.ts` | **Batched** reviewed-order lookup for active room |
+| `app/lib/hooks/useChatThreadPagination.ts` | Scroll-up pagination + stick-to-bottom scroll management |
+| `app/lib/chat/hydrateChatRoomThread.ts` | `hydrateChatRoomThread` (first page) + `loadOlderChatRoomThread` |
 | `app/lib/chat/realtimeChatMessages.ts` | DB row → store `Message`; offer event decoder; **`parseModifyOfferPriceFromContent`** |
 | `app/lib/chat/resolveMemberOrderId.ts` | Client-side `orderId` extraction + **`collectMemberOrderIdsFromChatRoom`** |
 | `app/lib/chat/offerCardContextCache.ts` | In-memory `getOfferCardContext` cache (per `offerId`, 5 min TTL) |
@@ -214,9 +243,9 @@ Requires migration **`20260704300000`** on inbox RPC for reliable `member_order_
 
 - Do **not** use `setChats` for plain-text send — it runs `buildOfferLedgerFromChats` across all rooms
 - Send button is **not** blocked on RPC completion; `sendInFlightRef` prevents double-submit only
-- Scroll-to-bottom depends on active room message count, not full `chats` array
+- Scroll-to-bottom: `useChatThreadPagination` sticks when user is near bottom; prepending older messages does not jump scroll
 
-Requires logged-in user in a UUID `chat_rooms` row. Backend must have migration **`20260704210000`** applied.
+Requires migration **`20260709220000`** for RPC pagination (table fallback works without it).
 
 ---
 
@@ -343,6 +372,19 @@ Cache invalidated on accept / reject / modify from this card.
 
 ---
 
+## Thread pagination (✅)
+
+| Step | Behavior |
+|------|----------|
+| Room select | `hydrateChatRoomThread` → `getChatRoomThread` first **50** messages |
+| Scroll near top | `useChatThreadPagination` → `loadOlderChatRoomThread` prepends older page |
+| New message | Auto-scroll only when user is near bottom |
+| End of history | `threadHasMoreOlder === false` → optional「已載入全部歷史訊息」hint |
+
+Requires migration **`20260709220000`** on linked Supabase project.
+
+---
+
 ## Long-thread performance (✅ baseline)
 
 Same partner with many past offers + completions:
@@ -354,9 +396,10 @@ Same partner with many past offers + completions:
 | `offerCardContextCache` | Dedupes repeat `getOfferCardContext` for same `offerId` |
 | Realtime price parse | No server round-trip on modify events |
 | `appendRoomMessage` fast append | Avoids O(n log n) re-sort on every INSERT when in order |
+| Thread pagination | Initial 50 messages; scroll-up loads older pages (no full-thread fetch) |
 | Memoized threads + `useMemo` render list | Fewer React re-renders on unrelated store updates |
 
-**Not yet implemented:** message virtualization / pagination — acceptable for ~20–30 cards; consider if threads exceed ~50 heavy cards.
+**Not yet implemented:** message virtualization — acceptable with pagination for typical threads.
 
 ---
 
@@ -391,6 +434,7 @@ Same partner with many past offers + completions:
 - [x] `SYSTEM_ORDER_COMPLETED` renders completion card (not raw content string)
 - [x] Review CTA on completion card opens `ReviewModal` (when `!hasReviewedByMe`)
 - [x] Long room open: terminal offer cards do not each call `getOfferCardContext`
+- [x] Thread pagination: initial page only; scroll up loads older messages
 - [ ] Page refresh preserves inbox without re-making offer
 
 ---

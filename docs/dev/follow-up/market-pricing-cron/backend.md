@@ -10,15 +10,25 @@
 
 | Change | Detail |
 |--------|--------|
-| **Cron Job 2** | Daily aggregation from `product_price_snapshots` → `product_grading_market_prices` |
-| **Route** | `app/api/cron/aggregate-prices/route.ts` — `GET` / `POST` |
+| **Cron Job 2** | Daily aggregation from `product_price_snapshots` → `product_grading_market_prices` (SNKRDUNK snapshots first, else `source=platform`) |
+| **Cron Job 1b** | `GET/POST /api/cron/ingest-platform-trades` — completed `member_orders` → `product_price_snapshots` (`source=platform`, dedupe via `member_order_id`) |
+| **Route** | `app/api/cron/aggregate-prices/route.ts` — run **after** ingest |
 | **Auth** | `Authorization: Bearer ${CRON_SECRET}` |
 | **RAW conditions** | Groups 裸卡 by `condition_type` (`A`–`D`) → cache `grading_score` = `A`/`B`/`C`/`D` (not `-`) |
 | **Shared helpers** | `lib/marketplace/market-price.ts` — used by cron + read actions |
 | **Read actions** | `getMarketplaceProductMarketPrices`, `getMarketplaceProductMarketPrice` in `app/actions/marketplace.ts` |
 | **Migrations** | `20260703210000` (service_role grants), `20260703220000` (anon public read) |
 
-**Not in this slice:** snapshot ingest pipeline (Cron Job 1), `vercel.json` cron schedule, grid batch market price.
+**Not in this slice:** snapshot ingest pipeline (Cron Job 1, external SNKRDUNK scraper).
+
+**Deploy cron (`vercel.json`, UTC → HKT):**
+
+| Job | Path | Schedule (UTC) | HKT |
+|-----|------|----------------|-----|
+| Platform trade ingest | `/api/cron/ingest-platform-trades` | `30 18 * * *` | 02:30 |
+| Market price aggregate | `/api/cron/aggregate-prices` | `0 19 * * *` | 03:00 |
+
+Vercel sends `Authorization: Bearer $CRON_SECRET` when `CRON_SECRET` is set in project env.
 
 ---
 
@@ -26,20 +36,24 @@
 
 ```
 product_price_snapshots (ledger, 30-day window)
+  ↑ SNKRDUNK scraper (Cron Job 1, external)
+  ↑ ingest-platform-trades (Cron Job 1b, member_orders completed)
         │
-        │  Vercel Cron (daily, HKT 03:00) or manual curl
+        │  Vercel Cron (daily) — recommended order:
+        │    1) ingest-platform-trades
+        │    2) aggregate-prices
         ▼
 GET /api/cron/aggregate-prices
         │
-        │  group by product_id + grading_company + resolved grading_score
-        │  (RAW uses condition_type A/B/C/D)
+        │  group by product_id + grade
+        │  prefer source != platform; fallback source=platform
         │  compute market_avg_price, market_trend_30d, market_chart_data
         ▼
-product_grading_market_prices (cache, upsert)
+product_grading_market_prices (cache, upsert + market_data_source)
         │
-        │  getMarketplaceProductMarketPrices (bulk, no RPC)
+        │  search_marketplace_products RPC LEFT JOIN cache
         ▼
-Product detail banner + chart + per-grade chips
+MarketplaceCard / Wishlist / Product detail
 ```
 
 ---
@@ -102,7 +116,8 @@ export const maxDuration = 300;
 | `grading_score` | Group key for graded cards; for RAW, may hold `A`–`D` |
 | `condition_type` | **RAW group key** — `A` / `B` / `C` / `D` when `grading_score` empty |
 | `created_at` | Tie-breaker for same-day snapshots |
-| `source`, `price_jpy` | Not used |
+| `source`, `price_jpy` | Ingest sets `source=platform`; aggregate prefers non-platform (SNKRDUNK) per grade group |
+| `member_order_id` | Platform ingest dedupe — one snapshot per completed order |
 
 ### Target: `product_grading_market_prices`
 
@@ -175,6 +190,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>   # read actions
 
 ```bash
 bun run dev
+curl -s -X GET "http://localhost:3000/api/cron/ingest-platform-trades" \
+  -H "Authorization: Bearer $CRON_SECRET" | jq
 curl -s -X GET "http://localhost:3000/api/cron/aggregate-prices" \
   -H "Authorization: Bearer $CRON_SECRET" | jq
 ```
@@ -204,8 +221,7 @@ GROUP BY 1, 2, 3;
 |------|----------------|
 | Snapshot ingest (Cron Job 1) | Must populate `price_hkd` + `condition_type` for raw |
 | Order book RAW A/B/C/D filter | `listings` has no condition column — separate RPC/schema |
-| Grid card `market_avg_price` | Optional batch read |
-| `vercel.json` cron schedule | Infra / deploy |
+| Grid card trend | ✅ Wired via search RPC + `MarketplaceCard` |
 
 ---
 
