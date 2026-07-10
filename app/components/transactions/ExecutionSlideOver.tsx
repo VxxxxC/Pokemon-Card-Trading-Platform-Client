@@ -71,6 +71,21 @@ export function ExecutionSlideOver({
     void incrementListingView(listingId);
   }, [isOpen, listingId]);
 
+  useEffect(() => {
+    if (isOpen && order) {
+      queueMicrotask(() => {
+        setCustomPrice(order.price.toString());
+        setUseAuthentication(false);
+      });
+    }
+  }, [isOpen, listingId, order]);
+
+  useEffect(() => {
+    if (detail?.useAuthentication === false) {
+      setUseAuthentication(false);
+    }
+  }, [detail?.useAuthentication]);
+
   if (!isOpen || !order) {
     return null;
   }
@@ -91,23 +106,6 @@ export function ExecutionSlideOver({
   });
 
   const listingAcceptsBuyerAuth = detail?.useAuthentication !== false;
-
-  useEffect(() => {
-    if (isOpen && order) {
-      queueMicrotask(() => {
-        setCustomPrice(order.price.toString());
-        setUseAuthentication(false);
-      });
-    }
-  }, [isOpen, listingId, order?.price]);
-
-  useEffect(() => {
-    if (!listingAcceptsBuyerAuth) {
-      setUseAuthentication(false);
-    }
-  }, [listingAcceptsBuyerAuth]);
-
-  if (!isOpen || !order) return null;
 
   const handleSendCounterOffer = async () => {
     if (!listingId) {

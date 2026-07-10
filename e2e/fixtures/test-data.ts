@@ -65,18 +65,18 @@ export function hasWrongSellerFixture(): boolean {
 }
 
 export function requireCoreMerchantFixtures(
-  test: TestType<{}, {}>,
+  test: TestType<object, object>,
   reason = "Missing E2E_SELLER_ID or E2E_LISTING_ID in environment",
-): asserts test is TestType<{}, {}> {
+): asserts test is TestType<object, object> {
   if (!hasCoreMerchantFixtures()) {
     test.skip(true, reason);
   }
 }
 
 export function requireBuyerAuthFixtures(
-  test: TestType<{}, {}>,
+  test: TestType<object, object>,
   reason = "Missing E2E_BUYER_EMAIL or E2E_BUYER_PASSWORD in environment",
-): asserts test is TestType<{}, {}> {
+): asserts test is TestType<object, object> {
   if (!hasBuyerAuthFixtures()) {
     test.skip(true, reason);
   }

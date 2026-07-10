@@ -57,9 +57,9 @@ export function hasChatRealtimeFixtures(): boolean {
 }
 
 export function requireChatRealtimeFixtures(
-  test: TestType<{}, {}>,
+  test: TestType<object, object>,
   reason = "Missing Global Chat E2E env (seller/buyer auth, listing, or SUPABASE_SERVICE_ROLE_KEY)",
-): asserts test is TestType<{}, {}> {
+): asserts test is TestType<object, object> {
   if (!hasChatRealtimeFixtures()) {
     test.skip(true, reason);
   }
