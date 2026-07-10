@@ -113,6 +113,7 @@ test.describe("Member auth escrow inbound", () => {
         timeout: 20_000,
       });
 
+      const order = await getMemberOrderById(memberOrderId);
       if (order?.inbound_tracking_no) {
         expect(order.inbound_tracking_no).toBe(trackingNo);
       }

@@ -156,6 +156,9 @@ export async function loadMarketplaceSellerListingDetail(
     sellerName: seller.username,
     sellerPersona: listingRow.seller_persona,
     useAuthentication: listingRow.use_authentication,
+    marketAvgPrice: null,
+    marketReferenceSource: null,
+    priceVsMarketPct: null,
   };
 
   return {

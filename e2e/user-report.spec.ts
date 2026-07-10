@@ -64,6 +64,7 @@ test.describe("User report submission", () => {
 
     if (!sellerId || !buyerId) {
       test.skip(true, "Missing buyer or seller profile id");
+      return;
     }
 
     const roomId = await ensureDbChatRoom(buyerId, sellerId);
@@ -110,6 +111,7 @@ test.describe("User report submission", () => {
 
     if (!sellerId || !buyerId) {
       test.skip(true, "Missing buyer or seller profile id");
+      return;
     }
 
     await deletePendingReports({ reporterId: buyerId, targetId: sellerId });

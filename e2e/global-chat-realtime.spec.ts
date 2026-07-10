@@ -174,6 +174,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
     const buyerId = await getProfileIdByEmail(buyerEmail);
     if (!buyerId) {
       test.skip(true, `Could not resolve buyer profile for ${buyerEmail}`);
+      return;
     }
 
     const roomId = await ensureDbChatRoom(buyerId, sellerId);

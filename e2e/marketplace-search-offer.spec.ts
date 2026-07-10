@@ -129,6 +129,7 @@ test.describe("Marketplace search + make offer", () => {
     const buyerId = await getProfileIdByEmail(buyerEmail!);
     if (!buyerId) {
       test.skip(true, `Could not resolve buyer profile for ${buyerEmail}`);
+      return;
     }
 
     const roomId = await ensureDbChatRoom(buyerId, fixture.sellerId);
