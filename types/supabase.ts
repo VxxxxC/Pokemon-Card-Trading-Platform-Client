@@ -812,6 +812,7 @@ export type Database = {
           id: string
           market_avg_price: number | null
           market_chart_data: Json | null
+          market_data_source: string
           market_trend_30d: number | null
           product_id: string | null
           updated_at: string | null
@@ -822,6 +823,7 @@ export type Database = {
           id?: string
           market_avg_price?: number | null
           market_chart_data?: Json | null
+          market_data_source?: string
           market_trend_30d?: number | null
           product_id?: string | null
           updated_at?: string | null
@@ -832,6 +834,7 @@ export type Database = {
           id?: string
           market_avg_price?: number | null
           market_chart_data?: Json | null
+          market_data_source?: string
           market_trend_30d?: number | null
           product_id?: string | null
           updated_at?: string | null
@@ -854,6 +857,7 @@ export type Database = {
           grading_company: string | null
           grading_score: string | null
           id: string
+          member_order_id: string | null
           price_hkd: number | null
           price_jpy: number
           product_id: string
@@ -867,6 +871,7 @@ export type Database = {
           grading_company?: string | null
           grading_score?: string | null
           id?: string
+          member_order_id?: string | null
           price_hkd?: number | null
           price_jpy: number
           product_id: string
@@ -880,6 +885,7 @@ export type Database = {
           grading_company?: string | null
           grading_score?: string | null
           id?: string
+          member_order_id?: string | null
           price_hkd?: number | null
           price_jpy?: number
           product_id?: string
@@ -887,6 +893,13 @@ export type Database = {
           source?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_price_snapshots_member_order_id_fkey"
+            columns: ["member_order_id"]
+            isOneToOne: false
+            referencedRelation: "member_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_price_snapshots_product_id_fkey"
             columns: ["product_id"]
@@ -1419,7 +1432,16 @@ export type Database = {
         Returns: boolean
       }
       generate_profile_username: { Args: never; Returns: string }
-      get_chat_room_thread: { Args: { p_room_id: string }; Returns: Json }
+      get_chat_room_thread:
+        | { Args: { p_room_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_before_created_at?: string
+              p_limit?: number
+              p_room_id: string
+            }
+            Returns: Json
+          }
       get_gamification_stats_for_me: { Args: never; Returns: Json }
       get_marketplace_price_bounds: {
         Args: never
@@ -1501,6 +1523,10 @@ export type Database = {
       }
       rpc_confirm_platform_received: {
         Args: { p_order_id: string }
+        Returns: Json
+      }
+      rpc_e2e_reset_listing_trading_fixture: {
+        Args: { p_buyer_id: string; p_listing_id: string; p_seller_id: string }
         Returns: Json
       }
       rpc_fail_member_auth_order: {
@@ -1607,11 +1633,14 @@ export type Database = {
           lowest_listing_created_at: string
           lowest_listing_id: string
           lowest_price: number
+          market_avg_price: number | null
+          market_data_source: string | null
           name_en: string
           name_ja: string
           name_zh: string
           page: number
           page_size: number
+          price_vs_market_pct: number | null
           product_id: string
           product_name: string
           range_end: number
@@ -1641,11 +1670,14 @@ export type Database = {
           lowest_listing_created_at: string
           lowest_listing_id: string
           lowest_price: number
+          market_avg_price: number | null
+          market_data_source: string | null
           name_en: string
           name_ja: string
           name_zh: string
           page: number
           page_size: number
+          price_vs_market_pct: number | null
           product_id: string
           product_name: string
           range_end: number
@@ -1683,9 +1715,12 @@ export type Database = {
           name_en: string
           name_ja: string
           name_zh: string
+          market_avg_price: number | null
+          market_data_source: string | null
           page: number
           page_size: number
           price: number
+          price_vs_market_pct: number | null
           product_id: string
           product_name: string
           range_end: number
@@ -1750,6 +1785,7 @@ export type Database = {
           count_status_cancelled: number
           count_status_completed: number
           count_status_pending: number
+          counterparty_avatar_path: string | null
           counterparty_display_name: string
           counterparty_id: string
           counterparty_username: string

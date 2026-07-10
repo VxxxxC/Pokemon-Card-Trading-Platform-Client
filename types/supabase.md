@@ -75,7 +75,7 @@ type UserRole = Enums<"user_role">;
 | `fn_try_auto_grant_rewards` | `{ p_user_id: string };` | `Json` |
 | `fn_try_reveal_order_reviews` | `{ p_order_id: string; p_order_kind: string }` | `boolean` |
 | `generate_profile_username` | `never;` | `string` |
-| `get_chat_room_thread` | `{ p_room_id: string };` | `Json` |
+| `get_chat_room_thread` | `{ p_room_id: string };` | `Json } | { Args: { p_before_created_at?: string p_limit?: number p_room_id: string } Returns: Json` |
 | `get_gamification_stats_for_me` | `never;` | `Json` |
 | `get_marketplace_price_bounds` | `never` | `{ max_price: number min_price: number }[]` |
 | `get_marketplace_product_listings` | `{ p_grade_filters?: Json p_only_graded?: boolean p_page?: number p_page_size?: number p_product_id:…` | `{ created_at: string filtered_lowest_price: number grading_company: string grading_score: string li…` |
@@ -95,6 +95,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_complete_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_confirm_buyer_received` | `{ p_buyer_id: string; p_order_id: string }` | `Json` |
 | `rpc_confirm_platform_received` | `{ p_order_id: string }` | `Json` |
+| `rpc_e2e_reset_listing_trading_fixture` | `{ p_buyer_id: string; p_listing_id: string; p_seller_id: string }` | `Json` |
 | `rpc_fail_member_auth_order` | `{ p_order_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
