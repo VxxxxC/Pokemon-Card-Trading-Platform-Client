@@ -3,6 +3,7 @@ import type {
   InventorySummary,
 } from "@/app/lib/inventory/types";
 import {
+  filterInventoryListingsForDisplay,
   groupListingsByProduct,
   matchesInventorySearch,
   summarizeInventoryListings,
@@ -189,7 +190,7 @@ export async function loadUserInventoryView(
   return {
     summary: summarizeInventoryListings(listings),
     page: buildInventoryGroupsPage(
-      listings,
+      filterInventoryListingsForDisplay(listings),
       catalogById,
       statsByListingId,
       input,

@@ -12,6 +12,7 @@ import {
 import {
   isDefaultProductDetailListingsInput,
 } from "@/lib/marketplace/product-detail-default";
+import type { MarketplaceTrendSource } from "@/app/lib/marketplace/types";
 import {
   MARKETPLACE_PRODUCT_CATALOG_CACHE_SECONDS,
   MARKETPLACE_PRODUCT_DEFAULT_LISTINGS_CACHE_SECONDS,
@@ -21,6 +22,8 @@ import {
   normalizeMarketplaceText,
   parseCatalogSearchQuery,
 } from "@/app/lib/marketplace/searchParsers";
+import { loadProfileSnippetsByIds } from "@/lib/profile/load-profile-snippets";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import type {
   MarketplacePaginationMeta,
   MarketplacePriceBoundsResult,
@@ -196,7 +199,15 @@ function toProductDetail(row: ProductCatalogRow): MarketplaceProductDetail {
   };
 }
 
-function toProductListingRow(row: ProductListingsRpcRow): MarketplaceProductListingRow {
+function toProductListingRow(
+  row: ProductListingsRpcRow,
+  sellerProfiles: ReadonlyMap<
+    string,
+    { username: string | null; avatarUrl: string }
+  >,
+): MarketplaceProductListingRow {
+  const sellerProfile = sellerProfiles.get(row.seller_id);
+
   return {
     listingId: row.listing_id,
     price: Number(row.price),
@@ -204,12 +215,23 @@ function toProductListingRow(row: ProductListingsRpcRow): MarketplaceProductList
     gradingScore: row.grading_score,
     sellerId: row.seller_id,
     sellerName: row.seller_name,
+    sellerUsername: sellerProfile?.username ?? null,
+    sellerAvatarUrl: sellerProfile?.avatarUrl ?? DEFAULT_AVATAR_URL,
     sellerRating: Number(row.seller_rating ?? 0),
     sellerTotalTrades: Number(row.seller_total_trades ?? 0),
     sellerPersona: row.seller_persona,
     useAuthentication: row.use_authentication,
     createdAt: row.created_at,
   };
+}
+
+function resolveMarketReferenceSource(
+  value: string | null | undefined,
+): MarketplaceTrendSource | null {
+  if (value === "snkrdunk" || value === "platform") {
+    return value;
+  }
+  return null;
 }
 
 function toProductRow(row: SearchRpcRow): MarketplaceProductRow {
@@ -237,6 +259,9 @@ function toProductRow(row: SearchRpcRow): MarketplaceProductRow {
     sellerName: row.seller_name,
     sellerPersona: row.seller_persona,
     useAuthentication: row.use_authentication,
+    marketAvgPrice: toFiniteNumber(row.market_avg_price),
+    marketReferenceSource: resolveMarketReferenceSource(row.market_data_source),
+    priceVsMarketPct: toFiniteNumber(row.price_vs_market_pct),
   };
 }
 
@@ -677,11 +702,15 @@ async function runLoadProductListings(
   }
 
   const rows = (data ?? []) as ProductListingsRpcRow[];
+  const sellerProfiles = await loadProfileSnippetsByIds(
+    supabase,
+    rows.map((row) => row.seller_id),
+  );
   const lowestRaw = rows[0]?.filtered_lowest_price;
 
   return {
     success: true,
-    data: rows.map(toProductListingRow),
+    data: rows.map((row) => toProductListingRow(row, sellerProfiles)),
     meta: toPaginationMeta(rows[0], page, pageSize),
     lowestPrice:
       lowestRaw != null && Number.isFinite(Number(lowestRaw))
@@ -753,7 +782,7 @@ export async function getMarketplaceListingDetail(
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
 
     const { data, error } = await supabase
       .from("listings")
@@ -773,6 +802,22 @@ export async function getMarketplaceListingDetail(
       return { success: false, error: "找不到此掛單" };
     }
 
+    const { data: sellerProfile, error: sellerProfileError } = await supabase
+      .from("profiles")
+      .select("display_name, username")
+      .eq("id", data.seller_id)
+      .maybeSingle<Pick<Tables<"profiles">, "display_name" | "username">>();
+
+    if (sellerProfileError) {
+      console.error(
+        "[getMarketplaceListingDetail] seller profile",
+        sellerProfileError.message,
+      );
+    }
+
+    const sellerDisplayName = sellerProfile?.display_name?.trim() ?? "";
+    const sellerUsername = sellerProfile?.username?.trim() || null;
+
     return {
       success: true,
       data: {
@@ -782,6 +827,8 @@ export async function getMarketplaceListingDetail(
         gradingCompany: data.grading_company,
         gradingScore: data.grading_score,
         sellerId: data.seller_id,
+        sellerDisplayName,
+        sellerUsername,
         sellerDescription: data.seller_description,
         images: parseListingImageUrls(data.images),
         useAuthentication: data.use_authentication,

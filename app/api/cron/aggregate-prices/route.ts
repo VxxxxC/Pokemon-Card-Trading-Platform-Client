@@ -3,6 +3,13 @@ import {
   resolveMarketPriceDbCompany,
   resolveMarketPriceDbScore,
 } from "@/lib/marketplace/market-price";
+import {
+  isPlatformSnapshotSource,
+  SNAPSHOT_SOURCE_PLATFORM,
+  SNAPSHOT_SOURCE_SNKRDUNK,
+  type MarketDataSource,
+} from "@/lib/marketplace/snapshot-source";
+import { handleCronRoute } from "@/lib/cron/request";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Json, Tables, TablesInsert } from "@/types/supabase";
 
@@ -24,6 +31,7 @@ type SnapshotRow = Pick<
   | "grading_score"
   | "condition_type"
   | "created_at"
+  | "source"
 >;
 
 type SnapshotWithPrice = SnapshotRow & { price_hkd: number };
@@ -38,6 +46,7 @@ type MarketPriceUpsert = Pick<
   | "market_avg_price"
   | "market_trend_30d"
   | "market_chart_data"
+  | "market_data_source"
   | "updated_at"
 > & {
   grading_score: string;
@@ -47,16 +56,6 @@ function getLookbackDate(): string {
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - LOOKBACK_DAYS);
   return date.toISOString().slice(0, 10);
-}
-
-function isAuthorized(request: Request): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return false;
-  }
-
-  const authorization = request.headers.get("authorization");
-  return authorization === `Bearer ${cronSecret}`;
 }
 
 function gradingGroupKey(snapshot: SnapshotRow): string {
@@ -118,6 +117,7 @@ function buildChartData(validSnapshots: SnapshotWithPrice[]): ChartPoint[] {
 
 function computeGroupMetrics(
   snapshots: SnapshotRow[],
+  marketDataSource: MarketDataSource,
 ): MarketPriceUpsert | null {
   const validSnapshots = snapshots
     .filter((snapshot): snapshot is SnapshotWithPrice =>
@@ -162,8 +162,36 @@ function computeGroupMetrics(
     market_avg_price: marketAvgPrice,
     market_trend_30d: marketTrend30d,
     market_chart_data: chartData as unknown as Json,
+    market_data_source: marketDataSource,
     updated_at: new Date().toISOString(),
   };
+}
+
+function pickSnapshotsForAggregation(
+  snapshots: SnapshotRow[],
+): { snapshots: SnapshotRow[]; source: MarketDataSource } | null {
+  const snkrdunkSnapshots = snapshots.filter((snapshot) =>
+    !isPlatformSnapshotSource(snapshot.source),
+  );
+  const platformSnapshots = snapshots.filter((snapshot) =>
+    isPlatformSnapshotSource(snapshot.source),
+  );
+
+  if (snkrdunkSnapshots.some((snapshot) => isValidPrice(snapshot.price_hkd))) {
+    return {
+      snapshots: snkrdunkSnapshots,
+      source: SNAPSHOT_SOURCE_SNKRDUNK,
+    };
+  }
+
+  if (platformSnapshots.some((snapshot) => isValidPrice(snapshot.price_hkd))) {
+    return {
+      snapshots: platformSnapshots,
+      source: SNAPSHOT_SOURCE_PLATFORM,
+    };
+  }
+
+  return null;
 }
 
 function validHkdSnapshotQuery<T extends ReturnType<typeof createAdminClient>>(
@@ -224,7 +252,7 @@ async function fetchSnapshotsForProducts(
     const { data, error } = await supabase
       .from("product_price_snapshots")
       .select(
-        "product_id, price_hkd, snapshot_date, grading_company, grading_score, condition_type, created_at",
+        "product_id, price_hkd, snapshot_date, grading_company, grading_score, condition_type, created_at, source",
       )
       .in("product_id", productIds)
       .gte("snapshot_date", lookbackDate)
@@ -302,7 +330,12 @@ function aggregateSnapshots(
   const results: MarketPriceUpsert[] = [];
 
   for (const groupSnapshots of grouped.values()) {
-    const metrics = computeGroupMetrics(groupSnapshots);
+    const picked = pickSnapshotsForAggregation(groupSnapshots);
+    if (!picked) {
+      continue;
+    }
+
+    const metrics = computeGroupMetrics(picked.snapshots, picked.source);
     if (metrics) {
       results.push(metrics);
     }
@@ -374,52 +407,20 @@ async function runAggregatePrices(): Promise<NextResponse> {
   });
 }
 
-async function handleCronRequest(request: Request): Promise<NextResponse> {
-  if (!process.env.CRON_SECRET) {
-    return NextResponse.json(
-      { success: false, error: "CRON_SECRET is not configured" },
-      { status: 500 },
-    );
-  }
-
-  if (!isAuthorized(request)) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 },
-    );
-  }
-
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
-    return NextResponse.json(
-      { success: false, error: "Supabase admin credentials are not configured" },
-      { status: 500 },
-    );
-  }
-
-  try {
-    return await runAggregatePrices();
-  } catch (error) {
-    console.error("[cron/aggregate-prices]", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to aggregate market prices",
-      },
-      { status: 500 },
-    );
-  }
-}
-
 export async function GET(request: Request) {
-  return handleCronRequest(request);
+  return handleCronRoute(
+    request,
+    runAggregatePrices,
+    "[cron/aggregate-prices]",
+    "Failed to aggregate market prices",
+  );
 }
 
 export async function POST(request: Request) {
-  return handleCronRequest(request);
+  return handleCronRoute(
+    request,
+    runAggregatePrices,
+    "[cron/aggregate-prices]",
+    "Failed to aggregate market prices",
+  );
 }

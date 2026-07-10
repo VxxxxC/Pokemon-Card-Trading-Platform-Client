@@ -8,12 +8,17 @@ import {
   type DbChatRoomBaseRow,
   type DbOfferSnippet,
 } from "@/app/lib/chat/mapDbChats";
-import { isDbChatRoomId } from "@/app/lib/chat/constants";
+import { isDbChatRoomId, CHAT_THREAD_PAGE_SIZE } from "@/app/lib/chat/constants";
 import type { ChatRoom } from "@/app/store/useHkCardVaultStore";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_CHAT_MESSAGE_LENGTH = 2000;
+
+type ChatThreadFetchOptions = {
+  limit?: number;
+  beforeCreatedAt?: string;
+};
 
 type RpcSendChatMessageArgs = {
   p_room_id: string;
@@ -38,7 +43,11 @@ export type GetUserChatInboxResult =
   | { success: false; error: string };
 
 export type GetChatRoomThreadResult =
-  | { success: true; data: ChatRoom }
+  | { success: true; data: ChatRoom; hasMore: boolean }
+  | { success: false; error: string };
+
+export type LoadOlderChatRoomMessagesResult =
+  | { success: true; data: ChatRoom; hasMore: boolean }
   | { success: false; error: string };
 
 type InboxRpcPayload = {
@@ -56,6 +65,7 @@ type ThreadRpcPayload = {
   room: DbChatRoomBaseRow | null;
   messages: DbChatMessageRow[];
   offers: DbOfferSnippet[];
+  has_more: boolean;
 };
 
 function parseInboxRpcPayload(data: unknown): InboxRpcPayload | null {
@@ -113,6 +123,7 @@ function parseThreadRpcPayload(data: unknown): ThreadRpcPayload | null {
     offers: Array.isArray(payload.offers)
       ? (payload.offers as DbOfferSnippet[])
       : [],
+    has_more: payload.has_more === true,
   };
 }
 
@@ -167,18 +178,37 @@ async function fetchLobbyViaRpc(
 async function fetchThreadViaRpc(
   supabase: Awaited<ReturnType<typeof createClient>>,
   roomId: string,
+  options?: ChatThreadFetchOptions,
 ): Promise<{ payload: ThreadRpcPayload | null; error: string | null }> {
+  const limit = options?.limit ?? CHAT_THREAD_PAGE_SIZE;
+  const rpcArgs: {
+    p_room_id: string;
+    p_limit: number;
+    p_before_created_at?: string;
+  } = {
+    p_room_id: roomId,
+    p_limit: limit,
+  };
+
+  if (options?.beforeCreatedAt) {
+    rpcArgs.p_before_created_at = options.beforeCreatedAt;
+  }
+
   const { data, error } = await (
     supabase as unknown as {
       rpc: (
         fn: "get_chat_room_thread",
-        args: { p_room_id: string },
+        args: {
+          p_room_id: string;
+          p_limit?: number;
+          p_before_created_at?: string;
+        },
       ) => Promise<{
         data: unknown;
         error: { message: string } | null;
       }>;
     }
-  ).rpc("get_chat_room_thread", { p_room_id: roomId });
+  ).rpc("get_chat_room_thread", rpcArgs);
 
   if (error) {
     return { payload: null, error: error.message };
@@ -208,12 +238,14 @@ async function fetchRoomRowsForUser(
         buyer:profiles!fk_chat_rooms_buyer (
           id,
           display_name,
-          role
+          role,
+          avatar_path
         ),
         seller:profiles!fk_chat_rooms_seller_id (
           id,
           display_name,
-          role
+          role,
+          avatar_path
         )
       `,
     )
@@ -257,23 +289,53 @@ async function fetchLastMessagesForRooms(
   return { messages: Array.from(lastByRoom.values()), error: null };
 }
 
+type FetchMessagesForRoomOptions = {
+  limit?: number;
+  beforeCreatedAt?: string;
+};
+
+type FetchMessagesForRoomResult = {
+  messages: DbChatMessageRow[];
+  hasMore: boolean;
+  error: string | null;
+};
+
 async function fetchMessagesForRoom(
   supabase: Awaited<ReturnType<typeof createClient>>,
   roomId: string,
-): Promise<{ messages: DbChatMessageRow[]; error: string | null }> {
-  const { data, error } = await supabase
+  options?: FetchMessagesForRoomOptions,
+): Promise<FetchMessagesForRoomResult> {
+  const limit = options?.limit ?? CHAT_THREAD_PAGE_SIZE;
+  const fetchLimit = limit + 1;
+
+  let query = supabase
     .from("chat_messages")
     .select(
       "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
     )
     .eq("room_id", roomId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(fetchLimit);
 
-  if (error) {
-    return { messages: [], error: error.message };
+  if (options?.beforeCreatedAt) {
+    query = query.lt("created_at", options.beforeCreatedAt);
   }
 
-  return { messages: (data ?? []) as DbChatMessageRow[], error: null };
+  const { data, error } = await query;
+
+  if (error) {
+    return { messages: [], hasMore: false, error: error.message };
+  }
+
+  const rows = (data ?? []) as DbChatMessageRow[];
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+
+  return {
+    messages: [...pageRows].reverse(),
+    hasMore,
+    error: null,
+  };
 }
 
 async function fetchOffersForMessageRows(
@@ -419,6 +481,7 @@ async function fetchThreadViaTables(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   roomId: string,
+  options?: ChatThreadFetchOptions,
 ): Promise<{ payload: ThreadRpcPayload | null; error: string | null }> {
   const { data: room, error: roomError } = await supabase
     .from("chat_rooms")
@@ -432,12 +495,14 @@ async function fetchThreadViaTables(
         buyer:profiles!fk_chat_rooms_buyer (
           id,
           display_name,
-          role
+          role,
+          avatar_path
         ),
         seller:profiles!fk_chat_rooms_seller_id (
           id,
           display_name,
-          role
+          role,
+          avatar_path
         )
       `,
     )
@@ -453,10 +518,11 @@ async function fetchThreadViaTables(
     return { payload: null, error: "找不到聊天室或無權限" };
   }
 
-  const { messages, error: messagesError } = await fetchMessagesForRoom(
-    supabase,
-    roomId,
-  );
+  const {
+    messages,
+    hasMore,
+    error: messagesError,
+  } = await fetchMessagesForRoom(supabase, roomId, options);
 
   if (messagesError) {
     return { payload: null, error: messagesError };
@@ -476,6 +542,7 @@ async function fetchThreadViaTables(
       room: room as DbChatRoomBaseRow,
       messages,
       offers,
+      has_more: hasMore,
     },
     error: null,
   };
@@ -640,6 +707,7 @@ export async function getUserChatInboxLobby(): Promise<GetUserChatInboxResult> {
 
 export async function getChatRoomThread(
   roomId: string,
+  options?: ChatThreadFetchOptions,
 ): Promise<GetChatRoomThreadResult> {
   const trimmedRoomId = roomId.trim();
 
@@ -661,10 +729,19 @@ export async function getChatRoomThread(
       return { success: false, error: "請先登入" };
     }
 
+    const fetchOptions: ChatThreadFetchOptions = {
+      limit: options?.limit ?? CHAT_THREAD_PAGE_SIZE,
+      beforeCreatedAt: options?.beforeCreatedAt,
+    };
+
     let payload: ThreadRpcPayload | null = null;
     let loadError: string | null = null;
 
-    const rpcResult = await fetchThreadViaRpc(supabase, trimmedRoomId);
+    const rpcResult = await fetchThreadViaRpc(
+      supabase,
+      trimmedRoomId,
+      fetchOptions,
+    );
     if (rpcResult.payload) {
       payload = rpcResult.payload;
     } else {
@@ -673,6 +750,7 @@ export async function getChatRoomThread(
         supabase,
         user.id,
         trimmedRoomId,
+        fetchOptions,
       );
       if (tableResult.payload) {
         payload = tableResult.payload;
@@ -701,11 +779,27 @@ export async function getChatRoomThread(
       user.id,
     );
 
-    return { success: true, data: threadRoom };
+    return { success: true, data: threadRoom, hasMore: payload.has_more };
   } catch (error) {
     console.error("[getChatRoomThread]", error);
     return { success: false, error: "載入對話時發生錯誤" };
   }
+}
+
+export async function loadOlderChatRoomMessages(
+  roomId: string,
+  beforeCreatedAt: string,
+): Promise<LoadOlderChatRoomMessagesResult> {
+  const trimmedBefore = beforeCreatedAt.trim();
+
+  if (!trimmedBefore) {
+    return { success: false, error: "無法載入更早的訊息" };
+  }
+
+  return getChatRoomThread(roomId, {
+    limit: CHAT_THREAD_PAGE_SIZE,
+    beforeCreatedAt: trimmedBefore,
+  });
 }
 
 /** @deprecated Prefer getUserChatInboxLobby + getChatRoomThread for performance */

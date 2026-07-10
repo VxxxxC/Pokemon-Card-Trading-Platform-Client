@@ -44,6 +44,14 @@ export function buildListingObjectKey(
   return `listings/${sellerId}/${randomUUID()}.${safeExt}`;
 }
 
+export function buildAvatarObjectKey(
+  userId: string,
+  extension: string,
+): string {
+  const safeExt = extension.replace(/^\./, "").toLowerCase() || "webp";
+  return `avatars/${userId}/${randomUUID()}.${safeExt}`;
+}
+
 export function buildListingCdnUrl(
   config: BunnyStorageConfig,
   objectKey: string,
@@ -51,6 +59,33 @@ export function buildListingCdnUrl(
   const hostname = config.cdnHostname.replace(/\/$/, "");
   const path = objectKey.replace(/^\//, "");
   return `https://${hostname}/${path}`;
+}
+
+/** Validate that a URL points to our configured Bunny CDN hostname. */
+export function isAllowedBunnyCdnUrl(url: string): boolean {
+  const config = getBunnyStorageConfig();
+  if (!config) return false;
+
+  try {
+    const parsed = new URL(url.trim());
+    if (parsed.protocol !== "https:") return false;
+    const expectedHost = config.cdnHostname.replace(/\/$/, "").toLowerCase();
+    return parsed.hostname.toLowerCase() === expectedHost;
+  } catch {
+    return false;
+  }
+}
+
+/** Extract Bunny object key from a CDN URL, or null if not on our CDN. */
+export function bunnyObjectKeyFromCdnUrl(url: string): string | null {
+  if (!isAllowedBunnyCdnUrl(url)) return null;
+
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.pathname.replace(/^\//, "");
+  } catch {
+    return null;
+  }
 }
 
 function extensionFromContentType(contentType: string): string {
@@ -64,6 +99,8 @@ export type BunnyListingUpload = {
   objectKey: string;
   cdnUrl: string;
 };
+
+export type BunnyAvatarUpload = BunnyListingUpload;
 
 function buildObjectDeleteUrl(config: BunnyStorageConfig, objectKey: string): string {
   const path = objectKey.replace(/^\//, "");
@@ -104,6 +141,64 @@ export async function uploadListingImageToBunny(
     objectKey,
     cdnUrl: buildListingCdnUrl(config, objectKey),
   };
+}
+
+export async function uploadProfileAvatarToBunny(
+  userId: string,
+  fileBytes: Uint8Array,
+  contentType: string,
+): Promise<BunnyAvatarUpload> {
+  const config = getBunnyStorageConfig();
+  if (!config) {
+    throw new Error("Bunny.net storage is not configured");
+  }
+
+  const extension = extensionFromContentType(contentType);
+  const objectKey = buildAvatarObjectKey(userId, extension);
+  const uploadUrl = buildObjectDeleteUrl(config, objectKey);
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      AccessKey: config.accessKey,
+      "Content-Type": contentType,
+    },
+    body: Buffer.from(fileBytes),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Bunny upload failed (${response.status})${detail ? `: ${detail}` : ""}`,
+    );
+  }
+
+  return {
+    objectKey,
+    cdnUrl: buildListingCdnUrl(config, objectKey),
+  };
+}
+
+/** Best-effort cleanup when replacing a profile avatar on Bunny CDN. */
+export async function deleteProfileAvatarFromBunny(
+  objectKey: string,
+): Promise<void> {
+  const config = getBunnyStorageConfig();
+  if (!config || !objectKey.trim()) return;
+
+  const response = await fetch(buildObjectDeleteUrl(config, objectKey), {
+    method: "DELETE",
+    headers: {
+      AccessKey: config.accessKey,
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    const detail = await response.text().catch(() => "");
+    console.error(
+      `[deleteProfileAvatarFromBunny] Bunny delete failed (${response.status})${detail ? `: ${detail}` : ""}`,
+    );
+  }
 }
 
 /** Best-effort rollback for listing images after a failed DB write. */

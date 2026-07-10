@@ -18,6 +18,11 @@ import { toMarketplaceCardListing } from "@/lib/marketplace/map-seller-listing";
 import { mapProfileUpdateError } from "@/lib/profile/errors";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import {
+  bunnyObjectKeyFromCdnUrl,
+  deleteProfileAvatarFromBunny,
+  isAllowedBunnyCdnUrl,
+} from "@/lib/storage/bunny";
+import {
   validateUserProfileFields,
   type UserProfileFormErrors,
 } from "@/lib/profile/validation";
@@ -385,4 +390,95 @@ export async function updateUserProfile(
   void syncAutoGrantRewards();
 
   return null;
+}
+
+export async function updateUserAvatar(
+  cdnUrl: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  const trimmedUrl = cdnUrl.trim();
+  if (!trimmedUrl || !isAllowedBunnyCdnUrl(trimmedUrl)) {
+    return { success: false, error: "頭像網址無效" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const { data: currentProfile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("avatar_path")
+      .eq("id", user.id)
+      .maybeSingle<Pick<Tables<"profiles">, "avatar_path">>();
+
+    if (fetchError) {
+      return { success: false, error: "無法取得用戶資料" };
+    }
+
+    if (!currentProfile) {
+      return { success: false, error: "找不到用戶資料，請重新登入" };
+    }
+
+    const payload: ProfileUpdate = {
+      avatar_path: trimmedUrl,
+      updated_at: new Date().toISOString(),
+    };
+
+    const profilesClient = supabase.from("profiles") as unknown as {
+      update: (values: ProfileUpdate) => {
+        eq: (
+          column: "id",
+          value: string,
+        ) => {
+          select: (columns: "id") => Promise<{
+            data: { id: string }[] | null;
+            error: { code?: string; message?: string } | null;
+          }>;
+        };
+      };
+    };
+
+    const { data: updatedRows, error: updateError } = await profilesClient
+      .update(payload)
+      .eq("id", user.id)
+      .select("id");
+
+    if (updateError) {
+      const mapped = mapProfileUpdateError(updateError);
+      return { success: false, error: mapped.form ?? "儲存失敗，請稍後再試" };
+    }
+
+    if (!updatedRows?.length) {
+      return {
+        success: false,
+        error: "沒有權限更新資料，請確認已套用 profiles UPDATE migration",
+      };
+    }
+
+    const previousObjectKey = bunnyObjectKeyFromCdnUrl(
+      currentProfile.avatar_path ?? "",
+    );
+    if (previousObjectKey?.startsWith("avatars/")) {
+      void deleteProfileAvatarFromBunny(previousObjectKey);
+    }
+  } catch {
+    return { success: false, error: "儲存失敗，請稍後再試" };
+  }
+
+  revalidatePath("/profile/user");
+  revalidatePath("/profile/user/settings");
+  revalidatePath(`/profile/${user.id}`);
+
+  void syncAutoGrantRewards();
+
+  return { success: true };
 }

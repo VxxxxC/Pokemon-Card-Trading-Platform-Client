@@ -20,6 +20,7 @@ import {
 } from "@/app/lib/member-order/auth-escrow";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { parseListingImageUrls } from "@/lib/listings/images";
+import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
 
@@ -55,6 +56,7 @@ type SearchUserTradingOrdersRpcRow = {
   counterparty_id: string;
   counterparty_display_name: string | null;
   counterparty_username: string | null;
+  counterparty_avatar_path: string | null;
   grading_company: string;
   grading_score: string | null;
   use_authentication: boolean;
@@ -99,6 +101,7 @@ export type UserTradingOrderCounterparty = {
   id: string;
   displayName: string;
   username: string | null;
+  avatarUrl: string;
 };
 
 export type UserTradingOrder = {
@@ -216,11 +219,13 @@ type MemberOrderDetailQueryRow = {
     id: string;
     display_name: string | null;
     username: string | null;
+    avatar_path: string | null;
   };
   seller: {
     id: string;
     display_name: string | null;
     username: string | null;
+    avatar_path: string | null;
   };
 };
 
@@ -242,12 +247,13 @@ function displayCardName(catalog: {
 }
 
 function toCounterparty(
-  profile: UserTradingOrderCounterparty | null | undefined,
+  profile: Partial<UserTradingOrderCounterparty> | null | undefined,
 ): UserTradingOrderCounterparty {
   return {
     id: profile?.id ?? "",
     displayName: profile?.displayName ?? "未知用戶",
     username: profile?.username ?? null,
+    avatarUrl: profile?.avatarUrl ?? resolveAvatarUrl(null),
   };
 }
 
@@ -322,6 +328,7 @@ function mapRpcRow(row: SearchUserTradingOrdersRpcRow): UserTradingOrder {
       id: row.counterparty_id,
       displayName: row.counterparty_display_name ?? "未知用戶",
       username: row.counterparty_username,
+      avatarUrl: resolveAvatarUrl(row.counterparty_avatar_path),
     }),
     listing: {
       gradingCompany: row.grading_company,
@@ -472,6 +479,7 @@ function mapMemberOrderDetailRow(
       id: counterpartyProfile.id,
       displayName: counterpartyProfile.display_name ?? "未知用戶",
       username: counterpartyProfile.username,
+      avatarUrl: resolveAvatarUrl(counterpartyProfile.avatar_path),
     }),
     listing: {
       gradingCompany: row.listings.grading_company,
@@ -566,12 +574,14 @@ export async function getMemberOrderDetail(
           buyer:profiles!fk_member_orders_buyer (
             id,
             display_name,
-            username
+            username,
+            avatar_path
           ),
           seller:profiles!fk_member_orders_seller (
             id,
             display_name,
-            username
+            username,
+            avatar_path
           )
         `,
       )

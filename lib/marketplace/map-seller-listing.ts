@@ -1,6 +1,23 @@
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
 import { parseListingImageUrls } from "@/lib/listings/images";
+import type { MarketplaceTrendSource } from "@/app/lib/marketplace/types";
 import type { Database } from "@/types/supabase";
+
+function toFiniteNumber(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(Number(value))) {
+    return null;
+  }
+  return Number(value);
+}
+
+function resolveMarketReferenceSource(
+  value: string | null | undefined,
+): MarketplaceTrendSource | null {
+  if (value === "snkrdunk" || value === "platform") {
+    return value;
+  }
+  return null;
+}
 
 export type SellerListingRpcRow = {
   listing_id: string;
@@ -22,6 +39,9 @@ export type SellerListingRpcRow = {
   seller_name: string | null;
   seller_persona: Database["public"]["Enums"]["seller_persona_type"];
   use_authentication: boolean;
+  market_avg_price: number | null;
+  market_data_source: string | null;
+  price_vs_market_pct: number | null;
   seller_min_price: number | null;
   seller_max_price: number | null;
   total_count: number;
@@ -52,6 +72,9 @@ export type MarketplaceSellerListingRow = {
   sellerName: string;
   sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
   useAuthentication: boolean;
+  marketAvgPrice: number | null;
+  marketReferenceSource: MarketplaceTrendSource | null;
+  priceVsMarketPct: number | null;
 };
 
 export function mapSellerListingRpcRow(
@@ -77,6 +100,9 @@ export function mapSellerListingRpcRow(
     sellerName: row.seller_name ?? "賣家",
     sellerPersona: row.seller_persona,
     useAuthentication: row.use_authentication,
+    marketAvgPrice: toFiniteNumber(row.market_avg_price),
+    marketReferenceSource: resolveMarketReferenceSource(row.market_data_source),
+    priceVsMarketPct: toFiniteNumber(row.price_vs_market_pct),
   };
 }
 
@@ -114,6 +140,9 @@ export function toMarketplaceCardListing(
     price: row.price,
     delta: 0,
     deltaDirection: "up" as const,
+    marketAvgPrice: row.marketAvgPrice,
+    marketReferenceSource: row.marketReferenceSource,
+    priceVsMarketPct: row.priceVsMarketPct,
     image: options?.imageUrl ?? row.imageUrl,
     seller: row.sellerName,
     sellerId: row.sellerId,

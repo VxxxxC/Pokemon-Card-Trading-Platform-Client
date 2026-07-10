@@ -4,8 +4,17 @@ export type ListingImage = {
   order: number;
 };
 
-export const LISTING_IMAGE_MIN = 4;
+export const LISTING_IMAGE_MIN = 6;
 export const LISTING_IMAGE_MAX = 6;
+
+export const LISTING_PHOTO_SLOT_LABELS = [
+  "正面",
+  "背面",
+  "角1",
+  "角2",
+  "角3",
+  "角4",
+] as const;
 
 export const LISTING_IMAGE_ACCEPTED_TYPES = [
   "image/jpeg",

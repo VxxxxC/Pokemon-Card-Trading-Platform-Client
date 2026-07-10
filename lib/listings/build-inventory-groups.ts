@@ -52,6 +52,12 @@ export function matchesInventorySearch(
   return cardName.includes(normalized) || cardNo.includes(normalized);
 }
 
+export function filterInventoryListingsForDisplay(
+  listings: InventoryListingRow[],
+): InventoryListingRow[] {
+  return listings.filter((listing) => listing.status !== "sold");
+}
+
 export function groupListingsByProduct(input: {
   listings: InventoryListingRow[];
   catalogById: Map<string, CatalogRow>;
@@ -131,7 +137,7 @@ export function summarizeInventoryListings(
   }
 
   return {
-    totalListings: listings.length,
+    totalListings: activeCount + inactiveCount,
     activeCount,
     soldCount,
     inactiveCount,

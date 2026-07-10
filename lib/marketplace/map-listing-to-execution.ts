@@ -54,7 +54,7 @@ export function mapMarketplaceListingToExecutionCard(
     rarity: (listing.rarity ?? "SAR") as UnifiedProductSpec["rarity"],
     delta: listing.delta,
     deltaDirection: listing.deltaDirection,
-    images: listing.image ? [listing.image] : [],
+    images: [],
     type: "—",
     stage: "—",
     weakness: "—",

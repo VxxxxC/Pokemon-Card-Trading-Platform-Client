@@ -24,7 +24,7 @@ export function validateImageFile(file: File): string | null {
 
 export function validateListingImageCount(count: number): string | null {
   if (count < LISTING_IMAGE_MIN) {
-    return `必須上載至少 ${LISTING_IMAGE_MIN} 張卡牌相片（正面與背面）`;
+    return "必須上載全部 6 張卡牌相片（正面、背面及四個角）";
   }
   if (count > LISTING_IMAGE_MAX) {
     return `最多只能上載 ${LISTING_IMAGE_MAX} 張相片`;

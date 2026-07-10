@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { DemoRole } from "@/app/store/useUIStore";
 import type { Tables } from "@/types/supabase";
@@ -7,8 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 
 type ProfileRoleRow = Pick<Tables<"profiles">, "role">;
 
-/** Returns null when Supabase is unset (CI build) or the visitor is anonymous. */
-export async function getOptionalAuthUser(): Promise<User | null> {
+/** Per-request cached auth lookup — dedupes layout + page `getUser()` calls. */
+const getCachedAuthUser = cache(async (): Promise<User | null> => {
   if (!isSupabaseConfigured()) {
     return null;
   }
@@ -19,6 +20,11 @@ export async function getOptionalAuthUser(): Promise<User | null> {
   } = await supabase.auth.getUser();
 
   return user;
+});
+
+/** Returns null when Supabase is unset (CI build) or the visitor is anonymous. */
+export async function getOptionalAuthUser(): Promise<User | null> {
+  return getCachedAuthUser();
 }
 
 export async function resolveCurrentDemoRole(): Promise<DemoRole> {
@@ -26,15 +32,13 @@ export async function resolveCurrentDemoRole(): Promise<DemoRole> {
     return "GUEST";
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCachedAuthUser();
 
   if (!user) {
     return "GUEST";
   }
 
+  const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
