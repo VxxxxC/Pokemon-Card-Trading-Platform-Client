@@ -117,7 +117,7 @@ export function ReviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.72)] backdrop-blur-sm p-4"
+      className="fixed inset-0 z-600 flex items-center justify-center bg-[rgba(0,0,0,0.72)] backdrop-blur-sm p-4"
       onClick={isLoading ? undefined : handleClose}
       role="dialog"
       aria-modal="true"
