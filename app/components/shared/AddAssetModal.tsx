@@ -56,12 +56,14 @@ import { CircleHelp } from "lucide-react";
 type LocalPhotoSlot = {
   file: File | null;
   previewUrl: string | null;
+  description: string;
 };
 
 function createEmptyPhotoSlots(): LocalPhotoSlot[] {
   return Array.from({ length: LISTING_IMAGE_MAX }, () => ({
     file: null,
     previewUrl: null,
+    description: "",
   }));
 }
 
@@ -306,6 +308,7 @@ export function AddAssetModal() {
       next[slotIndex] = {
         file,
         previewUrl: URL.createObjectURL(file),
+        description: existing.description || "",
       };
       assigned += 1;
       slotIndex += 1;
@@ -405,7 +408,7 @@ export function AddAssetModal() {
       if (existing.previewUrl) {
         URL.revokeObjectURL(existing.previewUrl);
       }
-      next[indexToRemove] = { file: null, previewUrl: null };
+      next[indexToRemove] = { file: null, previewUrl: null, description: "" };
       return next;
     });
   };
@@ -528,6 +531,13 @@ export function AddAssetModal() {
         images: result.data.images,
         condition: gradingFields.condition,
         conditionDesc: conditionDesc || undefined,
+        photosRemark: photoSlots
+          .filter((slot) => slot.previewUrl)
+          .map((slot, index) => {
+            const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[index] : null;
+            const defaultDesc = slotLabel || `實體照 ${index + 1}`;
+            return slot.description?.trim() || defaultDesc;
+          }),
       };
 
       window.dispatchEvent(
@@ -605,6 +615,13 @@ export function AddAssetModal() {
           })),
       condition: itemType === "box_set" ? "SEALED" : gradingFields!.condition,
       conditionDesc: conditionDesc || undefined,
+      photosRemark: photoSlots
+        .filter((slot) => slot.previewUrl)
+        .map((slot, index) => {
+          const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[index] : null;
+          const defaultDesc = slotLabel || `實體照 ${index + 1}`;
+          return slot.description?.trim() || defaultDesc;
+        }),
     };
 
     window.dispatchEvent(
@@ -983,11 +1000,22 @@ export function AddAssetModal() {
                           </>
                         )}
                       </div>
-                      {slotLabel ? (
-                        <span className="font-mono text-[9px] text-[#8A8680] text-center mt-1">
-                          {slotLabel}
-                        </span>
-                      ) : null}
+                      <div className="mt-1 w-full">
+                        <input
+                          type="text"
+                          value={photo.description}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPhotoSlots((prev) =>
+                              prev.map((slot, idx) =>
+                                idx === i ? { ...slot, description: val } : slot
+                              )
+                            );
+                          }}
+                          placeholder={slotLabel || `實體照 ${i + 1}`}
+                          className="w-full bg-[#111009] border border-white/5 rounded-lg px-1.5 py-1 font-sans text-[11px] text-text-primary placeholder-[#8A8680] text-center focus:outline-none focus:border-brand/40 transition-all focus:ring-0"
+                        />
+                      </div>
                     </div>
                   );
                 })}
