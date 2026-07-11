@@ -16,6 +16,25 @@ export function BottomNav() {
     () => mockRole === "GUEST", // 客戶端快照（讀取真實狀態）
     () => true, // 伺服器端快照（強制對齊預設為 Guest，防止 HTML 結構錯位）
   );
+
+  // 🟢 根據當前沙盒身份動態配置路由與高亮態，防止進入錯誤端點
+  const getTradingPath = () => {
+    if (mockRole === "MERCHANT") return "/profile/merchant/trading";
+    if (mockRole === "ADMIN") return "/admin/approvals";
+    return "/profile/user/trading";
+  };
+
+  const getProfilePath = () => {
+    if (mockRole === "MERCHANT") return "/profile/merchant";
+    if (mockRole === "ADMIN") return "/admin";
+    return "/profile/user";
+  };
+
+  const isTradingActive = pathname.includes("/trading") || pathname.includes("/approvals");
+  const isProfileActive =
+    (pathname.startsWith("/profile") || pathname.startsWith("/admin")) &&
+    !pathname.includes("/trading") &&
+    !pathname.includes("/approvals");
   return (
     <nav
       className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md"
@@ -92,14 +111,12 @@ export function BottomNav() {
 
             {/* Slot 4: 交易管理 */}
             <Link
-              href="/profile/user/trading"
+              href={getTradingPath()}
               className={`flex flex-col items-center justify-center gap-1 min-h-[50px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none animate-fadeIn ${
-                pathname.includes("/trading")
-                  ? "text-[#d4a574]"
-                  : "text-[#d4c4b7]"
+                isTradingActive ? "text-[#d4a574]" : "text-[#d4c4b7]"
               }`}
             >
-              <TradingIcon active={pathname.includes("/trading")} />
+              <TradingIcon active={isTradingActive} />
               <span className="font-sans text-[9px] font-bold tracking-tight">
                 交易管理
               </span>
@@ -107,20 +124,12 @@ export function BottomNav() {
 
             {/* Slot 5: 会员中心 */}
             <Link
-              href="/profile"
+              href={getProfilePath()}
               className={`flex flex-col items-center justify-center gap-1 min-h-[50px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none animate-fadeIn ${
-                pathname.startsWith("/profile") &&
-                !pathname.includes("/trading")
-                  ? "text-[#d4a574]"
-                  : "text-[#d4c4b7]"
+                isProfileActive ? "text-[#d4a574]" : "text-[#d4c4b7]"
               }`}
             >
-              <ProfileIcon
-                active={
-                  pathname.startsWith("/profile") &&
-                  !pathname.includes("/trading")
-                }
-              />
+              <ProfileIcon active={isProfileActive} />
               <span className="font-sans text-[9px] font-bold tracking-tight">
                 會員中心
               </span>

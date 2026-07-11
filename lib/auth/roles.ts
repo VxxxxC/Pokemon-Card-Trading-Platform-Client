@@ -33,7 +33,7 @@ export function getRoleHomePath(role: DemoRole): string {
 export function getRoleDefaultLandingPath(role: DemoRole): string {
   switch (role) {
     case "USER":
-      return "/profile/user/collection";
+      return "/profile/user";
     case "MERCHANT":
       return "/profile/merchant";
     case "ADMIN":
