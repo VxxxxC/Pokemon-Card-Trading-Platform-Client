@@ -1,7 +1,9 @@
 name: HKCardVault Continuous Integration Engine
 on:
   push:
-    branches: ["**"] # Triggers on push to any branch across the repository
+    branches:
+      - main
+      - Production
 jobs:
   validate-and-pack:
     name: Production Compliance Audit (TSC / Lint / Build)
