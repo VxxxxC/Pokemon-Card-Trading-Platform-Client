@@ -457,7 +457,7 @@ export function ProductDetailClient({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none -mx-1 px-1 w-full md:w-auto max-w-full shrink-0 select-none">
+                  <div className="flex items-center gap-2 overflow-x-scroll pb-2 pt-1 -mx-1 px-1 select-none">
                     {gradeFilterOptions.map((gradeOption) => {
                       const isActive = selectedGradeFilterId === gradeOption.id;
                       return (
