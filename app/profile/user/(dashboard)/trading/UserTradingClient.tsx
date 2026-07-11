@@ -13,7 +13,6 @@ import {
 import { getMemberAuthOrderActions } from "@/app/lib/member-order/auth-escrow";
 import { mapTradingOrderToSaleOrder } from "@/app/lib/member-order/map-sale-order";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   PERSONA_OPTIONS,
   PENDING_ACTION_STATUSES,
@@ -42,15 +41,6 @@ type UserTradingClientProps = {
   initialTabStatus: TabStatusFilter;
   bootstrapError?: string;
 };
-
-const TRADING_TAB_LIST_CLASS =
-  "bg-[#17130f] border border-white/5 h-auto p-1";
-
-const TRADING_TAB_TRIGGER_CLASS =
-  "font-mono text-[11px] px-3 py-1 rounded-lg data-active:bg-[rgba(212,165,116,0.08)] data-active:text-brand data-active:font-bold data-active:shadow-xs";
-
-const TRADING_TAB_TRIGGER_PENDING_CLASS =
-  "data-active:bg-[rgba(239,68,68,0.06)] data-active:text-warning";
 
 function formatPersonaTabLabel(
   value: PersonaFilter,
@@ -275,21 +265,28 @@ export function UserTradingClient({
                 {"交易管理（" + paginationMeta.total + "）"}
               </h2>
 
-              <Tabs
-                value={tabStatus}
-                onValueChange={(value) => {
-                  setTabStatus(value as TabStatusFilter);
-                }}
-              >
-                <TabsList className={TRADING_TAB_LIST_CLASS}>
-                  {STATUS_OPTIONS.map((option) => (
-                    <TabsTrigger
+              <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
+                {STATUS_OPTIONS.map((option) => {
+                  const isActive = tabStatus === option.value;
+                  let btnClass =
+                    "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
+                  if (isActive) {
+                    if (option.value === "pending") {
+                      btnClass =
+                        "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
+                    } else {
+                      btnClass =
+                        "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
+                    }
+                  }
+                  return (
+                    <button
                       key={option.value}
-                      value={option.value}
+                      type="button"
+                      onClick={() => setTabStatus(option.value)}
                       className={cn(
-                        TRADING_TAB_TRIGGER_CLASS,
-                        option.value === "pending" &&
-                          TRADING_TAB_TRIGGER_PENDING_CLASS,
+                        "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer",
+                        btnClass,
                       )}
                     >
                       {formatStatusTabLabel(
@@ -297,36 +294,37 @@ export function UserTradingClient({
                         option.label,
                         filterCounts,
                       )}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <Tabs
-              value={persona}
-              onValueChange={(value) => {
-                setPersona(value as PersonaFilter);
-              }}
-            >
-              <TabsList
-                className={cn(TRADING_TAB_LIST_CLASS, "w-full sm:w-auto")}
-              >
-                {PERSONA_OPTIONS.map((option) => (
-                  <TabsTrigger
+            <div className="flex gap-1.5 flex-wrap justify-start sm:justify-start">
+              {PERSONA_OPTIONS.map((option) => {
+                const isActive = persona === option.value;
+                const btnClass = isActive
+                  ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs"
+                  : "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
+                return (
+                  <button
                     key={option.value}
-                    value={option.value}
-                    className={TRADING_TAB_TRIGGER_CLASS}
+                    type="button"
+                    onClick={() => setPersona(option.value)}
+                    className={cn(
+                      "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer",
+                      btnClass,
+                    )}
                   >
                     {formatPersonaTabLabel(
                       option.value,
                       option.label,
                       filterCounts,
                     )}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-3 min-h-[200px]">
