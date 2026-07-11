@@ -49,8 +49,11 @@ export function ExecutionSlideOver({
     (state) => state.openOfferChatSession,
   );
 
-  const { detail, isLoading: isDetailLoading, error: detailError } =
-    useMarketplaceListingDetail({
+  const {
+    detail,
+    isLoading: isDetailLoading,
+    error: detailError,
+  } = useMarketplaceListingDetail({
     listingId,
     enabled: isOpen && listingId != null,
   });
@@ -164,9 +167,7 @@ export function ExecutionSlideOver({
         offerId: offer.id,
         offerPrice: offer.offer_price,
         modifiedCount:
-          "modified_count" in offer
-            ? Number(offer.modified_count) || 0
-            : 0,
+          "modified_count" in offer ? Number(offer.modified_count) || 0 : 0,
         messageId: message.id,
         messageContent: message.content,
         messageCreatedAt: message.created_at ?? new Date().toISOString(),
@@ -242,6 +243,7 @@ export function ExecutionSlideOver({
               </p>
               <Link
                 href={`/auth?redirect=${encodeURIComponent(`/marketplace/product/${productId}`)}`}
+                onClick={onClose}
                 className="w-full h-11 bg-brand text-[#1A1612] font-sans font-bold text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none"
               >
                 登入 / 註冊
