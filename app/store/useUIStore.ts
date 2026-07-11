@@ -27,13 +27,13 @@ interface UIStore {
   isAddAssetOpen: boolean;
   addAssetMode: "hobby" | "merch";
   addAssetSellPrefill: SellFromCollectionPrefill | null;
-  mockRole: DemoRole;
+  userAuthRole: DemoRole;
   isIosPwaModalOpen: boolean;
   isExecutionSlideOverOpen: boolean;
   executionSlideOverPayload: ExecutionSlideOverPayload | null;
   openAddAssetModal: (input: OpenAddAssetModalInput) => void;
   closeAddAssetModal: () => void;
-  setMockRole: (role: DemoRole) => void;
+  setUserAuthRole: (role: DemoRole) => void;
   openIosPwaModal: () => void;
   closeIosPwaModal: () => void;
   openExecutionSlideOver: (payload: ExecutionSlideOverPayload) => void;
@@ -44,7 +44,7 @@ export const useUIStore = create<UIStore>((set) => ({
   isAddAssetOpen: false,
   addAssetMode: "hobby",
   addAssetSellPrefill: null,
-  mockRole: "GUEST",
+  userAuthRole: "GUEST",
   isIosPwaModalOpen: false,
   isExecutionSlideOverOpen: false,
   executionSlideOverPayload: null,
@@ -61,7 +61,7 @@ export const useUIStore = create<UIStore>((set) => ({
       isAddAssetOpen: false,
       addAssetSellPrefill: null,
     }),
-  setMockRole: (role) => set({ mockRole: role }),
+  setUserAuthRole: (role) => set({ userAuthRole: role }),
   openIosPwaModal: () => set({ isIosPwaModalOpen: true }),
   closeIosPwaModal: () => set({ isIosPwaModalOpen: false }),
   openExecutionSlideOver: (payload) =>

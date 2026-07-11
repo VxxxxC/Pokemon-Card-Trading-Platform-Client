@@ -10,23 +10,23 @@ export function BottomNav() {
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
 
   // 🟢 訂閱沙盒身份
-  const mockRole = useUIStore((state) => state.mockRole);
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
   const isGuest = useSyncExternalStore(
     () => () => {}, // 訂閱監聽清理回調
-    () => mockRole === "GUEST", // 客戶端快照（讀取真實狀態）
+    () => userAuthRole === "GUEST", // 客戶端快照（讀取真實狀態）
     () => true, // 伺服器端快照（強制對齊預設為 Guest，防止 HTML 結構錯位）
   );
 
   // 🟢 根據當前沙盒身份動態配置路由與高亮態，防止進入錯誤端點
   const getTradingPath = () => {
-    if (mockRole === "MERCHANT") return "/profile/merchant/trading";
-    if (mockRole === "ADMIN") return "/admin/approvals";
+    if (userAuthRole === "MERCHANT") return "/profile/merchant/trading";
+    if (userAuthRole === "ADMIN") return "/admin/approvals";
     return "/profile/user/trading";
   };
 
   const getProfilePath = () => {
-    if (mockRole === "MERCHANT") return "/profile/merchant";
-    if (mockRole === "ADMIN") return "/admin";
+    if (userAuthRole === "MERCHANT") return "/profile/merchant";
+    if (userAuthRole === "ADMIN") return "/admin";
     return "/profile/user";
   };
 

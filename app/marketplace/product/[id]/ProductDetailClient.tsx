@@ -77,11 +77,11 @@ export function ProductDetailClient({
   initialMarketGrades,
 }: ProductDetailClientProps) {
   const router = useRouter();
-  const mockRole = useUIStore((state) => state.mockRole);
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
   const openExecutionSlideOver = useUIStore(
     (state) => state.openExecutionSlideOver,
   );
-  const isGuest = mockRole === "GUEST";
+  const isGuest = userAuthRole === "GUEST";
 
   const images =
     product.images.length > 0 ? product.images : [product.imageUrl];

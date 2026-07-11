@@ -20,10 +20,10 @@ export function TopNav() {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
-  // 🟢 注入全域 mockRole 身份真理源
-  const mockRole = useUIStore((state) => state.mockRole);
+  // 🟢 注入全域 userAuthRole 身份真理源
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
 
-  const isGuest = mockRole === "GUEST";
+  const isGuest = userAuthRole === "GUEST";
 
   // 從 Zustand 接入受控雷達狀態
   const {

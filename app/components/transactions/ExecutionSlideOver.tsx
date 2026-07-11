@@ -42,8 +42,8 @@ export function ExecutionSlideOver({
   const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const mockRole = useUIStore((state) => state.mockRole);
-  const isGuest = mockRole === "GUEST";
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const isGuest = userAuthRole === "GUEST";
 
   const openOfferChatSession = useHkCardVaultStore(
     (state) => state.openOfferChatSession,

@@ -20,9 +20,9 @@ const checkInDays = [
 ];
 
 export function PortfolioRewards() {
-  const mockRole = useUIStore((state) => state.mockRole);
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
   const isLoggedIn =
-    mockRole === "USER" || mockRole === "MERCHANT" || mockRole === "ADMIN";
+    userAuthRole === "USER" || userAuthRole === "MERCHANT" || userAuthRole === "ADMIN";
 
   if (!isLoggedIn) {
     return (
@@ -66,9 +66,9 @@ export function PortfolioRewards() {
         >
           我的卡盒身家
         </h2>
-        {mockRole !== "ADMIN" ? (
+        {userAuthRole !== "ADMIN" ? (
           <Link
-            href={getRoleHomePath(mockRole)}
+            href={getRoleHomePath(userAuthRole)}
             className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
           >
             管理收藏 →
@@ -108,7 +108,7 @@ export function PortfolioRewards() {
         </div>
 
         {/* 7-day check-in */}
-        {mockRole === "USER" ? (
+        {userAuthRole === "USER" ? (
           <div className="lg:flex-1">
             <p className="font-sans text-[13px] text-text-secondary mb-3">
               已連續簽到 5 日！第 7 日即可解鎖「全港免運費券」！

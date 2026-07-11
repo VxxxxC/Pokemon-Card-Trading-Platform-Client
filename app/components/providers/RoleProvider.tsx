@@ -11,17 +11,17 @@ export function RoleProvider({
   initialRole: DemoRole;
   children: React.ReactNode;
 }) {
-  const setMockRole = useUIStore((state) => state.setMockRole);
+  const setUserAuthRole = useUIStore((state) => state.setUserAuthRole);
 
   useEffect(() => {
-    setMockRole(initialRole);
-  }, [initialRole, setMockRole]);
+    setUserAuthRole(initialRole);
+  }, [initialRole, setUserAuthRole]);
 
   useEffect(() => {
     const refreshRole = async () => {
       const result = await getCurrentUserRole();
       if (result.success) {
-        setMockRole(result.data);
+        setUserAuthRole(result.data);
       }
     };
 
@@ -33,7 +33,7 @@ export function RoleProvider({
 
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [setMockRole]);
+  }, [setUserAuthRole]);
 
   return children;
 }

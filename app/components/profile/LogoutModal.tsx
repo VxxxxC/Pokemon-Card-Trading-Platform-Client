@@ -7,18 +7,18 @@ import { useUIStore } from '@/app/store/useUIStore';
 export function LogoutModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const setMockRole = useUIStore((state) => state.setMockRole);
+  const setUserAuthRole = useUIStore((state) => state.setUserAuthRole);
 
   const openModal = useCallback(() => setIsOpen(true), []);
   const closeModal = useCallback(() => setIsOpen(false), []);
 
   const handleLogout = useCallback(() => {
     startTransition(async () => {
-      setMockRole('GUEST');
+      setUserAuthRole('GUEST');
       setIsOpen(false);
       await logout();
     });
-  }, [setMockRole]);
+  }, [setUserAuthRole]);
 
   return (
     <>
