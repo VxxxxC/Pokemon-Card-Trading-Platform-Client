@@ -40,8 +40,7 @@ import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { IoChevronBack, IoTrendingDown, IoTrendingUp } from "react-icons/io5";
 
 const ProductPriceChart = dynamic(
-  () =>
-    import("./ProductPriceChart").then((mod) => mod.ProductPriceChart),
+  () => import("./ProductPriceChart").then((mod) => mod.ProductPriceChart),
   {
     loading: () => <MarketChartSkeleton />,
     ssr: false,
@@ -310,9 +309,15 @@ export function ProductDetailClient({
                         }`}
                       >
                         {marketTrend30d > 0 ? (
-                          <IoTrendingUp className="size-3.5 shrink-0" aria-hidden />
+                          <IoTrendingUp
+                            className="size-3.5 shrink-0"
+                            aria-hidden
+                          />
                         ) : marketTrend30d < 0 ? (
-                          <IoTrendingDown className="size-3.5 shrink-0" aria-hidden />
+                          <IoTrendingDown
+                            className="size-3.5 shrink-0"
+                            aria-hidden
+                          />
                         ) : null}
                         {marketTrend30d > 0 ? "+" : ""}
                         {marketTrend30d.toFixed(1)}%
@@ -394,162 +399,164 @@ export function ProductDetailClient({
                   isListingsRefreshing ? "opacity-60" : "opacity-100"
                 }`}
               >
-              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-3 font-mono text-[11px] text-[#8A8680] uppercase tracking-wider select-none gap-4">
-                <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto shrink-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold shrink-0">
-                      排序
-                    </span>
-                    <Select
-                      value={subSortKey}
-                      onValueChange={(value) =>
-                        setSubSortKey(value as SubSortKey)
-                      }
-                    >
-                      <SelectTrigger className="w-44 min-w-[176px] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11.5px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
-                        <span className="truncate">
-                          {subSortKey === "price_asc" && "最平售價優先"}
-                          {subSortKey === "grade_desc" && "鑑定等級最高"}
-                          {subSortKey === "rating_desc" && "賣家評級最高"}
-                        </span>
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
-                        <SelectItem
-                          value="price_asc"
-                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                        >
-                          最平售價優先
-                        </SelectItem>
-                        <SelectItem
-                          value="grade_desc"
-                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                        >
-                          鑑定等級最高
-                        </SelectItem>
-                        <SelectItem
-                          value="rating_desc"
-                          className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                        >
-                          賣家評級最高
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <label
-                      htmlFor="graded-only-switch"
-                      className="text-[10px] font-bold text-[#8A8680] cursor-pointer select-none"
-                    >
-                      只顯示已鑑定
-                    </label>
-                    <Switch
-                      id="graded-only-switch"
-                      checked={onlyGraded}
-                      onCheckedChange={setOnlyGraded}
-                      className="scale-90 data-[state=checked]:bg-brand"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none -mx-1 px-1 w-full md:w-auto max-w-full shrink-0 select-none">
-                  {gradeFilterOptions.map((gradeOption) => {
-                    const isActive = selectedGradeFilterId === gradeOption.id;
-                    return (
-                      <button
-                        key={gradeOption.id}
-                        type="button"
-                        onClick={() => setSelectedGradeFilterId(gradeOption.id)}
-                        className={`font-mono text-[11px] font-bold h-8 px-3.5 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
-                          isActive
-                            ? "bg-brand border-brand text-[#1A1612] shadow-[0_2px_10px_rgba(212,165,116,0.25)]"
-                            : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
-                        }`}
+                <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/5 pb-3 font-mono text-[11px] text-[#8A8680] uppercase tracking-wider select-none gap-4">
+                  <div className="flex items-center justify-between md:justify-start gap-4 w-full md:w-auto shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider font-bold shrink-0">
+                        排序
+                      </span>
+                      <Select
+                        value={subSortKey}
+                        onValueChange={(value) =>
+                          setSubSortKey(value as SubSortKey)
+                        }
                       >
-                        {gradeOption.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                        <SelectTrigger className="w-44 min-w-[176px] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11.5px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40">
+                          <span className="truncate">
+                            {subSortKey === "price_asc" && "最平售價優先"}
+                            {subSortKey === "grade_desc" && "鑑定等級最高"}
+                            {subSortKey === "rating_desc" && "賣家評級最高"}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
+                          <SelectItem
+                            value="price_asc"
+                            className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                          >
+                            最平售價優先
+                          </SelectItem>
+                          <SelectItem
+                            value="grade_desc"
+                            className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                          >
+                            鑑定等級最高
+                          </SelectItem>
+                          <SelectItem
+                            value="rating_desc"
+                            className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                          >
+                            賣家評級最高
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              {globalBestAskPrice != null && (
-                <div className="mb-1 text-left animate-fadeIn">
-                  <span className="font-mono text-[10px] text-brand uppercase font-black tracking-widest block mb-1">
-                    最優現貨掛牌價
-                  </span>
-                  <p className="font-mono font-black text-[34px] md:text-[42px] text-[#d4a574] tracking-tight leading-none">
-                    HK$ {globalBestAskPrice.toLocaleString("en-HK")}
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                {isListingsLoading ? (
-                  <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
-                    載入掛單中…
-                  </div>
-                ) : listingsError ? (
-                  <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
-                    {listingsError}
-                  </div>
-                ) : orderBookRows.length === 0 ? (
-                  <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
-                    沒有符合當前快篩條件的賣盤掛單
-                  </div>
-                ) : (
-                  orderBookRows.map((row, idx) => {
-                    const globalIdx = (orderPage - 1) * ordersPerPage + idx;
-                    const isOwnListing =
-                      currentUserId != null &&
-                      row.order.sellerId === currentUserId;
-
-                    return (
-                      <AskOrderBookRow
-                        key={row.listingId}
-                        order={row.order}
-                        idx={globalIdx}
-                        productId={product.productId}
-                        isOwnListing={isOwnListing}
-                        onOpenGate={(o) => {
-                          if (
-                            currentUserId != null &&
-                            o.sellerId === currentUserId
-                          ) {
-                            return;
-                          }
-                          openExecutionSlideOver(
-                            buildOrderBookExecutionPayload(
-                              product,
-                              row.listingId,
-                              o,
-                            ),
-                          );
-                        }}
-                        grade={row.order.customGrade}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label
+                        htmlFor="graded-only-switch"
+                        className="text-[10px] font-bold text-[#8A8680] cursor-pointer select-none"
+                      >
+                        只顯示已鑑定
+                      </label>
+                      <Switch
+                        id="graded-only-switch"
+                        checked={onlyGraded}
+                        onCheckedChange={setOnlyGraded}
+                        className="scale-90 data-[state=checked]:bg-brand"
                       />
-                    );
-                  })
-                )}
-              </div>
+                    </div>
+                  </div>
 
-              <Pagination
-                currentPage={listingsMeta.page}
-                totalPages={listingsMeta.totalPages}
-                onPageChange={setOrderPage}
-                itemLabel="筆掛單"
-                totalItems={listingsMeta.total}
-                itemsPerPage={ordersPerPage}
-                enableScroll={true}
-                scrollToViewId="live-order-book-panel"
-                className="mt-2 pb-1"
-              />
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none -mx-1 px-1 w-full md:w-auto max-w-full shrink-0 select-none">
+                    {gradeFilterOptions.map((gradeOption) => {
+                      const isActive = selectedGradeFilterId === gradeOption.id;
+                      return (
+                        <button
+                          key={gradeOption.id}
+                          type="button"
+                          onClick={() =>
+                            setSelectedGradeFilterId(gradeOption.id)
+                          }
+                          className={`font-mono text-[11px] font-bold h-8 px-3.5 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
+                            isActive
+                              ? "bg-brand border-brand text-[#1A1612] shadow-[0_2px_10px_rgba(212,165,116,0.25)]"
+                              : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
+                          }`}
+                        >
+                          {gradeOption.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {globalBestAskPrice != null && (
+                  <div className="mb-1 text-left animate-fadeIn">
+                    <span className="font-mono text-[10px] text-brand uppercase font-black tracking-widest block mb-1">
+                      最優現貨掛牌價
+                    </span>
+                    <p className="font-mono font-black text-[34px] md:text-[42px] text-[#d4a574] tracking-tight leading-none">
+                      HK$ {globalBestAskPrice.toLocaleString("en-HK")}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  {isListingsLoading ? (
+                    <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
+                      載入掛單中…
+                    </div>
+                  ) : listingsError ? (
+                    <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
+                      {listingsError}
+                    </div>
+                  ) : orderBookRows.length === 0 ? (
+                    <div className="py-12 text-center text-text-disabled font-sans text-[13px]">
+                      沒有符合當前快篩條件的賣盤掛單
+                    </div>
+                  ) : (
+                    orderBookRows.map((row, idx) => {
+                      const globalIdx = (orderPage - 1) * ordersPerPage + idx;
+                      const isOwnListing =
+                        currentUserId != null &&
+                        row.order.sellerId === currentUserId;
+
+                      return (
+                        <AskOrderBookRow
+                          key={row.listingId}
+                          order={row.order}
+                          idx={globalIdx}
+                          productId={product.productId}
+                          isOwnListing={isOwnListing}
+                          onOpenGate={(o) => {
+                            if (
+                              currentUserId != null &&
+                              o.sellerId === currentUserId
+                            ) {
+                              return;
+                            }
+                            openExecutionSlideOver(
+                              buildOrderBookExecutionPayload(
+                                product,
+                                row.listingId,
+                                o,
+                              ),
+                            );
+                          }}
+                          grade={row.order.customGrade}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+
+                <Pagination
+                  currentPage={listingsMeta.page}
+                  totalPages={listingsMeta.totalPages}
+                  onPageChange={setOrderPage}
+                  itemLabel="筆掛單"
+                  totalItems={listingsMeta.total}
+                  itemsPerPage={ordersPerPage}
+                  enableScroll={true}
+                  scrollToViewId="live-order-book-panel"
+                  className="mt-2 pb-1"
+                />
               </div>
             </div>
 
-            <div className="relative overflow-hidden bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
+            <div className="relative min-h-[10rem] overflow-hidden bg-[#26211C] p-4 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-3">
               {isGuest && (
-                <div className="absolute inset-0 bg-[#17130f]/60 backdrop-blur-md z-30 flex flex-col items-center justify-center p-4 text-center select-none animate-fadeIn">
+                <div className="absolute min-h-[10rem] inset-0 bg-[#17130f]/60 backdrop-blur-md z-30 flex flex-col items-center justify-center p-4 text-center select-none animate-fadeIn">
                   <p className="font-sans font-medium text-[13px] text-[#eae1da] mb-2.5">
                     登入解鎖全港歷史交割真理數據
                   </p>
