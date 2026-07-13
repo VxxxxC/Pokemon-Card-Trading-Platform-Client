@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
-import { isMockChatRoomId } from "@/app/lib/chat/constants";
+import { isChatRoomId } from "@/app/lib/chat/constants";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -60,7 +60,7 @@ export function MobileHeader() {
   const totalUnread = isGuest
     ? 0
     : chats
-        .filter((room) => !isMockChatRoomId(room.id))
+        .filter((room) => !isChatRoomId(room.id))
         .reduce((acc, curr) => acc + curr.unreadCount, 0);
 
   if (!isMounted) {

@@ -55,7 +55,7 @@ export function GlobalChatOverlay() {
 
       setChats((currentRooms) =>
         mergeChatRoomsWithDb(currentRooms, dbRooms, {
-          stripMockRooms: Boolean(currentUserId),
+          stripeRooms: Boolean(currentUserId),
         }),
       );
 

@@ -1,12 +1,12 @@
 import type { ChatRoom } from "@/app/store/useHkCardVaultStore";
 import {
   isDbChatRoomId,
-  isMockChatRoomId,
+  isChatRoomId,
 } from "@/app/lib/chat/constants";
 
 export type MergeChatRoomsOptions = {
-  /** Drop RM-MOCK-* demo rooms after a successful DB sync */
-  stripMockRooms?: boolean;
+  /** Drop chatId-* preset rooms after a successful DB sync */
+  stripeRooms?: boolean;
 };
 
 function sortRoomsByActivity(rooms: ChatRoom[]): ChatRoom[] {
@@ -154,14 +154,14 @@ export function mergeChatRoomsWithDb(
   dbRooms: ChatRoom[],
   options?: MergeChatRoomsOptions,
 ): ChatRoom[] {
-  const stripMock =
-    options?.stripMockRooms ?? (dbRooms.length > 0 ? true : false);
+  const stripeEnabled =
+    options?.stripeRooms ?? (dbRooms.length > 0 ? true : false);
 
-  const mockRooms = stripMock
+  const systemRooms = stripeEnabled
     ? []
-    : currentRooms.filter((room) => isMockChatRoomId(room.id));
+    : currentRooms.filter((room) => isChatRoomId(room.id));
   const localRealRooms = currentRooms.filter(
-    (room) => !isMockChatRoomId(room.id),
+    (room) => !isChatRoomId(room.id),
   );
 
   const dbById = new Map(dbRooms.map((room) => [room.id, room]));
@@ -175,7 +175,7 @@ export function mergeChatRoomsWithDb(
 
   const deduped = dedupeByPartner([...mergedDbRooms, ...ephemeralRooms]);
 
-  return sortRoomsByActivity([...mockRooms, ...deduped]);
+  return sortRoomsByActivity([...systemRooms, ...deduped]);
 }
 
 /** Refresh the latest thread page without discarding older pages already loaded. */

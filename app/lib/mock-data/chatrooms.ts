@@ -1,8 +1,8 @@
-// Centralized mock chatrooms / messages bank
+// Centralized preset chatrooms / messages bank
 // All timestamps are ISO 8601 strings to support the Temporal HUD engine
 export const INITIAL_CHATS = [
   {
-    id: "RM-MOCK-A-BUYER-MERCHANT",
+    id: "chatId-A-BUYER-MERCHANT",
     partnerId: "HKCV-8839-44A",
     partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "渡邊道館",
@@ -40,7 +40,7 @@ export const INITIAL_CHATS = [
           cardId: "sv2a-182",
           offerPrice: 44800,
           buyerName: "認證用戶",
-          buyerId: "USR-MOCK-ME-001",
+          buyerId: "USR-PRESET-ME-001",
           sellerId: "HKCV-8839-44A",
           sellerName: "渡邊道館",
           initialStatus: "accepted",
@@ -49,8 +49,8 @@ export const INITIAL_CHATS = [
     ],
   },
   {
-    id: "RM-MOCK-B-BUYER-USER",
-    partnerId: "USR-MOCK-B-001",
+    id: "chatId-B-BUYER-USER",
+    partnerId: "USR-PRESET-B-001",
     partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "信和執雞大師",
     partnerTier: "認證用戶",
@@ -93,8 +93,8 @@ export const INITIAL_CHATS = [
           cardId: "sv2a-215",
           offerPrice: 320,
           buyerName: "認證用戶",
-          buyerId: "USR-MOCK-ME-001",
-          sellerId: "USR-MOCK-B-001",
+          buyerId: "USR-PRESET-ME-001",
+          sellerId: "USR-PRESET-B-001",
           sellerName: "信和執雞大師",
           initialStatus: "pending",
         },
@@ -102,8 +102,8 @@ export const INITIAL_CHATS = [
     ],
   },
   {
-    id: "RM-MOCK-C-SELLER-USER",
-    partnerId: "USR-MOCK-C-001",
+    id: "chatId-C-SELLER-USER",
+    partnerId: "USR-PRESET-C-001",
     partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "九龍灣卡王",
     partnerTier: "認證買家",
@@ -134,8 +134,8 @@ export const INITIAL_CHATS = [
           cardId: "sv6a-109",
           offerPrice: 3200,
           buyerName: "九龍灣卡王",
-          buyerId: "USR-MOCK-C-001",
-          sellerId: "USR-MOCK-ME-001",
+          buyerId: "USR-PRESET-C-001",
+          sellerId: "USR-PRESET-ME-001",
           sellerName: "我",
           initialStatus: "pending",
         },
@@ -143,8 +143,8 @@ export const INITIAL_CHATS = [
     ],
   },
   {
-    id: "RM-MOCK-D-SPECULATOR",
-    partnerId: "USR-MOCK-D-001",
+    id: "chatId-D-SPECULATOR",
+    partnerId: "USR-PRESET-D-001",
     partnerAvatarUrl: "/asset/default-avator.webp",
     partnerName: "秋葉原海外直送店",
     partnerTier: "專業認證商戶",

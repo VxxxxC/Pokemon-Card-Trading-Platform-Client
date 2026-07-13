@@ -272,7 +272,7 @@ interface HkCardVaultStore {
 
 export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
   isChatOpen: false,
-  activeRoomId: "RM-MOCK-A-BUYER-MERCHANT",
+  activeRoomId: "chatId-A-BUYER-MERCHANT",
   mobileView: "LIST",
   chats: INITIAL_CHATS as unknown as ChatRoom[],
   offers: {},
