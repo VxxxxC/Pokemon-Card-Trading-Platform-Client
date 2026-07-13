@@ -137,6 +137,12 @@ export default async function OrdersGatewayPage() {
 - **嚴禁新增/渲染訂金欄位**：嚴禁任何 AI 協作者或代碼修改在 `SaleOrder` / 任何交易 interface 中重新加入 `depositPaid`、`depositAmount` 或 any 形式的「擔保訂金」/「成數定金」欄位。
 - **鑑定增值服務可選費用**：唯一的額外支付模組僅限於可選（Optional）的平台微觀品相鑑定服務，主交易商品本身絕無分期或兩階段付款。所有代碼、UI 元件和 Mock 數據均必須徹底對齊此全額交付之閉環。
 
+### 4. Chat Room ID Naming & Backend Boundary Isolation Mandate (聊天艙 ID 命名與後端邊界隔離鐵律)
+
+- **實體資料表欄位與型態限制**：在 PostgreSQL 資料庫遷移與 Supabase API 邊界中，聊天主表 `public.chat_rooms` 的主鍵一律鎖死為 **`id`** (UUID)，訊息表 `public.chat_messages` 的關聯外鍵一律鎖死為 **`room_id`** (UUID)。
+- **物理命名防火牆**：嚴禁在任何後端 DDL、SQL 遷移、RPC 函數、或 Server Actions 當中，將聊天室關聯欄位名稱命名為 `chatId` 或 `chat_id`。此舉會擊穿與 production 數據庫的 mapping 標準，引發嚴重的 SQL 語法與 DDL 衝突。
+- **前端本地命名空間安全**：前端為區分本地對話（Demo / Guest）與正式 UUID 對話，允許在 UI 或 store 中使用 `isDemoChatRoomId`（對照 `RM-DEMO-*` 前綴）等輔助變量，但與後端 API 對接時，必須在請求及響應層級 100% 映射回資料庫對齊之 `id` 與 `room_id` 欄位，不得混淆。
+
 ### 5. iOS PWA Multi-Orientation Splash Screen Hardline Ordering Mandate (iOS 啟動畫面物理排序鐵律)
 
 - **硬性禁止防線**：嚴禁將 iOS PWA 啟動畫面陣列（`appleWebApp.startupImage`）寫入 Next.js 官方的 `export const metadata: Metadata` 物件中。Next.js 內置的元數據優化引擎會在打包時觸發「標籤自動分組與亂序編排（Tag Grouping & Reordering）」，強行將 `<link>` 移至 `<meta>` 標籤之上。此舉會直接引發 iOS Safari HTML 解析器失效，導致 iPhone 用戶加載 PWA 時陷入永久黑屏或系統預設死白閃爍。
@@ -144,6 +150,11 @@ export default async function OrdersGatewayPage() {
   1. 最優先渲染 `apple-mobile-web-app-capable` 等核心 PWA 狀態 Meta 標籤。
   2. 緊接著渲染 `apple-touch-icon` 保底圖標。
      此物理順序防線不容任何編譯引擎擅自改動，以確保全裝置 0 延遲加載與極致流金視覺的無縫閉環。
+
+### 6. Backend Schema and Documentation Pre-Verification Rule (後端 Schema 與文件預檢防線)
+
+- **預檢機制強制執行**：任何時候修改、重構或修正疑似與後端資料庫（Supabase / PostgreSQL）、API 接口、資料庫欄位或實體表（Tables）相關的變量名稱、型態（Types / Interfaces）、函數名稱或數據模型（Data Models）時，**必須強制在動工前全面檢索與閱讀 `$PROJECT_ROOT/docs/dev/` 下的所有架構與追蹤文件**（特別是 `database.md`, `api.md`, `server.md` 以及 `follow-up/` 子目錄中的整合合約）。
+- **零數據衝突防線 (Zero Data Conflict)**：必須核對物理資料表欄位名稱與前端的映射，嚴禁因重命名引起與 Production 數據庫 Schema 或 API payload 的語義漂移（Interface Drift）與數據衝突。如發現不對稱，必須依循 DDL 的唯一真理源 (SSOT) 進行精準適配，不可盲目更名。
 
 ## 核心指令
 
