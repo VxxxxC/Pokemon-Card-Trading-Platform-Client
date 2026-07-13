@@ -1,8 +1,8 @@
 import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
-import type { DemoRole } from "@/app/store/useUIStore";
+import type { AuthRole } from "@/app/store/useUIStore";
 import type { Tables } from "@/types/supabase";
-import { dbRoleToDemoRole } from "@/lib/auth/roles";
+import { dbRoleToAuthRole } from "@/lib/auth/roles";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,7 +27,7 @@ export async function getOptionalAuthUser(): Promise<User | null> {
   return getCachedAuthUser();
 }
 
-export async function resolveCurrentDemoRole(): Promise<DemoRole> {
+export async function resolveCurrentAuthRole(): Promise<AuthRole> {
   if (!isSupabaseConfigured()) {
     return "GUEST";
   }
@@ -45,5 +45,5 @@ export async function resolveCurrentDemoRole(): Promise<DemoRole> {
     .eq("id", user.id)
     .maybeSingle<ProfileRoleRow>();
 
-  return dbRoleToDemoRole(profile?.role);
+  return dbRoleToAuthRole(profile?.role);
 }

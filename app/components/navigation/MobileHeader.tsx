@@ -4,6 +4,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
+import { useUIStore } from "@/app/store/useUIStore";
+import { isMockChatRoomId } from "@/app/lib/chat/constants";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -13,8 +15,13 @@ export function MobileHeader() {
   );
 
   // 🟢 從 Zustand 引流狀態
-  const { chats, setIsChatOpen, setMobileView, activateRoomById, openChatWithPartner } =
-    useHkCardVaultStore();
+  const {
+    chats,
+    setIsChatOpen,
+    setMobileView,
+    activateRoomById,
+    openChatWithPartner,
+  } = useHkCardVaultStore();
 
   // 廣播接收監聽器 ➔ 自動同步至狀態大腦
   useEffect(() => {
@@ -47,7 +54,14 @@ export function MobileHeader() {
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
   }, [activateRoomById, openChatWithPartner, setMobileView]);
 
-  const totalUnread = chats.reduce((acc, curr) => acc + curr.unreadCount, 0);
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const isGuest = userAuthRole === "GUEST";
+
+  const totalUnread = isGuest
+    ? 0
+    : chats
+        .filter((room) => !isMockChatRoomId(room.id))
+        .reduce((acc, curr) => acc + curr.unreadCount, 0);
 
   if (!isMounted) {
     return <div className="lg:hidden h-14 bg-[#1A1612]" />;

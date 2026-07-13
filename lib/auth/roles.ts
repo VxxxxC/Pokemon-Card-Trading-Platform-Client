@@ -1,11 +1,11 @@
-import type { DemoRole } from "@/app/store/useUIStore";
+import type { AuthRole } from "@/app/store/useUIStore";
 import type { Database } from "@/types/supabase";
 
 export type DbUserRole = Database["public"]["Enums"]["user_role"];
 
-export function dbRoleToDemoRole(
+export function dbRoleToAuthRole(
   role: DbUserRole | null | undefined,
-): DemoRole {
+): AuthRole {
   switch (role) {
     case "admin":
       return "ADMIN";
@@ -17,7 +17,7 @@ export function dbRoleToDemoRole(
   }
 }
 
-export function getRoleHomePath(role: DemoRole): string {
+export function getRoleHomePath(role: AuthRole): string {
   switch (role) {
     case "ADMIN":
       return "/admin";
@@ -30,7 +30,7 @@ export function getRoleHomePath(role: DemoRole): string {
   }
 }
 
-export function getRoleDefaultLandingPath(role: DemoRole): string {
+export function getRoleDefaultLandingPath(role: AuthRole): string {
   switch (role) {
     case "USER":
       return "/profile/user";
@@ -43,7 +43,7 @@ export function getRoleDefaultLandingPath(role: DemoRole): string {
   }
 }
 
-export function getRoleSettingsPath(role: DemoRole): string {
+export function getRoleSettingsPath(role: AuthRole): string {
   switch (role) {
     case "MERCHANT":
       return "/profile/merchant/settings";
@@ -56,7 +56,7 @@ export function getRoleSettingsPath(role: DemoRole): string {
   }
 }
 
-export function isPathAllowedForRole(role: DemoRole, pathname: string): boolean {
+export function isPathAllowedForRole(role: AuthRole, pathname: string): boolean {
   const requiresAuth =
     pathname === "/profile" ||
     pathname.startsWith("/profile/user") ||
