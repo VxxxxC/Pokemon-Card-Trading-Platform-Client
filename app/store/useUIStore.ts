@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type { ExecutionSlideOverPayload } from "@/lib/marketplace/map-listing-to-execution";
 
-export type DemoRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
+export type AuthRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
 
 export type SellFromCollectionPrefill = {
   collectionId: string;
@@ -27,13 +27,13 @@ interface UIStore {
   isAddAssetOpen: boolean;
   addAssetMode: "hobby" | "merch";
   addAssetSellPrefill: SellFromCollectionPrefill | null;
-  userAuthRole: DemoRole;
+  userAuthRole: AuthRole;
   isIosPwaModalOpen: boolean;
   isExecutionSlideOverOpen: boolean;
   executionSlideOverPayload: ExecutionSlideOverPayload | null;
   openAddAssetModal: (input: OpenAddAssetModalInput) => void;
   closeAddAssetModal: () => void;
-  setUserAuthRole: (role: DemoRole) => void;
+  setUserAuthRole: (role: AuthRole) => void;
   openIosPwaModal: () => void;
   closeIosPwaModal: () => void;
   openExecutionSlideOver: (payload: ExecutionSlideOverPayload) => void;

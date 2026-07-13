@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUIStore, type DemoRole } from "@/app/store/useUIStore";
+import { useUIStore, type AuthRole } from "@/app/store/useUIStore";
 import { getCurrentUserRole } from "@/app/actions/profile";
 
 export function RoleProvider({
   initialRole,
   children,
 }: {
-  initialRole: DemoRole;
+  initialRole: AuthRole;
   children: React.ReactNode;
 }) {
   const setUserAuthRole = useUIStore((state) => state.setUserAuthRole);

@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getRoleDefaultLandingPath, getRoleSettingsPath } from "@/lib/auth/roles";
-import { resolveCurrentDemoRole } from "@/lib/auth/session";
+import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -129,7 +129,7 @@ export async function login(
     return mapAuthError(error.message);
   }
 
-  const role = await resolveCurrentDemoRole();
+  const role = await resolveCurrentAuthRole();
   redirect(getRoleDefaultLandingPath(role));
 }
 
@@ -177,7 +177,7 @@ export async function registerMember(
     return { email: "帳戶已建立，但用戶名稱設定失敗，請聯絡客服" };
   }
 
-  const role = await resolveCurrentDemoRole();
+  const role = await resolveCurrentAuthRole();
   redirect(getRoleDefaultLandingPath(role));
 }
 
@@ -280,7 +280,7 @@ export async function completeForgotPassword(
     return mapPasswordUpdateAuthError(error.message);
   }
 
-  const role = await resolveCurrentDemoRole();
+  const role = await resolveCurrentAuthRole();
   redirect(`${getRoleDefaultLandingPath(role)}?passwordUpdated=1`);
 }
 
@@ -327,6 +327,6 @@ export async function updatePasswordFromProfile(
     return mapPasswordUpdateAuthError(error.message);
   }
 
-  const role = await resolveCurrentDemoRole();
+  const role = await resolveCurrentAuthRole();
   redirect(`${getRoleSettingsPath(role)}?passwordUpdated=1`);
 }

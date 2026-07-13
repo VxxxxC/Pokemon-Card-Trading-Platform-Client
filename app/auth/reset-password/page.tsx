@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthFormShell } from "@/app/auth/AuthFormShell";
 import { getRoleSettingsPath } from "@/lib/auth/roles";
-import { getOptionalAuthUser, resolveCurrentDemoRole } from "@/lib/auth/session";
+import { getOptionalAuthUser, resolveCurrentAuthRole } from "@/lib/auth/session";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default async function ResetPasswordPage() {
     redirect("/auth/forgot-password");
   }
 
-  const role = await resolveCurrentDemoRole();
+  const role = await resolveCurrentAuthRole();
   const settingsPath =
     role === "GUEST" ? "/profile/user/settings" : getRoleSettingsPath(role);
 

@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { searchMarketplaceSellerListings } from "@/app/actions/marketplace";
 import { getPublicProfileReviews } from "@/app/actions/reviews";
-import type { DemoRole } from "@/app/store/useUIStore";
+import type { AuthRole } from "@/app/store/useUIStore";
 import type {
   PublicProfileReviewItem,
   ReviewPersona,
 } from "@/app/lib/reviews/types";
-import { resolveCurrentDemoRole } from "@/lib/auth/session";
+import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import {
   loadMarketplaceSellerProfile,
   type MarketplaceSellerBadge,
@@ -186,10 +186,10 @@ export async function getPublicProfilePageBootstrap(
 }
 
 export async function getCurrentUserRole(): Promise<
-  { success: true; data: DemoRole } | { success: false; error: string }
+  { success: true; data: AuthRole } | { success: false; error: string }
 > {
   try {
-    const role = await resolveCurrentDemoRole();
+    const role = await resolveCurrentAuthRole();
     return { success: true, data: role };
   } catch {
     return { success: false, error: "無法取得用戶角色" };

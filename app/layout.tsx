@@ -12,7 +12,7 @@ import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
 import { ListingSubmitOverlay } from "@/components/listings/ListingSubmitOverlay";
 import { RoleProvider } from "@/app/components/providers/RoleProvider";
 import { IosPwaModal } from "./components/pwa/IosPwaModal";
-import { resolveCurrentDemoRole } from "@/lib/auth/session";
+import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import { PasswordUpdatedToast } from "@/components/auth/PasswordUpdatedToast";
 import { GlobalChatOverlay } from "@/app/components/chat/GlobalChatOverlay";
 import { ExecutionSlideOverHost } from "@/app/components/transactions/ExecutionSlideOverHost";
@@ -46,7 +46,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const initialRole = await resolveCurrentDemoRole();
+  const initialRole = await resolveCurrentAuthRole();
 
   return (
     <html
