@@ -100,6 +100,7 @@ export function ExecutionSlideOver({
 
   const listingImages = detail?.images ?? [];
   const images = listingImages;
+  const remarks = detail?.imagesDetail?.map((img) => img.remark) ?? [];
 
   const sellerDisplayName =
     detail?.sellerDisplayName?.trim() || order.sellerName;
@@ -307,25 +308,35 @@ export function ExecutionSlideOver({
                 </p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
-                  {images.map((img, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        setViewerIndex(idx);
-                        setIsViewerOpen(true);
-                      }}
-                      className="relative aspect-[3/4] rounded-lg overflow-hidden bg-[#120f0c] border border-white/5 cursor-zoom-in"
-                    >
-                      <Image
-                        src={img}
-                        alt={`${card.name} 實物照 ${idx + 1}`}
-                        fill
-                        sizes="(max-width: 640px) 28vw, 120px"
-                        className="object-cover hover:scale-105 transition-transform duration-300"
-                        unoptimized
-                      />
-                    </div>
-                  ))}
+                  {images.map((img, idx) => {
+                    const remarkText = remarks[idx];
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setViewerIndex(idx);
+                          setIsViewerOpen(true);
+                        }}
+                        className="relative aspect-[3/4] rounded-lg overflow-hidden bg-[#120f0c] border border-white/5 cursor-zoom-in"
+                      >
+                        <Image
+                          src={img}
+                          alt={`${card.name} 實物照 ${idx + 1}`}
+                          fill
+                          sizes="(max-width: 640px) 28vw, 120px"
+                          className="object-cover hover:scale-105 transition-transform duration-300"
+                          unoptimized
+                        />
+                        {remarkText && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/75 backdrop-blur-xs py-0.5 px-1 text-center border-t border-white/5 pointer-events-none select-none">
+                            <p className="font-sans text-[9px] text-[#eae1da] truncate font-bold leading-normal">
+                              {remarkText}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -418,6 +429,7 @@ export function ExecutionSlideOver({
         isOpen={isViewerOpen}
         onClose={() => setIsViewerOpen(false)}
         images={images}
+        remarks={remarks}
         initialIndex={viewerIndex}
       />
     </div>

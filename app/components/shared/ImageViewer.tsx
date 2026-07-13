@@ -8,6 +8,7 @@ interface ImageViewerProps {
   isOpen: boolean;
   onClose: () => void;
   images: string[];
+  remarks?: (string | null | undefined)[] | null;
   initialIndex?: number;
 }
 
@@ -15,6 +16,7 @@ export function ImageViewer({
   isOpen,
   onClose,
   images,
+  remarks,
   initialIndex = 0,
 }: ImageViewerProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex);
@@ -67,6 +69,7 @@ export function ImageViewer({
   if (!isOpen || images.length === 0) return null;
 
   const currentImageUrl = images[activeIndex];
+  const currentRemark = remarks && remarks[activeIndex];
 
   // Desktop Mouse Magnifier (Move to pan zoomed image)
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
@@ -261,6 +264,18 @@ export function ImageViewer({
               unoptimized
             />
           </div>
+
+          {/* Custom description floating badge */}
+          {currentRemark && (
+            <div className="absolute top-4 left-4 z-[920] pointer-events-none select-none max-w-[85%] animate-fadeIn">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-md border border-[#d4a574]/40 shadow-xl">
+                <span className="text-brand shrink-0 text-xs">📝</span>
+                <span className="font-sans font-bold text-[#eae1da] text-[12px] truncate leading-tight">
+                  {currentRemark}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Context HUD info overlay */}
           <div className="absolute bottom-4 left-4 pointer-events-none select-none">

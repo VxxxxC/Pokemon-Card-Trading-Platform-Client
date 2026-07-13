@@ -71,6 +71,8 @@ export function MerchantProductDetailPageClient({
 
   const galleryPhotos =
     photos.length > 0 ? photos : [catalog.imageUrl || "/placeholder-card.png"];
+  const galleryRemarks = detail.photosDetail?.map((img) => img.remark) ?? [];
+  const activeRemark = galleryRemarks[activeImageIndex];
 
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
@@ -101,6 +103,16 @@ export function MerchantProductDetailPageClient({
                   📸 賣家實物 3D 多維存證圖
                 </span>
               </div>
+              {activeRemark && (
+                <div className="absolute bottom-3 left-3 z-10 pointer-events-none select-none max-w-[85%]">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#17130f]/90 backdrop-blur-md border border-[#d4a574]/40 shadow-lg">
+                    <span className="text-brand shrink-0 text-[11px]">📝</span>
+                    <span className="font-sans font-bold text-[#eae1da] text-[11.5px] truncate leading-none">
+                      {activeRemark}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-4 gap-2">
@@ -126,8 +138,8 @@ export function MerchantProductDetailPageClient({
                     className="object-cover"
                     sizes="120px"
                   />
-                  <div className="absolute bottom-1 right-1 font-mono text-[8px] bg-black/60 px-1 rounded text-[#eae1da] scale-90">
-                    角 {i + 1}
+                  <div className="absolute bottom-1 right-1 font-mono text-[8px] bg-black/60 px-1 rounded text-[#eae1da] scale-90 truncate max-w-[85%]">
+                    {galleryRemarks[i] || `角 ${i + 1}`}
                   </div>
                 </button>
               ))}
@@ -260,6 +272,7 @@ export function MerchantProductDetailPageClient({
         isOpen={isViewerOpen}
         onClose={() => setIsViewerOpen(false)}
         images={galleryPhotos}
+        remarks={galleryRemarks}
         initialIndex={activeImageIndex}
       />
     </div>

@@ -20,6 +20,7 @@ export type SubmitCardListingInput = {
   useAuthentication?: boolean;
   sourceCollectionId?: string;
   imageFiles: File[];
+  photosRemark?: string[];
 };
 
 export async function submitCardListingWithProgress(
@@ -61,6 +62,7 @@ export async function submitCardListingWithProgress(
         url: bunnyUpload.cdnUrl,
         order: imageIndex,
         objectKey: bunnyUpload.objectKey,
+        remark: input.photosRemark?.[index] || undefined,
       });
     }
 

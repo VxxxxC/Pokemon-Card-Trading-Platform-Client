@@ -2,6 +2,7 @@
 export type ListingImage = {
   url: string;
   order: number;
+  remark?: string;
 };
 
 export const LISTING_IMAGE_MIN = 6;
@@ -51,4 +52,17 @@ export function parseListingImageUrls(value: unknown): string[] {
     .sort((a, b) => a.order - b.order)
     .map((item) => item.url.trim())
     .filter((url) => url.length > 0);
+}
+
+/** Parse `listings.images` JSONB into structured image objects including optional remarks. */
+export function parseListingImageObjects(value: unknown): ListingImage[] {
+  if (!isListingImageArray(value)) return [];
+  return [...value]
+    .sort((a, b) => a.order - b.order)
+    .map((item) => ({
+      url: item.url.trim(),
+      order: item.order,
+      remark: item.remark?.trim() || undefined,
+    }))
+    .filter((item) => item.url.length > 0);
 }

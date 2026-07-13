@@ -495,6 +495,15 @@ export function AddAssetModal() {
         return;
       }
 
+      const photosRemark = photoSlots
+        .map((slot, originalIdx) => {
+          if (!slot.file) return null;
+          const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[originalIdx] : null;
+          const defaultDesc = slotLabel || `實體照 ${originalIdx + 1}`;
+          return slot.description?.trim() || defaultDesc;
+        })
+        .filter((remark): remark is string => remark !== null);
+
       const result = await submitCardListingWithProgress({
         mode: "create",
         productId: catalogSearch.selected.id,
@@ -504,6 +513,7 @@ export function AddAssetModal() {
         useAuthentication: isRawCardListing ? acceptsBuyerAuth : false,
         sourceCollectionId: sellPrefill?.collectionId,
         imageFiles,
+        photosRemark,
       });
 
       if (!result.success) {
@@ -532,12 +542,13 @@ export function AddAssetModal() {
         condition: gradingFields.condition,
         conditionDesc: conditionDesc || undefined,
         photosRemark: photoSlots
-          .filter((slot) => slot.previewUrl)
-          .map((slot, index) => {
-            const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[index] : null;
-            const defaultDesc = slotLabel || `實體照 ${index + 1}`;
+          .map((slot, originalIdx) => {
+            if (!slot.previewUrl) return null;
+            const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[originalIdx] : null;
+            const defaultDesc = slotLabel || `實體照 ${originalIdx + 1}`;
             return slot.description?.trim() || defaultDesc;
-          }),
+          })
+          .filter((remark): remark is string => remark !== null),
       };
 
       window.dispatchEvent(
@@ -616,12 +627,13 @@ export function AddAssetModal() {
       condition: itemType === "box_set" ? "SEALED" : gradingFields!.condition,
       conditionDesc: conditionDesc || undefined,
       photosRemark: photoSlots
-        .filter((slot) => slot.previewUrl)
-        .map((slot, index) => {
-          const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[index] : null;
-          const defaultDesc = slotLabel || `實體照 ${index + 1}`;
+        .map((slot, originalIdx) => {
+          if (!slot.previewUrl) return null;
+          const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[originalIdx] : null;
+          const defaultDesc = slotLabel || `實體照 ${originalIdx + 1}`;
           return slot.description?.trim() || defaultDesc;
-        }),
+        })
+        .filter((remark): remark is string => remark !== null),
     };
 
     window.dispatchEvent(

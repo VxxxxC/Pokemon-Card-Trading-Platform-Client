@@ -1,5 +1,6 @@
 import type { Database } from "@/types/supabase";
 import type { SortKey } from "@/app/store/useMarketStore";
+import type { ListingImage } from "@/lib/listings/images";
 
 export type GradeFilter = {
   company: string;
@@ -138,6 +139,7 @@ export type MarketplaceListingDetail = {
   sellerUsername: string | null;
   sellerDescription: string | null;
   images: string[];
+  imagesDetail?: ListingImage[];
   useAuthentication: boolean;
 };
 
@@ -295,6 +297,7 @@ export type MarketplaceSellerListingDetailView = {
   catalog: MarketplaceProductDetail;
   storefrontListing: import("@/app/components/marketplace/MarketplaceCard").MarketplaceListing;
   photos: string[];
+  photosDetail?: ListingImage[];
   batchLabel: string;
   price: number;
   gradingCompany: string;

@@ -4,6 +4,7 @@ export type ClientUploadedListingImage = {
   url: string;
   order: number;
   objectKey: string;
+  remark?: string;
 };
 
 type UploadImageApiResponse =

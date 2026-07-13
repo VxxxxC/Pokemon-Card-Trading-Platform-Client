@@ -67,6 +67,7 @@ function parsePreUploadedImages(raw: string): PreUploadedListingImage[] | null {
         url: (item as PreUploadedListingImage).url,
         order: (item as PreUploadedListingImage).order,
         objectKey: (item as PreUploadedListingImage).objectKey,
+        remark: (item as any).remark || undefined,
       });
     }
 
@@ -242,7 +243,7 @@ export async function createCardListing(
     let images: ListingImage[];
     if (preUploaded) {
       uploadedObjectKeys.push(...preUploaded.map((image) => image.objectKey));
-      images = preUploaded.map(({ url, order }) => ({ url, order }));
+      images = preUploaded.map(({ url, order, remark }) => ({ url, order, remark }));
     } else {
       const uploadedUrls: string[] = [];
       for (const upload of uploads) {

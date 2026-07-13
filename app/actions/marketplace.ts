@@ -76,7 +76,7 @@ import {
   sortMarketPriceGradeRows,
 } from "@/lib/marketplace/market-price";
 import { normalizeGradingCompany } from "@/lib/grading/options";
-import { parseListingImageUrls } from "@/lib/listings/images";
+import { parseListingImageUrls, parseListingImageObjects } from "@/lib/listings/images";
 import {
   isMarketplacePerfLogEnabled,
   marketplacePerfLog,
@@ -831,6 +831,7 @@ export async function getMarketplaceListingDetail(
         sellerUsername,
         sellerDescription: data.seller_description,
         images: parseListingImageUrls(data.images),
+        imagesDetail: parseListingImageObjects(data.images),
         useAuthentication: data.use_authentication,
       },
     };
@@ -1351,6 +1352,7 @@ export async function getMarketplaceSellerListingDetail(
         catalog: catalogResult.data,
         storefrontListing: detail.storefrontListing,
         photos: detail.photos,
+        photosDetail: parseListingImageObjects(detail.listingRow.images),
         batchLabel: detail.batchLabel,
         price: Number(detail.listingRow.price),
         gradingCompany: detail.listingRow.grading_company,
