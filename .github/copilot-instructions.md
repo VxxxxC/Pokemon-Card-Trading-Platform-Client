@@ -137,7 +137,7 @@ export default async function OrdersGatewayPage() {
 - **嚴禁新增/渲染訂金欄位**：嚴禁任何 AI 協作者或代碼修改在 `SaleOrder` / 任何交易 interface 中重新加入 `depositPaid`、`depositAmount` 或任何形式的「擔保訂金」/「成數定金」欄位。
 - **鑑定增值服務可選費用**：唯一的額外支付模組僅限於可選（Optional）的平台微觀品相鑑定服務，主交易商品本身絕無分期或兩階段付款。所有代碼、UI 元件 and Mock 數據均必須徹底對齊此全額交付之閉環。
 
-### 5. iOS PWA Multi-Orientation Splash Screen Hardline Ordering Mandate (iOS 啟動畫面物理排序鐵律)
+### 4. iOS PWA Multi-Orientation Splash Screen Hardline Ordering Mandate (iOS 啟動畫面物理排序鐵律)
 
 - **硬性禁止防線**：嚴禁將 iOS PWA 啟動畫面陣列（`appleWebApp.startupImage`）寫入 Next.js 官方的 `export const metadata: Metadata` 物件中。Next.js 內置的元數據優化引擎會在打包時觸發「標籤自動分組與亂序編排（Tag Grouping & Reordering）」，強行將 `<link>` 移至 `<meta>` 標籤之上。此舉會直接引發 iOS Safari HTML 解析器失效，導致 iPhone 用戶加載 PWA 時陷入永久黑屏或系統預設死白閃爍。
 - **唯一正確實作鐵律**：全站的 iOS PWA 運作狀態與 40 幾條直向/橫向（Portrait/Landscape）啟動圖媒體查詢鏈路，必須 100% 強制在 `app/layout.tsx` 的 **原生 HTML `<head>` 標籤內進行實體硬編碼（Hardcoded Static Seeding）**。且必須嚴格鎖死以下物理閱讀順序：
@@ -145,7 +145,7 @@ export default async function OrdersGatewayPage() {
   2. 緊接著渲染 `apple-touch-icon` 保底圖標。
      此物理順序防線不容任何編譯引擎擅自改動，以確保全裝置 0 延遲加載與極致流金視覺的無縫閉環。
 
-### 6. Backend Schema and Documentation Pre-Verification Rule (後端 Schema 與文件預檢防線)
+### 5. Backend Schema and Documentation Pre-Verification Rule (後端 Schema 與文件預檢防線)
 
 - **預檢機制強制執行**：任何時候修改、重構或修正疑似與後端資料庫（Supabase / PostgreSQL）、API 接口、資料庫欄位或實體表（Tables）相關的變量名稱、型態（Types / Interfaces）、函數名稱或數據模型（Data Models）時，**必須強制在動工前全面檢索與閱讀 `$PROJECT_ROOT/docs/dev/` 下的所有架構與追蹤文件**（特別是 `database.md`, `api.md`, `server.md` 以及 `follow-up/` 子目錄中的整合合約）。
 - **零數據衝突防線 (Zero Data Conflict)**：必須核對物理資料表欄位名稱與前端的映射，嚴禁因重命名引起與 Production 數據庫 Schema 或 API payload 的語義漂移（Interface Drift）與數據衝突。如發現不對稱，必須依循 DDL 的唯一真理源 (SSOT) 進行精準適配，不可盲目更名。
