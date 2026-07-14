@@ -5,12 +5,12 @@ export function MerchantProductDetailPageSkeleton() {
         <div className="h-8 w-16 rounded-lg bg-white/5 animate-pulse mb-6" />
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 items-start">
           <section className="lg:col-span-5 space-y-3.5 mb-6 lg:mb-0">
-            <div className="w-full aspect-[5/3.8] bg-[#26211C] rounded-2xl animate-pulse" />
+            <div className="w-full aspect-[3/4] bg-[#26211C] rounded-2xl animate-pulse" />
             <div className="grid grid-cols-4 gap-2">
               {Array.from({ length: 4 }).map((_, index) => (
                 <div
                   key={index}
-                  className="aspect-[5/3.8] bg-[#26211C] rounded-xl animate-pulse"
+                  className="aspect-[3/4] bg-[#26211C] rounded-xl animate-pulse"
                 />
               ))}
             </div>
