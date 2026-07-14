@@ -116,7 +116,7 @@ function buildPhotoGallery(
         ? [catalogImage]
         : ["/placeholder-card.png"];
 
-  return photos.slice(0, 4);
+  return photos.slice(0, 6);
 }
 
 export async function loadMarketplaceSellerListingDetail(

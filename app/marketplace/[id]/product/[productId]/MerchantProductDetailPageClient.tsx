@@ -115,7 +115,13 @@ export function MerchantProductDetailPageClient({
               )}
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
+            <div className={`grid gap-2 ${
+              galleryPhotos.length <= 4
+                ? "grid-cols-4"
+                : galleryPhotos.length === 5
+                ? "grid-cols-5"
+                : "grid-cols-6"
+            }`}>
               {galleryPhotos.map((img, i) => (
                 <button
                   key={`${img}-${i}`}
