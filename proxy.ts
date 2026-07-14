@@ -10,7 +10,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 type ProfileRoleRow = Pick<Tables<"profiles">, "role">;
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { supabase, user, response } = await updateSession(request);
 
   let role: AuthRole = "GUEST";
