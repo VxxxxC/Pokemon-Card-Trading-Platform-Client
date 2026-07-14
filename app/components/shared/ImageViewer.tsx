@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useRef, useEffect, TouchEvent, MouseEvent } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  TouchEvent,
+  MouseEvent,
+} from "react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -24,11 +30,13 @@ export function ImageViewer({
   const [prevInitialIndex, setPrevInitialIndex] = useState(initialIndex);
   const [zoom, setZoom] = useState(false);
   const [panStyle, setPanStyle] = useState<React.CSSProperties>({});
-  
+
   // Mobile touch gesture zoom states
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const touchStartRef = useRef<{ dist: number; x: number; y: number } | null>(null);
+  const touchStartRef = useRef<{ dist: number; x: number; y: number } | null>(
+    null,
+  );
   const currentPosRef = useRef({ x: 0, y: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,7 +85,7 @@ export function ImageViewer({
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     // Calculate percentage coordinates
     const px = (x / rect.width) * 100;
     const py = (y / rect.height) * 100;
@@ -139,7 +147,7 @@ export function ImageViewer({
       const factor = dist / touchStartRef.current.dist;
       const nextScale = Math.min(Math.max(1, scale * factor), 4);
       setScale(nextScale);
-      
+
       // Keep track of zoom ratio
       touchStartRef.current.dist = dist;
     } else if (e.touches.length === 1 && scale > 1) {
@@ -147,12 +155,12 @@ export function ImageViewer({
       const touch = e.touches[0];
       const nextX = touch.clientX - touchStartRef.current.x;
       const nextY = touch.clientY - touchStartRef.current.y;
-      
+
       // Calculate boundary limits based on zoom scale
       const bound = (scale - 1) * 150; // Approximated viewport bounds
       const clampedX = Math.min(Math.max(nextX, -bound), bound);
       const clampedY = Math.min(Math.max(nextY, -bound), bound);
-      
+
       setPosition({ x: clampedX, y: clampedY });
       currentPosRef.current = { x: clampedX, y: clampedY };
     }
@@ -218,7 +226,14 @@ export function ImageViewer({
               className="absolute left-4 lg:left-8 z-[910] w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer focus:outline-none"
               aria-label="上一張"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
@@ -228,7 +243,14 @@ export function ImageViewer({
               className="absolute right-4 lg:right-8 z-[910] w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer focus:outline-none"
               aria-label="下一張"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
@@ -251,7 +273,10 @@ export function ImageViewer({
             className="w-full h-full relative transition-transform duration-100 ease-out"
             style={
               scale > 1
-                ? { transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`, transformOrigin: "center" }
+                ? {
+                    transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                    transformOrigin: "center",
+                  }
                 : panStyle
             }
           >
@@ -280,7 +305,11 @@ export function ImageViewer({
           {/* Context HUD info overlay */}
           <div className="absolute bottom-4 left-4 pointer-events-none select-none">
             <span className="inline-flex px-2.5 py-1 rounded-md bg-black/85 backdrop-blur-md border border-white/10 font-mono text-[10px] text-brand uppercase tracking-wider shadow-md">
-              🔎 {zoom || scale > 1 ? "按住拖曳或滑動檢索" : "觸控縮放 / 滑鼠移入放大"} ({activeIndex + 1} / {images.length})
+              🔎{" "}
+              {zoom || scale > 1
+                ? "按住拖曳或滑動檢索"
+                : "觸控縮放 / 滑鼠移入放大"}{" "}
+              ({activeIndex + 1} / {images.length})
             </span>
           </div>
         </div>
@@ -288,7 +317,7 @@ export function ImageViewer({
         {/* Thumbnail Selector List (Bottom indicator row) */}
         {images.length > 1 && (
           <div
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[910] flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-md border border-white/5 shadow-lg overflow-x-auto max-w-[85%]"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[910] flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-md border border-white/5 shadow-lg overflow-x-scroll no-scrollbar max-w-[85%]"
             onClick={(e) => e.stopPropagation()}
           >
             {images.map((img, i) => (
@@ -301,10 +330,18 @@ export function ImageViewer({
                 }}
                 className={cn(
                   "relative w-12 h-16 rounded-lg overflow-hidden border transition-all shrink-0 cursor-pointer focus:outline-none",
-                  activeIndex === i ? "border-brand ring-2 ring-brand/30 scale-105" : "border-white/10 opacity-60 hover:opacity-100"
+                  activeIndex === i
+                    ? "border-brand ring-2 ring-brand/30 scale-105"
+                    : "border-white/10 opacity-60 hover:opacity-100",
                 )}
               >
-                <Image src={img} alt={`細節照 ${i + 1}`} fill className="object-cover" unoptimized />
+                <Image
+                  src={img}
+                  alt={`細節照 ${i + 1}`}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
               </button>
             ))}
           </div>
