@@ -67,7 +67,7 @@ function parsePreUploadedImages(raw: string): PreUploadedListingImage[] | null {
         url: (item as PreUploadedListingImage).url,
         order: (item as PreUploadedListingImage).order,
         objectKey: (item as PreUploadedListingImage).objectKey,
-        remark: (item as any).remark || undefined,
+        remark: (item as PreUploadedListingImage).remark || undefined,
       });
     }
 

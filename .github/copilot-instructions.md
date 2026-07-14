@@ -205,6 +205,52 @@ export default async function OrdersGatewayPage() {
 - **自定義：** 所有 shadcn/ui 組件都必須進行自定義，以符合 `.stitch/designs/DESIGN.md` 中定義的 HKCardVault 設計系統。請嚴格遵守 `.agents/skills/shadcn-ui/SKILL.md` 和 `.github/prompts/shadcn-ui.prompt.md` 中指定的審美覆蓋和組件整合規則。
 - **觸發動作：** 當 UI 實作需要特定的 shadcn 組件時，請明確提及需要使用 `bunx --bun shadcn@latest add [component-name]`。此動作將自動觸發 `.github/prompts/shadcn-ui.prompt.md` 和 `shadcn-ui` 技能，以進行安裝 and 品味自定義。
 
+## 👑 頂級多 Agent 循環工程、Supabase BaaS 防線與 Copilot CLI 運作協議 (Enterprise BaaS-Native Multi-Agent Protocol)
+
+當開發者啟動 **GitHub Copilot CLI / Claude Code Plan Mode**，並使用 **Claude Fable 5** 作為 Planner（總指揮官），配合 **Gemini 3.5 Flash** 作為子代理（Sub-agents）執行時，必須強制啟動本套「BaaS-Native 三維工程防線」與 Copilot CLI 原生指令閉環。
+
+---
+
+### 1. 第一防線：型態合約與自動化 DDL 索引 (BaaS Context Engineering)
+由於本專案不設傳統後端伺服器，資料庫即是唯一的 API 真理源。前後端通訊必須 100% 基於 PostgreSQL Schema 的自動化型態導向（Types-driven）：
+- **自動化型態合約 (Supabase Generated Types)**: 嚴禁在未確定資料表（Tables）結構前同時撰寫前端與 DDL。當需要新增或修改數據結構時，Planner 必須先撰寫/更新 PostgreSQL DDL 移轉檔。所有的前後端通訊合約，必須強制透過 `supabase gen types typescript` 自動生成並引用於 `@/types/supabase` 中（作為唯一的 SSOT 鋼鐵合約）。
+- **依賴關係索引 (Schema Context)**: 修改前端資產或上架表單時，必須手動或自動將對應的資料庫 DDL、RLS 策略（`database.md`）及 Supabase TypeScript Types 檔案作為 Context 餵入，確保子代理（Sub-agents）對齊資料庫欄位，防止數據對齊漂移（Interface Drift）。
+
+---
+
+### 2. 第二防線：循環工程與多代理協同 (BaaS Loop Engineering)
+透過動態分流與雙向反饋，建立起一個自動化自我修正（Self-Correcting）的 DDL-to-Client 研發循環：
+- 👑 **Master Planner (Claude Fable 5 [Medium Effort/Thinking])**: 負責全域架構規劃。在 CLI 中使用 **`/plan` 模式**，宏觀掃描全庫與現行 DDL 檔案，抓出系統盲點，制定資料表結構與 RLS 權限藍圖。
+- 🔴 **Frontend Code-Gen Agent (Gemini 3.5 Flash [High Effort/Thinking])**: 專職讀取最新 generated `supabase` 型態定義，調用 Supabase JS Client SDK 或 Server Actions 進行前端 Layout 與組件的 100% 飽滿生成，嚴禁程式碼截斷。
+- 🔵 **Supabase BaaS Agent (Gemini 3.5 Flash [High Effort/Thinking])**: 專職資料庫安全與策略（BaaS Engine）。負責撰寫 PostgreSQL DDL（資料表、主鍵、外鍵）、編寫 pgSQL Trigger/Functions、設定超高安全性 Row-Level Security (RLS) 策略，以及處理金流回調的 Supabase Edge Functions (Deno/TypeScript)。
+- 🟢 **SA Review Agent (Gemini 3.5 Flash [High Effort/Thinking])**: 扮演最苛刻的 Security & Schema Auditor。將前端的 Supabase 呼叫代碼與底層資料庫的 DDL/RLS 擺在一起比對，確保 RLS 權限無任何安全漏洞、欄位與 Data Type 100% 吻合。如果不吻合，立即投遞 Feedback 駁回重寫。
+
+---
+
+### 3. 第三防線：測試馬具與編譯回流 (Harness Engineering & Contract Testing)
+利用 Next.js 16 搭配 TypeScript 的編譯器特性，阻斷任何毀滅性修改：
+- **自動化編譯檢查**: 子代理在 Worktree 沙盒修改完代碼後，必須於本地執行 `bunx tsc --noEmit` 和 `bun run lint`。
+- **合約測試回流 (Contract Testing Loop)**: 如果因資料庫欄位修改導致前端類型不對稱，QA/Review 子代理必須**自動抓取編譯錯誤（Compiler Errors）**，直接揼回（Feed back）給 Code-Gen 子代理：
+  `"你頭先修改嘅 DDL / 前端代碼導致 Supabase 型態編譯失敗。請根據以下編譯器 Error Message 修正：[ERROR_LOG_HERE]"`
+  AI 將會在此測試馬具（Testing Harness）中自我迭代修正，直到編譯與 Linter 全線 100% 綠燈。
+
+---
+
+### 4. Copilot CLI / Claude Code 原生指令控盤硬性指南 (Native Command Protocol)
+在終端機運作時，必須嚴格按照以下命令生命週期執行：
+1. **`/plan` (架構規劃階段)**: 由 Fable 5 執行，先不寫前端代碼，產出詳細的 Postgres DDL 移轉計畫與 RLS 安全策略。
+2. **`/fleet` (平行派發與 Worktree 隔離)**: 當用戶核准 Plan 後，Fable 5 自動在背景使用 `/fleet` 指令，利用 **Git Worktrees** 為前端、Supabase BaaS、QA 建立乾淨獨立的簽出沙盒區，平行並發工作。
+3. **Autopilot (`/yolo` / `/autopilot` 自動巡航)**: 當合約與 DDL 確立、開始執行代碼生成與編譯除錯循環（Loop）時，開啟 Autopilot 模式。由系統自動跑測試、自動自我修正，直到達成目標，中途不彈出冗餘 UI。
+4. **`/compact` (長對話記憶有損壓縮)**: 當對接進入深水區、對話拉長導致 Context 飽滿時，總指揮官必須主動執行 `/compact` 指令，有損壓縮歷史 log，僅保留關鍵的 SQL Schema 與最新 generated types，防止 AI 越行越蠢。
+
+---
+
+### 5. 鐵律：除錯優先協議 (The Debug-First Protocol)
+當測試或 CI 子代理回報程式碼出錯（Test Failed）時，Planner 嚴禁盲目猜測方案或大動干戈。必須嚴格遵循以下「先 Debug、後決策」三部曲：
+1. **診斷與隔離 (Isolate)**: 指示 Sub-agents 進入「法醫官模式」，抓取真實出錯日誌（如 Supabase Realtime WebSocket 衝突日誌、Postgres Function 運行報錯）與 Zustand 狀態突變軌跡。
+2. **評估爆炸半徑 (Evaluate)**: 評估修復方案是屬於「標量型微調」（擰螺絲、改常數、加防呆鎖）還是「結構性重構」（改動底層 DDL、重寫 RLS、改寫 Zustand Store 骨架）。
+3. **呈交利弊報告 (Propose)**: 在動手前，向人類工程師呈交一份包含方案 A（標量）與方案 B（結構）的**「診斷利弊分析報告」**，將最終的技術決策權歸還給人類。
+
 ```
 
 ```
