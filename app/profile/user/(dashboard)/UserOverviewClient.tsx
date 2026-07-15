@@ -180,6 +180,13 @@ export function UserOverviewClient({
 
   const mainTitleLabel = mainTitle?.nameZh ?? "尚未獲得稱號";
 
+  const directTo = useCallback((sectionId: string) => {
+    const sectionElement = document.getElementById(sectionId);
+    if (sectionElement) {
+      sectionElement.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
+
   return (
     <>
       {bootstrapError ? (
@@ -272,7 +279,7 @@ export function UserOverviewClient({
               </span>
             </div>
             <div className="w-px h-7 bg-white/5 self-end hidden sm:block" />
-            <div className="flex flex-col">
+            <div className="flex flex-col" onClick={() => directTo("reviews")}>
               <span className="font-mono text-[9px] text-text-disabled uppercase tracking-wider">
                 信用評分
               </span>
@@ -469,7 +476,7 @@ export function UserOverviewClient({
             )}
           </section>
 
-          <section aria-labelledby="reviews-heading">
+          <section id="reviews" aria-labelledby="reviews-heading">
             <div className="flex items-center justify-between mb-3">
               <h2
                 id="reviews-heading"
