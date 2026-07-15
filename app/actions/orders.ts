@@ -6,6 +6,15 @@ import {
   TRADING_DEFAULT_PAGE_SIZE,
 } from "@/lib/member-order/constants";
 import {
+  DEFAULT_MEMBER_ORDER_KIND,
+  type BuyerCompleteOrderInput,
+  type MemberOrderKind,
+} from "@/lib/member-order/order-kind";
+import {
+  rpcCancelMemberOrder,
+  rpcCompleteMemberOrder,
+} from "@/lib/member-order/member-order-rpc";
+import {
   isTradingPerfLogEnabled,
   tradingPerfLog,
   tradingPerfNow,
@@ -20,19 +29,82 @@ import {
 } from "@/app/lib/member-order/auth-escrow";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { parseListingImageUrls } from "@/lib/listings/images";
+import { isUuid } from "@/lib/marketplace/seller-profile";
+import {
+  INVALID_MEMBER_ORDER_ID_ERROR,
+  resolveMemberOrderIdForUser,
+} from "@/lib/member-order/resolve-order-id";
+import { ensureMemberOrderListingUuid } from "@/lib/member-order/repair-listing-id";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
 
-type RpcCancelMemberOrderArgs = {
-  p_order_id: string;
-  p_user_id: string;
-};
+export type { BuyerCompleteOrderInput, MemberOrderKind } from "@/lib/member-order/order-kind";
 
-type RpcCompleteMemberOrderArgs = {
-  p_order_id: string;
-  p_user_id: string;
-};
+function shouldLogMemberOrderMutation(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.MEMBER_ORDER_MUTATION_LOG === "1"
+  );
+}
+
+function logMemberOrderMutation(
+  action: string,
+  payload: Record<string, unknown>,
+): void {
+  if (!shouldLogMemberOrderMutation()) {
+    return;
+  }
+  console.error(`[${action}]`, payload);
+}
+
+function rejectNonUuidMutationOrderId(
+  orderId: string,
+): MemberOrderActionResult | null {
+  const trimmed = orderId.trim();
+  if (!trimmed) {
+    return { success: false, error: "找不到此訂單" };
+  }
+  if (!isUuid(trimmed)) {
+    return { success: false, error: INVALID_MEMBER_ORDER_ID_ERROR };
+  }
+  return null;
+}
+
+function rejectInvalidRpcIdentity(
+  orderId: string,
+  userId: string,
+): MemberOrderActionResult | null {
+  if (!isUuid(orderId)) {
+    logMemberOrderMutation("memberOrderMutation", {
+      reason: "invalid_p_order_id",
+      orderId,
+    });
+    return { success: false, error: INVALID_MEMBER_ORDER_ID_ERROR };
+  }
+  if (!isUuid(userId)) {
+    logMemberOrderMutation("memberOrderMutation", {
+      reason: "invalid_p_user_id",
+      userId,
+    });
+    return { success: false, error: "無法驗證登入狀態" };
+  }
+  return null;
+}
+
+function mapOrderRpcError(message: string): string {
+  if (message.includes("invalid input syntax for type uuid")) {
+    return INVALID_MEMBER_ORDER_ID_ERROR;
+  }
+  return message;
+}
+
+function revalidateMemberOrderPaths(orderId: string): void {
+  revalidatePath("/profile/user/trading");
+  revalidatePath("/profile/user/orderDetail/" + orderId);
+  revalidatePath("/profile/user/inventory");
+  revalidatePath("/profile/user/collection");
+}
 
 type SearchUserTradingOrdersRpcArgs = {
   p_persona: string;
@@ -106,6 +178,7 @@ export type UserTradingOrderCounterparty = {
 
 export type UserTradingOrder = {
   id: string;
+  orderKind: MemberOrderKind;
   orderNumber: string | null;
   buyerId: string;
   sellerId: string;
@@ -310,9 +383,13 @@ function toFilterCounts(
   };
 }
 
-function mapRpcRow(row: SearchUserTradingOrdersRpcRow): UserTradingOrder {
+function mapRpcRow(
+  row: SearchUserTradingOrdersRpcRow,
+  orderId: string,
+): UserTradingOrder {
   return {
-    id: row.order_id,
+    id: orderId,
+    orderKind: DEFAULT_MEMBER_ORDER_KIND,
     orderNumber: row.order_number,
     buyerId: row.buyer_id,
     sellerId: row.seller_id,
@@ -350,6 +427,42 @@ function mapRpcRow(row: SearchUserTradingOrdersRpcRow): UserTradingOrder {
       ),
     },
   };
+}
+
+async function mapRpcRowForUser(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  row: SearchUserTradingOrdersRpcRow,
+): Promise<UserTradingOrder | null> {
+  if (isUuid(row.order_id)) {
+    return mapRpcRow(row, row.order_id);
+  }
+
+  console.error("[searchUserTradingOrders] invalid order_id from RPC", {
+    order_id: row.order_id,
+    order_number: row.order_number,
+    display_id: row.display_id,
+  });
+
+  const fallbackKey =
+    row.order_number?.trim() ||
+    row.display_id?.trim() ||
+    row.order_id?.trim() ||
+    "";
+  if (!fallbackKey) {
+    return null;
+  }
+
+  const resolved = await resolveMemberOrderIdForUser(
+    supabase,
+    fallbackKey,
+    userId,
+  );
+  if (!resolved.ok) {
+    return null;
+  }
+
+  return mapRpcRow(row, resolved.id);
 }
 
 export async function searchUserTradingOrders(
@@ -417,9 +530,15 @@ export async function searchUserTradingOrders(
       );
     }
 
+    const mappedOrders = (
+      await Promise.all(
+        rows.map((row) => mapRpcRowForUser(supabase, user.id, row)),
+      )
+    ).filter((order): order is UserTradingOrder => order !== null);
+
     return {
       success: true,
-      data: rows.map(mapRpcRow),
+      data: mappedOrders,
       meta,
       filters,
     };
@@ -464,6 +583,7 @@ function mapMemberOrderDetailRow(
 
   return {
     id: row.id,
+    orderKind: DEFAULT_MEMBER_ORDER_KIND,
     orderNumber: row.order_number,
     buyerId: row.buyer_id,
     sellerId: row.seller_id,
@@ -514,11 +634,6 @@ function mapMemberOrderDetailRow(
 export async function getMemberOrderDetail(
   orderId: string,
 ): Promise<GetMemberOrderDetailResult> {
-  const trimmedOrderId = orderId.trim();
-  if (!trimmedOrderId) {
-    return { success: false, error: "找不到此訂單" };
-  }
-
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
   }
@@ -538,6 +653,16 @@ export async function getMemberOrderDetail(
     if (!user) {
       return { success: false, error: "請登入以查閱訂單" };
     }
+
+    const resolved = await resolveMemberOrderIdForUser(
+      supabase,
+      orderId,
+      user.id,
+    );
+    if (!resolved.ok) {
+      return { success: false, error: resolved.error };
+    }
+    const trimmedOrderId = resolved.id;
 
     const { data, error } = await supabase
       .from("member_orders")
@@ -590,7 +715,7 @@ export async function getMemberOrderDetail(
 
     if (error) {
       console.error("[getMemberOrderDetail]", error.message);
-      return { success: false, error: "無法載入訂單" };
+      return { success: false, error: mapOrderRpcError(error.message) };
     }
 
     const row = data as MemberOrderDetailQueryRow | null;
@@ -629,12 +754,13 @@ export async function getMemberOrderDetail(
 export async function cancelMemberOrder(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
-  const trimmedOrderId = orderId.trim();
-  if (!trimmedOrderId) {
-    return { success: false, error: "找不到此訂單" };
-  }
-
   try {
+    const invalidId = rejectNonUuidMutationOrderId(orderId);
+    if (invalidId) {
+      return invalidId;
+    }
+    const trimmedOrderId = orderId.trim();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -644,31 +770,33 @@ export async function cancelMemberOrder(
       return { success: false, error: "請先登入後再取消訂單" };
     }
 
-    const rpcArgs: RpcCancelMemberOrderArgs = {
+    const invalidRpcIdentity = rejectInvalidRpcIdentity(
+      trimmedOrderId,
+      user.id,
+    );
+    if (invalidRpcIdentity) {
+      return invalidRpcIdentity;
+    }
+
+    logMemberOrderMutation("cancelMemberOrder", {
+      input: orderId,
       p_order_id: trimmedOrderId,
       p_user_id: user.id,
-    };
+      rpc: "rpc_cancel_member_order",
+    });
 
-    const { error } = await (
-      supabase as unknown as {
-        rpc: (
-          fn: "rpc_cancel_member_order",
-          args: RpcCancelMemberOrderArgs,
-        ) => Promise<{
-          data: unknown;
-          error: { message: string } | null;
-        }>;
-      }
-    ).rpc("rpc_cancel_member_order", rpcArgs);
+    const { error } = await rpcCancelMemberOrder(supabase, {
+      p_order_id: trimmedOrderId,
+      p_user_id: user.id,
+    });
 
     if (error) {
       console.error("[cancelMemberOrder] rpc", error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: mapOrderRpcError(error.message) };
     }
 
     revalidatePath("/marketplace");
-    revalidatePath("/profile/user/trading");
-    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+    revalidateMemberOrderPaths(trimmedOrderId);
 
     return { success: true };
   } catch (error) {
@@ -679,15 +807,40 @@ export async function cancelMemberOrder(
   }
 }
 
+export async function completeMerchantOrder(
+  orderId: string,
+): Promise<MemberOrderActionResult> {
+  const invalidId = rejectNonUuidMutationOrderId(orderId);
+  if (invalidId) {
+    return invalidId;
+  }
+
+  return {
+    success: false,
+    error:
+      "商戶訂單確認完成功能即將推出；請使用商戶交易頁完成操作。",
+  };
+}
+
+export async function completeBuyerOrder(
+  input: BuyerCompleteOrderInput,
+): Promise<MemberOrderActionResult> {
+  if (input.orderKind === "merchant") {
+    return completeMerchantOrder(input.orderId);
+  }
+  return completeMemberOrder(input.orderId);
+}
+
 export async function completeMemberOrder(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
-  const trimmedOrderId = orderId.trim();
-  if (!trimmedOrderId) {
-    return { success: false, error: "找不到此訂單" };
-  }
-
   try {
+    const invalidId = rejectNonUuidMutationOrderId(orderId);
+    if (invalidId) {
+      return invalidId;
+    }
+    const trimmedOrderId = orderId.trim();
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -697,30 +850,128 @@ export async function completeMemberOrder(
       return { success: false, error: "請先登入後再確認完成" };
     }
 
-    const rpcArgs: RpcCompleteMemberOrderArgs = {
-      p_order_id: trimmedOrderId,
+    logMemberOrderMutation("completeMemberOrder", {
+      phase: "mutation_input",
+      input: orderId,
+      member_order_id: trimmedOrderId,
       p_user_id: user.id,
-    };
+    });
 
-    const { error } = await (
-      supabase as unknown as {
-        rpc: (
-          fn: "rpc_complete_member_order",
-          args: RpcCompleteMemberOrderArgs,
-        ) => Promise<{
-          data: unknown;
-          error: { message: string } | null;
-        }>;
-      }
-    ).rpc("rpc_complete_member_order", rpcArgs);
+    const { data: orderRow, error: orderLookupError } = await supabase
+      .from("member_orders")
+      .select("id, buyer_id, status, listing_id, seller_id")
+      .eq("id", trimmedOrderId)
+      .maybeSingle();
 
-    if (error) {
-      console.error("[completeMemberOrder] rpc", error.message);
-      return { success: false, error: error.message };
+    const orderSnapshot = orderRow as {
+      id: string;
+      buyer_id: string;
+      seller_id: string;
+      listing_id: string;
+      status: Tables<"member_orders">["status"];
+    } | null;
+
+    if (orderLookupError) {
+      console.error("[completeMemberOrder] lookup", orderLookupError.message);
+      return { success: false, error: mapOrderRpcError(orderLookupError.message) };
     }
 
-    revalidatePath("/profile/user/trading");
-    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+    if (!orderSnapshot) {
+      return { success: false, error: "找不到指定的交易訂單記錄" };
+    }
+
+    if (orderSnapshot.buyer_id !== user.id) {
+      return {
+        success: false,
+        error: "操作失敗：僅買家可確認完成交易，或訂單狀態不合法。",
+      };
+    }
+
+    if (orderSnapshot.status !== "pending") {
+      return {
+        success: false,
+        error: "操作失敗：僅買家可確認完成交易，或訂單狀態不合法。",
+      };
+    }
+
+    if (!isUuid(orderSnapshot.listing_id)) {
+      logMemberOrderMutation("completeMemberOrder", {
+        phase: "listing_id_needs_resolve",
+        member_order_id: trimmedOrderId,
+        listing_id: orderSnapshot.listing_id,
+        seller_id: orderSnapshot.seller_id,
+      });
+
+      const listingRepair = await ensureMemberOrderListingUuid(supabase, {
+        orderId: trimmedOrderId,
+        listingId: orderSnapshot.listing_id,
+        sellerId: orderSnapshot.seller_id,
+      });
+
+      if (!listingRepair.ok) {
+        logMemberOrderMutation("completeMemberOrder", {
+          phase: "listing_id_repair_failed",
+          member_order_id: trimmedOrderId,
+          listing_id: orderSnapshot.listing_id,
+          error: listingRepair.error,
+        });
+        return {
+          success: false,
+          error:
+            "無法完成交易，請返回交易管理頁面重新整理後再試；若問題持續請聯繫客服。",
+        };
+      }
+
+      if (listingRepair.wasRepaired) {
+        logMemberOrderMutation("completeMemberOrder", {
+          phase: "listing_id_repaired",
+          member_order_id: trimmedOrderId,
+          listing_id: listingRepair.listingId,
+        });
+      }
+    }
+
+    const invalidRpcIdentity = rejectInvalidRpcIdentity(
+      trimmedOrderId,
+      user.id,
+    );
+    if (invalidRpcIdentity) {
+      return invalidRpcIdentity;
+    }
+
+    logMemberOrderMutation("completeMemberOrder", {
+      phase: "rpc_invoke",
+      input: orderId,
+      resolved: trimmedOrderId,
+      p_order_id: trimmedOrderId,
+      p_user_id: user.id,
+      rpc: "rpc_complete_member_order",
+    });
+
+    const { error } = await rpcCompleteMemberOrder(supabase, {
+      p_order_id: trimmedOrderId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      console.error("[completeMemberOrder] rpc", {
+        message: error.message,
+        input: orderId,
+        p_order_id: trimmedOrderId,
+        p_user_id: user.id,
+      });
+      const mapped = mapOrderRpcError(error.message);
+      if (mapped === INVALID_MEMBER_ORDER_ID_ERROR) {
+        return {
+          success: false,
+          error:
+            "無法完成交易，請返回交易管理重新進入訂單；若問題持續請聯繫客服。",
+        };
+      }
+      return { success: false, error: mapped };
+    }
+
+    revalidateMemberOrderPaths(trimmedOrderId);
 
     return { success: true };
   } catch (error) {
@@ -734,11 +985,6 @@ export async function completeMemberOrder(
 export async function mockPayMemberAuthOrder(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
-  const trimmedOrderId = orderId.trim();
-  if (!trimmedOrderId) {
-    return { success: false, error: "找不到此訂單" };
-  }
-
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
   }
@@ -752,6 +998,16 @@ export async function mockPayMemberAuthOrder(
     if (!user) {
       return { success: false, error: "請先登入後再付款" };
     }
+
+    const resolved = await resolveMemberOrderIdForUser(
+      supabase,
+      orderId,
+      user.id,
+    );
+    if (!resolved.ok) {
+      return { success: false, error: resolved.error };
+    }
+    const trimmedOrderId = resolved.id;
 
     const session = createMemberAuthPaymentSession({
       orderId: trimmedOrderId,
@@ -777,11 +1033,10 @@ export async function mockPayMemberAuthOrder(
 
     if (error) {
       console.error("[mockPayMemberAuthOrder]", error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: mapOrderRpcError(error.message) };
     }
 
-    revalidatePath("/profile/user/trading");
-    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+    revalidateMemberOrderPaths(trimmedOrderId);
 
     return { success: true };
   } catch (error) {
@@ -794,12 +1049,7 @@ export async function submitInboundTracking(
   orderId: string,
   trackingNo: string,
 ): Promise<MemberOrderActionResult> {
-  const trimmedOrderId = orderId.trim();
   const trimmedTracking = trackingNo.trim();
-
-  if (!trimmedOrderId) {
-    return { success: false, error: "找不到此訂單" };
-  }
   if (!trimmedTracking) {
     return { success: false, error: "請輸入有效的順豐物流單號" };
   }
@@ -817,6 +1067,16 @@ export async function submitInboundTracking(
     if (!user) {
       return { success: false, error: "請先登入後再提交" };
     }
+
+    const resolved = await resolveMemberOrderIdForUser(
+      supabase,
+      orderId,
+      user.id,
+    );
+    if (!resolved.ok) {
+      return { success: false, error: resolved.error };
+    }
+    const trimmedOrderId = resolved.id;
 
     const { error } = await (
       supabase as unknown as {
@@ -837,11 +1097,10 @@ export async function submitInboundTracking(
 
     if (error) {
       console.error("[submitInboundTracking]", error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: mapOrderRpcError(error.message) };
     }
 
-    revalidatePath("/profile/user/trading");
-    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+    revalidateMemberOrderPaths(trimmedOrderId);
 
     return { success: true };
   } catch (error) {
@@ -853,11 +1112,6 @@ export async function submitInboundTracking(
 export async function confirmBuyerReceived(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
-  const trimmedOrderId = orderId.trim();
-  if (!trimmedOrderId) {
-    return { success: false, error: "找不到此訂單" };
-  }
-
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
   }
@@ -871,6 +1125,16 @@ export async function confirmBuyerReceived(
     if (!user) {
       return { success: false, error: "請先登入後再確認收貨" };
     }
+
+    const resolved = await resolveMemberOrderIdForUser(
+      supabase,
+      orderId,
+      user.id,
+    );
+    if (!resolved.ok) {
+      return { success: false, error: resolved.error };
+    }
+    const trimmedOrderId = resolved.id;
 
     const { error } = await (
       supabase as unknown as {
@@ -886,11 +1150,10 @@ export async function confirmBuyerReceived(
 
     if (error) {
       console.error("[confirmBuyerReceived]", error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: mapOrderRpcError(error.message) };
     }
 
-    revalidatePath("/profile/user/trading");
-    revalidatePath("/profile/user/orderDetail/" + trimmedOrderId);
+    revalidateMemberOrderPaths(trimmedOrderId);
 
     return { success: true };
   } catch (error) {

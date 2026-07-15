@@ -58,10 +58,12 @@ type UserRole = Enums<"user_role">;
 | Function | Args | Returns |
 |----------|------|---------|
 | `acknowledge_reward_grants` | `{ p_user_reward_ids: string[] }` | `Json` |
+| `compute_price_vs_market_pct` | `{ p_listing_price: number; p_market_avg_price: number }` | `number` |
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
 | `execute_daily_check_in` | `never;` | `Json` |
 | `fn_apply_point_transaction` | `{ p_amount: number p_description?: string p_source_ref?: string p_source_type: string p_user_id: st…` | `number` |
 | `fn_archive_seller_collection_for_listing` | `{ p_final_price: number p_listing_id: string p_seller_id: string }` | `undefined` |
+| `fn_assert_p2p_offer_aml_limits` | `{ p_buyer_id: string p_listing_id: string p_offer_price: number p_use_authentication: boolean }` | `undefined` |
 | `fn_bump_listing_offers_count` | `{ p_listing_id: string }` | `undefined` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
@@ -69,6 +71,7 @@ type UserRole = Enums<"user_role">;
 | `fn_member_order_is_open` | `{ p_escrow_status: Database["public"]["Enums"]["member_escrow_status"] p_status: Database["public"]…` | `boolean` |
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_redeem_member_points` | `{ p_amount: number p_description?: string p_source_ref?: string }` | `Json` |
+| `fn_resolve_member_listing_id` | `{ p_listing_ref: string; p_seller_id: string }` | `string` |
 | `fn_reward_template_has_stock` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] }` | `boolean` |
 | `fn_reward_template_progress_detail` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `Json` |
 | `fn_template_is_eligible` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `{ eligible: boolean grant_dedup_key: string }[]` |
@@ -89,6 +92,8 @@ type UserRole = Enums<"user_role">;
 | `is_display_name_available` | `{ name: string };` | `boolean` |
 | `listing_grade_sort_score` | `{ grading_company: string; grading_score: string }` | `number` |
 | `refresh_marketplace_product_summaries` | `never;` | `undefined` |
+| `resolve_listing_market_price_company` | `{ p_grading_company: string }` | `string` |
+| `resolve_listing_market_price_score` | `{ p_grading_company: string; p_grading_score: string }` | `string` |
 | `rpc_accept_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_cancel_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_complete_member_auth_grading` | `{ p_order_id: string }` | `Json` |
@@ -100,6 +105,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
+| `rpc_mark_chat_room_read` | `{ p_read_at?: string; p_room_id: string }` | `Json` |
 | `rpc_mock_pay_member_auth_order` | `{ p_buyer_id: string p_mock_session_id?: string p_order_id: string }` | `Json` |
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
@@ -136,6 +142,18 @@ type UserRole = Enums<"user_role">;
 | `sender_id` | `string` | No |
 
 **Foreign keys:** `member_order_id` → `member_orders`
+
+---
+
+### `chat_room_reads`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `last_read_at` | `string` | No |
+| `room_id` | `string` | No |
+| `user_id` | `string` | No |
+
+**Foreign keys:** `room_id` → `chat_rooms`
 
 ---
 
@@ -415,6 +433,7 @@ type UserRole = Enums<"user_role">;
 | `id` | `string` | No |
 | `market_avg_price` | `number | null` | Yes |
 | `market_chart_data` | `Json | null` | Yes |
+| `market_data_source` | `string` | No |
 | `market_trend_30d` | `number | null` | Yes |
 | `product_id` | `string | null` | Yes |
 | `updated_at` | `string | null` | Yes |
@@ -435,13 +454,14 @@ type UserRole = Enums<"user_role">;
 | `grading_company` | `string | null` | Yes |
 | `grading_score` | `string | null` | Yes |
 | `id` | `string` | No |
+| `member_order_id` | `string | null` | Yes |
 | `price_hkd` | `number | null` | Yes |
 | `price_jpy` | `number` | No |
 | `product_id` | `string` | No |
 | `snapshot_date` | `string` | No |
 | `source` | `string | null` | Yes |
 
-**Foreign keys:** `product_id` → `product_catalog`
+**Foreign keys:** `member_order_id` → `member_orders`
 
 ---
 
@@ -594,11 +614,12 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**23 tables**
+**24 tables**
 
 | Table | Domain |
 |-------|--------|
 | `chat_messages` | Messaging |
+| `chat_room_reads` | — |
 | `chat_rooms` | Messaging |
 | `gamification_stats` | Gamification |
 | `kyc_records` | Merchant KYC |

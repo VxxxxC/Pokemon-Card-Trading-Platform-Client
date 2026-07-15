@@ -7,6 +7,23 @@
 - **Partner:** Apply migrations `20260704170000`–**`20260709310000`**; verify inbox + send + accept/reject + auth opt-in + completion messages + **user reports** after push (see **Migrations** below)
 - **Partner report:** [PARTNER_REPORT.md](./PARTNER_REPORT.md)
 
+## Changelog (2026-07-15, unread persist on refresh)
+
+| Change | Detail |
+|--------|--------|
+| **Auto mark read on thread view** | `GlobalChatOverlay` debounced `persistMarkRoomRead` when chat open + viewing active DB room |
+| **Realtime active thread** | `useChatRoomRealtime` advances `chat_room_reads` cursor when user is in open thread |
+| **`persistMarkRoomReadAsync`** | Deduped RPC persist; lobby merge uses `preferServerUnread: true` |
+
+## Changelog (2026-07-15, unread badges)
+
+| Change | Detail |
+|--------|--------|
+| **`chat_room_reads`** | Migration **`20260715200000`** — per-user `last_read_at` per room |
+| **`rpc_mark_chat_room_read`** | Upsert read cursor; participant-only |
+| **`get_user_chat_inbox_lobby()`** | Returns `unread_count` per room |
+| **`markChatRoomRead(roomId)`** | `app/actions/chat.ts` — persists read state |
+
 ## Changelog (2026-07-09, user reports)
 
 | Change | Detail |

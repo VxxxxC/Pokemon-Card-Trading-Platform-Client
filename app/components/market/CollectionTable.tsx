@@ -55,6 +55,10 @@ function StatusPill({ status }: { status: CollectionEntry["status"] }) {
       label: "已上架",
       className: "text-[#d4a574] bg-[rgba(212,165,116,0.12)]",
     },
+    in_trade: {
+      label: "交易中",
+      className: "text-[#3b9eff] bg-[rgba(59,158,255,0.12)]",
+    },
     sold: {
       label: "已售出",
       className: "text-[#8A8680] bg-[rgba(138,134,128,0.12)]",
@@ -391,7 +395,9 @@ export function CollectionTable({
                         >
                           查看公開市場
                         </DropdownMenuItem>
-                        {entry.status !== "listed" && entry.status !== "sold" ? (
+                        {entry.status !== "listed" &&
+                        entry.status !== "in_trade" &&
+                        entry.status !== "sold" ? (
                           <DropdownMenuItem
                             onClick={() => handleSell(entry)}
                             className="text-brand focus:bg-[#322a24] focus:text-brand font-bold"

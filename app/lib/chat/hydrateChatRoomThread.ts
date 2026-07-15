@@ -11,6 +11,7 @@ import {
   prependOlderRoomMessages,
 } from "@/app/lib/chat/mergeChatRooms";
 import { roomNeedsThreadHydration } from "@/app/lib/chat/roomHydration";
+import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 
 type HydrateChatRoomThreadOptions = {
@@ -38,6 +39,9 @@ export async function hydrateChatRoomThread(
     .chats.find((entry) => entry.id === roomId);
 
   if (!options?.force && !roomNeedsThreadHydration(room)) {
+    const lastTs =
+      room?.messages.at(-1)?.timestamp ?? room?.timestamp ?? undefined;
+    await persistMarkRoomReadAsync(roomId, lastTs);
     return { success: true };
   }
 
@@ -59,6 +63,10 @@ export async function hydrateChatRoomThread(
 
     return mergeRoomThreadFromDb(currentRooms, result.data, result.hasMore);
   });
+
+  const lastTs =
+    result.data.messages.at(-1)?.timestamp ?? result.data.timestamp;
+  await persistMarkRoomReadAsync(roomId, lastTs);
 
   return { success: true };
 }

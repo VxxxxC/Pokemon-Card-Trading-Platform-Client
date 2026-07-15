@@ -829,10 +829,8 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
   appendRoomMessage: (roomId, message) =>
     set((state) => {
-      const isIncoming =
-        message.sender === "them" || message.sender === "system";
       const shouldIncrementUnread =
-        isIncoming &&
+        message.sender === "them" &&
         (state.activeRoomId !== roomId || !state.isChatOpen);
 
       const chats = state.chats.map((room) => {

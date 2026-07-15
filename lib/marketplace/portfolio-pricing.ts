@@ -14,7 +14,13 @@ export type MarketPriceRow = Pick<
 >;
 export type ListingPriceRow = Pick<
   Tables<"listings">,
-  "id" | "product_id" | "grading_company" | "grading_score" | "price"
+  | "id"
+  | "product_id"
+  | "grading_company"
+  | "grading_score"
+  | "price"
+  | "source_collection_id"
+  | "status"
 >;
 
 export function toFiniteNumber(value: number | null | undefined): number | null {

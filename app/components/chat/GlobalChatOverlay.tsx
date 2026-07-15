@@ -13,8 +13,10 @@ import {
   mergeChatRoomsWithDb,
 } from "@/app/lib/chat/mergeChatRooms";
 import { roomNeedsThreadHydration } from "@/app/lib/chat/roomHydration";
+import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import { useChatRoomRealtime } from "@/app/lib/hooks/useChatRoomRealtime";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
+import { useIsDesktopChat } from "@/app/lib/hooks/useIsDesktopChat";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { ChatOverlaySkeleton } from "@/app/components/chat/ChatOverlaySkeleton";
 
@@ -32,12 +34,15 @@ const GlobalChatConsole = dynamic(
 export function GlobalChatOverlay() {
   const isChatOpen = useHkCardVaultStore((state) => state.isChatOpen);
   const activeRoomId = useHkCardVaultStore((state) => state.activeRoomId);
+  const mobileView = useHkCardVaultStore((state) => state.mobileView);
   const setChats = useHkCardVaultStore((state) => state.setChats);
   const setActiveRoomId = useHkCardVaultStore((state) => state.setActiveRoomId);
   const currentUserId = useCurrentUserId();
+  const isDesktopChat = useIsDesktopChat();
   const inboxRequestIdRef = useRef(0);
   const threadRequestIdRef = useRef(0);
   const lastLobbySyncAtRef = useRef(0);
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const LOBBY_STALE_MS = 30_000;
   const [inboxLoading, setInboxLoading] = useState(false);
   const [isLobbyRefreshing, setIsLobbyRefreshing] = useState(false);
@@ -45,7 +50,7 @@ export function GlobalChatOverlay() {
     null,
   );
 
-  useChatRoomRealtime({ enabled: isChatOpen });
+  useChatRoomRealtime({ enabled: Boolean(currentUserId) });
 
   const applyLobbyMerge = useCallback(
     (dbRooms: Parameters<typeof mergeChatRoomsWithDb>[1]) => {
@@ -56,6 +61,7 @@ export function GlobalChatOverlay() {
       setChats((currentRooms) =>
         mergeChatRoomsWithDb(currentRooms, dbRooms, {
           stripeRooms: Boolean(currentUserId),
+          preferServerUnread: true,
         }),
       );
 
@@ -200,6 +206,44 @@ export function GlobalChatOverlay() {
 
     void hydrateActiveThread(activeRoomId);
   }, [activeRoomId, hydrateActiveThread, isChatOpen]);
+
+  useEffect(() => {
+    if (!isChatOpen || !activeRoomId || !isDbChatRoomId(activeRoomId)) {
+      return;
+    }
+
+    const isViewingThread = isDesktopChat || mobileView === "CHAT";
+    if (!isViewingThread) {
+      return;
+    }
+
+    if (markReadTimerRef.current) {
+      clearTimeout(markReadTimerRef.current);
+    }
+
+    markReadTimerRef.current = setTimeout(() => {
+      const activeRoom = useHkCardVaultStore
+        .getState()
+        .chats.find((room) => room.id === activeRoomId);
+      const lastMessageTs =
+        activeRoom?.messages.at(-1)?.timestamp ?? activeRoom?.timestamp;
+
+      void persistMarkRoomReadAsync(activeRoomId, lastMessageTs).then(
+        (persisted) => {
+          if (persisted) {
+            void syncInboxLobby({ force: true, backgroundRefresh: true });
+          }
+        },
+      );
+    }, 300);
+
+    return () => {
+      if (markReadTimerRef.current) {
+        clearTimeout(markReadTimerRef.current);
+        markReadTimerRef.current = null;
+      }
+    };
+  }, [activeRoomId, isChatOpen, isDesktopChat, mobileView, syncInboxLobby]);
 
   return (
     <AnimatePresence mode="wait">

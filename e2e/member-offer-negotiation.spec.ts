@@ -21,6 +21,8 @@ import {
   openBothChatRooms,
   chatConsoleRoot,
   submitBuyerOfferFromDetail,
+  P2P_OFFER_AMOUNT,
+  P2P_OFFER_AMOUNT_LABEL,
 } from "./helpers/member-trading";
 
 test.describe.configure({ mode: "serial" });
@@ -254,6 +256,99 @@ test.describe("Member offer negotiation", () => {
       await expect(
         sellerOfferCard.getByRole("button", { name: "接受出價" }),
       ).toBeVisible();
+    } finally {
+      await buyerContext.close();
+      await sellerContext.close();
+    }
+  });
+
+  test("buyer under 14-day cap cannot modify offer above HK$300", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "member-trading",
+      "Dual-browser negotiation runs on member-trading project",
+    );
+    if (!hasMemberTradingFixtures()) {
+      test.skip(true, "Missing member trading E2E env");
+    }
+
+    const fixtureResult = await resolveE2eMarketplaceFixture();
+    if (!fixtureResult.ok) {
+      test.skip(true, fixtureResult.skipReason);
+      return;
+    }
+    const { listingId, sellerId } = fixtureResult.fixture;
+
+    const fixtures = getChatRealtimeFixtures();
+    const buyerEmail = fixtures.buyerEmail!;
+    const buyerId = await getProfileIdByEmail(buyerEmail);
+    if (!buyerId) {
+      test.skip(true, `Could not resolve buyer profile for ${buyerEmail}`);
+      return;
+    }
+
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
+    await ensureListingActive(listingId);
+
+    const [sellerDisplayName, buyerDisplayName] = await Promise.all([
+      getProfileDisplayName(sellerId),
+      getProfileDisplayName(buyerId),
+    ]);
+
+    const buyerContext = await browser.newContext({
+      storageState: "e2e/.auth/buyer.json",
+    });
+    const sellerContext = await browser.newContext({
+      storageState: "e2e/.auth/seller.json",
+    });
+
+    const buyerPage = await buyerContext.newPage();
+    const sellerPage = await sellerContext.newPage();
+
+    try {
+      await openBothChatRooms(
+        buyerPage,
+        sellerPage,
+        roomId,
+        sellerDisplayName,
+        buyerDisplayName,
+      );
+
+      await submitBuyerOfferFromDetail(
+        buyerPage,
+        sellerId,
+        listingId,
+        P2P_OFFER_AMOUNT,
+      );
+
+      await expect
+        .poll(async () => {
+          const offer = await getLatestOfferForListing({
+            roomId,
+            listingId,
+            buyerId,
+          });
+          return offer?.status === "pending" && !offer.use_authentication;
+        }, { timeout: 25_000 })
+        .toBe(true);
+
+      await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName);
+      const buyerOfferCard = offerCardWithAmount(
+        buyerPage,
+        P2P_OFFER_AMOUNT_LABEL,
+      ).filter({
+        has: buyerPage.getByRole("button", { name: "修改出價" }),
+      });
+      await expect(buyerOfferCard).toBeVisible({ timeout: 45_000 });
+      await buyerOfferCard.getByRole("button", { name: "修改出價" }).click();
+      await buyerPage.locator('input[type="number"]').last().fill("500");
+      await buyerPage.getByRole("button", { name: "確認送出" }).click();
+
+      await expect(
+        buyerPage.getByText("新註冊帳號（14 天內）面交單筆上限為 HK$300").first(),
+      ).toBeVisible({ timeout: 20_000 });
     } finally {
       await buyerContext.close();
       await sellerContext.close();

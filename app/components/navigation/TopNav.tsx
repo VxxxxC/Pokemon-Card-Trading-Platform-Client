@@ -8,6 +8,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
+import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
+import {
+  ChatUnreadDot,
+  ChatUnreadDotInline,
+} from "@/app/components/chat/ChatUnreadDot";
 
 const navLinks = [
   { href: "/", label: "首頁" },
@@ -149,9 +154,7 @@ export function TopNav() {
                   <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
                   <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
                 </svg>
-                {totalUnread > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#10b981] rounded-full shadow-[0_0_8px_#10b981]" />
-                )}
+                {totalUnread > 0 && <ChatUnreadDot glow />}
               </button>
 
               <AnimatePresence>
@@ -183,6 +186,7 @@ export function TopNav() {
                             setIsChatOpen(true);
                             setIsInboxOpen(false);
                             setActiveRoomId(room.id);
+                            persistMarkRoomReadAsync(room.id, room.timestamp);
                           }}
                           className="w-full text-left p-2.5 rounded-xl hover:bg-[#26211C] transition-all flex items-start gap-2.5 group border border-transparent"
                         >
@@ -203,7 +207,7 @@ export function TopNav() {
                             </p>
                           </div>
                           {room.unreadCount > 0 && (
-                            <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full shrink-0 mt-2" />
+                            <ChatUnreadDotInline className="mt-2" />
                           )}
                         </button>
                       ))}

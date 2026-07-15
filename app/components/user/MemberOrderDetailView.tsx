@@ -8,7 +8,7 @@ import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
 import {
   cancelMemberOrder,
-  completeMemberOrder,
+  completeBuyerOrder,
   confirmBuyerReceived,
   submitInboundTracking,
   type MemberOrderDetail,
@@ -53,6 +53,14 @@ type MemberOrderDetailViewProps = {
   onRefresh: () => void;
   onOpenReview?: (orderId: string, revieweeId: string) => void;
 };
+
+function dispatchPortfolioRefresh(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
+  window.dispatchEvent(new CustomEvent("collection-should-refresh"));
+}
 
 export function MemberOrderDetailView({
   order,
@@ -122,7 +130,10 @@ export function MemberOrderDetailView({
     }
 
     setIsActionLoading(true);
-    const result = await completeMemberOrder(order.id);
+    const result = await completeBuyerOrder({
+      orderKind: order.orderKind ?? "member",
+      orderId: order.id,
+    });
     setIsActionLoading(false);
 
     if (!result.success) {
@@ -131,6 +142,7 @@ export function MemberOrderDetailView({
     }
 
     toast.success("交易已確認完成！");
+    dispatchPortfolioRefresh();
     onRefresh();
 
     if (onOpenReview) {
@@ -155,6 +167,7 @@ export function MemberOrderDetailView({
     }
 
     toast.success("交易已取消，商品已重新上架");
+    dispatchPortfolioRefresh();
     onRefresh();
   };
 
@@ -164,7 +177,10 @@ export function MemberOrderDetailView({
     }
 
     setIsActionLoading(true);
-    const result = await submitInboundTracking(order.id, inboundTrackingInput);
+    const result = await submitInboundTracking(
+      order.id,
+      inboundTrackingInput,
+    );
     setIsActionLoading(false);
 
     if (!result.success) {
@@ -191,6 +207,7 @@ export function MemberOrderDetailView({
     }
 
     toast.success("已確認收貨，交易完成！");
+    dispatchPortfolioRefresh();
     onRefresh();
 
     if (onOpenReview) {
@@ -271,9 +288,11 @@ export function MemberOrderDetailView({
           {isPending && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                {isSeller
-                  ? "請與買家約定面交時間地點，現場點清錢貨後待買家確認完成交易。"
-                  : "請與賣家約定面交時間地點，現場點清錢貨後點擊確認完成。"}
+                請與{isBuyer ? "賣家" : "買家"}
+                約定面交時間地點，現場點清錢貨後，
+                {isBuyer
+                  ? "點擊確認完成。"
+                  : "待買家確認完成交易。"}
               </p>
               <div className="flex flex-col gap-2">
                 {isBuyer && (

@@ -12,6 +12,7 @@ import { isDbChatRoomId, CHAT_THREAD_PAGE_SIZE } from "@/app/lib/chat/constants"
 import type { ChatRoom } from "@/app/store/useHkCardVaultStore";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/supabase";
 
 const MAX_CHAT_MESSAGE_LENGTH = 2000;
 
@@ -862,5 +863,63 @@ export async function getUserChatInboxFull(): Promise<GetUserChatInboxResult> {
   } catch (error) {
     console.error("[getUserChatInboxFull]", error);
     return { success: false, error: "載入聊天室時發生錯誤" };
+  }
+}
+
+export type MarkChatRoomReadResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function markChatRoomRead(
+  roomId: string,
+  readAt?: string,
+): Promise<MarkChatRoomReadResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  if (!isDbChatRoomId(roomId)) {
+    return { success: false, error: "無效的聊天室" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const rpcArgs: Database["public"]["Functions"]["rpc_mark_chat_room_read"]["Args"] =
+      {
+        p_room_id: roomId,
+      };
+    const trimmedReadAt = readAt?.trim();
+    if (trimmedReadAt) {
+      rpcArgs.p_read_at = trimmedReadAt;
+    }
+
+    const { error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_mark_chat_room_read",
+          args: Database["public"]["Functions"]["rpc_mark_chat_room_read"]["Args"],
+        ) => Promise<{
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("rpc_mark_chat_room_read", rpcArgs);
+
+    if (error) {
+      console.error("[markChatRoomRead]", error.message);
+      return { success: false, error: "標記已讀失敗" };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[markChatRoomRead]", error);
+    return { success: false, error: "標記已讀時發生錯誤" };
   }
 }

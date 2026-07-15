@@ -55,6 +55,7 @@ export type DbChatRoomBaseRow = {
   seller_id: string;
   created_at: string | null;
   updated_at: string | null;
+  unread_count?: number | null;
   buyer: ProfileSnippet | null;
   seller: ProfileSnippet | null;
 };
@@ -220,6 +221,14 @@ function partnerTierForRole(role: Tables<"profiles">["role"]): string {
   return role === "merchant" ? "專業認證商戶" : "認證用戶";
 }
 
+function resolveUnreadCount(room: DbChatRoomBaseRow): number {
+  const raw = room.unread_count;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor(raw));
+}
+
 function mapRoomToStore(
   room: DbChatRoomBaseRow,
   messages: DbChatMessageRow[],
@@ -280,7 +289,7 @@ function mapRoomToStore(
     partnerAvatarUrl: resolveAvatarUrl(partner.avatar_path),
     partnerTier: partnerTierForRole(partner.role),
     lastMessage,
-    unreadCount: 0,
+    unreadCount: resolveUnreadCount(room),
     timestamp,
     messages: mappedMessages,
   };

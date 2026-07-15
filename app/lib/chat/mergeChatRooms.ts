@@ -7,6 +7,8 @@ import {
 export type MergeChatRoomsOptions = {
   /** Drop chatId-* preset rooms after a successful DB sync */
   stripeRooms?: boolean;
+  /** Lobby sync: trust server unread_count over local realtime bumps */
+  preferServerUnread?: boolean;
 };
 
 function sortRoomsByActivity(rooms: ChatRoom[]): ChatRoom[] {
@@ -62,7 +64,11 @@ function dedupeMessagesByOfferId(messages: ChatRoom["messages"]): ChatRoom["mess
   });
 }
 
-function mergeRoomMessages(local: ChatRoom, db: ChatRoom): ChatRoom {
+function mergeRoomMessages(
+  local: ChatRoom,
+  db: ChatRoom,
+  preferServerUnread = false,
+): ChatRoom {
   const dbMessageIds = new Set(db.messages.map((message) => message.id));
   const optimisticOnly = local.messages.filter(
     (message) => !dbMessageIds.has(message.id),
@@ -79,40 +85,67 @@ function mergeRoomMessages(local: ChatRoom, db: ChatRoom): ChatRoom {
   const timestamp =
     messages.at(-1)?.timestamp ?? db.timestamp ?? local.timestamp;
 
+  const mergedUnread = preferServerUnread
+    ? db.unreadCount
+    : Math.max(local.unreadCount, db.unreadCount);
+
   return {
     ...db,
     messages,
     lastMessage,
     timestamp,
-    unreadCount: Math.max(local.unreadCount, db.unreadCount),
+    unreadCount: mergedUnread,
     threadHydrated: local.threadHydrated === true || db.threadHydrated === true,
     threadHasMoreOlder:
       local.threadHasMoreOlder ?? db.threadHasMoreOlder,
   };
 }
 
-function pickCanonicalRoom(a: ChatRoom, b: ChatRoom): ChatRoom {
+function pickCanonicalRoom(
+  a: ChatRoom,
+  b: ChatRoom,
+  preferServerUnread = false,
+): ChatRoom {
   const aIsDb = isDbChatRoomId(a.id);
   const bIsDb = isDbChatRoomId(b.id);
 
   if (aIsDb && !bIsDb) {
-    return mergeRoomMessages(b, a);
+    return finalizeCanonicalRoom(mergeRoomMessages(b, a, preferServerUnread), a, b, preferServerUnread);
   }
   if (!aIsDb && bIsDb) {
-    return mergeRoomMessages(a, b);
+    return finalizeCanonicalRoom(mergeRoomMessages(a, b, preferServerUnread), a, b, preferServerUnread);
   }
 
   const aTime = new Date(a.timestamp).getTime();
   const bTime = new Date(b.timestamp).getTime();
 
   if (aTime >= bTime) {
-    return mergeRoomMessages(b, a);
+    return finalizeCanonicalRoom(mergeRoomMessages(b, a, preferServerUnread), a, b, preferServerUnread);
   }
 
-  return mergeRoomMessages(a, b);
+  return finalizeCanonicalRoom(mergeRoomMessages(a, b, preferServerUnread), a, b, preferServerUnread);
 }
 
-function dedupeByPartner(rooms: ChatRoom[]): ChatRoom[] {
+function finalizeCanonicalRoom(
+  merged: ChatRoom,
+  a: ChatRoom,
+  b: ChatRoom,
+  preferServerUnread: boolean,
+): ChatRoom {
+  if (!preferServerUnread) {
+    return merged;
+  }
+
+  return {
+    ...merged,
+    unreadCount: Math.max(a.unreadCount, b.unreadCount),
+  };
+}
+
+function dedupeByPartner(
+  rooms: ChatRoom[],
+  preferServerUnread = false,
+): ChatRoom[] {
   const result: ChatRoom[] = [];
 
   for (const room of rooms) {
@@ -139,7 +172,11 @@ function dedupeByPartner(rooms: ChatRoom[]): ChatRoom[] {
       continue;
     }
 
-    result[existingIndex] = pickCanonicalRoom(result[existingIndex], room);
+    result[existingIndex] = pickCanonicalRoom(
+      result[existingIndex],
+      room,
+      preferServerUnread,
+    );
   }
 
   return result;
@@ -166,14 +203,21 @@ export function mergeChatRoomsWithDb(
 
   const dbById = new Map(dbRooms.map((room) => [room.id, room]));
 
+  const preferServerUnread = options?.preferServerUnread ?? false;
+
   const mergedDbRooms = dbRooms.map((dbRoom) => {
     const local = localRealRooms.find((room) => room.id === dbRoom.id);
-    return local ? mergeRoomMessages(local, dbRoom) : dbRoom;
+    return local
+      ? mergeRoomMessages(local, dbRoom, preferServerUnread)
+      : dbRoom;
   });
 
   const ephemeralRooms = localRealRooms.filter((room) => !dbById.has(room.id));
 
-  const deduped = dedupeByPartner([...mergedDbRooms, ...ephemeralRooms]);
+  const deduped = dedupeByPartner(
+    [...mergedDbRooms, ...ephemeralRooms],
+    preferServerUnread,
+  );
 
   return sortRoomsByActivity([...systemRooms, ...deduped]);
 }

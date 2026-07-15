@@ -2,7 +2,7 @@ import type { CollectionValuationSource } from "@/lib/marketplace/portfolio-pric
 
 export type { CollectionValuationSource };
 
-export type CollectionEntryStatus = "holding" | "listed" | "sold";
+export type CollectionEntryStatus = "holding" | "listed" | "in_trade" | "sold";
 
 export type CollectionEntry = {
   collectionId: string;

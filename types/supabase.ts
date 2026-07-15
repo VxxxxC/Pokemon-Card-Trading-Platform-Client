@@ -104,6 +104,39 @@ export type Database = {
           },
         ]
       }
+      chat_room_reads: {
+        Row: {
+          last_read_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_room_reads_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_room_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_rooms: {
         Row: {
           buyer_id: string
@@ -1343,6 +1376,10 @@ export type Database = {
         Args: { p_user_reward_ids: string[] }
         Returns: Json
       }
+      compute_price_vs_market_pct: {
+        Args: { p_listing_price: number; p_market_avg_price: number }
+        Returns: number
+      }
       escape_ilike_pattern: { Args: { input: string }; Returns: string }
       execute_daily_check_in: { Args: never; Returns: Json }
       fn_apply_point_transaction: {
@@ -1360,6 +1397,15 @@ export type Database = {
           p_final_price: number
           p_listing_id: string
           p_seller_id: string
+        }
+        Returns: undefined
+      }
+      fn_assert_p2p_offer_aml_limits: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_offer_price: number
+          p_use_authentication: boolean
         }
         Returns: undefined
       }
@@ -1402,6 +1448,10 @@ export type Database = {
           p_source_ref?: string
         }
         Returns: Json
+      }
+      fn_resolve_member_listing_id: {
+        Args: { p_listing_ref: string; p_seller_id: string }
+        Returns: string
       }
       fn_reward_template_has_stock: {
         Args: {
@@ -1501,6 +1551,14 @@ export type Database = {
         Returns: number
       }
       refresh_marketplace_product_summaries: { Args: never; Returns: undefined }
+      resolve_listing_market_price_company: {
+        Args: { p_grading_company: string }
+        Returns: string
+      }
+      resolve_listing_market_price_score: {
+        Args: { p_grading_company: string; p_grading_score: string }
+        Returns: string
+      }
       rpc_accept_offer: {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
@@ -1561,6 +1619,10 @@ export type Database = {
             }
             Returns: Json
           }
+      rpc_mark_chat_room_read: {
+        Args: { p_read_at?: string; p_room_id: string }
+        Returns: Json
+      }
       rpc_mock_pay_member_auth_order: {
         Args: {
           p_buyer_id: string
@@ -1633,14 +1695,14 @@ export type Database = {
           lowest_listing_created_at: string
           lowest_listing_id: string
           lowest_price: number
-          market_avg_price: number | null
-          market_data_source: string | null
+          market_avg_price: number
+          market_data_source: string
           name_en: string
           name_ja: string
           name_zh: string
           page: number
           page_size: number
-          price_vs_market_pct: number | null
+          price_vs_market_pct: number
           product_id: string
           product_name: string
           range_end: number
@@ -1670,14 +1732,14 @@ export type Database = {
           lowest_listing_created_at: string
           lowest_listing_id: string
           lowest_price: number
-          market_avg_price: number | null
-          market_data_source: string | null
+          market_avg_price: number
+          market_data_source: string
           name_en: string
           name_ja: string
           name_zh: string
           page: number
           page_size: number
-          price_vs_market_pct: number | null
+          price_vs_market_pct: number
           product_id: string
           product_name: string
           range_end: number
@@ -1712,15 +1774,15 @@ export type Database = {
           grading_score: string
           image_url: string
           listing_id: string
+          market_avg_price: number
+          market_data_source: string
           name_en: string
           name_ja: string
           name_zh: string
-          market_avg_price: number | null
-          market_data_source: string | null
           page: number
           page_size: number
           price: number
-          price_vs_market_pct: number | null
+          price_vs_market_pct: number
           product_id: string
           product_name: string
           range_end: number
@@ -1785,7 +1847,7 @@ export type Database = {
           count_status_cancelled: number
           count_status_completed: number
           count_status_pending: number
-          counterparty_avatar_path: string | null
+          counterparty_avatar_path: string
           counterparty_display_name: string
           counterparty_id: string
           counterparty_username: string

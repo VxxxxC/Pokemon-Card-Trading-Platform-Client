@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { getOfferCardContext } from "@/app/actions/offers";
 import { hydrateChatRoomThread } from "@/app/lib/chat/hydrateChatRoomThread";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
+import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import {
   decodeOfferRealtimeEvent,
   getLastPersistedMessageTimestamp,
@@ -81,17 +82,29 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
         isChatOpen,
       } = useHkCardVaultStore.getState();
 
+      const isIncoming = row.sender_id !== currentUserId;
+      const isActiveOpenThread =
+        isChatOpen && activeRoomId === row.room_id && isIncoming;
+
+      const markActiveThreadReadIfNeeded = () => {
+        if (isActiveOpenThread) {
+          void persistMarkRoomReadAsync(row.room_id, row.created_at ?? undefined);
+        }
+      };
+
       if (
         isInitialOfferRealtimeMessage(row) &&
         isChatOpen &&
         activeRoomId === row.room_id
       ) {
         await hydrateChatRoomThread(row.room_id, { force: true });
+        markActiveThreadReadIfNeeded();
         return;
       }
 
       const message = mapChatMessageRowToStoreMessage(row, currentUserId);
       appendRoomMessage(row.room_id, message);
+      markActiveThreadReadIfNeeded();
 
       const event = decodeOfferRealtimeEvent(row);
       if (!event) {
@@ -100,11 +113,13 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
 
       if (event.type === "accepted") {
         applyOfferAccepted(event.offerId, event.memberOrderId);
+        markActiveThreadReadIfNeeded();
         return;
       }
 
       if (event.type === "rejected") {
         applyOfferRejected(event.offerId);
+        markActiveThreadReadIfNeeded();
         return;
       }
 
@@ -136,7 +151,9 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
         .getState()
         .chats.find((room) => room.id === roomId);
       const since = activeRoom
-        ? getLastPersistedMessageTimestamp(activeRoom.messages)
+        ? getLastPersistedMessageTimestamp(activeRoom.messages) ??
+          activeRoom.timestamp ??
+          null
         : null;
 
       let query = supabase
@@ -185,7 +202,10 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
           if (!isDbChatRoomId(room.id)) {
             return false;
           }
-          if (room.id === state.activeRoomId && state.isChatOpen) {
+          if (!state.isChatOpen) {
+            return true;
+          }
+          if (room.id === state.activeRoomId) {
             return true;
           }
           if (room.unreadCount > 0) {

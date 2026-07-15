@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
+import { ChatUnreadDot } from "@/app/components/chat/ChatUnreadDot";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -108,9 +109,7 @@ export function MobileHeader() {
                 <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
                 <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
               </svg>
-              {totalUnread > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#10b981] rounded-full" />
-              )}
+              {totalUnread > 0 && <ChatUnreadDot />}
             </button>
           </div>
         </div>

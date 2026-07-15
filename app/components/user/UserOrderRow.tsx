@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   cancelMemberOrder,
-  completeMemberOrder,
+  completeBuyerOrder,
 } from "@/app/actions/orders";
+import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import {
   AlertDialog,
@@ -34,6 +35,7 @@ interface UserOrderRowProps {
   detailOrderId?: string;
   onOpenReview?: (orderId: string, revieweeId: string) => void;
   dbOrderContext?: {
+    orderKind?: MemberOrderKind;
     orderId: string;
     revieweeId: string;
     dbStatus: string;
@@ -103,12 +105,15 @@ export function UserOrderRow({
     Boolean(onOpenReview);
 
   const handleComplete = async (): Promise<boolean> => {
-    if (!dbOrderContext || !onOpenReview || isActionLoading) {
+    if (!dbOrderContext || isActionLoading) {
       return false;
     }
 
     setIsActionLoading(true);
-    const result = await completeMemberOrder(dbOrderContext.orderId);
+    const result = await completeBuyerOrder({
+      orderKind: dbOrderContext.orderKind ?? "member",
+      orderId: dbOrderContext.orderId,
+    });
     setIsActionLoading(false);
 
     if (!result.success) {
@@ -118,7 +123,11 @@ export function UserOrderRow({
 
     toast.success("交易已確認完成！");
     dbOrderContext.onRefresh();
-    onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
+
+    if (onOpenReview) {
+      onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
+    }
+
     return true;
   };
 

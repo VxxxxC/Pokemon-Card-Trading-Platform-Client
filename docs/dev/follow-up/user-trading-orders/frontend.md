@@ -18,14 +18,21 @@
 | **`ReviewModal`** | `next/dynamic` — load on review action only |
 | **Perf report** | [PERF_REPORT.md](./PERF_REPORT.md) |
 
+### 2026-07-15 (buyer-only P2P complete restore)
+
+| Area | What changed |
+|------|----------------|
+| **`UserOrderRow`** | Pending P2P complete CTA for **buyer only** (`isBuyer && pending && !auth`) |
+| **`MemberOrderDetailView`** | Confirm dialog buyer-only; seller sees wait-for-buyer copy |
+
 ### 2026-07-07 (buyer-only complete + handover confirm dialog)
 
 | Area | What changed |
 |------|----------------|
 | **Complete permission** | Only **buyer** may call `completeMemberOrder` / `rpc_complete_member_order` (migration `20260707130000`) |
 | **`MemberOrderCompleteConfirmDialog`** | New shared `AlertDialog` — buyer must tick 3 inspection checkboxes + acknowledge legal disclaimer before **確認完成交收** |
-| **`UserOrderRow`** | Complete CTA buyer-only; opens confirm dialog (seller pending row shows **取消交易** only) |
-| **`MemberOrderDetailView`** | Same buyer-only complete + dialog; seller copy: wait for buyer to confirm |
+| **`UserOrderRow`** | Complete CTA for buyer only on pending P2P; opens confirm dialog |
+| **`MemberOrderDetailView`** | Same for buyer; seller sees wait-for-buyer copy |
 | **`app/lib/member-order/p2p.ts`** | Timeline copy: 由買家確認結案 |
 
 ### 2026-07-05 (platform authentication — order detail branch)
@@ -130,7 +137,7 @@ URL sync: `?filter=待處理` (etc.) maps to `tabStatus` via `TAB_STATUS_FROM_PA
 | `orderNumber?` | Human-facing ID for row 1 headline — rendered as `#…` (falls back to `order.id`) |
 | `detailOrderId?` | UUID for `/profile/user/orderDetail/[id]` navigation |
 | `onOpenReview?` | `(orderId, revieweeId) => void` — opens page-level `ReviewModal` |
-| `dbOrderContext?` | DB-only: `orderId`, `revieweeId`, `dbStatus`, `hasReviewedByMe`, `canCancel`, `onRefresh` |
+| `dbOrderContext?` | DB-only: `orderKind` (`member` \| `merchant`), `orderId`, `revieweeId`, `dbStatus`, `hasReviewedByMe`, `canCancel`, `onRefresh` |
 
 **Row layout (visual hierarchy):**
 

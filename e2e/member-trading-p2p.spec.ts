@@ -140,6 +140,18 @@ test.describe("Member P2P trading closure", () => {
         });
       });
 
+      await test.step("Step 4b — buyer completes handover from trading list", async () => {
+        await buyerPage.goto(
+          `/profile/user/trading?filter=${encodeURIComponent("待處理")}`,
+          { waitUntil: "domcontentloaded" },
+        );
+        await dismissBlockingOverlays(buyerPage);
+        await confirmP2pHandoverDialog(buyerPage);
+        await expect(buyerPage.getByText("交易已確認完成！")).toBeVisible({
+          timeout: 20_000,
+        });
+      });
+
       await test.step("Step 5 — order detail shows P2P meetup path", async () => {
         if (!memberOrderId) {
           throw new Error("Missing memberOrderId before order detail");
@@ -148,7 +160,7 @@ test.describe("Member P2P trading closure", () => {
 
         await expect(
           buyerPage.getByRole("button", { name: "確認完成交易" }),
-        ).toBeVisible({ timeout: 15_000 });
+        ).toHaveCount(0);
         await expect(
           buyerPage.getByRole("button", { name: "前往付款" }),
         ).toHaveCount(0);
@@ -157,27 +169,16 @@ test.describe("Member P2P trading closure", () => {
         ).toHaveCount(0);
       });
 
-      await test.step("Step 6 — buyer completes handover from order detail", async () => {
+      await test.step("Step 6 — completed order detail is stable on reload", async () => {
         if (!memberOrderId) {
           throw new Error("Missing memberOrderId before handover");
         }
         await gotoOrderDetail(buyerPage, memberOrderId);
         await dismissBlockingOverlays(buyerPage);
 
-        const completeButton = buyerPage.getByRole("button", {
-          name: "確認完成交易",
-        });
-        if ((await completeButton.count()) === 0) {
-          test.skip(
-            true,
-            "No pending P2P order to complete — fixture listing may need a fresh accept",
-          );
-        }
-
-        await confirmP2pHandoverDialog(buyerPage);
-        await expect(buyerPage.getByText("交易已確認完成！")).toBeVisible({
-          timeout: 20_000,
-        });
+        await expect(
+          buyerPage.getByRole("button", { name: "確認完成交易" }),
+        ).toHaveCount(0);
       });
 
       await test.step("Step 7 — buyer submits review", async () => {

@@ -22,6 +22,8 @@ import { sendMessage } from "@/app/actions/chat";
 import { submitUserReport } from "@/app/actions/reports";
 import { isAmlSensitiveChatContent } from "@/app/lib/chat/realtimeChatMessages";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
+import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
+import { ChatUnreadDotInline } from "@/app/components/chat/ChatUnreadDot";
 import { SpecialTransactionMessage } from "./SpecialTransactionMessage";
 import { SystemOrderCompletedMessage } from "./SystemOrderCompletedMessage";
 import {
@@ -516,7 +518,6 @@ export function GlobalChatConsole({
     appendRoomMessage,
     finalizeOptimisticMessage,
     rollbackOptimisticMessage,
-    markRoomRead,
   } = useHkCardVaultStore(
     useShallow((state) => ({
       isChatOpen: state.isChatOpen,
@@ -531,7 +532,6 @@ export function GlobalChatConsole({
       appendRoomMessage: state.appendRoomMessage,
       finalizeOptimisticMessage: state.finalizeOptimisticMessage,
       rollbackOptimisticMessage: state.rollbackOptimisticMessage,
-      markRoomRead: state.markRoomRead,
     })),
   );
 
@@ -949,10 +949,10 @@ export function GlobalChatConsole({
                   type="button"
                   onClick={() => {
                     setActiveRoomId(room.id);
-                    markRoomRead(room.id);
+                    void persistMarkRoomReadAsync(room.id, room.timestamp);
                   }}
                   className={
-                    "w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none " +
+                    "w-full p-2 rounded-xl text-left flex items-center gap-2 transition-all focus:outline-none relative " +
                     (room.id === activeRoomId
                       ? "bg-[#26211C] border border-[rgba(237,232,224,0.08)] shadow-md"
                       : "hover:bg-[#26211C]/40 border border-transparent")
@@ -975,6 +975,9 @@ export function GlobalChatConsole({
                       </span>
                     )}
                   </div>
+                  {room.unreadCount > 0 ? (
+                    <ChatUnreadDotInline />
+                  ) : null}
                 </button>
               ))
               )}
@@ -1222,7 +1225,7 @@ export function GlobalChatConsole({
                     key={room.id}
                     onClick={() => {
                       setActiveRoomId(room.id);
-                      markRoomRead(room.id);
+                      void persistMarkRoomReadAsync(room.id, room.timestamp);
                       setMobileView("CHAT");
                     }}
                     className="w-full text-left p-3.5 rounded-2xl bg-[#26211C] border border-[rgba(237,232,224,0.04)] flex items-start gap-3.5 relative focus:outline-none"
@@ -1249,6 +1252,9 @@ export function GlobalChatConsole({
                         {room.lastMessage}
                       </p>
                     </div>
+                    {room.unreadCount > 0 ? (
+                      <ChatUnreadDotInline className="mt-1" />
+                    ) : null}
                   </button>
                 ))
                 )}

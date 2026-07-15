@@ -16,6 +16,14 @@
 | **Perf logging** | `[trading:perf]` in `searchUserTradingOrders` — `rpcMs`, `totalMs`, `needsAction` |
 | **Constants** | `lib/member-order/constants.ts` — page sizes, tab URL mapping |
 
+### 2026-07-15 (buyer-only P2P complete restore)
+
+| Change | Detail |
+|--------|--------|
+| **Migration `20260715170000`** | Restores `rpc_complete_member_order` to buyer-only (`buyer_id = p_user_id`); supersedes `20260715160000` |
+| **RPC error** | Non-buyer or invalid state → `操作失敗：僅買家可確認完成交易，或訂單狀態不合法。` |
+| **Frontend** | `UserOrderRow` + `MemberOrderDetailView` — **確認完成交易** visible to buyer only on pending P2P orders |
+
 ### 2026-07-07 (buyer-only complete)
 
 | Change | Detail |
@@ -295,20 +303,52 @@ import {
 | Query error | `無法載入訂單` |
 | Unexpected | `無法連線至訂單服務` |
 
-## Server actions: `cancelMemberOrder` / `completeMemberOrder`
+## Server actions: `cancelMemberOrder` / `completeMemberOrder` / `completeBuyerOrder`
 
 ```ts
-import { cancelMemberOrder, completeMemberOrder } from "@/app/actions/orders";
+import {
+  cancelMemberOrder,
+  completeMemberOrder,
+  completeBuyerOrder,
+} from "@/app/actions/orders";
 
-await cancelMemberOrder(orderId);   // seller only — RPC validates
-await completeMemberOrder(orderId); // buyer only — RPC validates
+// Mutations require member_orders.id (UUID) — no ORD-* / display_id fallback
+await cancelMemberOrder(memberOrderUuid);   // seller only — RPC validates
+await completeMemberOrder(memberOrderUuid); // buyer only — RPC validates
+
+// Unified buyer-complete router (orderKind required)
+await completeBuyerOrder({ orderKind: "member", orderId: memberOrderUuid });
+await completeBuyerOrder({ orderKind: "merchant", orderId: merchantOrderUuid }); // stub until rpc_complete_merchant_order ships
+
 // { success: true } | { success: false, error: string }
 ```
 
-| Action | RPC | Who | Revalidate |
-|--------|-----|-----|------------|
-| `cancelMemberOrder` | `rpc_cancel_member_order(p_order_id, p_user_id)` | Seller | `/marketplace`, `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
-| `completeMemberOrder` | `rpc_complete_member_order(p_order_id, p_user_id)` | **Buyer** | `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
+| Action | RPC | `p_order_id` | Who | Revalidate |
+|--------|-----|--------------|-----|------------|
+| `cancelMemberOrder` | `rpc_cancel_member_order` | **`member_orders.id`** | Seller | `/marketplace`, `/profile/user/trading`, `/profile/user/orderDetail/[id]` |
+| `completeMemberOrder` | `rpc_complete_member_order` | **`member_orders.id`** | **Buyer only** | `/profile/user/trading`, `/profile/user/orderDetail/[id]`, `/profile/user/inventory`, `/profile/user/collection` |
+| `completeMerchantOrder` | *(planned)* `rpc_complete_merchant_order` | **`merchant_orders.id`** | Buyer (TBD) | merchant trading paths (TBD) |
+
+**Mutation vs read path:**
+
+| Path | Accepts `ORD-*` / `OFFICIAL-*` / listing UUID? |
+|------|-----------------------------------------------|
+| `getMemberOrderDetail` / `searchUserTradingOrders` mapping | Yes — `resolveMemberOrderIdForUser` |
+| `completeMemberOrder` / `cancelMemberOrder` | **No** — UUID `member_orders.id` only |
+
+**Diagnostics:** set `MEMBER_ORDER_MUTATION_LOG=1` on staging to log `{ input, p_order_id, p_user_id, rpc }` before `rpc_complete_member_order`.
+
+**RPC verify script:** `bun run test:member-order-complete-rpc` (needs `SUPABASE_SERVICE_ROLE_KEY`).
+
+### Future: member + merchant buyer-complete (separate RPCs)
+
+Do **not** extend `rpc_complete_member_order` to auto-probe `merchant_orders`. Pattern:
+
+1. DB: `rpc_complete_member_order` (member) + `rpc_complete_merchant_order` (merchant)
+2. Server: `completeBuyerOrder({ orderKind, orderId })` routes by `orderKind`
+3. UI: `dbOrderContext.orderKind` + `orderId` — never infer table from UUID alone
+
+Aligns with `fn_try_reveal_order_reviews(p_order_id, p_order_kind)` (`'member' | 'merchant'`).
 
 RPC side effects:
 
@@ -341,6 +381,9 @@ bunx supabase gen types typescript --local > types/supabase.ts
 - **`20260705140000_rpc_make_offer_use_authentication.sql`** (buyer toggle at make-offer)
 - **`20260705185000_rpc_complete_member_order_listing_sold.sql`** (complete → `listings.status = sold` + backfill)
 - **`20260707130000_complete_member_order_buyer_only.sql`** (complete restricted to buyer; trigger guard updated)
+- **`20260715170000_rpc_complete_member_order_buyer_only_restore.sql`** (reverts `20260715160000` either-party experiment)
+- **`20260715180000_rpc_complete_member_order_resolve_listing_ref.sql`** — resolve legacy `member_orders.listing_id` display_id (`OFFICIAL-*`) before complete; backfill + harden `fn_archive_seller_collection_for_listing`
+- **`20260715190000_fn_archive_product_id_text.sql`** — fix `fn_archive_seller_collection_for_listing`: `listings.product_id` / `product_catalog.id` are TEXT (`OFFICIAL-*`), not UUID (was causing `invalid input syntax for type uuid` on complete)
 
 **Chat inbox wiring (complete-order UI in chat):**
 

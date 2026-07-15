@@ -476,6 +476,8 @@ export async function acceptOffer(offerId: string): Promise<AcceptOfferResult> {
     }
 
     revalidatePath("/marketplace");
+    revalidatePath("/profile/user/inventory");
+    revalidatePath("/profile/user/collection");
 
     return {
       success: true,

@@ -27,6 +27,7 @@ export default function UserOrderDetailPage() {
   const [order, setOrder] = useState<MemberOrderDetail | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedOrderId, setLoadedOrderId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeReview, setActiveReview] = useState<ActiveReviewState>(null);
 
@@ -34,6 +35,7 @@ export default function UserOrderDetailPage() {
     if (!orderId) {
       setFetchError("找不到此訂單");
       setOrder(null);
+      setLoadedOrderId(null);
       setIsLoading(false);
       return;
     }
@@ -44,11 +46,13 @@ export default function UserOrderDetailPage() {
 
     if (!result.success) {
       setOrder(null);
+      setLoadedOrderId(null);
       setFetchError(result.error);
       return;
     }
 
     setOrder(result.data);
+    setLoadedOrderId(orderId);
     setFetchError(null);
   }, [orderId]);
 
@@ -80,7 +84,31 @@ export default function UserOrderDetailPage() {
     handleRefresh();
   }, [handleRefresh]);
 
+  const isOrderReady = Boolean(order) && loadedOrderId === orderId;
+
   if (!isMounted || isLoading) {
+    return (
+      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+        <div className="w-9 h-9 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isOrderReady) {
+    if (fetchError) {
+      return (
+        <div className="min-h-screen bg-[#17130f] text-text-primary p-6 flex flex-col items-center justify-center gap-4">
+          <p className="font-sans text-[14px] text-text-disabled">{fetchError}</p>
+          <Link
+            href="/profile/user/trading"
+            className="font-sans text-[13px] font-bold text-brand hover:underline"
+          >
+            返回交易管理
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
         <div className="w-9 h-9 rounded-full border-2 border-brand border-t-transparent animate-spin" />

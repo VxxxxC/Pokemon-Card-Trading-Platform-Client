@@ -358,6 +358,7 @@ export function UserTradingClient({
                   statusBadge={renderStatusBadge(order)}
                   onOpenReview={handleOpenReview}
                   dbOrderContext={{
+                    orderKind: order.orderKind,
                     orderId: order.id,
                     revieweeId: order.counterparty.id,
                     dbStatus: order.status ?? "",

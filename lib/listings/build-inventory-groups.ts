@@ -55,7 +55,7 @@ export function matchesInventorySearch(
 export function filterInventoryListingsForDisplay(
   listings: InventoryListingRow[],
 ): InventoryListingRow[] {
-  return listings.filter((listing) => listing.status !== "sold");
+  return listings.filter((listing) => listing.status === "active");
 }
 
 export function groupListingsByProduct(input: {
@@ -137,7 +137,7 @@ export function summarizeInventoryListings(
   }
 
   return {
-    totalListings: activeCount + inactiveCount,
+    totalListings: activeCount,
     activeCount,
     soldCount,
     inactiveCount,

@@ -266,7 +266,8 @@ export async function createCardListing(
       seller_id: user.id,
       price: fields.price,
       grading_company: grading.grader,
-      grading_score: grading.gradeScore,
+      grading_score:
+        grading.grader === "RAW" ? grading.condition : grading.gradeScore,
       images,
       seller_description: fields.sellerDescription ?? null,
       status: "active",
@@ -308,6 +309,8 @@ export async function createCardListing(
     }
 
     revalidatePath("/marketplace");
+    revalidatePath("/profile/user/collection");
+    revalidatePath("/profile/user/inventory");
 
     return {
       success: true,

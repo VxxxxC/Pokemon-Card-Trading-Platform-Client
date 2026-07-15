@@ -1,4 +1,4 @@
-import type { CollectionEntry } from "@/app/lib/collection/types";
+import type { CollectionEntry, CollectionEntryStatus } from "@/app/lib/collection/types";
 import { formatMarketGradeLabel } from "@/lib/marketplace/market-price";
 import {
   findActiveListingForGrade,
@@ -63,9 +63,11 @@ export async function loadCollectionPricingContext(
         })
       : supabase
           .from("listings")
-          .select("id, product_id, grading_company, grading_score, price")
+          .select(
+            "id, product_id, grading_company, grading_score, price, source_collection_id, status",
+          )
           .eq("seller_id", userId)
-          .eq("status", "active");
+          .in("status", ["active", "inactive"]);
 
   const [catalogResult, marketResult, platformListingsResult, userListingsResult] =
     await Promise.all([
@@ -76,7 +78,9 @@ export async function loadCollectionPricingContext(
         .in("product_id", productIds),
       supabase
         .from("listings")
-        .select("id, product_id, grading_company, grading_score, price")
+        .select(
+          "id, product_id, grading_company, grading_score, price, source_collection_id, status",
+        )
         .in("product_id", productIds)
         .eq("status", "active"),
       userListingsPromise,
@@ -103,6 +107,67 @@ export async function loadCollectionPricingContext(
     platformListingRows: (platformListingsResult.data ?? []) as ListingPriceRow[],
     userListingRows: (userListingsResult.data ?? []) as ListingPriceRow[],
   };
+}
+
+function findLinkedListingForCollection(
+  listings: ListingPriceRow[],
+  row: CollectionRow,
+): ListingPriceRow | undefined {
+  return listings.find(
+    (listing) => listing.source_collection_id === row.id,
+  );
+}
+
+function resolveCollectionListingStatus(
+  row: CollectionRow,
+  listings: ListingPriceRow[],
+): CollectionEntryStatus {
+  const linkedListing = findLinkedListingForCollection(listings, row);
+
+  if (linkedListing?.status === "active") {
+    return "listed";
+  }
+
+  if (linkedListing?.status === "inactive") {
+    return "in_trade";
+  }
+
+  if (
+    findActiveListingForGrade(
+      listings,
+      row.product_id,
+      row.grading_company,
+      row.grading_score,
+    )
+  ) {
+    return "listed";
+  }
+
+  return "holding";
+}
+
+function findActiveListingForCollection(
+  listings: ListingPriceRow[],
+  row: CollectionRow,
+): ListingPriceRow | undefined {
+  const status = resolveCollectionListingStatus(row, listings);
+  if (status === "listed") {
+    return (
+      findLinkedListingForCollection(listings, row) ??
+      findActiveListingForGrade(
+        listings,
+        row.product_id,
+        row.grading_company,
+        row.grading_score,
+      )
+    );
+  }
+
+  if (status === "in_trade") {
+    return findLinkedListingForCollection(listings, row);
+  }
+
+  return undefined;
 }
 
 export function mapCollectionRowToEntry(
@@ -147,11 +212,13 @@ export function mapCollectionRowToEntry(
     row.grading_company,
     row.grading_score,
   );
-  const activeListing = findActiveListingForGrade(
+  const activeListing = findActiveListingForCollection(
     context.userListingRows,
-    row.product_id,
-    row.grading_company,
-    row.grading_score,
+    row,
+  );
+  const collectionStatus = resolveCollectionListingStatus(
+    row,
+    context.userListingRows,
   );
   const purchasePrice = toFiniteNumber(row.purchase_price) ?? 0;
   const resolved = resolveCollectionMarketValue({
@@ -182,7 +249,7 @@ export function mapCollectionRowToEntry(
     currentMarketValue: resolved.value,
     valuationSource: resolved.source,
     trend30d: toFiniteNumber(market?.market_trend_30d ?? null),
-    status: activeListing ? "listed" : "holding",
+    status: collectionStatus,
     activeListingId: activeListing?.id ?? null,
   };
 }
@@ -262,12 +329,5 @@ export function isListedCollectionRow(
   row: CollectionRow,
   userListingRows: ListingPriceRow[],
 ): boolean {
-  return Boolean(
-    findActiveListingForGrade(
-      userListingRows,
-      row.product_id,
-      row.grading_company,
-      row.grading_score,
-    ),
-  );
+  return resolveCollectionListingStatus(row, userListingRows) === "listed";
 }
