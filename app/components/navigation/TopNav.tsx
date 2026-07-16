@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
-import { useUIStore } from "@/app/store/useUIStore";
+import { useUIStore, resolveAddAssetSellerPersona } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import {
@@ -222,7 +222,15 @@ export function TopNav() {
               /* 情況 A: 已登入 ➔ 顯示快捷新增商品上架 [+] 掣 */
               <button
                 type="button"
-                onClick={() => openAddAssetModal({ mode: "merch" })}
+                onClick={() =>
+                  openAddAssetModal({
+                    mode: "merch",
+                    sellerPersona: resolveAddAssetSellerPersona({
+                      mode: "merch",
+                      pathname,
+                    }),
+                  })
+                }
                 className="flex-row h-9 w-28 bg-[#d4a574] hover:bg-[#e8b896] text-[#1A1612] rounded-xl flex items-center justify-center shadow-md active:scale-[0.95] transition-all cursor-pointer focus:outline-none group animate-fadeIn"
                 title="新增商品"
               >

@@ -15,7 +15,9 @@ export function formatTradeGradeLabel(
   score: string | null,
 ): string {
   const { authority, score: gradeScore } = formatListingGrade(company, score);
-  if (authority === "Raw Card") return "Raw Card";
+  if (authority === "Raw Card") {
+    return gradeScore ? `裸卡 ${gradeScore}` : "裸卡";
+  }
   return gradeScore ? `${authority} ${gradeScore}` : authority;
 }
 

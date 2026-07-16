@@ -1,28 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { toast } from "sonner";
 import { CiBullhorn } from "react-icons/ci";
 import type { ListingStatus } from "@/app/lib/types/rbac";
-import { LISTING_PHOTO_SLOT_LABELS } from "@/lib/listings/images";
+import type { ListingImage } from "@/lib/listings/images";
 import { Pagination } from "@/app/components/ui/Pagination";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  type CarouselApi,
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-} from "@/components/ui/carousel";
+import { ListingEditDialog } from "@/app/components/merchant/ListingEditDialog";
 
 // ─── Data Contracts ────────────────────────────────────────────────────────────
 
@@ -36,6 +21,9 @@ export interface CardInstance {
   conditionDesc: string;
   edgeWear: string;
   photos: number;
+  images: ListingImage[];
+  gradingOptionId: string;
+  useAuthentication: boolean;
   views: number;
   offersCount?: number;
 }
@@ -44,9 +32,20 @@ export interface SKUGroup {
   id: string;
   cardName: string;
   cardNo: string;
+  nameZh?: string | null;
+  setCode?: string;
+  cardNumber?: string;
   thumbnailSeed: string;
   imageUrl?: string | null;
   items: CardInstance[];
+}
+
+function formatSkuCatalogLine(
+  sku: Pick<SKUGroup, "setCode" | "cardNumber" | "cardNo">,
+): string {
+  return [sku.setCode?.trim(), sku.cardNumber?.trim() || sku.cardNo?.trim()]
+    .filter(Boolean)
+    .join(" ");
 }
 
 // ─── Status Display Map ────────────────────────────────────────────────────────
@@ -59,16 +58,7 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
   inactive: { label: "未上架", className: "text-text-secondary bg-bg-elevated" },
 };
 
-const REMARKS_PRESETS = [
-  "卡牌正面全貌",
-  "背面右上角帶微白點",
-  "左下邊角銳利特寫",
-  "封殼完美無裂紋",
-  "隨照附帶備註",
-  "微距視角細節"
-];
-
-// ─── Card Instance Row with Full-Scale Inspection Dialog ─────────────────────────
+// ─── Card Instance Row with Edit Dialog ────────────────────────────────────────
 
 interface CardInstanceRowProps {
   sku: Pick<SKUGroup, "cardName" | "cardNo">;
@@ -76,46 +66,15 @@ interface CardInstanceRowProps {
 }
 
 function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    if (!api) return;
-
-    const updateCarouselState = () => {
-      setCount(api.scrollSnapList().length);
-      setCurrent(api.selectedScrollSnap());
-    };
-
-    queueMicrotask(updateCarouselState);
-
-    api.on("select", updateCarouselState);
-    api.on("reInit", updateCarouselState);
-
-    return () => {
-      api.off("select", updateCarouselState);
-      api.off("reInit", updateCarouselState);
-    };
-  }, [api]);
-
   const { label, className } = STATUS_LABEL[item.status];
 
-  function handleSave(formData: FormData) {
-    const price = formData.get("ask-price");
-    toast.success(`「${sku.cardName} · ${item.grade}」修改已儲存（待後端接通）`);
-    setIsOpen(false);
-    void price;
-  }
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger
-        nativeButton={false}
-        render={
-          <div className="w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 hover:bg-[#1a1612] border border-white/[0.03] rounded-xl transition-all cursor-pointer select-none group/row text-left" />
-        }
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 hover:bg-[#1a1612] border border-white/[0.03] rounded-xl transition-all cursor-pointer select-none group/row text-left"
       >
         {/* Left Info Column */}
         <div className="flex flex-col gap-0.5 min-w-0 flex-1 items-start">
@@ -127,12 +86,11 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
               <CiBullhorn className="w-4 h-4 text-warning animate-pulse shrink-0" title="有買家叫價！" />
             ) : null}
           </div>
-          
+
           <span className="font-sans text-[14.5px] font-medium text-text-primary truncate w-full">
             {sku.cardName}
           </span>
-          
-          {/* 🟢 核心重構點 1：[上架中] 完美重組至 [PSA grade] 右手面（Web + Mobile 100% 同步橫排） */}
+
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0">
               {item.grade}
@@ -143,9 +101,7 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
           </div>
         </div>
 
-        {/* 🟢 核心重構點 2：右側動作艙升格為 flex-col 縱向排字，叫價次數完美貼合在價格/按鈕正下方 */}
         <div className="flex flex-col items-end gap-1.5 shrink-0 pl-2">
-          {/* 上排：售價 + 編輯掣 */}
           <div className="flex items-center gap-3 shrink-0">
             <span className="font-mono font-semibold text-[15px] md:text-[16px] text-brand">
               HK$ {item.askPrice.toLocaleString()}
@@ -155,242 +111,21 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
             </span>
           </div>
 
-          {/* 下排：叫價次數提示字眼（手機端完美流暢顯化） */}
           <span className="font-mono text-[11px] text-text-secondary tracking-tight">
             叫價次數：<span className={item.offersCount && item.offersCount > 0 ? "text-warning font-bold" : ""}>{item.offersCount || 0} 次</span>
           </span>
         </div>
-      </DialogTrigger>
+      </button>
 
-      <DialogContent
-        className="sm:max-w-[850px] w-full max-w-[calc(100%-2rem)] bg-[#1A1612] border border-[rgba(212,165,116,0.20)] text-text-primary overflow-y-auto max-h-[90dvh] p-5 sm:p-6"
-        showCloseButton
-      >
-        <DialogHeader>
-          <DialogTitle className="font-sans font-black text-[18px] text-text-primary tracking-tight">
-            卡牌實物詳情與編輯
-          </DialogTitle>
-          <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-            #{item.id} · {sku.cardName} · {item.grade}
-          </p>
-        </DialogHeader>
-
-        <div className="flex flex-col md:flex-row gap-5 md:gap-6 mt-3 md:mt-4 items-start">
-          
-          {/* Left Carousel Viewport */}
-          <div className="flex flex-col items-center select-none group w-full md:w-auto shrink-0 overflow-hidden">
-            <div className="relative w-full aspect-[3/4] max-h-[45dvh] md:w-80 md:h-[420px] md:max-h-none md:aspect-none rounded-xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
-              <Carousel setApi={setApi} className="w-full h-full [&>div]:h-full" opts={{ loop: true }}>
-                <CarouselContent className="-ml-0 h-full">
-                  {Array.from({ length: Math.max(item.photos, 1) }, (_, photoIdx) => {
-                    const currentRemark = current === photoIdx ? (REMARKS_PRESETS[photoIdx] ?? "") : "";
-                    return (
-                      <CarouselItem key={photoIdx} className="pl-0 relative w-full h-full overflow-hidden rounded-xl">
-                        <Image
-                          src={`https://picsum.photos/seed/${item.id}-p${photoIdx}/400/500`}
-                          alt={`${sku.cardName} 實物照 ${photoIdx + 1}`}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 320px"
-                          className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
-                          unoptimized
-                        />
-                        {/* Center-Top Contextual Annotation HUD Overlay */}
-                        {currentRemark && (
-                          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 px-2.5 py-1 rounded-md bg-[#17130f]/75 backdrop-blur-xs border border-white/10 text-center pointer-events-none select-none max-w-[85%] animate-fadeIn">
-                            <p className="font-sans text-[11px] font-medium text-brand tracking-wide truncate">
-                              {currentRemark}
-                            </p>
-                          </div>
-                        )}
-                      </CarouselItem>
-                    );
-                  })}
-                </CarouselContent>
-                <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 left-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-                <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 right-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-              </Carousel>
-            </div>
-
-            {/* Dots Indicator */}
-            {count > 1 && (
-              <div className="flex justify-center gap-1.5 py-2.5">
-                {Array.from({ length: count }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    aria-label={`前往第 ${index + 1} 張照片`}
-                    onClick={() => api?.scrollTo(index)}
-                    className={
-                      index === current
-                        ? "bg-brand w-3.5 h-1.5 opacity-100 rounded-full transition-all duration-300"
-                        : "bg-text-disabled w-1.5 h-1.5 opacity-30 hover:opacity-50 rounded-full transition-all duration-300"
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Right Form Container */}
-          <form action={handleSave} className="flex-1 w-full space-y-4">
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
-                <label htmlFor={`edit-price-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
-                  售價 (HK$) <span className="text-warning">*</span>
-                </label>
-                <div className="flex items-center mt-1">
-                  <span className="font-mono text-[13px] text-text-disabled mr-1.5 shrink-0">HK$</span>
-                  <input
-                    id={`edit-price-${item.id}`}
-                    name="ask-price"
-                    type="number"
-                    min={0}
-                    required
-                    defaultValue={item.askPrice}
-                    className="w-full bg-transparent text-text-primary text-[14px] font-black focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
-                <label htmlFor={`edit-grade-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
-                  鑑定等級
-                </label>
-                <select
-                  id={`edit-grade-${item.id}`}
-                  name="card-grade"
-                  defaultValue={item.grade}
-                  className="w-full bg-transparent text-text-primary text-[13px] font-bold focus:outline-none appearance-none cursor-pointer mt-1"
-                >
-                  <option className="bg-[#1A1612]">PSA 10</option>
-                  <option className="bg-[#1A1612]">PSA 9</option>
-                  <option className="bg-[#1A1612]">PSA 8</option>
-                  <option className="bg-[#1A1612]">BGS 9.5</option>
-                  <option className="bg-[#1A1612]">BGS 9</option>
-                  <option className="bg-[#1A1612]">CGC 10</option>
-                  <option className="bg-[#1A1612]">CGC 9</option>
-                  <option className="bg-[#1A1612]">RAW NM</option>
-                  <option className="bg-[#1A1612]">RAW EX</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
-              <label htmlFor={`edit-condition-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
-                品相備註
-              </label>
-              <input
-                id={`edit-condition-${item.id}`}
-                name="condition-notes"
-                type="text"
-                defaultValue={item.conditionDesc}
-                placeholder="例：角落完美，居中良好"
-                className="w-full bg-transparent text-text-primary text-[13px] focus:outline-none mt-1"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3.5 flex-1">
-              <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col min-h-[95px] flex-1">
-                <label htmlFor={`edit-desc-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
-                  品相描述
-                </label>
-                <textarea
-                  id={`edit-desc-${item.id}`}
-                  name="condition-desc"
-                  rows={2}
-                  defaultValue={item.conditionDesc}
-                  placeholder="詳細描述卡面狀況、印刷品質、鏡面完整度等..."
-                  className="w-full bg-transparent text-text-primary text-[12.5px] leading-relaxed placeholder-text-disabled resize-none focus:outline-none flex-1 mt-1"
-                />
-              </div>
-
-              <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col min-h-[85px] flex-1">
-                <label htmlFor={`edit-edge-${item.id}`} className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
-                  邊角磨損屬性
-                </label>
-                <textarea
-                  id={`edit-edge-${item.id}`}
-                  name="edge-wear"
-                  rows={2}
-                  defaultValue={item.edgeWear}
-                  placeholder="描述各角磨損、白邊情況、封殼狀態..."
-                  className="w-full bg-transparent text-text-primary text-[12.5px] leading-relaxed placeholder-text-disabled resize-none focus:outline-none flex-1 mt-1"
-                />
-              </div>
-            </div>
-
-            <div>
-              <p className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1.5">
-                實物照片 (必須 6 張) <span className="text-warning">*</span>
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {Array.from({ length: 6 }, (_, i) => {
-                  const presetRemark = i === 0 ? "卡牌正面全貌" : i === 1 ? "背面右上角帶微白點" : i === 2 ? "左下邊角銳利特寫" : i === 3 ? "封殼完美無裂紋" : "";
-                  const slotLabel = LISTING_PHOTO_SLOT_LABELS[i];
-                  return (
-                    <div key={i} className="flex flex-col">
-                      <div
-                        className={`aspect-[3/4] rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
-                          i < item.photos
-                            ? "border-brand/40 bg-[rgba(212,165,116,0.06)]"
-                            : "border-[rgba(237,232,224,0.12)] bg-[#17130f] hover:border-brand/30"
-                        }`}
-                      >
-                        {i < item.photos ? (
-                          <span className="font-mono text-[9px] text-brand">✓</span>
-                        ) : (
-                          <>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                            <span className="font-mono text-[9px] text-text-disabled mt-0.5">
-                              必填
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <span className="font-mono text-[9px] text-text-disabled text-center mt-1">
-                        {slotLabel}
-                      </span>
-                      <input
-                        type="text"
-                        name={`photo-remark-${i}`}
-                        placeholder="照片備註（例：背面左上角微白）"
-                        defaultValue={presetRemark}
-                        className="w-full bg-[#17130f] border border-white/5 rounded-lg h-8 px-2 font-sans text-[11px] text-text-primary focus:outline-none placeholder-text-disabled mt-1.5"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-white/5">
-              <label className="flex items-center gap-2.5 cursor-pointer group select-none">
-                <input
-                  type="checkbox"
-                  name="is-active"
-                  defaultChecked={item.status === "active"}
-                  className="w-4 h-4 rounded accent-brand cursor-pointer"
-                />
-                <span className="font-mono text-[13px] text-text-secondary group-hover:text-text-primary transition-colors">
-                  商品上架
-                </span>
-              </label>
-
-              <button
-                type="submit"
-                className="px-5 h-10 bg-brand text-[#17130f] font-sans font-bold text-[13.5px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer shrink-0"
-              >
-                確認儲存修改
-              </button>
-            </div>
-          </form>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {isOpen ? (
+        <ListingEditDialog
+          open
+          onOpenChange={setIsOpen}
+          sku={sku}
+          item={item}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -446,6 +181,7 @@ export function InventoryAccordion({ skuGroups, analytics = true }: InventoryAcc
         const activeItems = sku.items.filter((item) => item.status === "active");
         const totalOffers = sku.items.reduce((acc, item) => acc + (item.offersCount || 0), 0);
         const hasActiveOffer = sku.items.some((item) => (item.offersCount || 0) > 0);
+        const catalogLine = formatSkuCatalogLine(sku);
 
         return (
           <div
@@ -498,9 +234,20 @@ export function InventoryAccordion({ skuGroups, analytics = true }: InventoryAcc
                     </span>
                   )}
                 </div>
-                <p className="font-mono text-[11px] text-text-secondary mt-0.5">
-                  {sku.cardNo}
-                </p>
+                {(sku.nameZh || catalogLine) ? (
+                  <div className="mt-0.5 space-y-0.5 min-w-0">
+                    {sku.nameZh ? (
+                      <p className="font-sans text-[11px] text-text-secondary truncate">
+                        {sku.nameZh}
+                      </p>
+                    ) : null}
+                    {catalogLine ? (
+                      <p className="font-mono text-[11px] text-text-secondary truncate uppercase">
+                        {catalogLine}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               <div className="text-right shrink-0 hidden sm:block">

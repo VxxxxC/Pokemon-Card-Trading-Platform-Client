@@ -33,15 +33,19 @@
 
 ```
 Inventory page mount / refresh
-  → getInventoryPageBootstrap({ page, pageSize, query })   // preferred — single fetch
+  → getInventoryPageBootstrap({ page, pageSize, query, sellerPersona })   // preferred — single fetch
   → loadUserInventoryView
-  → listings WHERE seller_id = auth.uid()
+  → listings WHERE seller_id = auth.uid() [AND seller_persona = $persona when set]
   → JOIN product_catalog (name, image_url, card_number)
   → JOIN listing_stats (views, offers_count)
   → summarizeInventoryListings + groupListingsByProduct() → summary + SKUGroup[]
 
 Filter / search / page change (client)
-  → getUserInventoryGroups({ page, pageSize, query })    // groups only; reuses helper
+  → getUserInventoryGroups({ page, pageSize, query, sellerPersona })
+
+Persona split (dual identity)
+  → Member inventory: sellerPersona = 'member'
+  → Merchant inventory: sellerPersona = 'merchant'
 
 Legacy / isolated callers
   → getUserInventorySummary()
@@ -149,6 +153,34 @@ getUserInventoryGroups({
 // Failure: { success: false, error: string }
 // Requires authenticated user; no-op in RPC for guests
 ```
+
+### `updateCardListing(formData)`
+
+Edit an existing listing owned by the authenticated seller.
+
+```ts
+// FormData fields
+listingId: string          // listings.id
+price: string              // numeric HKD
+gradingOptionId: string    // lib/grading/options id (e.g. psa:10, raw:A)
+sellerDescription?: string // max 500 chars
+isActive: "true" | "false" // maps to status active | inactive
+uploadedImages: string     // JSON array of { url, order, objectKey?, remark? } — exactly 6 slots
+
+// Success
+{ success: true, data: { listingId: string } }
+
+// Failure
+{ success: false, error: string }
+```
+
+**Rules:**
+- `seller_id` must equal `auth.uid()`; `sold` listings cannot be edited
+- Exactly 6 images required (`validateListingImageCount`)
+- New uploads rolled back on failure; replaced Bunny keys deleted best-effort (`listings/{userId}/` prefix)
+- `revalidatePath` for marketplace + user/merchant inventory
+
+**Client helper:** `submitCardListingWithProgress({ mode: "edit", listingId, imageSlots, ... })` in `lib/listings/submit-card-listing.ts` — uploads only changed slots, reuses existing CDN URLs for unchanged slots.
 
 ---
 

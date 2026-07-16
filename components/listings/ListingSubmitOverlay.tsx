@@ -3,8 +3,6 @@
 import { useEffect } from "react";
 import {
   Progress,
-  ProgressIndicator,
-  ProgressTrack,
 } from "@/components/ui/progress";
 import {
   useListingSubmitStore,
@@ -110,22 +108,21 @@ export function ListingSubmitOverlay() {
 
         {phase !== "error" && (
           <div className="space-y-2">
-            <Progress value={displayProgress} className="gap-2">
-              <ProgressTrack className="h-2 bg-[#17130f]">
-                <ProgressIndicator
-                  className={`bg-brand ${
-                    isIndeterminate ? "animate-pulse w-1/3" : ""
-                  }`}
-                />
-              </ProgressTrack>
-              <span className="ml-auto font-mono text-[11px] text-[#8A8680] tabular-nums">
-                {phase === "success"
-                  ? "100%"
-                  : isIndeterminate
-                    ? "處理中"
-                    : `${progress}%`}
-              </span>
-            </Progress>
+            <Progress
+              value={displayProgress}
+              className={`gap-0 [&_[data-slot=progress-indicator]]:bg-brand [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-[#17130f] ${
+                isIndeterminate
+                  ? "[&_[data-slot=progress-indicator]]:w-1/3 [&_[data-slot=progress-indicator]]:animate-pulse"
+                  : ""
+              }`}
+            />
+            <p className="text-right font-mono text-[11px] text-[#8A8680] tabular-nums">
+              {phase === "success"
+                ? "100%"
+                : isIndeterminate
+                  ? "處理中"
+                  : `${progress}%`}
+            </p>
           </div>
         )}
 

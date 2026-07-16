@@ -20,7 +20,7 @@
 | Merchant inventory page | ⏳ Still mock — reuse `useInventory` |
 | `NewListingForm` real create listing | ⏳ Still mock submit toast |
 
-**Partner action:** Verify acceptance checklist below; polish UI; wire merchant inventory when ready.
+**Partner action:** Verify acceptance checklist below; polish UI. Merchant inventory wired (persona filter).
 
 ---
 

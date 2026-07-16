@@ -6,7 +6,12 @@ import {
   resolveProductName,
   type CatalogRow,
 } from "@/lib/marketplace/portfolio-pricing";
-import { parseListingImageUrls } from "@/lib/listings/images";
+import {
+  parseListingImageObjects,
+  parseListingImageUrls,
+} from "@/lib/listings/images";
+import { resolveGradingOptionId } from "@/lib/grading/resolve-option-id";
+import { matchesCatalogCardSearch } from "@/lib/search/card-identifier";
 import type { Tables } from "@/types/supabase";
 
 export type InventoryListingRow = Pick<
@@ -20,6 +25,7 @@ export type InventoryListingRow = Pick<
   | "status"
   | "seller_description"
   | "created_at"
+  | "use_authentication"
 >;
 
 export type InventoryStatsRow = Pick<
@@ -43,13 +49,8 @@ export function matchesInventorySearch(
   catalog: CatalogRow | undefined,
   query: string,
 ): boolean {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-
-  const cardName = resolveProductName(catalog).toLowerCase();
-  const cardNo = resolveCardCode(catalog).toLowerCase();
-
-  return cardName.includes(normalized) || cardNo.includes(normalized);
+  if (!query.trim()) return true;
+  return matchesCatalogCardSearch(query, catalog ?? {});
 }
 
 export function filterInventoryListingsForDisplay(
@@ -85,8 +86,18 @@ export function groupListingsByProduct(input: {
 
     groups.push({
       id: productId,
-      cardName: resolveProductName(catalog),
+      cardName:
+        catalog?.name_ja?.trim() ||
+        catalog?.name_en?.trim() ||
+        catalog?.name_zh?.trim() ||
+        resolveProductName(catalog),
       cardNo: resolveCardCode(catalog),
+      nameZh: catalog?.name_zh?.trim() || null,
+      setCode: catalog?.set_code?.trim() || "",
+      cardNumber:
+        catalog?.card_number?.trim() ||
+        catalog?.display_id?.trim() ||
+        "",
       thumbnailSeed: productId,
       imageUrl: catalog?.image_url ?? null,
       items: sortedListings.map((listing) => {
@@ -95,6 +106,8 @@ export function groupListingsByProduct(input: {
           listing.grading_company,
           listing.grading_score,
         );
+
+        const images = parseListingImageObjects(listing.images);
 
         return {
           id: listing.id,
@@ -106,6 +119,12 @@ export function groupListingsByProduct(input: {
           conditionDesc: listing.seller_description?.trim() ?? "",
           edgeWear: "",
           photos: parseListingImageUrls(listing.images).length,
+          images,
+          gradingOptionId: resolveGradingOptionId(
+            listing.grading_company,
+            listing.grading_score,
+          ),
+          useAuthentication: listing.use_authentication,
           views: stats?.views ?? 0,
           offersCount: stats?.offers_count ?? 0,
         };

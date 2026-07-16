@@ -47,7 +47,12 @@ function normalizeGroupsInput(input: GetUserInventoryGroupsInput): UserInventory
   );
   const query = (input.query ?? "").trim();
 
-  return { page, pageSize, query };
+  return {
+    page,
+    pageSize,
+    query,
+    sellerPersona: input.sellerPersona,
+  };
 }
 
 async function loadViewForUser(userId: string, input: UserInventoryViewInput) {
@@ -102,6 +107,7 @@ export async function getUserInventorySummary(): Promise<
       page: 1,
       pageSize: INVENTORY_DEFAULT_PAGE_SIZE,
       query: "",
+      sellerPersona: "member",
     });
 
     return { success: true, data: view.summary };

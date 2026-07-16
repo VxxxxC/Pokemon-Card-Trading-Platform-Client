@@ -9,6 +9,7 @@ import {
 import type {
   InventoryPageBootstrap,
   InventoryProductGroup,
+  InventorySellerPersona,
   InventorySummary,
 } from "@/app/lib/inventory/types";
 import {
@@ -26,6 +27,7 @@ type UseInventoryOptions = {
   page?: number;
   pageSize?: number;
   initialData?: InventoryInitialData;
+  sellerPersona?: InventorySellerPersona;
 };
 
 type UseInventoryResult = {
@@ -52,6 +54,7 @@ function hasInventoryInitialBootstrap(
 export function useInventory(options: UseInventoryOptions = {}): UseInventoryResult {
   const query = options.query ?? "";
   const pageSize = options.pageSize ?? INVENTORY_DEFAULT_PAGE_SIZE;
+  const sellerPersona = options.sellerPersona;
   const hasInitialBootstrap = hasInventoryInitialBootstrap(options.initialData);
 
   const [page, setPage] = useState(options.initialData?.page?.page ?? options.page ?? 1);
@@ -73,12 +76,14 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
   const [error, setError] = useState<string | null>(null);
   const mountLoggedRef = useRef(false);
   const didInitialBootstrapRef = useRef(hasInitialBootstrap);
-  const [initialListKey] = useState(() => `:${pageSize}`);
+  const [initialListKey] = useState(
+    () => `:${pageSize}:${sellerPersona ?? ""}`,
+  );
   const initialPageRef = useRef(options.initialData?.page?.page ?? 1);
 
   const debouncedQueryRef = useRef(query);
   const [debouncedQuery, setDebouncedQuery] = useState(query);
-  const listKey = `${debouncedQuery}:${pageSize}`;
+  const listKey = `${debouncedQuery}:${pageSize}:${sellerPersona ?? ""}`;
   const isInitialListKey = listKey === initialListKey;
 
   useEffect(() => {
@@ -107,6 +112,7 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
       page,
       pageSize,
       query: debouncedQuery,
+      sellerPersona,
     });
 
     if (!result.success) {
@@ -122,7 +128,7 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
     setPage(result.data.page.page);
     setError(null);
     return true;
-  }, [page, pageSize, debouncedQuery]);
+  }, [page, pageSize, debouncedQuery, sellerPersona]);
 
   const refetch = useCallback(() => {
     void (async () => {
@@ -178,7 +184,7 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
     return () => {
       cancelled = true;
     };
-  }, [hasInitialBootstrap, page, pageSize, debouncedQuery]);
+  }, [hasInitialBootstrap, page, pageSize, debouncedQuery, sellerPersona]);
 
   useEffect(() => {
     if (!didInitialBootstrapRef.current && !hasInitialBootstrap) {
@@ -203,6 +209,7 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
         page,
         pageSize,
         query: debouncedQuery,
+        sellerPersona,
       });
 
       if (cancelled) return;
@@ -234,6 +241,7 @@ export function useInventory(options: UseInventoryOptions = {}): UseInventoryRes
     debouncedQuery,
     hasInitialBootstrap,
     isInitialListKey,
+    sellerPersona,
   ]);
 
   return {

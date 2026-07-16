@@ -14,10 +14,13 @@ export type InventorySummary = {
   inactiveCount: number;
 };
 
+export type InventorySellerPersona = "member" | "merchant";
+
 export type GetUserInventoryGroupsInput = {
   query?: string;
   page?: number;
   pageSize?: number;
+  sellerPersona?: InventorySellerPersona;
 };
 
 export type InventoryGroupsPage = {

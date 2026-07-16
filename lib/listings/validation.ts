@@ -78,3 +78,35 @@ export function validateCreateCardListing(
 
   return validateListingImageFiles(imageFiles);
 }
+
+export type UpdateCardListingFields = {
+  listingId: string;
+  gradingOptionId: string;
+  price: number;
+  sellerDescription?: string;
+};
+
+export function validateUpdateCardListingFields(
+  input: UpdateCardListingFields,
+): string | null {
+  if (!input.listingId.trim()) {
+    return "無效的商品";
+  }
+
+  if (!hasGradingOption(input.gradingOptionId)) {
+    return "請選擇有效的鑑定／品相";
+  }
+
+  if (!Number.isFinite(input.price) || input.price <= 0) {
+    return "請輸入有效的商品放售售價";
+  }
+
+  if (
+    input.sellerDescription &&
+    input.sellerDescription.length > LISTING_DESCRIPTION_MAX
+  ) {
+    return `品相描述不可超過 ${LISTING_DESCRIPTION_MAX} 字`;
+  }
+
+  return null;
+}

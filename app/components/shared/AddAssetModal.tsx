@@ -117,6 +117,7 @@ export function AddAssetModal() {
   const isOpen = useUIStore((state) => state.isAddAssetOpen);
   const globalMode = useUIStore((state) => state.addAssetMode);
   const sellPrefill = useUIStore((state) => state.addAssetSellPrefill);
+  const addAssetSellerPersona = useUIStore((state) => state.addAssetSellerPersona);
   const closeAddAssetModal = useUIStore((state) => state.closeAddAssetModal);
 
   // 模式 Toggle 狀態
@@ -512,6 +513,7 @@ export function AddAssetModal() {
         sellerDescription: conditionDesc || undefined,
         useAuthentication: isRawCardListing ? acceptsBuyerAuth : false,
         sourceCollectionId: sellPrefill?.collectionId,
+        sellerPersona: addAssetSellerPersona,
         imageFiles,
         photosRemark,
       });
@@ -554,6 +556,8 @@ export function AddAssetModal() {
       window.dispatchEvent(
         new CustomEvent("global-asset-successfully-added", { detail: payload }),
       );
+
+      window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
 
       if (hadSellPrefill) {
         window.dispatchEvent(new CustomEvent("collection-should-refresh"));

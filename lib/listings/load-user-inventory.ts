@@ -24,6 +24,7 @@ export type UserInventoryViewInput = {
   page: number;
   pageSize: number;
   query: string;
+  sellerPersona?: "member" | "merchant";
 };
 
 export type UserInventoryView = {
@@ -54,14 +55,20 @@ const EMPTY_PAGE = (pageSize: number): InventoryGroupsPage => ({
 export async function fetchSellerListings(
   supabase: SupabaseServerClient,
   userId: string,
+  sellerPersona?: "member" | "merchant",
 ): Promise<InventoryListingRow[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("listings")
     .select(
       "id, product_id, price, grading_company, grading_score, images, status, seller_description, created_at",
     )
-    .eq("seller_id", userId)
-    .order("created_at", { ascending: false });
+    .eq("seller_id", userId);
+
+  if (sellerPersona) {
+    query = query.eq("seller_persona", sellerPersona);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) {
     console.error("[fetchSellerListings]", error.message);
@@ -160,7 +167,11 @@ export async function loadUserInventoryView(
   perfLabel = "view",
 ): Promise<UserInventoryView> {
   const rowsStart = isInventoryPerfLogEnabled() ? inventoryPerfNow() : 0;
-  const listings = await fetchSellerListings(supabase, userId);
+  const listings = await fetchSellerListings(
+    supabase,
+    userId,
+    input.sellerPersona,
+  );
 
   if (isInventoryPerfLogEnabled()) {
     inventoryPerfLog(

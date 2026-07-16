@@ -9,15 +9,15 @@ import {
 } from "@/app/lib/hooks/useInventory";
 import { INVENTORY_DEFAULT_PAGE_SIZE } from "@/lib/listings/constants";
 
-type UserInventoryClientProps = {
+type MerchantInventoryClientProps = {
   initialData: InventoryInitialData;
   bootstrapError?: string;
 };
 
-export function UserInventoryClient({
+export function MerchantInventoryClient({
   initialData,
   bootstrapError,
-}: UserInventoryClientProps) {
+}: MerchantInventoryClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   const {
@@ -36,7 +36,7 @@ export function UserInventoryClient({
     query: searchQuery,
     pageSize: INVENTORY_DEFAULT_PAGE_SIZE,
     initialData,
-    sellerPersona: "member",
+    sellerPersona: "merchant",
   });
 
   useEffect(() => {
@@ -66,7 +66,6 @@ export function UserInventoryClient({
         </div>
       ) : null}
 
-      {/* ── Summary 數據統計卡 ─────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "現貨", value: `${totalItems} 件` },
@@ -87,10 +86,9 @@ export function UserInventoryClient({
         ))}
       </div>
 
-      {/* ── 🟢 智慧卡牌商品搜尋欄 ────────────────────────────────── */}
       <div className="relative bg-bg-card border border-[rgba(237,232,224,0.08)] p-4 rounded-2xl shadow-sm flex flex-col gap-2">
         <label
-          htmlFor="user-sku-search"
+          htmlFor="merchant-sku-search"
           className="font-mono pl-1 text-xs text-text-primary uppercase tracking-wider"
         >
           商品搜尋
@@ -113,7 +111,7 @@ export function UserInventoryClient({
           </svg>
           <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
             <input
-              id="user-sku-search"
+              id="merchant-sku-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -133,7 +131,6 @@ export function UserInventoryClient({
         </div>
       </div>
 
-      {/* ── SKU Grouped Inventory Accordion ───────────────────────────── */}
       <section
         id="listings-heading"
         aria-labelledby="listings-heading"
@@ -155,10 +152,9 @@ export function UserInventoryClient({
             暫無上架商品
           </p>
         ) : (
-          <InventoryAccordion skuGroups={skuGroups} analytics={false} />
+          <InventoryAccordion skuGroups={skuGroups} />
         )}
 
-        {/* ── 🟢 SKU Group Pagination ── */}
         <div className="pt-4">
           <Pagination
             currentPage={currentSkuPage}
