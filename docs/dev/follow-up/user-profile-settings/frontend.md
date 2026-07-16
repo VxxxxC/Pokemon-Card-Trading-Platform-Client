@@ -53,14 +53,14 @@ const [errors, formAction, isPending] = useActionState(updateUserProfile, null);
 | Notification toggles | ⏳ Mock UI | TODO comments in `UserSettingsClient.tsx`; wait for `notification_settings` |
 | Email「修改」button | ⏳ Not wired | Display only |
 | Dashboard hero avatar | ✅ Wired | Live `profile.avatarUrl` + edit overlay uploads to Bunny via `uploadProfileAvatar` → `updateUserAvatar` |
-| Merchant settings profile | ⏳ Hardcoded | Separate page: `/profile/merchant/settings` |
+| Merchant settings profile | ✅ Wired | See [merchant-settings](../merchant-settings/frontend.md) |
 
 ## Optional polish (partner backlog)
 
 - [x] Wire user dashboard hero to `profile.avatarUrl` from `useMemberDashboard`
 - [x] Dashboard avatar upload UI → Bunny CDN + `profiles.avatar_path` update
 - [ ] Loading skeleton on settings page (server fetch is fast; optional)
-- [ ] Merchant settings: mirror member pattern (`getMerchantSettings` TBD)
+- [x] Merchant settings: mirror member pattern — see [merchant-settings](../merchant-settings/frontend.md)
 - [ ] Footer「帳戶設定」link — role-aware (`/profile/user/settings` vs merchant)
 - [ ] Notification prefs when backend table exists
 

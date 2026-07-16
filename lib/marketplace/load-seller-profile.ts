@@ -46,7 +46,11 @@ type ProfileRow = Pick<
 
 type MerchantShopRow = Pick<
   Tables<"merchant_shops">,
-  "shop_description" | "completed_trades_count" | "rating_score"
+  | "shop_name"
+  | "shop_handle"
+  | "shop_description"
+  | "completed_trades_count"
+  | "rating_score"
 >;
 
 function mapBadges(reputationTag: Json | null): MarketplaceSellerBadge[] {
@@ -97,9 +101,16 @@ function mapProfileRow(
     ? (merchantShop?.completed_trades_count ?? profile.completed_trades_count)
     : profile.completed_trades_count;
 
-  const username = profile.display_name?.trim() || "平台用戶";
-  const handleUsername = profile.username?.trim();
-  const handle = handleUsername ? `@${handleUsername}` : `@${profile.id.slice(0, 8)}`;
+  const username = isMerchant
+    ? merchantShop?.shop_name?.trim() || "認證商戶"
+    : profile.display_name?.trim() || "平台用戶";
+
+  const handleUsername = isMerchant
+    ? merchantShop?.shop_handle?.trim()
+    : profile.username?.trim();
+  const handle = handleUsername
+    ? `@${handleUsername}`
+    : `@${profile.id.slice(0, 8)}`;
 
   const bio =
     (isMerchant ? merchantShop?.shop_description?.trim() : null) ||
@@ -152,7 +163,9 @@ async function fetchProfileById(
   if (profile.role === "merchant") {
     const shopResult = await supabase
       .from("merchant_shops")
-      .select("shop_description, completed_trades_count, rating_score")
+      .select(
+        "shop_name, shop_handle, shop_description, completed_trades_count, rating_score",
+      )
       .eq("merchant_id", profile.id)
       .maybeSingle<MerchantShopRow>();
 
@@ -166,7 +179,7 @@ async function fetchProfileById(
   return mapProfileRow(profile, merchantShop);
 }
 
-async function fetchProfileByUsername(
+async function fetchProfileByMemberUsername(
   username: string,
 ): Promise<MarketplaceSellerProfile | null> {
   const supabase = createPublicClient();
@@ -180,7 +193,7 @@ async function fetchProfileByUsername(
     .maybeSingle<ProfileRow>();
 
   if (error) {
-    console.error("[loadSellerProfileByUsername]", error.message);
+    console.error("[loadSellerProfileByMemberUsername]", error.message);
     throw new Error("無法載入商戶資料");
   }
 
@@ -189,6 +202,29 @@ async function fetchProfileByUsername(
   }
 
   return fetchProfileById(profile.id);
+}
+
+async function fetchProfileByMerchantShopHandle(
+  shopHandle: string,
+): Promise<MarketplaceSellerProfile | null> {
+  const supabase = createPublicClient();
+
+  const { data: shop, error } = await supabase
+    .from("merchant_shops")
+    .select("merchant_id")
+    .ilike("shop_handle", shopHandle.trim())
+    .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>();
+
+  if (error) {
+    console.error("[loadSellerProfileByMerchantShopHandle]", error.message);
+    throw new Error("無法載入商戶資料");
+  }
+
+  if (!shop?.merchant_id) {
+    return null;
+  }
+
+  return fetchProfileById(shop.merchant_id);
 }
 
 export async function loadMarketplaceSellerProfile(
@@ -203,5 +239,10 @@ export async function loadMarketplaceSellerProfile(
     return fetchProfileById(trimmed);
   }
 
-  return fetchProfileByUsername(trimmed);
+  const byMerchantHandle = await fetchProfileByMerchantShopHandle(trimmed);
+  if (byMerchantHandle) {
+    return byMerchantHandle;
+  }
+
+  return fetchProfileByMemberUsername(trimmed);
 }
