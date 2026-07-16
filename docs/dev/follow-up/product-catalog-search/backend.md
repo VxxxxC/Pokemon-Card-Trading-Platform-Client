@@ -14,7 +14,8 @@
 | File | Purpose |
 |------|---------|
 | `lib/supabase/server.ts` | Server-side Supabase client |
-| `app/actions/productCatalog.ts` | `searchProductCatalog` server action |
+| `app/actions/productCatalog.ts` | `searchProductCatalog` — name ILIKE / compact PostgREST on `id_compact` + `id_canonical` |
+| `lib/search/card-identifier.ts` | `useCompactCatalogSearch` routes identifier autocomplete |
 | `app/lib/hooks/useProductCatalogSearch.ts` | Debounced client hook + cache |
 | `supabase/migrations/20260702100000_product_catalog_public_read.sql` | Anon `SELECT` on `product_catalog` |
 | `scripts/test-product-catalog-search.ts` | CLI smoke test (`bun run test:catalog-search`) |
@@ -24,7 +25,7 @@
 
 | File | Purpose |
 |------|---------|
-| `app/actions/listings.ts` | `createCardListing` server action (DB insert after auth verify) |
+| `app/actions/listings.ts` | `createCardListing`, **`updateCardListing`** server actions |
 | `app/api/listings/upload-image/route.ts` | Authenticated per-image upload proxy → Bunny (client progress) |
 | `lib/storage/bunny.ts` | Bunny.net Storage upload + rollback delete |
 | `lib/listings/images.ts` | `ListingImage` type (`{ url, order }`), min/max counts |
@@ -32,7 +33,7 @@
 | `lib/listings/validation.ts` | Field + image file validation |
 | `lib/listings/errors.ts` | Maps Postgres errors to user-facing messages |
 | `lib/listings/client-upload.ts` | Client XHR upload helper with `onprogress` |
-| `lib/listings/submit-card-listing.ts` | Client orchestration: upload images → `createCardListing` |
+| `lib/listings/submit-card-listing.ts` | Client orchestration: upload images → `createCardListing` or **`updateCardListing`** (`mode: "edit"`) |
 | `lib/grading/options.ts` | Grading companies, scores, raw conditions, unified dropdown options |
 | `lib/supabase/admin.ts` | `service_role` client for trusted listing insert |
 | `middleware.ts` | Session refresh on **all** routes (server actions from any page) |
@@ -44,6 +45,17 @@
 ## Action contracts
 
 ### `searchProductCatalog`
+
+**Search paths** (migration `20260717120000` — `id_compact` / `id_canonical` generated columns):
+
+| Query type | Path | Example |
+|------------|------|---------|
+| Card name (CJK / long English) | PostgREST `.or(ilike…)` → client `scoreMatch` | `ピカチュウ`, `皮卡丘`, `Pikachu` |
+| Card identifier (incl. short prefix) | PostgREST on `id_compact` / `id_canonical` + name ilike → client `scoreMatch` | `mp`, `mp 133`, `MP133`, `133 MP` |
+
+`useCompactCatalogSearch` in `lib/search/card-identifier.ts` picks the compact path (short letter prefixes like `mp` included).
+
+Flexible id examples: `M-P-133` findable via `MP133`, `M P 133`, `133MP`, `133 MP`. No plpgsql RPC on autocomplete — avoids statement timeout.
 
 ```ts
 import { searchProductCatalog } from "@/app/actions/productCatalog";
@@ -94,6 +106,29 @@ const result = await createCardListing(formData);
 // Failure
 { success: false, error: string }
 ```
+
+### `updateCardListing`
+
+```ts
+import { updateCardListing } from "@/app/actions/listings";
+
+formData.append("listingId", listingId);
+formData.append("gradingOptionId", gradingOptionId);
+formData.append("price", String(priceHkd));
+formData.append("sellerDescription", description); // optional
+formData.append("isActive", String(isActive)); // active | inactive
+formData.append("uploadedImages", JSON.stringify([...])); // exactly 6 slots
+
+const result = await updateCardListing(formData);
+
+// Success
+{ success: true, data: { listingId: string } }
+
+// Failure
+{ success: false, error: string }
+```
+
+**Client path:** `submitCardListingWithProgress({ mode: "edit", listingId, imageSlots, ... })` — uploads only changed photo slots; reuses existing CDN URLs for unchanged slots. Wired in `ListingEditDialog.tsx` (member + merchant inventory).
 
 ### `POST /api/listings/upload-image`
 
@@ -147,7 +182,7 @@ Used by `lib/listings/client-upload.ts` (`uploadListingImageWithProgress`) for r
 | `sellerDescription` | `seller_description` | Optional, ≤ 500 chars |
 | uploaded CDN URLs | `images` | JSONB `[{ "url": "…", "order": 1 }, …]` |
 | auth user id | `seller_id` | |
-| profile role | `seller_persona` | `merchant` or `member` |
+| `sellerPersona` (FormData) + server rules | `seller_persona` | Context-driven: `/profile/merchant` → `merchant`; collection sell / user area → `member`. Server forces `member` when `sourceCollectionId` is set; `merchant` requires `profiles.role = merchant` + `merchant_shops` row |
 | — | `status` | Always `active` on create |
 | — | `use_authentication` | `false` |
 
@@ -281,5 +316,4 @@ UI styling in `AddAssetModal.tsx` is partner-owned.
 
 - Box/set listing submit (still mock event in modal)
 - Hobby / `user_collections` write
-- Edit listing (`mode: "edit"` overlay + action planned; helper accepts `mode` already)
 - Presigned direct browser → Bunny upload (current flow uses authenticated API proxy)

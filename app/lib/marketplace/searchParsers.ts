@@ -31,11 +31,18 @@ export function parseCatalogSearchQuery(query: string | undefined): {
 
   const combo = normalized.match(/^([a-zA-Z0-9]+)[\s\-\/#]+([a-zA-Z0-9]+)$/);
   if (combo) {
-    return {
-      setCode: combo[1],
-      cardNumber: combo[2],
-      keyword: null,
-    };
+    const left = combo[1];
+    const right = combo[2];
+    const leftHasLetter = /[a-zA-Z]/.test(left);
+    const rightIsNumeric = /^\d+$/.test(right);
+
+    if (leftHasLetter && rightIsNumeric) {
+      return {
+        setCode: left,
+        cardNumber: right,
+        keyword: null,
+      };
+    }
   }
 
   return { setCode: null, cardNumber: null, keyword: normalized };

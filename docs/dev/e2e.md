@@ -8,7 +8,7 @@ End-to-end tests for:
 4. **Member flows** — P2P trading closure, dashboard/rewards, collection/wishlist, auth redirect + settings, inventory smoke
 5. **Public profile page** — `/profile/[id]` bootstrap, listings strip, reviews preview, rating navigation
 
-Aligned with [`project_structure.md`](../../project_structure.md) and Supabase types in [`types/supabase.md`](../../types/supabase.md).
+Aligned with [`project-structure.md`](../project-structure.md) and Supabase types in [`types/supabase.md`](../../types/supabase.md).
 
 ## Prerequisites
 

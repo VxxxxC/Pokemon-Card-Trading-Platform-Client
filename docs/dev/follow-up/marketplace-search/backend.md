@@ -18,6 +18,17 @@
 
 Default SSR search args: `page: 1`, `pageSize: 9` (mobile-first grid), `sortKey: "最新"`.
 
+## Changelog (2026-07-17) — flexible card identifier search
+
+| Change | Detail |
+|--------|--------|
+| **Migration `20260717100000`** | `compact_alphanumeric`, `canonical_card_search_key`, `catalog_card_identifier_matches` — ignore `-`/spaces; support reordered tokens (`M-P-133` ↔ `MP133` ↔ `133 MP`) |
+| **`search_marketplace_products`** | `p_keyword` / structured set+card branches also call `catalog_card_identifier_matches` |
+| **`search_marketplace_seller_listings`** | `p_name_query` flexible id match |
+| **`search_user_trading_orders`** | order search flexible id match on `set_code` / `card_number` / `display_id` |
+| **`lib/search/card-identifier.ts`** | Shared TS helpers for inventory/collection client filters |
+| **`parseCatalogSearchQuery`** | Structured `set+card` only when left segment has letters and right is numeric (`sv2a-062`); promo ids stay on `p_keyword` |
+
 ## Changelog (2026-07-04) — unified keyword search
 
 | Change | Detail |

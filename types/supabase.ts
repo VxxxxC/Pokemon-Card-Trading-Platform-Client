@@ -620,6 +620,8 @@ export type Database = {
           rating_score: number | null
           shipping_speed_score: number | null
           shop_description: string | null
+          shop_handle: string | null
+          shop_name: string | null
           shop_rating_score: number | null
           top_banner_path: string | null
           updated_at: string | null
@@ -633,6 +635,8 @@ export type Database = {
           rating_score?: number | null
           shipping_speed_score?: number | null
           shop_description?: string | null
+          shop_handle?: string | null
+          shop_name?: string | null
           shop_rating_score?: number | null
           top_banner_path?: string | null
           updated_at?: string | null
@@ -646,6 +650,8 @@ export type Database = {
           rating_score?: number | null
           shipping_speed_score?: number | null
           shop_description?: string | null
+          shop_handle?: string | null
+          shop_name?: string | null
           shop_rating_score?: number | null
           top_banner_path?: string | null
           updated_at?: string | null
@@ -777,6 +783,8 @@ export type Database = {
           element_type: string | null
           hp: number | null
           id: string
+          id_canonical: string | null
+          id_compact: string | null
           image_url: string
           jan_code: string | null
           last_synced_at: string | null
@@ -1797,6 +1805,27 @@ export type Database = {
           total_count: number
           total_pages: number
           use_authentication: boolean
+        }[]
+      }
+      search_product_catalog: {
+        Args: {
+          p_item_type?: string
+          p_query: string
+        }
+        Returns: {
+          card_number: string | null
+          display_id: string | null
+          id: string
+          image_url: string
+          name_en: string | null
+          name_ja: string
+          name_zh: string | null
+          pokemon_stage: string | null
+          rarity: string | null
+          set_code: string
+          snkr_rank: number | null
+          total_count: number
+          type: Database["public"]["Enums"]["catalog_type"]
         }[]
       }
       search_public_profile_reviews: {

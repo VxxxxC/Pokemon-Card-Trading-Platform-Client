@@ -12,6 +12,7 @@ import {
   type MarketPriceRow,
 } from "@/lib/marketplace/portfolio-pricing";
 import { gradingOptionIdFromWishlistRow } from "@/lib/wishlist/grading";
+import { matchesCatalogCardSearch } from "@/lib/search/card-identifier";
 import type { Tables } from "@/types/supabase";
 
 export type CollectionRow = Tables<"user_collections">;
@@ -315,14 +316,9 @@ export function matchesCollectionSearch(
   catalog: CatalogRow | undefined,
   query: string,
 ): boolean {
-  const q = query.trim().toLowerCase();
-  if (!q) return true;
-
-  const name = resolveProductName(catalog).toLowerCase();
-  const cardCode = resolveCardCode(catalog).toLowerCase();
-  const setCode = catalog?.set_code?.trim().toLowerCase() ?? "";
-
-  return name.includes(q) || cardCode.includes(q) || setCode.includes(q);
+  void row;
+  if (!query.trim()) return true;
+  return matchesCatalogCardSearch(query, catalog ?? {});
 }
 
 export function isListedCollectionRow(
