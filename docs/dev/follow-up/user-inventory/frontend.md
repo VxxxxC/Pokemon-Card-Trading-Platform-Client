@@ -57,7 +57,7 @@ SSR path: `UserInventoryPageData` calls `getInventoryPageBootstrap` and passes `
 
 Listen for `inventory-should-refresh` to refetch when listings change elsewhere (e.g. `AddAssetModal` merch submit, collection sell flow). The user inventory page no longer includes an on-page listing form.
 
-**Add listing:** Global `AddAssetModal` (TopNav/BottomNav `+`) — same modal for member and merchant. `seller_persona` on create follows UI context (`resolveAddAssetSellerPersona` in `useUIStore`); merchant inventory at `/profile/merchant/*` creates `merchant` listings; user area creates `member` listings. Success dispatches `inventory-should-refresh`.
+**Add listing:** Global `AddAssetModal` (TopNav/BottomNav `+`) — same modal for member and merchant. `seller_persona` on create follows **`activeListingPersona`** in `useUIStore` (synced by `ActiveListingPersonaSync` + `ProfilePersonaSwitch`, persisted in `sessionStorage`). Merchant identity → `merchant` listings on any page; member identity → `member`. Collection sell (`sellPrefill`) always forces `member`. Success dispatches `inventory-should-refresh`.
 
 **Edit listing:** Shared `ListingEditDialog` (opened from `InventoryAccordion` row **編輯** on member + merchant inventory). Submits via `submitCardListingWithProgress({ mode: "edit" })` → `updateCardListing`. Fields: price, grading (`gradingOptionId`), 品相描述, 商品上架 (`isActive`), 6 photo slots with per-slot remarks. Thumbnail click opens `ImageViewer`; **更換** uploads a new file for that slot. Global `ListingSubmitOverlay` shows upload/save progress. Success dispatches `inventory-should-refresh`. Removed: carousel, 品相備註, 邊角磨損屬性.
 

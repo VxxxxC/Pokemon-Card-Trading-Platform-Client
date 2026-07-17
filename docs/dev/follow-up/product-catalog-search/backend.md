@@ -182,7 +182,7 @@ Used by `lib/listings/client-upload.ts` (`uploadListingImageWithProgress`) for r
 | `sellerDescription` | `seller_description` | Optional, ≤ 500 chars |
 | uploaded CDN URLs | `images` | JSONB `[{ "url": "…", "order": 1 }, …]` |
 | auth user id | `seller_id` | |
-| `sellerPersona` (FormData) + server rules | `seller_persona` | Context-driven: `/profile/merchant` → `merchant`; collection sell / user area → `member`. Server forces `member` when `sourceCollectionId` is set; `merchant` requires `profiles.role = merchant` + `merchant_shops` row |
+| `sellerPersona` (FormData) + server rules | `seller_persona` | Context-driven: `activeListingPersona` in UI store (merchant/member identity switch, persisted in sessionStorage). Collection sell / `sourceCollectionId` → `member`. Server forces `member` when `sourceCollectionId` is set; `merchant` requires `profiles.role = merchant` + `merchant_shops` row |
 | — | `status` | Always `active` on create |
 | — | `use_authentication` | `false` |
 

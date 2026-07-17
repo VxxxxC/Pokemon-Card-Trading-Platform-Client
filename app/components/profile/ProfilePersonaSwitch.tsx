@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { DualPersonaContext } from "@/lib/auth/dual-persona";
+import { useUIStore } from "@/app/store/useUIStore";
 
 type ProfilePersonaSwitchProps = {
   activeContext: "member" | "merchant";
@@ -30,6 +31,9 @@ export function ProfilePersonaSwitch({
   className = "",
 }: ProfilePersonaSwitchProps) {
   const router = useRouter();
+  const setActiveListingPersona = useUIStore(
+    (state) => state.setActiveListingPersona,
+  );
 
   if (!context.hasDualPersona) {
     return null;
@@ -37,6 +41,7 @@ export function ProfilePersonaSwitch({
 
   const targetHref =
     activeContext === "member" ? "/profile/merchant" : "/profile/user";
+  const targetPersona = activeContext === "member" ? "merchant" : "member";
   const actionLabel =
     activeContext === "member" ? "切換至商戶身份" : "切換至會員身份";
   const targetLabel = resolveTargetLabel(activeContext, context);
@@ -44,7 +49,10 @@ export function ProfilePersonaSwitch({
   return (
     <button
       type="button"
-      onClick={() => router.push(targetHref)}
+      onClick={() => {
+        setActiveListingPersona(targetPersona);
+        router.push(targetHref);
+      }}
       className={
         "inline-flex flex-col items-start gap-0.5 rounded-xl border border-brand/25 bg-[rgba(212,165,116,0.06)] px-3 py-2 text-left transition-colors hover:border-brand/40 hover:bg-[rgba(212,165,116,0.1)] focus:outline-none " +
         className

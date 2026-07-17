@@ -1,5 +1,14 @@
 import { create } from "zustand";
 import type { ExecutionSlideOverPayload } from "@/lib/marketplace/map-listing-to-execution";
+import {
+  clearPersistedListingPersona,
+  persistActiveListingPersona,
+  resolveAddAssetSellerPersona,
+  type ListingSellerPersona,
+} from "@/lib/listings/active-listing-persona";
+
+export type { ListingSellerPersona } from "@/lib/listings/active-listing-persona";
+export { resolveAddAssetSellerPersona } from "@/lib/listings/active-listing-persona";
 
 export type AuthRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
 
@@ -18,43 +27,25 @@ export type SellFromCollectionPrefill = {
   sellingPrice: number;
 };
 
-export type ListingSellerPersona = "member" | "merchant";
-
 export type OpenAddAssetModalInput = {
   mode: "hobby" | "merch";
   sellPrefill?: SellFromCollectionPrefill | null;
   sellerPersona?: ListingSellerPersona;
 };
 
-export function resolveAddAssetSellerPersona(input: {
-  mode: "hobby" | "merch";
-  sellPrefill?: SellFromCollectionPrefill | null;
-  sellerPersona?: ListingSellerPersona;
-  pathname?: string;
-}): ListingSellerPersona {
-  if (input.sellPrefill) {
-    return "member";
-  }
-  if (input.sellerPersona) {
-    return input.sellerPersona;
-  }
-  if (input.pathname?.startsWith("/profile/merchant")) {
-    return "merchant";
-  }
-  return "member";
-}
-
 interface UIStore {
   isAddAssetOpen: boolean;
   addAssetMode: "hobby" | "merch";
   addAssetSellPrefill: SellFromCollectionPrefill | null;
   addAssetSellerPersona: ListingSellerPersona;
+  activeListingPersona: ListingSellerPersona;
   userAuthRole: AuthRole;
   isIosPwaModalOpen: boolean;
   isExecutionSlideOverOpen: boolean;
   executionSlideOverPayload: ExecutionSlideOverPayload | null;
   openAddAssetModal: (input: OpenAddAssetModalInput) => void;
   closeAddAssetModal: () => void;
+  setActiveListingPersona: (persona: ListingSellerPersona) => void;
   setUserAuthRole: (role: AuthRole) => void;
   openIosPwaModal: () => void;
   closeIosPwaModal: () => void;
@@ -62,11 +53,12 @@ interface UIStore {
   closeExecutionSlideOver: () => void;
 }
 
-export const useUIStore = create<UIStore>((set) => ({
+export const useUIStore = create<UIStore>((set, get) => ({
   isAddAssetOpen: false,
   addAssetMode: "hobby",
   addAssetSellPrefill: null,
   addAssetSellerPersona: "member",
+  activeListingPersona: "member",
   userAuthRole: "GUEST",
   isIosPwaModalOpen: false,
   isExecutionSlideOverOpen: false,
@@ -74,9 +66,9 @@ export const useUIStore = create<UIStore>((set) => ({
   openAddAssetModal: (input) => {
     const sellPrefill = input.sellPrefill ?? null;
     const sellerPersona = resolveAddAssetSellerPersona({
-      mode: sellPrefill ? "merch" : input.mode,
       sellPrefill,
       sellerPersona: input.sellerPersona,
+      activeListingPersona: get().activeListingPersona,
     });
     set({
       isAddAssetOpen: true,
@@ -91,7 +83,16 @@ export const useUIStore = create<UIStore>((set) => ({
       addAssetSellPrefill: null,
       addAssetSellerPersona: "member",
     }),
-  setUserAuthRole: (role) => set({ userAuthRole: role }),
+  setActiveListingPersona: (persona) => {
+    persistActiveListingPersona(persona);
+    set({ activeListingPersona: persona });
+  },
+  setUserAuthRole: (role) => {
+    if (role === "GUEST") {
+      clearPersistedListingPersona();
+    }
+    set({ userAuthRole: role });
+  },
   openIosPwaModal: () => set({ isIosPwaModalOpen: true }),
   closeIosPwaModal: () => set({ isIosPwaModalOpen: false }),
   openExecutionSlideOver: (payload) =>

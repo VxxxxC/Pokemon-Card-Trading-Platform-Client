@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
 import { ListingSubmitOverlay } from "@/components/listings/ListingSubmitOverlay";
 import { RoleProvider } from "@/app/components/providers/RoleProvider";
+import { ActiveListingPersonaSync } from "@/app/components/providers/ActiveListingPersonaSync";
 import { IosPwaModal } from "./components/pwa/IosPwaModal";
 import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import { PasswordUpdatedToast } from "@/components/auth/PasswordUpdatedToast";
@@ -304,6 +305,7 @@ export default async function RootLayout({
         style={{ backgroundColor: "#17130f" }}
       >
         <RoleProvider initialRole={initialRole}>
+          <ActiveListingPersonaSync />
           <IosPwaModal />
 
           <AppSerwistProvider>

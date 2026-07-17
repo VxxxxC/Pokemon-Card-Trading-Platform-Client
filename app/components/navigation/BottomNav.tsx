@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUIStore, resolveAddAssetSellerPersona } from "@/app/store/useUIStore";
+import { useUIStore } from "@/app/store/useUIStore";
 import { useSyncExternalStore } from "react";
 
 export function BottomNav() {
@@ -89,15 +89,7 @@ export function BottomNav() {
             <div className="flex flex-col items-center justify-center animate-fadeIn">
               <button
                 type="button"
-                onClick={() =>
-                  openAddAssetModal({
-                    mode: "merch",
-                    sellerPersona: resolveAddAssetSellerPersona({
-                      mode: "merch",
-                      pathname,
-                    }),
-                  })
-                }
+                onClick={() => openAddAssetModal({ mode: "merch" })}
                 className="w-8 h-8 bg-[#d4a574] text-[#1A1612] my-1 rounded-lg flex items-center justify-center shadow-lg active:scale-[0.90] transition-all cursor-pointer focus:outline-none"
               >
                 <svg
