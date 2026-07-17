@@ -7,6 +7,45 @@
 - **Partner:** Apply migrations `20260704170000`–**`20260709310000`**; verify inbox + send + accept/reject + auth opt-in + completion messages + **user reports** after push (see **Migrations** below)
 - **Partner report:** [PARTNER_REPORT.md](./PARTNER_REPORT.md)
 
+## Changelog (2026-07-17, dual persona trading rules)
+
+| Change | Detail |
+|--------|--------|
+| **`fn_assert_offer_not_self_dealing`** | Migration **`20260717140000`** — blocks same `profiles.id` self-offer across member/merchant personas |
+| **`rpc_make_offer`** | Calls self-dealing guard; buyer always `buyer_persona = 'member'` (merchant login buys as member) |
+| **`makeOffer`** | Early return when `listing.seller_id === auth.uid()` |
+| **`getDualPersonaContext()`** | `profiles.role = merchant` + `merchant_shops` row → `hasDualPersona: true` |
+| **`ProfilePersonaSwitch`** | `/profile/user` ↔ `/profile/merchant` for dual-identity users only |
+
+**Verify (backend):**
+
+1. `bunx supabase db push` (migration `20260717140000`).
+2. Merchant buys member listing → success; chat room `buyer_persona = member`.
+3. Merchant offers on own merchant listing → RPC + `makeOffer` reject with dual-persona copy.
+4. Pure member → no persona switch button on overview / performance pages.
+
+See also [dual-persona-trading/frontend.md](../dual-persona-trading/frontend.md).
+
+## Changelog (2026-07-17, dual persona chat rooms)
+
+| Change | Detail |
+|--------|--------|
+| **`chat_rooms.buyer_persona` / `seller_persona`** | Migration **`20260717130000`** — `seller_persona_type` (`member` \| `merchant`); unique `(buyer_id, buyer_persona, seller_id, seller_persona)` |
+| **Backfill + dedupe** | Seller persona from latest offer listing; merges duplicate 4-tuple rooms |
+| **`fn_chat_party_profile_snippet`** | Returns `persona`, `username`, `shop_handle`, `shop_name`, `is_merchant`, `avatar_path` per party |
+| **`rpc_make_offer`** | Sets `buyer_persona = 'member'`, `seller_persona` from listing; upserts room on 4-tuple |
+| **`get_user_chat_inbox_lobby()` / `get_chat_room_thread()`** | Room JSON includes `buyer_persona`, `seller_persona`, enriched buyer/seller snippets |
+| **`mapDbChats.resolvePartnerPresentation`** | Counterparty name from room persona (`shop_name` for merchant); `partnerTier` → `專業認證商戶` when merchant persona |
+| **`GlobalChatConsole`** | Merchant badge in lobby + thread header; lobby empty states; removed `KNOWN_PARTNERS` mock datalist |
+
+**Verify (backend):**
+
+1. `bunx supabase db push` (migration `20260717130000`).
+2. Merchant listing offer → lobby shows shop name +「認證商家」badge.
+3. Same users in member↔member chat → **separate** lobby row, no merchant badge.
+4. Empty inbox →「尚無對話」; search miss →「找不到相關對話」.
+5. `bun run build:ci`
+
 ## Changelog (2026-07-15, unread persist on refresh)
 
 | Change | Detail |

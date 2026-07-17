@@ -12,6 +12,8 @@ import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
+import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
+import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import {
   formatSellerIdentityLabel,
@@ -49,6 +51,11 @@ export function ExecutionSlideOver({
 
   const userAuthRole = useUIStore((state) => state.userAuthRole);
   const isGuest = userAuthRole === "GUEST";
+  const currentUserId = useCurrentUserId();
+  const isOwnListing =
+    currentUserId != null &&
+    order != null &&
+    order.sellerId === currentUserId;
 
   const openOfferChatSession = useHkCardVaultStore(
     (state) => state.openOfferChatSession,
@@ -119,6 +126,11 @@ export function ExecutionSlideOver({
   const handleSendCounterOffer = async () => {
     if (!listingId) {
       toast.error("找不到此掛單");
+      return;
+    }
+
+    if (isOwnListing) {
+      toast.error(SELF_OFFER_ERROR_MESSAGE);
       return;
     }
 
@@ -401,17 +413,24 @@ export function ExecutionSlideOver({
                   value={customPrice}
                   onChange={(e) => setCustomPrice(e.target.value)}
                   placeholder="請輸入您希望議定的金額"
-                  className="flex-1 h-full bg-transparent px-3 font-mono text-[13px] text-brand focus:outline-none"
+                  disabled={isOwnListing}
+                  className="flex-1 h-full bg-transparent px-3 font-mono text-[13px] text-brand focus:outline-none disabled:opacity-50"
                 />
               </div>
             </div>
+
+            {isOwnListing ? (
+              <p className="font-sans text-[11px] text-[#8A8680] px-1">
+                這是您的掛單，無法對自己的商品出價
+              </p>
+            ) : null}
           </div>
 
           {/* Bottom Action Footer Container */}
           <div className="px-5 py-4 border-t border-white/[0.07] shrink-0 bg-[#26211C]">
             <button
               type="button"
-              disabled={isSubmitting || !listingId}
+              disabled={isSubmitting || !listingId || isOwnListing}
               onClick={handleSendCounterOffer}
               className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none disabled:opacity-60"
             >

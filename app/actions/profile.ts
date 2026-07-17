@@ -11,6 +11,11 @@ import type {
 } from "@/app/lib/reviews/types";
 import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import {
+  buildDualPersonaContext,
+  EMPTY_DUAL_PERSONA_CONTEXT,
+  type DualPersonaContext,
+} from "@/lib/auth/dual-persona";
+import {
   loadMarketplaceSellerProfile,
   type MarketplaceSellerBadge,
 } from "@/lib/marketplace/load-seller-profile";
@@ -230,6 +235,52 @@ export async function getCurrentUserProfile(): Promise<
       avatarUrl: resolveAvatarUrl(profile.avatar_path),
       role: profile.role,
     },
+  };
+}
+
+export async function getDualPersonaContext(): Promise<
+  { success: true; data: DualPersonaContext } | { success: false; error: string }
+> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: EMPTY_DUAL_PERSONA_CONTEXT };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "未登入" };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("display_name, username, role")
+    .eq("id", user.id)
+    .maybeSingle<Pick<Tables<"profiles">, "display_name" | "username" | "role">>();
+
+  if (profileError || !profile) {
+    return { success: false, error: "無法取得用戶資料" };
+  }
+
+  if (profile.role !== "merchant") {
+    return { success: true, data: EMPTY_DUAL_PERSONA_CONTEXT };
+  }
+
+  const { data: shop, error: shopError } = await supabase
+    .from("merchant_shops")
+    .select("shop_name, shop_handle")
+    .eq("merchant_id", user.id)
+    .maybeSingle<Pick<Tables<"merchant_shops">, "shop_name" | "shop_handle">>();
+
+  if (shopError) {
+    return { success: false, error: "無法取得店舖資料" };
+  }
+
+  return {
+    success: true,
+    data: buildDualPersonaContext(profile, shop),
   };
 }
 

@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { getMemberDashboardOverview } from "@/app/actions/member-dashboard";
+import { getDualPersonaContext } from "@/app/actions/profile";
 import { searchUserTradingOrders } from "@/app/actions/orders";
 import { getPublicProfileReviews } from "@/app/actions/reviews";
 import type { MemberDashboardInitialData } from "@/app/lib/hooks/useMemberDashboard";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { MEMBER_DASHBOARD_PREVIEW_LIMIT } from "@/lib/dashboard/constants";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { EMPTY_DUAL_PERSONA_CONTEXT } from "@/lib/auth/dual-persona";
 import { UserOverviewClient } from "./UserOverviewClient";
 
 export async function UserOverviewPageData() {
@@ -18,7 +20,8 @@ export async function UserOverviewPageData() {
     redirect("/auth");
   }
 
-  const [overviewResult, ordersResult, reviewsResult] = await Promise.all([
+  const [overviewResult, ordersResult, reviewsResult, dualPersonaResult] =
+    await Promise.all([
     getMemberDashboardOverview(),
     searchUserTradingOrders({
       persona: "all",
@@ -33,6 +36,7 @@ export async function UserOverviewPageData() {
       page: 1,
       pageSize: MEMBER_DASHBOARD_PREVIEW_LIMIT,
     }),
+    getDualPersonaContext(),
   ]);
 
   const initialData: MemberDashboardInitialData = {
@@ -49,6 +53,11 @@ export async function UserOverviewPageData() {
     <UserOverviewClient
       currentUserId={user.id}
       initialData={initialData}
+      dualPersona={
+        dualPersonaResult.success
+          ? dualPersonaResult.data
+          : EMPTY_DUAL_PERSONA_CONTEXT
+      }
       bootstrapError={overviewResult.success ? undefined : overviewResult.error}
     />
   );

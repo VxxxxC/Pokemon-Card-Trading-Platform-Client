@@ -6,6 +6,7 @@ import {
   resolveOfferCardDisplayImage,
 } from "@/app/lib/chat/offerCardImage";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
+import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
 import type { Tables } from "@/types/supabase";
 
 type ChatRoomRow = Tables<"chat_rooms">;
@@ -386,6 +387,25 @@ export async function makeOffer(
 
     if (!user) {
       return { success: false, error: "請先登入後再出價" };
+    }
+
+    const { data: listing, error: listingError } = await supabase
+      .from("listings")
+      .select("seller_id")
+      .eq("id", trimmedListingId)
+      .maybeSingle<Pick<Tables<"listings">, "seller_id">>();
+
+    if (listingError) {
+      console.error("[makeOffer] listing lookup", listingError.message);
+      return { success: false, error: "找不到此商品掛單" };
+    }
+
+    if (!listing) {
+      return { success: false, error: "找不到此商品掛單" };
+    }
+
+    if (listing.seller_id === user.id) {
+      return { success: false, error: SELF_OFFER_ERROR_MESSAGE };
     }
 
     const rpcArgs: RpcMakeOfferArgs = {

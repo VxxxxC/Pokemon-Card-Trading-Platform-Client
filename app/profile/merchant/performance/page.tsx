@@ -31,6 +31,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProfilePersonaSwitch } from "@/app/components/profile/ProfilePersonaSwitch";
+import { useDualPersona } from "@/app/lib/hooks/useDualPersona";
 
 // ─── Data Types ──────────────────────────────────────────────────────────────
 
@@ -271,6 +273,7 @@ const selectDisplayMap: Record<string, string> = {
 
 export default function MerchantPerformancePage() {
   const router = useRouter();
+  const { context: dualPersona } = useDualPersona();
   const [range, setRange] = useState<string>("7d"); // 預設對齊截圖的 7d 視角
   const [displayArea, setDisplayArea] = useState<boolean>(true);
   const [displayLine, setDisplayLine] = useState<boolean>(true);
@@ -319,23 +322,31 @@ export default function MerchantPerformancePage() {
       className="space-y-6 animate-fadeIn p-4 md:p-6 bg-bg-page min-h-screen text-text-primary"
     >
       {/* Header Control */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="返回"
-          className="w-10 h-10 rounded-full bg-[#26211C] border border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-[0.97] cursor-pointer shadow-md shrink-0 focus:outline-none"
-        >
-          <IoChevronBack className="w-5 h-5" />
-        </button>
-        <div>
-          <h1
-            id="performance-heading"
-            className="font-sans font-black text-[22px] lg:text-[26px] text-text-primary tracking-tight"
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="返回"
+            className="w-10 h-10 rounded-full bg-[#26211C] border border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-[0.97] cursor-pointer shadow-md shrink-0 focus:outline-none"
           >
-            店舖經營與業績分析
-          </h1>
+            <IoChevronBack className="w-5 h-5" />
+          </button>
+          <div>
+            <h1
+              id="performance-heading"
+              className="font-sans font-black text-[22px] lg:text-[26px] text-text-primary tracking-tight"
+            >
+              店舖經營與業績分析
+            </h1>
+          </div>
         </div>
+        {dualPersona.hasDualPersona ? (
+          <ProfilePersonaSwitch
+            activeContext="merchant"
+            context={dualPersona}
+          />
+        ) : null}
       </div>
 
       {/* 頂層歷史全量累計大盤 */}

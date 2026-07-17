@@ -140,23 +140,29 @@ export type Database = {
       chat_rooms: {
         Row: {
           buyer_id: string
+          buyer_persona: Database["public"]["Enums"]["seller_persona_type"]
           created_at: string | null
           id: string
           seller_id: string
+          seller_persona: Database["public"]["Enums"]["seller_persona_type"]
           updated_at: string | null
         }
         Insert: {
           buyer_id: string
+          buyer_persona?: Database["public"]["Enums"]["seller_persona_type"]
           created_at?: string | null
           id?: string
           seller_id: string
+          seller_persona?: Database["public"]["Enums"]["seller_persona_type"]
           updated_at?: string | null
         }
         Update: {
           buyer_id?: string
+          buyer_persona?: Database["public"]["Enums"]["seller_persona_type"]
           created_at?: string | null
           id?: string
           seller_id?: string
+          seller_persona?: Database["public"]["Enums"]["seller_persona_type"]
           updated_at?: string | null
         }
         Relationships: [

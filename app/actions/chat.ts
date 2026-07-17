@@ -233,7 +233,9 @@ async function fetchRoomRowsForUser(
       `
         id,
         buyer_id,
+        buyer_persona,
         seller_id,
+        seller_persona,
         created_at,
         updated_at,
         buyer:profiles!fk_chat_rooms_buyer (
@@ -490,7 +492,9 @@ async function fetchThreadViaTables(
       `
         id,
         buyer_id,
+        buyer_persona,
         seller_id,
+        seller_persona,
         created_at,
         updated_at,
         buyer:profiles!fk_chat_rooms_buyer (

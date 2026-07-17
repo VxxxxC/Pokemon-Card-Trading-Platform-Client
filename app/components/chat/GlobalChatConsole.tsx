@@ -447,22 +447,6 @@ const MobileMessageThread = memo(function MobileMessageThread({
   );
 });
 
-const KNOWN_PARTNERS = [
-  "旺角卡店 · 專業認證商戶",
-  "渡邉道館",
-  "九龍灣卡王",
-  "秋葉原海外直送店",
-  "旺角天線卡王",
-  "深水埗精品角落",
-  "信和執雞大師",
-  "Satoshi_K",
-  "Yugi_Collector",
-  "Pika_Rich",
-  "Tomy_Trading",
-  "PSA_10_Hunter",
-  "Marnie_Simp",
-];
-
 function ChatLobbyLoadingRows() {
   return (
     <>
@@ -491,6 +475,41 @@ function ChatLobbyRefreshingHint() {
     <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
       更新中…
     </p>
+  );
+}
+
+function MerchantBadgeChip() {
+  return (
+    <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
+      認證商家
+    </span>
+  );
+}
+
+function ChatLobbyEmptyState({
+  variant,
+}: {
+  variant: "no-rooms" | "no-search-results";
+}) {
+  if (variant === "no-rooms") {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 px-3 text-center">
+        <p className="font-sans text-[12px] text-text-secondary select-none">
+          尚無對話
+        </p>
+        <p className="font-mono text-[10px] text-text-disabled mt-1 select-none">
+          點擊「新增聊天」開始對話
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-8 px-3 text-center">
+      <p className="font-sans text-[12px] text-text-secondary select-none">
+        找不到相關對話
+      </p>
+    </div>
   );
 }
 
@@ -672,6 +691,12 @@ export function GlobalChatConsole({
 
   const showLobbySkeleton =
     inboxLoading && filteredLobbyRooms.length === 0;
+
+  const lobbyEmptyVariant =
+    chats.length === 0 ? "no-rooms" : "no-search-results";
+
+  const showLobbyEmptyState =
+    !showLobbySkeleton && filteredLobbyRooms.length === 0;
 
   const activeRoom = useMemo(
     () => chats.find((room) => room.id === activeRoomId) ?? null,
@@ -890,17 +915,11 @@ export function GlobalChatConsole({
                   >
                     <input
                       type="text"
-                      list="desktop-partners-list"
                       value={targetUsername}
                       onChange={(e) => setTargetUsername(e.target.value)}
                       placeholder="搜尋/輸入用戶..."
                       className="w-full bg-[#17130f] border border-white/10 rounded px-1.5 py-0.5 font-sans text-[10.5px] text-text-primary placeholder:text-[#50453b] focus:outline-none focus:border-brand/40"
                     />
-                    <datalist id="desktop-partners-list">
-                      {KNOWN_PARTNERS.map((p) => (
-                        <option key={p} value={p} />
-                      ))}
-                    </datalist>
                   </motion.div>
                 )}
               </div>
@@ -942,6 +961,8 @@ export function GlobalChatConsole({
               {isLobbyRefreshing ? <ChatLobbyRefreshingHint /> : null}
               {showLobbySkeleton ? (
                 <ChatLobbyLoadingRows />
+              ) : showLobbyEmptyState ? (
+                <ChatLobbyEmptyState variant={lobbyEmptyVariant} />
               ) : (
                 filteredLobbyRooms.map((room: ChatRoom) => (
                 <button
@@ -970,9 +991,7 @@ export function GlobalChatConsole({
                     </div>
                     {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
                     {room.partnerTier === "專業認證商戶" && (
-                      <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
-                        認證商家
-                      </span>
+                      <MerchantBadgeChip />
                     )}
                   </div>
                   {room.unreadCount > 0 ? (
@@ -1006,6 +1025,9 @@ export function GlobalChatConsole({
                   <span className="font-sans font-bold text-[13px] text-text-primary">
                     {activeRoom.partnerName}
                   </span>
+                  {activeRoom.partnerTier === "專業認證商戶" ? (
+                    <MerchantBadgeChip />
+                  ) : null}
                 </Link>
               </div>
               <div className="flex items-center gap-2">
@@ -1157,17 +1179,11 @@ export function GlobalChatConsole({
                       >
                         <input
                           type="text"
-                          list="mobile-partners-list"
                           value={targetUsername}
                           onChange={(e) => setTargetUsername(e.target.value)}
                           placeholder="搜尋/輸入用戶..."
                           className="w-full bg-[#17130f] border border-white/10 rounded-lg px-2.5 py-1 font-sans text-[12px] text-text-primary placeholder:text-[#50453b] focus:outline-none focus:border-brand/40"
                         />
-                        <datalist id="mobile-partners-list">
-                          {KNOWN_PARTNERS.map((p) => (
-                            <option key={p} value={p} />
-                          ))}
-                        </datalist>
                       </motion.div>
                     )}
                   </div>
@@ -1219,6 +1235,8 @@ export function GlobalChatConsole({
                 {isLobbyRefreshing ? <ChatLobbyRefreshingHint /> : null}
                 {showLobbySkeleton ? (
                   <ChatLobbyLoadingRows />
+                ) : showLobbyEmptyState ? (
+                  <ChatLobbyEmptyState variant={lobbyEmptyVariant} />
                 ) : (
                   filteredLobbyRooms.map((room: ChatRoom) => (
                   <button
@@ -1243,9 +1261,7 @@ export function GlobalChatConsole({
                         </span>
                         {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
                         {room.partnerTier === "專業認證商戶" && (
-                          <span className="block inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
-                            認證商家
-                          </span>
+                          <MerchantBadgeChip />
                         )}
                       </div>
                       <p className="font-sans text-[12px] text-text-secondary truncate mt-1">
@@ -1288,6 +1304,9 @@ export function GlobalChatConsole({
                       <span className="font-sans font-bold text-[13px] text-text-primary">
                         {activeRoom.partnerName}
                       </span>
+                      {activeRoom.partnerTier === "專業認證商戶" ? (
+                        <MerchantBadgeChip />
+                      ) : null}
                     </Link>
                   </div>
                 </div>

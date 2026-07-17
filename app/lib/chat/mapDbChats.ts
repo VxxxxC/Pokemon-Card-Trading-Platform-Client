@@ -7,11 +7,18 @@ import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import type { Tables } from "@/types/supabase";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 
-type ProfileSnippet = {
+type SellerPersona = Tables<"listings">["seller_persona"];
+
+export type ProfileSnippet = {
   id: string;
   display_name: string;
   role: Tables<"profiles">["role"];
   avatar_path: string | null;
+  persona?: SellerPersona;
+  username?: string | null;
+  shop_name?: string | null;
+  shop_handle?: string | null;
+  is_merchant?: boolean | null;
 };
 
 type CatalogSnippet = {
@@ -52,7 +59,9 @@ export type DbChatMessageRow = {
 export type DbChatRoomBaseRow = {
   id: string;
   buyer_id: string;
+  buyer_persona?: SellerPersona | null;
   seller_id: string;
+  seller_persona?: SellerPersona | null;
   created_at: string | null;
   updated_at: string | null;
   unread_count?: number | null;
@@ -64,6 +73,68 @@ export type DbChatRoomBaseRow = {
 export type DbChatRoomRow = DbChatRoomBaseRow & {
   chat_messages: DbChatMessageRow[] | null;
 };
+
+export function partyDisplayName(party: ProfileSnippet): string {
+  if (party.persona === "merchant") {
+    return (
+      party.shop_name?.trim() ||
+      party.shop_handle?.trim() ||
+      party.display_name?.trim() ||
+      "認證商戶"
+    );
+  }
+
+  return (
+    party.display_name?.trim() ||
+    party.username?.trim() ||
+    "對話夥伴"
+  );
+}
+
+export function partnerTierForPersona(persona: SellerPersona | null | undefined): string {
+  return persona === "merchant" ? "專業認證商戶" : "認證用戶";
+}
+
+export function resolvePartnerPresentation(
+  room: DbChatRoomBaseRow,
+  currentUserId: string,
+): {
+  partnerId: string;
+  partnerName: string;
+  partnerAvatarUrl: string;
+  partnerTier: string;
+  partner: ProfileSnippet;
+} {
+  const buyer: ProfileSnippet = {
+    persona: room.buyer_persona ?? "member",
+    ...(room.buyer ?? {
+      id: room.buyer_id,
+      display_name: "買家",
+      role: "member" as const,
+      avatar_path: null,
+    }),
+  };
+  const seller: ProfileSnippet = {
+    persona: room.seller_persona ?? "member",
+    ...(room.seller ?? {
+      id: room.seller_id,
+      display_name: "賣家",
+      role: "merchant" as const,
+      avatar_path: null,
+    }),
+  };
+
+  const isBuyer = currentUserId === room.buyer_id;
+  const partner = isBuyer ? seller : buyer;
+
+  return {
+    partner,
+    partnerId: partner.id,
+    partnerName: partyDisplayName(partner),
+    partnerAvatarUrl: resolveAvatarUrl(partner.avatar_path),
+    partnerTier: partnerTierForPersona(partner.persona),
+  };
+}
 
 function mapOfferStatusToInitialStatus(
   status: Tables<"offers">["status"],
@@ -95,10 +166,10 @@ function buildSpecialData(
     cardName,
     cardId: catalog.id,
     offerPrice: Number(offer.offer_price),
-    buyerName: buyer.display_name?.trim() || "買家",
+    buyerName: partyDisplayName(buyer),
     buyerId: buyer.id,
     sellerId: seller.id,
-    sellerName: seller.display_name?.trim() || "賣家",
+    sellerName: partyDisplayName(seller),
     offerId: offer.id,
     modifiedCount: offer.modified_count ?? 0,
     imageUrl: imageUrl || undefined,
@@ -217,10 +288,6 @@ function mapDbMessage(
   };
 }
 
-function partnerTierForRole(role: Tables<"profiles">["role"]): string {
-  return role === "merchant" ? "專業認證商戶" : "認證用戶";
-}
-
 function resolveUnreadCount(room: DbChatRoomBaseRow): number {
   const raw = room.unread_count;
   if (typeof raw !== "number" || !Number.isFinite(raw)) {
@@ -234,23 +301,26 @@ function mapRoomToStore(
   messages: DbChatMessageRow[],
   currentUserId: string,
 ): ChatRoom {
-  const buyer = room.buyer ?? {
-    id: room.buyer_id,
-    display_name: "買家",
-    role: "member" as const,
-    avatar_path: null,
+  const buyer: ProfileSnippet = {
+    persona: room.buyer_persona ?? "member",
+    ...(room.buyer ?? {
+      id: room.buyer_id,
+      display_name: "買家",
+      role: "member" as const,
+      avatar_path: null,
+    }),
   };
-  const seller = room.seller ?? {
-    id: room.seller_id,
-    display_name: "賣家",
-    role: "merchant" as const,
-    avatar_path: null,
+  const seller: ProfileSnippet = {
+    persona: room.seller_persona ?? "member",
+    ...(room.seller ?? {
+      id: room.seller_id,
+      display_name: "賣家",
+      role: "merchant" as const,
+      avatar_path: null,
+    }),
   };
 
-  const isBuyer = currentUserId === room.buyer_id;
-  const partner = isBuyer ? seller : buyer;
-  const partnerId = partner.id;
-  const partnerName = partner.display_name?.trim() || "對話夥伴";
+  const presentation = resolvePartnerPresentation(room, currentUserId);
 
   const sortedMessages = [...messages].sort(
     (a, b) =>
@@ -284,10 +354,10 @@ function mapRoomToStore(
 
   return {
     id: room.id,
-    partnerId,
-    partnerName,
-    partnerAvatarUrl: resolveAvatarUrl(partner.avatar_path),
-    partnerTier: partnerTierForRole(partner.role),
+    partnerId: presentation.partnerId,
+    partnerName: presentation.partnerName,
+    partnerAvatarUrl: presentation.partnerAvatarUrl,
+    partnerTier: presentation.partnerTier,
     lastMessage,
     unreadCount: resolveUnreadCount(room),
     timestamp,
