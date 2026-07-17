@@ -1,0 +1,105 @@
+import { NextResponse } from "next/server";
+import {
+  isFormDataImageUpload,
+  resolveImageContentType,
+  validateImageUpload,
+} from "@/lib/listings/image-files";
+import { uploadMerchantShopBannerToBunny } from "@/lib/storage/bunny";
+import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/types/supabase";
+
+type MerchantRoleRow = Pick<Tables<"profiles">, "role">;
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "請先登入後再上載店舖橫幅" },
+        { status: 401 },
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle<MerchantRoleRow>();
+
+    if (profileError || !profile || profile.role !== "merchant") {
+      return NextResponse.json(
+        { success: false, error: "無商戶權限" },
+        { status: 403 },
+      );
+    }
+
+    const formData = await request.formData();
+    const entry = formData.get("image");
+
+    if (!entry || !isFormDataImageUpload(entry)) {
+      return NextResponse.json(
+        { success: false, error: "請選擇要上載的相片" },
+        { status: 400 },
+      );
+    }
+
+    const contentType = resolveImageContentType({
+      size: entry.size,
+      type: entry.type,
+      name: entry.name,
+    });
+
+    if (!contentType) {
+      return NextResponse.json(
+        { success: false, error: "圖片格式不支援，請使用 JPG、PNG、WEBP 或 HEIC" },
+        { status: 400 },
+      );
+    }
+
+    const upload = {
+      blob: entry,
+      name: entry.name || "shop-banner.jpg",
+      contentType,
+    };
+    const validationError = validateImageUpload({
+      size: upload.blob.size,
+      type: upload.contentType,
+      name: upload.name,
+    });
+
+    if (validationError) {
+      return NextResponse.json(
+        { success: false, error: validationError },
+        { status: 400 },
+      );
+    }
+
+    const bytes = new Uint8Array(await upload.blob.arrayBuffer());
+    const bunnyUpload = await uploadMerchantShopBannerToBunny(
+      user.id,
+      bytes,
+      upload.contentType,
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: bunnyUpload,
+    });
+  } catch (error) {
+    console.error("[merchant/upload-top-banner]", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error && error.message.includes("Bunny")
+            ? "圖片儲存服務暫時無法使用，請稍後再試"
+            : "店舖橫幅上載失敗，請稍後再試",
+      },
+      { status: 500 },
+    );
+  }
+}

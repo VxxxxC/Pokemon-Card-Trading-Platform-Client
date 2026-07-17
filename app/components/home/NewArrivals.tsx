@@ -8,10 +8,62 @@ import { type MarketplaceListing } from "@/app/components/marketplace/Marketplac
 import type { HomeListingCard } from "@/app/lib/home/types";
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { WishlistButton, isWishlistFavored } from "@/app/components/market/WishlistButton";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import {
   formatListingGrade,
   formatRelativeDateTime,
 } from "@/lib/marketplace/listing-display";
+
+function ArrivalCardImage({
+  imageUrl,
+  catalogImageUrl,
+  alt,
+  priority,
+}: {
+  imageUrl: string;
+  catalogImageUrl?: string | null;
+  alt: string;
+  priority: boolean;
+}) {
+  const [src, setSrc] = useState(
+    () => imageUrl.trim() || catalogImageUrl?.trim() || "",
+  );
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setSrc(imageUrl.trim() || catalogImageUrl?.trim() || "");
+    setFailed(false);
+  }, [imageUrl, catalogImageUrl]);
+
+  const handleError = () => {
+    const catalog = catalogImageUrl?.trim();
+    if (catalog && src !== catalog) {
+      setSrc(catalog);
+      return;
+    }
+    setFailed(true);
+  };
+
+  if (!src || failed) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-[#1A1612] text-text-disabled font-mono text-[10px]">
+        暫無圖片
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover group-hover:scale-[1.05] transition-transform duration-500 pointer-events-none"
+      sizes="(max-width: 768px) 180px, 230px"
+      priority={priority}
+      onError={handleError}
+    />
+  );
+}
 
 type NewArrivalsProps = {
   listings?: HomeListingCard[];
@@ -48,7 +100,8 @@ export function NewArrivals({
   currentUserId = null,
   favoredKeys = [],
 }: NewArrivalsProps) {
-  const showWishlist = currentUserId != null;
+  const isMemberPersonaActive = useIsMemberPersonaActive();
+  const showWishlist = currentUserId != null && isMemberPersonaActive;
   const favoredKeySet = new Set(favoredKeys);
   const arrivals = useMemo(
     () => listings.map(toMarketplaceListing),
@@ -183,12 +236,10 @@ export function NewArrivals({
                       className="block relative w-full aspect-[3/4] overflow-hidden bg-[#1A1612]"
                       onClick={(e) => isUserInteracting && e.preventDefault()}
                     >
-                      <Image
-                        src={item.image}
+                      <ArrivalCardImage
+                        imageUrl={item.image}
+                        catalogImageUrl={sourceCard?.catalogImageUrl}
                         alt={`${item.name} — ${item.rarity}`}
-                        fill
-                        className="object-cover group-hover:scale-[1.05] transition-transform duration-500 pointer-events-none"
-                        sizes="(max-width: 768px) 180px, 230px"
                         priority={index < 3}
                       />
                       <span className="absolute top-2.5 left-2.5 flex flex-col gap-y-1">

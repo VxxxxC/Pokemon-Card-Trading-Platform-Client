@@ -35,6 +35,7 @@ import {
   marketplaceClientPerfLog,
 } from "@/app/lib/marketplace/perf-log-client";
 import { MARKETPLACE_GRID_PAGE_SIZE } from "@/lib/marketplace/constants";
+import { formatListingGrade } from "@/lib/marketplace/listing-display";
 
 const MOBILE_VIEWPORT_QUERY = "(max-width: 1279px)";
 
@@ -52,20 +53,11 @@ function getMobileViewportServerSnapshot() {
   return true;
 }
 
-function formatGrade(
-  company: string,
-  score: string | null,
-): { authority: string; score: string } {
-  const normalized = company.toUpperCase();
-  if (normalized === "RAW") {
-    return { authority: "Raw Card", score: score ?? "" };
-  }
-  return { authority: company, score: score ?? "" };
-}
-
 function toMarketplaceListing(
   product: MarketplaceProductRow,
 ): MarketplaceListing {
+  const grade = formatListingGrade(product.gradingCompany, product.gradingScore);
+
   return {
     id: product.lowestListingId,
     productId: product.productId,
@@ -75,7 +67,10 @@ function toMarketplaceListing(
     nameJa: product.nameJa,
     set: product.setCode,
     rarity: product.rarity,
-    grade: formatGrade(product.gradingCompany, product.gradingScore),
+    grade: {
+      authority: grade.authority,
+      score: grade.score || "",
+    },
     price: product.lowestPrice,
     delta: 0,
     deltaDirection: "up",
@@ -85,6 +80,7 @@ function toMarketplaceListing(
     image: product.imageUrl,
     seller: product.sellerName,
     sellerId: product.sellerId,
+    sellerPersona: product.sellerPersona,
     detailHref: `/marketplace/product/${product.productId}`,
   };
 }

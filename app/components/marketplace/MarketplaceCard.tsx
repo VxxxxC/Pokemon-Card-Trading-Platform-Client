@@ -9,7 +9,8 @@ import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
-import type { Tables } from "@/types/supabase";
+import type { Database, Tables } from "@/types/supabase";
+import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 
 export type MarketplaceListing = {
@@ -34,6 +35,7 @@ export type MarketplaceListing = {
   image: string;
   seller: string;
   sellerId?: string;
+  sellerPersona?: Database["public"]["Enums"]["seller_persona_type"];
   detailHref?: string;
 };
 
@@ -80,6 +82,11 @@ function hasDisplayableRarity(
   if (!rarity) return false;
   const trimmed = rarity.trim();
   return trimmed !== "" && trimmed !== "-";
+}
+
+function isRawGradeAuthority(authority: string): boolean {
+  const normalized = authority.toUpperCase().trim();
+  return normalized === "RAW" || normalized === "RAW CARD";
 }
 
 export function MarketplaceCard({
@@ -230,10 +237,19 @@ function MarketplaceCardView({
                 {displaySetAndCardNo}
               </span>
               <div className="mt-1.5">
-                <GradeBadge
-                  authority={listing.grade.authority}
-                  score={listing.grade.score}
-                />
+                {isRawGradeAuthority(listing.grade.authority) ? (
+                  <span className="inline-flex items-center gap-1 font-mono text-[12px] font-medium text-text-primary bg-[rgba(212,165,116,0.15)] rounded-[4px] px-2 py-0.5 shrink-0">
+                    {formatTradeGradeLabel(
+                      listing.grade.authority,
+                      listing.grade.score || null,
+                    )}
+                  </span>
+                ) : (
+                  <GradeBadge
+                    authority={listing.grade.authority}
+                    score={listing.grade.score}
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -254,12 +270,19 @@ function MarketplaceCardView({
               <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
                 賣家
               </p>
-              <p className="truncate max-w-[90px] block font-sans whitespace-nowrap text-[12px] text-[#d4c4b7] font-medium mt-0.5">
-                {listing.seller}
-                {isOwnListing ? (
-                  <span className="text-brand font-bold"> (你)</span>
+              <div className="flex flex-col items-end gap-0.5 mt-0.5">
+                {listing.sellerPersona === "merchant" ? (
+                  <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
+                    認證商家
+                  </span>
                 ) : null}
-              </p>
+                <p className="truncate max-w-[90px] block font-sans whitespace-nowrap text-[12px] text-[#d4c4b7] font-medium">
+                  {listing.seller}
+                  {isOwnListing ? (
+                    <span className="text-brand font-bold"> (你)</span>
+                  ) : null}
+                </p>
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FooterMemberCenterLinks } from "@/app/components/navigation/FooterMemberCenterLinks";
 
 // TODO: [server] Footer links (customer service, FAQ) should be fetched from CMS or Supabase `site_config` table
 
@@ -10,15 +11,6 @@ const footerSections = [
       { label: "搜尋卡牌", href: "/search" },
       { label: "鑑定託管流程", href: "/marketplace?info=escrow" },
       { label: "賣家入駐", href: "/auth?role=merchant" },
-    ],
-  },
-  {
-    title: "會員中心",
-    links: [
-      { label: "我的收藏", href: "/profile/user/collection" },
-      { label: "交易管理", href: "/profile/user/trading" },
-      { label: "帳戶設定", href: "/profile/user/settings" },
-      { label: "商家後台", href: "/profile/merchant" },
     ],
   },
   {
@@ -71,6 +63,15 @@ export function Footer() {
                 </span>
               ))}
             </div>
+          </div>
+
+          <div>
+            <h3 className="font-sans font-semibold text-[13px] text-text-primary mb-3">
+              會員中心
+            </h3>
+            <ul className="space-y-2">
+              <FooterMemberCenterLinks />
+            </ul>
           </div>
 
           {/* Link columns */}

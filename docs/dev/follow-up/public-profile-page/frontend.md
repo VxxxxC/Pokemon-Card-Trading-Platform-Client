@@ -11,9 +11,10 @@
 |------|------|
 | `app/profile/[id]/page.tsx` | Thin server page + Suspense |
 | `app/profile/[id]/PublicProfilePageData.tsx` | SSR bootstrap |
-| `app/profile/[id]/PublicProfileClient.tsx` | Profile header, listings strip, reviews preview |
+| `app/profile/[id]/PublicProfileClient.tsx` | Persona-aware header, listings strip, reviews preview |
 | `app/profile/[id]/not-found.tsx` | 404 UI |
-| `app/components/profile/ProfileHeaderWithChat.tsx` | Optional `avatarUrl` prop |
+| `app/components/profile/PublicPersonaProfileHeader.tsx` | Shared member/merchant title + badge header |
+| `app/components/profile/ProfileHeaderWithChat.tsx` | Legacy header (superseded on public profile) |
 
 ## Data flow
 

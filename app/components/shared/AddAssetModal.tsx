@@ -10,6 +10,8 @@ import {
   type CollectionAddAfterListingPayload,
 } from "@/app/components/shared/CollectionAddAfterListingDialog";
 import { useUIStore, type SellFromCollectionPrefill } from "@/app/store/useUIStore";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
+import { MEMBER_PERSONA_FEATURES_BLOCKED_ERROR } from "@/lib/auth/member-persona-features";
 import { useListingSubmitStore } from "@/app/store/useListingSubmitStore";
 import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
 import type { ProductCatalogSuggestion } from "@/app/actions/productCatalog";
@@ -119,6 +121,7 @@ export function AddAssetModal() {
   const sellPrefill = useUIStore((state) => state.addAssetSellPrefill);
   const addAssetSellerPersona = useUIStore((state) => state.addAssetSellerPersona);
   const closeAddAssetModal = useUIStore((state) => state.closeAddAssetModal);
+  const isMemberPersonaActive = useIsMemberPersonaActive();
 
   // 模式 Toggle 狀態
   const [mode, setMode] = useState<"hobby" | "merch">("hobby");
@@ -443,6 +446,11 @@ export function AddAssetModal() {
     e.preventDefault();
 
     if (mode === "hobby") {
+      if (!isMemberPersonaActive) {
+        toast.error(MEMBER_PERSONA_FEATURES_BLOCKED_ERROR);
+        return;
+      }
+
       if (!catalogSearch.selected) {
         toast.error("⚠️ 請從搜尋結果中選擇一張卡牌");
         return;
@@ -570,7 +578,7 @@ export function AddAssetModal() {
       );
       handleCloseAndReset();
 
-      if (!hadSellPrefill && catalogSearch.selected) {
+      if (!hadSellPrefill && catalogSearch.selected && isMemberPersonaActive) {
         setCollectionAddPrompt({
           productId: catalogSearch.selected.id,
           gradingOptionId: selectedGradingId,

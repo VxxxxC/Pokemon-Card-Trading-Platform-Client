@@ -1,5 +1,6 @@
 "use server";
 
+import { guardMemberPersonaPersonalFeatures } from "@/lib/auth/guard-member-persona-server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
   parseRewardGrantRows,
@@ -93,6 +94,11 @@ export async function getGamificationStats(): Promise<GamificationStatsResult> {
     return { success: false, error: "未登入" };
   }
 
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   try {
     const supabase = await createClient();
     const {
@@ -138,6 +144,11 @@ export async function getGamificationStats(): Promise<GamificationStatsResult> {
 }
 
 export async function executeDailyCheckIn(): Promise<DailyCheckInResult> {
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   try {
     const supabase = await createClient();
     const {

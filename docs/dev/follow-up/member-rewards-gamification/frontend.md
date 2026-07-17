@@ -8,6 +8,14 @@
 
 ## Changelog
 
+### 2026-07-17 (merchant persona guard)
+
+| Area | What changed |
+|------|----------------|
+| **Check-in** | `CheckInCard` hidden when `activeListingPersona === 'merchant'` |
+| **Server** | `executeDailyCheckIn` + `getGamificationStats` guarded via `guardMemberPersonaPersonalFeatures` |
+| **Restore** | Switch to member identity or visit `/profile/user/*` |
+
 ### 2026-07-05 (locked catalog tab — 可解鎖)
 
 | Area | What changed |

@@ -71,6 +71,7 @@ const { listings, meta, error, priceBounds, isRefreshing } =
 | Item | Detail |
 |------|--------|
 | `hideTypeSection={true}` | No seller-source filter on storefront |
+| `PublicPersonaProfileHeader` | Merchant storefront header aligned with `/profile/merchant` (商戶級別, 認證商家, TitleBadgeIcon); custom top banner from `merchant_shops.top_banner_path` when set |
 | `MarketplaceCard` | Pass `currentUserId` from SSR |
 | `BuyButton` | Storefront + grid — opens global `ExecutionSlideOver` via `storefrontListing` prop |
 | `detailHref` | `/marketplace/{sellerId}/product/{listingId}` |

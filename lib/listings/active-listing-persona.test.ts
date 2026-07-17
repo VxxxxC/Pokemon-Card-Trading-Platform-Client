@@ -1,10 +1,44 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
   defaultListingPersonaForRole,
   listingPersonaFromPathname,
+  persistActiveListingPersona,
+  readPersistedListingPersona,
   resolveActiveListingPersona,
   resolveAddAssetSellerPersona,
 } from "@/lib/listings/active-listing-persona";
+
+function installSessionStorageMock() {
+  const store = new Map<string, string>();
+
+  const sessionStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => {
+      store.clear();
+    },
+    key: (index: number) => Array.from(store.keys())[index] ?? null,
+    get length() {
+      return store.size;
+    },
+  };
+
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: { sessionStorage },
+  });
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { cookie: "" },
+  });
+
+  return store;
+}
 
 describe("listingPersonaFromPathname", () => {
   test("merchant profile routes resolve to merchant", () => {
@@ -61,6 +95,60 @@ describe("resolveActiveListingPersona", () => {
       resolveActiveListingPersona({
         userAuthRole: "MERCHANT",
         pathname: "/profile/user",
+      }),
+    ).toBe("member");
+  });
+
+  test("merchant role on homepage uses merchant default without persistence", () => {
+    expect(
+      resolveActiveListingPersona({
+        userAuthRole: "MERCHANT",
+        pathname: "/",
+      }),
+    ).toBe("merchant");
+  });
+});
+
+describe("resolveActiveListingPersona with persisted session", () => {
+  beforeEach(() => {
+    installSessionStorageMock();
+  });
+
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window;
+    delete (globalThis as { document?: unknown }).document;
+  });
+
+  test("merchant role on homepage respects persisted merchant persona", () => {
+    persistActiveListingPersona("merchant");
+
+    expect(
+      resolveActiveListingPersona({
+        userAuthRole: "MERCHANT",
+        pathname: "/",
+      }),
+    ).toBe("merchant");
+    expect(readPersistedListingPersona()).toBe("merchant");
+  });
+
+  test("merchant role on homepage respects persisted member persona", () => {
+    persistActiveListingPersona("member");
+
+    expect(
+      resolveActiveListingPersona({
+        userAuthRole: "MERCHANT",
+        pathname: "/",
+      }),
+    ).toBe("member");
+  });
+
+  test("user role cannot keep persisted merchant persona on neutral routes", () => {
+    persistActiveListingPersona("merchant");
+
+    expect(
+      resolveActiveListingPersona({
+        userAuthRole: "USER",
+        pathname: "/",
       }),
     ).toBe("member");
   });

@@ -11,6 +11,8 @@
 |---------|----------|
 | Server fetch → client form | `page.tsx` + `MerchantSettingsClient.tsx` |
 | Save shop profile (`useActionState`) | `MerchantSettingsClient.tsx` → `updateMerchantShopProfile` |
+| Shop avatar upload | `MerchantSettingsClient.tsx` → `uploadMerchantShopAvatar` + `updateMerchantShopAvatar` |
+| Shop top banner upload | `MerchantSettingsClient.tsx` → `uploadMerchantShopTopBanner` + `updateMerchantShopTopBanner` |
 | Real auth email (read-only) | Security section |
 | Password change link | → `/auth/reset-password` |
 | Success / error toasts | `sonner` on save |
@@ -53,12 +55,14 @@ const [errors, formAction, isPending] = useActionState(updateMerchantShopProfile
 ## Acceptance checklist
 
 - [ ] `/profile/merchant/settings` shows live `shop_name`, `shop_handle`, `shop_description`, auth email
+- [ ] Shop avatar upload updates preview and persists to `shop_avatar_path`
+- [ ] Shop top banner upload updates preview and persists to `top_banner_path`
 - [ ] Save updates `merchant_shops` only; `profiles` member fields unchanged
 - [ ] Duplicate shop handle shows inline error + toast
 - [ ] Password「更改」→ `/auth/reset-password`
 - [ ] Notification section shows 4 toggles (visual only)
 - [ ] Logout still works
-- [ ] Storefront `/marketplace/{shop_handle}` reflects saved shop name
+- [ ] Storefront `/marketplace/{shop_handle}` reflects saved shop name and top banner
 
 ## Related docs
 

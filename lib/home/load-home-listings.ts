@@ -1,6 +1,9 @@
 import type { HomeListingCard } from "@/app/lib/home/types";
 import { HOME_LISTING_LIMIT } from "@/lib/home/constants";
-import { parseListingImageUrls } from "@/lib/listings/images";
+import {
+  parseListingImageUrls,
+  resolveListingCoverImageUrl,
+} from "@/lib/listings/images";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import {
   resolveCardCode,
@@ -40,8 +43,9 @@ function mapListingToCard(
   profile: ProfileRow | undefined,
 ): HomeListingCard {
   const imageUrls = parseListingImageUrls(listing.images);
+  const catalogImageUrl = catalog?.image_url?.trim() ?? null;
   const imageUrl =
-    imageUrls[0]?.trim() || catalog?.image_url?.trim() || "/placeholder-card.png";
+    resolveListingCoverImageUrl(listing.images, catalogImageUrl) ?? "";
 
   return {
     listingId: listing.id,
@@ -59,6 +63,7 @@ function mapListingToCard(
     ),
     price: Number(listing.price),
     imageUrl,
+    catalogImageUrl,
     sellerId: listing.seller_id,
     sellerName: profile?.display_name?.trim() || "賣家",
     sellerBadge:

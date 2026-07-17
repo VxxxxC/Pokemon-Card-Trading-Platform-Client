@@ -1,11 +1,21 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 import type { ExecutionSlideOverPayload } from "@/lib/marketplace/map-listing-to-execution";
+import { MEMBER_PERSONA_FEATURES_BLOCKED_ERROR } from "@/lib/auth/member-persona-features";
 import {
   clearPersistedListingPersona,
   persistActiveListingPersona,
+  readPersistedListingPersona,
   resolveAddAssetSellerPersona,
   type ListingSellerPersona,
 } from "@/lib/listings/active-listing-persona";
+
+function initialActiveListingPersona(): ListingSellerPersona {
+  if (typeof window === "undefined") {
+    return "member";
+  }
+  return readPersistedListingPersona() ?? "member";
+}
 
 export type { ListingSellerPersona } from "@/lib/listings/active-listing-persona";
 export { resolveAddAssetSellerPersona } from "@/lib/listings/active-listing-persona";
@@ -58,13 +68,18 @@ export const useUIStore = create<UIStore>((set, get) => ({
   addAssetMode: "hobby",
   addAssetSellPrefill: null,
   addAssetSellerPersona: "member",
-  activeListingPersona: "member",
+  activeListingPersona: initialActiveListingPersona(),
   userAuthRole: "GUEST",
   isIosPwaModalOpen: false,
   isExecutionSlideOverOpen: false,
   executionSlideOverPayload: null,
   openAddAssetModal: (input) => {
     const sellPrefill = input.sellPrefill ?? null;
+    const activeListingPersona = get().activeListingPersona;
+    if (!sellPrefill && input.mode === "hobby" && activeListingPersona === "merchant") {
+      toast.error(MEMBER_PERSONA_FEATURES_BLOCKED_ERROR);
+      return;
+    }
     const sellerPersona = resolveAddAssetSellerPersona({
       sellPrefill,
       sellerPersona: input.sellerPersona,

@@ -11,6 +11,7 @@ import {
   getSparklinePoints,
   hasWishlistTrendData,
 } from "@/lib/wishlist/sparkline";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 
 interface TrackedCardProps {
   productId: string;
@@ -192,6 +193,12 @@ export function WishlistTicker({
   entries = [],
   isLoading = false,
 }: WishlistTickerProps) {
+  const isMemberPersonaActive = useIsMemberPersonaActive();
+
+  if (!isMemberPersonaActive) {
+    return null;
+  }
+
   const cards = entries.map(mapEntryToTrackedCard);
 
   return (

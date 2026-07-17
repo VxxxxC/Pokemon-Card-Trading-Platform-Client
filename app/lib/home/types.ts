@@ -13,6 +13,7 @@ export type HomeListingCard = {
   gradeLabel: string;
   price: number;
   imageUrl: string;
+  catalogImageUrl: string | null;
   sellerId: string;
   sellerName: string;
   sellerBadge: string;

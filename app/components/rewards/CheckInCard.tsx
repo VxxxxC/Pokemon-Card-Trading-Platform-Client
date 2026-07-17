@@ -6,6 +6,7 @@ import {
   executeDailyCheckIn,
   getGamificationStats,
 } from "@/app/actions/rewards";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import { useRewardNotificationStore } from "@/app/store/useRewardNotificationStore";
 import {
   CHECK_IN_STEPS,
@@ -31,6 +32,7 @@ export function CheckInCard({
   initialPointsBalance,
   deferStatsLoad = false,
 }: CheckInCardProps = {}) {
+  const isMemberPersonaActive = useIsMemberPersonaActive();
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
   const [consecutiveDays, setConsecutiveDays] = useState(0);
   const [userPoints, setUserPoints] = useState(initialPointsBalance ?? 0);
@@ -75,7 +77,7 @@ export function CheckInCard({
   }, [initialPointsBalance, onStatsChange]);
 
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || !isMemberPersonaActive) return;
 
     const runLoad = () => {
       void loadStats();
@@ -93,7 +95,11 @@ export function CheckInCard({
 
     const timer = setTimeout(runLoad, 0);
     return () => clearTimeout(timer);
-  }, [isMounted, loadStats, deferStatsLoad]);
+  }, [isMounted, isMemberPersonaActive, loadStats, deferStatsLoad]);
+
+  if (!isMemberPersonaActive) {
+    return null;
+  }
 
   const handleCheckInExecute = async () => {
     if (hasCheckedIn || isSubmitting) return;

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { WishlistTable } from "@/app/components/market/WishlistTable";
 import { CollectionTable } from "@/app/components/market/CollectionTable";
 import { useWishlist } from "@/app/lib/hooks/useWishlist";
@@ -10,6 +12,8 @@ import {
   type CollectionInitialData,
 } from "@/app/lib/hooks/useCollection";
 import { useUIStore } from "@/app/store/useUIStore";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
+import { MEMBER_PERSONA_FEATURES_BLOCKED_ERROR } from "@/lib/auth/member-persona-features";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 
 type UserCollectionClientProps = {
@@ -21,6 +25,8 @@ export function UserCollectionClient({
   initialData,
   bootstrapError,
 }: UserCollectionClientProps) {
+  const router = useRouter();
+  const isMemberPersonaActive = useIsMemberPersonaActive();
   const [activeFilter, setActiveFilter] = useState("全部");
   const [wishlistSort, setWishlistSort] = useState<"name" | "recent">("name");
   const [query, setQuery] = useState("");
@@ -70,6 +76,13 @@ export function UserCollectionClient({
   }, [wishlistEntries, wishlistSort]);
 
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
+
+  useEffect(() => {
+    if (!isMemberPersonaActive) {
+      toast.error(MEMBER_PERSONA_FEATURES_BLOCKED_ERROR);
+      router.replace("/profile/merchant");
+    }
+  }, [isMemberPersonaActive, router]);
 
   useEffect(() => {
     const handleRefresh = () => {

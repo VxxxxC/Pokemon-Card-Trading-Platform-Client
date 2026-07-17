@@ -5,10 +5,11 @@ import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
-import { ProfileHeaderWithChat } from "@/app/components/profile/ProfileHeaderWithChat";
+import { PublicPersonaProfileHeader } from "@/app/components/profile/PublicPersonaProfileHeader";
 import { PublicReviewPreviewCard } from "@/app/components/profile/PublicReviewPreviewCard";
 import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
 import type { PublicProfilePageBootstrap } from "@/app/actions/profile";
+import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { IoChevronBack } from "react-icons/io5";
 import { useRouter } from "next/navigation";
 
@@ -71,21 +72,11 @@ export function PublicProfileClient({
           <IoChevronBack />
         </button>
 
-        <ProfileHeaderWithChat
-          member={{
-            id: profile.id,
-            username: profile.username,
-            handle: profile.handle,
-            joinDate: profile.joinDate,
-            avatarSeed: profile.id,
-            avatarUrl: profile.avatarUrl,
-            level: profile.level,
-            completedTrades: profile.completedTrades,
-            bio: profile.bio,
-            badges: profile.badges,
-            rating: profile.rating,
-            reviewCount: profile.reviewCount,
-          }}
+        <PublicPersonaProfileHeader
+          profile={profile}
+          rating={profile.rating}
+          reviewCount={profile.reviewCount}
+          variant="public-profile"
         />
 
         <section className="bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] p-6">
@@ -130,7 +121,10 @@ export function PublicProfileClient({
                   </h3>
                   <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5 gap-1">
                     <span className="font-mono text-[10px] text-[#10b981] font-bold truncate">
-                      {item.grade.authority} {item.grade.score}
+                      {formatTradeGradeLabel(
+                        item.grade.authority,
+                        item.grade.score || null,
+                      )}
                     </span>
                     <div className="flex flex-col items-end min-w-0">
                       <span className="font-mono font-black text-[13px] text-brand">

@@ -17,7 +17,7 @@ import {
 } from "@/lib/auth/dual-persona";
 import {
   loadMarketplaceSellerProfile,
-  type MarketplaceSellerBadge,
+  type MarketplaceSellerProfile,
 } from "@/lib/marketplace/load-seller-profile";
 import { toMarketplaceCardListing } from "@/lib/marketplace/map-seller-listing";
 import { mapProfileUpdateError } from "@/lib/profile/errors";
@@ -65,20 +65,9 @@ export type UserSettingsData = {
   role: Tables<"profiles">["role"];
 };
 
-export type PublicProfilePageProfile = {
-  id: string;
-  username: string;
-  handle: string;
-  joinDate: string;
-  avatarUrl: string;
-  bio: string;
-  level: string;
-  verifiedBuyer: boolean;
-  completedTrades: number;
-  badges: MarketplaceSellerBadge[];
+export type PublicProfilePageProfile = import("@/lib/marketplace/load-seller-profile").MarketplaceSellerProfile & {
   rating: number;
   reviewCount: number;
-  role: Tables<"profiles">["role"];
 };
 
 export type PublicProfilePageBootstrap = {
@@ -163,19 +152,9 @@ export async function getPublicProfilePageBootstrap(
       success: true,
       data: {
         profile: {
-          id: baseProfile.id,
-          username: baseProfile.username,
-          handle: baseProfile.handle,
-          joinDate: baseProfile.joinDate,
-          avatarUrl: baseProfile.avatarUrl,
-          bio: baseProfile.bio,
-          level: baseProfile.level,
-          verifiedBuyer: baseProfile.verifiedBuyer,
-          completedTrades: baseProfile.completedTrades,
-          badges: baseProfile.badges,
+          ...baseProfile,
           rating: aggregateRating,
           reviewCount,
-          role: baseProfile.role,
         },
         reviewPersona,
         listings,

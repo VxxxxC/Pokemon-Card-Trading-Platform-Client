@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { toggleWishlist } from "@/app/actions/wishlist";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
+import { MEMBER_PERSONA_FEATURES_BLOCKED_ERROR } from "@/lib/auth/member-persona-features";
 import { buildWishlistFavoredKey } from "@/lib/wishlist/grading";
 
 interface WishlistButtonProps {
@@ -41,6 +43,7 @@ export function WishlistButton({
   listingId,
 }: WishlistButtonProps) {
   const router = useRouter();
+  const isMemberPersonaActive = useIsMemberPersonaActive();
   const resolvedProductId = (productId ?? listingId ?? "").trim();
   void listingId;
 
@@ -57,6 +60,11 @@ export function WishlistButton({
       event.stopPropagation();
 
       if (!resolvedProductId) return;
+
+      if (!isMemberPersonaActive) {
+        toast.error(MEMBER_PERSONA_FEATURES_BLOCKED_ERROR);
+        return;
+      }
 
       if (currentUserId === null) {
         showWishlistLoginToast(() => router.push("/auth"));
@@ -103,11 +111,16 @@ export function WishlistButton({
       gradingCompany,
       gradingScore,
       isFavored,
+      isMemberPersonaActive,
       resolvedProductId,
       router,
       trackedPrice,
     ],
   );
+
+  if (!isMemberPersonaActive) {
+    return null;
+  }
 
   return (
     <button

@@ -4,7 +4,7 @@ import {
   resolveMerchantReputationTagDisplay,
 } from "@/lib/constants/titles";
 import { formatSellerJoinDate, isUuid, resolveActivityBadgeEmoji } from "@/lib/marketplace/seller-profile";
-import { resolveAvatarUrl } from "@/lib/profile/avatar";
+import { resolveAvatarUrl, resolveOptionalMediaUrl } from "@/lib/profile/avatar";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Json, Tables } from "@/types/supabase";
 
@@ -28,6 +28,10 @@ export type MarketplaceSellerProfile = {
   badges: MarketplaceSellerBadge[];
   role: Tables<"profiles">["role"];
   ratingScore: number;
+  reputationTag: Json | null;
+  kycVerified?: boolean;
+  stripeConnected?: boolean;
+  topBannerUrl?: string | null;
 };
 
 type ProfileRow = Pick<
@@ -50,6 +54,7 @@ type MerchantShopRow = Pick<
   | "shop_handle"
   | "shop_description"
   | "shop_avatar_path"
+  | "top_banner_path"
   | "reputation_tag"
   | "created_at"
   | "completed_trades_count"
@@ -102,9 +107,20 @@ function resolveLevelLabel(
   return fallback?.nameZh ?? (isMerchant ? "認證商戶" : "平台會員");
 }
 
+type KycRow = Pick<Tables<"kyc_records">, "kyc_status" | "stripe_account_id">;
+
+function resolveSellerReputationTag(
+  isMerchant: boolean,
+  profileTag: Json | null,
+  merchantTag: Json | null,
+): Json | null {
+  return isMerchant ? (merchantTag ?? null) : profileTag;
+}
+
 function mapProfileRow(
   profile: ProfileRow,
   merchantShop: MerchantShopRow | null,
+  kyc: KycRow | null = null,
 ): MarketplaceSellerProfile {
   const isMerchant = profile.role === "merchant";
   const completedTrades = isMerchant
@@ -135,6 +151,12 @@ function mapProfileRow(
     ? resolveAvatarUrl(merchantShop?.shop_avatar_path)
     : resolveAvatarUrl(profile.avatar_path);
 
+  const reputationTag = resolveSellerReputationTag(
+    isMerchant,
+    profile.reputation_tag,
+    merchantShop?.reputation_tag ?? null,
+  );
+
   return {
     id: profile.id,
     username,
@@ -152,6 +174,14 @@ function mapProfileRow(
     badges: mapBadges(isMerchant, profile.reputation_tag, merchantShop?.reputation_tag ?? null),
     role: profile.role,
     ratingScore,
+    reputationTag,
+    ...(isMerchant
+      ? {
+          kycVerified: kyc?.kyc_status === "verified",
+          stripeConnected: Boolean(kyc?.stripe_account_id?.trim()),
+          topBannerUrl: resolveOptionalMediaUrl(merchantShop?.top_banner_path),
+        }
+      : {}),
   };
 }
 
@@ -178,23 +208,37 @@ async function fetchProfileById(
   }
 
   let merchantShop: MerchantShopRow | null = null;
+  let kyc: KycRow | null = null;
   if (profile.role === "merchant") {
-    const shopResult = await supabase
-      .from("merchant_shops")
-      .select(
-        "shop_name, shop_handle, shop_description, shop_avatar_path, reputation_tag, created_at, completed_trades_count, rating_score",
-      )
-      .eq("merchant_id", profile.id)
-      .maybeSingle<MerchantShopRow>();
+    const [shopResult, kycResult] = await Promise.all([
+      supabase
+        .from("merchant_shops")
+        .select(
+          "shop_name, shop_handle, shop_description, shop_avatar_path, top_banner_path, reputation_tag, created_at, completed_trades_count, rating_score",
+        )
+        .eq("merchant_id", profile.id)
+        .maybeSingle<MerchantShopRow>(),
+      supabase
+        .from("kyc_records")
+        .select("kyc_status, stripe_account_id")
+        .eq("merchant_id", profile.id)
+        .maybeSingle<KycRow>(),
+    ]);
 
     if (shopResult.error) {
       console.error("[loadSellerProfileById] merchant_shops", shopResult.error.message);
     } else {
       merchantShop = shopResult.data;
     }
+
+    if (kycResult.error) {
+      console.error("[loadSellerProfileById] kyc_records", kycResult.error.message);
+    } else {
+      kyc = kycResult.data;
+    }
   }
 
-  return mapProfileRow(profile, merchantShop);
+  return mapProfileRow(profile, merchantShop, kyc);
 }
 
 async function fetchProfileByMemberUsername(
@@ -244,6 +288,11 @@ async function fetchProfileByMerchantShopHandle(
 
   return fetchProfileById(shop.merchant_id);
 }
+
+export {
+  resolveSellerReputationTag,
+  resolveLevelLabel,
+};
 
 export async function loadMarketplaceSellerProfile(
   sellerKey: string,

@@ -1,5 +1,5 @@
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
-import { parseListingImageUrls } from "@/lib/listings/images";
+import { resolveListingCoverImageUrl } from "@/lib/listings/images";
 import type { MarketplaceTrendSource } from "@/app/lib/marketplace/types";
 import type { Database } from "@/types/supabase";
 
@@ -110,12 +110,11 @@ export function resolveSellerListingImage(
   row: MarketplaceSellerListingRow,
   listingImages?: unknown,
 ): string {
-  const parsed = parseListingImageUrls(listingImages);
-  const firstListingImage = parsed[0]?.trim();
-  if (firstListingImage) {
-    return firstListingImage;
-  }
-  return row.imageUrl;
+  const catalogUrl =
+    row.imageUrl.trim() && row.imageUrl !== "/placeholder-card.png"
+      ? row.imageUrl
+      : null;
+  return resolveListingCoverImageUrl(listingImages, catalogUrl) ?? "";
 }
 
 export function toMarketplaceCardListing(
@@ -146,6 +145,7 @@ export function toMarketplaceCardListing(
     image: options?.imageUrl ?? row.imageUrl,
     seller: row.sellerName,
     sellerId: row.sellerId,
+    sellerPersona: row.sellerPersona,
     detailHref: `/marketplace/${row.sellerId}/product/${row.listingId}`,
   };
 }

@@ -13,6 +13,12 @@ export function ActiveListingPersonaSync() {
   );
 
   useEffect(() => {
+    // Wait for RoleProvider hydration — resolving as GUEST would persist "member"
+    // and overwrite a merchant persona already stored in sessionStorage.
+    if (userAuthRole === "GUEST") {
+      return;
+    }
+
     const persona = resolveActiveListingPersona({
       userAuthRole,
       pathname,

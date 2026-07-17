@@ -45,24 +45,82 @@ export function isListingImageArray(value: unknown): value is ListingImage[] {
   );
 }
 
+function normalizeListingImageItem(
+  item: unknown,
+  fallbackOrder: number,
+): ListingImage | null {
+  if (typeof item === "string") {
+    const url = item.trim();
+    if (!url) return null;
+    return { url, order: fallbackOrder };
+  }
+
+  if (typeof item === "object" && item !== null) {
+    const record = item as Record<string, unknown>;
+    const url = typeof record.url === "string" ? record.url.trim() : "";
+    if (!url) return null;
+
+    let order = fallbackOrder;
+    if (typeof record.order === "number" && Number.isFinite(record.order)) {
+      order = record.order;
+    } else if (typeof record.order === "string") {
+      const parsed = Number(record.order);
+      if (Number.isFinite(parsed)) {
+        order = parsed;
+      }
+    }
+
+    const remark =
+      typeof record.remark === "string"
+        ? record.remark.trim() || undefined
+        : undefined;
+
+    return { url, order, remark };
+  }
+
+  return null;
+}
+
+function coerceListingImages(value: unknown): ListingImage[] {
+  if (!Array.isArray(value)) return [];
+
+  const images: ListingImage[] = [];
+  value.forEach((item, index) => {
+    const normalized = normalizeListingImageItem(item, index + 1);
+    if (normalized) {
+      images.push(normalized);
+    }
+  });
+
+  return images.sort((a, b) => a.order - b.order);
+}
+
 /** Parse `listings.images` JSONB into ordered URL strings for display. */
 export function parseListingImageUrls(value: unknown): string[] {
-  if (!isListingImageArray(value)) return [];
-  return [...value]
-    .sort((a, b) => a.order - b.order)
-    .map((item) => item.url.trim())
+  return coerceListingImages(value)
+    .map((item) => item.url)
     .filter((url) => url.length > 0);
 }
 
 /** Parse `listings.images` JSONB into structured image objects including optional remarks. */
 export function parseListingImageObjects(value: unknown): ListingImage[] {
-  if (!isListingImageArray(value)) return [];
-  return [...value]
-    .sort((a, b) => a.order - b.order)
-    .map((item) => ({
-      url: item.url.trim(),
-      order: item.order,
-      remark: item.remark?.trim() || undefined,
-    }))
-    .filter((item) => item.url.length > 0);
+  return coerceListingImages(value).filter((item) => item.url.length > 0);
+}
+
+/** Listing cover: first listing photo, then optional catalog image. */
+export function resolveListingCoverImageUrl(
+  images: unknown,
+  catalogImageUrl?: string | null,
+): string | null {
+  const listingUrl = parseListingImageUrls(images)[0]?.trim();
+  if (listingUrl) {
+    return listingUrl;
+  }
+
+  const catalogUrl = catalogImageUrl?.trim();
+  if (catalogUrl) {
+    return catalogUrl;
+  }
+
+  return null;
 }

@@ -14,6 +14,7 @@ import {
   WishlistButton,
   isWishlistFavored,
 } from "@/app/components/market/WishlistButton";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 
 type PremiumMarketProps = {
   listings?: HomeListingCard[];
@@ -21,12 +22,60 @@ type PremiumMarketProps = {
   favoredKeys?: string[];
 };
 
+function ListingCoverImage({
+  listing,
+  index,
+}: {
+  listing: HomeListingCard;
+  index: number;
+}) {
+  const [src, setSrc] = React.useState(
+    () => listing.imageUrl.trim() || listing.catalogImageUrl?.trim() || "",
+  );
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    setSrc(listing.imageUrl.trim() || listing.catalogImageUrl?.trim() || "");
+    setFailed(false);
+  }, [listing.imageUrl, listing.catalogImageUrl, listing.listingId]);
+
+  const handleError = () => {
+    const catalog = listing.catalogImageUrl?.trim();
+    if (catalog && src !== catalog) {
+      setSrc(catalog);
+      return;
+    }
+    setFailed(true);
+  };
+
+  if (!src || failed) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-bg-elevated text-text-disabled font-mono text-[10px]">
+        暫無圖片
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={`${listing.name} — ${listing.gradeLabel}`}
+      fill
+      className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
+      sizes="(max-width: 768px) 100vw, 250px"
+      priority={index < 3}
+      onError={handleError}
+    />
+  );
+}
+
 export function PremiumMarket({
   listings = [],
   currentUserId = null,
   favoredKeys = [],
 }: PremiumMarketProps) {
-  const showWishlist = currentUserId != null;
+  const isMemberPersonaActive = useIsMemberPersonaActive();
+  const showWishlist = currentUserId != null && isMemberPersonaActive;
   const favoredKeySet = new Set(favoredKeys);
 
   const plugin = React.useMemo(
@@ -92,14 +141,7 @@ export function PremiumMarket({
                     href={`/marketplace/product/${listing.productId}`}
                     className="relative w-full aspect-[5/7] max-h-[20rem] mx-auto rounded-lg overflow-hidden bg-bg-elevated block mb-2.5 border border-white/5"
                   >
-                    <Image
-                      src={listing.imageUrl}
-                      alt={`${listing.name} — ${listing.gradeLabel}`}
-                      fill
-                      className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                      sizes="(max-width: 768px) 100vw, 250px"
-                      priority={index < 3}
-                    />
+                    <ListingCoverImage listing={listing} index={index} />
                     {showWishlist && (
                       <div className="absolute top-3 right-3 z-10 animate-fadeIn">
                         <WishlistButton

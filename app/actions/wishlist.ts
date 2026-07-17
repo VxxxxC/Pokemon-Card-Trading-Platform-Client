@@ -21,6 +21,7 @@ import {
   homePerfNow,
   isHomePerfLogEnabled,
 } from "@/lib/home/perf-log";
+import { guardMemberPersonaPersonalFeatures } from "@/lib/auth/guard-member-persona-server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
@@ -96,6 +97,12 @@ async function getAuthenticatedUserId(): Promise<string | null> {
   } = await supabase.auth.getUser();
 
   return user?.id ?? null;
+}
+
+async function guardWishlistMemberPersona(): Promise<
+  { allowed: true } | { allowed: false; error: string }
+> {
+  return guardMemberPersonaPersonalFeatures();
 }
 
 function revalidateWishlistPaths(): void {
@@ -285,6 +292,11 @@ export async function toggleWishlist(
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   const grading = normalizeWishlistGrading(
     input.gradingCompany,
     input.gradingScore,
@@ -364,6 +376,11 @@ export async function removeFromWishlist(
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   const grading = normalizeWishlistGrading(
     input.gradingCompany,
     input.gradingScore,
@@ -403,6 +420,11 @@ export async function updateWishlistGrade(
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return { success: false, error: "請先登入" };
+  }
+
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
   }
 
   const current = normalizeWishlistGrading(
@@ -481,6 +503,11 @@ export async function updateWishlistTarget(
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   const grading = normalizeWishlistGrading(
     input.gradingCompany,
     input.gradingScore,
@@ -527,6 +554,11 @@ export async function getUserWishlistProductIds(): Promise<
 > {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
+    return { success: true, data: [] };
+  }
+
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
     return { success: true, data: [] };
   }
 
@@ -591,6 +623,11 @@ export async function getWishlistFavoredKeysForUser(
     return [];
   }
 
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
+    return [];
+  }
+
   try {
     return await fetchWishlistFavoredKeysForUser(trimmedUserId);
   } catch (error) {
@@ -604,6 +641,11 @@ export async function getUserWishlistFavoredKeys(): Promise<
 > {
   const userId = await getAuthenticatedUserId();
   if (!userId) {
+    return { success: true, data: [] };
+  }
+
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
     return { success: true, data: [] };
   }
 
@@ -624,6 +666,11 @@ export async function getWishlistEntries(): Promise<
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   try {
     const entries = await buildWishlistEntriesForUser(userId);
     return { success: true, data: entries };
@@ -642,6 +689,11 @@ export async function getHomeWishlistPreview(
 
   const userId = await getAuthenticatedUserId();
   if (!userId) {
+    return { success: true, data: [] };
+  }
+
+  const personaGuard = await guardWishlistMemberPersona();
+  if (!personaGuard.allowed) {
     return { success: true, data: [] };
   }
 

@@ -16,3 +16,13 @@ export function resolveAvatarUrl(avatarPath: string | null | undefined): string 
   if (trimmed.startsWith("/") || trimmed.startsWith("http")) return trimmed;
   return getStorageAvatarUrl(trimmed);
 }
+
+/** Resolve optional media paths (e.g. merchant top banner) without a default fallback. */
+export function resolveOptionalMediaUrl(
+  mediaPath: string | null | undefined,
+): string | null {
+  const trimmed = mediaPath?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("/") || trimmed.startsWith("http")) return trimmed;
+  return getStorageAvatarUrl(trimmed);
+}

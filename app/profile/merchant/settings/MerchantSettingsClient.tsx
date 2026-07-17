@@ -13,10 +13,14 @@ import { LogoutModal } from "@/app/components/profile/LogoutModal";
 import {
   updateMerchantShopAvatar,
   updateMerchantShopProfile,
+  updateMerchantShopTopBanner,
   type MerchantSettingsData,
 } from "@/app/actions/merchant-settings";
 import type { MerchantShopFormErrors } from "@/lib/merchant/validation";
-import { uploadMerchantShopAvatar } from "@/lib/merchant/client-upload";
+import {
+  uploadMerchantShopAvatar,
+  uploadMerchantShopTopBanner,
+} from "@/lib/merchant/client-upload";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 
 type Props = {
@@ -38,6 +42,11 @@ export function MerchantSettingsClient({ initialData }: Props) {
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const displayAvatarUrl = avatarOverrideUrl ?? initialData.shopAvatarUrl ?? DEFAULT_AVATAR_URL;
+
+  const [bannerOverrideUrl, setBannerOverrideUrl] = useState<string | null>(null);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+  const displayBannerUrl = bannerOverrideUrl ?? initialData.topBannerUrl;
 
   const [errors, formAction, isPending] = useActionState<
     MerchantShopFormErrors | null,
@@ -80,6 +89,45 @@ export function MerchantSettingsClient({ initialData }: Props) {
         );
       } finally {
         setIsAvatarUploading(false);
+      }
+    },
+    [router],
+  );
+
+  const handleBannerEditClick = useCallback(() => {
+    if (isBannerUploading) return;
+    bannerFileInputRef.current?.click();
+  }, [isBannerUploading]);
+
+  const handleBannerFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      const localPreview = URL.createObjectURL(file);
+      setBannerOverrideUrl(localPreview);
+      setIsBannerUploading(true);
+
+      try {
+        const { cdnUrl } = await uploadMerchantShopTopBanner(file);
+        const result = await updateMerchantShopTopBanner(cdnUrl);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        URL.revokeObjectURL(localPreview);
+        setBannerOverrideUrl(cdnUrl);
+        toast.success("店舖橫幅已更新");
+        router.refresh();
+      } catch (error) {
+        URL.revokeObjectURL(localPreview);
+        setBannerOverrideUrl(null);
+        toast.error(
+          error instanceof Error ? error.message : "店舖橫幅上載失敗，請稍後再試",
+        );
+      } finally {
+        setIsBannerUploading(false);
       }
     },
     [router],
@@ -179,6 +227,51 @@ export function MerchantSettingsClient({ initialData }: Props) {
                 </p>
                 <p className="font-mono text-[11px] text-text-disabled mt-0.5">
                   獨立於會員個人頭像 · JPG / PNG / WEBP
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 mb-5 pb-5 border-b border-[rgba(237,232,224,0.06)]">
+              <div className="relative w-full h-24 shrink-0">
+                <div className="relative w-full h-full rounded-xl border border-[rgba(237,232,224,0.12)] overflow-hidden bg-linear-to-r from-[#2a2318] via-[rgba(212,165,116,0.12)] to-[#2a2318]">
+                  {displayBannerUrl ? (
+                    <Image
+                      src={displayBannerUrl}
+                      alt={`${initialData.shopName} 的店舖橫幅`}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : null}
+                  {isBannerUploading ? (
+                    <div className="absolute inset-0 z-[1] flex items-center justify-center bg-[#17130f]/70">
+                      <div className="w-5 h-5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                    </div>
+                  ) : null}
+                </div>
+                <input
+                  ref={bannerFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className="hidden"
+                  onChange={handleBannerFileChange}
+                />
+                <button
+                  type="button"
+                  onClick={handleBannerEditClick}
+                  disabled={isBannerUploading}
+                  className="absolute bottom-2 right-2 z-10 w-7 h-7 rounded-full bg-[#17130f]/90 border border-[rgba(237,232,224,0.2)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="更換店舖橫幅"
+                  aria-label="更換店舖橫幅"
+                >
+                  <Camera size={14} aria-hidden="true" />
+                </button>
+              </div>
+              <div>
+                <p className="font-sans text-[13px] text-text-primary font-bold">
+                  店舖頂部橫幅
+                </p>
+                <p className="font-mono text-[11px] text-text-disabled mt-0.5">
+                  顯示於商戶店舖頁頂部 · JPG / PNG / WEBP
                 </p>
               </div>
             </div>

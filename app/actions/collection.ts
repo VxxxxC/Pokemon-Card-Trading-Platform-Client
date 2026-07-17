@@ -26,6 +26,7 @@ import {
   isCollectionPerfLogEnabled,
 } from "@/lib/collection/perf-log";
 import { getGradingOption } from "@/lib/grading/options";
+import { guardMemberPersonaPersonalFeatures } from "@/lib/auth/guard-member-persona-server";
 import { wishlistGradeFromGradingOption } from "@/lib/wishlist/grading";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -77,6 +78,13 @@ export async function getCollectionPageBootstrap(
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardMemberPersonaPersonalFeatures(
+    "/profile/user/collection",
+  );
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   const viewInput = normalizePageInput(input);
   const totalStart = isCollectionPerfLogEnabled() ? collectionPerfNow() : 0;
 
@@ -113,6 +121,13 @@ export async function getCollectionPortfolioSummary(): Promise<
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardMemberPersonaPersonalFeatures(
+    "/profile/user/collection",
+  );
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   try {
     const view = await loadViewForUser(userId, {
       page: 1,
@@ -134,6 +149,13 @@ export async function getCollectionEntries(
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return { success: false, error: "請先登入" };
+  }
+
+  const personaGuard = await guardMemberPersonaPersonalFeatures(
+    "/profile/user/collection",
+  );
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
   }
 
   const viewInput = normalizePageInput(input);
@@ -158,6 +180,11 @@ export async function addToCollection(
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return { success: false, error: "請先登入" };
+  }
+
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
   }
 
   const gradingOption = getGradingOption(input.gradingOptionId);
@@ -213,6 +240,11 @@ export async function removeFromCollection(
     return { success: false, error: "請先登入" };
   }
 
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
   try {
     const supabase = await createClient();
     const { error } = await supabase
@@ -245,6 +277,11 @@ export async function updateCollectionGrade(
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return { success: false, error: "請先登入" };
+  }
+
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
   }
 
   const nextOption = getGradingOption(input.nextGradingOptionId);
@@ -287,6 +324,11 @@ export async function updateCollectionPurchasePrice(
   const userId = await getAuthenticatedUserId();
   if (!userId) {
     return { success: false, error: "請先登入" };
+  }
+
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
   }
 
   const purchasePrice = Number(input.purchasePrice);

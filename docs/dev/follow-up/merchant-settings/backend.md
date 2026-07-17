@@ -27,14 +27,20 @@
 |----------|--------------|
 | `getMerchantSettings` | `notification_settings` |
 | `updateMerchantShopProfile` | Email change (`auth.updateUser`) |
-| Migration `20260716100000` | `profiles` member field updates |
-| Storefront loader reads `merchant_shops` for merchant persona | Stripe Connect UI |
+| `updateMerchantShopAvatar` | `profiles` member field updates |
+| `updateMerchantShopTopBanner` | Stripe Connect UI |
+| Migration `20260716100000` | |
+| Storefront loader reads `merchant_shops` for merchant persona | |
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `app/actions/merchant-settings.ts` | `getMerchantSettings`, `updateMerchantShopProfile` |
+| `app/actions/merchant-settings.ts` | `getMerchantSettings`, `updateMerchantShopProfile`, `updateMerchantShopAvatar`, `updateMerchantShopTopBanner` |
+| `app/api/merchant/upload-avatar/route.ts` | Shop avatar Bunny upload |
+| `app/api/merchant/upload-top-banner/route.ts` | Shop top banner Bunny upload |
+| `lib/merchant/client-upload.ts` | Client helpers for avatar + banner upload |
+| `lib/storage/bunny.ts` | `uploadMerchantShopAvatarToBunny`, `uploadMerchantShopBannerToBunny` |
 | `lib/merchant/validation.ts` | `validateMerchantShopFields` |
 | `lib/merchant/errors.ts` | `mapMerchantShopUpdateError` |
 | `lib/marketplace/load-seller-profile.ts` | Merchant persona from `merchant_shops` |
@@ -48,6 +54,7 @@
 | `shop_handle` | 店舖帳號 (Handle) | Optional; 3–24 chars; unique (case-insensitive) |
 | `shop_description` | 店舖簡介 | Optional; max 280 chars |
 | `shop_avatar_path` | 店舖頭像 | Bunny CDN URL; **independent** from `profiles.avatar_path` |
+| `top_banner_path` | 店舖頂部橫幅 | Bunny CDN URL; displayed on `/marketplace/{handle}` storefront header |
 | `reputation_tag` | — | Merchant persona titles/badges SSOT (`core_main_merchant`, `activity_badges`); independent from `profiles.reputation_tag` |
 | `auth.users.email` | 電郵地址 | Read-only; shared with member login |
 
@@ -68,6 +75,7 @@ type MerchantSettingsData = {
   shopHandle: string;
   shopDescription: string;
   shopAvatarUrl: string;
+  topBannerUrl: string | null;
   email: string;
 };
 ```
@@ -77,6 +85,12 @@ type MerchantSettingsData = {
 Writes `merchant_shops.shop_avatar_path` after Bunny upload via `/api/merchant/upload-avatar`.
 
 Requires `profiles.role = 'merchant'` and existing `merchant_shops` row (KYC init). No fallback from `profiles`.
+
+### `updateMerchantShopTopBanner(cdnUrl)`
+
+Writes `merchant_shops.top_banner_path` after Bunny upload via `/api/merchant/upload-top-banner`.
+
+Object key prefix: `shop-banners/{merchantId}/{uuid}.{ext}`. Replaces prior banner with best-effort Bunny delete when key starts with `shop-banners/`.
 
 ### `updateMerchantShopProfile` — `useActionState`
 
@@ -112,7 +126,8 @@ bunx supabase db push
 1. Log in as merchant → `/profile/merchant/settings` — fields from `merchant_shops` only.
 2. Save shop name + handle + bio → DB updated; `profiles` unchanged.
 3. Duplicate `shop_handle` on another merchant → `此店舖帳號已被使用`.
-4. `/marketplace/{shop_handle}` shows updated shop name.
+4. `/marketplace/{shop_handle}` shows updated shop name and custom top banner when set.
+5. Upload top banner in settings → `top_banner_path` updated; storefront header reflects change.
 
 ```sql
 SELECT ms.shop_name, ms.shop_handle, ms.shop_description,

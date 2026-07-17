@@ -222,24 +222,12 @@ export type MarketplaceProductMarketPricesResult =
   | { success: true; data: MarketplaceMarketPriceGradeRow[] }
   | { success: false; error: string };
 
-export type MarketplaceSellerBadge = {
-  id: string;
-  label: string;
-  emoji: string;
-  desc: string;
-};
+import type { MarketplaceSellerProfile } from "@/lib/marketplace/load-seller-profile";
 
-export type MarketplaceSellerProfile = {
-  id: string;
-  username: string;
-  handle: string;
-  joinDate: string;
-  bio: string;
-  level: string;
-  verifiedBuyer: boolean;
-  completedTrades: number;
-  badges: MarketplaceSellerBadge[];
-};
+export type {
+  MarketplaceSellerBadge,
+  MarketplaceSellerProfile,
+} from "@/lib/marketplace/load-seller-profile";
 
 export type MarketplaceSellerProfileResult =
   | { success: true; data: MarketplaceSellerProfile }

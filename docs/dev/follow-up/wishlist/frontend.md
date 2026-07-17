@@ -6,6 +6,12 @@
 - **Frontend:** ✅ Marketplace star · ✅ Collection wishlist table · ✅ Home `WishlistTicker` + merchant/C2C strips
 - **Your focus:** Polish `WishlistTable` styling, home surfaces, optional target-gap indicator
 
+## Changelog (2026-07-17)
+
+| Area | Shipped |
+|------|---------|
+| **Merchant persona guard** | `activeListingPersona === 'merchant'` hides `WishlistButton` / `WishlistTicker`; server actions in `wishlist.ts` return blocked error or `[]` for favored keys |
+
 ## Changelog (2026-07-06)
 
 | Area | Shipped |

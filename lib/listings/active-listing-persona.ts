@@ -3,6 +3,7 @@ export type ListingSellerPersona = "member" | "merchant";
 type ActiveListingAuthRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
 
 export const ACTIVE_LISTING_PERSONA_STORAGE_KEY = "hkcv:activeListingPersona";
+export const ACTIVE_LISTING_PERSONA_COOKIE_KEY = "hkcv_active_listing_persona";
 
 export function listingPersonaFromPathname(
   pathname: string,
@@ -37,12 +38,29 @@ export function readPersistedListingPersona(): ListingSellerPersona | null {
   return null;
 }
 
+function writeListingPersonaCookie(persona: ListingSellerPersona): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.cookie = `${ACTIVE_LISTING_PERSONA_COOKIE_KEY}=${persona}; Path=/; SameSite=Lax`;
+}
+
+function clearListingPersonaCookie(): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  document.cookie = `${ACTIVE_LISTING_PERSONA_COOKIE_KEY}=; Path=/; SameSite=Lax; Max-Age=0`;
+}
+
 export function persistActiveListingPersona(persona: ListingSellerPersona): void {
   if (typeof window === "undefined") {
     return;
   }
 
   window.sessionStorage.setItem(ACTIVE_LISTING_PERSONA_STORAGE_KEY, persona);
+  writeListingPersonaCookie(persona);
 }
 
 export function clearPersistedListingPersona(): void {
@@ -51,6 +69,7 @@ export function clearPersistedListingPersona(): void {
   }
 
   window.sessionStorage.removeItem(ACTIVE_LISTING_PERSONA_STORAGE_KEY);
+  clearListingPersonaCookie();
 }
 
 export function resolveActiveListingPersona(input: {

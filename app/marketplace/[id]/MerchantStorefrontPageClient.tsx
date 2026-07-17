@@ -9,6 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
+import { PublicPersonaProfileHeader } from "@/app/components/profile/PublicPersonaProfileHeader";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import { SlideOver } from "@/app/components/ui/SlideOver";
@@ -165,67 +166,17 @@ export function MerchantStorefrontPageClient({
   return (
     <main className="flex-1 max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 pb-28 lg:pb-12 animate-fadeIn">
       <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 mb-6">
-        <section className="flex-1 rounded-2xl border border-[rgba(212,165,116,0.18)] bg-[#26211C] p-5 lg:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.35)]">
-          <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
-            <div className="space-y-3 min-w-0">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="font-sans font-black text-[24px] lg:text-[28px] text-[#eae1da] tracking-tight">
-                  {seller.username}
-                </h1>
-                {seller.verifiedBuyer ? (
-                  <span className="font-mono text-[10px] bg-[#17130f] text-[#d4c4b7] px-2.5 py-1 rounded-full border border-white/10 uppercase tracking-[0.16em] font-bold">
-                    已驗證交易身份
-                  </span>
-                ) : null}
-                <div className="absolute top-0 right-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveRoomId(seller.id);
-                      setIsChatOpen(true);
-                    }}
-                    className="w-10 h-10 rounded-full bg-[#17130f]/60 backdrop-blur-xs border border-[rgba(237,232,224,0.15)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-all cursor-pointer shadow-md"
-                  >
-                    <div className="p-2 flex flex-row items-center gap-2">
-                      💬
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <p className="font-mono text-[11.5px] text-[#d4c4b7] leading-relaxed">
-                {seller.handle} · {seller.joinDate} · 累計完成{" "}
-                {seller.completedTrades.toLocaleString()} 筆託管交割 ·
-                目前公開 {listingCount} 件私域現貨標的
-              </p>
-
-              <p className="max-w-[760px] font-sans text-[13.5px] text-[#d4c4b7] leading-relaxed">
-                {seller.bio}
-              </p>
-
-              <div className="mb-3">
-                <span className="font-mono text-[10px] bg-brand/10 text-brand px-2.5 py-1 rounded-full border border-brand/20 uppercase tracking-[0.18em] font-bold">
-                  🏅 {seller.level}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                {seller.badges.map((badge) => (
-                  <div
-                    key={badge.id}
-                    title={badge.desc}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/6 bg-[#17130f] px-3 py-1.5"
-                  >
-                    <span className="text-[13px]">{badge.emoji}</span>
-                    <span className="font-mono text-[10.5px] text-[#d4c4b7]">
-                      {badge.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <PublicPersonaProfileHeader
+          profile={seller}
+          rating={seller.ratingScore}
+          reviewCount={0}
+          variant="storefront"
+          listingCount={listingCount}
+          onStorefrontChat={() => {
+            setActiveRoomId(seller.id);
+            setIsChatOpen(true);
+          }}
+        />
       </div>
 
       <div className="hidden lg:flex items-center mb-6 gap-2 self-start xl:self-start shrink-0">

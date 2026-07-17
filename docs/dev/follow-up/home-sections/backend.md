@@ -17,6 +17,7 @@
 ## Loaders
 
 - `lib/home/load-home-listings.ts` — `fetchHomeListingsByPersona` via `createPublicClient()`
+- `lib/listings/images.ts` — `parseListingImageUrls` (standard `[{url,order}]`, legacy `string[]`, loose objects), `resolveListingCoverImageUrl` (listing photo → catalog `image_url`)
 - `lib/home/constants.ts` — `HOME_LISTING_LIMIT`, `HOME_WISHLIST_LIMIT`, cache TTL
 - `lib/wishlist/pricing.ts` — `resolveWishlistDisplayValue` (SNKRDUNK → platform → tracked)
 - `lib/wishlist/sparkline.ts` — `getSparklinePoints`, `hasWishlistTrendData`

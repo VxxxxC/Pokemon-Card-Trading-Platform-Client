@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
-import { ProfileTabNav } from "@/app/components/profile/ProfileTabNav";
 import type { TabItem } from "@/app/components/profile/ProfileTabNav";
+import { UserProfileTabNav } from "@/app/components/profile/UserProfileTabNav";
 import { UserProfileDashboardShell } from "@/app/components/rewards/UserProfileDashboardShell";
 
 export const metadata: Metadata = {
@@ -30,7 +30,7 @@ export default function UserProfileLayout({
       <MobileHeader />
 
       <main className="mt-5 flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
-        <ProfileTabNav tabs={USER_TABS} />
+        <UserProfileTabNav tabs={USER_TABS} />
         <UserProfileDashboardShell>{children}</UserProfileDashboardShell>
       </main>
 
