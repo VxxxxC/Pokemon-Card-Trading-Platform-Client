@@ -198,6 +198,22 @@ CREATE INDEX idx_listings_item_type ON public.listings (item_type);
 
 Init trigger on `listings` INSERT. Seller RLS: read own stats via `listings.seller_id = auth.uid()`.
 
+### 2.3.2 `listing_engagement_events` — 瀏覽／叫價時序
+
+> migration `20260717200000_listing_engagement_events.sql`
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `listing_id` | UUID FK → `listings.id` | ON DELETE CASCADE |
+| `actor_id` | UUID FK → `profiles.id` | nullable |
+| `event_type` | `listing_engagement_event_type` | `view` \| `offer` |
+| `occurred_at` | TIMESTAMPTZ | |
+
+Dual-write with `listing_stats`: `rpc_increment_listing_view` → `view`; `fn_bump_listing_offers_count` → `offer`. Merchant product analytics chart buckets read from events; KPI totals read from `listing_stats`.
+
+RPC: `get_merchant_product_analytics(p_product_id, p_time_range, p_history_page, p_history_page_size)` — migration `20260717201000_merchant_product_analytics.sql`.
+
 ### 2.4 `orders` — 全額託管訂單（嚴禁訂金欄位）
 
 ```sql

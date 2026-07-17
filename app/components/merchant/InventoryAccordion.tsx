@@ -302,7 +302,7 @@ export function InventoryAccordion({ skuGroups, analytics = true }: InventoryAcc
                   {analytics ? 
                   <div className="pt-1 border-t border-[rgba(237,232,224,0.06)]">
                     <Link
-                      href={`/profile/merchant/analytics?sku=${sku.cardNo}`}
+                      href={`/profile/merchant/analytics?productId=${sku.id}`}
                       className="w-full flex items-center justify-center gap-2 h-10 bg-[rgba(212,165,116,0.07)] text-brand border border-brand/25 font-sans text-[13px] font-semibold rounded-xl hover:bg-[rgba(212,165,116,0.15)] active:scale-[0.98] transition-all"
                     >
                       📊 前往本卡牌進階商品分析

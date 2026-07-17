@@ -6,7 +6,7 @@ import type {
   MerchantDashboardShop,
 } from "@/app/lib/dashboard/merchant-types";
 import { formatSellerJoinDate } from "@/lib/marketplace/seller-profile";
-import { resolveAvatarUrl } from "@/lib/profile/avatar";
+import { resolveAvatarUrl, resolveOptionalMediaUrl } from "@/lib/profile/avatar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
@@ -23,6 +23,7 @@ type MerchantShopRow = Pick<
   | "shop_name"
   | "shop_handle"
   | "shop_avatar_path"
+  | "top_banner_path"
   | "reputation_tag"
   | "created_at"
   | "completed_trades_count"
@@ -49,6 +50,7 @@ function mapShopRow(
     shopHandle: formatShopHandle(shop.shop_handle),
     joinDateLabel: formatSellerJoinDate(shop.created_at ?? ""),
     avatarUrl: resolveAvatarUrl(shop.shop_avatar_path),
+    topBannerUrl: resolveOptionalMediaUrl(shop.top_banner_path),
     ratingScore: shop.rating_score,
     reputationTag: shop.reputation_tag,
     completedTradesCount: shop.completed_trades_count ?? 0,
@@ -157,7 +159,7 @@ export async function getMerchantDashboardOverview(): Promise<
         supabase
           .from("merchant_shops")
           .select(
-            "merchant_id, shop_name, shop_handle, shop_avatar_path, reputation_tag, created_at, completed_trades_count, rating_score",
+            "merchant_id, shop_name, shop_handle, shop_avatar_path, top_banner_path, reputation_tag, created_at, completed_trades_count, rating_score",
           )
           .eq("merchant_id", user.id)
           .maybeSingle<MerchantShopRow>(),

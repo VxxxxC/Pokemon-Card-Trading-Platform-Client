@@ -43,4 +43,4 @@
 
 - No `useMerchantStore` on overview — trading list/detail remain separate wired flows.
 - Monthly revenue is DB aggregate until Stripe / `merchant_ledgers` milestone.
-- `performance` page remains mock; link preserved.
+- Performance analytics wired at `/profile/merchant/performance` — see [merchant-performance](../merchant-performance/frontend.md).

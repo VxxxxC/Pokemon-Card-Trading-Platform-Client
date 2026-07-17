@@ -6,6 +6,7 @@ export type MerchantDashboardShop = {
   shopHandle: string | null;
   joinDateLabel: string;
   avatarUrl: string;
+  topBannerUrl: string | null;
   ratingScore: number | null;
   reputationTag: Json | null;
   completedTradesCount: number;

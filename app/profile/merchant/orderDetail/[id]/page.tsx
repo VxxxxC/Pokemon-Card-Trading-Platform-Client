@@ -57,7 +57,7 @@ export default function MerchantOrderDetailPage() {
   }, [orderId]);
 
   useEffect(() => {
-    if (!isMounted) {
+  if (!isMounted) {
       return;
     }
 

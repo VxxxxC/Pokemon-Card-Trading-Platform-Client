@@ -288,6 +288,52 @@ export type Database = {
           },
         ]
       }
+      listing_engagement_events: {
+        Row: {
+          actor_id: string | null
+          event_type: Database["public"]["Enums"]["listing_engagement_event_type"]
+          id: string
+          listing_id: string
+          occurred_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          event_type: Database["public"]["Enums"]["listing_engagement_event_type"]
+          id?: string
+          listing_id: string
+          occurred_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          event_type?: Database["public"]["Enums"]["listing_engagement_event_type"]
+          id?: string
+          listing_id?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_engagement_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_engagement_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_engagement_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_product_summaries"
+            referencedColumns: ["lowest_listing_id"]
+          },
+        ]
+      }
       listing_stats: {
         Row: {
           listing_id: string
@@ -658,6 +704,7 @@ export type Database = {
           created_at?: string | null
           merchant_id?: string
           rating_score?: number | null
+          reputation_tag?: Json | null
           shipping_speed_score?: number | null
           shop_avatar_path?: string | null
           shop_description?: string | null
@@ -818,6 +865,8 @@ export type Database = {
           element_type?: string | null
           hp?: number | null
           id: string
+          id_canonical?: string | null
+          id_compact?: string | null
           image_url: string
           jan_code?: string | null
           last_synced_at?: string | null
@@ -840,6 +889,8 @@ export type Database = {
           element_type?: string | null
           hp?: number | null
           id?: string
+          id_canonical?: string | null
+          id_compact?: string | null
           image_url?: string
           jan_code?: string | null
           last_synced_at?: string | null
@@ -1395,6 +1446,22 @@ export type Database = {
         Args: { p_user_reward_ids: string[] }
         Returns: Json
       }
+      canonical_card_search_key: { Args: { input: string }; Returns: string }
+      card_identifier_flexible_match: {
+        Args: { p_query: string; p_target: string }
+        Returns: boolean
+      }
+      card_search_tokens_array: { Args: { input: string }; Returns: string[] }
+      catalog_card_identifier_matches: {
+        Args: {
+          p_card_number: string
+          p_display_id: string
+          p_query: string
+          p_set_code: string
+        }
+        Returns: boolean
+      }
+      compact_alphanumeric: { Args: { input: string }; Returns: string }
       compute_price_vs_market_pct: {
         Args: { p_listing_price: number; p_market_avg_price: number }
         Returns: number
@@ -1419,6 +1486,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      fn_assert_offer_not_self_dealing: {
+        Args: { p_buyer_id: string; p_seller_id: string }
+        Returns: undefined
+      }
       fn_assert_p2p_offer_aml_limits: {
         Args: {
           p_buyer_id: string
@@ -1429,8 +1500,15 @@ export type Database = {
         Returns: undefined
       }
       fn_bump_listing_offers_count: {
-        Args: { p_listing_id: string }
+        Args: { p_actor_id?: string; p_listing_id: string }
         Returns: undefined
+      }
+      fn_chat_party_profile_snippet: {
+        Args: {
+          p_persona: Database["public"]["Enums"]["seller_persona_type"]
+          p_profile_id: string
+        }
+        Returns: Json
       }
       fn_claim_mission_points: {
         Args: { p_description?: string; p_mission_id: string; p_points: number }
@@ -1455,6 +1533,32 @@ export type Database = {
           p_use_authentication: boolean
         }
         Returns: boolean
+      }
+      fn_merchant_order_is_auth_in_progress: {
+        Args: {
+          p_escrow_status: Database["public"]["Enums"]["escrow_state"]
+          p_requires_authentication: boolean
+        }
+        Returns: boolean
+      }
+      fn_merchant_order_is_open: {
+        Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] }
+        Returns: boolean
+      }
+      fn_merchant_order_needs_seller_action: {
+        Args: {
+          p_escrow_status: Database["public"]["Enums"]["escrow_state"]
+          p_requires_authentication: boolean
+        }
+        Returns: boolean
+      }
+      fn_recalculate_member_reputation_tags: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      fn_recalculate_merchant_reputation_tags: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       fn_recalculate_reputation_tags: {
         Args: { p_user_id: string }
@@ -1555,11 +1659,25 @@ export type Database = {
           rarity: string
         }[]
       }
+      get_merchant_performance_analytics: {
+        Args: { p_time_range?: string; p_top_limit?: number }
+        Returns: Json
+      }
+      get_merchant_product_analytics: {
+        Args: {
+          p_history_page?: number
+          p_history_page_size?: number
+          p_product_id: string
+          p_time_range?: string
+        }
+        Returns: Json
+      }
       get_reward_coupon_center: { Args: never; Returns: Json }
       get_unacknowledged_reward_grants: { Args: never; Returns: Json }
       get_user_chat_inbox: { Args: never; Returns: Json }
       get_user_chat_inbox_lobby: { Args: never; Returns: Json }
       get_user_reward_coupons: { Args: never; Returns: Json }
+      is_card_identifier_query: { Args: { p_query: string }; Returns: boolean }
       is_chat_room_member: {
         Args: { p_room_id: string; p_user_id?: string }
         Returns: boolean
@@ -1818,23 +1936,67 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
-      search_product_catalog: {
+      search_merchant_trading_orders: {
         Args: {
-          p_item_type?: string
-          p_query: string
+          p_include_auth_in_progress?: boolean
+          p_include_payment_pending?: boolean
+          p_page?: number
+          p_page_size?: number
+          p_search_query?: string
+          p_tab_status?: string
         }
         Returns: {
-          card_number: string | null
-          display_id: string | null
+          buyer_avatar_path: string
+          buyer_display_name: string
+          buyer_id: string
+          buyer_username: string
+          card_number: string
+          catalog_image_url: string
+          count_needs_action: number
+          count_pending_auth: number
+          count_pending_payment: number
+          count_status_all: number
+          count_status_cancelled: number
+          count_status_completed: number
+          count_status_pending: number
+          created_at: string
+          display_id: string
+          escrow_status: Database["public"]["Enums"]["escrow_state"]
+          final_price: number
+          grading_company: string
+          grading_score: string
+          has_reviewed_by_me: boolean
+          listing_images: Json
+          merchant_id: string
+          order_id: string
+          order_number: string
+          page: number
+          page_size: number
+          product_name_en: string
+          product_name_ja: string
+          product_name_zh: string
+          range_end: number
+          range_start: number
+          requires_authentication: boolean
+          set_code: string
+          total_count: number
+          total_pages: number
+        }[]
+      }
+      search_product_catalog: {
+        Args: { p_item_type?: string; p_query: string }
+        Returns: {
+          card_number: string
+          display_id: string
           id: string
           image_url: string
-          name_en: string | null
+          name_en: string
           name_ja: string
-          name_zh: string | null
-          pokemon_stage: string | null
-          rarity: string | null
+          name_zh: string
+          pokemon_stage: string
+          rarity: string
           set_code: string
-          snkr_rank: number | null
+          snkr_rank: number
           total_count: number
           type: Database["public"]["Enums"]["catalog_type"]
         }[]
@@ -1933,6 +2095,7 @@ export type Database = {
         | "completed_and_transferred"
         | "refunded"
       kyc_state: "pending" | "verified" | "rejected"
+      listing_engagement_event_type: "view" | "offer"
       listing_status: "active" | "sold" | "inactive"
       member_escrow_status:
         | "payment"
@@ -2108,6 +2271,7 @@ export const Constants = {
         "refunded",
       ],
       kyc_state: ["pending", "verified", "rejected"],
+      listing_engagement_event_type: ["view", "offer"],
       listing_status: ["active", "sold", "inactive"],
       member_escrow_status: [
         "payment",

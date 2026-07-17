@@ -1,0 +1,1 @@
+export const MERCHANT_PRODUCT_HISTORY_PAGE_SIZE = 6;

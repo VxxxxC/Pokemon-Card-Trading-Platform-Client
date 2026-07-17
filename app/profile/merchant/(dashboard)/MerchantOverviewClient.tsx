@@ -101,6 +101,7 @@ export function MerchantOverviewClient({
   const shopName = shop?.shopName ?? "認證商戶";
   const avatarUrl = shop?.avatarUrl ?? DEFAULT_AVATAR_URL;
   const displayAvatarUrl = avatarOverrideUrl ?? avatarUrl;
+  const topBannerUrl = shop?.topBannerUrl ?? null;
   const shopMeta = formatShopMeta(shop?.shopHandle ?? null, shop?.joinDateLabel ?? "");
   const mainTitleLabel = mainTitle?.nameZh ?? "尚未獲得稱號";
   const aggregateRating = initialData.aggregateRating ?? 0;
@@ -142,7 +143,22 @@ export function MerchantOverviewClient({
           </div>
         </Link>
 
-        <div className="h-24 bg-linear-to-r from-[#2a2318] via-[rgba(212,165,116,0.12)] to-[#2a2318]" />
+        {topBannerUrl ? (
+          <div className="relative h-36 sm:h-40 w-full">
+            <Image
+              src={topBannerUrl}
+              alt={`${shopName} 店舖橫幅`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1280px) 100vw, 1200px"
+              priority
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-bg-card via-[rgba(38,33,28,0.35)] to-transparent" />
+          </div>
+        ) : (
+          <div className="h-24 bg-linear-to-r from-[#2a2318] via-[rgba(212,165,116,0.12)] to-[#2a2318]" />
+        )}
         <div className="px-5 pb-5">
           <div className="flex items-end justify-between -mt-10 mb-3 gap-3">
             <div className="relative w-20 h-20 shrink-0">

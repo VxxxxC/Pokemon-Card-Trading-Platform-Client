@@ -39,6 +39,7 @@ type UserRole = Enums<"user_role">;
 | `catalog_type` | `single_card`, `booster_pack`, `booster_box`, `gift_set`, `starter_deck` |
 | `escrow_state` | `payment_held`, `authenticating`, `authenticated`, `completed_and_transferred`, `refunded` |
 | `kyc_state` | `pending`, `verified`, `rejected` |
+| `listing_engagement_event_type` | `view`, `offer` |
 | `listing_status` | `active`, `sold`, `inactive` |
 | `member_escrow_status` | `payment`, `custody`, `grading`, `shipped`, `released`, `cancelled` |
 | `member_order_state` | `pending`, `meetup_arranged`, `completed`, `cancelled` |
@@ -58,17 +59,29 @@ type UserRole = Enums<"user_role">;
 | Function | Args | Returns |
 |----------|------|---------|
 | `acknowledge_reward_grants` | `{ p_user_reward_ids: string[] }` | `Json` |
+| `canonical_card_search_key` | `{ input: string };` | `string` |
+| `card_identifier_flexible_match` | `{ p_query: string; p_target: string }` | `boolean` |
+| `card_search_tokens_array` | `{ input: string };` | `string[]` |
+| `catalog_card_identifier_matches` | `{ p_card_number: string p_display_id: string p_query: string p_set_code: string }` | `boolean` |
+| `compact_alphanumeric` | `{ input: string };` | `string` |
 | `compute_price_vs_market_pct` | `{ p_listing_price: number; p_market_avg_price: number }` | `number` |
 | `escape_ilike_pattern` | `{ input: string };` | `string` |
 | `execute_daily_check_in` | `never;` | `Json` |
 | `fn_apply_point_transaction` | `{ p_amount: number p_description?: string p_source_ref?: string p_source_type: string p_user_id: st…` | `number` |
 | `fn_archive_seller_collection_for_listing` | `{ p_final_price: number p_listing_id: string p_seller_id: string }` | `undefined` |
+| `fn_assert_offer_not_self_dealing` | `{ p_buyer_id: string; p_seller_id: string }` | `undefined` |
 | `fn_assert_p2p_offer_aml_limits` | `{ p_buyer_id: string p_listing_id: string p_offer_price: number p_use_authentication: boolean }` | `undefined` |
-| `fn_bump_listing_offers_count` | `{ p_listing_id: string }` | `undefined` |
+| `fn_bump_listing_offers_count` | `{ p_actor_id?: string; p_listing_id: string }` | `undefined` |
+| `fn_chat_party_profile_snippet` | `{ p_persona: Database["public"]["Enums"]["seller_persona_type"] p_profile_id: string }` | `Json` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
 | `fn_issue_reward_from_template` | `{ p_grant_dedup_key?: string p_template_id: string p_user_id: string }` | `string` |
 | `fn_member_order_is_open` | `{ p_escrow_status: Database["public"]["Enums"]["member_escrow_status"] p_status: Database["public"]…` | `boolean` |
+| `fn_merchant_order_is_auth_in_progress` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] p_requires_authentication: boolean }` | `boolean` |
+| `fn_merchant_order_is_open` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] }` | `boolean` |
+| `fn_merchant_order_needs_seller_action` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] p_requires_authentication: boolean }` | `boolean` |
+| `fn_recalculate_member_reputation_tags` | `{ p_user_id: string }` | `undefined` |
+| `fn_recalculate_merchant_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_redeem_member_points` | `{ p_amount: number p_description?: string p_source_ref?: string }` | `Json` |
 | `fn_resolve_member_listing_id` | `{ p_listing_ref: string; p_seller_id: string }` | `string` |
@@ -83,11 +96,14 @@ type UserRole = Enums<"user_role">;
 | `get_marketplace_price_bounds` | `never` | `{ max_price: number min_price: number }[]` |
 | `get_marketplace_product_listings` | `{ p_grade_filters?: Json p_only_graded?: boolean p_page?: number p_page_size?: number p_product_id:…` | `{ created_at: string filtered_lowest_price: number grading_company: string grading_score: string li…` |
 | `get_marketplace_rarities` | `never` | `{ rarity: string }[]` |
+| `get_merchant_performance_analytics` | `{ p_time_range?: string; p_top_limit?: number }` | `Json` |
+| `get_merchant_product_analytics` | `{ p_history_page?: number p_history_page_size?: number p_product_id: string p_time_range?: string }` | `Json` |
 | `get_reward_coupon_center` | `never;` | `Json` |
 | `get_unacknowledged_reward_grants` | `never;` | `Json` |
 | `get_user_chat_inbox` | `never;` | `Json` |
 | `get_user_chat_inbox_lobby` | `never;` | `Json` |
 | `get_user_reward_coupons` | `never;` | `Json` |
+| `is_card_identifier_query` | `{ p_query: string };` | `boolean` |
 | `is_chat_room_member` | `{ p_room_id: string; p_user_id?: string }` | `boolean` |
 | `is_display_name_available` | `{ name: string };` | `boolean` |
 | `listing_grade_sort_score` | `{ grading_company: string; grading_score: string }` | `number` |
@@ -117,6 +133,8 @@ type UserRole = Enums<"user_role">;
 | `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_keyword?: string p_name_query?: string p_page?: n…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_products_browse` | `{ p_page?: number; p_page_size?: number; p_sort?: string }` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_seller_listings` | `{ p_grade_filters?: Json p_name_query?: string p_page?: number p_page_size?: number p_price_max?: n…` | `{ card_number: string created_at: string display_id: string grading_company: string grading_score: …` |
+| `search_merchant_trading_orders` | `{ p_include_auth_in_progress?: boolean p_include_payment_pending?: boolean p_page?: number p_page_s…` | `{ buyer_avatar_path: string buyer_display_name: string buyer_id: string buyer_username: string card…` |
+| `search_product_catalog` | `{ p_item_type?: string; p_query: string }` | `{ card_number: string display_id: string id: string image_url: string name_en: string name_ja: stri…` |
 | `search_public_profile_reviews` | `{ p_page?: number p_page_size?: number p_persona: Database["public"]["Enums"]["review_persona"] p_p…` | `{ aggregate_rating: number comment: string created_at: string is_merchant_tx: boolean page: number …` |
 | `search_user_trading_orders` | `{ p_page?: number p_page_size?: number p_persona?: string p_search_query?: string p_tab_status?: st…` | `{ buyer_id: string card_number: string catalog_image_url: string count_needs_action: number count_p…` |
 
@@ -164,9 +182,11 @@ type UserRole = Enums<"user_role">;
 | Column | Type | Nullable |
 |--------|------|----------|
 | `buyer_id` | `string` | No |
+| `buyer_persona` | `seller_persona_type` | No |
 | `created_at` | `string | null` | Yes |
 | `id` | `string` | No |
 | `seller_id` | `string` | No |
+| `seller_persona` | `seller_persona_type` | No |
 | `updated_at` | `string | null` | Yes |
 
 **Foreign keys:** `buyer_id` → `profiles`
@@ -219,6 +239,20 @@ type UserRole = Enums<"user_role">;
 | `user_id` | `string` | No |
 
 **Foreign keys:** `listing_id` → `listings`
+
+---
+
+### `listing_engagement_events`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `actor_id` | `string | null` | Yes |
+| `event_type` | `listing_engagement_event_type` | No |
+| `id` | `string` | No |
+| `listing_id` | `string` | No |
+| `occurred_at` | `string` | No |
+
+**Foreign keys:** `actor_id` → `profiles`
 
 ---
 
@@ -347,8 +381,12 @@ type UserRole = Enums<"user_role">;
 | `created_at` | `string | null` | Yes |
 | `merchant_id` | `string` | No |
 | `rating_score` | `number | null` | Yes |
+| `reputation_tag` | `Json | null` | Yes |
 | `shipping_speed_score` | `number | null` | Yes |
+| `shop_avatar_path` | `string | null` | Yes |
 | `shop_description` | `string | null` | Yes |
+| `shop_handle` | `string | null` | Yes |
+| `shop_name` | `string | null` | Yes |
 | `shop_rating_score` | `number | null` | Yes |
 | `top_banner_path` | `string | null` | Yes |
 | `updated_at` | `string | null` | Yes |
@@ -407,6 +445,8 @@ type UserRole = Enums<"user_role">;
 | `element_type` | `string | null` | Yes |
 | `hp` | `number | null` | Yes |
 | `id` | `string` | No |
+| `id_canonical` | `string | null` | Yes |
+| `id_compact` | `string | null` | Yes |
 | `image_url` | `string` | No |
 | `jan_code` | `string | null` | Yes |
 | `last_synced_at` | `string | null` | Yes |
@@ -614,7 +654,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**24 tables**
+**25 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -624,6 +664,7 @@ type UserRole = Enums<"user_role">;
 | `gamification_stats` | Gamification |
 | `kyc_records` | Merchant KYC |
 | `listing_bookmarks` | Marketplace bookmarks |
+| `listing_engagement_events` | — |
 | `listing_stats` | Marketplace analytics |
 | `listings` | Marketplace |
 | `member_orders` | P2P orders |
