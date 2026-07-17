@@ -6,15 +6,21 @@ import {
   validateMerchantShopFields,
   type MerchantShopFormErrors,
 } from "@/lib/merchant/validation";
+import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import {
+  bunnyObjectKeyFromCdnUrl,
+  deleteProfileAvatarFromBunny,
+  isAllowedBunnyCdnUrl,
+} from "@/lib/storage/bunny";
 import type { Database, Tables } from "@/types/supabase";
 
 type MerchantRoleRow = Pick<Tables<"profiles">, "role">;
 
 type MerchantShopSettingsRow = Pick<
   Tables<"merchant_shops">,
-  "merchant_id" | "shop_name" | "shop_handle" | "shop_description"
+  "merchant_id" | "shop_name" | "shop_handle" | "shop_description" | "shop_avatar_path"
 >;
 
 type MerchantShopUpdate =
@@ -25,6 +31,7 @@ export type MerchantSettingsData = {
   shopName: string;
   shopHandle: string;
   shopDescription: string;
+  shopAvatarUrl: string;
   email: string;
 };
 
@@ -107,7 +114,7 @@ export async function getMerchantSettings(): Promise<
 
   const { data: shop, error: shopError } = await supabase
     .from("merchant_shops")
-    .select("merchant_id, shop_name, shop_handle, shop_description")
+    .select("merchant_id, shop_name, shop_handle, shop_description, shop_avatar_path")
     .eq("merchant_id", user.id)
     .maybeSingle<MerchantShopSettingsRow>();
 
@@ -127,6 +134,7 @@ export async function getMerchantSettings(): Promise<
       shopName: shop.shop_name?.trim() ?? "",
       shopHandle: shop.shop_handle?.trim() ?? "",
       shopDescription: shop.shop_description?.trim() ?? "",
+      shopAvatarUrl: resolveAvatarUrl(shop.shop_avatar_path),
       email: user.email ?? "",
     },
   };
@@ -271,4 +279,113 @@ export async function updateMerchantShopProfile(
   revalidatePath("/marketplace/[id]", "page");
 
   return null;
+}
+
+export async function updateMerchantShopAvatar(
+  cdnUrl: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  const trimmedUrl = cdnUrl.trim();
+  if (!trimmedUrl || !isAllowedBunnyCdnUrl(trimmedUrl)) {
+    return { success: false, error: "店舖頭像網址無效" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle<MerchantRoleRow>();
+
+    if (profileError || !profile) {
+      return { success: false, error: "無法取得用戶資料" };
+    }
+
+    if (profile.role !== "merchant") {
+      return { success: false, error: "無商戶權限" };
+    }
+
+    const ensured = await ensureMerchantShopRow(supabase, user.id);
+    if (!ensured.ok) {
+      return { success: false, error: ensured.error };
+    }
+
+    const { data: currentShop, error: fetchError } = await supabase
+      .from("merchant_shops")
+      .select("shop_avatar_path")
+      .eq("merchant_id", user.id)
+      .maybeSingle<Pick<MerchantShopSettingsRow, "shop_avatar_path">>();
+
+    if (fetchError) {
+      return { success: false, error: mapMerchantShopFetchError(fetchError) };
+    }
+
+    if (!currentShop) {
+      return { success: false, error: "店舖尚未初始化，請完成商戶認證" };
+    }
+
+    const payload: MerchantShopUpdate = {
+      shop_avatar_path: trimmedUrl,
+      updated_at: new Date().toISOString(),
+    };
+
+    const shopsClient = supabase.from("merchant_shops") as unknown as {
+      update: (values: MerchantShopUpdate) => {
+        eq: (
+          column: "merchant_id",
+          value: string,
+        ) => {
+          select: (columns: "merchant_id") => Promise<{
+            data: { merchant_id: string }[] | null;
+            error: { code?: string; message?: string } | null;
+          }>;
+        };
+      };
+    };
+
+    const { data: updatedRows, error: updateError } = await shopsClient
+      .update(payload)
+      .eq("merchant_id", user.id)
+      .select("merchant_id");
+
+    if (updateError) {
+      const mapped = mapMerchantShopUpdateError(updateError);
+      return { success: false, error: mapped.form ?? "儲存失敗，請稍後再試" };
+    }
+
+    if (!updatedRows?.length) {
+      return {
+        success: false,
+        error: "沒有權限更新資料，請確認已套用 merchant_shops UPDATE migration",
+      };
+    }
+
+    const previousObjectKey = bunnyObjectKeyFromCdnUrl(
+      currentShop.shop_avatar_path ?? "",
+    );
+    if (previousObjectKey?.startsWith("shop-avatars/")) {
+      void deleteProfileAvatarFromBunny(previousObjectKey);
+    }
+  } catch {
+    return { success: false, error: "儲存失敗，請稍後再試" };
+  }
+
+  revalidatePath("/profile/merchant/settings");
+  revalidatePath("/profile/merchant");
+  revalidatePath(`/profile/${user.id}`);
+  revalidatePath("/marketplace/[id]", "page");
+
+  return { success: true };
 }

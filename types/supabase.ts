@@ -624,7 +624,9 @@ export type Database = {
           created_at: string | null
           merchant_id: string
           rating_score: number | null
+          reputation_tag: Json | null
           shipping_speed_score: number | null
+          shop_avatar_path: string | null
           shop_description: string | null
           shop_handle: string | null
           shop_name: string | null
@@ -639,7 +641,9 @@ export type Database = {
           created_at?: string | null
           merchant_id: string
           rating_score?: number | null
+          reputation_tag?: Json | null
           shipping_speed_score?: number | null
+          shop_avatar_path?: string | null
           shop_description?: string | null
           shop_handle?: string | null
           shop_name?: string | null
@@ -655,6 +659,7 @@ export type Database = {
           merchant_id?: string
           rating_score?: number | null
           shipping_speed_score?: number | null
+          shop_avatar_path?: string | null
           shop_description?: string | null
           shop_handle?: string | null
           shop_name?: string | null

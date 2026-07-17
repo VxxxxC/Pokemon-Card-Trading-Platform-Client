@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Json } from "@/types/supabase";
 import {
   getMainTitle,
-  resolveReputationTagDisplay,
+  resolveMemberReputationTagDisplay,
   type ActivityBadge,
   type TitleLevel,
 } from "@/lib/constants/titles";
@@ -33,7 +33,7 @@ export function useMemberTitleDisplay(
   const completedTrades = input.completedTradesCount ?? 0;
 
   return useMemo(() => {
-    const resolved = resolveReputationTagDisplay(input.reputationTag);
+    const resolved = resolveMemberReputationTagDisplay(input.reputationTag);
     const mainTitle =
       resolved.memberTitle ?? getMainTitle(completedTrades);
     const titleProgress = getMemberTitleProgress(completedTrades);

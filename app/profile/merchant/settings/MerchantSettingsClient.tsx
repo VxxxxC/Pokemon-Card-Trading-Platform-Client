@@ -1,18 +1,23 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Camera } from "lucide-react";
 import { toast } from "sonner";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
 import {
+  updateMerchantShopAvatar,
   updateMerchantShopProfile,
   type MerchantSettingsData,
 } from "@/app/actions/merchant-settings";
 import type { MerchantShopFormErrors } from "@/lib/merchant/validation";
+import { uploadMerchantShopAvatar } from "@/lib/merchant/client-upload";
+import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 
 type Props = {
   initialData: MerchantSettingsData;
@@ -29,12 +34,56 @@ function fieldClass(hasError: boolean): string {
 
 export function MerchantSettingsClient({ initialData }: Props) {
   const router = useRouter();
+  const [avatarOverrideUrl, setAvatarOverrideUrl] = useState<string | null>(null);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+  const displayAvatarUrl = avatarOverrideUrl ?? initialData.shopAvatarUrl ?? DEFAULT_AVATAR_URL;
+
   const [errors, formAction, isPending] = useActionState<
     MerchantShopFormErrors | null,
     FormData
   >(updateMerchantShopProfile, null);
 
   const wasPending = useRef(false);
+
+  const handleAvatarEditClick = useCallback(() => {
+    if (isAvatarUploading) return;
+    avatarFileInputRef.current?.click();
+  }, [isAvatarUploading]);
+
+  const handleAvatarFileChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+
+      const localPreview = URL.createObjectURL(file);
+      setAvatarOverrideUrl(localPreview);
+      setIsAvatarUploading(true);
+
+      try {
+        const { cdnUrl } = await uploadMerchantShopAvatar(file);
+        const result = await updateMerchantShopAvatar(cdnUrl);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        URL.revokeObjectURL(localPreview);
+        setAvatarOverrideUrl(cdnUrl);
+        toast.success("店舖頭像已更新");
+        router.refresh();
+      } catch (error) {
+        URL.revokeObjectURL(localPreview);
+        setAvatarOverrideUrl(null);
+        toast.error(
+          error instanceof Error ? error.message : "店舖頭像上載失敗，請稍後再試",
+        );
+      } finally {
+        setIsAvatarUploading(false);
+      }
+    },
+    [router],
+  );
 
   useEffect(() => {
     if (wasPending.current && !isPending) {
@@ -90,6 +139,49 @@ export function MerchantSettingsClient({ initialData }: Props) {
             >
               店舖資料
             </h2>
+            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-[rgba(237,232,224,0.06)]">
+              <div className="relative w-16 h-16 shrink-0">
+                <div className="relative w-full h-full rounded-full border border-[rgba(237,232,224,0.12)] overflow-hidden bg-[#17130f]">
+                  <Image
+                    src={displayAvatarUrl}
+                    alt={`${initialData.shopName} 的店舖頭像`}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                  {isAvatarUploading ? (
+                    <div className="absolute inset-0 z-[1] flex items-center justify-center bg-[#17130f]/70">
+                      <div className="w-5 h-5 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                    </div>
+                  ) : null}
+                </div>
+                <input
+                  ref={avatarFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                  className="hidden"
+                  onChange={handleAvatarFileChange}
+                />
+                <button
+                  type="button"
+                  onClick={handleAvatarEditClick}
+                  disabled={isAvatarUploading}
+                  className="absolute -bottom-0.5 -right-0.5 z-10 w-6 h-6 rounded-full bg-[#17130f]/90 border border-[rgba(237,232,224,0.2)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="更換店舖頭像"
+                  aria-label="更換店舖頭像"
+                >
+                  <Camera size={12} aria-hidden="true" />
+                </button>
+              </div>
+              <div>
+                <p className="font-sans text-[13px] text-text-primary font-bold">
+                  店舖頭像
+                </p>
+                <p className="font-mono text-[11px] text-text-disabled mt-0.5">
+                  獨立於會員個人頭像 · JPG / PNG / WEBP
+                </p>
+              </div>
+            </div>
             <form action={formAction} className="space-y-4">
               {errors?.form && (
                 <p className="font-sans text-[12px] text-warning">{errors.form}</p>

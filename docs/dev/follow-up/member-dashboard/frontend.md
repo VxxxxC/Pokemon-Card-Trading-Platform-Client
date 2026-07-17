@@ -44,7 +44,7 @@
 - [x] Overview SSR: Hero + stats visible in HTML before hydrate (no mount-time action waterfall)
 - [x] `RewardNotificationHost` deferred via dynamic import + idle callback
 - [x] Stepper uses `MEMBER_TITLES[].badgeUrl` via `TitleBadgeIcon`
-- [ ] Merchant dashboard titles — follow-up
+- [x] Merchant dashboard titles — see [merchant-dashboard/frontend.md](../merchant-dashboard/frontend.md)
 
 ---
 

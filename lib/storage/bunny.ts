@@ -52,6 +52,14 @@ export function buildAvatarObjectKey(
   return `avatars/${userId}/${randomUUID()}.${safeExt}`;
 }
 
+export function buildShopAvatarObjectKey(
+  merchantId: string,
+  extension: string,
+): string {
+  const safeExt = extension.replace(/^\./, "").toLowerCase() || "webp";
+  return `shop-avatars/${merchantId}/${randomUUID()}.${safeExt}`;
+}
+
 export function buildListingCdnUrl(
   config: BunnyStorageConfig,
   objectKey: string,
@@ -155,6 +163,42 @@ export async function uploadProfileAvatarToBunny(
 
   const extension = extensionFromContentType(contentType);
   const objectKey = buildAvatarObjectKey(userId, extension);
+  const uploadUrl = buildObjectDeleteUrl(config, objectKey);
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      AccessKey: config.accessKey,
+      "Content-Type": contentType,
+    },
+    body: Buffer.from(fileBytes),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Bunny upload failed (${response.status})${detail ? `: ${detail}` : ""}`,
+    );
+  }
+
+  return {
+    objectKey,
+    cdnUrl: buildListingCdnUrl(config, objectKey),
+  };
+}
+
+export async function uploadMerchantShopAvatarToBunny(
+  merchantId: string,
+  fileBytes: Uint8Array,
+  contentType: string,
+): Promise<BunnyAvatarUpload> {
+  const config = getBunnyStorageConfig();
+  if (!config) {
+    throw new Error("Bunny.net storage is not configured");
+  }
+
+  const extension = extensionFromContentType(contentType);
+  const objectKey = buildShopAvatarObjectKey(merchantId, extension);
   const uploadUrl = buildObjectDeleteUrl(config, objectKey);
 
   const response = await fetch(uploadUrl, {

@@ -215,18 +215,9 @@ export function UserOverviewClient({
           </div>
         </Link>
 
-        {dualPersona.hasDualPersona ? (
-          <div className="absolute top-4 left-4 z-12">
-            <ProfilePersonaSwitch
-              activeContext="member"
-              context={dualPersona}
-            />
-          </div>
-        ) : null}
-
         <div className="h-20 bg-gradient-to-r from-[#2e2925] via-[rgba(212,165,116,0.08)] to-[#2e2925]" />
         <div className="px-5 pb-5">
-          <div className="flex items-end justify-between -mt-10 mb-3">
+          <div className="flex items-end justify-between -mt-10 mb-3 gap-3">
             <div className="relative w-20 h-20 shrink-0">
               <div className="relative w-full h-full rounded-full border-2 border-bg-card shadow-[0_4px_12px_rgba(0,0,0,0.50)] overflow-hidden bg-[#17130f]">
                 <Image
@@ -253,13 +244,20 @@ export function UserOverviewClient({
                 type="button"
                 onClick={handleAvatarEditClick}
                 disabled={isAvatarUploading}
-                className="absolute -top-0.5 -right-0.5 z-10 w-6 h-6 rounded-full bg-[#17130f]/90 border border-[rgba(237,232,224,0.2)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="absolute -bottom-0.5 -right-0.5 z-10 w-6 h-6 rounded-full bg-[#17130f]/90 border border-[rgba(237,232,224,0.2)] text-text-secondary hover:text-brand hover:border-brand/40 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="更換頭像"
                 aria-label="更換頭像"
               >
                 <Camera size={12} aria-hidden="true" />
               </button>
             </div>
+            {dualPersona.hasDualPersona ? (
+              <ProfilePersonaSwitch
+                activeContext="member"
+                context={dualPersona}
+                className="mb-1 shrink-0"
+              />
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">

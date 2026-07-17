@@ -1,7 +1,7 @@
 import {
-  getActivityBadgeById,
   getMainTitle,
-  resolveReputationTagDisplay,
+  resolveMemberReputationTagDisplay,
+  resolveMerchantReputationTagDisplay,
 } from "@/lib/constants/titles";
 import { formatSellerJoinDate, isUuid, resolveActivityBadgeEmoji } from "@/lib/marketplace/seller-profile";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
@@ -49,13 +49,23 @@ type MerchantShopRow = Pick<
   | "shop_name"
   | "shop_handle"
   | "shop_description"
+  | "shop_avatar_path"
+  | "reputation_tag"
+  | "created_at"
   | "completed_trades_count"
   | "rating_score"
 >;
 
-function mapBadges(reputationTag: Json | null): MarketplaceSellerBadge[] {
-  const resolved = resolveReputationTagDisplay(reputationTag);
-  return resolved.activityBadges.map((badge) => ({
+function mapBadges(
+  isMerchant: boolean,
+  profileTag: Json | null,
+  merchantTag: Json | null,
+): MarketplaceSellerBadge[] {
+  const activityBadges = isMerchant
+    ? resolveMerchantReputationTagDisplay(merchantTag).activityBadges
+    : resolveMemberReputationTagDisplay(profileTag).activityBadges;
+
+  return activityBadges.map((badge) => ({
     id: badge.id,
     label: badge.nameZh,
     emoji: resolveActivityBadgeEmoji(badge.category),
@@ -68,10 +78,10 @@ function resolveLevelLabel(
   merchantShop: MerchantShopRow | null,
 ): string {
   const isMerchant = profile.role === "merchant";
-  const resolved = resolveReputationTagDisplay(profile.reputation_tag);
   const titleFromTag = isMerchant
-    ? resolved.merchantTitle
-    : resolved.memberTitle;
+    ? resolveMerchantReputationTagDisplay(merchantShop?.reputation_tag ?? null)
+        .merchantTitle
+    : resolveMemberReputationTagDisplay(profile.reputation_tag).memberTitle;
 
   if (titleFromTag) {
     return titleFromTag.nameZh;
@@ -121,17 +131,25 @@ function mapProfileRow(
     ? Number(merchantShop?.rating_score ?? profile.rating_score ?? 0)
     : Number(profile.rating_score ?? 0);
 
+  const avatarUrl = isMerchant
+    ? resolveAvatarUrl(merchantShop?.shop_avatar_path)
+    : resolveAvatarUrl(profile.avatar_path);
+
   return {
     id: profile.id,
     username,
     handle,
-    joinDate: formatSellerJoinDate(profile.created_at),
-    avatarUrl: resolveAvatarUrl(profile.avatar_path),
+    joinDate: formatSellerJoinDate(
+      isMerchant && merchantShop?.created_at
+        ? merchantShop.created_at
+        : profile.created_at,
+    ),
+    avatarUrl,
     bio,
     level: resolveLevelLabel(profile, merchantShop),
     verifiedBuyer: isMerchant,
     completedTrades,
-    badges: mapBadges(profile.reputation_tag),
+    badges: mapBadges(isMerchant, profile.reputation_tag, merchantShop?.reputation_tag ?? null),
     role: profile.role,
     ratingScore,
   };
@@ -164,7 +182,7 @@ async function fetchProfileById(
     const shopResult = await supabase
       .from("merchant_shops")
       .select(
-        "shop_name, shop_handle, shop_description, completed_trades_count, rating_score",
+        "shop_name, shop_handle, shop_description, shop_avatar_path, reputation_tag, created_at, completed_trades_count, rating_score",
       )
       .eq("merchant_id", profile.id)
       .maybeSingle<MerchantShopRow>();

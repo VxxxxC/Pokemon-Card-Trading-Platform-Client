@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <circle cx="32" cy="32" r="28" fill="#17130f" stroke="#d4a574" stroke-width="2"/>
+  <circle cx="32" cy="32" r="20" fill="#26211C" stroke="#d4a574" stroke-width="1" opacity="0.5"/>
+  <text x="32" y="38" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#d4a574">⚡</text>
+</svg>

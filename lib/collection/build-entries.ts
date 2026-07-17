@@ -68,6 +68,7 @@ export async function loadCollectionPricingContext(
             "id, product_id, grading_company, grading_score, price, source_collection_id, status",
           )
           .eq("seller_id", userId)
+          .eq("seller_persona", "member")
           .in("status", ["active", "inactive"]);
 
   const [catalogResult, marketResult, platformListingsResult, userListingsResult] =

@@ -1,13 +1,15 @@
 /**
  * HKCardVault - 用戶與商戶稱號系統核心常量定義
- * 適用於前端 UI 渲染、Stitch AI 組件適配及 Edge Functions 晉升校驗
  *
- * DB contract: profiles.reputation_tag JSON (fn_recalculate_reputation_tags)
- *   { core_main_member: 1-4 | null, core_main_merchant: 1-4 | null, activity_badges: string[] }
+ * DB contract (split personas):
+ *   profiles.reputation_tag           → { core_main_member, activity_badges }
+ *   merchant_shops.reputation_tag     → { core_main_merchant, activity_badges }
  * Badge / level IDs must match SQL — update migration when changing rules here.
  */
 
-/** Platform go-live; founding-member window = first 30 days after this (sync SQL migration). */
+import { badgeAssetUrl } from '@/lib/constants/badge-assets';
+
+/** Platform go-live; founding window = first 30 days after this (sync SQL migration). */
 export const PLATFORM_LAUNCH_AT = '2026-07-01T00:00:00+08:00';
 
 export interface TitleLevel {
@@ -15,72 +17,80 @@ export interface TitleLevel {
   nameZh: string;
   nameEn: string;
   threshold: number;
-  minRating?: number; // 僅賣家需要評分防禦
-  badgeUrl: string;   // 託管於 bunny.net 的資產路徑
-  styleClass: string; // Tailwind CSS 4 動態樣式
+  minRating?: number;
+  badgeUrl: string;
+  styleClass: string;
 }
 
 export interface ActivityBadge {
   id: string;
   nameZh: string;
   nameEn: string;
-  category: 'longevity' | 'trust' | 'collection' | 'engagement';
+  category: 'longevity' | 'trust' | 'collection' | 'engagement' | 'sales';
   description: string;
   badgeUrl: string;
 }
 
-/** Cached payload written by fn_recalculate_reputation_tags */
+export interface MemberReputationTagPayload {
+  core_main_member: number | null;
+  activity_badges: string[];
+}
+
+export interface MerchantReputationTagPayload {
+  core_main_merchant: number | null;
+  activity_badges: string[];
+}
+
+/** @deprecated Use MemberReputationTagPayload / MerchantReputationTagPayload */
 export interface ReputationTagPayload {
   core_main_member: number | null;
   core_main_merchant: number | null;
   activity_badges: string[];
 }
 
-// 1. 買家／成員核心主稱號級別 (Member Main Titles)
 export const MEMBER_TITLES: TitleLevel[] = [
   {
     level: 1,
     nameZh: '新晉收藏家',
     nameEn: 'Registered Collector',
     threshold: 1,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/member_l1.svg',
-    styleClass: 'border-slate-400 text-slate-300 bg-slate-900/50'
+    badgeUrl: badgeAssetUrl('member_l1.svg'),
+    styleClass: 'border-slate-400 text-slate-300 bg-slate-900/50',
   },
   {
     level: 2,
     nameZh: '白金級藏家',
     nameEn: 'Platinum Collector',
     threshold: 50,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/member_l2.svg',
-    styleClass: 'border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.2)] bg-slate-900/50'
+    badgeUrl: badgeAssetUrl('member_l2.svg'),
+    styleClass: 'border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.2)] bg-slate-900/50',
   },
   {
     level: 3,
     nameZh: '鑽石級貴賓',
     nameEn: 'Diamond VVIP',
     threshold: 200,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/member_l3.svg',
-    styleClass: 'border-indigo-400 text-indigo-200 font-bold shadow-[0_0_15px_rgba(129,140,248,0.3)] bg-slate-900/50'
+    badgeUrl: badgeAssetUrl('member_l3.svg'),
+    styleClass: 'border-indigo-400 text-indigo-200 font-bold shadow-[0_0_15px_rgba(129,140,248,0.3)] bg-slate-900/50',
   },
   {
     level: 4,
     nameZh: '殿堂級終身藏家',
     nameEn: 'Hall of Fame Curator',
     threshold: 500,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/member_l4.svg',
-    styleClass: 'border-amber-500 text-amber-200 font-extrabold animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.4)] bg-neutral-950'
-  }
+    badgeUrl: badgeAssetUrl('member_l4.svg'),
+    styleClass: 'border-amber-500 text-amber-200 font-extrabold animate-pulse shadow-[0_0_20px_rgba(245,158,11,0.4)] bg-neutral-950',
+  },
 ];
 
-// 2. 賣家／商戶核心主稱號級別 (Merchant Main Titles)
 export const MERCHANT_TITLES: TitleLevel[] = [
   {
     level: 1,
     nameZh: '認證新晉商戶',
     nameEn: 'Verified Seller',
     threshold: 1,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/merchant_l1.svg',
-    styleClass: 'border-emerald-500 text-emerald-400'
+    badgeUrl: badgeAssetUrl('merchant_l1.svg'),
+    styleClass: 'border-emerald-500 text-emerald-400',
   },
   {
     level: 2,
@@ -88,8 +98,8 @@ export const MERCHANT_TITLES: TitleLevel[] = [
     nameEn: 'Premium Star Merchant',
     threshold: 50,
     minRating: 4.7,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/merchant_l2.svg',
-    styleClass: 'border-zinc-300 text-zinc-100 shadow-[0_0_10px_rgba(255,255,255,0.1)]'
+    badgeUrl: badgeAssetUrl('merchant_l2.svg'),
+    styleClass: 'border-zinc-300 text-zinc-100 shadow-[0_0_10px_rgba(255,255,255,0.1)]',
   },
   {
     level: 3,
@@ -97,8 +107,8 @@ export const MERCHANT_TITLES: TitleLevel[] = [
     nameEn: 'Gold Flagship Merchant',
     threshold: 200,
     minRating: 4.85,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/merchant_l3.svg',
-    styleClass: 'border-yellow-500 text-yellow-300 font-bold shadow-[0_0_15px_rgba(234,179,8,0.3)]'
+    badgeUrl: badgeAssetUrl('merchant_l3.svg'),
+    styleClass: 'border-yellow-500 text-yellow-300 font-bold shadow-[0_0_15px_rgba(234,179,8,0.3)]',
   },
   {
     level: 4,
@@ -106,20 +116,19 @@ export const MERCHANT_TITLES: TitleLevel[] = [
     nameEn: 'Trusted Legend Merchant',
     threshold: 500,
     minRating: 4.95,
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/merchant_l4.svg',
-    styleClass: 'border-rose-500 text-rose-300 font-extrabold shadow-[0_0_25px_rgba(244,63,94,0.5)] bg-neutral-950'
-  }
+    badgeUrl: badgeAssetUrl('merchant_l4.svg'),
+    styleClass: 'border-rose-500 text-rose-300 font-extrabold shadow-[0_0_25px_rgba(244,63,94,0.5)] bg-neutral-950',
+  },
 ];
 
-// 3. 通用次要活動徽章 (Universal Activity Badges)
-export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
+export const MEMBER_ACTIVITY_BADGES: Record<string, ActivityBadge> = {
   FOUNDING_MEMBER: {
     id: 'FOUNDING_MEMBER',
     nameZh: '創始成員',
     nameEn: 'Founding Member',
     category: 'longevity',
     description: '帳戶建立於平台上線首 30 天內。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_founding.svg'
+    badgeUrl: badgeAssetUrl('badge_founding.svg'),
   },
   ANNUAL_VETERAN: {
     id: 'ANNUAL_VETERAN',
@@ -127,23 +136,23 @@ export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
     nameEn: 'Annual Veteran',
     category: 'longevity',
     description: '帳戶建立日數大於或等於 365 天。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_veteran.svg'
+    badgeUrl: badgeAssetUrl('badge_veteran.svg'),
   },
   FLAWLESS_REPUTATION: {
     id: 'FLAWLESS_REPUTATION',
     nameZh: '零負評至尊',
     nameEn: 'Flawless Reputation',
     category: 'trust',
-    description: '累計收到交易好評大於或等於 50 個，且好評率為 100%。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_flawless.svg'
+    description: '累計收到會員身分交易好評大於或等於 50 個，且好評率為 100%。',
+    badgeUrl: badgeAssetUrl('badge_flawless.svg'),
   },
   HIGHLY_RECOMMENDED: {
     id: 'HIGHLY_RECOMMENDED',
     nameZh: '信譽超卓',
     nameEn: 'Highly Recommended',
     category: 'trust',
-    description: '獲取超過 100 個 5 星評價。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_recommended.svg'
+    description: '獲取超過 100 個會員身分 5 星評價。',
+    badgeUrl: badgeAssetUrl('badge_recommended.svg'),
   },
   CENTURY_CURATOR: {
     id: 'CENTURY_CURATOR',
@@ -151,7 +160,7 @@ export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
     nameEn: 'Century Curator',
     category: 'collection',
     description: '帳戶總收藏卡量大於或等於 100 張。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_cards_100.svg'
+    badgeUrl: badgeAssetUrl('badge_cards_100.svg'),
   },
   VOLUME_COLLECTOR: {
     id: 'VOLUME_COLLECTOR',
@@ -159,7 +168,7 @@ export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
     nameEn: 'Volume Collector',
     category: 'collection',
     description: '帳戶總收藏卡量大於或等於 1,000 張。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_cards_1k.svg'
+    badgeUrl: badgeAssetUrl('badge_cards_1k.svg'),
   },
   THE_VAULT_TYCOON: {
     id: 'THE_VAULT_TYCOON',
@@ -167,7 +176,7 @@ export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
     nameEn: 'The Vault Tycoon',
     category: 'collection',
     description: '帳戶總收藏卡量大於或等於 10,000 張。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_cards_10k.svg'
+    badgeUrl: badgeAssetUrl('badge_cards_10k.svg'),
   },
   DAILY_ACTIVE_ENTHUSIAST: {
     id: 'DAILY_ACTIVE_ENTHUSIAST',
@@ -175,7 +184,7 @@ export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
     nameEn: 'Daily Active Enthusiast',
     category: 'engagement',
     description: '連續簽到日數大於或等於 30 天。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_streak_30.svg'
+    badgeUrl: badgeAssetUrl('badge_streak_30.svg'),
   },
   MARKET_PRICE_HUNTER: {
     id: 'MARKET_PRICE_HUNTER',
@@ -183,9 +192,71 @@ export const ACTIVITY_BADGES: Record<string, ActivityBadge> = {
     nameEn: 'Market Price Hunter',
     category: 'engagement',
     description: '於股票式交易系統中，累計發起「即時出價」並成功撮合或進入隊列大於或等於 30 次。',
-    badgeUrl: 'https://hkcardvault.b-cdn.net/assets/badges/badge_hunter.svg'
-  }
+    badgeUrl: badgeAssetUrl('badge_hunter.svg'),
+  },
 };
+
+export const MERCHANT_ACTIVITY_BADGES: Record<string, ActivityBadge> = {
+  FOUNDING_MERCHANT: {
+    id: 'FOUNDING_MERCHANT',
+    nameZh: '創始商戶',
+    nameEn: 'Founding Merchant',
+    category: 'longevity',
+    description: '店舖於平台上線首 30 天內完成認證。',
+    badgeUrl: badgeAssetUrl('badge_merchant_founding.svg'),
+  },
+  SHOP_ANNUAL_VETERAN: {
+    id: 'SHOP_ANNUAL_VETERAN',
+    nameZh: '年度店舖',
+    nameEn: 'Shop Annual Veteran',
+    category: 'longevity',
+    description: '店舖建立日數大於或等於 365 天。',
+    badgeUrl: badgeAssetUrl('badge_merchant_veteran.svg'),
+  },
+  MERCHANT_FLAWLESS_REPUTATION: {
+    id: 'MERCHANT_FLAWLESS_REPUTATION',
+    nameZh: '零負評店舖',
+    nameEn: 'Flawless Merchant',
+    category: 'trust',
+    description: '累計收到商戶身分交易好評大於或等於 50 個，且好評率為 100%。',
+    badgeUrl: badgeAssetUrl('badge_merchant_flawless.svg'),
+  },
+  MERCHANT_HIGHLY_RECOMMENDED: {
+    id: 'MERCHANT_HIGHLY_RECOMMENDED',
+    nameZh: '信譽星級店',
+    nameEn: 'Highly Recommended Shop',
+    category: 'trust',
+    description: '獲取超過 100 個商戶身分 5 星評價。',
+    badgeUrl: badgeAssetUrl('badge_merchant_recommended.svg'),
+  },
+  MERCHANT_CENTURY_SELLER: {
+    id: 'MERCHANT_CENTURY_SELLER',
+    nameZh: '百單商戶',
+    nameEn: 'Century Seller',
+    category: 'sales',
+    description: 'B2C 成交次數大於或等於 100 單。',
+    badgeUrl: badgeAssetUrl('badge_merchant_sales_100.svg'),
+  },
+  MERCHANT_VOLUME_SELLER: {
+    id: 'MERCHANT_VOLUME_SELLER',
+    nameZh: '五百單旗艦',
+    nameEn: 'Volume Seller',
+    category: 'sales',
+    description: 'B2C 成交次數大於或等於 500 單。',
+    badgeUrl: badgeAssetUrl('badge_merchant_sales_500.svg'),
+  },
+  MERCHANT_ELITE_SELLER: {
+    id: 'MERCHANT_ELITE_SELLER',
+    nameZh: '千單傳奇店',
+    nameEn: 'Elite Seller',
+    category: 'sales',
+    description: 'B2C 成交次數大於或等於 1,000 單。',
+    badgeUrl: badgeAssetUrl('badge_merchant_sales_1k.svg'),
+  },
+};
+
+/** @deprecated Use MEMBER_ACTIVITY_BADGES */
+export const ACTIVITY_BADGES: Record<string, ActivityBadge> = MEMBER_ACTIVITY_BADGES;
 
 export function getMemberTitleByLevel(level: number): TitleLevel | null {
   return MEMBER_TITLES.find((t) => t.level === level) ?? null;
@@ -195,53 +266,121 @@ export function getMerchantTitleByLevel(level: number): TitleLevel | null {
   return MERCHANT_TITLES.find((t) => t.level === level) ?? null;
 }
 
-export function getActivityBadgeById(id: string): ActivityBadge | null {
-  return ACTIVITY_BADGES[id] ?? null;
+export function getMemberActivityBadgeById(id: string): ActivityBadge | null {
+  return MEMBER_ACTIVITY_BADGES[id] ?? null;
 }
 
-export function parseReputationTagPayload(
+export function getMerchantActivityBadgeById(id: string): ActivityBadge | null {
+  return MERCHANT_ACTIVITY_BADGES[id] ?? null;
+}
+
+export function getActivityBadgeById(id: string): ActivityBadge | null {
+  return getMemberActivityBadgeById(id) ?? getMerchantActivityBadgeById(id);
+}
+
+function parseActivityBadgeIds(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  return raw.filter((b): b is string => typeof b === 'string');
+}
+
+export function parseMemberReputationTagPayload(
   raw: unknown,
-): ReputationTagPayload | null {
+): MemberReputationTagPayload | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
-  const badges = o.activity_badges;
-  if (!Array.isArray(badges)) return null;
+  const badges = parseActivityBadgeIds(o.activity_badges);
+  if (!badges) return null;
   return {
     core_main_member:
       typeof o.core_main_member === 'number' ? o.core_main_member : null,
-    core_main_merchant:
-      typeof o.core_main_merchant === 'number' ? o.core_main_merchant : null,
-    activity_badges: badges.filter((b): b is string => typeof b === 'string'),
+    activity_badges: badges,
   };
 }
 
-/** Resolve cached DB payload to display-ready title / badge objects */
-export function resolveReputationTagDisplay(raw: unknown): {
+export function parseMerchantReputationTagPayload(
+  raw: unknown,
+): MerchantReputationTagPayload | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const badges = parseActivityBadgeIds(o.activity_badges);
+  if (!badges) return null;
+  return {
+    core_main_merchant:
+      typeof o.core_main_merchant === 'number' ? o.core_main_merchant : null,
+    activity_badges: badges,
+  };
+}
+
+/** @deprecated Use parseMemberReputationTagPayload / parseMerchantReputationTagPayload */
+export function parseReputationTagPayload(
+  raw: unknown,
+): ReputationTagPayload | null {
+  const member = parseMemberReputationTagPayload(raw);
+  const merchant = parseMerchantReputationTagPayload(raw);
+  if (!member && !merchant) return null;
+  return {
+    core_main_member: member?.core_main_member ?? null,
+    core_main_merchant: merchant?.core_main_merchant ?? null,
+    activity_badges: member?.activity_badges ?? merchant?.activity_badges ?? [],
+  };
+}
+
+export function resolveMemberReputationTagDisplay(raw: unknown): {
   memberTitle: TitleLevel | null;
-  merchantTitle: TitleLevel | null;
   activityBadges: ActivityBadge[];
 } {
-  const payload = parseReputationTagPayload(raw);
+  const payload = parseMemberReputationTagPayload(raw);
   if (!payload) {
-    return { memberTitle: null, merchantTitle: null, activityBadges: [] };
+    return { memberTitle: null, activityBadges: [] };
   }
   return {
     memberTitle: payload.core_main_member
       ? getMemberTitleByLevel(payload.core_main_member)
       : null,
-    merchantTitle: payload.core_main_merchant
-      ? getMerchantTitleByLevel(payload.core_main_merchant)
-      : null,
     activityBadges: payload.activity_badges
-      .map((id) => getActivityBadgeById(id))
+      .map((id) => getMemberActivityBadgeById(id))
       .filter((b): b is ActivityBadge => b !== null),
   };
 }
 
-/**
- * Client-side preview: trade count + optional merchant rating gate.
- * Verified merchant with shop but 0 sales → pass hasMerchantShop for L1 baseline.
- */
+export function resolveMerchantReputationTagDisplay(raw: unknown): {
+  merchantTitle: TitleLevel | null;
+  activityBadges: ActivityBadge[];
+} {
+  const payload = parseMerchantReputationTagPayload(raw);
+  if (!payload) {
+    return { merchantTitle: null, activityBadges: [] };
+  }
+  return {
+    merchantTitle: payload.core_main_merchant
+      ? getMerchantTitleByLevel(payload.core_main_merchant)
+      : null,
+    activityBadges: payload.activity_badges
+      .map((id) => getMerchantActivityBadgeById(id))
+      .filter((b): b is ActivityBadge => b !== null),
+  };
+}
+
+/** @deprecated Prefer resolveMemberReputationTagDisplay / resolveMerchantReputationTagDisplay */
+export function resolveReputationTagDisplay(raw: unknown): {
+  memberTitle: TitleLevel | null;
+  merchantTitle: TitleLevel | null;
+  activityBadges: ActivityBadge[];
+} {
+  const member = resolveMemberReputationTagDisplay(raw);
+  const merchant = resolveMerchantReputationTagDisplay(raw);
+  return {
+    memberTitle: member.memberTitle,
+    merchantTitle: merchant.merchantTitle,
+    activityBadges: [
+      ...member.activityBadges,
+      ...merchant.activityBadges.filter(
+        (badge) => !member.activityBadges.some((m) => m.id === badge.id),
+      ),
+    ],
+  };
+}
+
 export function getMainTitle(
   completedTrades: number,
   options: {

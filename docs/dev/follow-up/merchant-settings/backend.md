@@ -47,6 +47,8 @@
 | `shop_name` | 店舖名稱 | Required non-empty |
 | `shop_handle` | 店舖帳號 (Handle) | Optional; 3–24 chars; unique (case-insensitive) |
 | `shop_description` | 店舖簡介 | Optional; max 280 chars |
+| `shop_avatar_path` | 店舖頭像 | Bunny CDN URL; **independent** from `profiles.avatar_path` |
+| `reputation_tag` | — | Merchant persona titles/badges SSOT (`core_main_merchant`, `activity_badges`); independent from `profiles.reputation_tag` |
 | `auth.users.email` | 電郵地址 | Read-only; shared with member login |
 
 ## Action contracts
@@ -65,9 +67,14 @@ type MerchantSettingsData = {
   shopName: string;
   shopHandle: string;
   shopDescription: string;
+  shopAvatarUrl: string;
   email: string;
 };
 ```
+
+### `updateMerchantShopAvatar(cdnUrl)`
+
+Writes `merchant_shops.shop_avatar_path` after Bunny upload via `/api/merchant/upload-avatar`.
 
 Requires `profiles.role = 'merchant'` and existing `merchant_shops` row (KYC init). No fallback from `profiles`.
 
@@ -97,6 +104,8 @@ bunx supabase db push
 ```
 
 - `20260716100000_merchant_shops_settings_columns.sql`
+- `20260717160000_merchant_shops_shop_avatar_path.sql`
+- `20260717170000_merchant_shops_reputation_tag_split.sql` — persona-split titles/badges
 
 ## How to verify (backend)
 

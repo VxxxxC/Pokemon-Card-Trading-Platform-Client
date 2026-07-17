@@ -100,6 +100,7 @@ async function fetchActiveSellerListings(
     .from("listings")
     .select("id, product_id, grading_company, grading_score, price")
     .eq("seller_id", userId)
+    .eq("seller_persona", "member")
     .eq("status", "active");
 
   if (error) {

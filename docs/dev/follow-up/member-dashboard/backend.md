@@ -43,7 +43,7 @@ Deferred on client (non-blocking):
 | 待售副標 | `collection.listedCount + orphanActiveListingCount` |
 | 總卡牌估值 | `computePortfolioTotals` + orphan listings via `resolveCollectionMarketValue` |
 
-**Orphan listing:** `listings.status = 'active'` with no matching `user_collections` row (`product_id + grading_company + grading_score`).
+**Orphan listing:** `listings.status = 'active'` and `seller_persona = 'member'` with no matching `user_collections` row (`product_id + grading_company + grading_score`). Merchant B2C listings (`seller_persona = 'merchant'`) are excluded — see merchant dashboard `activeListingCount`.
 
 ---
 
@@ -62,7 +62,7 @@ Deferred on client (non-blocking):
 
 Reuses: `lib/collection/build-entries.ts` (`loadCollectionPricingContext` with optional `userListingRows`, `computePortfolioTotals`), `lib/marketplace/portfolio-pricing.ts` (`resolveCollectionMarketValue`).
 
-**Titles (Section 1):** `profiles.reputation_tag` via overview; display helpers in `lib/constants/titles.ts`, `lib/titles/member-title-progress.ts`, `useMemberTitleDisplay.ts`. No extra API.
+**Titles (Section 1):** `profiles.reputation_tag` via overview (`{ core_main_member, activity_badges }` only); display helpers in `lib/constants/titles.ts` (`resolveMemberReputationTagDisplay`, `MEMBER_ACTIVITY_BADGES`), `lib/titles/member-title-progress.ts`, `useMemberTitleDisplay.ts`. No extra API.
 
 ---
 
