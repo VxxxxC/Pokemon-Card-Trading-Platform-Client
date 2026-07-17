@@ -10,6 +10,7 @@ export const STATUS_STEP_INDEX: Record<Exclude<OrderStatus, 'cancelled'>, number
 
 export interface SaleOrder {
   id: string;
+  orderNumber?: string;
   buyerId: string;     // Unique user identity for deterministic chat room hashing
   buyerName: string;
   sellerId: string;    // Unique seller identity for deterministic chat room hashing

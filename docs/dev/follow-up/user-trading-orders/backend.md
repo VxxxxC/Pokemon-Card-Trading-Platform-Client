@@ -406,7 +406,7 @@ bunx supabase gen types typescript --local > types/supabase.ts
 | **`order_number` in types** | `types/supabase.ts` may lack `order_number` until CLI regen — action uses extended query row type. |
 | **Auth escrow status steps** | `MemberAuthOrderTimeline` is UI baseline; DB still uses `pending` / `meetup_arranged` until dedicated auth statuses exist. |
 | **Modify offer + auth** | `rpc_modify_offer` does not change `use_authentication` — buyer must make a new offer to change auth choice. |
-| **Merchant orders** | `merchant_orders.order_number` column added; no list/detail action yet (`/profile/merchant/orderDetail/[id]` remains separate mock). |
+| **Merchant orders** | List via `search_merchant_trading_orders` ✅; **detail** via `getMerchantOrderDetail` ✅. Stripe checkout / logistics mutations deferred. |
 
 ## How to verify (backend)
 

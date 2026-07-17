@@ -65,7 +65,7 @@ export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
           </span>
           <span className="hidden sm:inline text-white/5">|</span>
           <span className="text-[11px] font-mono tracking-tight text-brand">
-            訂單編號: #{order.id}
+            訂單編號: #{order.orderNumber ?? order.id}
           </span>
         </div>
       </div>

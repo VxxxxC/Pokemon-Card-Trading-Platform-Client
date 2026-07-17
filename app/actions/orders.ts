@@ -34,6 +34,8 @@ import {
   INVALID_MEMBER_ORDER_ID_ERROR,
   resolveMemberOrderIdForUser,
 } from "@/lib/member-order/resolve-order-id";
+import { resolveMerchantOrderIdForMerchant } from "@/lib/merchant-order/resolve-order-id";
+import { getMerchantSellerActionFlags } from "@/app/lib/merchant-order/merchant-seller-actions";
 import { ensureMemberOrderListingUuid } from "@/lib/member-order/repair-listing-id";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { createClient } from "@/lib/supabase/server";
@@ -564,6 +566,493 @@ export async function getUserTradingOrders(
   return { success: true, data: result.data };
 }
 
+type SearchMerchantTradingOrdersRpcRow = {
+  order_id: string;
+  order_number: string | null;
+  buyer_id: string;
+  merchant_id: string;
+  final_price: number;
+  escrow_status: Tables<"merchant_orders">["escrow_status"];
+  requires_authentication: boolean | null;
+  created_at: string | null;
+  has_reviewed_by_me: boolean;
+  buyer_display_name: string | null;
+  buyer_username: string | null;
+  buyer_avatar_path: string | null;
+  grading_company: string;
+  grading_score: string | null;
+  listing_images: unknown;
+  product_name_ja: string;
+  product_name_zh: string | null;
+  product_name_en: string | null;
+  card_number: string | null;
+  set_code: string;
+  display_id: string | null;
+  catalog_image_url: string;
+  total_count: number | string;
+  page: number | string;
+  page_size: number | string;
+  total_pages: number | string;
+  range_start: number | string;
+  range_end: number | string;
+  count_status_all: number | string;
+  count_status_pending: number | string;
+  count_status_completed: number | string;
+  count_status_cancelled: number | string;
+  count_needs_action: number | string;
+  count_pending_payment: number | string;
+  count_pending_auth: number | string;
+};
+
+export type GetMerchantTradingOrdersInput = {
+  tabStatus: "all" | "pending" | "completed" | "cancelled";
+  searchQuery?: string;
+  page?: number;
+  pageSize?: number;
+  includePaymentPending?: boolean;
+  includeAuthInProgress?: boolean;
+};
+
+export type MerchantTradingBuyer = {
+  id: string;
+  displayName: string;
+  username: string | null;
+  avatarUrl: string;
+};
+
+export type MerchantTradingOrder = {
+  id: string;
+  orderKind: "merchant";
+  orderNumber: string | null;
+  buyerId: string;
+  merchantId: string;
+  finalPrice: number;
+  escrowStatus: Tables<"merchant_orders">["escrow_status"];
+  requiresAuthentication: boolean | null;
+  createdAt: string | null;
+  hasReviewedByMe: boolean;
+  buyer: MerchantTradingBuyer;
+  listing: {
+    gradingCompany: string;
+    gradingScore: string | null;
+  };
+  product: {
+    cardName: string;
+    cardNumber: string | null;
+    setCode: string;
+    displayId: string | null;
+    imageUrl: string;
+  };
+};
+
+export type MerchantTradingFilterCounts = {
+  status: {
+    all: number;
+    pending: number;
+    completed: number;
+    cancelled: number;
+  };
+  needsAction: number;
+  pendingSub: {
+    payment: number;
+    authInProgress: number;
+  };
+};
+
+export type SearchMerchantTradingOrdersResult =
+  | {
+      success: true;
+      data: MerchantTradingOrder[];
+      meta: TradingOrdersPaginationMeta;
+      filters: MerchantTradingFilterCounts;
+    }
+  | { success: false; error: string };
+
+type SearchMerchantTradingOrdersRpcArgs = {
+  p_tab_status: GetMerchantTradingOrdersInput["tabStatus"];
+  p_search_query?: string;
+  p_page: number;
+  p_page_size: number;
+  p_include_payment_pending: boolean;
+  p_include_auth_in_progress: boolean;
+};
+
+function toMerchantPaginationMeta(
+  row: SearchMerchantTradingOrdersRpcRow | undefined,
+  fallbackPage: number,
+  fallbackPageSize: number,
+): TradingOrdersPaginationMeta {
+  if (!row) {
+    return {
+      total: 0,
+      page: fallbackPage,
+      pageSize: fallbackPageSize,
+      totalPages: 0,
+      rangeStart: 0,
+      rangeEnd: 0,
+    };
+  }
+
+  return {
+    total: Number(row.total_count),
+    page: Number(row.page),
+    pageSize: Number(row.page_size),
+    totalPages: Number(row.total_pages),
+    rangeStart: Number(row.range_start),
+    rangeEnd: Number(row.range_end),
+  };
+}
+
+function toMerchantFilterCounts(
+  row: SearchMerchantTradingOrdersRpcRow | undefined,
+): MerchantTradingFilterCounts {
+  if (!row) {
+    return {
+      status: { all: 0, pending: 0, completed: 0, cancelled: 0 },
+      needsAction: 0,
+      pendingSub: { payment: 0, authInProgress: 0 },
+    };
+  }
+
+  return {
+    status: {
+      all: Number(row.count_status_all),
+      pending: Number(row.count_status_pending),
+      completed: Number(row.count_status_completed),
+      cancelled: Number(row.count_status_cancelled),
+    },
+    needsAction: Number(row.count_needs_action),
+    pendingSub: {
+      payment: Number(row.count_pending_payment),
+      authInProgress: Number(row.count_pending_auth),
+    },
+  };
+}
+
+function mapMerchantRpcRow(
+  row: SearchMerchantTradingOrdersRpcRow,
+): MerchantTradingOrder {
+  return {
+    id: row.order_id,
+    orderKind: "merchant",
+    orderNumber: row.order_number,
+    buyerId: row.buyer_id,
+    merchantId: row.merchant_id,
+    finalPrice: Number(row.final_price),
+    escrowStatus: row.escrow_status,
+    requiresAuthentication: row.requires_authentication,
+    createdAt: row.created_at,
+    hasReviewedByMe: row.has_reviewed_by_me,
+    buyer: {
+      id: row.buyer_id,
+      displayName: row.buyer_display_name ?? "未知用戶",
+      username: row.buyer_username,
+      avatarUrl: resolveAvatarUrl(row.buyer_avatar_path),
+    },
+    listing: {
+      gradingCompany: row.grading_company,
+      gradingScore: row.grading_score,
+    },
+    product: {
+      cardName: displayCardName({
+        name_ja: row.product_name_ja,
+        name_zh: row.product_name_zh,
+        name_en: row.product_name_en,
+      }),
+      cardNumber: row.card_number,
+      setCode: row.set_code,
+      displayId: row.display_id,
+      imageUrl: resolveOfferCardDisplayImage(
+        row.listing_images,
+        row.catalog_image_url,
+      ),
+    },
+  };
+}
+
+export async function searchMerchantTradingOrders(
+  input: GetMerchantTradingOrdersInput,
+): Promise<SearchMerchantTradingOrdersResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = resolveTradingPageSize(input.pageSize);
+  const totalStart = isTradingPerfLogEnabled() ? tradingPerfNow() : 0;
+
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error("[searchMerchantTradingOrders]", authError.message);
+      return { success: false, error: "無法驗證登入狀態" };
+    }
+
+    if (!user) {
+      return { success: false, error: "請登入以查閱訂單" };
+    }
+
+    const rpcArgs: SearchMerchantTradingOrdersRpcArgs = {
+      p_tab_status: input.tabStatus,
+      p_search_query: input.searchQuery?.trim() || undefined,
+      p_page: page,
+      p_page_size: pageSize,
+      p_include_payment_pending: input.includePaymentPending ?? true,
+      p_include_auth_in_progress: input.includeAuthInProgress ?? true,
+    };
+
+    const rpcStart = isTradingPerfLogEnabled() ? tradingPerfNow() : 0;
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "search_merchant_trading_orders",
+          args: SearchMerchantTradingOrdersRpcArgs,
+        ) => Promise<{
+          data: SearchMerchantTradingOrdersRpcRow[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("search_merchant_trading_orders", rpcArgs);
+
+    if (error) {
+      console.error("[searchMerchantTradingOrders]", error.message);
+      return { success: false, error: "無法載入訂單" };
+    }
+
+    const rows = (data ?? []) as SearchMerchantTradingOrdersRpcRow[];
+    const meta = toMerchantPaginationMeta(rows[0], page, pageSize);
+    const filters = toMerchantFilterCounts(rows[0]);
+
+    if (isTradingPerfLogEnabled()) {
+      tradingPerfLog(
+        `merchant.search.rpcMs=${Math.round(tradingPerfNow() - rpcStart)} totalMs=${Math.round(tradingPerfNow() - totalStart)} orders=${rows.length} total=${meta.total} needsAction=${filters.needsAction} tab=${input.tabStatus}`,
+      );
+    }
+
+    return {
+      success: true,
+      data: rows.map(mapMerchantRpcRow),
+      meta,
+      filters,
+    };
+  } catch (error) {
+    console.error("[searchMerchantTradingOrders]", error);
+    return { success: false, error: "無法連線至訂單服務" };
+  }
+}
+
+export type MerchantOrderDetail = MerchantTradingOrder & {
+  listingId: string;
+  listingImageUrls: string[];
+  logisticsProofPath: string | null;
+  canSubmitLogistics: boolean;
+  canReviewBuyer: boolean;
+};
+
+export type GetMerchantOrderDetailResult =
+  | { success: true; data: MerchantOrderDetail }
+  | { success: false; error: string };
+
+type MerchantOrderDetailQueryRow = {
+  id: string;
+  order_number: string | null;
+  buyer_id: string;
+  merchant_id: string;
+  final_price: number;
+  escrow_status: Tables<"merchant_orders">["escrow_status"];
+  requires_authentication: boolean | null;
+  created_at: string | null;
+  listing_id: string;
+  logistics_proof_path: string | null;
+  listings: {
+    grading_company: string;
+    grading_score: string | null;
+    images: unknown;
+    product_catalog: {
+      name_ja: string;
+      name_zh: string | null;
+      name_en: string | null;
+      card_number: string | null;
+      set_code: string;
+      display_id: string | null;
+      image_url: string;
+    };
+  };
+  buyer: {
+    id: string;
+    display_name: string | null;
+    username: string | null;
+    avatar_path: string | null;
+  };
+};
+
+function mapMerchantOrderDetailRow(
+  row: MerchantOrderDetailQueryRow,
+  hasReviewedByMe: boolean,
+): MerchantOrderDetail {
+  const catalog = row.listings.product_catalog;
+  const listingImageUrls = parseListingImageUrls(row.listings.images);
+  const sellerFlags = getMerchantSellerActionFlags({
+    escrowStatus: row.escrow_status,
+    hasReviewedByMe,
+  });
+
+  return {
+    id: row.id,
+    orderKind: "merchant",
+    orderNumber: row.order_number,
+    buyerId: row.buyer_id,
+    merchantId: row.merchant_id,
+    finalPrice: Number(row.final_price),
+    escrowStatus: row.escrow_status,
+    requiresAuthentication: row.requires_authentication,
+    createdAt: row.created_at,
+    hasReviewedByMe,
+    buyer: {
+      id: row.buyer.id,
+      displayName: row.buyer.display_name ?? "未知用戶",
+      username: row.buyer.username,
+      avatarUrl: resolveAvatarUrl(row.buyer.avatar_path),
+    },
+    listing: {
+      gradingCompany: row.listings.grading_company,
+      gradingScore: row.listings.grading_score,
+    },
+    product: {
+      cardName: displayCardName(catalog),
+      cardNumber: catalog.card_number,
+      setCode: catalog.set_code,
+      displayId: catalog.display_id,
+      imageUrl: resolveOfferCardDisplayImage(
+        row.listings.images,
+        catalog.image_url,
+      ),
+    },
+    listingId: row.listing_id,
+    listingImageUrls,
+    logisticsProofPath: row.logistics_proof_path,
+    canSubmitLogistics: sellerFlags.canSubmitLogistics,
+    canReviewBuyer: sellerFlags.canReviewBuyer,
+  };
+}
+
+export async function getMerchantOrderDetail(
+  orderId: string,
+): Promise<GetMerchantOrderDetailResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error("[getMerchantOrderDetail]", authError.message);
+      return { success: false, error: "無法驗證登入狀態" };
+    }
+
+    if (!user) {
+      return { success: false, error: "請登入以查閱訂單" };
+    }
+
+    const resolved = await resolveMerchantOrderIdForMerchant(
+      supabase,
+      orderId,
+      user.id,
+    );
+    if (!resolved.ok) {
+      return { success: false, error: resolved.error };
+    }
+    const trimmedOrderId = resolved.id;
+
+    const { data, error } = await supabase
+      .from("merchant_orders")
+      .select(
+        `
+          id,
+          order_number,
+          buyer_id,
+          merchant_id,
+          final_price,
+          escrow_status,
+          requires_authentication,
+          created_at,
+          listing_id,
+          logistics_proof_path,
+          listings!inner (
+            grading_company,
+            grading_score,
+            images,
+            product_catalog!inner (
+              name_ja,
+              name_zh,
+              name_en,
+              card_number,
+              set_code,
+              display_id,
+              image_url
+            )
+          ),
+          buyer:profiles!fk_merchant_orders_buyer_id (
+            id,
+            display_name,
+            username,
+            avatar_path
+          )
+        `,
+      )
+      .eq("id", trimmedOrderId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[getMerchantOrderDetail]", error.message);
+      return { success: false, error: mapOrderRpcError(error.message) };
+    }
+
+    const row = data as MerchantOrderDetailQueryRow | null;
+    if (!row) {
+      return { success: false, error: "找不到指定的交易訂單記錄" };
+    }
+
+    if (row.merchant_id !== user.id) {
+      return { success: false, error: "您沒有權限查閱此訂單" };
+    }
+
+    const { data: reviewRows, error: reviewError } = await supabase
+      .from("transaction_reviews")
+      .select("id")
+      .eq("merchant_order_id", trimmedOrderId)
+      .eq("reviewer_id", user.id)
+      .limit(1);
+
+    if (reviewError) {
+      console.error("[getMerchantOrderDetail] reviews", reviewError.message);
+      return { success: false, error: "無法載入訂單" };
+    }
+
+    const hasReviewedByMe = (reviewRows?.length ?? 0) > 0;
+
+    return {
+      success: true,
+      data: mapMerchantOrderDetailRow(row, hasReviewedByMe),
+    };
+  } catch (error) {
+    console.error("[getMerchantOrderDetail]", error);
+    return { success: false, error: "無法連線至訂單服務" };
+  }
+}
+
 function mapMemberOrderDetailRow(
   row: MemberOrderDetailQueryRow,
   viewerId: string,
@@ -805,6 +1294,21 @@ export async function cancelMemberOrder(
     console.error("[cancelMemberOrder]", error);
     return { success: false, error: message };
   }
+}
+
+export async function submitMerchantLogistics(
+  orderId: string,
+  _trackingNo: string,
+): Promise<MemberOrderActionResult> {
+  const invalidId = rejectNonUuidMutationOrderId(orderId);
+  if (invalidId) {
+    return invalidId;
+  }
+
+  return {
+    success: false,
+    error: "商戶發貨功能即將推出",
+  };
 }
 
 export async function completeMerchantOrder(
