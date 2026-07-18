@@ -1526,6 +1526,10 @@ export type Database = {
         }
         Returns: string
       }
+      fn_map_merchant_escrow_to_member_status: {
+        Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] }
+        Returns: Database["public"]["Enums"]["member_order_state"]
+      }
       fn_member_order_is_open: {
         Args: {
           p_escrow_status: Database["public"]["Enums"]["member_escrow_status"]
@@ -1712,6 +1716,10 @@ export type Database = {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
       }
+      rpc_complete_merchant_order: {
+        Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
       rpc_confirm_buyer_received: {
         Args: { p_buyer_id: string; p_order_id: string }
         Returns: Json
@@ -1729,6 +1737,10 @@ export type Database = {
         Returns: Json
       }
       rpc_get_user_reviewed_member_order_ids: {
+        Args: { p_order_ids: string[] }
+        Returns: string[]
+      }
+      rpc_get_user_reviewed_merchant_order_ids: {
         Args: { p_order_ids: string[] }
         Returns: string[]
       }
@@ -2088,6 +2100,7 @@ export type Database = {
         | "booster_box"
         | "gift_set"
         | "starter_deck"
+        | "accessories"
       escrow_state:
         | "payment_held"
         | "authenticating"
@@ -2262,6 +2275,7 @@ export const Constants = {
         "booster_box",
         "gift_set",
         "starter_deck",
+        "accessories",
       ],
       escrow_state: [
         "payment_held",

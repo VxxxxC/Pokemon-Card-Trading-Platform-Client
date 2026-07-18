@@ -27,7 +27,9 @@ export function collectMemberOrderIdsFromChatRoom(
   };
 
   for (const message of messages) {
-    push(message.orderData?.orderId);
+    if (message.orderData?.orderId) {
+      push(message.orderData.orderId);
+    }
   }
 
   if (offers) {
@@ -36,7 +38,12 @@ export function collectMemberOrderIdsFromChatRoom(
       if (!offerId) {
         continue;
       }
-      push(offers[offerId]?.memberOrderId);
+      const ledger = offers[offerId];
+      push(
+        ledger?.orderKind === "merchant"
+          ? ledger.merchantOrderId
+          : ledger?.memberOrderId,
+      );
     }
   }
 

@@ -69,8 +69,16 @@ export function GlobalChatOverlay() {
         const merged = useHkCardVaultStore.getState().chats;
         if (!merged.some((room) => room.id === prevActiveId)) {
           const replacement =
-            findRoomByPartnerId(merged, prevActive.partnerId) ??
-            findRoomByPartnerName(merged, prevActive.partnerName);
+            findRoomByPartnerId(
+              merged,
+              prevActive.partnerId,
+              prevActive.partnerPersona,
+            ) ??
+            findRoomByPartnerName(
+              merged,
+              prevActive.partnerName,
+              prevActive.partnerPersona,
+            );
           setActiveRoomId(replacement?.id ?? "");
         }
       } else if (

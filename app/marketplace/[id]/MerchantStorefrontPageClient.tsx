@@ -50,8 +50,9 @@ export function MerchantStorefrontPageClient({
     () => false,
   );
 
-  const setIsChatOpen = useHkCardVaultStore((state) => state.setIsChatOpen);
-  const setActiveRoomId = useHkCardVaultStore((state) => state.setActiveRoomId);
+  const openChatWithPartner = useHkCardVaultStore(
+    (state) => state.openChatWithPartner,
+  );
 
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("最新");
@@ -173,8 +174,8 @@ export function MerchantStorefrontPageClient({
           variant="storefront"
           listingCount={listingCount}
           onStorefrontChat={() => {
-            setActiveRoomId(seller.id);
-            setIsChatOpen(true);
+            if (!seller) return;
+            openChatWithPartner(seller.id, seller.username, "merchant");
           }}
         />
       </div>

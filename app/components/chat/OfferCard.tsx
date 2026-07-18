@@ -320,7 +320,11 @@ export function OfferCardComponent({
       }
 
       setOfferStatus("accepted");
-      applyOfferAccepted(offerId, result.data.order.id);
+      applyOfferAccepted(
+        offerId,
+        result.data.order.id,
+        result.data.orderKind,
+      );
       invalidateOfferCardContextCache(offerId);
 
       toast.success("🤝 交易協定已達成！", {

@@ -44,7 +44,9 @@ import { IoMdCheckboxOutline } from "react-icons/io";
 
 import Link from "next/link";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
-import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
+import { findRoomByPartnerId, findRoomByPartnerName } from "@/app/lib/chat/mergeChatRooms";
+import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
+import { inferPartnerPersona, isProfileUuid } from "@/app/lib/chat/partnerRoomKey";
 
 const ReviewModal = dynamic(
   () =>
@@ -486,6 +488,49 @@ function MerchantBadgeChip() {
   );
 }
 
+function MemberPersonaChip() {
+  return (
+    <span className="inline-flex items-center font-mono font-bold text-[9px] text-[#3b9eff] bg-[#3b9eff]/10 border border-[#3b9eff]/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
+      會員
+    </span>
+  );
+}
+
+function SpawnPersonaToggle({
+  value,
+  onChange,
+}: {
+  value: ChatPartnerPersona;
+  onChange: (persona: ChatPartnerPersona) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 shrink-0">
+      <button
+        type="button"
+        onClick={() => onChange("member")}
+        className={
+          value === "member"
+            ? "font-mono text-[9px] px-1.5 py-0.5 rounded border border-[#3b9eff]/40 text-[#3b9eff] bg-[#3b9eff]/10"
+            : "font-mono text-[9px] px-1.5 py-0.5 rounded border border-white/10 text-text-disabled"
+        }
+      >
+        會員
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("merchant")}
+        className={
+          value === "merchant"
+            ? "font-mono text-[9px] px-1.5 py-0.5 rounded border border-brand/40 text-brand bg-brand/10"
+            : "font-mono text-[9px] px-1.5 py-0.5 rounded border border-white/10 text-text-disabled"
+        }
+      >
+        商家
+      </button>
+    </div>
+  );
+}
+
 function ChatLobbyEmptyState({
   variant,
 }: {
@@ -576,6 +621,7 @@ export function GlobalChatConsole({
   const [lobbySearchQuery, setLobbySearchQuery] = useState("");
   const [isNewChatComboOpen, setIsNewChatComboOpen] = useState(false);
   const [targetUsername, setTargetUsername] = useState("");
+  const [spawnPersona, setSpawnPersona] = useState<ChatPartnerPersona>("member");
   const desktopConsoleRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -602,12 +648,13 @@ export function GlobalChatConsole({
     if (!targetUsername.trim()) return;
 
     const trimmedUsername = targetUsername.trim();
-    const partnerKey = trimmedUsername.toLowerCase();
+    const partnerLookupId = isProfileUuid(trimmedUsername)
+      ? trimmedUsername
+      : trimmedUsername.toLowerCase();
+
     const existingRoom =
-      findRoomByPartnerId(chats, partnerKey) ??
-      chats.find(
-        (r) => r.partnerName.toLowerCase() === partnerKey,
-      );
+      findRoomByPartnerId(chats, partnerLookupId, spawnPersona) ??
+      findRoomByPartnerName(chats, trimmedUsername, spawnPersona);
 
     if (existingRoom) {
       setActiveRoomId(existingRoom.id);
@@ -616,7 +663,7 @@ export function GlobalChatConsole({
       setMobileView("CHAT");
       toast.success(`已切換至與 ${existingRoom.partnerName} 的對話`);
     } else {
-      openChatWithPartner(partnerKey, trimmedUsername);
+      openChatWithPartner(partnerLookupId, trimmedUsername, spawnPersona);
       setIsNewChatComboOpen(false);
       setTargetUsername("");
       setMobileView("CHAT");
@@ -625,6 +672,7 @@ export function GlobalChatConsole({
   }, [
     targetUsername,
     chats,
+    spawnPersona,
     setActiveRoomId,
     openChatWithPartner,
     setMobileView,
@@ -918,7 +966,11 @@ export function GlobalChatConsole({
                       value={targetUsername}
                       onChange={(e) => setTargetUsername(e.target.value)}
                       placeholder="搜尋/輸入用戶..."
-                      className="w-full bg-[#17130f] border border-white/10 rounded px-1.5 py-0.5 font-sans text-[10.5px] text-text-primary placeholder:text-[#50453b] focus:outline-none focus:border-brand/40"
+                      className="w-full min-w-0 bg-[#17130f] border border-white/10 rounded px-1.5 py-0.5 font-sans text-[10.5px] text-text-primary placeholder:text-[#50453b] focus:outline-none focus:border-brand/40"
+                    />
+                    <SpawnPersonaToggle
+                      value={spawnPersona}
+                      onChange={setSpawnPersona}
                     />
                   </motion.div>
                 )}
@@ -992,6 +1044,9 @@ export function GlobalChatConsole({
                     {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
                     {room.partnerTier === "專業認證商戶" && (
                       <MerchantBadgeChip />
+                    )}
+                    {inferPartnerPersona(room) === "member" && (
+                      <MemberPersonaChip />
                     )}
                   </div>
                   {room.unreadCount > 0 ? (
@@ -1262,6 +1317,9 @@ export function GlobalChatConsole({
                         {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
                         {room.partnerTier === "專業認證商戶" && (
                           <MerchantBadgeChip />
+                        )}
+                        {inferPartnerPersona(room) === "member" && (
+                          <MemberPersonaChip />
                         )}
                       </div>
                       <p className="font-sans text-[12px] text-text-secondary truncate mt-1">

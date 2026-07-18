@@ -112,7 +112,17 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
       }
 
       if (event.type === "accepted") {
-        applyOfferAccepted(event.offerId, event.memberOrderId);
+        const orderId =
+          event.orderKind === "merchant"
+            ? event.merchantOrderId
+            : event.memberOrderId;
+        if (orderId) {
+          applyOfferAccepted(
+            event.offerId,
+            orderId,
+            event.orderKind ?? "member",
+          );
+        }
         markActiveThreadReadIfNeeded();
         return;
       }
@@ -159,7 +169,7 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
       let query = supabase
         .from("chat_messages")
         .select(
-          "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
+          "id, room_id, content, created_at, sender_id, offer_id, member_order_id, merchant_order_id, is_system_warning",
         )
         .eq("room_id", roomId)
         .order("created_at", { ascending: true });

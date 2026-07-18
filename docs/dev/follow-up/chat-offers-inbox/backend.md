@@ -26,6 +26,18 @@
 
 See also [dual-persona-trading/frontend.md](../dual-persona-trading/frontend.md).
 
+## Changelog (2026-07-18, dual persona chat session split)
+
+| Change | Detail |
+|--------|--------|
+| **`ChatRoom.partnerPersona`** | Client room identity = `partnerId` + `member` \| `merchant` |
+| **`partnerRoomKey.ts`** | Composite key helpers; stops `mergeChatRoomsWithDb` collapsing persona rooms |
+| **`openChatWithPartner(id, name, persona)`** | Profile / storefront / spawn UI pass persona |
+| **`GlobalChatConsole`** | 會員/商家 toggle on「新增聊天」; lobby persona chips |
+| **Report** | [`docs/dev/reports/2026-07-18-persona-orders-and-chat-report.md`](../reports/2026-07-18-persona-orders-and-chat-report.md) |
+
+**Verify:** Same dual-persona user → two lobby rows after inbox sync; histories do not merge.
+
 ## Changelog (2026-07-17, dual persona chat rooms)
 
 | Change | Detail |

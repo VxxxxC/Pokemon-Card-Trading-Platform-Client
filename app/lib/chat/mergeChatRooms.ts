@@ -3,6 +3,12 @@ import {
   isDbChatRoomId,
   isChatRoomId,
 } from "@/app/lib/chat/constants";
+import {
+  buildPartnerRoomKey,
+  type ChatPartnerPersona,
+  inferPartnerPersona,
+  isProfileUuid,
+} from "@/app/lib/chat/partnerRoomKey";
 
 export type MergeChatRoomsOptions = {
   /** Drop chatId-* preset rooms after a successful DB sync */
@@ -22,14 +28,50 @@ export function normalizePartnerId(partnerId: string): string {
   return partnerId.trim().toLowerCase();
 }
 
+export function findRoomsByPartnerId(
+  rooms: ChatRoom[],
+  partnerId: string,
+  partnerPersona?: ChatPartnerPersona,
+): ChatRoom[] {
+  const key = normalizePartnerId(partnerId);
+  if (!key) {
+    return [];
+  }
+
+  const matches = rooms.filter(
+    (room) => normalizePartnerId(room.partnerId) === key,
+  );
+
+  if (!partnerPersona) {
+    return matches;
+  }
+
+  return matches.filter(
+    (room) => inferPartnerPersona(room) === partnerPersona,
+  );
+}
+
 export function findRoomByPartnerId(
   rooms: ChatRoom[],
   partnerId: string,
+  partnerPersona?: ChatPartnerPersona,
 ): ChatRoom | undefined {
-  const key = normalizePartnerId(partnerId);
-  if (!key) return undefined;
-  return rooms.find(
-    (room) => normalizePartnerId(room.partnerId) === key,
+  const matches = findRoomsByPartnerId(rooms, partnerId, partnerPersona);
+
+  if (matches.length === 0) {
+    return undefined;
+  }
+
+  if (partnerPersona) {
+    return matches[0];
+  }
+
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  return (
+    matches.find((room) => inferPartnerPersona(room) === "member") ?? matches[0]
   );
 }
 
@@ -40,12 +82,28 @@ export function normalizePartnerName(partnerName: string): string {
 export function findRoomByPartnerName(
   rooms: ChatRoom[],
   partnerName: string,
+  partnerPersona?: ChatPartnerPersona,
 ): ChatRoom | undefined {
   const key = normalizePartnerName(partnerName);
-  if (!key) return undefined;
-  return rooms.find(
+  if (!key) {
+    return undefined;
+  }
+
+  const matches = rooms.filter(
     (room) => normalizePartnerName(room.partnerName) === key,
   );
+
+  if (partnerPersona) {
+    return matches.find(
+      (room) => inferPartnerPersona(room) === partnerPersona,
+    );
+  }
+
+  if (matches.length === 1) {
+    return matches[0];
+  }
+
+  return undefined;
 }
 
 function dedupeMessagesByOfferId(messages: ChatRoom["messages"]): ChatRoom["messages"] {
@@ -142,6 +200,34 @@ function finalizeCanonicalRoom(
   };
 }
 
+function roomsSharePartnerIdentity(left: ChatRoom, right: ChatRoom): boolean {
+  const leftPartnerKey = buildPartnerRoomKey(
+    left.partnerId,
+    inferPartnerPersona(left),
+  );
+  const rightPartnerKey = buildPartnerRoomKey(
+    right.partnerId,
+    inferPartnerPersona(right),
+  );
+
+  if (leftPartnerKey === rightPartnerKey) {
+    return true;
+  }
+
+  const leftIdIsUuid = isProfileUuid(left.partnerId);
+  const rightIdIsUuid = isProfileUuid(right.partnerId);
+  if (leftIdIsUuid || rightIdIsUuid) {
+    return false;
+  }
+
+  const leftNameKey = normalizePartnerName(left.partnerName);
+  const rightNameKey = normalizePartnerName(right.partnerName);
+
+  return Boolean(
+    leftNameKey && rightNameKey && leftNameKey === rightNameKey,
+  );
+}
+
 function dedupeByPartner(
   rooms: ChatRoom[],
   preferServerUnread = false,
@@ -149,23 +235,9 @@ function dedupeByPartner(
   const result: ChatRoom[] = [];
 
   for (const room of rooms) {
-    const partnerIdKey = normalizePartnerId(room.partnerId);
-    const partnerNameKey = normalizePartnerName(room.partnerName);
-
-    const existingIndex = result.findIndex((candidate) => {
-      const candidateIdKey = normalizePartnerId(candidate.partnerId);
-      const candidateNameKey = normalizePartnerName(candidate.partnerName);
-
-      if (partnerIdKey && candidateIdKey === partnerIdKey) {
-        return true;
-      }
-
-      return Boolean(
-        partnerNameKey &&
-          candidateNameKey &&
-          candidateNameKey === partnerNameKey,
-      );
-    });
+    const existingIndex = result.findIndex((candidate) =>
+      roomsSharePartnerIdentity(candidate, room),
+    );
 
     if (existingIndex === -1) {
       result.push(room);
@@ -184,7 +256,7 @@ function dedupeByPartner(
 
 /**
  * Merges Supabase inbox rooms with local session state.
- * DB rows win for matching room IDs; partner duplicates collapse to one room.
+ * DB rows win for matching room IDs; partner duplicates collapse only within the same persona.
  */
 export function mergeChatRoomsWithDb(
   currentRooms: ChatRoom[],

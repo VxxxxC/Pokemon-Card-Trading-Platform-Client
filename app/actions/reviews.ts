@@ -140,6 +140,8 @@ export type GetUserReviewedMemberOrderIdsResult =
   | { success: true; data: string[] }
   | { success: false; error: string };
 
+export type GetUserReviewedOrderIdsResult = GetUserReviewedMemberOrderIdsResult;
+
 export type ResolveChatCompletionOrderIdInput = {
   messageId: string;
   roomId: string;
@@ -183,6 +185,29 @@ function validateComment(comment: string | undefined): string | null {
   return null;
 }
 
+function pickChatMessageOrderId(
+  row:
+    | Pick<Tables<"chat_messages">, "member_order_id" | "merchant_order_id">
+    | null
+    | undefined,
+): string | null {
+  if (!row) {
+    return null;
+  }
+
+  const merchantOrderId = row.merchant_order_id?.trim();
+  if (merchantOrderId) {
+    return merchantOrderId;
+  }
+
+  const memberOrderId = row.member_order_id?.trim();
+  if (memberOrderId) {
+    return memberOrderId;
+  }
+
+  return null;
+}
+
 export async function resolveChatCompletionOrderId(
   input: ResolveChatCompletionOrderIdInput,
 ): Promise<ResolveChatCompletionOrderIdResult> {
@@ -210,7 +235,7 @@ export async function resolveChatCompletionOrderId(
 
     const { data: messageData, error: messageError } = await supabase
       .from("chat_messages")
-      .select("member_order_id, room_id, content")
+      .select("member_order_id, merchant_order_id, room_id, content")
       .eq("id", messageId)
       .maybeSingle();
 
@@ -224,23 +249,23 @@ export async function resolveChatCompletionOrderId(
 
     const messageRow = messageData as Pick<
       Tables<"chat_messages">,
-      "member_order_id" | "room_id" | "content"
+      "member_order_id" | "merchant_order_id" | "room_id" | "content"
     > | null;
 
-    if (
-      messageRow?.content === "SYSTEM_ORDER_COMPLETED" &&
-      messageRow.member_order_id
-    ) {
-      return { success: true, orderId: messageRow.member_order_id };
+    if (messageRow?.content === "SYSTEM_ORDER_COMPLETED") {
+      const orderId = pickChatMessageOrderId(messageRow);
+      if (orderId) {
+        return { success: true, orderId };
+      }
     }
 
     const { data: roomCompletionData, error: roomCompletionError } =
       await supabase
         .from("chat_messages")
-        .select("id, member_order_id")
+        .select("id, member_order_id, merchant_order_id")
         .eq("room_id", roomId)
         .eq("content", "SYSTEM_ORDER_COMPLETED")
-        .not("member_order_id", "is", null)
+        .or("member_order_id.not.is.null,merchant_order_id.not.is.null")
         .order("created_at", { ascending: false });
 
     if (roomCompletionError) {
@@ -252,24 +277,28 @@ export async function resolveChatCompletionOrderId(
     }
 
     const roomCompletionRows = (roomCompletionData ?? []) as Array<
-      Pick<Tables<"chat_messages">, "id" | "member_order_id">
+      Pick<
+        Tables<"chat_messages">,
+        "id" | "member_order_id" | "merchant_order_id"
+      >
     >;
 
     const roomCompletionMatch =
       roomCompletionRows.find((row) => row.id === messageId) ??
       roomCompletionRows[0];
 
-    if (roomCompletionMatch?.member_order_id) {
-      return { success: true, orderId: roomCompletionMatch.member_order_id };
+    const roomCompletionOrderId = pickChatMessageOrderId(roomCompletionMatch);
+    if (roomCompletionOrderId) {
+      return { success: true, orderId: roomCompletionOrderId };
     }
 
     const { data: acceptedOfferData, error: acceptedOfferError } =
       await supabase
         .from("chat_messages")
-        .select("member_order_id")
+        .select("member_order_id, merchant_order_id")
         .eq("room_id", roomId)
         .eq("content", "SYSTEM_OFFER_ACCEPTED")
-        .not("member_order_id", "is", null)
+        .or("member_order_id.not.is.null,merchant_order_id.not.is.null")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -282,13 +311,42 @@ export async function resolveChatCompletionOrderId(
       return { success: false, error: acceptedOfferError.message };
     }
 
-    const acceptedOfferRow = acceptedOfferData as Pick<
-      Tables<"chat_messages">,
-      "member_order_id"
+    const acceptedOfferOrderId = pickChatMessageOrderId(
+      acceptedOfferData as Pick<
+        Tables<"chat_messages">,
+        "member_order_id" | "merchant_order_id"
+      > | null,
+    );
+    if (acceptedOfferOrderId) {
+      return { success: true, orderId: acceptedOfferOrderId };
+    }
+
+    const { data: merchantOrderData, error: merchantOrderError } =
+      await supabase
+        .from("merchant_orders")
+        .select("id")
+        .eq("buyer_id", user.id)
+        .eq("merchant_id", revieweeId)
+        .eq("escrow_status", "completed_and_transferred")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (merchantOrderError) {
+      console.error(
+        "[resolveChatCompletionOrderId] merchant order",
+        merchantOrderError.message,
+      );
+      return { success: false, error: merchantOrderError.message };
+    }
+
+    const merchantOrderRow = merchantOrderData as Pick<
+      Tables<"merchant_orders">,
+      "id"
     > | null;
 
-    if (acceptedOfferRow?.member_order_id) {
-      return { success: true, orderId: acceptedOfferRow.member_order_id };
+    if (merchantOrderRow?.id) {
+      return { success: true, orderId: merchantOrderRow.id };
     }
 
     const { data: orderData, error: orderError } = await supabase
@@ -488,6 +546,89 @@ export async function getUserReviewedMemberOrderIds(
   }
 }
 
+export async function getUserReviewedMerchantOrderIds(
+  orderIds: string[],
+): Promise<GetUserReviewedMemberOrderIdsResult> {
+  const normalizedIds = [
+    ...new Set(orderIds.map((id) => id.trim()).filter(Boolean)),
+  ];
+
+  if (normalizedIds.length === 0) {
+    return { success: true, data: [] };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_get_user_reviewed_merchant_order_ids",
+          args: { p_order_ids: string[] },
+        ) => Promise<{
+          data: string[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("rpc_get_user_reviewed_merchant_order_ids", {
+      p_order_ids: normalizedIds,
+    });
+
+    if (error) {
+      console.error("[getUserReviewedMerchantOrderIds] rpc", error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, data: data ?? [] };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "無法查詢評價狀態";
+    console.error("[getUserReviewedMerchantOrderIds]", error);
+    return { success: false, error: message };
+  }
+}
+
+export async function getUserReviewedOrderIds(
+  orderIds: string[],
+): Promise<GetUserReviewedOrderIdsResult> {
+  const normalizedIds = [
+    ...new Set(orderIds.map((id) => id.trim()).filter(Boolean)),
+  ];
+
+  if (normalizedIds.length === 0) {
+    return { success: true, data: [] };
+  }
+
+  const [memberResult, merchantResult] = await Promise.all([
+    getUserReviewedMemberOrderIds(normalizedIds),
+    getUserReviewedMerchantOrderIds(normalizedIds),
+  ]);
+
+  if (!memberResult.success) {
+    return memberResult;
+  }
+
+  if (!merchantResult.success) {
+    return merchantResult;
+  }
+
+  return {
+    success: true,
+    data: [...new Set([...memberResult.data, ...merchantResult.data])],
+  };
+}
+
 export async function submitTransactionReview(
   input: SubmitTransactionReviewInput,
 ): Promise<SubmitTransactionReviewResult> {
@@ -558,7 +699,9 @@ export async function submitTransactionReview(
     }
 
     revalidatePath("/profile/user/trading");
+    revalidatePath("/profile/merchant/trading");
     revalidatePath(`/profile/user/${revieweeId}`);
+    revalidatePath(`/profile/merchant/${revieweeId}`);
     revalidatePath(`/profile/${revieweeId}`);
     revalidatePath(`/profile/${revieweeId}/rating`);
 

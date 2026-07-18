@@ -67,6 +67,7 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
           detail: {
             partnerId: member.id,
             partnerName: member.username,
+            partnerPersona: "member",
           },
         }),
       );
@@ -76,7 +77,11 @@ export function ProfileHeaderWithChat({ member }: ProfileHeaderProps) {
   const handleActionChat = () => {
     window.dispatchEvent(
       new CustomEvent("open-global-chat", {
-        detail: { partnerId: member.id, partnerName: member.username },
+        detail: {
+          partnerId: member.id,
+          partnerName: member.username,
+          partnerPersona: "member",
+        },
       }),
     );
   };

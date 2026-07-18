@@ -5,7 +5,7 @@ import {
   isCardIdentifierQuery,
   matchesCardIdentifier,
   matchesCatalogCardSearch,
-  useCompactCatalogSearch,
+  isCompactCatalogSearchQuery,
 } from "@/lib/search/card-identifier";
 
 describe("compactAlphanumeric", () => {
@@ -49,21 +49,21 @@ describe("matchesCardIdentifier", () => {
   });
 });
 
-describe("useCompactCatalogSearch", () => {
+describe("isCompactCatalogSearchQuery", () => {
   test("routes short id prefixes and id variants to compact search", () => {
-    expect(useCompactCatalogSearch("mp")).toBe(true);
-    expect(useCompactCatalogSearch("mp 133")).toBe(true);
-    expect(useCompactCatalogSearch("MP133")).toBe(true);
-    expect(useCompactCatalogSearch("M-P-133")).toBe(true);
-    expect(useCompactCatalogSearch("sv2a")).toBe(true);
-    expect(useCompactCatalogSearch("062")).toBe(true);
+    expect(isCompactCatalogSearchQuery("mp")).toBe(true);
+    expect(isCompactCatalogSearchQuery("mp 133")).toBe(true);
+    expect(isCompactCatalogSearchQuery("MP133")).toBe(true);
+    expect(isCompactCatalogSearchQuery("M-P-133")).toBe(true);
+    expect(isCompactCatalogSearchQuery("sv2a")).toBe(true);
+    expect(isCompactCatalogSearchQuery("062")).toBe(true);
   });
 
   test("keeps CJK and long English names on ILIKE path", () => {
-    expect(useCompactCatalogSearch("ピカチュウ")).toBe(false);
-    expect(useCompactCatalogSearch("皮卡丘")).toBe(false);
-    expect(useCompactCatalogSearch("Pikachu")).toBe(false);
-    expect(useCompactCatalogSearch("box")).toBe(true);
+    expect(isCompactCatalogSearchQuery("ピカチュウ")).toBe(false);
+    expect(isCompactCatalogSearchQuery("皮卡丘")).toBe(false);
+    expect(isCompactCatalogSearchQuery("Pikachu")).toBe(false);
+    expect(isCompactCatalogSearchQuery("box")).toBe(true);
   });
 });
 

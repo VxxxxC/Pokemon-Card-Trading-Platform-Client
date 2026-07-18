@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getUserReviewedMemberOrderIds } from "@/app/actions/reviews";
+import { getUserReviewedOrderIds } from "@/app/actions/reviews";
 import { collectMemberOrderIdsFromChatRoom } from "@/app/lib/chat/resolveMemberOrderId";
 import type { Message, OfferLedgerEntry } from "@/app/store/useHkCardVaultStore";
 
@@ -39,7 +39,7 @@ export function useRoomReviewedOrderIds(
 
     let cancelled = false;
 
-    void getUserReviewedMemberOrderIds(roomOrderIds)
+    void getUserReviewedOrderIds(roomOrderIds)
       .then((result) => {
         if (cancelled) {
           return;

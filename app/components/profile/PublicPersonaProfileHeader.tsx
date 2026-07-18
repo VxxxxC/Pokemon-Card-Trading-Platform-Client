@@ -137,7 +137,11 @@ export function PublicPersonaProfileHeader({
 
     window.dispatchEvent(
       new CustomEvent("open-global-chat", {
-        detail: { partnerId: profile.id, partnerName: profile.username },
+        detail: {
+          partnerId: profile.id,
+          partnerName: profile.username,
+          partnerPersona: "member",
+        },
       }),
     );
   }, [onStorefrontChat, profile.id, profile.username, variant]);

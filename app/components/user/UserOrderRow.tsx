@@ -91,8 +91,11 @@ export function UserOrderRow({
   const counterpartName = isBuyer ? order.sellerName : order.buyerName;
 
   const isAuthOrder = Boolean(dbOrderContext?.useAuthentication);
+  const isMerchantBuyerOrder =
+    dbOrderContext?.orderKind === "merchant" && isBuyer;
   const isPendingDbOrder = dbOrderContext?.dbStatus === "pending";
-  const canCompleteOrder = isPendingDbOrder && isBuyer && !isAuthOrder;
+  const canCompleteOrder =
+    isPendingDbOrder && isBuyer && (!isAuthOrder || isMerchantBuyerOrder);
   const canPayAuthOrder = Boolean(dbOrderContext?.canPay);
   const showPendingActions =
     isPendingDbOrder &&

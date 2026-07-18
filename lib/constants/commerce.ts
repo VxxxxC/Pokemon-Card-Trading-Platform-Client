@@ -20,6 +20,7 @@ export const CATALOG_TYPE_LABELS: Record<CatalogType, string> = {
   booster_box: '盒裝',
   gift_set: '禮盒裝',
   starter_deck: '預組牌組',
+  accessories: '周邊配件',
 };
 
 /** UI grouping: single-card vs sealed product search (productCatalog.ts) */

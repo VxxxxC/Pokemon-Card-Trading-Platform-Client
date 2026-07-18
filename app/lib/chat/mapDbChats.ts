@@ -52,6 +52,7 @@ export type DbChatMessageRow = {
   sender_id: string;
   offer_id: string | null;
   member_order_id: string | null;
+  merchant_order_id?: string | null;
   is_system_warning: boolean | null;
   offers?: DbOfferSnippet | null;
 };
@@ -103,6 +104,7 @@ export function resolvePartnerPresentation(
   partnerName: string;
   partnerAvatarUrl: string;
   partnerTier: string;
+  partnerPersona: SellerPersona;
   partner: ProfileSnippet;
 } {
   const buyer: ProfileSnippet = {
@@ -132,7 +134,8 @@ export function resolvePartnerPresentation(
     partnerId: partner.id,
     partnerName: partyDisplayName(partner),
     partnerAvatarUrl: resolveAvatarUrl(partner.avatar_path),
-    partnerTier: partnerTierForPersona(partner.persona),
+    partnerTier: partnerTierForPersona(partner.persona ?? "member"),
+    partnerPersona: partner.persona ?? "member",
   };
 }
 
@@ -234,15 +237,19 @@ function mapDbMessage(
   }
 
   if (row.content === "SYSTEM_OFFER_ACCEPTED") {
+    const merchantOrderId = row.merchant_order_id?.trim();
+    const memberOrderId = row.member_order_id?.trim();
     return {
       id: row.id,
       sender: "system",
       text: "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）",
       timestamp,
       type: "text",
-      orderData: row.member_order_id
-        ? { orderId: row.member_order_id }
-        : undefined,
+      orderData: merchantOrderId
+        ? { orderId: merchantOrderId, orderKind: "merchant" }
+        : memberOrderId
+          ? { orderId: memberOrderId, orderKind: "member" }
+          : undefined,
     };
   }
 
@@ -257,15 +264,19 @@ function mapDbMessage(
   }
 
   if (row.content === "SYSTEM_ORDER_COMPLETED") {
+    const merchantOrderId = row.merchant_order_id?.trim();
+    const memberOrderId = row.member_order_id?.trim();
     return {
       id: row.id,
       sender: "system",
       text: "✅ 交易已順利完成",
       timestamp,
       type: "system_order_completed",
-      orderData: row.member_order_id
-        ? { orderId: row.member_order_id }
-        : undefined,
+      orderData: merchantOrderId
+        ? { orderId: merchantOrderId, orderKind: "merchant" }
+        : memberOrderId
+          ? { orderId: memberOrderId, orderKind: "member" }
+          : undefined,
     };
   }
 
@@ -355,6 +366,7 @@ function mapRoomToStore(
   return {
     id: room.id,
     partnerId: presentation.partnerId,
+    partnerPersona: presentation.partnerPersona,
     partnerName: presentation.partnerName,
     partnerAvatarUrl: presentation.partnerAvatarUrl,
     partnerTier: presentation.partnerTier,

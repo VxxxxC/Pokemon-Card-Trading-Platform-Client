@@ -1,3 +1,6 @@
+import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
+import { normalizeChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
+
 export const CHAT_ID_PREFIX = "chatId";
 
 /** Messages fetched per thread page (initial load + scroll-up) */
@@ -28,6 +31,10 @@ export function isEphemeralChatRoomId(roomId: string): boolean {
   return false;
 }
 
-export function buildPendingChatRoomId(partnerId: string): string {
-  return `${PENDING_CHAT_ID_PREFIX}${partnerId.trim().toLowerCase()}`;
+export function buildPendingChatRoomId(
+  partnerId: string,
+  persona: ChatPartnerPersona = "member",
+): string {
+  const normalizedPersona = normalizeChatPartnerPersona(persona);
+  return `${PENDING_CHAT_ID_PREFIX}${partnerId.trim().toLowerCase()}-${normalizedPersona}`;
 }

@@ -6,10 +6,10 @@
 - **主要目錄**: 13 個（`app/`, `components/`, `lib/`, `types/`, `scripts/`, `e2e/`, `supabase/`, `docs/`, `public/`, `.stitch/`, `.agents/`, `.github/`, `.vscode/`）
 - **總檔案數**: 740+ 個（排除 `node_modules`、`.next`）
 - **TypeScript/TSX 檔案**: 410+ 個
-- **DB migrations**: 89 檔（`supabase/migrations/`）
+- **DB migrations**: 110 檔（`supabase/migrations/`）
 - **語言**: TypeScript/TSX, CSS, JSON, Markdown, SQL
 - **框架**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui, Zustand, Serwist (PWA), Playwright (E2E)
-- **後端整合**: **大部分已接線** — Supabase（Auth、RLS、RPC、Server Actions、Realtime、Cron）；首頁 / 收藏 / 庫存 / 願望清單 / 獎勵 / 公開檔案 / 訂單詳情 / 聊天已讀 / 檢舉已接後端；商戶 dashboard 與 checkout 仍部分 mock
+- **後端整合**: **大部分已接線** — Supabase（Auth、RLS、RPC、Server Actions、Realtime、Cron）；商戶 trading / 雙身分 persona 訂單與聊天已接；Stripe B2C checkout 仍待整合
 - **Package manager**: Bun only（`bun.lock`；見 `.cursorrules` §7）
 
 ---
@@ -71,8 +71,8 @@ app/
 │   ├── listings.ts                  # 上架提交（Bunny + listings insert）
 │   ├── offers.ts                    # 出價 / 接受 / 拒絕 / 修改 / OfferCard context
 │   ├── chat.ts                      # inbox, sendMessage, markRoomRead → RPC
-│   ├── orders.ts                    # searchUserTradingOrders, complete/cancel, order detail, mock pay / escrow
-│   ├── reviews.ts                   # 雙盲評價 + 公開檔案評價列表
+│   ├── orders.ts                    # searchUser/MerchantTradingOrders, complete/cancel, B2C merchant_orders, order detail
+│   ├── reviews.ts                   # 雙盲評價 + member/merchant reviewed-order batch + 公開檔案評價列表
 │   ├── reports.ts                   # submitUserReport（聊天 / 檔案檢舉）
 │   ├── home.ts                      # 首頁三區塊 bootstrap（願望清單 / 商戶 / C2C）
 │   ├── collection.ts                # 收藏 portfolio bootstrap + 售出歸檔
@@ -80,6 +80,10 @@ app/
 │   ├── wishlist.ts                  # 願望清單 toggle + 列表
 │   ├── rewards.ts                   # 簽到、積分、折價券中心
 │   ├── member-dashboard.ts          # 用戶總覽 dashboard stats
+│   ├── merchant-dashboard.ts        # 商戶總覽 dashboard stats
+│   ├── merchant-settings.ts         # 店鋪設定
+│   ├── merchant-performance.ts      # 商戶績效 analytics RPC
+│   ├── merchant-product-analytics.ts # 單 SKU 瀏覽/互動 analytics
 │   └── admin-member-orders.ts       # Dev/admin：鑑定託管狀態推進（mock flow）
 │
 ├── api/
@@ -124,7 +128,10 @@ app/
 │   │   ├── orderDetail/[id]/        # 會員訂單詳情（P2P + 鑑定託管）
 │   │   ├── rewards/                 # 折價券中心
 │   │   └── settings/
-│   ├── merchant/                    # 商戶 dashboard（部分 mock）
+│   ├── merchant/                    # 商戶 dashboard + trading + analytics
+│   │   ├── (dashboard)/             # 總覽 / 庫存 / 交易 / 績效 / analytics
+│   │   ├── orderDetail/[id]/        # 商戶訂單詳情（B2C）
+│   │   └── settings/
 │   └── [id]/                        # 公開檔案 + /rating 評價列表
 ├── home/                            # 首頁 SSR 區塊 data loaders
 │   ├── HomeWishlistSectionData.tsx
@@ -142,22 +149,28 @@ app/
 │   │   ├── types.ts                 # 搜尋 / 詳情 / 掛單 / 市場價型別
 │   │   ├── searchParsers.ts
 │   │   └── perf-log-client.ts
-│   ├── chat/                        # DB 聊天映射 + Realtime 解碼 + 已讀游標
-│   │   ├── constants.ts             # isMockChatRoomId, isDbChatRoomId
-│   │   ├── mapDbChats.ts            # inbox rows → Zustand ChatRoom / Message
-│   │   ├── mergeChatRooms.ts        # mock + DB room 合併
+│   ├── chat/                        # DB 聊天映射 + Realtime 解碼 + 已讀游標 + persona room key
+│   │   ├── constants.ts             # isDbChatRoomId, buildPendingChatRoomId(persona)
+│   │   ├── partnerRoomKey.ts        # partnerId + persona 複合房間識別
+│   │   ├── partnerRoomKey.test.ts
+│   │   ├── mapDbChats.ts            # inbox rows → Zustand ChatRoom / Message（含 partnerPersona）
+│   │   ├── mergeChatRooms.ts        # mock + DB room 合併（按 persona 去重）
 │   │   ├── hydrateChatRoomThread.ts # 長線程分頁 hydrate
 │   │   ├── persistMarkRoomRead.ts   # markRoomRead 客戶端持久化
 │   │   ├── roomHydration.ts         # 房間訊息 hydration 協調
 │   │   ├── offerCardImage.ts
 │   │   ├── offerCardContextCache.ts
-│   │   ├── resolveMemberOrderId.ts
-│   │   └── realtimeChatMessages.ts
+│   │   ├── resolveMemberOrderId.ts  # member + merchant order id 收集
+│   │   └── realtimeChatMessages.ts  # merchant_order_id on system msgs
+│   ├── merchant-order/              # 商戶訂單 UI 映射 + seller actions
+│   │   ├── types.ts
+│   │   ├── map-sale-order.ts
+│   │   └── merchant-seller-actions.ts
+│   ├── member-order/                # 訂單詳情映射（P2P / auth escrow）
 │   ├── collection/                  # 收藏 portfolio 型別 + perf log
 │   ├── dashboard/                   # 用戶總覽型別 + perf log
 │   ├── home/                        # 首頁區塊型別 + perf log
 │   ├── inventory/                   # 庫存 accordion 型別 + perf log
-│   ├── member-order/                # 訂單詳情映射（P2P / auth escrow）
 │   ├── reports/                     # formatReportReason
 │   ├── reviews/                     # 評價 UI 型別
 │   ├── wishlist/                    # 願望清單型別
@@ -190,7 +203,7 @@ app/
 ├── store/                           # Zustand
 │   ├── useMarketStore.ts
 │   ├── useUIStore.ts                # AddAsset modal、mockRole、**openExecutionSlideOver** / close
-│   ├── useHkCardVaultStore.ts       # 全局聊天 + offers 狀態帳本 + Scheme A store actions
+│   ├── useHkCardVaultStore.ts       # 全局聊天（partnerPersona）+ offers 狀態帳本 + orderKind
 │   ├── useMerchantStore.ts
 │   ├── useMockDbStore.ts
 │   └── useListingSubmitStore.ts     # 上架提交 overlay 狀態
@@ -201,7 +214,7 @@ app/
     ├── market/                      # CollectionTable, WishlistTable, WishlistButton
     ├── shared/                      # AddAssetModal, CollectionAddAfterListingDialog, MarketSkeletons…
     ├── navigation/                  # TopNav, BottomNav, MobileHeader, Footer…
-    ├── profile/                     # ProfileAvatar, ProfileHeaderWithChat, TitleBadgeIcon…
+    ├── profile/                     # ProfileAvatar, PublicPersonaProfileHeader, ProfileHeaderWithChat…
     ├── rewards/                     # CheckInCard, RewardUnlockedModal, UserProfileDashboardShell…
     ├── transactions/
     │   ├── GlobalTxButtons.tsx      # BuyButton（→ 全域 slide-over）、AuctionButton（mock）
@@ -212,7 +225,7 @@ app/
     ├── trading/                     # ReviewModal（交易評價彈窗）
     ├── user/                        # UserOrderRow, MemberOrderDetailView, P2P/Auth 發票與時間軸…
     ├── chat/                        # GlobalChatOverlay, GlobalChatConsole, ChatUnreadDot, OfferCard, ChatReportDialogBody…
-    ├── merchant/                    # InventoryAccordion, MerchantOrderRow…
+    ├── merchant/                    # MerchantOrderRow, MerchantOrderDetailView, MerchantTradingClient…
     └── …                            # admin, pwa, cards, ticker…
 ```
 
@@ -233,6 +246,10 @@ lib/
 ├── auth/
 │   ├── session.ts                   # getOptionalAuthUser(), resolveCurrentDemoRole()
 │   ├── roles.ts                     # RBAC 路由
+│   ├── dual-persona.ts              # 雙身分 self-dealing guard 文案
+│   ├── guard-member-persona-server.ts
+│   ├── resolve-active-listing-persona-server.ts
+│   ├── member-persona-features.ts
 │   ├── validation.ts
 │   ├── username.ts
 │   ├── password-errors.ts
@@ -282,10 +299,18 @@ lib/
 │   ├── submit-card-listing.ts
 │   ├── build-inventory-groups.ts
 │   ├── load-user-inventory.ts
+│   ├── active-listing-persona.ts    # member/merchant 掛單 persona SSOT
+│   ├── track-listing-view.ts        # 市集卡片點擊瀏覽計數
 │   ├── auth-service-copy.ts
 │   ├── constants.ts
 │   ├── errors.ts
 │   └── perf-log.ts
+│
+├── merchant-order/                  # B2C merchant_orders helpers（根 lib/）
+│   ├── merchant-order-rpc.ts        # rpc_complete_merchant_order 封裝
+│   ├── load-buyer-merchant-orders.ts # 買家 trading 列表合併
+│   ├── resolve-order-id.ts
+│   └── constants.ts
 │
 ├── member-order/
 │   ├── auth-escrow.ts               # escrow 狀態常數 / 顯示輔助
@@ -303,14 +328,15 @@ lib/
 │   ├── validation.ts
 │   ├── avatar.ts
 │   ├── client-upload.ts
-│   ├── load-profile-snippets.ts
+│   ├── load-profile-snippets.ts     # persona-aware listing seller snippets
 │   └── errors.ts
 │
 ├── rewards/
 │   └── mapUserRewardCoupon.ts
 │
 ├── titles/
-│   └── member-title-progress.ts
+│   ├── member-title-progress.ts
+│   └── merchant-title-progress.ts
 │
 ├── wishlist/
 │   ├── grading.ts / pricing.ts / sparkline.ts
@@ -404,21 +430,16 @@ e2e/
 ```
 supabase/
 ├── config.toml
-└── migrations/                      # 89 檔，按時間戳排序；`bunx supabase db push`
+└── migrations/                      # 110 檔，按時間戳排序；`bunx supabase db push`
     ├── 20260702100000_product_catalog_public_read.sql
     ├── …                            # auth, marketplace search, listings, offers, chat, orders…
-    ├── 20260708100000_member_auth_escrow_status.sql
-    ├── 20260709120000_rpc_send_chat_message_aml_warning.sql
-    ├── 20260709130000_user_collections_sold_archive.sql
-    ├── 20260709220000_chat_thread_pagination.sql
-    ├── 20260709300000_reports_rls.sql
-    ├── 20260710130000_marketplace_search_market_trend.sql
-    ├── 20260710140000_platform_trade_snapshots.sql
-    ├── 20260710180000_trading_orders_counterparty_avatar.sql
-    ├── 20260715160000_rpc_complete_member_order_either_party.sql
-    ├── 20260715200000_chat_room_reads.sql
-    ├── 20260715210000_offer_aml_shared_guard.sql
-    └── 20260715230000_chat_mark_read_counterpart_rooms.sql
+    ├── 20260717130000_chat_room_persona.sql
+    ├── 20260717140000_dual_persona_trading_rules.sql
+    ├── 20260717150000_search_merchant_trading_orders.sql
+    ├── 20260718100000_accept_offer_merchant_persona.sql
+    ├── 20260718110000_rpc_complete_merchant_order.sql
+    ├── 20260718130000_merchant_trading_helpers.sql
+    └── 20260718140000_chat_inbox_merchant_order_id.sql
 ```
 
 **Regenerate types:** `bun run supabase:types` → `types/supabase.ts` + `types/supabase.md`
@@ -434,6 +455,8 @@ docs/dev/
 ├── database.md
 ├── server.md
 ├── e2e.md                           # Playwright 環境變數與測試矩陣
+├── reports/                         # 實作報告（跨 workflow）
+│   └── 2026-07-18-persona-orders-and-chat-report.md
 └── follow-up/                       # 每個 workflow 一 packet
     ├── auth-login-register/
     ├── auth-password-recovery/
@@ -446,6 +469,13 @@ docs/dev/
     ├── role-based-routing/
     ├── offers-negotiation/
     ├── chat-offers-inbox/
+    ├── dual-persona-trading/
+    ├── persona-reputation-split/
+    ├── merchant-trading/
+    ├── merchant-dashboard/
+    ├── merchant-settings/
+    ├── merchant-performance/
+    ├── merchant-product-analytics/
     ├── member-auth-escrow/
     ├── marketplace-storefront/
     ├── home-sections/
@@ -488,7 +518,9 @@ docs/dev/
 | `/profile/user` | 用戶總覽 dashboard | `member-dashboard.ts` + SSR streaming |
 | `/profile/user/collection` | 收藏 portfolio | `getCollectionPageBootstrap` |
 | `/profile/user/inventory` | 賣家庫存 | `inventory.ts` + accordion RPC |
-| `/profile/user/trading` | 我的買賣訂單 | `searchUserTradingOrders` RPC |
+| `/profile/user/trading` | 我的買賣訂單（含 B2C 買入 merchant_orders 合併） | `searchUserTradingOrders` + `loadBuyerMerchantTradingOrders` |
+| `/profile/merchant/trading` | 商戶賣出訂單 | `searchMerchantTradingOrders` RPC |
+| `/profile/merchant/orderDetail/[id]` | 商戶 B2C 訂單詳情 | `getMerchantOrderDetail` |
 | `/profile/user/orderDetail/[id]` | 訂單詳情 | P2P + 鑑定託管（`MemberOrderDetailView`） |
 | `/profile/user/rewards` | 折價券中心 | `rewards.ts` |
 | `/profile/user/settings` | 用戶設定 | `getUserSettings` |
@@ -519,13 +551,15 @@ docs/dev/
 | **願望清單** | `wishlist.ts`, `WishlistButton` / `WishlistTable` | ✅ Wired |
 | **會員獎勵** | `rewards.ts`, `/profile/user/rewards` | 🟡 簽到 + 折價券中心已接；部分 UI 待 polish |
 | **用戶總覽** | `member-dashboard.ts`, `UserOverviewClient` | ✅ Wired |
-| **出價協商** | `offers.ts`, `ExecutionSlideOver` | 🟡 買家入口已全域接線；accept 後 checkout 導流待完成 |
-| **聊天收件匣** | `chat.ts`, `GlobalChatConsole`, `useChatRoomRealtime` | 🟡 DB inbox + Realtime + 已讀游標 + 檢舉；mock 房間保留 |
-| **用戶訂單** | `orders.ts`, `UserTradingClient`, `MemberOrderDetailView` | 🟡 列表 + 詳情 + 完結/取消/評價已接 |
+| **出價協商** | `offers.ts`, `ExecutionSlideOver` | 🟡 P2P 已接；merchant 掛單 accept → `merchant_orders`（`20260718100000`） |
+| **聊天收件匣** | `chat.ts`, `GlobalChatConsole`, `partnerRoomKey.ts` | 🟡 DB inbox + persona 分房 + Realtime；mock 房間保留 |
+| **用戶訂單** | `orders.ts`, `UserTradingClient`, `MemberOrderDetailView` | 🟡 列表 + P2C 買家合併 + 詳情 + 完結/評價已接 |
+| **商戶訂單** | `orders.ts`, `MerchantTradingClient`, `MerchantOrderDetailView` | ✅ B2C 列表 + 詳情 + `rpc_complete_merchant_order` |
 | **鑑定託管** | `member-auth-escrow`, `MemberAuthMockPaymentPanel` | ✅ Mock pay flow wired |
-| **交易評價** | `reviews.ts`, `ReviewModal` | ✅ 雙盲（交易頁 + 聊天）；公開評價列表 🟡 |
+| **交易評價** | `reviews.ts`, `ReviewModal` | ✅ 雙盲 + member/merchant order persona（交易頁 + 聊天） |
 | **公開檔案** | `app/profile/[id]/` | ✅ Wired |
-| **結帳 / 商戶 dashboard** | checkout, merchant dashboard | ⏳ Mock |
+| **結帳 / Stripe B2C** | checkout | ⏳ Mock；merchant P2P accept 已寫 `merchant_orders` |
+| **商戶 dashboard** | `merchant-dashboard.ts`, analytics | ✅ 總覽 + 績效 + SKU analytics |
 | **E2E** | `e2e/`, `playwright.config.ts` | ✅ 20+ specs（需 Supabase fixture env） |
 
 ---
@@ -543,6 +577,7 @@ bun run build:ci          # 本地模擬 CI（空 Supabase env）
 bun run test:catalog-search
 bun run test:member-order-complete-rpc
 bun run test:chat-mark-read
+bun test app/lib/chat/partnerRoomKey.test.ts
 bun run test:e2e          # Playwright（需 .env fixture；見 docs/dev/e2e.md）
 ```
 
@@ -587,7 +622,10 @@ bun run test:e2e          # Playwright（需 .env fixture；見 docs/dev/e2e.md�
 | 訂單詳情 UI | `app/components/user/MemberOrderDetailView.tsx` |
 | 收藏 / 庫存 / 願望清單 | `docs/dev/follow-up/user-collection/`, `user-inventory/`, `wishlist/` |
 | 出價協商 handoff | `docs/dev/follow-up/offers-negotiation/` |
+| Persona 實作報告 | `docs/dev/reports/2026-07-18-persona-orders-and-chat-report.md` |
+| 雙身分聊天 / 訂單 | `app/lib/chat/partnerRoomKey.ts`, `lib/merchant-order/` |
 | 聊天收件匣 handoff | `docs/dev/follow-up/chat-offers-inbox/` |
+| 商戶訂單 handoff | `docs/dev/follow-up/merchant-trading/` |
 | 用戶訂單 handoff | `docs/dev/follow-up/user-trading-orders/` |
 | 交易評價 handoff | `docs/dev/follow-up/transaction-reviews/` |
 | 會員獎勵 handoff | `docs/dev/follow-up/member-rewards-gamification/` |
@@ -598,6 +636,6 @@ bun run test:e2e          # Playwright（需 .env fixture；見 docs/dev/e2e.md�
 
 ---
 
-**最後更新**: 2026-07-16  
-**版本**: Full-Depth v5.0  
+**最後更新**: 2026-07-18  
+**版本**: Full-Depth v5.1  
 **維護者**: HKCardVault 開發團隊

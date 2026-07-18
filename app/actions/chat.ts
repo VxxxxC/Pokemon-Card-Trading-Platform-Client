@@ -273,7 +273,7 @@ async function fetchLastMessagesForRooms(
   const { data, error } = await supabase
     .from("chat_messages")
     .select(
-      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
+      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, merchant_order_id, is_system_warning",
     )
     .in("room_id", roomIds)
     .order("created_at", { ascending: false });
@@ -314,7 +314,7 @@ async function fetchMessagesForRoom(
   let query = supabase
     .from("chat_messages")
     .select(
-      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
+      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, merchant_order_id, is_system_warning",
     )
     .eq("room_id", roomId)
     .order("created_at", { ascending: false })
@@ -412,7 +412,7 @@ async function fetchInboxViaTables(
   const { data: allMessages, error: allMessagesError } = await supabase
     .from("chat_messages")
     .select(
-      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, is_system_warning",
+      "id, room_id, content, created_at, sender_id, offer_id, member_order_id, merchant_order_id, is_system_warning",
     )
     .in("room_id", roomIds)
     .order("created_at", { ascending: true });

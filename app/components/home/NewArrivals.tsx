@@ -13,6 +13,7 @@ import {
   formatListingGrade,
   formatRelativeDateTime,
 } from "@/lib/marketplace/listing-display";
+import { trackListingViewOnNavigate } from "@/lib/listings/track-listing-view";
 
 function ArrivalCardImage({
   imageUrl,
@@ -25,26 +26,21 @@ function ArrivalCardImage({
   alt: string;
   priority: boolean;
 }) {
-  const [src, setSrc] = useState(
-    () => imageUrl.trim() || catalogImageUrl?.trim() || "",
-  );
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setSrc(imageUrl.trim() || catalogImageUrl?.trim() || "");
-    setFailed(false);
-  }, [imageUrl, catalogImageUrl]);
+  const primarySrc = imageUrl.trim() || catalogImageUrl?.trim() || "";
+  const catalogSrc = catalogImageUrl?.trim() ?? "";
+  const [errorStage, setErrorStage] = useState<0 | 1 | 2>(0);
+  const src =
+    errorStage === 0 ? primarySrc : errorStage === 1 ? catalogSrc : "";
 
   const handleError = () => {
-    const catalog = catalogImageUrl?.trim();
-    if (catalog && src !== catalog) {
-      setSrc(catalog);
+    if (errorStage === 0 && catalogSrc && primarySrc !== catalogSrc) {
+      setErrorStage(1);
       return;
     }
-    setFailed(true);
+    setErrorStage(2);
   };
 
-  if (!src || failed) {
+  if (!src || errorStage === 2) {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-[#1A1612] text-text-disabled font-mono text-[10px]">
         暫無圖片
@@ -234,9 +230,20 @@ export function NewArrivals({
                     <Link
                       href={`/marketplace/product/${item.productId ?? item.id}`}
                       className="block relative w-full aspect-[3/4] overflow-hidden bg-[#1A1612]"
-                      onClick={(e) => isUserInteracting && e.preventDefault()}
+                      onClick={(e) => {
+                        if (isUserInteracting) {
+                          e.preventDefault();
+                          return;
+                        }
+                        trackListingViewOnNavigate({
+                          listingId: item.id,
+                          sellerId: item.sellerId,
+                          currentUserId,
+                        });
+                      }}
                     >
                       <ArrivalCardImage
+                        key={`${item.id}-${item.image}-${sourceCard?.catalogImageUrl ?? ""}`}
                         imageUrl={item.image}
                         catalogImageUrl={sourceCard?.catalogImageUrl}
                         alt={`${item.name} — ${item.rarity}`}

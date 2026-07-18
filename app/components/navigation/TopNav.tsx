@@ -60,6 +60,7 @@ export function TopNav() {
       const customEvent = e as CustomEvent<{
         partnerId?: string;
         partnerName?: string;
+        partnerPersona?: "member" | "merchant";
         roomId?: string;
       }>;
       const detail = customEvent.detail;
@@ -67,6 +68,7 @@ export function TopNav() {
         openChatWithPartner(
           detail.partnerId,
           detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
+          detail.partnerPersona ?? "member",
         );
         return;
       }

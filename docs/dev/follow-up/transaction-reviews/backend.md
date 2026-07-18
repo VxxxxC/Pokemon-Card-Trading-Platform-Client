@@ -6,6 +6,15 @@
 - **Frontend:** ✅ Wired on `/profile/user/trading` (`ReviewModal` + dual-track triggers)
 - **Partner:** Profile page review display, chat `SYSTEM_ORDER_COMPLETED` review nudge, regen `types/supabase.ts` after migrations
 
+## Changelog (2026-07-18)
+
+| Change | Detail |
+|--------|--------|
+| **`rpc_get_user_reviewed_merchant_order_ids`** | Migration `20260718130000` — batch `hasReviewedByMe` for B2C orders |
+| **`getUserReviewedOrderIds`** | Merges member + merchant reviewed-order lookups (chat + trading) |
+| **Chat** | `merchant_order_id` on inbox/thread RPC (`20260718140000`) + realtime selects |
+| **Persona rule** | Merchant listing accept → `merchant_orders` → seller shop review uses `reviewee_persona = merchant` |
+
 ## Changelog (2026-07-06)
 
 | Change | Detail |

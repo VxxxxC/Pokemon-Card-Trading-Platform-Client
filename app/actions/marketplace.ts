@@ -22,7 +22,11 @@ import {
   normalizeMarketplaceText,
   parseCatalogSearchQuery,
 } from "@/app/lib/marketplace/searchParsers";
-import { loadProfileSnippetsByIds } from "@/lib/profile/load-profile-snippets";
+import {
+  listingSellerSnippetKey,
+  loadListingSellerSnippets,
+  type ListingSellerSnippet,
+} from "@/lib/profile/load-profile-snippets";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import type {
   MarketplacePaginationMeta,
@@ -201,12 +205,11 @@ function toProductDetail(row: ProductCatalogRow): MarketplaceProductDetail {
 
 function toProductListingRow(
   row: ProductListingsRpcRow,
-  sellerProfiles: ReadonlyMap<
-    string,
-    { username: string | null; avatarUrl: string }
-  >,
+  sellerSnippets: ReadonlyMap<string, ListingSellerSnippet>,
 ): MarketplaceProductListingRow {
-  const sellerProfile = sellerProfiles.get(row.seller_id);
+  const sellerSnippet = sellerSnippets.get(
+    listingSellerSnippetKey(row.seller_id, row.seller_persona),
+  );
 
   return {
     listingId: row.listing_id,
@@ -214,9 +217,9 @@ function toProductListingRow(
     gradingCompany: row.grading_company,
     gradingScore: row.grading_score,
     sellerId: row.seller_id,
-    sellerName: row.seller_name,
-    sellerUsername: sellerProfile?.username ?? null,
-    sellerAvatarUrl: sellerProfile?.avatarUrl ?? DEFAULT_AVATAR_URL,
+    sellerName: sellerSnippet?.displayName ?? row.seller_name,
+    sellerUsername: sellerSnippet?.username ?? null,
+    sellerAvatarUrl: sellerSnippet?.avatarUrl ?? DEFAULT_AVATAR_URL,
     sellerRating: Number(row.seller_rating ?? 0),
     sellerTotalTrades: Number(row.seller_total_trades ?? 0),
     sellerPersona: row.seller_persona,
@@ -702,15 +705,18 @@ async function runLoadProductListings(
   }
 
   const rows = (data ?? []) as ProductListingsRpcRow[];
-  const sellerProfiles = await loadProfileSnippetsByIds(
+  const sellerSnippets = await loadListingSellerSnippets(
     supabase,
-    rows.map((row) => row.seller_id),
+    rows.map((row) => ({
+      sellerId: row.seller_id,
+      sellerPersona: row.seller_persona,
+    })),
   );
   const lowestRaw = rows[0]?.filtered_lowest_price;
 
   return {
     success: true,
-    data: rows.map((row) => toProductListingRow(row, sellerProfiles)),
+    data: rows.map((row) => toProductListingRow(row, sellerSnippets)),
     meta: toPaginationMeta(rows[0], page, pageSize),
     lowestPrice:
       lowestRaw != null && Number.isFinite(Number(lowestRaw))

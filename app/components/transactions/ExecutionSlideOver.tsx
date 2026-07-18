@@ -176,6 +176,8 @@ export function ExecutionSlideOver({
         roomId: room.id,
         partnerId: offerContext.sellerId,
         partnerName: offerContext.sellerName,
+        partnerPersona:
+          room.seller_persona === "merchant" ? "merchant" : "member",
         buyerId: profileResult.data.id,
         buyerName: profileResult.data.displayName,
         sellerId: offerContext.sellerId,

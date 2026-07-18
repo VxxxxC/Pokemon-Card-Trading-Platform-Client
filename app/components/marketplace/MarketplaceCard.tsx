@@ -9,6 +9,7 @@ import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
+import { trackListingViewOnNavigate } from "@/lib/listings/track-listing-view";
 import type { Database, Tables } from "@/types/supabase";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
@@ -161,6 +162,14 @@ function MarketplaceCardView({
     listing.grade.score,
   );
 
+  const handleDetailNavigate = () => {
+    trackListingViewOnNavigate({
+      listingId: listing.id,
+      sellerId: listing.sellerId,
+      currentUserId,
+    });
+  };
+
   return (
     <div
       className={
@@ -177,6 +186,7 @@ function MarketplaceCardView({
       <Link
         href={productDetailHref}
         prefetch
+        onClick={handleDetailNavigate}
         className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 block"
         aria-label={`查看 ${displayName} 商品詳情`}
       >

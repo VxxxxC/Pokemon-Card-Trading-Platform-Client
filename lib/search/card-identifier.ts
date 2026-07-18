@@ -28,7 +28,7 @@ export function isCardIdentifierQuery(query: string): boolean {
  * True when catalog autocomplete should use id_compact / id_canonical search.
  * Includes short letter prefixes (e.g. "mp") while excluding long English names.
  */
-export function useCompactCatalogSearch(query: string): boolean {
+export function isCompactCatalogSearchQuery(query: string): boolean {
   const trimmed = query.trim();
   if (!trimmed) return false;
   if (CJK_PATTERN.test(trimmed)) return false;

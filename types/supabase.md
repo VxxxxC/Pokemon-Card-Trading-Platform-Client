@@ -36,7 +36,7 @@ type UserRole = Enums<"user_role">;
 
 | Enum | Values |
 |------|--------|
-| `catalog_type` | `single_card`, `booster_pack`, `booster_box`, `gift_set`, `starter_deck` |
+| `catalog_type` | `single_card`, `booster_pack`, `booster_box`, `gift_set`, `starter_deck`, `accessories` |
 | `escrow_state` | `payment_held`, `authenticating`, `authenticated`, `completed_and_transferred`, `refunded` |
 | `kyc_state` | `pending`, `verified`, `rejected` |
 | `listing_engagement_event_type` | `view`, `offer` |
@@ -76,6 +76,7 @@ type UserRole = Enums<"user_role">;
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
 | `fn_issue_reward_from_template` | `{ p_grant_dedup_key?: string p_template_id: string p_user_id: string }` | `string` |
+| `fn_map_merchant_escrow_to_member_status` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] }` | `Database["public"]["Enums"]["member_order_state"]` |
 | `fn_member_order_is_open` | `{ p_escrow_status: Database["public"]["Enums"]["member_escrow_status"] p_status: Database["public"]…` | `boolean` |
 | `fn_merchant_order_is_auth_in_progress` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] p_requires_authentication: boolean }` | `boolean` |
 | `fn_merchant_order_is_open` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] }` | `boolean` |
@@ -114,11 +115,13 @@ type UserRole = Enums<"user_role">;
 | `rpc_cancel_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_complete_member_auth_grading` | `{ p_order_id: string }` | `Json` |
 | `rpc_complete_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
+| `rpc_complete_merchant_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_confirm_buyer_received` | `{ p_buyer_id: string; p_order_id: string }` | `Json` |
 | `rpc_confirm_platform_received` | `{ p_order_id: string }` | `Json` |
 | `rpc_e2e_reset_listing_trading_fixture` | `{ p_buyer_id: string; p_listing_id: string; p_seller_id: string }` | `Json` |
 | `rpc_fail_member_auth_order` | `{ p_order_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
+| `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_mark_chat_room_read` | `{ p_read_at?: string; p_room_id: string }` | `Json` |

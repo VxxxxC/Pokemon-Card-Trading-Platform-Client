@@ -29,6 +29,8 @@ export type OfferRealtimeEvent =
       type: "accepted";
       offerId: string;
       memberOrderId?: string;
+      merchantOrderId?: string;
+      orderKind?: "member" | "merchant";
     }
   | { type: "rejected"; offerId: string }
   | { type: "modified"; offerId: string };
@@ -41,15 +43,19 @@ export function mapChatMessageRowToStoreMessage(
   const content = row.content;
 
   if (content === "SYSTEM_OFFER_ACCEPTED") {
+    const merchantOrderId = row.merchant_order_id?.trim();
+    const memberOrderId = row.member_order_id?.trim();
     return {
       id: row.id,
       sender: "system",
       text: SYSTEM_ACCEPT_TEXT,
       timestamp,
       type: "text",
-      orderData: row.member_order_id
-        ? { orderId: row.member_order_id }
-        : undefined,
+      orderData: merchantOrderId
+        ? { orderId: merchantOrderId, orderKind: "merchant" }
+        : memberOrderId
+          ? { orderId: memberOrderId, orderKind: "member" }
+          : undefined,
     };
   }
 
@@ -64,15 +70,19 @@ export function mapChatMessageRowToStoreMessage(
   }
 
   if (content === "SYSTEM_ORDER_COMPLETED") {
+    const merchantOrderId = row.merchant_order_id?.trim();
+    const memberOrderId = row.member_order_id?.trim();
     return {
       id: row.id,
       sender: "system",
       text: SYSTEM_ORDER_COMPLETED_TEXT,
       timestamp,
       type: "system_order_completed",
-      orderData: row.member_order_id
-        ? { orderId: row.member_order_id }
-        : undefined,
+      orderData: merchantOrderId
+        ? { orderId: merchantOrderId, orderKind: "merchant" }
+        : memberOrderId
+          ? { orderId: memberOrderId, orderKind: "member" }
+          : undefined,
     };
   }
 
@@ -121,10 +131,14 @@ export function decodeOfferRealtimeEvent(
   const offerId = row.offer_id;
 
   if (row.content === "SYSTEM_OFFER_ACCEPTED") {
+    const merchantOrderId = row.merchant_order_id?.trim();
+    const memberOrderId = row.member_order_id?.trim();
     return {
       type: "accepted",
       offerId,
-      memberOrderId: row.member_order_id ?? undefined,
+      orderKind: merchantOrderId ? "merchant" : "member",
+      merchantOrderId: merchantOrderId || undefined,
+      memberOrderId: memberOrderId || undefined,
     };
   }
 

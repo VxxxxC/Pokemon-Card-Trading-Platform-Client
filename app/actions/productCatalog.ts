@@ -7,7 +7,7 @@ import {
   compactAlphanumeric,
   MIN_COMPACT_PREFIX,
   matchesCatalogCardSearch,
-  useCompactCatalogSearch,
+  isCompactCatalogSearchQuery,
 } from "@/lib/search/card-identifier";
 
 type CatalogType = Database["public"]["Enums"]["catalog_type"];
@@ -290,7 +290,7 @@ export async function searchProductCatalog(
   try {
     const supabase = await createClient();
 
-    if (useCompactCatalogSearch(query)) {
+    if (isCompactCatalogSearchQuery(query)) {
       return searchCatalogByCompact(supabase, query, itemType);
     }
 

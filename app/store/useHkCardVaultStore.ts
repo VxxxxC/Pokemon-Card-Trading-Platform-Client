@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { buildPendingChatRoomId } from "@/app/lib/chat/constants";
 import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
+import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
+import { partnerTierForPersona } from "@/app/lib/chat/partnerRoomKey";
 import { INITIAL_CHATS } from "@/app/lib/mock-data/chatrooms";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
@@ -11,6 +13,8 @@ type OfferLedgerStatus = Tables<"offers">["status"];
 export type OfferLedgerEntry = {
   status: OfferLedgerStatus;
   memberOrderId?: string;
+  merchantOrderId?: string;
+  orderKind?: "member" | "merchant";
   offerPrice?: number;
   modifiedCount?: number;
 };
@@ -32,6 +36,7 @@ export interface SpecialTransactionData {
 
 export interface OrderCompletedData {
   orderId: string;
+  orderKind?: "member" | "merchant";
 }
 
 export interface Message {
@@ -47,6 +52,7 @@ export interface Message {
 export interface ChatRoom {
   id: string;
   partnerId: string;
+  partnerPersona?: "member" | "merchant";
   partnerName: string;
   partnerAvatarUrl: string;
   partnerTier: string;
@@ -201,8 +207,12 @@ interface HkCardVaultStore {
    */
   activateRoomById: (roomId: string, partnerName: string) => void;
 
-  /** Resolve an existing room by counterparty profile id, or open a pending stub. */
-  openChatWithPartner: (partnerId: string, partnerName: string) => void;
+  /** Resolve an existing room by counterparty profile id + persona, or open a pending stub. */
+  openChatWithPartner: (
+    partnerId: string,
+    partnerName: string,
+    partnerPersona?: ChatPartnerPersona,
+  ) => void;
 
   injectSpecialTransaction: (payload: {
     sellerName: string;
@@ -219,6 +229,7 @@ interface HkCardVaultStore {
     roomId: string;
     partnerId: string;
     partnerName: string;
+    partnerPersona?: ChatPartnerPersona;
     buyerId: string;
     buyerName: string;
     sellerId: string;
@@ -245,7 +256,11 @@ interface HkCardVaultStore {
     messageCreatedAt?: string;
   }) => void;
 
-  applyOfferAccepted: (offerId: string, memberOrderId?: string) => void;
+  applyOfferAccepted: (
+    offerId: string,
+    orderId?: string,
+    orderKind?: "member" | "merchant",
+  ) => void;
 
   applyOfferRejected: (offerId: string) => void;
 
@@ -320,6 +335,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       const stub: ChatRoom = {
         id: roomId,
         partnerId: roomId,
+        partnerPersona: "member",
         partnerName,
         partnerAvatarUrl: DEFAULT_AVATAR_URL,
         partnerTier: "認證用戶",
@@ -343,9 +359,13 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
-  openChatWithPartner: (partnerId, partnerName) =>
+  openChatWithPartner: (partnerId, partnerName, partnerPersona = "member") =>
     set((state) => {
-      const existing = findRoomByPartnerId(state.chats, partnerId);
+      const existing = findRoomByPartnerId(
+        state.chats,
+        partnerId,
+        partnerPersona,
+      );
       if (existing) {
         return {
           activeRoomId: existing.id,
@@ -357,13 +377,14 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         };
       }
 
-      const roomId = buildPendingChatRoomId(partnerId);
+      const roomId = buildPendingChatRoomId(partnerId, partnerPersona);
       const stub: ChatRoom = {
         id: roomId,
         partnerId,
+        partnerPersona,
         partnerName,
         partnerAvatarUrl: DEFAULT_AVATAR_URL,
-        partnerTier: "認證用戶",
+        partnerTier: partnerTierForPersona(partnerPersona),
         lastMessage: "已開啟對話",
         unreadCount: 0,
         timestamp: new Date().toISOString(),
@@ -387,15 +408,22 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
   openGlobalChat: (buyerId, buyerName, sellerId, sellerName, currentViewerRole, injectOffer) =>
     set((state) => {
-      // Deterministic canonical room ID — alphabetically sorted for bi-directional symmetry
-      const canonicalRoomId = generateDeterministicRoomId(buyerId, sellerId);
+      const buyerPersona: ChatPartnerPersona = "member";
+      const sellerPersona: ChatPartnerPersona = "member";
+      const canonicalRoomId = generateDeterministicRoomId(
+        buyerId,
+        buyerPersona,
+        sellerId,
+        sellerPersona,
+      );
       const exists = state.chats.some((c) => c.id === canonicalRoomId);
       let updatedChats = [...state.chats];
 
-      // Determine who is the partner based on who is viewing the chat
       const partnerId = currentViewerRole === "SELLER" ? buyerId : sellerId;
       const partnerName = currentViewerRole === "SELLER" ? buyerName : sellerName;
-      const partnerTier = currentViewerRole === "SELLER" ? "認證買家" : "專業認證商戶";
+      const partnerPersona =
+        currentViewerRole === "SELLER" ? buyerPersona : sellerPersona;
+      const partnerTier = partnerTierForPersona(partnerPersona);
 
       if (exists) {
         updatedChats = state.chats.map((room) => {
@@ -423,9 +451,10 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
           return {
             ...room,
-            partnerId,      // Dynamically pivot the partnerId for current viewer
-            partnerName,    // Dynamically pivot the partnerName for current viewer
-            partnerTier,    // Dynamically pivot the partnerTier for current viewer
+            partnerId,
+            partnerName,
+            partnerPersona,
+            partnerTier,
             messages: currentMessages,
             lastMessage: currentLastMessage,
             unreadCount: 0,
@@ -435,6 +464,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         const newSession: ChatRoom = {
           id: canonicalRoomId,
           partnerId,
+          partnerPersona,
           partnerName,
           partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier,
@@ -473,8 +503,12 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
   injectSpecialTransaction: (payload) =>
     set((state) => {
-      // Use deterministic canonical room ID for injectSpecialTransaction as well
-      const canonicalRoomId = generateDeterministicRoomId(payload.buyerId, payload.sellerId);
+      const canonicalRoomId = generateDeterministicRoomId(
+        payload.buyerId,
+        "member",
+        payload.sellerId,
+        "member",
+      );
 
       const status = payload.isInstantTake ? "accepted" : "pending";
       const msgText = payload.isInstantTake
@@ -515,6 +549,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         const newRoom: ChatRoom = {
           id: canonicalRoomId,
           partnerId: payload.sellerId,
+          partnerPersona: "member",
           partnerName: payload.sellerName,
           partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier: "認證賣家",
@@ -544,6 +579,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
   openOfferChatSession: (payload) =>
     set((state) => {
+      const partnerPersona = payload.partnerPersona ?? "member";
       const modifiedCount = payload.modifiedCount ?? 0;
       const initialStatus: SpecialTransactionData["initialStatus"] =
         modifiedCount >= 1
@@ -588,6 +624,8 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
             ...room,
             partnerId: payload.partnerId,
             partnerName: payload.partnerName,
+            partnerPersona,
+            partnerTier: partnerTierForPersona(partnerPersona),
             lastMessage: specialMsg.text,
             unreadCount: 0,
             messages: hasOfferMsg ? room.messages : [...room.messages, specialMsg],
@@ -597,9 +635,10 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         const newRoom: ChatRoom = {
           id: payload.roomId,
           partnerId: payload.partnerId,
+          partnerPersona,
           partnerName: payload.partnerName,
           partnerAvatarUrl: DEFAULT_AVATAR_URL,
-          partnerTier: "認證賣家",
+          partnerTier: partnerTierForPersona(partnerPersona),
           lastMessage: specialMsg.text,
           unreadCount: 0,
           timestamp: payload.messageCreatedAt,
@@ -682,7 +721,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
-  applyOfferAccepted: (offerId, memberOrderId) =>
+  applyOfferAccepted: (offerId, orderId, orderKind = "member") =>
     set((state) => {
       if (isOfferAlreadyInStatus(state.offers, state.chats, offerId, "accepted")) {
         return state;
@@ -694,7 +733,10 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         [offerId]: {
           ...state.offers[offerId],
           status: "accepted",
-          memberOrderId,
+          orderKind,
+          ...(orderKind === "merchant"
+            ? { merchantOrderId: orderId }
+            : { memberOrderId: orderId }),
         },
       };
 

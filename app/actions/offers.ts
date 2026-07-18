@@ -8,10 +8,13 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
 import type { Tables } from "@/types/supabase";
+import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 
 type ChatRoomRow = Tables<"chat_rooms">;
 type OfferRow = Tables<"offers">;
 type ChatMessageRow = Tables<"chat_messages">;
+type MemberOrderRow = Tables<"member_orders">;
+type MerchantOrderRow = Tables<"merchant_orders">;
 
 type RpcMakeOfferArgs = {
   p_listing_id: string;
@@ -34,15 +37,14 @@ export type MakeOfferResult =
     }
   | { success: false; error: string };
 
-type MemberOrderRow = Tables<"member_orders">;
-
 type RpcAcceptOfferArgs = {
   p_offer_id: string;
   p_seller_id: string;
 };
 
 type AcceptOfferPayload = {
-  order: MemberOrderRow;
+  orderKind: MemberOrderKind;
+  order: MemberOrderRow | MerchantOrderRow;
   messageId: string;
 };
 
@@ -207,8 +209,12 @@ function parseRpcAcceptOfferPayload(data: unknown): AcceptOfferPayload | null {
     return null;
   }
 
+  const orderKind =
+    payload.order_kind === "merchant" ? "merchant" : "member";
+
   return {
-    order: payload.order as MemberOrderRow,
+    orderKind,
+    order: payload.order as MemberOrderRow | MerchantOrderRow,
     messageId: payload.message_id,
   };
 }
@@ -498,6 +504,9 @@ export async function acceptOffer(offerId: string): Promise<AcceptOfferResult> {
     revalidatePath("/marketplace");
     revalidatePath("/profile/user/inventory");
     revalidatePath("/profile/user/collection");
+    revalidatePath("/profile/merchant/inventory");
+    revalidatePath("/profile/merchant/trading");
+    revalidatePath("/profile/user/trading");
 
     return {
       success: true,

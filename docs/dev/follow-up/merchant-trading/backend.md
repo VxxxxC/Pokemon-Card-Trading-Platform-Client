@@ -4,9 +4,18 @@
 
 - **Backend:** ✅ Ready (list RPC + `getMerchantOrderDetail` + stub `submitMerchantLogistics`)
 - **Frontend:** ✅ Wired — `/profile/merchant/trading` list + `/profile/merchant/orderDetail/[id]` detail
-- **Stripe / mutations:** ⏳ Deferred — Connect, PaymentIntent, webhooks, `completeMerchantOrder` RPC not shipped
+- **Stripe / mutations:** ⏳ Stripe deferred — `rpc_complete_merchant_order` + buyer complete wired for P2P B2C mock path
 
 ## Changelog
+
+### 2026-07-18 (merchant listing persona order split)
+
+| Change | Detail |
+|--------|--------|
+| **`20260718100000`** | `rpc_accept_offer` — `seller_persona = merchant` → `merchant_orders` + `chat_messages.merchant_order_id` |
+| **`20260718110000`** | `rpc_complete_merchant_order` — buyer confirms receipt; chat `SYSTEM_ORDER_COMPLETED` with `merchant_order_id` |
+| **`completeMerchantOrder` / `completeBuyerOrder`** | `orderKind: 'merchant'` routes to new RPC |
+| **Buyer visibility** | `loadBuyerMerchantTradingOrders` merged into `searchUserTradingOrders` (buy persona) |
 
 ### 2026-07-17 (merchant order detail)
 

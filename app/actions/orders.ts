@@ -36,6 +36,11 @@ import {
 } from "@/lib/member-order/resolve-order-id";
 import { resolveMerchantOrderIdForMerchant } from "@/lib/merchant-order/resolve-order-id";
 import { getMerchantSellerActionFlags } from "@/app/lib/merchant-order/merchant-seller-actions";
+import {
+  loadBuyerMerchantTradingOrders,
+  merchantBuyerOrderMatchesTab,
+} from "@/lib/merchant-order/load-buyer-merchant-orders";
+import { rpcCompleteMerchantOrder } from "@/lib/merchant-order/merchant-order-rpc";
 import { ensureMemberOrderListingUuid } from "@/lib/member-order/repair-listing-id";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
 import { createClient } from "@/lib/supabase/server";
@@ -106,6 +111,96 @@ function revalidateMemberOrderPaths(orderId: string): void {
   revalidatePath("/profile/user/orderDetail/" + orderId);
   revalidatePath("/profile/user/inventory");
   revalidatePath("/profile/user/collection");
+}
+
+function revalidateMerchantOrderPaths(orderId: string): void {
+  revalidatePath("/profile/merchant/trading");
+  revalidatePath("/profile/merchant/orderDetail/" + orderId);
+  revalidatePath("/profile/user/trading");
+}
+
+function merchantBuyerOrderMatchesSearch(
+  order: UserTradingOrder,
+  searchQuery?: string,
+): boolean {
+  const query = searchQuery?.trim().toLowerCase();
+  if (!query) {
+    return true;
+  }
+
+  const haystack = [
+    order.orderNumber,
+    order.product.cardName,
+    order.product.cardNumber,
+    order.product.setCode,
+    order.product.displayId,
+    order.counterparty.displayName,
+    order.counterparty.username,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+}
+
+async function loadReviewedMerchantOrderIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orderIds: string[],
+): Promise<Set<string>> {
+  if (orderIds.length === 0) {
+    return new Set();
+  }
+
+  const { data, error } = await (
+    supabase as unknown as {
+      rpc: (
+        fn: "rpc_get_user_reviewed_merchant_order_ids",
+        args: { p_order_ids: string[] },
+      ) => Promise<{
+        data: string[] | null;
+        error: { message: string } | null;
+      }>;
+    }
+  ).rpc("rpc_get_user_reviewed_merchant_order_ids", {
+    p_order_ids: orderIds,
+  });
+
+  if (error) {
+    console.error("[loadReviewedMerchantOrderIds]", error.message);
+    return new Set();
+  }
+
+  return new Set(data ?? []);
+}
+
+function paginateMergedOrders(
+  orders: UserTradingOrder[],
+  page: number,
+  pageSize: number,
+): {
+  data: UserTradingOrder[];
+  meta: TradingOrdersPaginationMeta;
+} {
+  const total = orders.length;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+  const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+  const data = orders.slice(offset, offset + pageSize);
+  const rangeStart = total === 0 ? 0 : offset + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(offset + pageSize, total);
+
+  return {
+    data,
+    meta: {
+      total,
+      page: safePage,
+      pageSize,
+      totalPages,
+      rangeStart,
+      rangeEnd,
+    },
+  };
 }
 
 type SearchUserTradingOrdersRpcArgs = {
@@ -499,8 +594,8 @@ export async function searchUserTradingOrders(
       p_persona: input.persona,
       p_tab_status: input.tabStatus,
       p_search_query: input.searchQuery?.trim() || undefined,
-      p_page: page,
-      p_page_size: pageSize,
+      p_page: input.persona === "sell" ? page : 1,
+      p_page_size: input.persona === "sell" ? pageSize : 200,
     };
 
     const rpcStart = isTradingPerfLogEnabled() ? tradingPerfNow() : 0;
@@ -538,11 +633,65 @@ export async function searchUserTradingOrders(
       )
     ).filter((order): order is UserTradingOrder => order !== null);
 
+    if (input.persona === "sell") {
+      return {
+        success: true,
+        data: mappedOrders,
+        meta,
+        filters,
+      };
+    }
+
+    const merchantBuyerOrders = await loadBuyerMerchantTradingOrders(
+      supabase,
+      user.id,
+      new Set(),
+    );
+    const reviewedMerchantIds = await loadReviewedMerchantOrderIds(
+      supabase,
+      merchantBuyerOrders.map((order) => order.id),
+    );
+    const merchantOrdersWithReviewState = merchantBuyerOrders.map((order) => ({
+      ...order,
+      hasReviewedByMe: reviewedMerchantIds.has(order.id),
+    }));
+
+    const filteredMerchantOrders = merchantOrdersWithReviewState.filter(
+      (order) =>
+        merchantBuyerOrderMatchesTab(order, input.tabStatus) &&
+        merchantBuyerOrderMatchesSearch(order, input.searchQuery),
+    );
+
+    const personaFilteredMember =
+      input.persona === "buy"
+        ? mappedOrders.filter((order) => order.persona === "buy")
+        : mappedOrders;
+
+    const combined = [...personaFilteredMember, ...filteredMerchantOrders].sort(
+      (left, right) => {
+        const leftTime = new Date(left.createdAt ?? 0).getTime();
+        const rightTime = new Date(right.createdAt ?? 0).getTime();
+        return rightTime - leftTime;
+      },
+    );
+
+    const merged = paginateMergedOrders(combined, page, pageSize);
+    const merchantBuyCount = merchantOrdersWithReviewState.filter(
+      (order) => order.persona === "buy",
+    ).length;
+
     return {
       success: true,
-      data: mappedOrders,
-      meta,
-      filters,
+      data: merged.data,
+      meta: merged.meta,
+      filters: {
+        ...filters,
+        persona: {
+          all: filters.persona.all + merchantBuyCount,
+          buy: filters.persona.buy + merchantBuyCount,
+          sell: filters.persona.sell,
+        },
+      },
     };
   } catch (error) {
     console.error("[searchUserTradingOrders]", error);
@@ -1314,16 +1463,48 @@ export async function submitMerchantLogistics(
 export async function completeMerchantOrder(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
-  const invalidId = rejectNonUuidMutationOrderId(orderId);
-  if (invalidId) {
-    return invalidId;
-  }
+  try {
+    const invalidId = rejectNonUuidMutationOrderId(orderId);
+    if (invalidId) {
+      return invalidId;
+    }
+    const trimmedOrderId = orderId.trim();
 
-  return {
-    success: false,
-    error:
-      "商戶訂單確認完成功能即將推出；請使用商戶交易頁完成操作。",
-  };
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再確認完成" };
+    }
+
+    const identityError = rejectInvalidRpcIdentity(trimmedOrderId, user.id);
+    if (identityError) {
+      return identityError;
+    }
+
+    const { error } = await rpcCompleteMerchantOrder(supabase, {
+      p_order_id: trimmedOrderId,
+      p_user_id: user.id,
+    });
+
+    if (error) {
+      console.error("[completeMerchantOrder] rpc", error.message);
+      return { success: false, error: mapOrderRpcError(error.message) };
+    }
+
+    revalidatePath("/marketplace");
+    revalidateMerchantOrderPaths(trimmedOrderId);
+    revalidateMemberOrderPaths(trimmedOrderId);
+
+    return { success: true };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "確認完成訂單時發生錯誤";
+    console.error("[completeMerchantOrder]", error);
+    return { success: false, error: message };
+  }
 }
 
 export async function completeBuyerOrder(
