@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUIStore } from "@/app/store/useUIStore";
+import { getProfileHomePath, getTradingHomePath } from "@/lib/auth/roles";
 import { useSyncExternalStore } from "react";
 
 export function BottomNav() {
@@ -11,6 +12,7 @@ export function BottomNav() {
 
   // 🟢 訂閱沙盒身份
   const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const isGuest = useSyncExternalStore(
     () => () => {}, // 訂閱監聽清理回調
     () => userAuthRole === "GUEST", // 客戶端快照（讀取真實狀態）
@@ -18,17 +20,11 @@ export function BottomNav() {
   );
 
   // 🟢 根據當前沙盒身份動態配置路由與高亮態，防止進入錯誤端點
-  const getTradingPath = () => {
-    if (userAuthRole === "MERCHANT") return "/profile/merchant/trading";
-    if (userAuthRole === "ADMIN") return "/admin/approvals";
-    return "/profile/user/trading";
-  };
+  const getTradingPath = () =>
+    getTradingHomePath(userAuthRole, activeListingPersona);
 
-  const getProfilePath = () => {
-    if (userAuthRole === "MERCHANT") return "/profile/merchant";
-    if (userAuthRole === "ADMIN") return "/admin";
-    return "/profile/user";
-  };
+  const getProfilePath = () =>
+    getProfileHomePath(userAuthRole, activeListingPersona);
 
   const isTradingActive = pathname.includes("/trading") || pathname.includes("/approvals");
   const isProfileActive =

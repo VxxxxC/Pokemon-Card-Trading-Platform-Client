@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
+import { getProfileHomePath } from "@/lib/auth/roles";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import {
@@ -14,11 +15,10 @@ import {
   ChatUnreadDotInline,
 } from "@/app/components/chat/ChatUnreadDot";
 
-const navLinks = [
+const baseNavLinks = [
   { href: "/", label: "首頁" },
   { href: "/marketplace", label: "市場" },
-  { href: "/profile", label: "會員中心" },
-];
+] as const;
 
 export function TopNav() {
   const pathname = usePathname();
@@ -28,8 +28,16 @@ export function TopNav() {
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
   // 🟢 注入全域 userAuthRole 身份真理源
   const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const activeListingPersona = useUIStore((state) => state.activeListingPersona);
 
   const isGuest = userAuthRole === "GUEST";
+  const profileHomeHref = isGuest
+    ? "/auth"
+    : getProfileHomePath(userAuthRole, activeListingPersona);
+  const navLinks = [
+    ...baseNavLinks,
+    { href: profileHomeHref, label: "會員中心" },
+  ];
 
   // 從 Zustand 接入受控雷達狀態
   const {

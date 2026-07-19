@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useUIStore } from "@/app/store/useUIStore";
-import { getRoleHomePath } from "@/lib/auth/roles";
+import { getProfileHomePath } from "@/lib/auth/roles";
 
 // TODO: [API] Fetch user portfolio value from Supabase — aggregate `user_portfolio` table card values in HKD
 // TODO: [database] Create `user_portfolio` table with card_id, quantity, condition fields; compute HKD net worth via market price API
@@ -21,6 +21,7 @@ const checkInDays = [
 
 export function PortfolioRewards() {
   const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const isLoggedIn =
     userAuthRole === "USER" || userAuthRole === "MERCHANT" || userAuthRole === "ADMIN";
 
@@ -68,7 +69,7 @@ export function PortfolioRewards() {
         </h2>
         {userAuthRole !== "ADMIN" ? (
           <Link
-            href={getRoleHomePath(userAuthRole)}
+            href={getProfileHomePath(userAuthRole, activeListingPersona)}
             className="font-mono text-[12px] text-brand hover:text-brand-hover transition-colors"
           >
             管理收藏 →

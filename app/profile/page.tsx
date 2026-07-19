@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getRoleHomePath } from "@/lib/auth/roles";
+import { getProfileHomePath } from "@/lib/auth/roles";
+import { resolveActiveListingPersonaServer } from "@/lib/auth/resolve-active-listing-persona-server";
 import { resolveCurrentAuthRole } from "@/lib/auth/session";
 
 export default async function ProfileGateway() {
@@ -9,5 +10,6 @@ export default async function ProfileGateway() {
     redirect("/auth");
   }
 
-  redirect(getRoleHomePath(role));
+  const persona = await resolveActiveListingPersonaServer();
+  redirect(getProfileHomePath(role, persona));
 }

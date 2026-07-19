@@ -1,5 +1,9 @@
 import type { AuthRole } from "@/app/store/useUIStore";
 import type { Database } from "@/types/supabase";
+import {
+  defaultListingPersonaForRole,
+  type ListingSellerPersona,
+} from "@/lib/listings/active-listing-persona";
 
 export type DbUserRole = Database["public"]["Enums"]["user_role"];
 
@@ -18,15 +22,40 @@ export function dbRoleToAuthRole(
 }
 
 export function getRoleHomePath(role: AuthRole): string {
+  return getProfileHomePath(role, defaultListingPersonaForRole(role));
+}
+
+export function getProfileHomePath(
+  role: AuthRole,
+  persona: ListingSellerPersona = defaultListingPersonaForRole(role),
+): string {
   switch (role) {
     case "ADMIN":
       return "/admin";
-    case "MERCHANT":
-      return "/profile/merchant";
-    case "USER":
-      return "/profile/user";
     case "GUEST":
       return "/auth";
+    case "USER":
+      return "/profile/user";
+    case "MERCHANT":
+      return persona === "member" ? "/profile/user" : "/profile/merchant";
+  }
+}
+
+export function getTradingHomePath(
+  role: AuthRole,
+  persona: ListingSellerPersona = defaultListingPersonaForRole(role),
+): string {
+  switch (role) {
+    case "ADMIN":
+      return "/admin/approvals";
+    case "GUEST":
+      return "/auth";
+    case "USER":
+      return "/profile/user/trading";
+    case "MERCHANT":
+      return persona === "member"
+        ? "/profile/user/trading"
+        : "/profile/merchant/trading";
   }
 }
 
