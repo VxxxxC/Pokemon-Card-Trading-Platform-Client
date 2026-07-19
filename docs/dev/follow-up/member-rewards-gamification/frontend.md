@@ -8,6 +8,16 @@
 
 ## Changelog
 
+### 2026-07-19 (effective check-in streak — broken gap days)
+
+| Area | What changed |
+|------|----------------|
+| **CheckInCard** | `getGamificationStats` returns **effective** streak via `resolveEffectiveCheckInStreak` (HK timezone); gap >1 day → UI shows day 1「今日」, not stale `current_streak` |
+| **Locked coupons** | **`可解鎖`** tab progress (`check_in_streak` / `min_streak`) requires migration **`20260719150000`** — DB `fn_effective_check_in_streak` SSOT |
+| **Home** | `HomePageShell` `showCheckIn` only when logged in **and** member persona active (avoids merchant empty column) |
+| **PortfolioRewards** | Replaced hardcoded 7-day mock with live `CheckInCard` when member persona |
+| **E2E** | `e2e/member-dashboard.spec.ts` — broken-streak fixture (`last_check_in` 3 days ago → day 1「今日」) |
+
 ### 2026-07-17 (merchant persona guard)
 
 | Area | What changed |

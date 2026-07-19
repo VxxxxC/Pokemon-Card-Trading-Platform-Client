@@ -8,6 +8,16 @@
 
 ## Changelog
 
+### 2026-07-19 — Effective check-in streak (broken-streak UI + admin rewards)
+
+| Change | Detail |
+|--------|--------|
+| **`20260719150000`** | `fn_effective_check_in_streak`, `fn_sync_broken_check_in_streak`; stats RPC lazy-resets broken streak |
+| **TS helper** | `lib/rewards/check-in-streak.ts` — HK timezone effective streak (mirrors DB) |
+| **`getGamificationStats`** | Returns effective `currentStreak` for `CheckInCard` 7-day grid |
+| **`fn_template_is_eligible` / `fn_reward_template_progress_detail`** | Use effective streak — admin `check_in_streak` + `min_streak: 7` shows `0/7` after gap |
+| **Admin template** | `{ "kind": "check_in_streak", "min_streak": 7, "once_per_user": true }` — no new trigger kind needed |
+
 ### 2026-07-05 (locked coupon catalog — `get_reward_coupon_center`)
 
 | Change | Detail |

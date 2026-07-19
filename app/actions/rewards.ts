@@ -12,6 +12,10 @@ import {
   parseUserRewardCouponRows,
   type RewardCouponCenterView,
 } from "@/lib/rewards/mapUserRewardCoupon";
+import {
+  isCheckedInTodayHk,
+  resolveEffectiveCheckInStreak,
+} from "@/lib/rewards/check-in-streak";
 import { createClient } from "@/lib/supabase/server";
 
 type GamificationStatsResult =
@@ -80,15 +84,6 @@ function isCouponRpcUnavailable(error: { message: string }): boolean {
   );
 }
 
-function isCheckedInTodayHk(lastCheckIn: string | null): boolean {
-  if (!lastCheckIn) return false;
-  const last = new Date(lastCheckIn);
-  const now = new Date();
-  const hk = (d: Date) =>
-    d.toLocaleDateString("en-CA", { timeZone: "Asia/Hong_Kong" });
-  return hk(last) === hk(now);
-}
-
 export async function getGamificationStats(): Promise<GamificationStatsResult> {
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
@@ -126,15 +121,22 @@ export async function getGamificationStats(): Promise<GamificationStatsResult> {
     const payload = data as Record<string, unknown> | null;
     const lastCheckIn =
       typeof payload?.last_check_in === "string" ? payload.last_check_in : null;
+    const storedStreak = Number(payload?.current_streak ?? 0);
+    const checkedInToday = isCheckedInTodayHk(lastCheckIn);
+    const effectiveStreak = resolveEffectiveCheckInStreak({
+      currentStreak: storedStreak,
+      lastCheckIn,
+      checkedInToday,
+    });
 
     return {
       success: true,
       data: {
         pointsBalance: Number(payload?.points_balance ?? 0),
-        currentStreak: Number(payload?.current_streak ?? 0),
+        currentStreak: effectiveStreak,
         longestStreak: Number(payload?.longest_streak ?? 0),
         lastCheckIn,
-        checkedInToday: isCheckedInTodayHk(lastCheckIn),
+        checkedInToday,
       },
     };
   } catch (error) {

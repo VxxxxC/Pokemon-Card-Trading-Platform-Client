@@ -1,5 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
 import { hasBuyerAuthFixtures } from "./fixtures/test-data";
+import {
+  getBuyerProfileIdFromEnv,
+  getGamificationStatsForProfile,
+  upsertGamificationStatsForProfile,
+} from "./fixtures/supabase-admin";
+
+function daysAgoHkMiddayIso(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  date.setHours(12, 0, 0, 0);
+  return date.toISOString();
+}
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
@@ -54,6 +66,57 @@ test.describe("Member dashboard and rewards", () => {
     await expect(checkInButton).toHaveText(/明日請繼續保持收藏習慣/, {
       timeout: 20_000,
     });
+  });
+
+  test("broken check-in streak resets UI to day 1", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer-only check-in streak");
+    if (!hasBuyerAuthFixtures()) {
+      test.skip(true, "Missing E2E_BUYER_EMAIL or E2E_BUYER_PASSWORD");
+    }
+
+    const resolvedProfileId = await getBuyerProfileIdFromEnv();
+    if (!resolvedProfileId) {
+      test.skip(true, "Could not resolve buyer profile id");
+      return;
+    }
+    const profileId = resolvedProfileId;
+
+    const previousStats = await getGamificationStatsForProfile(profileId);
+
+    try {
+      await upsertGamificationStatsForProfile(profileId, {
+        current_streak: 5,
+        last_check_in: daysAgoHkMiddayIso(3),
+        points_balance: previousStats?.points_balance ?? 0,
+      });
+
+      await page.goto("/profile/user", { waitUntil: "domcontentloaded" });
+      await dismissBlockingOverlays(page);
+
+      const checkInHeading = page.getByRole("heading", { name: "每日簽到" }).first();
+      await expect(checkInHeading).toBeVisible({ timeout: 20_000 });
+
+      const checkInSection = checkInHeading.locator(
+        "xpath=ancestor::div[contains(@class,'rounded-2xl')][1]",
+      );
+      await expect(checkInSection.getByText("今日", { exact: true })).toBeVisible({
+        timeout: 20_000,
+      });
+      await expect(checkInSection.getByText("已簽")).toHaveCount(0, {
+        timeout: 20_000,
+      });
+      await expect(
+        page.getByRole("button", { name: "立即簽到打卡獲取積分" }),
+      ).toBeVisible({ timeout: 20_000 });
+    } finally {
+      if (previousStats) {
+        await upsertGamificationStatsForProfile(profileId, {
+          current_streak: previousStats.current_streak ?? 0,
+          last_check_in: previousStats.last_check_in,
+          points_balance: previousStats.points_balance,
+        });
+      }
+    }
   });
 
   test("rewards page coupon tabs are navigable", async ({ page }, testInfo) => {

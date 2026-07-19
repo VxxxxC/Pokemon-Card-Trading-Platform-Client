@@ -10,6 +10,7 @@ import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import { markHomeClientMount } from "@/app/lib/home/perf-log-client";
 
 const PwaInstallPrompt = dynamic(
@@ -29,7 +30,8 @@ export function HomePageShell({
   currentUserId,
   children,
 }: HomePageShellProps) {
-  const showCheckIn = currentUserId != null;
+  const isMemberPersonaActive = useIsMemberPersonaActive();
+  const showCheckIn = currentUserId != null && isMemberPersonaActive;
 
   useEffect(() => {
     markHomeClientMount();

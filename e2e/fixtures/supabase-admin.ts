@@ -767,6 +767,36 @@ export async function getGamificationStatsForProfile(
   };
 }
 
+export type GamificationStatsPatch = {
+  points_balance?: number;
+  current_streak?: number;
+  last_check_in?: string | null;
+};
+
+export async function upsertGamificationStatsForProfile(
+  profileId: string,
+  patch: GamificationStatsPatch,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin.from("gamification_stats").upsert(
+    {
+      user_id: profileId,
+      points_balance: patch.points_balance ?? 0,
+      current_streak: patch.current_streak ?? 0,
+      last_check_in: patch.last_check_in ?? null,
+    },
+    { onConflict: "user_id" },
+  );
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return;
+    }
+    throw new Error(`[upsertGamificationStatsForProfile] ${error.message}`);
+  }
+}
+
 export async function countProductWatchlistsForUser(
   userId: string,
   productId: string,
