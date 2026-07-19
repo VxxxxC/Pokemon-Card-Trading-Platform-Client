@@ -8,6 +8,20 @@
 
 ## Changelog
 
+### 2026-07-19 — `check_in_cycle_day` progress projected streak (CheckInCard parity)
+
+| Change | Detail |
+|--------|--------|
+| **`20260719170000`** | When last check-in was yesterday and not yet today, cycle-day progress uses `streak + 1` for cycle position (matches `CheckInCard` `consecutiveDays + 1`) |
+| **Bug fixed** | Streak=7, not checked in today → locked tab shows **1/7** not **7/7** at new-cycle boundary |
+
+### 2026-07-19 — `check_in_cycle_day` progress formula
+
+| Change | Detail |
+|--------|--------|
+| **`20260719160000`** | `fn_reward_template_progress_detail` — `check_in_cycle_day` progress uses `((streak-1)%7)+1` (aligned with `execute_daily_check_in` / `getCheckInCycleDayFromStreak`) |
+| **Bug fixed** | Streak=8 (new cycle day 1) no longer shows **7/7** for day-7 locked rewards; shows **1/7** |
+
 ### 2026-07-19 — Effective check-in streak (broken-streak UI + admin rewards)
 
 | Change | Detail |

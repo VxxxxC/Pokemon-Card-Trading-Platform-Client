@@ -14,8 +14,9 @@
 |------|----------------|
 | **CheckInCard** | `getGamificationStats` returns **effective** streak via `resolveEffectiveCheckInStreak` (HK timezone); gap >1 day → UI shows day 1「今日」, not stale `current_streak` |
 | **Locked coupons** | **`可解鎖`** tab progress (`check_in_streak` / `min_streak`) requires migration **`20260719150000`** — DB `fn_effective_check_in_streak` SSOT |
-| **Home** | `HomePageShell` `showCheckIn` only when logged in **and** member persona active (avoids merchant empty column) |
-| **PortfolioRewards** | Replaced hardcoded 7-day mock with live `CheckInCard` when member persona |
+| **Cycle-day locked coupons** | Migrations **`20260719160000`** + **`20260719170000`** — progress aligned with sign-in RPC and `CheckInCard` projected cycle day |
+| **Home merchant** | Logged-in merchant persona on `/` keeps empty check-in column — **expected** (merchants cannot participate in check-in) |
+| **PortfolioRewards** | Hardcoded 7-day mock replaced with live `CheckInCard` when member persona (component not mounted on `/` yet) |
 | **E2E** | `e2e/member-dashboard.spec.ts` — broken-streak fixture (`last_check_in` 3 days ago → day 1「今日」) |
 
 ### 2026-07-17 (merchant persona guard)
@@ -206,7 +207,7 @@ import type {
 | Area | File | Notes |
 |------|------|-------|
 | **Missions** | `rewards/page.tsx` `INITIAL_MISSIONS` | Defined but **not rendered**; no backend |
-| **PortfolioRewards check-in** | `PortfolioRewards.tsx` | Commented out on `/`; inline mock 7-day strip if re-enabled |
+| **PortfolioRewards check-in** | `PortfolioRewards.tsx` | Wired to `CheckInCard` (member persona); component not mounted on `/` yet |
 | **Checkout coupon apply** | — | `user_rewards.is_used` not read in order/checkout flow |
 | **Lucky draw UI** | — | Archived backend-side; do not surface until licensing resolved |
 
