@@ -15,6 +15,7 @@ export type WishlistEntry = {
   trackedPrice: number | null;
   targetPrice: number | null;
   currentMarketPrice: number | null;
+  marketDataSource: string | null;
   lowestListingPrice: number | null;
   trend30d: number | null;
   chartPoints: MarketplacePriceChartPoint[];

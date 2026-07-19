@@ -255,14 +255,15 @@ type WishlistEntry = {
   gradeLabel: string;
   trackedPrice: number | null;       // 加入時快照
   targetPrice: number | null;        // Phase 3 警報門檻
-  lowestListingPrice: number | null; // 平台現價（active listings, 同規格）
-  currentMarketPrice: number | null; // SNKRDUNK 均價（後端回傳；表格不顯示）
+  currentMarketPrice: number | null; // exact-grade market cache avg
+  marketDataSource: string | null;   // snkrdunk | platform
+  lowestListingPrice: number | null; // active listings (display context only)
   trend30d: number | null;
   chartPoints: { date: string; price: number }[];
 };
 ```
 
-**價格語意：** UI 購買參考僅用 `lowestListingPrice`；`chartPoints` / `trend30d` 為 SNKRDUNK 30D 參考。`trackedPrice` 僅作 ±「自追蹤」副標。
+**價格語意：** 表格參考市價用 `resolveWishlistDisplayValue`（同規格 SNKRDUNK cache → 平台成交 cache → `trackedPrice`）。`lowestListingPrice` 保留供放售參考；`chartPoints` / `trend30d` 為 SNKRDUNK 30D 走勢。
 
 **Favored key：** `productId::gradingCompany::gradingScore`（`buildWishlistFavoredKey`）。
 
@@ -327,7 +328,7 @@ type CollectionEntry = {
 };
 ```
 
-**身家估值 / 未實現損益：** `getCollectionPortfolioSummary`；每卡用 `resolveCollectionMarketValue`（同規格 SNKRDUNK → 平台同規格最低掛單 → 入手價）。唔用其他 grade 參考價。  
+**身家估值 / 未實現損益：** `getCollectionPortfolioSummary`；每卡用 `resolveCollectionMarketValue`（同規格 SNKRDUNK cache → 同規格平台成交 cache → 入手價）。唔用其他 grade 參考價，唔用 active 掛單價。卡牌跟 grading；盒組跟密封/已開封。  
 **表格：** `getCollectionEntries` 伺服器端 filter + 分頁；僅 hydrate 當前頁。  
 **出售：** `openAddAssetModal({ mode: "merch", sellPrefill })` → `submitCardListingWithProgress`（保留 collection row）。
 

@@ -4,6 +4,7 @@ import { isSealedProductGrade } from "@/lib/catalog/item-kind";
 import { formatMarketGradeLabel } from "@/lib/marketplace/market-price";
 import {
   findActiveListingForGrade,
+  normalizeValuationGradeKey,
   findExactMarketPriceRow,
   resolveCardCode,
   resolveCollectionMarketValue,
@@ -55,8 +56,8 @@ export async function loadCollectionPricingContext(
   const { includeChartData = false, userListingRows } = options;
 
   const marketSelect = includeChartData
-    ? "product_id, grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data"
-    : "product_id, grading_company, grading_score, market_avg_price, market_trend_30d";
+    ? "product_id, grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data, market_data_source"
+    : "product_id, grading_company, grading_score, market_avg_price, market_trend_30d, market_data_source";
 
   const userListingsPromise =
     userListingRows !== undefined
@@ -212,11 +213,15 @@ export function mapCollectionRowToEntry(
     };
   }
 
+  const gradeKey = normalizeValuationGradeKey(
+    row.grading_company,
+    row.grading_score,
+  );
   const market = findExactMarketPriceRow(
     context.marketRows,
     row.product_id,
-    row.grading_company,
-    row.grading_score,
+    gradeKey.gradingCompany,
+    gradeKey.gradingScore,
   );
   const activeListing = findActiveListingForCollection(
     context.userListingRows,
@@ -229,7 +234,6 @@ export function mapCollectionRowToEntry(
   const purchasePrice = toFiniteNumber(row.purchase_price) ?? 0;
   const resolved = resolveCollectionMarketValue({
     marketRows: context.marketRows,
-    listingRows: context.platformListingRows,
     productId: row.product_id,
     gradingCompany: row.grading_company,
     gradingScore: row.grading_score,
@@ -286,7 +290,6 @@ export function computePortfolioTotals(
 
     const resolved = resolveCollectionMarketValue({
       marketRows: context.marketRows,
-      listingRows: context.platformListingRows,
       productId: row.product_id,
       gradingCompany: row.grading_company,
       gradingScore: row.grading_score,

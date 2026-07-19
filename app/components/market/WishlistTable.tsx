@@ -45,6 +45,9 @@ import {
   getSparklinePoints,
   hasWishlistTrendData,
 } from "@/lib/wishlist/sparkline";
+import {
+  resolveWishlistDisplayValue,
+} from "@/lib/wishlist/pricing";
 
 function MiniSparkline({
   points,
@@ -379,7 +382,7 @@ export function WishlistTable({
                     align: "text-center text-nowrap",
                     extra: "px-3",
                   },
-                  { label: "平台現價", align: "text-right", extra: "px-3" },
+                  { label: "參考市價", align: "text-right", extra: "px-3" },
                   { label: "目標價", align: "text-right", extra: "px-3" },
                   {
                     label: "30D 走勢",
@@ -411,7 +414,8 @@ export function WishlistTable({
           <tbody>
             {paginatedWishlist.map((entry) => {
               const rowKey = wishlistRowKey(entry);
-              const platformPrice = entry.lowestListingPrice;
+              const resolved = resolveWishlistDisplayValue(entry);
+              const displayPrice = resolved.value;
               const trackedPrice = entry.trackedPrice;
               const hasTrend = hasWishlistTrendData(
                 entry.trend30d,
@@ -425,8 +429,8 @@ export function WishlistTable({
               const sparklineDirection =
                 entry.trend30d != null && entry.trend30d >= 0 ? "up" : "down";
               const diffFromTracked =
-                platformPrice != null && trackedPrice != null
-                  ? platformPrice - trackedPrice
+                displayPrice != null && trackedPrice != null
+                  ? displayPrice - trackedPrice
                   : null;
               const diffSign = diffFromTracked != null && diffFromTracked >= 0 ? "+" : "";
               const trendSign =
@@ -484,11 +488,15 @@ export function WishlistTable({
                   </td>
                   <td className="py-4 px-3 text-right">
                     <p className="font-mono font-semibold text-[14px] text-text-primary">
-                      {formatHkd(platformPrice)}
+                      {formatHkd(displayPrice)}
                     </p>
-                    {platformPrice == null ? (
+                    {displayPrice == null ? (
                       <p className="font-mono text-[10px] text-text-disabled">
-                        暫無放售
+                        暫無參考價
+                      </p>
+                    ) : resolved.source === "tracked_price" ? (
+                      <p className="font-mono text-[10px] text-text-disabled">
+                        追蹤價估計
                       </p>
                     ) : diffFromTracked != null ? (
                       <p

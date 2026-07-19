@@ -14,7 +14,7 @@
 | **`CollectionTable`** | Catalog thumbnails, grade dropdown, valuation + 30D % (no sparkline) |
 | **Server pagination** | `getCollectionEntries({ page, filter, query })` + `Pagination` controls |
 | **Portfolio summary** | `getCollectionPortfolioSummary` → odometer + 4 stat tiles (含 **已上架**) |
-| **Valuation ladder** | Exact-grade SNKRDUNK → platform same-grade → **入手價**; table shows **入手價估計** when fallback |
+| **Valuation ladder** | Exact-grade SNKRDUNK cache → exact-grade platform-trade cache → **入手價**; table shows **入手價估計** / **平台成交估計** when fallback |
 | **Hobby add** | `openAddAssetModal({ mode: "hobby" })` → `addToCollection` (no photos) |
 | **Sell prefill** | `openAddAssetModal({ mode: "merch", sellPrefill })` — same `AddAssetModal`, no separate sell dialog |
 | **Store API** | Unified `openAddAssetModal({ mode, sellPrefill? })`; removed `openAddAssetModalFromCollection` |

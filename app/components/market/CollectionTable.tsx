@@ -392,6 +392,10 @@ export function CollectionTable({
                       <p className="font-mono text-[9px] text-[#8A8680]">
                         入手價估計
                       </p>
+                    ) : entry.valuationSource === "platform" ? (
+                      <p className="font-mono text-[9px] text-[#8A8680]">
+                        平台成交估計
+                      </p>
                     ) : null}
                     {pnl != null ? (
                       <p

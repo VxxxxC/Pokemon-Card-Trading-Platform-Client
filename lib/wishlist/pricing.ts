@@ -1,5 +1,9 @@
 import type { WishlistEntry } from "@/app/lib/wishlist/types";
-import { toFiniteNumber } from "@/lib/marketplace/portfolio-pricing";
+import {
+  resolveMarketCacheValue,
+  toFiniteNumber,
+  type MarketPriceRow,
+} from "@/lib/marketplace/portfolio-pricing";
 
 export type WishlistPriceSource = "snkrdunk" | "platform" | "tracked_price";
 
@@ -11,14 +15,17 @@ export type ResolvedWishlistDisplay = {
 export function resolveWishlistDisplayValue(
   entry: WishlistEntry,
 ): ResolvedWishlistDisplay {
-  const snkrdunk = toFiniteNumber(entry.currentMarketPrice);
-  if (snkrdunk != null && snkrdunk > 0) {
-    return { value: snkrdunk, source: "snkrdunk" };
+  const cache = resolveMarketCacheValue({
+    market_avg_price: entry.currentMarketPrice,
+    market_data_source: entry.marketDataSource ?? "",
+  } as MarketPriceRow);
+
+  if (cache.value != null && cache.source === "snkrdunk") {
+    return { value: cache.value, source: "snkrdunk" };
   }
 
-  const platform = toFiniteNumber(entry.lowestListingPrice);
-  if (platform != null && platform > 0) {
-    return { value: platform, source: "platform" };
+  if (cache.value != null && cache.source === "platform") {
+    return { value: cache.value, source: "platform" };
   }
 
   const tracked = toFiniteNumber(entry.trackedPrice);

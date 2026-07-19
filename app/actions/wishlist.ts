@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { MarketplacePriceChartPoint } from "@/app/lib/marketplace/types";
 import type {
   WishlistEntry,
   WishlistRemoveInput,
@@ -11,7 +10,6 @@ import type {
 } from "@/app/lib/wishlist/types";
 import {
   buildWishlistFavoredKey,
-  listingMatchesWishlistGrade,
   normalizeWishlistGrading,
 } from "@/lib/wishlist/grading";
 import {
@@ -29,7 +27,17 @@ import {
 import { guardMemberPersonaPersonalFeatures } from "@/lib/auth/guard-member-persona-server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import type { Json, Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
+import {
+  findExactMarketPriceRow,
+  lowestListingForGrade,
+  parseMarketChartData,
+  resolveCardCode,
+  resolveProductName,
+  toFiniteNumber,
+  type ListingPriceRow,
+  type MarketPriceRow,
+} from "@/lib/marketplace/portfolio-pricing";
+import type { Tables, TablesInsert, TablesUpdate } from "@/types/supabase";
 
 type WishlistResult<T> =
   | { success: true; data: T }
@@ -41,55 +49,6 @@ type ToggleWishlistResult =
 
 type WatchlistRow = Tables<"product_watchlists">;
 type CatalogRow = Tables<"product_catalog">;
-type MarketPriceRow = Pick<
-  Tables<"product_grading_market_prices">,
-  | "product_id"
-  | "grading_company"
-  | "grading_score"
-  | "market_avg_price"
-  | "market_trend_30d"
-  | "market_chart_data"
->;
-type ListingPriceRow = Pick<
-  Tables<"listings">,
-  "product_id" | "grading_company" | "grading_score" | "price"
->;
-
-function toFiniteNumber(value: number | null | undefined): number | null {
-  if (value == null || !Number.isFinite(Number(value))) {
-    return null;
-  }
-  return Number(value);
-}
-
-function parseMarketChartData(json: Json | null): MarketplacePriceChartPoint[] {
-  if (!json || !Array.isArray(json)) {
-    return [];
-  }
-
-  const points: MarketplacePriceChartPoint[] = [];
-
-  for (const item of json) {
-    if (
-      typeof item !== "object" ||
-      item === null ||
-      !("date" in item) ||
-      !("price" in item)
-    ) {
-      continue;
-    }
-
-    const date = String((item as { date: unknown }).date);
-    const price = Number((item as { price: unknown }).price);
-    if (!date || !Number.isFinite(price)) {
-      continue;
-    }
-
-    points.push({ date, price });
-  }
-
-  return points;
-}
 
 async function getAuthenticatedUserId(): Promise<string | null> {
   if (!isSupabaseConfigured()) {
@@ -113,71 +72,6 @@ async function guardWishlistMemberPersona(): Promise<
 function revalidateWishlistPaths(): void {
   revalidatePath("/profile/user/collection");
   revalidatePath("/marketplace");
-}
-
-function resolveProductName(catalog: CatalogRow | undefined): string {
-  if (!catalog) return "未知卡牌";
-  return (
-    catalog.name_zh?.trim() ||
-    catalog.name_en?.trim() ||
-    catalog.name_ja?.trim() ||
-    "未知卡牌"
-  );
-}
-
-function resolveCardCode(catalog: CatalogRow | undefined): string {
-  if (!catalog) return "";
-  return (
-    catalog.card_number?.trim() ||
-    catalog.display_id?.trim() ||
-    catalog.set_code?.trim() ||
-    ""
-  );
-}
-
-function findMarketPriceRow(
-  rows: MarketPriceRow[],
-  productId: string,
-  gradingCompany: string,
-  gradingScore: string,
-): MarketPriceRow | undefined {
-  const exact = rows.find(
-    (row) =>
-      row.product_id === productId &&
-      row.grading_company === gradingCompany &&
-      row.grading_score === gradingScore,
-  );
-  if (exact) return exact;
-
-  return rows.find(
-    (row) =>
-      row.product_id === productId &&
-      row.grading_company === gradingCompany,
-  );
-}
-
-function lowestListingForGrade(
-  listings: ListingPriceRow[],
-  productId: string,
-  gradingCompany: string,
-  gradingScore: string,
-): number | null {
-  const prices = listings
-    .filter(
-      (row) =>
-        row.product_id === productId &&
-        listingMatchesWishlistGrade(
-          row.grading_company,
-          row.grading_score,
-          gradingCompany,
-          gradingScore,
-        ),
-    )
-    .map((row) => Number(row.price))
-    .filter((price) => Number.isFinite(price) && price > 0);
-
-  if (prices.length === 0) return null;
-  return Math.min(...prices);
 }
 
 async function buildWishlistEntriesForUser(
@@ -215,7 +109,7 @@ async function buildWishlistEntriesForUser(
     supabase
       .from("product_grading_market_prices")
       .select(
-        "product_id, grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data",
+        "product_id, grading_company, grading_score, market_avg_price, market_trend_30d, market_chart_data, market_data_source",
       )
       .in("product_id", productIds),
     supabase
@@ -252,7 +146,7 @@ async function buildWishlistEntriesForUser(
       row.grading_company,
       row.grading_score,
     );
-    const market = findMarketPriceRow(
+    const market = findExactMarketPriceRow(
       marketRows,
       row.product_id,
       grading.gradingCompany,
@@ -274,6 +168,7 @@ async function buildWishlistEntriesForUser(
       trackedPrice: toFiniteNumber(row.tracked_price),
       targetPrice: toFiniteNumber(row.target_price),
       currentMarketPrice: toFiniteNumber(market?.market_avg_price ?? null),
+      marketDataSource: market?.market_data_source ?? null,
       lowestListingPrice: lowestListingForGrade(
         listingRows,
         row.product_id,

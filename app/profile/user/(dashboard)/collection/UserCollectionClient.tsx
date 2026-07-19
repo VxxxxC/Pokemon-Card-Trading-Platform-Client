@@ -181,7 +181,7 @@ export function UserCollectionClient({
                 {portfolioSummary.pnlPercent}% 未實現損益)
               </p>
               <p className="font-mono text-[10px] text-[#8A8680] mt-1">
-                估值：SNKRDUNK 同規格 → 平台同規格最低價 → 無則入手價
+                估值：同規格 SNKRDUNK → 同規格平台成交 → 入手價（卡牌跟 grading；盒組跟密封/已開封）
               </p>
             </div>
             <button

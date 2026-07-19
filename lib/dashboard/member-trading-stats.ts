@@ -5,7 +5,6 @@ import {
 } from "@/lib/collection/build-entries";
 import {
   resolveCollectionMarketValue,
-  toFiniteNumber,
   type ListingPriceRow,
 } from "@/lib/marketplace/portfolio-pricing";
 import { listingMatchesWishlistGrade } from "@/lib/wishlist/grading";
@@ -58,14 +57,12 @@ export function computeMemberTradingStats(
 
   let orphanMarketValue = 0;
   for (const listing of orphanListings) {
-    const purchasePrice = toFiniteNumber(listing.price) ?? 0;
     const resolved = resolveCollectionMarketValue({
       marketRows: context.marketRows,
-      listingRows: context.platformListingRows,
       productId: listing.product_id,
       gradingCompany: listing.grading_company,
       gradingScore: listing.grading_score ?? "",
-      purchasePrice,
+      purchasePrice: 0,
     });
     if (resolved.value != null) {
       orphanMarketValue += resolved.value;

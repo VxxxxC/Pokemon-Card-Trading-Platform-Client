@@ -1,5 +1,5 @@
 import type { MarketplacePriceChartPoint } from "@/app/lib/marketplace/types";
-import { listingMatchesWishlistGrade } from "@/lib/wishlist/grading";
+import { listingMatchesWishlistGrade, normalizeWishlistGrading } from "@/lib/wishlist/grading";
 import type { Json, Tables } from "@/types/supabase";
 
 export type CatalogRow = Tables<"product_catalog">;
@@ -11,6 +11,7 @@ export type MarketPriceRow = Pick<
   | "market_avg_price"
   | "market_trend_30d"
   | "market_chart_data"
+  | "market_data_source"
 >;
 export type ListingPriceRow = Pick<
   Tables<"listings">,
@@ -81,25 +82,15 @@ export function resolveCardCode(catalog: CatalogRow | undefined): string {
   );
 }
 
-export function findMarketPriceRow(
-  rows: MarketPriceRow[],
-  productId: string,
+export function normalizeValuationGradeKey(
   gradingCompany: string,
-  gradingScore: string,
-): MarketPriceRow | undefined {
-  const exact = rows.find(
-    (row) =>
-      row.product_id === productId &&
-      row.grading_company === gradingCompany &&
-      row.grading_score === gradingScore,
-  );
-  if (exact) return exact;
-
-  return rows.find(
-    (row) =>
-      row.product_id === productId &&
-      row.grading_company === gradingCompany,
-  );
+  gradingScore: string | null | undefined,
+): { gradingCompany: string; gradingScore: string } {
+  const grading = normalizeWishlistGrading(gradingCompany, gradingScore);
+  return {
+    gradingCompany: grading.gradingCompany,
+    gradingScore: grading.gradingScore,
+  };
 }
 
 /** Exact product + grading_company + grading_score only (no cross-score fallback). */
@@ -117,6 +108,24 @@ export function findExactMarketPriceRow(
   );
 }
 
+export type MarketCacheValuationSource = "snkrdunk" | "platform";
+
+export function resolveMarketCacheValue(
+  marketRow: MarketPriceRow | undefined,
+): { value: number | null; source: MarketCacheValuationSource | null } {
+  const avg = toFiniteNumber(marketRow?.market_avg_price ?? null);
+  if (avg == null || avg <= 0) {
+    return { value: null, source: null };
+  }
+
+  const rawSource = (marketRow?.market_data_source ?? "").trim().toLowerCase();
+  if (rawSource === "platform") {
+    return { value: avg, source: "platform" };
+  }
+
+  return { value: avg, source: "snkrdunk" };
+}
+
 export type CollectionValuationSource = "snkrdunk" | "platform" | "purchase_price";
 
 export type ResolvedCollectionMarketValue = {
@@ -125,49 +134,33 @@ export type ResolvedCollectionMarketValue = {
 };
 
 /**
- * Collection portfolio valuation: exact grade SNKRDUNK → same-grade platform MIN → purchase_price.
- * Does not use other grades (price gaps are too large).
+ * Collection portfolio valuation: exact-grade SNKRDUNK cache → exact-grade platform-trade cache → purchase_price.
+ * Does not use other grades or active listing ask prices.
  */
 export function resolveCollectionMarketValue(input: {
   marketRows: MarketPriceRow[];
-  listingRows: ListingPriceRow[];
   productId: string;
   gradingCompany: string;
   gradingScore: string;
   purchasePrice: number;
 }): ResolvedCollectionMarketValue {
-  const {
-    marketRows,
-    listingRows,
-    productId,
-    gradingCompany,
-    gradingScore,
-    purchasePrice,
-  } = input;
-
+  const { gradingCompany, gradingScore } = normalizeValuationGradeKey(
+    input.gradingCompany,
+    input.gradingScore,
+  );
   const exactMarket = findExactMarketPriceRow(
-    marketRows,
-    productId,
+    input.marketRows,
+    input.productId,
     gradingCompany,
     gradingScore,
   );
-  const snkrdunk = toFiniteNumber(exactMarket?.market_avg_price ?? null);
-  if (snkrdunk != null && snkrdunk > 0) {
-    return { value: snkrdunk, source: "snkrdunk" };
+  const cache = resolveMarketCacheValue(exactMarket);
+  if (cache.value != null && cache.source != null) {
+    return { value: cache.value, source: cache.source };
   }
 
-  const platform = lowestListingForGrade(
-    listingRows,
-    productId,
-    gradingCompany,
-    gradingScore,
-  );
-  if (platform != null && platform > 0) {
-    return { value: platform, source: "platform" };
-  }
-
-  if (purchasePrice > 0) {
-    return { value: purchasePrice, source: "purchase_price" };
+  if (input.purchasePrice > 0) {
+    return { value: input.purchasePrice, source: "purchase_price" };
   }
 
   return { value: null, source: null };
@@ -195,33 +188,6 @@ export function lowestListingForGrade(
 
   if (prices.length === 0) return null;
   return Math.min(...prices);
-}
-
-/** SNKRDUNK market avg first; fallback to platform lowest active listing price. */
-export function resolveCurrentMarketValue(
-  marketRows: MarketPriceRow[],
-  listingRows: ListingPriceRow[],
-  productId: string,
-  gradingCompany: string,
-  gradingScore: string,
-): number | null {
-  const market = findMarketPriceRow(
-    marketRows,
-    productId,
-    gradingCompany,
-    gradingScore,
-  );
-  const snkrdunk = toFiniteNumber(market?.market_avg_price ?? null);
-  if (snkrdunk != null && snkrdunk > 0) {
-    return snkrdunk;
-  }
-
-  return lowestListingForGrade(
-    listingRows,
-    productId,
-    gradingCompany,
-    gradingScore,
-  );
 }
 
 export function findActiveListingForGrade(
