@@ -1,32 +1,16 @@
 "use server";
 
-import {
-  catalogTypesForItemKind,
-  type CatalogItemKind,
-} from "@/lib/catalog/item-kind";
+import type { CatalogItemKind } from "@/lib/catalog/item-kind";
 import type { CatalogType } from "@/lib/constants/commerce";
 import { createClient } from "@/lib/supabase/server";
 import {
   canonicalCardSearchKey,
   compactAlphanumeric,
-  MIN_COMPACT_PREFIX,
   matchesCatalogCardSearch,
-  isCompactCatalogSearchQuery,
 } from "@/lib/search/card-identifier";
-
-const SEARCH_COLUMNS = [
-  "set_code",
-  "name_ja",
-  "name_en",
-  "name_zh",
-  "card_number",
-  "display_id",
-] as const;
 
 const MIN_QUERY_LENGTH = 2;
 const MAX_QUERY_LENGTH = 100;
-/** Rows pulled from DB for relevance ranking (not shown to user) */
-const DB_FETCH_LIMIT = 50;
 /** Max rows in autocomplete dropdown — keep small for UX + performance */
 const RESULT_LIMIT = 12;
 
@@ -53,11 +37,16 @@ type CatalogSearchRow = {
   set_code: string;
   card_number: string | null;
   display_id: string | null;
+  jan_code: string | null;
   image_url: string;
   type: CatalogType;
   rarity: string | null;
   pokemon_stage: string | null;
   snkr_rank: number | null;
+};
+
+type SearchProductCatalogRpcRow = CatalogSearchRow & {
+  total_count: number | null;
 };
 
 type SearchSuccess = {
@@ -71,50 +60,8 @@ type SearchSuccess = {
 type SearchFailure = { success: false; error: string };
 export type SearchProductCatalogResult = SearchSuccess | SearchFailure;
 
-type CatalogSupabaseClient = Awaited<ReturnType<typeof createClient>>;
-
 function normalizeQuery(raw: string): string {
   return raw.trim().replace(/,/g, " ").slice(0, MAX_QUERY_LENGTH);
-}
-
-function toIlikePattern(query: string): string {
-  const escaped = query.replace(/[%_\\]/g, "\\$&");
-  return `%${escaped}%`;
-}
-
-function buildOrIlikeFilter(pattern: string): string {
-  const quotedPattern = `"${pattern.replace(/"/g, '""')}"`;
-  return SEARCH_COLUMNS.map(
-    (column) => `${column}.ilike.${quotedPattern}`,
-  ).join(",");
-}
-
-function quotePostgrestPattern(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
-function escapeIlikeUserInput(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/[%_]/g, "\\$&");
-}
-
-function buildCompactOrFilter(query: string, ilikePattern: string): string {
-  const compact = compactAlphanumeric(query);
-  const canonical = canonicalCardSearchKey(query);
-  const quotedIlike = quotePostgrestPattern(ilikePattern);
-
-  const parts = [
-    `id_compact.ilike.${quotePostgrestPattern(`${escapeIlikeUserInput(compact)}%`)}`,
-    `id_compact.ilike.${quotePostgrestPattern(`%${escapeIlikeUserInput(compact)}%`)}`,
-    ...SEARCH_COLUMNS.map((column) => `${column}.ilike.${quotedIlike}`),
-  ];
-
-  if (canonical.length >= MIN_COMPACT_PREFIX) {
-    parts.push(
-      `id_canonical.ilike.${quotePostgrestPattern(`%${escapeIlikeUserInput(canonical)}%`)}`,
-    );
-  }
-
-  return parts.join(",");
 }
 
 function displayName(row: {
@@ -129,6 +76,7 @@ function scoreMatch(row: CatalogSearchRow, query: string): number {
   const cardNumber = row.card_number?.toLowerCase() ?? "";
   const displayId = row.display_id?.toLowerCase() ?? "";
   const setCode = row.set_code.toLowerCase();
+  const janCode = row.jan_code?.toLowerCase() ?? "";
   const names = [row.name_ja, row.name_en, row.name_zh]
     .filter(Boolean)
     .map((value) => value!.toLowerCase());
@@ -136,9 +84,11 @@ function scoreMatch(row: CatalogSearchRow, query: string): number {
   let score = 0;
 
   if (cardNumber === q || displayId === q) score += 120;
+  if (janCode === q) score += 130;
   if (setCode === q) score += 110;
 
   if (cardNumber.startsWith(q) || displayId.startsWith(q)) score += 90;
+  if (janCode.startsWith(q)) score += 105;
   if (setCode.startsWith(q)) score += 80;
 
   for (const name of names) {
@@ -148,6 +98,7 @@ function scoreMatch(row: CatalogSearchRow, query: string): number {
   }
 
   if (cardNumber.includes(q) || displayId.includes(q)) score += 30;
+  if (janCode.includes(q)) score += 55;
   if (setCode.includes(q)) score += 20;
 
   const queryCompact = compactAlphanumeric(query);
@@ -201,71 +152,22 @@ function rankSuggestions(
     .map(({ row }) => toSuggestion(row));
 }
 
-function buildSearchSuccess(
-  rows: CatalogSearchRow[],
-  query: string,
-  total: number,
-): SearchSuccess {
+function mapRpcRowToCatalogSearchRow(row: SearchProductCatalogRpcRow): CatalogSearchRow {
   return {
-    success: true,
-    data: rankSuggestions(rows, query),
-    total,
-    hasMore: total > RESULT_LIMIT,
+    id: row.id,
+    name_ja: row.name_ja,
+    name_en: row.name_en,
+    name_zh: row.name_zh,
+    set_code: row.set_code,
+    card_number: row.card_number,
+    display_id: row.display_id,
+    jan_code: row.jan_code ?? null,
+    image_url: row.image_url,
+    type: row.type,
+    rarity: row.rarity,
+    pokemon_stage: row.pokemon_stage,
+    snkr_rank: row.snkr_rank,
   };
-}
-
-async function searchCatalogByIlike(
-  supabase: CatalogSupabaseClient,
-  query: string,
-  itemType: CatalogItemKind,
-): Promise<SearchProductCatalogResult> {
-  const pattern = toIlikePattern(query);
-  const typeFilter = catalogTypesForItemKind(itemType);
-
-  const { data, error, count } = await supabase
-    .from("product_catalog")
-    .select(
-      "id, name_ja, name_en, name_zh, set_code, card_number, display_id, image_url, type, rarity, pokemon_stage, snkr_rank",
-      { count: "exact" },
-    )
-    .in("type", typeFilter)
-    .or(buildOrIlikeFilter(pattern))
-    .limit(DB_FETCH_LIMIT);
-
-  if (error) {
-    console.error("[searchProductCatalog] ilike", error.message);
-    return { success: false, error: "搜尋商品目錄時發生錯誤" };
-  }
-
-  const rows = (data ?? []) as CatalogSearchRow[];
-  return buildSearchSuccess(rows, query, count ?? rows.length);
-}
-
-async function searchCatalogByCompact(
-  supabase: CatalogSupabaseClient,
-  query: string,
-  itemType: CatalogItemKind,
-): Promise<SearchProductCatalogResult> {
-  const pattern = toIlikePattern(query);
-  const typeFilter = catalogTypesForItemKind(itemType);
-
-  const { data, error, count } = await supabase
-    .from("product_catalog")
-    .select(
-      "id, name_ja, name_en, name_zh, set_code, card_number, display_id, image_url, type, rarity, pokemon_stage, snkr_rank",
-      { count: "exact" },
-    )
-    .in("type", typeFilter)
-    .or(buildCompactOrFilter(query, pattern))
-    .limit(DB_FETCH_LIMIT);
-
-  if (error) {
-    console.error("[searchProductCatalog] compact", error.message);
-    return { success: false, error: "搜尋商品目錄時發生錯誤" };
-  }
-
-  const rows = (data ?? []) as CatalogSearchRow[];
-  return buildSearchSuccess(rows, query, count ?? rows.length);
 }
 
 export async function searchProductCatalog(
@@ -284,11 +186,36 @@ export async function searchProductCatalog(
   try {
     const supabase = await createClient();
 
-    if (isCompactCatalogSearchQuery(query)) {
-      return searchCatalogByCompact(supabase, query, itemType);
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "search_product_catalog",
+          args: { p_query: string; p_item_type: CatalogItemKind },
+        ) => Promise<{
+          data: SearchProductCatalogRpcRow[] | null;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("search_product_catalog", {
+      p_query: query,
+      p_item_type: itemType,
+    });
+
+    if (error) {
+      console.error("[searchProductCatalog] rpc", error.message);
+      return { success: false, error: "搜尋商品目錄時發生錯誤" };
     }
 
-    return searchCatalogByIlike(supabase, query, itemType);
+    const rpcRows = (data ?? []) as SearchProductCatalogRpcRow[];
+    const rows = rpcRows.map(mapRpcRowToCatalogSearchRow);
+    const total = Number(rpcRows[0]?.total_count ?? rows.length);
+
+    return {
+      success: true,
+      data: rankSuggestions(rows, query),
+      total,
+      hasMore: total > RESULT_LIMIT,
+    };
   } catch (error) {
     console.error("[searchProductCatalog]", error);
     return { success: false, error: "無法連線至商品目錄" };

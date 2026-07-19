@@ -2003,6 +2003,7 @@ export type Database = {
           display_id: string
           id: string
           image_url: string
+          jan_code: string
           name_en: string
           name_ja: string
           name_zh: string

@@ -101,6 +101,7 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260707130000_complete_member_order_buyer_only.sql` — **`rpc_complete_member_order`** buyer-only; `fn_enforce_member_order_transitions` seller-complete removed
 - `supabase/migrations/20260709130000_user_collections_sold_archive.sql` — **`user_collections.sold_*`**, **`listings.source_collection_id`**, `fn_archive_seller_collection_for_listing`; P2P + escrow complete archive seller collection row
 - `supabase/migrations/20260717100000_card_search_flexible_match.sql` — flexible card id search helpers + patched marketplace/seller/trading RPCs + `search_product_catalog`
+- `supabase/migrations/20260719180000_product_catalog_search_jan_code.sql` — **`search_product_catalog`** adds `jan_code` ILIKE + return column (box/set barcode search)
 - `supabase/migrations/20260717160000_merchant_shops_shop_avatar_path.sql` — merchant shop avatar SSOT (`shop_avatar_path`)
 - `supabase/migrations/20260717170000_merchant_shops_reputation_tag_split.sql` — persona-split titles/badges (`merchant_shops.reputation_tag` + member/merchant recalc fns)
 - `supabase/migrations/20260717180000_merchant_orders_authenticated_select.sql` — `GRANT SELECT ON merchant_orders TO authenticated` (merchant dashboard + trading RPC)

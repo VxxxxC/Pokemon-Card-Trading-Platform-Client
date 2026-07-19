@@ -812,7 +812,7 @@ export function AddAssetModal() {
                 <input
                   type="text"
                   required
-                  placeholder={itemType === "box_set" ? "例：151 Booster Box 或 20th Anniversary Set" : "sv2a-182 或 Charizard ex SAR"}
+                  placeholder={itemType === "box_set" ? "例：151 Booster Box、20th Anniversary Set 或 4549659123456" : "sv2a-182 或 Charizard ex SAR"}
                   value={catalogSearch.query}
                   onChange={(e) => catalogSearch.setQuery(e.target.value)}
                   className="flex-1 h-full bg-transparent px-3 font-sans text-[13px] text-[#eae1da] placeholder-[#50453b] focus:outline-none"

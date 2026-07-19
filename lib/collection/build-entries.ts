@@ -27,7 +27,7 @@ export type CollectionPricingContext = {
 };
 
 const CATALOG_LIST_COLUMNS =
-  "id, name_zh, name_en, name_ja, card_number, display_id, set_code, rarity, image_url, type";
+  "id, name_zh, name_en, name_ja, card_number, display_id, set_code, jan_code, rarity, image_url, type";
 
 export type CollectionPricingContextOptions = {
   includeChartData?: boolean;

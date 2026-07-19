@@ -13,6 +13,7 @@
 | **`addToCollection` sealed** | Server reads `product_catalog.type`; sealed SKUs force `grading_company = SEALED` |
 | **`CollectionEntry.catalogType`** | From `product_catalog.type` at read time |
 | **Filter `sealed`** | `CollectionListFilter` + UI chip「密封盒組」 |
+| **Collection search JAN** | `matchesCatalogCardSearch` + `CATALOG_LIST_COLUMNS` include `jan_code` — filter held sealed by barcode |
 | **Sell prefill** | `SellFromCollectionPrefill.itemKind` + `catalog.catalogType` → `AddAssetModal` box_set merch |
 | **Listing** | `createSealedListing` + `submitSealedListingWithProgress` (1–6 photos) |
 

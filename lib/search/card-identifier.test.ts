@@ -101,4 +101,17 @@ describe("matchesCatalogCardSearch", () => {
   test("still matches names literally", () => {
     expect(matchesCatalogCardSearch("皮卡丘", catalog)).toBe(true);
   });
+
+  test("matches JAN code for sealed products", () => {
+    const boxCatalog = {
+      name_ja: "151 拡張パック",
+      name_en: "151 Booster Box",
+      set_code: "SV2A",
+      jan_code: "4549659123456",
+    };
+
+    expect(matchesCatalogCardSearch("4549659123456", boxCatalog)).toBe(true);
+    expect(matchesCatalogCardSearch("4549659123", boxCatalog)).toBe(true);
+    expect(matchesCatalogCardSearch("9999999999999", boxCatalog)).toBe(false);
+  });
 });

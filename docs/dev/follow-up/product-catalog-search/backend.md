@@ -8,6 +8,22 @@
 - **Frontend:** ✅ Wired (functional baseline in `AddAssetModal.tsx`)
 - **Partner:** Polish UI only — see [frontend.md](./frontend.md)
 
+## Changelog (2026-07-19) — RPC JAN + SSOT autocomplete
+
+| Change | Detail |
+|--------|--------|
+| **`20260719180000`** | `search_product_catalog` RPC — `jan_code` ILIKE + return column |
+| **`searchProductCatalog`** | Calls RPC (SSOT); client `scoreMatch` ranks JAN exact/prefix hits |
+| **Collection filter** | `matchesCatalogCardSearch` + `CATALOG_LIST_COLUMNS` include `jan_code` |
+
+## Changelog (2026-07-19) — Box/set JAN code search (initial)
+
+| Change | Detail |
+|--------|--------|
+| **`searchProductCatalog`** | `jan_code` in ILIKE + compact PostgREST filters; `scoreMatch` boosts exact/prefix JAN hits |
+| **`matchesCatalogCardSearch`** | Collection filter + shared helper match `product_catalog.jan_code` |
+| **UI** | `AddAssetModal` box_set placeholder; collection page search placeholder mention JAN |
+
 ## Files created / modified (backend track)
 
 ### Catalog search
@@ -15,7 +31,7 @@
 | File | Purpose |
 |------|---------|
 | `lib/supabase/server.ts` | Server-side Supabase client |
-| `app/actions/productCatalog.ts` | `searchProductCatalog` — name ILIKE / compact PostgREST on `id_compact` + `id_canonical` |
+| `app/actions/productCatalog.ts` | `searchProductCatalog` — **`search_product_catalog` RPC** + client `scoreMatch` ranking |
 | `lib/search/card-identifier.ts` | `useCompactCatalogSearch` routes identifier autocomplete |
 | `app/lib/hooks/useProductCatalogSearch.ts` | Debounced client hook + cache |
 | `supabase/migrations/20260702100000_product_catalog_public_read.sql` | Anon `SELECT` on `product_catalog` |
@@ -47,16 +63,15 @@
 
 ### `searchProductCatalog`
 
-**Search paths** (migration `20260717120000` — `id_compact` / `id_canonical` generated columns):
+**Search path** — `search_product_catalog` RPC (migrations `20260717120000` + **`20260719180000`**):
 
-| Query type | Path | Example |
-|------------|------|---------|
-| Card name (CJK / long English) | PostgREST `.or(ilike…)` → client `scoreMatch` | `ピカチュウ`, `皮卡丘`, `Pikachu` |
-| Card identifier (incl. short prefix) | PostgREST on `id_compact` / `id_canonical` + name ilike → client `scoreMatch` | `mp`, `mp 133`, `MP133`, `133 MP` |
+| Query type | RPC match | Example |
+|------------|-----------|---------|
+| Card name (CJK / long English) | `name_*` ILIKE | `ピカチュウ`, `皮卡丘`, `Pikachu` |
+| Card identifier (incl. short prefix) | `id_compact` / `id_canonical` + name ilike | `mp`, `mp 133`, `MP133`, `133 MP` |
+| Sealed JAN code | `jan_code` ILIKE | `4549659123456`, partial `4549659` |
 
-`useCompactCatalogSearch` in `lib/search/card-identifier.ts` picks the compact path (short letter prefixes like `mp` included).
-
-Flexible id examples: `M-P-133` findable via `MP133`, `M P 133`, `133MP`, `133 MP`. No plpgsql RPC on autocomplete — avoids statement timeout.
+Client `scoreMatch` re-ranks RPC rows (JAN exact/prefix boosted). Flexible id examples: `M-P-133` findable via `MP133`, `M P 133`, `133MP`, `133 MP`.
 
 ```ts
 import { searchProductCatalog } from "@/app/actions/productCatalog";

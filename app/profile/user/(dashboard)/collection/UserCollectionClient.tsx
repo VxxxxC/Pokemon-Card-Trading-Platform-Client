@@ -254,7 +254,7 @@ export function UserCollectionClient({
               setQuery(e.target.value);
               setIsSearchOpen(false);
             }}
-            placeholder="搜尋持有卡牌名稱或編號..."
+            placeholder="搜尋持有卡牌名稱、編號或 JAN 條碼..."
             className="w-full h-10 pl-10 pr-10 bg-[#26211C] border border-white/5 rounded-[10px] font-sans text-[13px] text-[#eae1da] placeholder:text-[#8A8680] focus:outline-none focus:border-[rgba(212,165,116,0.30)] transition-colors"
           />
           {query && (

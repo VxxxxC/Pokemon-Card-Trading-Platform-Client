@@ -22,38 +22,11 @@ if (url.includes("/rest/v1")) {
 
 const supabase = createClient<Database>(url, anonKey);
 
-const SEARCH_COLUMNS = [
-  "set_code",
-  "name_ja",
-  "name_en",
-  "name_zh",
-  "card_number",
-  "display_id",
-] as const;
-
-function toIlikePattern(query: string): string {
-  const escaped = query.replace(/[%_\\]/g, "\\$&");
-  return `%${escaped}%`;
-}
-
-function buildOrIlikeFilter(pattern: string): string {
-  const quotedPattern = `"${pattern.replace(/"/g, '""')}"`;
-  return SEARCH_COLUMNS.map((col) => `${col}.ilike.${quotedPattern}`).join(",");
-}
-
 async function runSearch(label: string, query: string, itemType: "card" | "box_set") {
-  const pattern = toIlikePattern(query);
-  const types =
-    itemType === "card"
-      ? (["single_card"] as const)
-      : (["booster_box", "gift_set", "booster_pack", "starter_deck"] as const);
-
-  const { data, error } = await supabase
-    .from("product_catalog")
-    .select("id, name_ja, name_en, name_zh, set_code, card_number, display_id, type")
-    .in("type", [...types])
-    .or(buildOrIlikeFilter(pattern))
-    .limit(5);
+  const { data, error } = await supabase.rpc("search_product_catalog", {
+    p_query: query,
+    p_item_type: itemType,
+  });
 
   console.log(`\n--- ${label} (query="${query}", itemType=${itemType}) ---`);
 
@@ -70,11 +43,11 @@ async function runSearch(label: string, query: string, itemType: "card" | "box_s
   for (const row of data) {
     const name = row.name_zh ?? row.name_ja;
     console.log(
-      `  • ${row.display_id ?? row.card_number ?? row.id} | ${name} | set=${row.set_code} | ${row.type}`,
+      `  • ${row.display_id ?? row.jan_code ?? row.card_number ?? row.id} | ${name} | set=${row.set_code} | ${row.type}`,
     );
   }
 
-  console.log(`✅ ${data.length} result(s)`);
+  console.log(`✅ ${data.length} result(s), total_count=${data[0]?.total_count ?? data.length}`);
   return true;
 }
 
@@ -97,7 +70,7 @@ async function main() {
   await runSearch("Card by set", "sv2a", "card");
   await runSearch("Box/set search", "box", "box_set");
 
-  console.log("\nDone. If you see results above, DB + RLS + search columns are working.");
+  console.log("\nDone. If you see results above, RPC search_product_catalog is working.");
 }
 
 main().catch((err) => {

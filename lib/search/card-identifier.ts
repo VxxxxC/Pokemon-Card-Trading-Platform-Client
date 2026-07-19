@@ -148,6 +148,7 @@ export type CatalogSearchFields = {
   set_code?: string | null;
   card_number?: string | null;
   display_id?: string | null;
+  jan_code?: string | null;
 };
 
 export function matchesCatalogNameSearch(
@@ -176,6 +177,7 @@ export function matchesCatalogCardSearch(
   const setCode = catalog.set_code?.trim() ?? "";
   const cardNumber = catalog.card_number?.trim() ?? "";
   const displayId = catalog.display_id?.trim() ?? "";
+  const janCode = catalog.jan_code?.trim() ?? "";
 
   if (
     matchesCardIdentifier(
@@ -183,6 +185,7 @@ export function matchesCatalogCardSearch(
       displayId,
       setCode,
       cardNumber,
+      janCode,
     )
   ) {
     return true;
