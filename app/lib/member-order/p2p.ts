@@ -1,5 +1,6 @@
 import type { Tables } from "@/types/supabase";
 import { getAuthEscrowStepIndexFromStatus } from "@/app/lib/member-order/auth-escrow";
+import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
 
 export type MemberOrderDbStatus = NonNullable<
@@ -91,14 +92,7 @@ export function formatListingGrade(input: {
   gradingCompany: string;
   gradingScore: string | null;
 }): string {
-  const { gradingCompany, gradingScore } = input;
-  if (gradingScore) {
-    return `${gradingCompany} ${gradingScore}`;
-  }
-  if (gradingCompany && gradingCompany.toLowerCase() !== "raw") {
-    return gradingCompany;
-  }
-  return "Raw 裸卡";
+  return formatTradeGradeLabel(input.gradingCompany, input.gradingScore);
 }
 
 export function formatMemberOrderDateTime(

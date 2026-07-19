@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { addToCollection } from "@/app/actions/collection";
+import type { SealedProductScore } from "@/lib/catalog/item-kind";
+import { DEFAULT_GRADING_OPTION_ID } from "@/lib/grading/options";
 
 export type CollectionAddAfterListingPayload = {
   productId: string;
-  gradingOptionId: string;
   productName: string;
+  gradingOptionId?: string;
+  itemKind?: "card" | "box_set";
+  sealState?: SealedProductScore;
 };
 
 type CollectionAddAfterListingDialogProps = {
@@ -37,8 +41,9 @@ export function CollectionAddAfterListingDialog({
     try {
       const result = await addToCollection({
         productId: payload.productId,
-        gradingOptionId: payload.gradingOptionId,
+        gradingOptionId: payload.gradingOptionId ?? DEFAULT_GRADING_OPTION_ID,
         purchasePrice: parsed,
+        sealState: payload.sealState,
       });
 
       if (!result.success) {

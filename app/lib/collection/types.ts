@@ -1,4 +1,6 @@
 import type { CollectionValuationSource } from "@/lib/marketplace/portfolio-pricing";
+import type { CatalogType } from "@/lib/constants/commerce";
+import type { SealedProductScore } from "@/lib/catalog/item-kind";
 
 export type { CollectionValuationSource };
 
@@ -11,6 +13,7 @@ export type CollectionEntry = {
   cardCode: string;
   setCode: string;
   rarity: string | null;
+  catalogType: CatalogType;
   imageUrl: string | null;
   gradingCompany: string;
   gradingScore: string;
@@ -26,7 +29,7 @@ export type CollectionEntry = {
   soldPrice?: number | null;
 };
 
-export type CollectionListFilter = "all" | "graded" | "raw" | "listed" | "sold";
+export type CollectionListFilter = "all" | "graded" | "raw" | "listed" | "sold" | "sealed";
 
 export type GetCollectionEntriesInput = {
   page?: number;
@@ -58,6 +61,7 @@ export type CollectionAddInput = {
   productId: string;
   gradingOptionId: string;
   purchasePrice: number;
+  sealState?: SealedProductScore;
 };
 
 export type CollectionRemoveInput = {

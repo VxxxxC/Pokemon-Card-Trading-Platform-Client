@@ -388,6 +388,7 @@ export function MerchantStorefrontPageClient({
           activeGrades={activeGrades}
           onGradeToggle={(grade) => toggleFilterValue(grade, setActiveGrades)}
           hideTypeSection={true}
+          hideProductKindSection={true}
         />
       </SlideOver>
 
@@ -427,6 +428,7 @@ export function MerchantStorefrontPageClient({
             activeGrades={activeGrades}
             onGradeToggle={(grade) => toggleFilterValue(grade, setActiveGrades)}
             hideTypeSection={true}
+            hideProductKindSection={true}
           />
         </aside>
 

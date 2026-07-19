@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CollectionEntry } from "@/app/lib/collection/types";
+import {
+  catalogItemKindFromType,
+  formatSealedProductLabel,
+  isSealedCatalogType,
+  isSealedProductGrade,
+  normalizeSealedProductScore,
+} from "@/lib/catalog/item-kind";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { useUIStore } from "@/app/store/useUIStore";
 import {
@@ -26,7 +33,21 @@ function collectionRowKey(entry: CollectionEntry): string {
   return entry.collectionId;
 }
 
-function GraderBadge({ company }: { company: string }) {
+function GraderBadge({
+  company,
+  score,
+}: {
+  company: string;
+  score?: string;
+}) {
+  if (isSealedProductGrade(company, score)) {
+    return (
+      <span className="font-mono text-[10px] font-medium px-1.5 py-0.5 rounded border text-orange-400 bg-orange-500/10 border-orange-500/20">
+        {formatSealedProductLabel(company, score)}
+      </span>
+    );
+  }
+
   const map: Record<string, string> = {
     PSA: "text-[#3b9eff] bg-[rgba(59,158,255,0.12)] border-[rgba(59,158,255,0.20)]",
     BGS: "text-[#a855f7] bg-[rgba(168,85,247,0.12)] border-[rgba(168,85,247,0.20)]",
@@ -115,6 +136,14 @@ function GradeSelectCell({
     option: GradingOption,
   ) => Promise<boolean>;
 }) {
+  if (isSealedCatalogType(entry.catalogType) || isSealedProductGrade(entry.gradingCompany, entry.gradingScore)) {
+    return (
+      <span className="font-mono text-[9.5px] text-orange-400">
+        {formatSealedProductLabel(entry.gradingCompany, entry.gradingScore)}
+      </span>
+    );
+  }
+
   if (!onGradeChange) {
     return (
       <span className="font-mono text-[9.5px] text-[#8A8680]">
@@ -196,11 +225,16 @@ export function CollectionTable({
   };
 
   const handleSell = (entry: CollectionEntry) => {
+    const itemKind = catalogItemKindFromType(entry.catalogType);
     openAddAssetModal({
       mode: "merch",
       sellPrefill: {
         collectionId: entry.collectionId,
         productId: entry.productId,
+        itemKind,
+        sealState: isSealedProductGrade(entry.gradingCompany, entry.gradingScore)
+          ? normalizeSealedProductScore(entry.gradingCompany, entry.gradingScore)
+          : undefined,
         catalog: {
           name: entry.name,
           displayId: entry.cardCode || null,
@@ -208,6 +242,7 @@ export function CollectionTable({
           setCode: entry.setCode,
           imageUrl: entry.imageUrl,
           rarity: entry.rarity,
+          catalogType: entry.catalogType,
         },
         gradingOptionId: entry.gradingOptionId,
         sellingPrice: entry.purchasePrice,
@@ -321,7 +356,10 @@ export function CollectionTable({
                           {entry.cardCode || entry.productId}
                           {entry.setCode ? ` · ${entry.setCode}` : ""}
                         </p>
-                        <GraderBadge company={entry.gradingCompany} />
+                        <GraderBadge
+                          company={entry.gradingCompany}
+                          score={entry.gradingScore}
+                        />
                       </div>
                     </div>
                   </td>

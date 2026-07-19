@@ -133,7 +133,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_submit_outbound_tracking` | `{ p_order_id: string; p_tracking_no: string }` | `Json` |
 | `rpc_submit_transaction_review` | `{ p_comment?: string p_order_id: string p_rating: number p_reviewee_id: string p_user_id?: string }` | `Json` |
 | `run_auto_grant_rewards_for_me` | `never;` | `Json` |
-| `search_marketplace_products` | `{ p_card_number?: string p_grade_filters?: Json p_keyword?: string p_name_query?: string p_page?: n…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
+| `search_marketplace_products` | `{ p_card_number?: string p_catalog_types?: Database["public"]["Enums"]["catalog_type"][] p_grade_fi…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_products_browse` | `{ p_page?: number; p_page_size?: number; p_sort?: string }` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_seller_listings` | `{ p_grade_filters?: Json p_name_query?: string p_page?: number p_page_size?: number p_price_max?: n…` | `{ card_number: string created_at: string display_id: string grading_company: string grading_score: …` |
 | `search_merchant_trading_orders` | `{ p_include_auth_in_progress?: boolean p_include_payment_pending?: boolean p_page?: number p_page_s…` | `{ buyer_avatar_path: string buyer_display_name: string buyer_id: string buyer_username: string card…` |

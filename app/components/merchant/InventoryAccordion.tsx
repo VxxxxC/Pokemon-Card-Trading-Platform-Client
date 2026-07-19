@@ -26,6 +26,7 @@ export interface CardInstance {
   useAuthentication: boolean;
   views: number;
   offersCount?: number;
+  isSealedListing?: boolean;
 }
 
 export interface SKUGroup {
@@ -68,13 +69,21 @@ interface CardInstanceRowProps {
 function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { label, className } = STATUS_LABEL[item.status];
+  const canEdit = !item.isSealedListing;
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
-        className="w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 hover:bg-[#1a1612] border border-white/[0.03] rounded-xl transition-all cursor-pointer select-none group/row text-left"
+        onClick={() => {
+          if (canEdit) setIsOpen(true);
+        }}
+        disabled={!canEdit}
+        className={`w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 border border-white/[0.03] rounded-xl transition-all select-none group/row text-left ${
+          canEdit
+            ? "hover:bg-[#1a1612] cursor-pointer"
+            : "opacity-80 cursor-not-allowed"
+        }`}
       >
         {/* Left Info Column */}
         <div className="flex flex-col gap-0.5 min-w-0 flex-1 items-start">
@@ -106,8 +115,8 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
             <span className="font-mono font-semibold text-[15px] md:text-[16px] text-brand">
               HK$ {item.askPrice.toLocaleString()}
             </span>
-            <span className="flex items-center justify-center px-3 h-7 font-sans text-[12px] font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer shrink-0">
-              編輯
+            <span className="flex items-center justify-center px-3 h-7 font-sans text-[12px] font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-all shrink-0">
+              {canEdit ? "編輯" : "盒組"}
             </span>
           </div>
 
@@ -117,7 +126,7 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
         </div>
       </button>
 
-      {isOpen ? (
+      {isOpen && canEdit ? (
         <ListingEditDialog
           open
           onOpenChange={setIsOpen}

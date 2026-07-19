@@ -14,6 +14,7 @@ import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { MarketplaceEmptyState } from "@/app/components/marketplace/MarketplaceEmptyState";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import { MarketplaceQuickCategoryPills } from "@/app/components/marketplace/MarketplaceQuickCategoryPills";
 import { SlideOver } from "@/app/components/ui/SlideOver";
 import { useMarketStore, type SortKey } from "@/app/store/useMarketStore";
 import {
@@ -71,6 +72,8 @@ function toMarketplaceListing(
       authority: grade.authority,
       score: grade.score || "",
     },
+    gradingCompany: product.gradingCompany,
+    gradingScore: product.gradingScore,
     price: product.lowestPrice,
     delta: 0,
     deltaDirection: "up",
@@ -109,6 +112,7 @@ export function MarketplacePageClient({
 
   const urlQuery = searchParams.get("q");
   const urlRarity = searchParams.get("rarity");
+  const urlKind = searchParams.get("kind");
 
   const query = useMarketStore((state) => state.query);
   const setQuery = useMarketStore((state) => state.setQuery);
@@ -122,10 +126,12 @@ export function MarketplacePageClient({
   const activeRarities = useMarketStore((state) => state.activeRarities);
   const activeGrades = useMarketStore((state) => state.activeGrades);
   const activeTypes = useMarketStore((state) => state.activeTypes);
+  const activeProductKinds = useMarketStore((state) => state.activeProductKinds);
 
   const toggleRarity = useMarketStore((state) => state.toggleRarity);
   const toggleGrade = useMarketStore((state) => state.toggleGrade);
   const toggleType = useMarketStore((state) => state.toggleType);
+  const toggleProductKind = useMarketStore((state) => state.toggleProductKind);
   const resetAll = useMarketStore((state) => state.resetAll);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -174,7 +180,7 @@ export function MarketplacePageClient({
 
   const itemsPerPage = MARKETPLACE_GRID_PAGE_SIZE;
 
-  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeTypes.join(",")}|${priceRange?.join(",") ?? ""}`;
+  const filterKey = `${query}|${sortKey}|${activeRarities.join(",")}|${activeGrades.join(",")}|${activeTypes.join(",")}|${activeProductKinds.join(",")}|${priceRange?.join(",") ?? ""}`;
   const currentPage = pageState.forKey === filterKey ? pageState.page : 1;
 
   const [resolvedPriceBounds, setResolvedPriceBounds] = useState<{
@@ -189,6 +195,7 @@ export function MarketplacePageClient({
         rarities: activeRarities,
         grades: activeGrades,
         sellerTypes: activeTypes,
+        productKinds: activeProductKinds,
         priceMin: priceRange?.[0] ?? 0,
         priceMax: priceRange?.[1] ?? 100_000,
         sortKey,
@@ -266,7 +273,7 @@ export function MarketplacePageClient({
   const lastSyncedParamsKey = useRef("");
 
   useEffect(() => {
-    const currentParamsKey = `${urlQuery}-${urlRarity}`;
+    const currentParamsKey = `${urlQuery}-${urlRarity}-${urlKind}`;
     if (lastSyncedParamsKey.current === currentParamsKey) return;
     if (urlQuery !== null) setQuery(urlQuery);
     if (urlRarity !== null) {
@@ -278,8 +285,20 @@ export function MarketplacePageClient({
         toggleRarity(matchedRarity);
       }
     }
+    if (urlKind === "sealed_product" && !activeProductKinds.includes("sealed_product")) {
+      toggleProductKind("sealed_product");
+    }
     lastSyncedParamsKey.current = currentParamsKey;
-  }, [urlQuery, urlRarity, setQuery, toggleRarity, activeRarities]);
+  }, [
+    urlQuery,
+    urlRarity,
+    urlKind,
+    setQuery,
+    toggleRarity,
+    toggleProductKind,
+    activeRarities,
+    activeProductKinds,
+  ]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -325,6 +344,7 @@ export function MarketplacePageClient({
     activeRarities.length > 0 ||
     activeGrades.length > 0 ||
     activeTypes.length > 0 ||
+    activeProductKinds.length > 0 ||
     (priceRange !== null &&
       (priceRange[0] !== absoluteMinPrice ||
         priceRange[1] !== absoluteMaxPrice));
@@ -472,6 +492,8 @@ export function MarketplacePageClient({
         </button>
       </div>
 
+      <MarketplaceQuickCategoryPills />
+
       <SlideOver
         isOpen={isMobileFilterOpen}
         onClose={() => setIsMobileFilterOpen(false)}
@@ -547,6 +569,8 @@ export function MarketplacePageClient({
           onGradeToggle={toggleGrade}
           activeTypes={activeTypes}
           onTypeToggle={toggleType}
+          activeProductKinds={activeProductKinds}
+          onProductKindToggle={toggleProductKind}
           hideTypeSection={false}
           rarities={rarities}
           disableRarityFetch
@@ -587,6 +611,8 @@ export function MarketplacePageClient({
             onGradeToggle={toggleGrade}
             activeTypes={useMarketStore.getState().activeTypes}
             onTypeToggle={toggleType}
+            activeProductKinds={useMarketStore.getState().activeProductKinds}
+            onProductKindToggle={toggleProductKind}
             hideTypeSection={false}
             rarities={rarities}
             disableRarityFetch

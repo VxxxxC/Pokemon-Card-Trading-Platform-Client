@@ -92,7 +92,14 @@ export function CardGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {featuredCards.map((card) => (
-        <CardItem key={card.id} card={card} />
+        <CardItem
+          key={card.id}
+          card={{
+            ...card,
+            gradingCompany: card.gradingCompany ?? card.grade.authority,
+            gradingScore: card.gradingScore ?? card.grade.score,
+          }}
+        />
       ))}
     </div>
   );

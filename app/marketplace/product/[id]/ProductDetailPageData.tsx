@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import {
-  getMarketplaceProductDetail,
+import { getMarketplaceProductDetail,
   getMarketplaceProductListings,
   getMarketplaceProductMarketPrices,
 } from "@/app/actions/marketplace";
+import { getWishlistFavoredKeysForUser } from "@/app/actions/wishlist";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { ProductDetailClient } from "./ProductDetailClient";
 
@@ -24,18 +24,22 @@ export async function ProductDetailPageData({
   }
 
   const productId = catalogResult.data.productId;
+  const user = await getOptionalAuthUser();
 
-  const [user, listingsResult, marketPricesResult] = await Promise.all([
-    getOptionalAuthUser(),
-    getMarketplaceProductListings({
-      productId,
-      sort: "price_asc",
-      onlyGraded: false,
-      page: 1,
-      pageSize: DEFAULT_PRODUCT_DETAIL_LISTINGS_PAGE_SIZE,
-    }),
-    getMarketplaceProductMarketPrices(productId),
-  ]);
+  const [listingsResult, marketPricesResult, initialFavoredKeys] =
+    await Promise.all([
+      getMarketplaceProductListings({
+        productId,
+        sort: "price_asc",
+        onlyGraded: false,
+        page: 1,
+        pageSize: DEFAULT_PRODUCT_DETAIL_LISTINGS_PAGE_SIZE,
+      }),
+      getMarketplaceProductMarketPrices(productId),
+      user?.id
+        ? getWishlistFavoredKeysForUser(user.id)
+        : Promise.resolve([] as string[]),
+    ]);
 
   const initialListings = listingsResult.success
     ? {
@@ -55,6 +59,7 @@ export async function ProductDetailPageData({
       currentUserId={user?.id ?? null}
       initialListings={initialListings}
       initialMarketGrades={initialMarketGrades}
+      initialFavoredKeys={initialFavoredKeys}
     />
   );
 }

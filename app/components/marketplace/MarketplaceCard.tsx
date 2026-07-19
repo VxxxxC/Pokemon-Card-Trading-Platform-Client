@@ -26,6 +26,9 @@ export type MarketplaceListing = {
   set: string;
   rarity: Tables<"product_catalog">["rarity"];
   grade: { authority: string; score: string };
+  /** Raw DB values for wishlist / API — do not use display `grade` for mutations. */
+  gradingCompany: string;
+  gradingScore: string | null;
   conditionLabel?: "A" | "B" | "C" | "D";
   price: number; // HKD value
   delta: number;
@@ -158,8 +161,8 @@ function MarketplaceCardView({
   const wishlistIsFavored = isWishlistFavored(
     favoredKeys,
     wishlistProductId,
-    listing.grade.authority,
-    listing.grade.score,
+    listing.gradingCompany,
+    listing.gradingScore,
   );
 
   const handleDetailNavigate = () => {
@@ -228,8 +231,8 @@ function MarketplaceCardView({
           >
             <WishlistButton
               productId={wishlistProductId}
-              gradingCompany={listing.grade.authority}
-              gradingScore={listing.grade.score}
+              gradingCompany={listing.gradingCompany}
+              gradingScore={listing.gradingScore}
               trackedPrice={listing.price > 0 ? listing.price : null}
               initialIsFavored={wishlistIsFavored}
               currentUserId={currentUserId}

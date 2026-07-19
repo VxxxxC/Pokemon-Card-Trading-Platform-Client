@@ -136,6 +136,8 @@ export function toMarketplaceCardListing(
       authority: grade.authority,
       score: grade.score || "",
     },
+    gradingCompany: row.gradingCompany,
+    gradingScore: row.gradingScore,
     price: row.price,
     delta: 0,
     deltaDirection: "up" as const,

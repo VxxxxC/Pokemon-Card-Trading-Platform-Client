@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { GRADING_OPTIONS } from "@/lib/grading/options";
 import type { GradingOption } from "@/lib/grading/options";
+import {
+  formatSealedProductLabel,
+  isSealedCatalogType,
+  isSealedProductGrade,
+} from "@/lib/catalog/item-kind";
 import { gradingOptionIdFromWishlistRow } from "@/lib/wishlist/grading";
 
 const ITEMS_PER_PAGE = 5;
@@ -227,6 +232,17 @@ function GradeCell({
     entry.gradingScore,
   );
 
+  if (
+    (entry.catalogType && isSealedCatalogType(entry.catalogType)) ||
+    isSealedProductGrade(entry.gradingCompany, entry.gradingScore)
+  ) {
+    return (
+      <span className="inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
+        {formatSealedProductLabel(entry.gradingCompany, entry.gradingScore)}
+      </span>
+    );
+  }
+
   if (!onGradeChange) {
     return (
       <span className="inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
@@ -349,7 +365,7 @@ export function WishlistTable({
               {(
                 [
                   {
-                    label: "卡牧資料",
+                    label: "商品資料",
                     align: "text-left",
                     extra: "pl-4 lg:pl-0",
                   },
@@ -417,6 +433,12 @@ export function WishlistTable({
                 entry.trend30d != null && entry.trend30d >= 0 ? "▲" : "▼";
               const rarityKey = (entry.rarity ?? "SR").toUpperCase();
               const productHref = `/marketplace/product/${entry.productId}`;
+              const isSealedEntry =
+                (entry.catalogType && isSealedCatalogType(entry.catalogType)) ||
+                isSealedProductGrade(entry.gradingCompany, entry.gradingScore);
+              const subtitleLabel = isSealedEntry
+                ? entry.cardCode?.trim() || entry.displayId?.trim() || "盒組"
+                : entry.cardCode || entry.displayId || entry.productId;
 
               return (
                 <tr
@@ -437,7 +459,7 @@ export function WishlistTable({
                           {entry.name}
                         </Link>
                         <p className="font-mono text-[10px] text-text-disabled">
-                          {entry.cardCode || entry.displayId || entry.productId}
+                          {subtitleLabel}
                         </p>
                       </div>
                     </div>
@@ -446,6 +468,11 @@ export function WishlistTable({
                     <GradeCell entry={entry} onGradeChange={onUpdateGrade} />
                   </td>
                   <td className="py-4 px-3 text-center">
+                    {isSealedEntry ? (
+                      <span className="inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
+                        盒組
+                      </span>
+                    ) : (
                     <span
                       className={`inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
                         RARITY_STYLE[rarityKey] ?? RARITY_STYLE.SR
@@ -453,6 +480,7 @@ export function WishlistTable({
                     >
                       {entry.rarity ?? "—"}
                     </span>
+                    )}
                   </td>
                   <td className="py-4 px-3 text-right">
                     <p className="font-mono font-semibold text-[14px] text-text-primary">
@@ -479,6 +507,12 @@ export function WishlistTable({
                   </td>
                   <td className="py-4 px-3">
                     <div className="flex flex-col items-center gap-0.5">
+                      {isSealedEntry && !hasTrend ? (
+                        <span className="font-mono text-[10px] text-text-disabled">
+                          暫無參考市價
+                        </span>
+                      ) : (
+                      <>
                       <MiniSparkline
                         points={sparklinePoints}
                         direction={sparklineDirection}
@@ -496,6 +530,8 @@ export function WishlistTable({
                         <span className="font-mono text-[10px] text-text-disabled">
                           —
                         </span>
+                      )}
+                      </>
                       )}
                     </div>
                   </td>

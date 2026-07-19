@@ -1,6 +1,7 @@
 import type { Database } from "@/types/supabase";
 import type { SortKey } from "@/app/store/useMarketStore";
 import type { ListingImage } from "@/lib/listings/images";
+import type { CatalogType } from "@/lib/constants/commerce";
 
 export type GradeFilter = {
   company: string;
@@ -53,6 +54,7 @@ export type MarketplaceSearchInput = {
   cardNumber?: string;
   rarities?: string[];
   sellerModes?: string[];
+  catalogTypes?: CatalogType[];
   gradeFilters?: GradeFilter[];
   priceMin?: number;
   priceMax?: number;

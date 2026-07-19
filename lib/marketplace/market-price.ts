@@ -1,5 +1,11 @@
 import type { MarketplaceMarketPriceGradeRow } from "@/app/lib/marketplace/types";
 import {
+  formatSealedProductLabel,
+  isSealedProductGrade,
+  normalizeSealedProductScore,
+  sealedProductGradingOptionId,
+} from "@/lib/catalog/item-kind";
+import {
   DEFAULT_GRADING_OPTION_ID,
   GRADING_OPTIONS,
   getGradingOption,
@@ -121,6 +127,10 @@ export function formatMarketGradeLabel(
   gradingCompany: string,
   gradingScore: string,
 ): string {
+  if (isSealedProductGrade(gradingCompany, gradingScore)) {
+    return formatSealedProductLabel(gradingCompany, gradingScore);
+  }
+
   const company = normalizeGradingCompany(gradingCompany);
   const rawCondition = rawConditionFromMarketPriceScore(gradingScore);
 
@@ -160,6 +170,12 @@ export function matchGradeOptionIdFromMarketPriceRow(
     return null;
   }
 
+  if (isSealedProductGrade(gradingCompany, gradingScore)) {
+    return sealedProductGradingOptionId(
+      normalizeSealedProductScore(gradingCompany, gradingScore),
+    );
+  }
+
   if (company === "OTHER") {
     return OTHER_GRADING_OPTION_ID;
   }
@@ -193,6 +209,10 @@ export function buildMarketPriceGradeKey(
 const gradingOptionSortIndex = new Map(
   GRADING_OPTIONS.map((option, index) => [option.id, index]),
 );
+
+for (const [index, sealKey] of ["sealed:SEALED", "sealed:UNSEALED"].entries()) {
+  gradingOptionSortIndex.set(sealKey, GRADING_OPTIONS.length + index);
+}
 
 export function sortMarketPriceGradeRows(
   rows: MarketplaceMarketPriceGradeRow[],

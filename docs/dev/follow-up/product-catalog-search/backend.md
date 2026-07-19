@@ -4,6 +4,7 @@
 
 - **Catalog search:** ✅ Ready
 - **Create listing (single card, merch mode):** ✅ Ready
+- **Create listing (sealed box/set, merch mode):** ✅ Ready
 - **Frontend:** ✅ Wired (functional baseline in `AddAssetModal.tsx`)
 - **Partner:** Polish UI only — see [frontend.md](./frontend.md)
 
@@ -74,6 +75,29 @@ const result = await searchProductCatalog(query, itemType);
 // Failure
 { success: false, error: string }
 ```
+
+### Create listing (sealed box/set)
+
+```ts
+import { createSealedListing } from "@/app/actions/listings";
+
+formData.append("productId", selectedCatalogId);
+formData.append("price", String(priceHkd));
+formData.append("sellerDescription", description); // optional
+formData.append("uploadedImages", JSON.stringify([...])); // 1–6 items
+
+const result = await createSealedListing(formData);
+
+// Success
+{ success: true, data: { listingId: string, images: ListingImage[] } }
+```
+
+**Client path:** `submitSealedListingWithProgress({ productId, price, imageFiles, ... })` — wired in `AddAssetModal.tsx` (merch / box_set).
+
+**Server rules:**
+- `product_catalog.type` must be in `CATALOG_TYPES_BOX_SET` (`booster_box`, `gift_set`, `booster_pack`, `starter_deck`)
+- `grading_company = "SEALED"`, `grading_score = null`, `use_authentication = false`
+- Images: min **1**, max **6**
 
 ### `createCardListing`
 
@@ -314,6 +338,6 @@ UI styling in `AddAssetModal.tsx` is partner-owned.
 
 ## Out of scope (not built yet)
 
-- Box/set listing submit (still mock event in modal)
-- Hobby / `user_collections` write
+- ~~Box/set listing submit (still mock event in modal)~~ ✅ `createSealedListing` + `submitSealedListingWithProgress`
+- Hobby / `user_collections` write for sealed → see [user-collection backend](../user-collection/backend.md)
 - Presigned direct browser → Bunny upload (current flow uses authenticated API proxy)

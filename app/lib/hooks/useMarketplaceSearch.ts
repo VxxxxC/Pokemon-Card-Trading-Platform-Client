@@ -23,6 +23,7 @@ import {
   recordMarketplaceClientSearch,
 } from "@/app/lib/marketplace/perf-log-client";
 import { MARKETPLACE_GRID_PAGE_SIZE } from "@/lib/marketplace/constants";
+import { resolveCatalogTypesFromProductKinds } from "@/lib/marketplace/filter-options";
 
 const QUERY_DEBOUNCE_MS = 350;
 
@@ -40,6 +41,7 @@ export type MarketplaceSearchFilters = {
   rarities: string[];
   grades: string[];
   sellerTypes: string[];
+  productKinds: string[];
   priceMin: number;
   priceMax: number;
   sortKey: SortKey;
@@ -78,6 +80,7 @@ function filtersKey(filters: MarketplaceSearchFilters): string {
     filters.rarities.join(","),
     filters.grades.join(","),
     filters.sellerTypes.join(","),
+    filters.productKinds.join(","),
     filters.priceMin,
     filters.priceMax,
     filters.page,
@@ -126,11 +129,14 @@ function toSearchInput(
     absolutePriceBounds,
   );
 
+  const catalogTypes = resolveCatalogTypesFromProductKinds(filters.productKinds);
+
   return {
     query: filters.query,
     rarities: filters.rarities,
     gradeFilters: parseGradeFilters(filters.grades),
     sellerModes: mapSellerModes(filters.sellerTypes),
+    catalogTypes: catalogTypes.length > 0 ? catalogTypes : undefined,
     priceMin,
     priceMax,
     sortKey: filters.sortKey,

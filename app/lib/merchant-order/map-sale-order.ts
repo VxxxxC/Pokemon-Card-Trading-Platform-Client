@@ -4,6 +4,7 @@ import type {
 } from "@/app/actions/orders";
 import type { OrderStatus, SaleOrder } from "@/app/lib/types/trading";
 import type { Tables } from "@/types/supabase";
+import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 
 type MerchantEscrowStatus = NonNullable<
   Tables<"merchant_orders">["escrow_status"]
@@ -30,13 +31,7 @@ export function mapMerchantEscrowToOrderStatus(
 
 function formatListingGrade(order: MerchantTradingOrder): string {
   const { gradingCompany, gradingScore } = order.listing;
-  if (gradingScore) {
-    return `${gradingCompany} ${gradingScore}`;
-  }
-  if (gradingCompany && gradingCompany.toLowerCase() !== "raw") {
-    return gradingCompany;
-  }
-  return "Raw 裸卡";
+  return formatTradeGradeLabel(gradingCompany, gradingScore);
 }
 
 function formatOrderDateTime(createdAt: string | null): string {

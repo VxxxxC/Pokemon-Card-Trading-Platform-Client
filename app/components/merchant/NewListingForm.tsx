@@ -3,6 +3,13 @@
 import { useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
+import {
+  defaultSealedProductScore,
+  type SealedProductScore,
+} from "@/lib/catalog/item-kind";
+import { submitSealedListingWithProgress } from "@/lib/listings/submit-sealed-listing";
+import { validateCreateSealedListing } from "@/lib/listings/validation";
 import {
   Select,
   SelectContent,
@@ -33,11 +40,14 @@ const INPUT_GROUP_BASE =
  * 新增商品上架表單 — React 19 原生非受控表單 Actions 與受控實物相片管理。
  */
 export function NewListingForm() {
-  const [photos, setPhotos] = useState<{ url: string; remark: string }[]>(
-    Array.from({ length: 6 }, (_, i) => ({
-      url: i < 2 ? "https://picsum.photos/seed/placeholder/600/420" : "", // 預設 2 張以維持原本的美學觀感
-      remark: ""
-    }))
+  const [photos, setPhotos] = useState<
+    { url: string; remark: string; file: File | null }[]
+  >(
+    Array.from({ length: 6 }, () => ({
+      url: "",
+      remark: "",
+      file: null,
+    })),
   );
   const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +60,11 @@ export function NewListingForm() {
   // 🏛️ Symmetrical Item-Type Switch State
   const [itemType, setItemType] = useState<"card" | "box_set">("card");
   const [cardQuery, setCardQuery] = useState("");
+  const [sealState, setSealState] = useState<SealedProductScore>(
+    defaultSealedProductScore(),
+  );
+  const catalogItemType = itemType === "box_set" ? "box_set" : "card";
+  const catalogSearch = useProductCatalogSearch(catalogItemType);
 
   const isScoreDisabled = selectedGrader === "RAW";
 
@@ -85,7 +100,11 @@ export function NewListingForm() {
     if (activeSlotIndex !== null) {
       setPhotos((prev) => {
         const next = [...prev];
-        next[activeSlotIndex] = { ...next[activeSlotIndex], url: newUrl };
+        next[activeSlotIndex] = {
+          ...next[activeSlotIndex],
+          url: newUrl,
+          file,
+        };
         return next;
       });
       setActiveSlotIndex(null);
@@ -96,7 +115,7 @@ export function NewListingForm() {
   const handleRemoveImage = (index: number) => {
     setPhotos((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], url: "" };
+      next[index] = { ...next[index], url: "", file: null };
       return next;
     });
   };
@@ -122,7 +141,7 @@ export function NewListingForm() {
     return null;
   }, [itemType, cardQuery]);
 
-  function publishListing(formData: FormData) {
+  async function publishListing(formData: FormData) {
     const validPhotosCount = photos.filter((p) => p.url).length;
     if (itemType === "card") {
       if (validPhotosCount < LISTING_IMAGE_MAX) {
@@ -131,20 +150,58 @@ export function NewListingForm() {
         );
         return;
       }
-    } else {
-      if (validPhotosCount < 1) {
-        toast.error(
-          "新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。"
-        );
-        return;
-      }
+
+      const cardQueryValue = String(formData.get("card-query") ?? "");
+      toast.success(`「${cardQueryValue || "新商品"}」已提交上架（單卡流程待後端接通）`);
+      window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
+      return;
     }
 
-    const cardQueryValue = String(formData.get("card-query") ?? "");
-    const gradeValue = itemType === "box_set" ? "SEALED" : (isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim());
-    const conditionValue = itemType === "box_set" ? "SEALED" : selectedCondition;
+    if (validPhotosCount < 1) {
+      toast.error(
+        "新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。"
+      );
+      return;
+    }
 
-    toast.success(`「${cardQueryValue || "新商品"}」已提交上架，鑑定等級：${gradeValue}，品相分級：${conditionValue}（待後端接通）`);
+    if (!catalogSearch.selected) {
+      toast.error("請從搜尋結果中選擇盒組商品");
+      return;
+    }
+
+    const price = Number(formData.get("ask-price"));
+
+    const imageFiles = photos
+      .map((photo) => photo.file)
+      .filter((file): file is File => file !== null);
+
+    const validationError = validateCreateSealedListing(
+      {
+        productId: catalogSearch.selected.id,
+        price,
+      },
+      imageFiles,
+    );
+
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    const result = await submitSealedListingWithProgress({
+      productId: catalogSearch.selected.id,
+      price,
+      sellerPersona: "merchant",
+      imageFiles,
+      sealState,
+    });
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success(`「${catalogSearch.selected.name}」已成功上架`);
     window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
   }
 
@@ -187,8 +244,49 @@ export function NewListingForm() {
       </div>
 
       {/* 隱藏輔助欄位，保障 React 19 FormData 相容性 */}
-      <input type="hidden" name="card-grade" value={itemType === "box_set" ? "SEALED" : (isScoreDisabled ? "RAW" : `${selectedGrader} ${selectedScore}`.trim())} />
-      <input type="hidden" name="card-condition" value={itemType === "box_set" ? "SEALED" : selectedCondition} />
+      {itemType === "card" ? (
+        <>
+          <input
+            type="hidden"
+            name="card-grade"
+            value={
+              isScoreDisabled
+                ? "RAW"
+                : `${selectedGrader} ${selectedScore}`.trim()
+            }
+          />
+          <input type="hidden" name="card-condition" value={selectedCondition} />
+        </>
+      ) : null}
+
+      {itemType === "box_set" ? (
+        <div className="space-y-1.5">
+          <label className="font-mono text-[12px] text-text-secondary block">
+            密封狀態
+          </label>
+          <div className="flex gap-2 max-w-xs">
+            {(
+              [
+                { value: "SEALED" as const, label: "密封" },
+                { value: "UNSEALED" as const, label: "已開封" },
+              ] as const
+            ).map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSealState(value)}
+                className={`flex-1 h-9 rounded-lg border font-mono text-[12px] ${
+                  sealState === value
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-white/10 text-text-secondary"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Row 1: 卡牌搜尋 + 售價 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -210,17 +308,39 @@ export function NewListingForm() {
               required
               placeholder={itemType === "box_set" ? "例：151 Booster Box 或 20th Anniversary Set" : "sv2a-182 或 Charizard ex SAR"}
               value={cardQuery}
-              onChange={(e) => setCardQuery(e.target.value)}
+              onChange={(e) => {
+                setCardQuery(e.target.value);
+                catalogSearch.setQuery(e.target.value);
+              }}
               className="flex-1 h-full bg-transparent px-4 font-sans text-[14px] text-text-primary placeholder-text-disabled focus:outline-none"
             />
-            {/* TODO: [database] Handle database query index partitioning for sealed boxes/sets or single asset cards */}
             <button
               type="button"
+              onClick={() => void catalogSearch.searchNow()}
               className="px-3 h-full font-mono text-[11px] text-brand hover:bg-[rgba(212,165,116,0.08)] transition-colors border-l border-white/5 cursor-pointer"
             >
               搜尋
             </button>
           </div>
+          {catalogSearch.results.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              {catalogSearch.results.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onClick={() => {
+                    catalogSearch.selectSuggestion(suggestion);
+                    setCardQuery(suggestion.name);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg border border-white/5 bg-[#17130f] hover:border-brand/30"
+                >
+                  <span className="font-sans text-[13px] text-text-primary">
+                    {suggestion.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div>
           <label

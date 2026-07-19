@@ -1,4 +1,5 @@
 import type { MarketplacePriceChartPoint } from "@/app/lib/marketplace/types";
+import type { CatalogType } from "@/lib/constants/commerce";
 
 export type WishlistEntry = {
   productId: string;
@@ -6,6 +7,7 @@ export type WishlistEntry = {
   name: string;
   cardCode: string;
   rarity: string | null;
+  catalogType: CatalogType | null;
   gradingCompany: string;
   gradingScore: string;
   gradeLabel: string;

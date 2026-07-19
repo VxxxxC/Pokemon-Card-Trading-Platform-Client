@@ -277,6 +277,8 @@ export function getStorefrontListingsByMember(
         authority: listing.grade.authority,
         score: listing.grade.score,
       },
+      gradingCompany: listing.grade.authority,
+      gradingScore: listing.grade.score,
       conditionLabel: listing.conditionLabel,
       price: listing.price,
       delta: listing.delta,

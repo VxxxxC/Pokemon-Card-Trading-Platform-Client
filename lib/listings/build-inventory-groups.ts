@@ -1,6 +1,7 @@
 import type { InventoryProductGroup } from "@/app/lib/inventory/types";
 import { mapListingStatusToUi } from "@/app/lib/inventory/types";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
+import { isSealedProductGrade } from "@/lib/catalog/item-kind";
 import {
   resolveCardCode,
   resolveProductName,
@@ -127,6 +128,10 @@ export function groupListingsByProduct(input: {
           useAuthentication: listing.use_authentication,
           views: stats?.views ?? 0,
           offersCount: stats?.offers_count ?? 0,
+          isSealedListing: isSealedProductGrade(
+            listing.grading_company,
+            listing.grading_score,
+          ),
         };
       }),
     });

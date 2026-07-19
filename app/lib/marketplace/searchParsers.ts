@@ -4,7 +4,11 @@ import {
   hasGradingOption,
   normalizeGradingCompany,
 } from "@/lib/grading/options";
-import type { MarketplaceSellerSourceKey } from "@/lib/marketplace/filter-options";
+import {
+  getMarketplaceSealStateOption,
+  isMarketplaceSealStateKey,
+  type MarketplaceSellerSourceKey,
+} from "@/lib/marketplace/filter-options";
 
 const MAX_QUERY_LENGTH = 100;
 
@@ -51,6 +55,11 @@ export function parseCatalogSearchQuery(query: string | undefined): {
 /** Map unified grading option ids (or legacy chip labels) to RPC grade filter objects. */
 export function parseGradeFilters(activeGrades: string[]): GradeFilter[] {
   return activeGrades.map((gradeKey) => {
+    if (isMarketplaceSealStateKey(gradeKey)) {
+      const option = getMarketplaceSealStateOption(gradeKey)!;
+      return { company: option.company, score: option.score };
+    }
+
     if (hasGradingOption(gradeKey)) {
       const option = getGradingOption(gradeKey);
       return { company: option.company, score: option.score };

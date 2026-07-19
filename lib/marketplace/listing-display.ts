@@ -1,8 +1,17 @@
 /** Display helpers for marketplace listing rows. */
+import {
+  formatSealedProductLabel,
+  isSealedProductGrade,
+} from "@/lib/catalog/item-kind";
+
 export function formatListingGrade(
   company: string,
   score: string | null,
 ): { authority: string; score: string } {
+  if (isSealedProductGrade(company, score)) {
+    return { authority: formatSealedProductLabel(company, score), score: "" };
+  }
+
   const normalized = company.toUpperCase().trim();
   if (normalized === "RAW" || normalized === "RAW CARD") {
     return { authority: "Raw Card", score: score ?? "" };
@@ -14,6 +23,10 @@ export function formatTradeGradeLabel(
   company: string,
   score: string | null,
 ): string {
+  if (isSealedProductGrade(company, score)) {
+    return formatSealedProductLabel(company, score);
+  }
+
   const { authority, score: gradeScore } = formatListingGrade(company, score);
   if (authority === "Raw Card") {
     return gradeScore ? `裸卡 ${gradeScore}` : "裸卡";

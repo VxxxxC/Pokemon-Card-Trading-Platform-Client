@@ -2,6 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  isCardCatalogType,
+  isSealedCatalogType,
+  parseSealState,
+  sealedProductGradingFields,
+  defaultSealedProductScore,
+} from "@/lib/catalog/item-kind";
+import type { CatalogType } from "@/lib/constants/commerce";
+import {
   getGradingOption,
   gradingOptionToFields,
 } from "@/lib/grading/options";
@@ -19,7 +27,9 @@ import {
 import {
   LISTING_DESCRIPTION_MAX,
   validateCreateCardListingFields,
+  validateCreateSealedListingFields,
   validateListingImageCount,
+  validateSealedListingImageCount,
   validateUpdateCardListingFields,
 } from "@/lib/listings/validation";
 import {
@@ -570,12 +580,16 @@ export async function createCardListing(
 
     const { data: catalogRow, error: catalogError } = await supabase
       .from("product_catalog")
-      .select("id")
+      .select("id, type")
       .eq("id", fields.productId)
-      .maybeSingle<{ id: string }>();
+      .maybeSingle<{ id: string; type: CatalogType }>();
 
     if (catalogError || !catalogRow) {
       return fail("所選卡牌不存在於商品目錄");
+    }
+
+    if (!isCardCatalogType(catalogRow.type)) {
+      return fail("請使用盒組商品上架流程");
     }
 
     if (!isBunnyStorageConfigured()) {
@@ -666,6 +680,277 @@ export async function createCardListing(
     };
   } catch (error) {
     console.error("[createCardListing]", error);
+    await rollbackUploadedListingImages(uploadedObjectKeys);
+
+    if (error instanceof Error && error.message.includes("Bunny")) {
+      return { success: false, error: "圖片上載失敗，請稍後再試" };
+    }
+
+    return { success: false, error: "商品上架時發生錯誤" };
+  }
+}
+
+function parseCreateSealedListingForm(formData: FormData): {
+  fields: {
+    productId: string;
+    price: number;
+    sealState: ReturnType<typeof defaultSealedProductScore>;
+    sellerDescription?: string;
+    sourceCollectionId?: string;
+    sellerPersona?: ListingSellerPersona;
+  };
+  uploads: ParsedImageUpload[];
+  preUploaded: PreUploadedListingImage[] | null;
+  rawImageEntryCount: number;
+} {
+  const productId = String(formData.get("productId") ?? "").trim();
+  const price = Number(formData.get("price"));
+  const sealStateRaw = String(formData.get("sealState") ?? "").trim();
+  const sealState =
+    parseSealState(sealStateRaw) ?? defaultSealedProductScore();
+  const sellerDescription = String(
+    formData.get("sellerDescription") ?? "",
+  )
+    .trim()
+    .slice(0, LISTING_DESCRIPTION_MAX);
+  const sourceCollectionIdRaw = String(
+    formData.get("sourceCollectionId") ?? "",
+  ).trim();
+  const sourceCollectionId = sourceCollectionIdRaw || undefined;
+  const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
+  const sellerPersona = parseSellerPersonaField(sellerPersonaRaw);
+
+  const rawImageEntries = formData.getAll("images");
+  const uploads = parseImageUploadsFromFormData(formData);
+  const uploadedImagesRaw = String(formData.get("uploadedImages") ?? "").trim();
+  const preUploaded = uploadedImagesRaw
+    ? parsePreUploadedImages(uploadedImagesRaw)
+    : null;
+
+  return {
+    fields: {
+      productId,
+      price,
+      sealState,
+      sellerDescription: sellerDescription || undefined,
+      sourceCollectionId,
+      sellerPersona,
+    },
+    uploads,
+    preUploaded,
+    rawImageEntryCount: rawImageEntries.length,
+  };
+}
+
+function validateServerSealedListingSubmit(
+  fields: ReturnType<typeof parseCreateSealedListingForm>["fields"],
+  uploads: ParsedImageUpload[],
+  preUploaded: PreUploadedListingImage[] | null,
+  rawImageEntryCount: number,
+): string | null {
+  const fieldError = validateCreateSealedListingFields(fields);
+  if (fieldError) return fieldError;
+
+  const imageCount = preUploaded?.length ?? uploads.length;
+  const countError = validateSealedListingImageCount(imageCount);
+  if (countError) {
+    if (preUploaded) return countError;
+    if (rawImageEntryCount === 0) {
+      return "圖片未能傳送到伺服器，請重試或壓縮相片後再上載";
+    }
+    if (rawImageEntryCount > 0 && uploads.length === 0) {
+      return "圖片格式不支援，請使用 JPG、PNG、WEBP 或 HEIC";
+    }
+    return countError;
+  }
+
+  if (preUploaded) {
+    return null;
+  }
+
+  for (const upload of uploads) {
+    const error = validateImageUpload({
+      size: upload.blob.size,
+      type: upload.contentType,
+      name: upload.name,
+    });
+    if (error) return error;
+  }
+
+  return null;
+}
+
+export async function createSealedListing(
+  formData: FormData,
+): Promise<CreateCardListingResult> {
+  const { fields, uploads, preUploaded, rawImageEntryCount } =
+    parseCreateSealedListingForm(formData);
+
+  const uploadedObjectKeys: string[] = preUploaded
+    ? preUploaded.map((image) => image.objectKey)
+    : [];
+
+  const fail = async (error: string): Promise<CreateCardListingResult> => {
+    await rollbackUploadedListingImages(uploadedObjectKeys);
+    return { success: false, error };
+  };
+
+  if (formData.get("uploadedImages") && !preUploaded) {
+    return fail("上載的圖片資料無效，請重新上載相片");
+  }
+
+  const validationError = validateServerSealedListingSubmit(
+    fields,
+    uploads,
+    preUploaded,
+    rawImageEntryCount,
+  );
+
+  if (validationError) {
+    return fail(validationError);
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return fail("請先登入後再上架商品");
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("id", user.id)
+      .maybeSingle<Pick<Tables<"profiles">, "id" | "role">>();
+
+    if (profileError || !profile) {
+      return fail("無法驗證賣家身份");
+    }
+
+    const { persona: sellerPersona, error: personaError } =
+      resolveListingSellerPersona({
+        requested: fields.sellerPersona,
+        sourceCollectionId: fields.sourceCollectionId,
+        profileRole: profile.role,
+      });
+
+    if (personaError) {
+      return fail(personaError);
+    }
+
+    if (sellerPersona === "merchant" && profile.role !== "admin") {
+      const { data: shopRow, error: shopError } = await supabase
+        .from("merchant_shops")
+        .select("merchant_id")
+        .eq("merchant_id", user.id)
+        .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>();
+
+      if (shopError || !shopRow) {
+        return fail("商戶店舖資料尚未就緒，無法建立商戶商品");
+      }
+    }
+
+    const { data: catalogRow, error: catalogError } = await supabase
+      .from("product_catalog")
+      .select("id, type")
+      .eq("id", fields.productId)
+      .maybeSingle<{ id: string; type: CatalogType }>();
+
+    if (catalogError || !catalogRow) {
+      return fail("所選商品不存在於商品目錄");
+    }
+
+    if (!isSealedCatalogType(catalogRow.type)) {
+      return fail("所選商品並非密封盒組類型");
+    }
+
+    if (!isBunnyStorageConfigured()) {
+      return fail("圖片儲存服務尚未設定，請稍後再試");
+    }
+
+    let images: ListingImage[];
+    if (preUploaded) {
+      images = preUploaded.map(({ url, order, remark }) => ({ url, order, remark }));
+    } else {
+      const uploadedUrls: string[] = [];
+      for (const upload of uploads) {
+        const bytes = new Uint8Array(await upload.blob.arrayBuffer());
+        const bunnyUpload = await uploadListingImageToBunny(
+          user.id,
+          bytes,
+          upload.contentType,
+        );
+        uploadedObjectKeys.push(bunnyUpload.objectKey);
+        uploadedUrls.push(bunnyUpload.cdnUrl);
+      }
+
+      images = toListingImages(uploadedUrls);
+    }
+
+    const admin = createAdminClient();
+    const sealedGrading = sealedProductGradingFields(fields.sealState);
+    const insertPayload: TablesInsert<"listings"> = {
+      product_id: fields.productId,
+      seller_id: user.id,
+      price: fields.price,
+      grading_company: sealedGrading.gradingCompany,
+      grading_score: sealedGrading.gradingScore,
+      images,
+      seller_description: fields.sellerDescription ?? null,
+      status: "active",
+      seller_persona: sellerPersona,
+      use_authentication: false,
+    };
+
+    if (fields.sourceCollectionId) {
+      const { data: collectionRow, error: collectionError } = await supabase
+        .from("user_collections")
+        .select("id")
+        .eq("id", fields.sourceCollectionId)
+        .eq("user_id", user.id)
+        .is("sold_at", null)
+        .maybeSingle<{ id: string }>();
+
+      if (collectionError || !collectionRow) {
+        return fail("無法連結收藏庫項目，請重新從收藏庫發起出售");
+      }
+
+      insertPayload.source_collection_id = collectionRow.id;
+    }
+
+    const { data: listing, error: insertError } = await admin
+      .from("listings")
+      .insert(insertPayload)
+      .select("id, product_id, price, grading_company, grading_score, images, status")
+      .single<ListingRow>();
+
+    if (insertError || !listing) {
+      console.error("[createSealedListing]", {
+        code: insertError?.code,
+        message: insertError?.message,
+        details: insertError?.details,
+        hint: insertError?.hint,
+      });
+      return fail(mapListingInsertError(insertError));
+    }
+
+    revalidatePath("/marketplace");
+    revalidatePath("/profile/user/collection");
+    revalidatePath("/profile/user/inventory");
+    revalidatePath("/profile/merchant/inventory");
+
+    return {
+      success: true,
+      data: {
+        listingId: listing.id,
+        images,
+      },
+    };
+  } catch (error) {
+    console.error("[createSealedListing]", error);
     await rollbackUploadedListingImages(uploadedObjectKeys);
 
     if (error instanceof Error && error.message.includes("Bunny")) {

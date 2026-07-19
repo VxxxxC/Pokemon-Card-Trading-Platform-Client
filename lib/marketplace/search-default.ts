@@ -19,6 +19,9 @@ export function isDefaultBrowsableMarketplaceSearch(
   const hasSellerModes = Boolean(
     input.sellerModes && input.sellerModes.length > 0,
   );
+  const hasCatalogTypes = Boolean(
+    input.catalogTypes && input.catalogTypes.length > 0,
+  );
   const hasPriceFilter =
     input.priceMin != null || input.priceMax != null;
   const sortKey = input.sortKey ?? "最新";
@@ -30,6 +33,7 @@ export function isDefaultBrowsableMarketplaceSearch(
     !hasRarities &&
     !hasGrades &&
     !hasSellerModes &&
+    !hasCatalogTypes &&
     !hasPriceFilter &&
     sortKey === "最新"
   );

@@ -1,3 +1,9 @@
+import {
+  isSealedProductGrade,
+  normalizeSealedProductScore,
+  SEALED_PRODUCT_GRADING_COMPANY,
+  sealedProductGradingOptionId,
+} from "@/lib/catalog/item-kind";
 import type { GradingOption } from "@/lib/grading/options";
 import {
   DEFAULT_GRADING_OPTION_ID,
@@ -9,15 +15,46 @@ import {
   resolveMarketPriceDbScore,
 } from "@/lib/marketplace/market-price";
 
+export function coerceLegacyWishlistGrading(
+  gradingCompany: string,
+  gradingScore: string | null | undefined,
+): { gradingCompany: string; gradingScore: string | null | undefined } {
+  const trimmedCompany = gradingCompany.trim();
+
+  if (trimmedCompany === "密封") {
+    return {
+      gradingCompany: SEALED_PRODUCT_GRADING_COMPANY,
+      gradingScore: "SEALED",
+    };
+  }
+
+  if (trimmedCompany === "已開封") {
+    return {
+      gradingCompany: SEALED_PRODUCT_GRADING_COMPANY,
+      gradingScore: "UNSEALED",
+    };
+  }
+
+  if (isSealedProductGrade(gradingCompany, gradingScore)) {
+    return {
+      gradingCompany: SEALED_PRODUCT_GRADING_COMPANY,
+      gradingScore: normalizeSealedProductScore(gradingCompany, gradingScore),
+    };
+  }
+
+  return { gradingCompany, gradingScore };
+}
+
 export function normalizeWishlistGrading(
   gradingCompany: string,
   gradingScore: string | null | undefined,
 ): { gradingCompany: string; gradingScore: string; gradeLabel: string } {
-  const company = normalizeGradingCompany(gradingCompany);
+  const coerced = coerceLegacyWishlistGrading(gradingCompany, gradingScore);
+  const company = normalizeGradingCompany(coerced.gradingCompany);
   const score = resolveMarketPriceDbScore(
     company,
-    gradingScore,
-    company === "RAW" ? gradingScore : null,
+    coerced.gradingScore,
+    company === "RAW" ? coerced.gradingScore : null,
   );
 
   return {
@@ -31,6 +68,12 @@ export function gradingOptionIdFromWishlistRow(
   gradingCompany: string,
   gradingScore: string,
 ): string {
+  if (isSealedProductGrade(gradingCompany, gradingScore)) {
+    return sealedProductGradingOptionId(
+      normalizeSealedProductScore(gradingCompany, gradingScore),
+    );
+  }
+
   const normalized = normalizeWishlistGrading(gradingCompany, gradingScore);
 
   for (const option of GRADING_OPTIONS) {

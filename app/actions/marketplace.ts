@@ -450,6 +450,10 @@ export async function searchMarketplaceProducts(
         input.sellerModes && input.sellerModes.length > 0
           ? input.sellerModes
           : undefined,
+      p_catalog_types:
+        input.catalogTypes && input.catalogTypes.length > 0
+          ? input.catalogTypes
+          : undefined,
       p_grade_filters: gradeFilters,
       p_price_min: input.priceMin ?? undefined,
       p_price_max: input.priceMax ?? undefined,

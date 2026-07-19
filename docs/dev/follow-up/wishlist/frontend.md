@@ -6,6 +6,14 @@
 - **Frontend:** ✅ Marketplace star · ✅ Collection wishlist table · ✅ Home `WishlistTicker` + merchant/C2C strips
 - **Your focus:** Polish `WishlistTable` styling, home surfaces, optional target-gap indicator
 
+## Changelog (2026-07-19) — Box/set UI
+
+| Area | Shipped |
+|------|---------|
+| **WishlistTable** | Header「商品資料」; sealed subtitle +「盒組」badge; empty trend「暫無參考市價」 |
+| **Product detail** | Hero `WishlistButton` with `resolveProductDetailWishlistGrade` |
+| **CardGrid / CardItem** | Wishlist uses `productId` + raw `gradingCompany`/`gradingScore` (not `listingId` default RAW) |
+
 ## Changelog (2026-07-17)
 
 | Area | Shipped |

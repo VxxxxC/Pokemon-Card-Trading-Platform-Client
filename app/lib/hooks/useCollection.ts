@@ -29,6 +29,7 @@ export const COLLECTION_FILTER_LABELS: Record<string, CollectionListFilter> = {
   全部: "all",
   已鑑定: "graded",
   未鑑定: "raw",
+  密封盒組: "sealed",
   已上架: "listed",
   已售出: "sold",
 };

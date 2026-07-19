@@ -19,6 +19,7 @@ import {
   formatSellerIdentityLabel,
   resolveSellerProfilePath,
 } from "@/lib/marketplace/seller-identity";
+import { isSealedProductGrade } from "@/lib/catalog/item-kind";
 import {
   type SellOrder,
   type UnifiedProductSpec,
@@ -122,6 +123,9 @@ export function ExecutionSlideOver({
   });
 
   const listingAcceptsBuyerAuth = detail?.useAuthentication !== false;
+  const isSealedListing =
+    detail != null &&
+    isSealedProductGrade(detail.gradingCompany, detail.gradingScore);
 
   const handleSendCounterOffer = async () => {
     if (!listingId) {
@@ -377,6 +381,7 @@ export function ExecutionSlideOver({
               </svg>
             </Link>
 
+            {!isSealedListing ? (
             <div className="bg-[#17130f] border border-white/5 rounded-xl p-4 space-y-2">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex-1 space-y-1">
@@ -397,6 +402,7 @@ export function ExecutionSlideOver({
                 />
               </div>
             </div>
+            ) : null}
 
             <div className="space-y-1.5 animate-fadeIn">
               <label

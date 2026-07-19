@@ -6,6 +6,16 @@
 - **Frontend:** ✅ Marketplace star · ✅ Collection `WishlistTable` live · 🟡 Home mock cards still default `RAW`/`A`
 - **Migration:** ✅ `20260706100000_product_watchlists_wishlist_extend.sql` (pushed to remote)
 
+## Changelog (2026-07-19) — Box/set sealed grades
+
+| Change | Detail |
+|--------|--------|
+| **`coerceLegacyWishlistGrading`** | Runtime normalize: `密封` / `已開封` / legacy `SEALED` company → `OTHER` + `SEALED`/`UNSEALED` |
+| **`toggleWishlist` guard** | Rejects card grade on sealed catalog and seal grade on single-card catalog |
+| **`WishlistEntry.catalogType`** | From `product_catalog.type` for box-aware UI |
+| **Migration `20260719140000`** | Optional DB cleanup for legacy `product_watchlists` rows |
+| **Product detail** | `resolveProductDetailWishlistGrade` + `WishlistButton` on `ProductDetailClient` |
+
 ## Changelog (2026-07-06)
 
 | Change | Detail |

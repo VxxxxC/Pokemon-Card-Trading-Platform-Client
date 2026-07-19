@@ -23,9 +23,17 @@ import { useMarketplaceProductListings } from "@/app/lib/hooks/useMarketplacePro
 import { useMarketplaceProductMarketPrice } from "@/app/lib/hooks/useMarketplaceProductMarketPrice";
 import { useMarketplaceProductTradeHistory } from "@/app/lib/hooks/useMarketplaceProductTradeHistory";
 import { formatElementTypeZh } from "@/lib/catalog/element-types";
+import { isSealedCatalogType } from "@/lib/catalog/item-kind";
 import { GRADING_OPTIONS } from "@/lib/grading/options";
+import { MARKETPLACE_SEAL_STATE_OPTIONS } from "@/lib/marketplace/filter-options";
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
 import { buildOrderBookExecutionPayload } from "@/lib/marketplace/map-listing-to-execution";
+import { resolveProductDetailWishlistGrade } from "@/lib/wishlist/product-detail-grade";
+import {
+  WishlistButton,
+  isWishlistFavored,
+} from "@/app/components/market/WishlistButton";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import { RelativeDateTime } from "@/components/shared/RelativeDateTime";
 import type { ProductListingSortKey } from "@/app/lib/marketplace/types";
 import { Switch } from "@/components/ui/switch";
@@ -54,6 +62,7 @@ type ProductDetailClientProps = {
   currentUserId?: string | null;
   initialListings?: MarketplaceProductListingsInitialData;
   initialMarketGrades?: MarketplaceMarketPriceGradeRow[];
+  initialFavoredKeys?: string[];
 };
 
 function formatSpecValue(value: string | null | undefined): string {
@@ -74,8 +83,10 @@ export function ProductDetailClient({
   currentUserId = null,
   initialListings,
   initialMarketGrades,
+  initialFavoredKeys = [],
 }: ProductDetailClientProps) {
   const router = useRouter();
+  const isMemberPersonaActive = useIsMemberPersonaActive();
   const userAuthRole = useUIStore((state) => state.userAuthRole);
   const openExecutionSlideOver = useUIStore(
     (state) => state.openExecutionSlideOver,
@@ -161,15 +172,51 @@ export function ProductDetailClient({
     enabled: !isGuest,
   });
 
+  const isSealedProduct = isSealedCatalogType(product.catalogType);
+
+  const wishlistGrade = useMemo(
+    () =>
+      resolveProductDetailWishlistGrade(
+        product,
+        selectedGradeFilterId,
+        listings[0]
+          ? {
+              gradingCompany: listings[0].gradingCompany,
+              gradingScore: listings[0].gradingScore,
+            }
+          : null,
+      ),
+    [product, selectedGradeFilterId, listings],
+  );
+
+  const wishlistIsFavored = isWishlistFavored(
+    new Set(initialFavoredKeys),
+    product.productId,
+    wishlistGrade.gradingCompany,
+    wishlistGrade.gradingScore,
+  );
+
   const gradeFilterOptions = useMemo(
-    () => [
-      { id: "ALL", label: "全部規格 (ALL)" },
-      ...GRADING_OPTIONS.map((option) => ({
-        id: option.id,
-        label: option.label,
-      })),
-    ],
-    [],
+    () => {
+      if (isSealedProduct) {
+        return [
+          { id: "ALL", label: "全部規格 (ALL)" },
+          ...MARKETPLACE_SEAL_STATE_OPTIONS.map((option) => ({
+            id: option.key,
+            label: option.label,
+          })),
+        ];
+      }
+
+      return [
+        { id: "ALL", label: "全部規格 (ALL)" },
+        ...GRADING_OPTIONS.map((option) => ({
+          id: option.id,
+          label: option.label,
+        })),
+      ];
+    },
+    [isSealedProduct],
   );
 
   const orderBookRows = useMemo(
@@ -229,6 +276,20 @@ export function ProductDetailClient({
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 items-start">
           <section className="lg:col-span-5 lg:sticky lg:top-6 mb-6 lg:mb-0">
             <div className="relative w-full aspect-[4/3] bg-[#26211C] rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden shadow-lg">
+              {currentUserId != null && isMemberPersonaActive ? (
+                <div className="absolute top-3 right-3 z-10">
+                  <WishlistButton
+                    productId={product.productId}
+                    gradingCompany={wishlistGrade.gradingCompany}
+                    gradingScore={wishlistGrade.gradingScore}
+                    trackedPrice={
+                      lowestPrice != null && lowestPrice > 0 ? lowestPrice : null
+                    }
+                    initialIsFavored={wishlistIsFavored}
+                    currentUserId={currentUserId}
+                  />
+                </div>
+              ) : null}
               <Image
                 src={heroImage}
                 alt={`${product.nameJa} 官方圖鑑`}
@@ -441,6 +502,7 @@ export function ProductDetailClient({
                       </Select>
                     </div>
 
+                    {!isSealedProduct ? (
                     <div className="flex items-center gap-2 shrink-0">
                       <label
                         htmlFor="graded-only-switch"
@@ -455,6 +517,7 @@ export function ProductDetailClient({
                         className="scale-90 data-[state=checked]:bg-brand"
                       />
                     </div>
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-2 overflow-x-scroll pb-2 pt-1 -mx-1 px-1 select-none">

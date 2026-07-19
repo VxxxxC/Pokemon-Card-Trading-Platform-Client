@@ -22,9 +22,13 @@ export { resolveAddAssetSellerPersona } from "@/lib/listings/active-listing-pers
 
 export type AuthRole = "GUEST" | "USER" | "MERCHANT" | "ADMIN";
 
+import type { SealedProductScore } from "@/lib/catalog/item-kind";
+
 export type SellFromCollectionPrefill = {
   collectionId: string;
   productId: string;
+  itemKind?: "card" | "box_set";
+  sealState?: SealedProductScore;
   catalog: {
     name: string;
     displayId?: string | null;
@@ -32,6 +36,7 @@ export type SellFromCollectionPrefill = {
     setCode: string;
     imageUrl?: string | null;
     rarity?: string | null;
+    catalogType?: import("@/lib/constants/commerce").CatalogType;
   };
   gradingOptionId: string;
   sellingPrice: number;

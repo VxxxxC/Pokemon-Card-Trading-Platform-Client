@@ -5,6 +5,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { addToCollection } from "@/app/actions/collection";
 import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listing";
+import { submitSealedListingWithProgress } from "@/lib/listings/submit-sealed-listing";
 import {
   CollectionAddAfterListingDialog,
   type CollectionAddAfterListingPayload,
@@ -31,6 +32,7 @@ import {
 import {
   LISTING_DESCRIPTION_MAX,
   validateCreateCardListing,
+  validateCreateSealedListing,
   validateImageFile,
 } from "@/lib/listings/validation";
 import {
@@ -53,6 +55,12 @@ import {
   LISTING_AUTH_SERVICE_TOOLTIP_BODY,
   LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
 } from "@/lib/listings/auth-service-copy";
+import {
+  catalogItemKindFromType,
+  defaultSealedProductScore,
+  type SealedProductScore,
+} from "@/lib/catalog/item-kind";
+import type { CatalogType } from "@/lib/constants/commerce";
 import { CircleHelp } from "lucide-react";
 
 type LocalPhotoSlot = {
@@ -90,10 +98,16 @@ function suggestionFromSellPrefill(
     cardNumber: prefill.catalog.cardNumber ?? null,
     displayId: prefill.catalog.displayId ?? null,
     imageUrl: prefill.catalog.imageUrl ?? "",
-    type: "single_card",
+    type: (prefill.catalog.catalogType ?? "single_card") as CatalogType,
     rarity: prefill.catalog.rarity ?? null,
     pokemonStage: null,
   };
+}
+
+function catalogSelectionError(itemType: "card" | "box_set"): string {
+  return itemType === "box_set"
+    ? "⚠️ 請從搜尋結果中選擇商品"
+    : "⚠️ 請從搜尋結果中選擇一張卡牌";
 }
 
 // 嚴格定義全域資產數據合約
@@ -139,6 +153,9 @@ export function AddAssetModal() {
 
   const [selectedGradingId, setSelectedGradingId] = useState(
     DEFAULT_GRADING_OPTION_ID,
+  );
+  const [sealState, setSealState] = useState<SealedProductScore>(
+    defaultSealedProductScore(),
   );
   const [acceptsBuyerAuth, setAcceptsBuyerAuth] = useState(false);
   const selectedGrading = useMemo(
@@ -238,9 +255,10 @@ export function AddAssetModal() {
         const suggestion = suggestionFromSellPrefill(sellPrefill);
         catalogSearch.selectSuggestion(suggestion);
         setMode("merch");
-        setItemType("card");
+        setItemType(sellPrefill.itemKind ?? catalogItemKindFromType(suggestion.type));
         setSet(sellPrefill.catalog.setCode);
         setSelectedGradingId(sellPrefill.gradingOptionId);
+        setSealState(sellPrefill.sealState ?? defaultSealedProductScore());
         setSellingPrice(String(sellPrefill.sellingPrice));
         setAcceptsBuyerAuth(
           isRawGradingOption(getGradingOption(sellPrefill.gradingOptionId)),
@@ -255,6 +273,7 @@ export function AddAssetModal() {
         setItemType("card");
         setSet("");
         setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
+        setSealState(defaultSealedProductScore());
         setPurchasePrice("");
         setSellingPrice("");
         setAcceptsBuyerAuth(false);
@@ -452,7 +471,7 @@ export function AddAssetModal() {
       }
 
       if (!catalogSearch.selected) {
-        toast.error("⚠️ 請從搜尋結果中選擇一張卡牌");
+        toast.error(catalogSelectionError(itemType));
         return;
       }
 
@@ -466,6 +485,7 @@ export function AddAssetModal() {
         productId: catalogSearch.selected.id,
         gradingOptionId: selectedGradingId,
         purchasePrice: parsedPurchasePrice,
+        sealState: itemType === "box_set" ? sealState : undefined,
       });
 
       if (!result.success) {
@@ -473,9 +493,86 @@ export function AddAssetModal() {
         return;
       }
 
-      toast.success("★ 已成功收錄進您的私藏愛好清單");
+      toast.success(
+        itemType === "box_set"
+          ? "★ 已成功收錄密封盒組至您的私藏愛好清單"
+          : "★ 已成功收錄進您的私藏愛好清單",
+      );
       handleCloseAndReset();
       window.dispatchEvent(new CustomEvent("collection-should-refresh"));
+      return;
+    }
+
+    if (mode === "merch" && itemType === "box_set") {
+      const imageFiles = photoSlots
+        .map((slot) => slot.file)
+        .filter((file): file is File => file !== null);
+
+      const validationError = validateCreateSealedListing(
+        {
+          productId: catalogSearch.selected?.id ?? "",
+          price: Number(sellingPrice),
+          sellerDescription: conditionDesc || undefined,
+        },
+        imageFiles,
+      );
+
+      if (validationError) {
+        toast.error(`⚠️ ${validationError}`);
+        return;
+      }
+
+      if (!catalogSearch.selected) {
+        toast.error(catalogSelectionError(itemType));
+        return;
+      }
+
+      const photosRemark = photoSlots
+        .map((slot, originalIdx) => {
+          if (!slot.file) return null;
+          const defaultDesc = `實體照 ${originalIdx + 1}`;
+          return slot.description?.trim() || defaultDesc;
+        })
+        .filter((remark): remark is string => remark !== null);
+
+      const result = await submitSealedListingWithProgress({
+        productId: catalogSearch.selected.id,
+        price: Number(sellingPrice),
+        sellerDescription: conditionDesc || undefined,
+        sourceCollectionId: sellPrefill?.collectionId,
+        sellerPersona: addAssetSellerPersona,
+        imageFiles,
+        photosRemark,
+        sealState,
+      });
+
+      if (!result.success) {
+        return;
+      }
+
+      const hadSellPrefill = Boolean(sellPrefill);
+
+      window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
+
+      if (hadSellPrefill) {
+        window.dispatchEvent(new CustomEvent("collection-should-refresh"));
+      }
+
+      toast.success(
+        hadSellPrefill
+          ? "🏛️ 密封盒組已成功上架發售"
+          : "🏪 密封盒組已成功錄入並直接上架交易所大盤",
+      );
+      handleCloseAndReset();
+
+      if (!hadSellPrefill && catalogSearch.selected && isMemberPersonaActive) {
+        setCollectionAddPrompt({
+          productId: catalogSearch.selected.id,
+          productName: catalogSearch.selected.name,
+          itemKind: "box_set",
+          sealState,
+        });
+      }
       return;
     }
 
@@ -500,7 +597,7 @@ export function AddAssetModal() {
       }
 
       if (!catalogSearch.selected) {
-        toast.error("⚠️ 請從搜尋結果中選擇一張卡牌");
+        toast.error(catalogSelectionError(itemType));
         return;
       }
 
@@ -587,74 +684,6 @@ export function AddAssetModal() {
       }
       return;
     }
-
-    if (!catalogSearch.query && !sellPrefill) {
-      toast.error("⚠️ 請填寫欲搜尋及上架的商品型號或名稱！");
-      return;
-    }
-
-    if (mode === "merch" && itemType === "box_set") {
-      const imageFiles = photoSlots
-        .map((slot) => slot.file)
-        .filter((file): file is File => file !== null);
-
-      if (imageFiles.length < 1) {
-        toast.error("新增 Box/Set 失敗！必須至少上載 1 張商品實物相片以資證明物況。");
-        return;
-      }
-
-      if (!sellingPrice || Number(sellingPrice) <= 0) {
-        toast.error("⚠️ 請輸入有效的商品放售售價！");
-        return;
-      }
-    }
-
-    const gradingFields =
-      itemType === "box_set"
-        ? null
-        : gradingOptionToFields(selectedGrading);
-
-    const payload: GlobalAssetPayload = {
-      id: catalogSearch.selected?.id ?? `c-asset-${Date.now()}`,
-      name: catalogSearch.query,
-      set: set || catalogSearch.selected?.setCode || "PBR-Compiled",
-      cardNo:
-        catalogSearch.selected?.displayId ??
-        catalogSearch.selected?.cardNumber ??
-        "PBR-Compiled",
-      grade: itemType === "box_set" ? "SEALED" : gradingFields!.gradeLabel,
-      grader: itemType === "box_set" ? "SEALED" : gradingFields!.grader,
-      purchasePrice: 0,
-      currentValue: 0,
-      sellingPrice: Number(sellingPrice),
-      status: "listed",
-      isHobbyOnly: false,
-      images:
-        photoSlots
-          .filter((slot) => slot.previewUrl)
-          .map((slot, index) => ({
-            url: slot.previewUrl!,
-            order: index + 1,
-          })),
-      condition: itemType === "box_set" ? "SEALED" : gradingFields!.condition,
-      conditionDesc: conditionDesc || undefined,
-      photosRemark: photoSlots
-        .map((slot, originalIdx) => {
-          if (!slot.previewUrl) return null;
-          const slotLabel = itemType === "card" ? LISTING_PHOTO_SLOT_LABELS[originalIdx] : null;
-          const defaultDesc = slotLabel || `實體照 ${originalIdx + 1}`;
-          return slot.description?.trim() || defaultDesc;
-        })
-        .filter((remark): remark is string => remark !== null),
-    };
-
-    window.dispatchEvent(
-      new CustomEvent("global-asset-successfully-added", { detail: payload }),
-    );
-
-    toast.success("🏪 商品已成功錄入並直接上架交易所大盤");
-
-    handleCloseAndReset();
   };
 
   const showListingAuthToggle =
@@ -861,7 +890,7 @@ export function AddAssetModal() {
           </div>
           ) : null}
 
-          {catalogSearch.selected && itemType === "card" && (
+          {catalogSearch.selected && (
             <div className="flex items-center gap-3 rounded-xl border border-brand/20 bg-[rgba(212,165,116,0.06)] p-3">
               <div className="relative w-14 h-[4.5rem] shrink-0 rounded-md overflow-hidden bg-[#17130f] border border-white/10">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -878,11 +907,13 @@ export function AddAssetModal() {
                   {catalogSearch.selected.name}
                 </p>
                 <p className="font-mono text-[11px] text-brand mt-0.5 truncate">
-                  {catalogSearch.selected.displayId ??
-                    catalogSearch.selected.cardNumber ??
-                    "—"}
+                  {itemType === "box_set"
+                    ? catalogSearch.selected.setCode || "—"
+                    : catalogSearch.selected.displayId ??
+                      catalogSearch.selected.cardNumber ??
+                      "—"}
                 </p>
-                {catalogSearch.selected.rarity && (
+                {itemType === "card" && catalogSearch.selected.rarity && (
                   <p className="font-mono text-[10px] text-[#8A8680] mt-0.5 truncate">
                     {catalogSearch.selected.rarity}
                   </p>
@@ -938,6 +969,35 @@ export function AddAssetModal() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {itemType === "box_set" && (
+            <div className="space-y-1.5 bg-[#1e1a17] p-3.5 rounded-xl border border-white/[0.04]">
+              <label className="font-mono text-[11px] text-[#d4c4b7]">
+                密封狀態
+              </label>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { value: "SEALED" as const, label: "密封" },
+                    { value: "UNSEALED" as const, label: "已開封" },
+                  ] as const
+                ).map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setSealState(value)}
+                    className={`flex-1 h-9 rounded-lg border font-mono text-[12px] transition-colors ${
+                      sealState === value
+                        ? "border-brand bg-[rgba(212,165,116,0.12)] text-brand"
+                        : "border-white/10 bg-[#17130f] text-[#d4c4b7]"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 

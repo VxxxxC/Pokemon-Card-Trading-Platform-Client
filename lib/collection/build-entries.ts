@@ -1,4 +1,6 @@
 import type { CollectionEntry, CollectionEntryStatus } from "@/app/lib/collection/types";
+import type { CatalogType } from "@/lib/constants/commerce";
+import { isSealedProductGrade } from "@/lib/catalog/item-kind";
 import { formatMarketGradeLabel } from "@/lib/marketplace/market-price";
 import {
   findActiveListingForGrade,
@@ -25,7 +27,7 @@ export type CollectionPricingContext = {
 };
 
 const CATALOG_LIST_COLUMNS =
-  "id, name_zh, name_en, name_ja, card_number, display_id, set_code, rarity, image_url";
+  "id, name_zh, name_en, name_ja, card_number, display_id, set_code, rarity, image_url, type";
 
 export type CollectionPricingContextOptions = {
   includeChartData?: boolean;
@@ -177,6 +179,7 @@ export function mapCollectionRowToEntry(
   context: CollectionPricingContext,
 ): CollectionEntry {
   const catalog = context.catalogById.get(row.product_id);
+  const catalogType: CatalogType = catalog?.type ?? "single_card";
 
   if (row.sold_at) {
     const purchasePrice = toFiniteNumber(row.purchase_price) ?? 0;
@@ -189,6 +192,7 @@ export function mapCollectionRowToEntry(
       cardCode: resolveCardCode(catalog),
       setCode: catalog?.set_code?.trim() ?? "",
       rarity: catalog?.rarity ?? null,
+      catalogType,
       imageUrl: catalog?.image_url ?? null,
       gradingCompany: row.grading_company,
       gradingScore: row.grading_score,
@@ -239,6 +243,7 @@ export function mapCollectionRowToEntry(
     cardCode: resolveCardCode(catalog),
     setCode: catalog?.set_code?.trim() ?? "",
     rarity: catalog?.rarity ?? null,
+    catalogType,
     imageUrl: catalog?.image_url ?? null,
     gradingCompany: row.grading_company,
     gradingScore: row.grading_score,
@@ -297,7 +302,7 @@ export function computePortfolioTotals(
 
     if (row.grading_company === "RAW") {
       rawCount += 1;
-    } else {
+    } else if (!isSealedProductGrade(row.grading_company, row.grading_score)) {
       gradedCount += 1;
     }
   }

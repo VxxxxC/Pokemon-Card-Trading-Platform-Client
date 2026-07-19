@@ -1,7 +1,11 @@
 "use server";
 
+import {
+  catalogTypesForItemKind,
+  type CatalogItemKind,
+} from "@/lib/catalog/item-kind";
+import type { CatalogType } from "@/lib/constants/commerce";
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@/types/supabase";
 import {
   canonicalCardSearchKey,
   compactAlphanumeric,
@@ -9,16 +13,6 @@ import {
   matchesCatalogCardSearch,
   isCompactCatalogSearchQuery,
 } from "@/lib/search/card-identifier";
-
-type CatalogType = Database["public"]["Enums"]["catalog_type"];
-
-const CARD_TYPES: CatalogType[] = ["single_card"];
-const BOX_SET_TYPES: CatalogType[] = [
-  "booster_box",
-  "gift_set",
-  "booster_pack",
-  "starter_deck",
-];
 
 const SEARCH_COLUMNS = [
   "set_code",
@@ -223,10 +217,10 @@ function buildSearchSuccess(
 async function searchCatalogByIlike(
   supabase: CatalogSupabaseClient,
   query: string,
-  itemType: "card" | "box_set",
+  itemType: CatalogItemKind,
 ): Promise<SearchProductCatalogResult> {
   const pattern = toIlikePattern(query);
-  const typeFilter = itemType === "card" ? CARD_TYPES : BOX_SET_TYPES;
+  const typeFilter = catalogTypesForItemKind(itemType);
 
   const { data, error, count } = await supabase
     .from("product_catalog")
@@ -250,10 +244,10 @@ async function searchCatalogByIlike(
 async function searchCatalogByCompact(
   supabase: CatalogSupabaseClient,
   query: string,
-  itemType: "card" | "box_set",
+  itemType: CatalogItemKind,
 ): Promise<SearchProductCatalogResult> {
   const pattern = toIlikePattern(query);
-  const typeFilter = itemType === "card" ? CARD_TYPES : BOX_SET_TYPES;
+  const typeFilter = catalogTypesForItemKind(itemType);
 
   const { data, error, count } = await supabase
     .from("product_catalog")
@@ -276,7 +270,7 @@ async function searchCatalogByCompact(
 
 export async function searchProductCatalog(
   rawQuery: string,
-  itemType: "card" | "box_set",
+  itemType: CatalogItemKind,
 ): Promise<SearchProductCatalogResult> {
   const query = normalizeQuery(rawQuery);
 

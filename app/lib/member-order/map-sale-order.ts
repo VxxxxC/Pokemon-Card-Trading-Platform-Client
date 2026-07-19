@@ -1,6 +1,7 @@
 import type { UserTradingOrder } from "@/app/actions/orders";
 import type { SaleOrder, OrderStatus } from "@/app/lib/types/trading";
 import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
+import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 
 function mapAuthOrderStatus(
   dbStatus: UserTradingOrder["status"],
@@ -29,13 +30,7 @@ function mapAuthOrderStatus(
 
 function formatListingGrade(order: UserTradingOrder): string {
   const { gradingCompany, gradingScore } = order.listing;
-  if (gradingScore) {
-    return `${gradingCompany} ${gradingScore}`;
-  }
-  if (gradingCompany && gradingCompany.toLowerCase() !== "raw") {
-    return gradingCompany;
-  }
-  return "Raw 裸卡";
+  return formatTradeGradeLabel(gradingCompany, gradingScore);
 }
 
 function formatOrderDateTime(createdAt: string | null): string {

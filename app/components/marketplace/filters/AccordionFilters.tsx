@@ -7,7 +7,11 @@ import {
   GRADING_OPTION_GROUPS,
   getGradingOptionsByGroup,
 } from "@/lib/grading/options";
-import { MARKETPLACE_SELLER_SOURCE_OPTIONS } from "@/lib/marketplace/filter-options";
+import {
+  MARKETPLACE_PRODUCT_KIND_OPTIONS,
+  MARKETPLACE_SEAL_STATE_OPTIONS,
+  MARKETPLACE_SELLER_SOURCE_OPTIONS,
+} from "@/lib/marketplace/filter-options";
 
 interface AccordionFiltersProps {
   activeRarities: string[];
@@ -16,7 +20,10 @@ interface AccordionFiltersProps {
   onGradeToggle: (grade: string) => void;
   activeTypes?: string[];
   onTypeToggle?: (type: string) => void;
+  activeProductKinds?: string[];
+  onProductKindToggle?: (kind: string) => void;
   hideTypeSection?: boolean;
+  hideProductKindSection?: boolean;
   /** Optional override; defaults to distinct `product_catalog.rarity` values. */
   rarities?: string[];
   /** When true, parent supplies rarities — skip internal fetch. */
@@ -30,11 +37,15 @@ export function AccordionFilters({
   onGradeToggle,
   activeTypes = [],
   onTypeToggle,
+  activeProductKinds = [],
+  onProductKindToggle,
   hideTypeSection = false,
+  hideProductKindSection = false,
   rarities: raritiesProp,
   disableRarityFetch = false,
 }: AccordionFiltersProps) {
   const [openSections, setOpenSections] = useState({
+    productKind: true,
     rarity: true,
     grade: true,
     type: true,
@@ -73,8 +84,79 @@ export function AccordionFilters({
     (rarity) => rarity.toLowerCase() !== "common",
   );
 
+  const showCardGradeGroups =
+    activeProductKinds.length === 0 ||
+    activeProductKinds.includes("single_card");
+  const showSealStateSection =
+    activeProductKinds.length === 0 ||
+    activeProductKinds.includes("sealed_product");
+
+  const renderCheckboxOption = (
+    key: string,
+    label: string,
+    isActive: boolean,
+    onToggle: () => void,
+    labelClassName = "font-sans text-[13px]",
+  ) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onToggle}
+      className="flex items-center gap-2.5 w-full text-left py-1 group/item"
+    >
+      <div
+        className={`w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 ${
+          isActive
+            ? "bg-[#d4a574] border-[#d4a574]"
+            : "border-[rgba(237,232,224,0.20)] group-hover/item:border-[#d4a574]/50"
+        }`}
+      >
+        {isActive && (
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#1A1612"
+            strokeWidth="3.5"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+      </div>
+      <span
+        className={`${labelClassName} transition-colors ${
+          isActive
+            ? "text-[#eae1da] font-medium"
+            : "text-[#d4c4b7] group-hover/item:text-[#eae1da]"
+        }`}
+      >
+        {label}
+      </span>
+    </button>
+  );
+
   return (
     <div className="space-y-1 bg-[#26211C] p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+      {!hideProductKindSection && (
+        <Accordion
+          title="商品類型"
+          isOpen={openSections.productKind}
+          onToggle={() => toggleSection("productKind")}
+        >
+          <div className="space-y-2">
+            {MARKETPLACE_PRODUCT_KIND_OPTIONS.map(({ key, label }) =>
+              renderCheckboxOption(
+                key,
+                label,
+                activeProductKinds.includes(key),
+                () => onProductKindToggle?.(key),
+              ),
+            )}
+          </div>
+        </Accordion>
+      )}
+
       {!hideTypeSection && (
         <Accordion
           title="刊登來源"
@@ -82,47 +164,14 @@ export function AccordionFilters({
           onToggle={() => toggleSection("type")}
         >
           <div className="space-y-2">
-            {MARKETPLACE_SELLER_SOURCE_OPTIONS.map(({ key, label }) => {
-              const isActive = activeTypes.includes(key);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => onTypeToggle?.(key)}
-                  className="flex items-center gap-2.5 w-full text-left py-1 group/item"
-                >
-                  <div
-                    className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
-                      isActive
-                        ? "bg-[#d4a574] border-[#d4a574]"
-                        : "border-[rgba(237,232,224,0.20)] group-hover/item:border-[#d4a574]/50"
-                    }`}
-                  >
-                    {isActive && (
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#1A1612"
-                        strokeWidth="3.5"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
-                  <span
-                    className={`font-sans text-[13px] transition-colors ${
-                      isActive
-                        ? "text-[#eae1da] font-medium"
-                        : "text-[#d4c4b7] group-hover/item:text-[#eae1da]"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
+            {MARKETPLACE_SELLER_SOURCE_OPTIONS.map(({ key, label }) =>
+              renderCheckboxOption(
+                key,
+                label,
+                activeTypes.includes(key),
+                () => onTypeToggle?.(key),
+              ),
+            )}
           </div>
         </Accordion>
       )}
@@ -165,56 +214,45 @@ export function AccordionFilters({
         onToggle={() => toggleSection("grade")}
       >
         <div className="max-h-72 overflow-y-auto space-y-4 pr-1 scrollbar-none">
-          {GRADING_OPTION_GROUPS.map((group) => (
+          {showCardGradeGroups
+            ? GRADING_OPTION_GROUPS.map((group) => (
             <div key={group.key}>
               <p className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider mb-2">
                 {group.label}
               </p>
               <div className="space-y-1.5">
-                {getGradingOptionsByGroup(group.key).map((option) => {
-                  const isActive = activeGrades.includes(option.id);
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => onGradeToggle(option.id)}
-                      className="flex items-center gap-2.5 w-full text-left py-1 group/item"
-                    >
-                      <div
-                        className={`w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 ${
-                          isActive
-                            ? "bg-[#d4a574] border-[#d4a574]"
-                            : "border-[rgba(237,232,224,0.20)] group-hover/item:border-[#d4a574]/50"
-                        }`}
-                      >
-                        {isActive && (
-                          <svg
-                            width="10"
-                            height="10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#1A1612"
-                            strokeWidth="3.5"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </div>
-                      <span
-                        className={`font-mono text-[12px] transition-colors ${
-                          isActive
-                            ? "text-[#eae1da] font-medium"
-                            : "text-[#d4c4b7] group-hover/item:text-[#eae1da]"
-                        }`}
-                      >
-                        {option.label}
-                      </span>
-                    </button>
-                  );
-                })}
+                {getGradingOptionsByGroup(group.key).map((option) =>
+                  renderCheckboxOption(
+                    option.id,
+                    option.label,
+                    activeGrades.includes(option.id),
+                    () => onGradeToggle(option.id),
+                    "font-mono text-[12px]",
+                  ),
+                )}
               </div>
             </div>
-          ))}
+          ))
+            : null}
+
+          {showSealStateSection ? (
+          <div>
+            <p className="font-mono text-[10px] text-[#8A8680] uppercase tracking-wider mb-2">
+              盒組狀態
+            </p>
+            <div className="space-y-1.5">
+              {MARKETPLACE_SEAL_STATE_OPTIONS.map(({ key, label }) =>
+                renderCheckboxOption(
+                  key,
+                  label,
+                  activeGrades.includes(key),
+                  () => onGradeToggle(key),
+                  "font-mono text-[12px]",
+                ),
+              )}
+            </div>
+          </div>
+          ) : null}
         </div>
       </Accordion>
     </div>

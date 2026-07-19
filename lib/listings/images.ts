@@ -7,6 +7,7 @@ export type ListingImage = {
 
 export const LISTING_IMAGE_MIN = 6;
 export const LISTING_IMAGE_MAX = 6;
+export const SEALED_LISTING_IMAGE_MIN = 1;
 
 export const LISTING_PHOTO_SLOT_LABELS = [
   "正面",

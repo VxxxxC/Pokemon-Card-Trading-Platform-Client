@@ -14,7 +14,12 @@ import {
   listingMatchesWishlistGrade,
   normalizeWishlistGrading,
 } from "@/lib/wishlist/grading";
-import { formatMarketGradeLabel } from "@/lib/marketplace/market-price";
+import {
+  isCardCatalogType,
+  isSealedCatalogType,
+  isSealedProductGrade,
+} from "@/lib/catalog/item-kind";
+import type { CatalogType } from "@/lib/constants/commerce";
 import { HOME_WISHLIST_LIMIT } from "@/lib/home/constants";
 import {
   homePerfLog,
@@ -243,11 +248,15 @@ async function buildWishlistEntriesForUser(
 
   return rows.map((row) => {
     const catalog = catalogById.get(row.product_id);
+    const grading = normalizeWishlistGrading(
+      row.grading_company,
+      row.grading_score,
+    );
     const market = findMarketPriceRow(
       marketRows,
       row.product_id,
-      row.grading_company,
-      row.grading_score,
+      grading.gradingCompany,
+      grading.gradingScore,
     );
     const chartPoints = parseMarketChartData(market?.market_chart_data ?? null);
 
@@ -257,12 +266,10 @@ async function buildWishlistEntriesForUser(
       name: resolveProductName(catalog),
       cardCode: resolveCardCode(catalog),
       rarity: catalog?.rarity ?? null,
-      gradingCompany: row.grading_company,
-      gradingScore: row.grading_score,
-      gradeLabel: formatMarketGradeLabel(
-        row.grading_company,
-        row.grading_score,
-      ),
+      catalogType: (catalog?.type as CatalogType | undefined) ?? null,
+      gradingCompany: grading.gradingCompany,
+      gradingScore: grading.gradingScore,
+      gradeLabel: grading.gradeLabel,
       imageUrl: catalog?.image_url ?? null,
       trackedPrice: toFiniteNumber(row.tracked_price),
       targetPrice: toFiniteNumber(row.target_price),
@@ -270,8 +277,8 @@ async function buildWishlistEntriesForUser(
       lowestListingPrice: lowestListingForGrade(
         listingRows,
         row.product_id,
-        row.grading_company,
-        row.grading_score,
+        grading.gradingCompany,
+        grading.gradingScore,
       ),
       trend30d: toFiniteNumber(market?.market_trend_30d ?? null),
       chartPoints,
@@ -305,6 +312,30 @@ export async function toggleWishlist(
 
   try {
     const supabase = await createClient();
+
+    const { data: catalogRow, error: catalogError } = await supabase
+      .from("product_catalog")
+      .select("type")
+      .eq("id", productId)
+      .maybeSingle<{ type: CatalogType }>();
+
+    if (catalogError || !catalogRow) {
+      return { success: false, error: "所選商品不存在於商品目錄" };
+    }
+
+    if (
+      isSealedCatalogType(catalogRow.type) &&
+      !isSealedProductGrade(grading.gradingCompany, grading.gradingScore)
+    ) {
+      return { success: false, error: "盒組商品請選擇密封狀態" };
+    }
+
+    if (
+      isCardCatalogType(catalogRow.type) &&
+      isSealedProductGrade(grading.gradingCompany, grading.gradingScore)
+    ) {
+      return { success: false, error: "單卡商品無法使用盒組狀態" };
+    }
 
     const { data: existing, error: existingError } = await supabase
       .from("product_watchlists")
@@ -435,6 +466,13 @@ export async function updateWishlistGrade(
     input.nextGradingCompany,
     input.nextGradingScore,
   );
+
+  if (
+    isSealedProductGrade(current.gradingCompany, current.gradingScore) ||
+    isSealedProductGrade(next.gradingCompany, next.gradingScore)
+  ) {
+    return { success: false, error: "盒組商品無法變更追蹤規格" };
+  }
 
   if (
     current.gradingCompany === next.gradingCompany &&

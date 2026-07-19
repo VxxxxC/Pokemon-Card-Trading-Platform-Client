@@ -13,6 +13,8 @@ export type CardData = {
   set: string;
   rarity: "SAR" | "UR" | "SR" | "AR";
   grade: { authority: string; score: string };
+  gradingCompany?: string;
+  gradingScore?: string;
   price: number;
   delta: number;
   deltaDirection: "up" | "down";
@@ -30,6 +32,8 @@ export function CardItem({ card }: { card: CardData }) {
     productId: card.productId ?? card.id,
     sellerId: card.sellerId,
     rarity: card.rarity as "SAR" | "UR" | "SR" | "AR",
+    gradingCompany: card.grade.authority,
+    gradingScore: card.grade.score,
   };
 
   return (
@@ -51,7 +55,12 @@ export function CardItem({ card }: { card: CardData }) {
         </div>
         {/* Wishlist star — absolute top-left */}
         <div className="absolute top-3 left-3">
-          <WishlistButton listingId={card.id} />
+          <WishlistButton
+            productId={card.productId ?? card.id}
+            gradingCompany={card.gradingCompany ?? card.grade.authority}
+            gradingScore={card.gradingScore ?? card.grade.score}
+            trackedPrice={card.price > 0 ? card.price : null}
+          />
         </div>
       </Link>
 

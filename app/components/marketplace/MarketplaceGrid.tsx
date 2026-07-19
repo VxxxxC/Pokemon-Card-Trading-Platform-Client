@@ -148,6 +148,8 @@ const MOCK_LISTINGS: MarketplaceListing[] = MOCK_LISTING_SEEDS.map((seed) => {
       authority: "PSA",
       score: seed.rarity === "SAR" || seed.rarity === "UR" ? "10" : "9",
     },
+    gradingCompany: "PSA",
+    gradingScore: seed.rarity === "SAR" || seed.rarity === "UR" ? "10" : "9",
     price: seed.price,
     delta: Math.max(500, Math.round(seed.price * (isUpTrend ? 0.05 : 0.03))),
     deltaDirection: isUpTrend ? "up" : "down",

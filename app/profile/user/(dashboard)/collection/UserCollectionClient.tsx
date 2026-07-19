@@ -138,8 +138,10 @@ export function UserCollectionClient({
   }, [portfolioSummary.totalValue]);
 
   const emptyCollectionMessage = query
-    ? `找不到包含「${query}」的卡牌`
-    : "此篩選條件下沒有卡牌";
+    ? `找不到包含「${query}」的${listFilter === "sealed" ? "密封盒組" : "卡牌"}`
+    : listFilter === "sealed"
+      ? "此篩選條件下沒有密封盒組"
+      : "此篩選條件下沒有卡牌";
 
   const showCollectionLoading =
     isCollectionLoading && collectionEntries.length === 0;
@@ -293,7 +295,7 @@ export function UserCollectionClient({
               </span>
             </h2>
             <div className="flex gap-1">
-              {["全部", "已鑑定", "未鑑定", "已上架", "已售出"].map((f) => (
+              {["全部", "已鑑定", "未鑑定", "密封盒組", "已上架", "已售出"].map((f) => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}

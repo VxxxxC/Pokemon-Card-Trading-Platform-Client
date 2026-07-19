@@ -18,6 +18,19 @@
 
 Default SSR search args: `page: 1`, `pageSize: 9` (mobile-first grid), `sortKey: "最新"`.
 
+## Changelog (2026-07-19) — catalog type + sealed grade filters
+
+| Change | Detail |
+|--------|--------|
+| **Migration `20260719120000`** | `p_catalog_types` on `search_marketplace_products` — filter `single_card` vs sealed types |
+| **Migration `20260719130000`** | Grade facet accepts `sealed:SEALED` / `sealed:UNSEALED` |
+| **`lib/marketplace/grade-filter-compat.ts`** | Client-side mutex: card grades vs seal-state keys; prune on product-kind change |
+| **`lib/marketplace/quick-categories.ts`** | Quick pill definitions (`sealed` → `?kind=sealed_product`, rarity chips) |
+| **`/search`** | Redirects to `/marketplace` (no mock grid) |
+| **`MarketplacePageClient`** | Reads `searchParams.kind`; syncs `activeProductKinds`; quick pills below search |
+
+See [box/set sweep report](../reports/2026-07-19-box-set-p2-p3-sweep-report.md).
+
 ## Changelog (2026-07-17) — flexible card identifier search
 
 | Change | Detail |

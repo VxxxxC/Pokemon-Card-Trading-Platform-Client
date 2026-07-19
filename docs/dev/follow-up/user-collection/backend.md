@@ -6,6 +6,16 @@
 - **Frontend:** ✅ Wired (see [frontend.md](./frontend.md))
 - **Migration:** ✅ `20260706110000_user_collections_portfolio_extend.sql`
 
+## Changelog (2026-07-19) — Sealed box/set collection + listing
+
+| Change | Detail |
+|--------|--------|
+| **`addToCollection` sealed** | Server reads `product_catalog.type`; sealed SKUs force `grading_company = SEALED` |
+| **`CollectionEntry.catalogType`** | From `product_catalog.type` at read time |
+| **Filter `sealed`** | `CollectionListFilter` + UI chip「密封盒組」 |
+| **Sell prefill** | `SellFromCollectionPrefill.itemKind` + `catalog.catalogType` → `AddAssetModal` box_set merch |
+| **Listing** | `createSealedListing` + `submitSealedListingWithProgress` (1–6 photos) |
+
 ## Changelog (2026-07-09) — Collection × listing × sale sync
 
 | Change | Detail |
@@ -180,7 +190,7 @@ All return `{ success: true, data }` or `{ success: false, error: string }`.
 
 **Valuation:** `resolveCollectionMarketValue` — exact grade SNKRDUNK → platform same-grade MIN → `purchase_price`. No cross-grade fallback.
 
-**Pagination:** default `pageSize` 20, max 50. Filters: `all` | `graded` | `raw` | `listed`. Search matches name, card code, set code.
+**Pagination:** default `pageSize` 20, max 50. Filters: `all` | `graded` | `raw` | `sealed` | `listed` | `sold`. Search matches name, card code, set code.
 
 ### Guest guard
 
@@ -219,6 +229,6 @@ bun run build:ci
 |------|-------|-------|
 | Inline edit `purchase_price` in table | Frontend | Action `updateCollectionPurchasePrice` ready; UI not wired |
 | Home `PortfolioRewards` live net worth | Frontend | Still mock; call `getCollectionPortfolioSummary` |
-| Box/Set hobby collection | Backend + Frontend | Card-only for Phase 1 |
+| Box/Set hobby collection | Backend + Frontend | ✅ Sealed `addToCollection` + collection filter `sealed` |
 | RPC summary at 1000+ cards | Backend | Phase 2; current TS aggregate OK for ~500 |
 | Wishlist server pagination | Backend + Frontend | Collection done; wishlist still full fetch |

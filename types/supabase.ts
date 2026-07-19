@@ -1819,6 +1819,7 @@ export type Database = {
       search_marketplace_products: {
         Args: {
           p_card_number?: string
+          p_catalog_types?: Database["public"]["Enums"]["catalog_type"][]
           p_grade_filters?: Json
           p_keyword?: string
           p_name_query?: string

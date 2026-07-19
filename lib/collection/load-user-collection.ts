@@ -13,6 +13,7 @@ import {
   type CollectionPricingContext,
   type CollectionRow,
 } from "@/lib/collection/build-entries";
+import { isSealedCatalogType, isSealedProductGrade } from "@/lib/catalog/item-kind";
 import type { CatalogRow, ListingPriceRow } from "@/lib/marketplace/portfolio-pricing";
 import {
   collectionPerfLog,
@@ -107,8 +108,17 @@ function applyCollectionFilters(
       return false;
     }
 
-    if (filter === "graded" && row.grading_company === "RAW") return false;
+    if (
+      filter === "graded" &&
+      (row.grading_company === "RAW" || isSealedProductGrade(row.grading_company, row.grading_score))
+    ) {
+      return false;
+    }
     if (filter === "raw" && row.grading_company !== "RAW") return false;
+    if (filter === "sealed") {
+      const catalog = catalogById.get(row.product_id);
+      if (!catalog || !isSealedCatalogType(catalog.type)) return false;
+    }
     if (filter === "listed" && !isListedCollectionRow(row, userListingRows)) {
       return false;
     }

@@ -1,4 +1,9 @@
 import {
+  isSealedProductGrade,
+  normalizeSealedProductScore,
+  sealedProductGradingOptionId,
+} from "@/lib/catalog/item-kind";
+import {
   DEFAULT_GRADING_OPTION_ID,
   GRADING_OPTIONS,
   OTHER_GRADING_OPTION_ID,
@@ -20,6 +25,12 @@ export function resolveGradingOptionId(
     return GRADING_OPTIONS.some((option) => option.id === rawId)
       ? rawId
       : DEFAULT_GRADING_OPTION_ID;
+  }
+
+  if (isSealedProductGrade(gradingCompany, gradingScore)) {
+    return sealedProductGradingOptionId(
+      normalizeSealedProductScore(gradingCompany, gradingScore),
+    );
   }
 
   if (isOtherGradingCompany(gradingCompany)) {

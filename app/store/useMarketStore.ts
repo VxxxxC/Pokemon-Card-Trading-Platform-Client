@@ -1,6 +1,10 @@
 "use client";
 
 import { create } from "zustand";
+import {
+  pruneGradesForProductKinds,
+  pruneIncompatibleGradeKeys,
+} from "@/lib/marketplace/grade-filter-compat";
 
 export type SortKey = "最新" | "價格：由低到高" | "價格：由高到低";
 
@@ -10,6 +14,8 @@ interface MarketState {
   activeGrades: string[];
   // Seller source filter (MEMBER | MERCHANT)
   activeTypes: string[];
+  // Product kind filter (single_card | sealed_product)
+  activeProductKinds: string[];
   sortKey: SortKey;
   isSearchFocused: boolean;
 
@@ -21,7 +27,7 @@ interface MarketState {
   toggleGrade: (grade: string) => void;
   // Seller source multi-select (MEMBER | MERCHANT)
   toggleType: (type: string) => void;
-  // 🟢 新增：全域一鍵滿血重置還原 Action
+  toggleProductKind: (kind: string) => void;
   resetAll: () => void;
 }
 
@@ -29,7 +35,8 @@ export const useMarketStore = create<MarketState>((set) => ({
   query: "",
   activeRarities: [],
   activeGrades: [],
-  activeTypes: [], // 預設清空
+  activeTypes: [],
+  activeProductKinds: [],
   sortKey: "最新",
   isSearchFocused: false,
 
@@ -46,12 +53,9 @@ export const useMarketStore = create<MarketState>((set) => ({
 
   toggleGrade: (grade) =>
     set((state) => ({
-      activeGrades: state.activeGrades.includes(grade)
-        ? state.activeGrades.filter((g) => g !== grade)
-        : [...state.activeGrades, grade],
+      activeGrades: pruneIncompatibleGradeKeys(state.activeGrades, grade),
     })),
 
-  // Seller source multi-select toggle
   toggleType: (type) =>
     set((state) => ({
       activeTypes: state.activeTypes.includes(type)
@@ -59,13 +63,27 @@ export const useMarketStore = create<MarketState>((set) => ({
         : [...state.activeTypes, type],
     })),
 
-  // 🟢 實作：原子級一鍵大抹平，只發動一次 set 徹底避免網頁集體連鎖重繪技術債
+  toggleProductKind: (kind) =>
+    set((state) => {
+      const nextProductKinds = state.activeProductKinds.includes(kind)
+        ? state.activeProductKinds.filter((k) => k !== kind)
+        : [...state.activeProductKinds, kind];
+      return {
+        activeProductKinds: nextProductKinds,
+        activeGrades: pruneGradesForProductKinds(
+          state.activeGrades,
+          nextProductKinds,
+        ),
+      };
+    }),
+
   resetAll: () =>
     set({
       query: "",
       activeRarities: [],
       activeGrades: [],
       activeTypes: [],
+      activeProductKinds: [],
       sortKey: "最新",
       isSearchFocused: false,
     }),

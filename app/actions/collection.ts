@@ -25,6 +25,13 @@ import {
   collectionPerfNow,
   isCollectionPerfLogEnabled,
 } from "@/lib/collection/perf-log";
+import {
+  defaultSealedProductScore,
+  isSealedCatalogType,
+  parseSealState,
+  sealedProductGradingFields,
+} from "@/lib/catalog/item-kind";
+import type { CatalogType } from "@/lib/constants/commerce";
 import { getGradingOption } from "@/lib/grading/options";
 import { guardMemberPersonaPersonalFeatures } from "@/lib/auth/guard-member-persona-server";
 import { wishlistGradeFromGradingOption } from "@/lib/wishlist/grading";
@@ -188,7 +195,6 @@ export async function addToCollection(
   }
 
   const gradingOption = getGradingOption(input.gradingOptionId);
-  const grading = wishlistGradeFromGradingOption(gradingOption);
   const purchasePrice = Number(input.purchasePrice);
 
   if (!Number.isFinite(purchasePrice) || purchasePrice < 0) {
@@ -197,6 +203,24 @@ export async function addToCollection(
 
   try {
     const supabase = await createClient();
+
+    const { data: catalogRow, error: catalogError } = await supabase
+      .from("product_catalog")
+      .select("id, type")
+      .eq("id", productId)
+      .maybeSingle<{ id: string; type: CatalogType }>();
+
+    if (catalogError || !catalogRow) {
+      return { success: false, error: "所選商品不存在於商品目錄" };
+    }
+
+    const isSealed = isSealedCatalogType(catalogRow.type);
+    const sealState =
+      parseSealState(input.sealState) ?? defaultSealedProductScore();
+    const grading = isSealed
+      ? sealedProductGradingFields(sealState)
+      : wishlistGradeFromGradingOption(gradingOption);
+
     const insertPayload: TablesInsert<"user_collections"> = {
       user_id: userId,
       product_id: productId,
@@ -284,11 +308,32 @@ export async function updateCollectionGrade(
     return { success: false, error: personaGuard.error };
   }
 
-  const nextOption = getGradingOption(input.nextGradingOptionId);
-  const next = wishlistGradeFromGradingOption(nextOption);
-
   try {
     const supabase = await createClient();
+
+    const { data: collectionRow, error: fetchError } = await supabase
+      .from("user_collections")
+      .select("id, product_id, product_catalog(type)")
+      .eq("id", collectionId)
+      .eq("user_id", userId)
+      .maybeSingle<{
+        id: string;
+        product_id: string;
+        product_catalog: { type: CatalogType } | null;
+      }>();
+
+    if (fetchError || !collectionRow) {
+      return { success: false, error: "找不到收藏項目" };
+    }
+
+    const catalogType = collectionRow.product_catalog?.type;
+    if (catalogType && isSealedCatalogType(catalogType)) {
+      return { success: false, error: "盒組商品無法變更鑑定規格" };
+    }
+
+    const nextOption = getGradingOption(input.nextGradingOptionId);
+    const next = wishlistGradeFromGradingOption(nextOption);
+
     const updatePayload: TablesUpdate<"user_collections"> = {
       grading_company: next.gradingCompany,
       grading_score: next.gradingScore,

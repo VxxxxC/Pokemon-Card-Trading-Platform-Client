@@ -9,7 +9,11 @@ import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import type { MarketplaceSellerListingDetailView } from "@/app/lib/marketplace/types";
 import { formatElementTypeZh } from "@/lib/catalog/element-types";
-import { formatListingGrade } from "@/lib/marketplace/listing-display";
+import { isSealedCatalogType } from "@/lib/catalog/item-kind";
+import {
+  formatListingGrade,
+  formatTradeGradeLabel,
+} from "@/lib/marketplace/listing-display";
 import { IoChevronBack } from "react-icons/io5";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
 
@@ -66,7 +70,12 @@ export function MerchantProductDetailPageClient({
 
   const { seller, catalog, storefrontListing, photos, batchLabel, price } =
     detail;
+  const isSealedProduct = isSealedCatalogType(catalog.catalogType);
   const grade = formatListingGrade(
+    detail.gradingCompany,
+    detail.gradingScore,
+  );
+  const gradeLabel = formatTradeGradeLabel(
     detail.gradingCompany,
     detail.gradingScore,
   );
@@ -78,16 +87,20 @@ export function MerchantProductDetailPageClient({
     catalog.displayId ?? catalog.productId
   }`;
 
-  const specRows = [
-    { label: "所屬擴充包", val: catalog.setCode || "—" },
-    {
-      label: "資產屬性",
-      val: formatElementTypeZh(catalog.elementType),
-    },
-    { label: "進化階段", val: catalog.pokemonStage?.trim() || "—" },
-    { label: "HP", val: catalog.hp != null ? String(catalog.hp) : "—" },
-    { label: "子分類", val: catalog.subTypeJa?.trim() || "—" },
-  ].filter((row) => row.val !== "—");
+  const specRows = isSealedProduct
+    ? [{ label: "所屬系列", val: catalog.setCode || "—" }].filter(
+        (row) => row.val !== "—",
+      )
+    : [
+        { label: "所屬擴充包", val: catalog.setCode || "—" },
+        {
+          label: "資產屬性",
+          val: formatElementTypeZh(catalog.elementType),
+        },
+        { label: "進化階段", val: catalog.pokemonStage?.trim() || "—" },
+        { label: "HP", val: catalog.hp != null ? String(catalog.hp) : "—" },
+        { label: "子分類", val: catalog.subTypeJa?.trim() || "—" },
+      ].filter((row) => row.val !== "—");
 
   const galleryPhotos =
     photos.length > 0 ? photos : [catalog.imageUrl || "/placeholder-card.png"];
@@ -262,10 +275,16 @@ export function MerchantProductDetailPageClient({
                 <span className="text-[#d4c4b7]">實物鑑定品品相評級</span>
                 <div className="flex items-center gap-1.5">
                   <RarityBadge rarity={catalog.rarity} />
+                  {isSealedProduct ? (
+                    <span className="inline-flex items-center gap-1 font-mono text-[12px] font-medium text-text-primary bg-[rgba(212,165,116,0.15)] rounded-[4px] px-2 py-0.5 shrink-0">
+                      {gradeLabel}
+                    </span>
+                  ) : (
                   <GradeBadge
                     authority={grade.authority}
                     score={grade.score}
                   />
+                  )}
                 </div>
               </div>
               <div className="flex justify-between items-center p-3.5 bg-[#26211C] border-b border-white/5">

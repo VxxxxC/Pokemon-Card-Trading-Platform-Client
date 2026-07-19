@@ -81,6 +81,8 @@ function toMarketplaceListing(card: HomeListingCard): MarketplaceListing {
       authority: grade.authority,
       score: grade.score || card.gradeLabel,
     },
+    gradingCompany: card.gradingCompany,
+    gradingScore: card.gradingScore,
     price: card.price,
     delta: 0,
     deltaDirection: "up",
