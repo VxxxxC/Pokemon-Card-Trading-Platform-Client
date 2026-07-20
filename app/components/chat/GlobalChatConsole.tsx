@@ -48,6 +48,8 @@ import { findRoomByPartnerId, findRoomByPartnerName } from "@/app/lib/chat/merge
 import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
 import { inferPartnerPersona, isProfileUuid } from "@/app/lib/chat/partnerRoomKey";
 import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
+import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
+import { useUIStore } from "@/app/store/useUIStore";
 
 const ReviewModal = dynamic(
   () =>
@@ -594,6 +596,7 @@ export function GlobalChatConsole({
 
   const currentUserId = useCurrentUserId();
   const isDesktopChat = useIsDesktopChat();
+  const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [reportCategory, setReportCategory] = useState<string>("");
@@ -645,9 +648,13 @@ export function GlobalChatConsole({
       ? trimmedUsername
       : trimmedUsername.toLowerCase();
 
+    const viewerChats = filterChatRoomsForViewerPersona(
+      chats,
+      activeListingPersona,
+    );
     const existingRoom =
-      findRoomByPartnerId(chats, partnerLookupId, spawnPersona) ??
-      findRoomByPartnerName(chats, trimmedUsername, spawnPersona);
+      findRoomByPartnerId(viewerChats, partnerLookupId, spawnPersona) ??
+      findRoomByPartnerName(viewerChats, trimmedUsername, spawnPersona);
 
     if (existingRoom) {
       setActiveRoomId(existingRoom.id);
@@ -665,6 +672,7 @@ export function GlobalChatConsole({
   }, [
     targetUsername,
     chats,
+    activeListingPersona,
     spawnPersona,
     setActiveRoomId,
     openChatWithPartner,
@@ -724,17 +732,22 @@ export function GlobalChatConsole({
     () => false,
   );
 
+  const personaLobbyRooms = useMemo(
+    () => filterChatRoomsForViewerPersona(chats, activeListingPersona),
+    [activeListingPersona, chats],
+  );
+
   const filteredLobbyRooms = useMemo(() => {
-    return chats.filter((room) =>
+    return personaLobbyRooms.filter((room) =>
       room.partnerName.toLowerCase().includes(lobbySearchQuery.toLowerCase()),
     );
-  }, [chats, lobbySearchQuery]);
+  }, [lobbySearchQuery, personaLobbyRooms]);
 
   const showLobbySkeleton =
     inboxLoading && filteredLobbyRooms.length === 0;
 
   const lobbyEmptyVariant =
-    chats.length === 0 ? "no-rooms" : "no-search-results";
+    personaLobbyRooms.length === 0 ? "no-rooms" : "no-search-results";
 
   const showLobbyEmptyState =
     !showLobbySkeleton && filteredLobbyRooms.length === 0;

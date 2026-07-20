@@ -10,6 +10,7 @@ import { useUIStore } from "@/app/store/useUIStore";
 import { getProfileHomePath } from "@/lib/auth/roles";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
+import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
 import {
   ChatUnreadDot,
   ChatUnreadDotInline,
@@ -93,9 +94,14 @@ export function TopNav() {
       window.removeEventListener("open-global-chat", handleGlobalOpenChat);
   }, [activateRoomById, openChatWithPartner]);
 
+  const personaChats = filterChatRoomsForViewerPersona(
+    chats,
+    activeListingPersona,
+  );
+
   const totalUnread = isGuest
     ? 0
-    : chats
+    : personaChats
         .filter((room) => !isChatRoomId(room.id))
         .reduce((acc, curr) => acc + curr.unreadCount, 0);
 
@@ -189,7 +195,7 @@ export function TopNav() {
                     </div>
 
                     <div className="max-h-[280px] overflow-y-auto p-1.5 space-y-0.5 scrollbar-none bg-[#17130f]">
-                      {chats.map((room) => (
+                      {personaChats.map((room) => (
                         <button
                           key={room.id}
                           onClick={() => {

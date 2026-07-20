@@ -59,7 +59,7 @@ function buildHydratedContext(
 }
 
 /**
- * Legacy adapter for mock chat threads and Zustand-hydrated offer messages.
+ * Legacy adapter for Zustand-hydrated offer messages and preset thread shapes.
  * Real offer cards render via {@link OfferCard}.
  */
 export function SpecialTransactionMessage(props: SpecialTransactionProps) {

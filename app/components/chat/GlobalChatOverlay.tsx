@@ -14,10 +14,12 @@ import {
 } from "@/app/lib/chat/mergeChatRooms";
 import { roomNeedsThreadHydration } from "@/app/lib/chat/roomHydration";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
+import { roomMatchesViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
 import { useChatRoomRealtime } from "@/app/lib/hooks/useChatRoomRealtime";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import { useIsDesktopChat } from "@/app/lib/hooks/useIsDesktopChat";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
+import { useUIStore } from "@/app/store/useUIStore";
 import { ChatOverlaySkeleton } from "@/app/components/chat/ChatOverlaySkeleton";
 
 const GlobalChatConsole = dynamic(
@@ -37,6 +39,8 @@ export function GlobalChatOverlay() {
   const mobileView = useHkCardVaultStore((state) => state.mobileView);
   const setChats = useHkCardVaultStore((state) => state.setChats);
   const setActiveRoomId = useHkCardVaultStore((state) => state.setActiveRoomId);
+  const setMobileView = useHkCardVaultStore((state) => state.setMobileView);
+  const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const currentUserId = useCurrentUserId();
   const isDesktopChat = useIsDesktopChat();
   const inboxRequestIdRef = useRef(0);
@@ -191,6 +195,33 @@ export function GlobalChatOverlay() {
 
     void syncInboxLobby({ showLoading: false });
   }, [currentUserId, isChatOpen, syncInboxLobby]);
+
+  useEffect(() => {
+    const { activeRoomId, chats, isChatOpen: chatOpen } =
+      useHkCardVaultStore.getState();
+    if (!activeRoomId) {
+      return;
+    }
+
+    const activeRoom = chats.find((room) => room.id === activeRoomId);
+    if (
+      activeRoom &&
+      !roomMatchesViewerPersona(activeRoom, activeListingPersona)
+    ) {
+      setActiveRoomId("");
+      setMobileView("LIST");
+      return;
+    }
+
+    if (chatOpen) {
+      void syncInboxLobby({ force: true, backgroundRefresh: true });
+    }
+  }, [
+    activeListingPersona,
+    setActiveRoomId,
+    setMobileView,
+    syncInboxLobby,
+  ]);
 
   useEffect(() => {
     if (!isChatOpen) {

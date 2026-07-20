@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { buildPendingChatRoomId } from "@/app/lib/chat/constants";
+import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
 import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
 import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
 import { partnerTierForPersona } from "@/app/lib/chat/partnerRoomKey";
-import { INITIAL_CHATS } from "@/app/lib/mock-data/chatrooms";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
+import { useUIStore } from "@/app/store/useUIStore";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import type { Tables } from "@/types/supabase";
 
@@ -53,6 +54,8 @@ export interface ChatRoom {
   id: string;
   partnerId: string;
   partnerPersona?: "member" | "merchant";
+  /** Persona the current user uses in this room (not the counterparty). */
+  viewerPersona?: "member" | "merchant";
   partnerName: string;
   partnerAvatarUrl: string;
   partnerTier: string;
@@ -64,6 +67,10 @@ export interface ChatRoom {
   threadHydrated?: boolean;
   /** Whether older messages remain to be loaded via scroll-up pagination */
   threadHasMoreOlder?: boolean;
+}
+
+function readActiveViewerPersona(): ChatPartnerPersona {
+  return useUIStore.getState().activeListingPersona;
 }
 
 function isValidSpecialTransactionData(
@@ -287,9 +294,9 @@ interface HkCardVaultStore {
 
 export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
   isChatOpen: false,
-  activeRoomId: "chatId-A-BUYER-MERCHANT",
+  activeRoomId: "",
   mobileView: "LIST",
-  chats: INITIAL_CHATS as unknown as ChatRoom[],
+  chats: [],
   offers: {},
 
   setIsChatOpen: (open) =>
@@ -336,6 +343,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         id: roomId,
         partnerId: roomId,
         partnerPersona: "member",
+        viewerPersona: readActiveViewerPersona(),
         partnerName,
         partnerAvatarUrl: DEFAULT_AVATAR_URL,
         partnerTier: "認證用戶",
@@ -361,8 +369,13 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
   openChatWithPartner: (partnerId, partnerName, partnerPersona = "member") =>
     set((state) => {
-      const existing = findRoomByPartnerId(
+      const viewerPersona = readActiveViewerPersona();
+      const scopedChats = filterChatRoomsForViewerPersona(
         state.chats,
+        viewerPersona,
+      );
+      const existing = findRoomByPartnerId(
+        scopedChats,
         partnerId,
         partnerPersona,
       );
@@ -382,6 +395,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         id: roomId,
         partnerId,
         partnerPersona,
+        viewerPersona,
         partnerName,
         partnerAvatarUrl: DEFAULT_AVATAR_URL,
         partnerTier: partnerTierForPersona(partnerPersona),
@@ -465,6 +479,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           id: canonicalRoomId,
           partnerId,
           partnerPersona,
+          viewerPersona: readActiveViewerPersona(),
           partnerName,
           partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier,
@@ -550,6 +565,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           id: canonicalRoomId,
           partnerId: payload.sellerId,
           partnerPersona: "member",
+          viewerPersona: "member",
           partnerName: payload.sellerName,
           partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier: "認證賣家",
@@ -625,6 +641,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
             partnerId: payload.partnerId,
             partnerName: payload.partnerName,
             partnerPersona,
+            viewerPersona: "member",
             partnerTier: partnerTierForPersona(partnerPersona),
             lastMessage: specialMsg.text,
             unreadCount: 0,
@@ -636,6 +653,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           id: payload.roomId,
           partnerId: payload.partnerId,
           partnerPersona,
+          viewerPersona: "member",
           partnerName: payload.partnerName,
           partnerAvatarUrl: DEFAULT_AVATAR_URL,
           partnerTier: partnerTierForPersona(partnerPersona),

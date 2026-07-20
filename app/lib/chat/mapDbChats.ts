@@ -363,10 +363,16 @@ function mapRoomToStore(
     room.created_at ??
     new Date().toISOString();
 
+  const viewerPersona =
+    currentUserId === room.buyer_id
+      ? (room.buyer_persona ?? "member")
+      : (room.seller_persona ?? "member");
+
   return {
     id: room.id,
     partnerId: presentation.partnerId,
     partnerPersona: presentation.partnerPersona,
+    viewerPersona,
     partnerName: presentation.partnerName,
     partnerAvatarUrl: presentation.partnerAvatarUrl,
     partnerTier: presentation.partnerTier,

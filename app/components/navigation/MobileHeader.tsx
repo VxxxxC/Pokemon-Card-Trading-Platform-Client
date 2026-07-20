@@ -7,6 +7,7 @@ import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { ChatUnreadDot } from "@/app/components/chat/ChatUnreadDot";
+import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -58,11 +59,17 @@ export function MobileHeader() {
   }, [activateRoomById, openChatWithPartner, setMobileView]);
 
   const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const isGuest = userAuthRole === "GUEST";
+
+  const personaChats = filterChatRoomsForViewerPersona(
+    chats,
+    activeListingPersona,
+  );
 
   const totalUnread = isGuest
     ? 0
-    : chats
+    : personaChats
         .filter((room) => !isChatRoomId(room.id))
         .reduce((acc, curr) => acc + curr.unreadCount, 0);
 
