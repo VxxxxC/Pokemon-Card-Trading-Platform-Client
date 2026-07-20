@@ -55,6 +55,7 @@ type SearchPublicProfileReviewsRpcRow = {
   created_at: string;
   is_merchant_tx: boolean;
   reviewer_id: string;
+  reviewer_persona: ReviewPersona;
   reviewer_display_name: string;
   reviewer_username: string | null;
   reviewer_avatar_path: string | null;
@@ -87,6 +88,7 @@ function mapPublicProfileReviewRow(
     dateLabel: formatReviewDateLabel(row.created_at),
     isMerchantTx: row.is_merchant_tx,
     reviewerId: row.reviewer_id,
+    reviewerPersona: row.reviewer_persona ?? "member",
     reviewerDisplayName: row.reviewer_display_name,
     reviewerUsername: row.reviewer_username,
     reviewerAvatarUrl: resolveAvatarUrl(row.reviewer_avatar_path),

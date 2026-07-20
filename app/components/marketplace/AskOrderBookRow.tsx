@@ -5,6 +5,7 @@ import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { type SellOrder } from "@/app/lib/mock-data/cards";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 
 interface AskOrderBookRowProps {
   order: SellOrder;
@@ -54,6 +55,9 @@ export function AskOrderBookRow({
               <span className="font-sans font-extrabold text-[14.5px] text-[#eae1da] truncate select-none">
                 {order.sellerName}
               </span>
+              {order.sellerPersona === "merchant" ? (
+                <CertifiedMerchantBadge />
+              ) : null}
               {isOwnListing ? (
                 <span className="shrink-0 font-mono text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand/20 text-brand border border-brand/30">
                   我的掛單

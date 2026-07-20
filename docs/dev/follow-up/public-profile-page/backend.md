@@ -7,14 +7,14 @@
 
 ## Server action
 
-`app/actions/profile.ts` → **`getPublicProfilePageBootstrap(profileKey)`**
+`app/actions/profile.ts` → **`getPublicProfilePageBootstrap(profileKey, { persona? })`**
 
 | Field | Source |
 |-------|--------|
-| Profile header | `loadMarketplaceSellerProfile` (UUID or `profiles.username`) |
+| Profile header | `loadMarketplaceSellerProfile(profileKey, persona)` — dual-identity `?persona=member` shows member fields |
 | `avatarUrl` | `resolveAvatarUrl(profiles.avatar_path)` |
 | `rating` / `reviewCount` | `getPublicProfileReviews` → `aggregateRating` / `publicReviewCount` |
-| `reviewPersona` | `merchant` if `profiles.role === 'merchant'`, else `member` |
+| `reviewPersona` | `?persona=` query if set; else `merchant` if `profiles.role === 'merchant'`, else `member` |
 | Listings preview (5) | `searchMarketplaceSellerListings` → `toMarketplaceCardListing` |
 | `totalListingCount` | listings RPC pagination `meta.total` |
 | Recent reviews (3) | `getPublicProfileReviews` (`date-desc`, `pageSize: 3`) |
@@ -36,7 +36,7 @@ type PublicProfilePageBootstrapResult =
 - `lib/marketplace/load-seller-profile.ts` (avatar + role)
 - `app/actions/marketplace.ts` (`searchMarketplaceSellerListings`)
 - `app/actions/reviews.ts` (`getPublicProfileReviews`)
-- Migrations `20260706150000`, `20260707160000`
+- Migrations `20260706150000`, `20260707160000`, `20260720130000` (`reviewer_persona` on public reviews RPC)
 
 ## Verify
 

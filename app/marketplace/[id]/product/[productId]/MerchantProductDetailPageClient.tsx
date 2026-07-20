@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,22 +16,45 @@ import {
 } from "@/lib/marketplace/listing-display";
 import { IoChevronBack } from "react-icons/io5";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
+import { trackListingView } from "@/lib/listings/track-listing-view";
 
 interface MerchantProductDetailPageClientProps {
   detail: MarketplaceSellerListingDetailView | null;
   routeProductId: string;
+  currentUserId?: string | null;
   bootstrapError?: string;
 }
 
 export function MerchantProductDetailPageClient({
   detail,
   routeProductId,
+  currentUserId = null,
   bootstrapError,
 }: MerchantProductDetailPageClientProps) {
   const router = useRouter();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const lastTrackedListingIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!detail) {
+      lastTrackedListingIdRef.current = null;
+      return;
+    }
+
+    const listingId = routeProductId.trim();
+    if (!listingId || lastTrackedListingIdRef.current === listingId) {
+      return;
+    }
+
+    lastTrackedListingIdRef.current = listingId;
+    trackListingView({
+      listingId,
+      sellerId: detail.seller.id,
+      currentUserId,
+    });
+  }, [detail, routeProductId, currentUserId]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget;

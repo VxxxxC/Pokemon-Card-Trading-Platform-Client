@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { PublicProfileReviewItem } from "@/app/lib/reviews/types";
+import {
+  resolveReviewerProfileLinkTitle,
+  resolveReviewerPublicProfileHref,
+} from "@/lib/reviews/resolve-reviewer-profile-href";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 
 type PublicReviewPreviewCardProps = {
   review: PublicProfileReviewItem;
@@ -13,6 +18,15 @@ export function PublicReviewPreviewCard({
   review,
   variant = "default",
 }: PublicReviewPreviewCardProps) {
+  const reviewerHref = resolveReviewerPublicProfileHref(
+    review.reviewerId,
+    review.reviewerPersona,
+  );
+  const reviewerLinkTitle = resolveReviewerProfileLinkTitle(
+    review.reviewerDisplayName,
+    review.reviewerPersona,
+  );
+
   const cardClassName =
     variant === "embedded"
       ? "flex flex-row gap-x-2 bg-[#17130f] rounded-xl border border-[rgba(237,232,224,0.04)] p-4"
@@ -22,9 +36,9 @@ export function PublicReviewPreviewCard({
     <div className={cardClassName}>
       <div className="self-start">
         <Link
-          href={`/profile/${review.reviewerId}`}
+          href={reviewerHref}
           className="block w-8 h-8 rounded-full border border-white/10 hover:opacity-80 transition-opacity cursor-pointer overflow-hidden shrink-0"
-          title={`查看 ${review.reviewerDisplayName} 的個人檔案`}
+          title={reviewerLinkTitle}
         >
           <Avatar className="w-full h-full">
             <AvatarImage
@@ -42,19 +56,17 @@ export function PublicReviewPreviewCard({
         <div className="flex flex-row justify-between items-center mb-1.5">
           <div className="flex items-center gap-2">
             <Link
-              href={`/profile/${review.reviewerId}`}
+              href={reviewerHref}
               className="font-sans text-[13px] font-bold text-text-primary hover:text-brand transition-colors cursor-pointer"
-              title={`查看 ${review.reviewerDisplayName} 的個人檔案`}
+              title={reviewerLinkTitle}
             >
               {review.reviewerDisplayName}
             </Link>
             <span className="font-mono text-[12px] text-brand font-bold">
               ⭐ {review.rating}
             </span>
-            {review.isMerchantTx ? (
-              <span className="font-sans text-[10.5px] font-black tracking-wide uppercase px-1.5 py-0.5 rounded text-warning bg-warning/10 border border-warning/20 shadow-[0_0_12px_rgba(212,165,116,0.15)]">
-                商家交易
-              </span>
+            {review.reviewerPersona === "merchant" ? (
+              <CertifiedMerchantBadge />
             ) : null}
           </div>
           <span className="font-mono text-[11px] text-text-disabled">

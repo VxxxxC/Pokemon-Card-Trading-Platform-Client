@@ -62,7 +62,7 @@ const result = await getPublicProfileReviews({
 - [x] Rating page loads from DB (no mock reviews on this route)
 - [x] Header shows `aggregate_rating` + `public_review_count` for selected persona
 - [x] Sort + pagination refetch server-side
-- [x] `isMerchantTx` badge when `merchant_order_id` present
+- [x] `認證商戶` badge when `reviewer_persona = merchant` (order-type `isMerchantTx` no longer shown in UI)
 - [x] Reviewer avatar via `resolveAvatarUrl`
 - [x] Suspense boundary for `useSearchParams`
 - [x] Public profile `[id]/page.tsx` recent reviews strip wired to DB

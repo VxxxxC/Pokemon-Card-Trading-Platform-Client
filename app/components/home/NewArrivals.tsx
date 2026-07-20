@@ -13,7 +13,6 @@ import {
   formatListingGrade,
   formatRelativeDateTime,
 } from "@/lib/marketplace/listing-display";
-import { trackListingViewOnNavigate } from "@/lib/listings/track-listing-view";
 
 function ArrivalCardImage({
   imageUrl,
@@ -235,13 +234,7 @@ export function NewArrivals({
                       onClick={(e) => {
                         if (isUserInteracting) {
                           e.preventDefault();
-                          return;
                         }
-                        trackListingViewOnNavigate({
-                          listingId: item.id,
-                          sellerId: item.sellerId,
-                          currentUserId,
-                        });
                       }}
                     >
                       <ArrivalCardImage

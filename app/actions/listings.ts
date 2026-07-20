@@ -979,13 +979,6 @@ export async function incrementListingView(
 
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: "請先登入" };
-    }
 
     const { error } = await (
       supabase as unknown as {

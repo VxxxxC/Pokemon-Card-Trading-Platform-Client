@@ -15,7 +15,6 @@ import {
   isWishlistFavored,
 } from "@/app/components/market/WishlistButton";
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
-import { trackListingViewOnNavigate } from "@/lib/listings/track-listing-view";
 
 type PremiumMarketProps = {
   listings?: HomeListingCard[];
@@ -79,14 +78,6 @@ export function PremiumMarket({
   const showWishlist = currentUserId != null && isMemberPersonaActive;
   const favoredKeySet = new Set(favoredKeys);
 
-  const handleProductNavigate = (listing: HomeListingCard) => {
-    trackListingViewOnNavigate({
-      listingId: listing.listingId,
-      sellerId: listing.sellerId,
-      currentUserId,
-    });
-  };
-
   const plugin = React.useMemo(
     () =>
       Autoplay({
@@ -149,7 +140,6 @@ export function PremiumMarket({
                   <Link
                     href={`/marketplace/product/${listing.productId}`}
                     className="relative w-full aspect-[5/7] max-h-[20rem] mx-auto rounded-lg overflow-hidden bg-bg-elevated block mb-2.5 border border-white/5"
-                    onClick={() => handleProductNavigate(listing)}
                   >
                     <ListingCoverImage listing={listing} index={index} />
                     {showWishlist && (
@@ -175,7 +165,6 @@ export function PremiumMarket({
                     <div className="flex items-center justify-between gap-2">
                       <Link
                         href={`/marketplace/product/${listing.productId}`}
-                        onClick={() => handleProductNavigate(listing)}
                       >
                         <h3 className="font-sans font-bold text-[14.5px] text-text-primary truncate hover:text-brand transition-colors">
                           {listing.name}

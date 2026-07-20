@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
 import { makeOffer } from "@/app/actions/offers";
-import { incrementListingView } from "@/app/actions/listings";
+import { trackListingView } from "@/lib/listings/track-listing-view";
 import { Switch } from "@/components/ui/switch";
 import { BUYER_AUTH_DISABLED_COPY } from "@/lib/listings/auth-service-copy";
 import { getCurrentUserProfile } from "@/app/actions/profile";
@@ -74,7 +74,7 @@ export function ExecutionSlideOver({
   const lastViewedListingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !listingId) {
+    if (!isOpen || !listingId || isOwnListing) {
       lastViewedListingIdRef.current = null;
       return;
     }
@@ -84,8 +84,12 @@ export function ExecutionSlideOver({
     }
 
     lastViewedListingIdRef.current = listingId;
-    void incrementListingView(listingId);
-  }, [isOpen, listingId]);
+    trackListingView({
+      listingId,
+      sellerId: order?.sellerId,
+      currentUserId,
+    });
+  }, [isOpen, listingId, isOwnListing, order?.sellerId, currentUserId]);
 
   useEffect(() => {
     if (isOpen && order) {

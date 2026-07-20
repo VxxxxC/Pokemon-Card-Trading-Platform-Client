@@ -338,7 +338,9 @@ type CollectionEntry = {
 |--------|------|------|------|
 | `getUserInventorySummary` | — | `{ totalListings, activeCount, soldCount, inactiveCount }` | USER+ (seller) |
 | `getUserInventoryGroups` | `{ query?, page?, pageSize? }` | paginated `InventoryProductGroup[]` | USER+ |
-| `incrementListingView` | `listingId` | `{ success }` | USER+ (buyer view) |
+| `incrementListingView` | `listingId` | `{ success }` | GUEST + USER（訪客 `actor_id` null；賣家自己由 client skip） |
+
+**觸發：** land `/marketplace/[sellerId]/product/[listingId]`（`trackListingView` on mount）或打開 `ExecutionSlideOver`。公開聚合頁 `/marketplace/product/[catalogId]` landing 唔計，只靠 slide-over。
 
 **分組：** `listings.product_id` = `product_catalog.id`；每組多個 listing（不同 grade/price）。  
 **統計：** `listing_stats.views`、`listing_stats.offers_count`（累計叫價，僅 `rpc_make_offer` +1）。

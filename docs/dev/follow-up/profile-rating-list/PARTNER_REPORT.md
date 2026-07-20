@@ -112,8 +112,9 @@ B2C complete → buyer rates merchant → reveal
 - [ ] C2C reveal updates `profiles.rating_score` only; `merchant_shops.rating_score` unchanged for dual-identity user
 - [ ] B2C: buyer rates merchant → `?persona=merchant` shows review; `merchant_shops.rating_score` updates
 - [ ] Sort (date / rating) and pagination (5 mobile / 10 desktop) refetch correctly
-- [ ] `商家交易` badge when `merchant_order_id IS NOT NULL`
-- [ ] Reviewer avatar + link uses `profiles.id` UUID
+- [ ] `認證商戶` badge when `reviewer_persona = merchant` (not order-type `商家交易`)
+- [ ] Reviewer avatar + display name follow `reviewer_persona` from RPC (B2C merchant reviewer → `merchant_shops`; else `profiles`)
+- [ ] Reviewer link → `/profile/{uuid}?persona=member|merchant`
 - [ ] Logged-in user: `/profile/user` → **查看更多評價** → lands on `/profile/{own-uuid}/rating?persona=member` with DB data
 
 - [ ] Empty state: 「暫無公開評價紀錄」 (not 404)

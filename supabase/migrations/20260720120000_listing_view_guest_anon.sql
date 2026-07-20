@@ -1,0 +1,54 @@
+-- Allow guest (anon) listing view counts; actor_id may be NULL in engagement events.
+
+CREATE OR REPLACE FUNCTION public.rpc_increment_listing_view(p_listing_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_actor_id uuid;
+BEGIN
+  v_actor_id := auth.uid();
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.listings l
+    WHERE l.id = p_listing_id
+      AND l.status = 'active'
+  ) THEN
+    RETURN;
+  END IF;
+
+  UPDATE public.listing_stats
+  SET
+    views = views + 1,
+    updated_at = now()
+  WHERE listing_id = p_listing_id;
+
+  IF NOT FOUND THEN
+    INSERT INTO public.listing_stats (listing_id, views, offers_count)
+    VALUES (p_listing_id, 1, 0)
+    ON CONFLICT (listing_id) DO UPDATE
+    SET
+      views = public.listing_stats.views + 1,
+      updated_at = now();
+  END IF;
+
+  INSERT INTO public.listing_engagement_events (
+    listing_id,
+    actor_id,
+    event_type,
+    occurred_at
+  )
+  VALUES (
+    p_listing_id,
+    v_actor_id,
+    'view',
+    now()
+  );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.rpc_increment_listing_view(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rpc_increment_listing_view(UUID) TO anon, authenticated;

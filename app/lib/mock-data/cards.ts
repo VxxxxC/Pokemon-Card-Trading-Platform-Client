@@ -6,6 +6,7 @@ export interface SellOrder {
   readonly sellerUsername?: string | null;
   readonly sellerId: string;
   readonly sellerAvatarUrl?: string;
+  readonly sellerPersona?: "member" | "merchant";
   readonly price: number;
   readonly sellerRating: number;
   readonly reviewCount?: number;

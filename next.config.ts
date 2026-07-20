@@ -28,7 +28,6 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "www.pokemon-card.com",
-        pathname: "/assets/images/**",
       },
       {
         protocol: "https",

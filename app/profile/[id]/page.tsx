@@ -3,6 +3,7 @@ import { PublicProfilePageData } from "./PublicProfilePageData";
 
 interface ProfileIdPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ persona?: string }>;
 }
 
 function PublicProfilePageSkeleton() {
@@ -13,10 +14,13 @@ function PublicProfilePageSkeleton() {
   );
 }
 
-export default function PublicProfilePage({ params }: ProfileIdPageProps) {
+export default function PublicProfilePage({
+  params,
+  searchParams,
+}: ProfileIdPageProps) {
   return (
     <Suspense fallback={<PublicProfilePageSkeleton />}>
-      <PublicProfilePageData params={params} />
+      <PublicProfilePageData params={params} searchParams={searchParams} />
     </Suspense>
   );
 }

@@ -7,6 +7,7 @@ import { formatSellerJoinDate, isUuid, resolveActivityBadgeEmoji } from "@/lib/m
 import { resolveAvatarUrl, resolveOptionalMediaUrl } from "@/lib/profile/avatar";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Json, Tables } from "@/types/supabase";
+import type { ReviewPersona } from "@/app/lib/reviews/types";
 
 export type MarketplaceSellerBadge = {
   id: string;
@@ -121,8 +122,13 @@ function mapProfileRow(
   profile: ProfileRow,
   merchantShop: MerchantShopRow | null,
   kyc: KycRow | null = null,
+  viewPersona?: ReviewPersona,
 ): MarketplaceSellerProfile {
-  const isMerchant = profile.role === "merchant";
+  const hasDualPersona = profile.role === "merchant" && merchantShop != null;
+  const showMerchantIdentity = hasDualPersona
+    ? viewPersona !== "member"
+    : profile.role === "merchant";
+  const isMerchant = showMerchantIdentity;
   const completedTrades = isMerchant
     ? (merchantShop?.completed_trades_count ?? profile.completed_trades_count)
     : profile.completed_trades_count;
@@ -187,6 +193,7 @@ function mapProfileRow(
 
 async function fetchProfileById(
   profileId: string,
+  viewPersona?: ReviewPersona,
 ): Promise<MarketplaceSellerProfile | null> {
   const supabase = createPublicClient();
 
@@ -238,11 +245,12 @@ async function fetchProfileById(
     }
   }
 
-  return mapProfileRow(profile, merchantShop, kyc);
+  return mapProfileRow(profile, merchantShop, kyc, viewPersona);
 }
 
 async function fetchProfileByMemberUsername(
   username: string,
+  viewPersona?: ReviewPersona,
 ): Promise<MarketplaceSellerProfile | null> {
   const supabase = createPublicClient();
 
@@ -263,11 +271,12 @@ async function fetchProfileByMemberUsername(
     return null;
   }
 
-  return fetchProfileById(profile.id);
+  return fetchProfileById(profile.id, viewPersona);
 }
 
 async function fetchProfileByMerchantShopHandle(
   shopHandle: string,
+  viewPersona?: ReviewPersona,
 ): Promise<MarketplaceSellerProfile | null> {
   const supabase = createPublicClient();
 
@@ -286,7 +295,7 @@ async function fetchProfileByMerchantShopHandle(
     return null;
   }
 
-  return fetchProfileById(shop.merchant_id);
+  return fetchProfileById(shop.merchant_id, viewPersona ?? "merchant");
 }
 
 export {
@@ -296,6 +305,7 @@ export {
 
 export async function loadMarketplaceSellerProfile(
   sellerKey: string,
+  viewPersona?: ReviewPersona,
 ): Promise<MarketplaceSellerProfile | null> {
   const trimmed = sellerKey.trim();
   if (!trimmed) {
@@ -303,13 +313,13 @@ export async function loadMarketplaceSellerProfile(
   }
 
   if (isUuid(trimmed)) {
-    return fetchProfileById(trimmed);
+    return fetchProfileById(trimmed, viewPersona);
   }
 
-  const byMerchantHandle = await fetchProfileByMerchantShopHandle(trimmed);
+  const byMerchantHandle = await fetchProfileByMerchantShopHandle(trimmed, viewPersona);
   if (byMerchantHandle) {
     return byMerchantHandle;
   }
 
-  return fetchProfileByMemberUsername(trimmed);
+  return fetchProfileByMemberUsername(trimmed, viewPersona);
 }

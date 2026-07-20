@@ -9,7 +9,7 @@ import { GradeBadge } from "@/app/components/cards/GradeBadge";
 // 引入全域原子級動作掣
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
-import { trackListingViewOnNavigate } from "@/lib/listings/track-listing-view";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 import type { Database, Tables } from "@/types/supabase";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
@@ -165,14 +165,6 @@ function MarketplaceCardView({
     listing.gradingScore,
   );
 
-  const handleDetailNavigate = () => {
-    trackListingViewOnNavigate({
-      listingId: listing.id,
-      sellerId: listing.sellerId,
-      currentUserId,
-    });
-  };
-
   return (
     <div
       className={
@@ -189,7 +181,6 @@ function MarketplaceCardView({
       <Link
         href={productDetailHref}
         prefetch
-        onClick={handleDetailNavigate}
         className="cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 block"
         aria-label={`查看 ${displayName} 商品詳情`}
       >
@@ -285,9 +276,7 @@ function MarketplaceCardView({
               </p>
               <div className="flex flex-col items-end gap-0.5 mt-0.5">
                 {listing.sellerPersona === "merchant" ? (
-                  <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
-                    認證商家
-                  </span>
+                  <CertifiedMerchantBadge />
                 ) : null}
                 <p className="truncate max-w-[90px] block font-sans whitespace-nowrap text-[12px] text-[#d4c4b7] font-medium">
                   {listing.seller}

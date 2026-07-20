@@ -14,6 +14,7 @@ export type PublicProfileReviewItem = {
   dateLabel: string;
   isMerchantTx: boolean;
   reviewerId: string;
+  reviewerPersona: ReviewPersona;
   reviewerDisplayName: string;
   reviewerUsername: string | null;
   reviewerAvatarUrl: string;

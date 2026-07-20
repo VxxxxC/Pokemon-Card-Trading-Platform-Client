@@ -23,7 +23,7 @@
 | `app/lib/inventory/perf-log-client.ts` | Client mount timing |
 | `app/components/merchant/InventoryAccordion.tsx` | `inactive` → **未上架**; optional `imageUrl` on `SKUGroup` |
 | `app/components/merchant/ListingEditDialog.tsx` | Edit modal — price, grading, description, 6-slot photos, `isActive`; `ImageViewer` preview |
-| `app/components/transactions/ExecutionSlideOver.tsx` | Fires `incrementListingView` on open |
+| `app/components/transactions/ExecutionSlideOver.tsx` | Fires `trackListingView` on open |
 
 Merchant inventory (`app/profile/merchant/(dashboard)/inventory/`) is **wired** — same hook/actions as user; filters `seller_persona = merchant`; no on-page `NewListingForm`.
 

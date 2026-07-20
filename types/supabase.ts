@@ -2038,6 +2038,7 @@ export type Database = {
           reviewer_avatar_path: string
           reviewer_display_name: string
           reviewer_id: string
+          reviewer_persona: Database["public"]["Enums"]["review_persona"]
           reviewer_username: string
           total_count: number
           total_pages: number

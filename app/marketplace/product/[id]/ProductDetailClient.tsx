@@ -228,6 +228,7 @@ export function ProductDetailClient({
           sellerUsername: row.sellerUsername,
           sellerId: row.sellerId,
           sellerAvatarUrl: row.sellerAvatarUrl,
+          sellerPersona: row.sellerPersona,
           price: row.price,
           sellerRating: row.sellerRating,
           reviewCount: row.sellerTotalTrades,

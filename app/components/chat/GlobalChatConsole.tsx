@@ -47,6 +47,7 @@ import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { findRoomByPartnerId, findRoomByPartnerName } from "@/app/lib/chat/mergeChatRooms";
 import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
 import { inferPartnerPersona, isProfileUuid } from "@/app/lib/chat/partnerRoomKey";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 
 const ReviewModal = dynamic(
   () =>
@@ -477,14 +478,6 @@ function ChatLobbyRefreshingHint() {
     <p className="font-mono text-[10px] text-text-disabled text-center py-1 select-none">
       更新中…
     </p>
-  );
-}
-
-function MerchantBadgeChip() {
-  return (
-    <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
-      認證商家
-    </span>
   );
 }
 
@@ -1042,9 +1035,9 @@ export function GlobalChatConsole({
                       {room.partnerName}
                     </div>
                     {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
-                    {room.partnerTier === "專業認證商戶" && (
-                      <MerchantBadgeChip />
-                    )}
+                    {inferPartnerPersona(room) === "merchant" ? (
+                      <CertifiedMerchantBadge />
+                    ) : null}
                     {inferPartnerPersona(room) === "member" && (
                       <MemberPersonaChip />
                     )}
@@ -1080,8 +1073,8 @@ export function GlobalChatConsole({
                   <span className="font-sans font-bold text-[13px] text-text-primary">
                     {activeRoom.partnerName}
                   </span>
-                  {activeRoom.partnerTier === "專業認證商戶" ? (
-                    <MerchantBadgeChip />
+                  {inferPartnerPersona(activeRoom) === "merchant" ? (
+                    <CertifiedMerchantBadge />
                   ) : null}
                 </Link>
               </div>
@@ -1315,9 +1308,9 @@ export function GlobalChatConsole({
                           {room.partnerName}
                         </span>
                         {/* 🎯 Target Injected SNKRDUNK-Style Merchant Identifier Chip */}
-                        {room.partnerTier === "專業認證商戶" && (
-                          <MerchantBadgeChip />
-                        )}
+                        {inferPartnerPersona(room) === "merchant" ? (
+                          <CertifiedMerchantBadge />
+                        ) : null}
                         {inferPartnerPersona(room) === "member" && (
                           <MemberPersonaChip />
                         )}
@@ -1362,8 +1355,8 @@ export function GlobalChatConsole({
                       <span className="font-sans font-bold text-[13px] text-text-primary">
                         {activeRoom.partnerName}
                       </span>
-                      {activeRoom.partnerTier === "專業認證商戶" ? (
-                        <MerchantBadgeChip />
+                      {inferPartnerPersona(activeRoom) === "merchant" ? (
+                        <CertifiedMerchantBadge />
                       ) : null}
                     </Link>
                   </div>

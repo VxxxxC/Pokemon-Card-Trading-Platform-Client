@@ -192,7 +192,7 @@ CREATE INDEX idx_listings_item_type ON public.listings (item_type);
 | Column | Type | Notes |
 |--------|------|-------|
 | `listing_id` | UUID PK FK → `listings.id` | ON DELETE CASCADE |
-| `views` | INTEGER NOT NULL DEFAULT 0 | `rpc_increment_listing_view` on slide-over open |
+| `views` | INTEGER NOT NULL DEFAULT 0 | `rpc_increment_listing_view` — merchant listing page land 或 `ExecutionSlideOver` open |
 | `offers_count` | INTEGER NOT NULL DEFAULT 0 | Cumulative offers; +1 in `rpc_make_offer` only |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -200,17 +200,17 @@ Init trigger on `listings` INSERT. Seller RLS: read own stats via `listings.sell
 
 ### 2.3.2 `listing_engagement_events` — 瀏覽／叫價時序
 
-> migration `20260717200000_listing_engagement_events.sql`
+> migration `20260717200000_listing_engagement_events.sql` · guest anon `20260720120000_listing_view_guest_anon.sql`
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | UUID PK | |
 | `listing_id` | UUID FK → `listings.id` | ON DELETE CASCADE |
-| `actor_id` | UUID FK → `profiles.id` | nullable |
+| `actor_id` | UUID FK → `profiles.id` | nullable（訪客 view 為 NULL） |
 | `event_type` | `listing_engagement_event_type` | `view` \| `offer` |
 | `occurred_at` | TIMESTAMPTZ | |
 
-Dual-write with `listing_stats`: `rpc_increment_listing_view` → `view`; `fn_bump_listing_offers_count` → `offer`. Merchant product analytics chart buckets read from events; KPI totals read from `listing_stats`.
+Dual-write with `listing_stats`: `rpc_increment_listing_view` → `view`（`GRANT` anon + authenticated；active listing only）；`fn_bump_listing_offers_count` → `offer`. Merchant product analytics chart buckets read from events; KPI totals read from `listing_stats`.
 
 RPC: `get_merchant_product_analytics(p_product_id, p_time_range, p_history_page, p_history_page_size)` — migration `20260717201000_merchant_product_analytics.sql`.
 

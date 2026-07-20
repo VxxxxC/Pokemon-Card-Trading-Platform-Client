@@ -22,7 +22,7 @@
 |--------|--------|
 | **`listing_stats` slimmed** | `views`, `offers_count` only; dropped `likes`, `trade_records_count` |
 | **`offers_count` semantics** | Cumulative offer records per listing; +1 on `rpc_make_offer` INSERT only |
-| **`rpc_increment_listing_view`** | Authenticated view count when opening `ExecutionSlideOver` |
+| **`rpc_increment_listing_view`** | Guest + authenticated view count on merchant listing page land or `ExecutionSlideOver` open; seller self-view skipped client-side |
 | **`app/actions/inventory.ts`** | `getUserInventorySummary`, `getUserInventoryGroups` |
 | **Grouping** | By `product_catalog.id` (`listings.product_id`); multiple listings per product |
 | **Status UI** | DB `inactive` → UI label **未上架** (`ListingStatus.inactive`) |
@@ -60,7 +60,9 @@ Legacy / isolated callers
 |------|---------|
 | `supabase/migrations/20260706120000_listing_stats_inventory_extend.sql` | Schema, FK, init trigger, seller RLS |
 | `supabase/migrations/20260706130000_listing_stats_rpc_sync.sql` | `fn_bump_listing_offers_count`, patch `rpc_make_offer` |
-| `supabase/migrations/20260706140000_rpc_increment_listing_view.sql` | View counter RPC |
+| `supabase/migrations/20260706140000_rpc_increment_listing_view.sql` | View counter RPC (initial) |
+| `supabase/migrations/20260720120000_listing_view_guest_anon.sql` | Guest anon + dual-write events |
+| `lib/listings/track-listing-view.ts` | `trackListingView` client helper |
 | `app/actions/inventory.ts` | Bootstrap + summary + paginated product groups |
 | `lib/listings/load-user-inventory.ts` | Shared `loadUserInventoryView` |
 | `lib/listings/perf-log.ts` | Server perf instrumentation |
@@ -151,7 +153,8 @@ getUserInventoryGroups({
 ```ts
 // Success: { success: true }
 // Failure: { success: false, error: string }
-// Requires authenticated user; no-op in RPC for guests
+// Guest + authenticated; seller self-view skipped in trackListingView (client)
+// Triggers: merchant listing page mount, ExecutionSlideOver open
 ```
 
 ### `updateCardListing(formData)`

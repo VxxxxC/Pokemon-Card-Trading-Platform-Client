@@ -95,7 +95,8 @@ Run in Supabase SQL Editor or via `bunx supabase db push`:
 - `supabase/migrations/20260706110000_user_collections_portfolio_extend.sql` — **`user_collections`** portfolio columns (`id`, `grading_*`, `purchase_price`); drop `quantity`; reputation `COUNT(*)`
 - `supabase/migrations/20260706120000_listing_stats_inventory_extend.sql` — **`listing_stats`** slim (`views`, `offers_count`); seller RLS; init trigger
 - `supabase/migrations/20260706130000_listing_stats_rpc_sync.sql` — **`rpc_make_offer`** bumps cumulative `offers_count`
-- `supabase/migrations/20260706140000_rpc_increment_listing_view.sql` — view counter for `ExecutionSlideOver`
+- `supabase/migrations/20260706140000_rpc_increment_listing_view.sql` — view counter RPC (initial)
+- `supabase/migrations/20260720120000_listing_view_guest_anon.sql` — guest anon view counting
 - `supabase/migrations/20260706150000_profile_reviews_persona_split.sql` — dual-persona rating split + `search_public_profile_reviews`
 - `supabase/migrations/20260706160000_member_completed_trades_buy_and_sell.sql` — C2C seller counts toward `profiles.completed_trades_count`; reconcile backfill (excludes cancelled/refunded)
 - `supabase/migrations/20260707130000_complete_member_order_buyer_only.sql` — **`rpc_complete_member_order`** buyer-only; `fn_enforce_member_order_transitions` seller-complete removed

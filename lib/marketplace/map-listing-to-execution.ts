@@ -75,6 +75,7 @@ function mapListingToSellOrder(listing: MarketplaceListing): SellOrder | null {
   return {
     sellerName: listing.seller,
     sellerId: listing.sellerId,
+    sellerPersona: listing.sellerPersona,
     price: listing.price,
     sellerRating: 0,
     customGrade: listing.grade,

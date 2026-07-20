@@ -6,6 +6,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { submitUserReport } from "@/app/actions/reports";
 import { TitleBadgeIcon } from "@/app/components/profile/TitleBadgeIcon";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 import { useMemberTitleDisplay } from "@/app/lib/hooks/useMemberTitleDisplay";
 import { useMerchantTitleDisplay } from "@/app/lib/hooks/useMerchantTitleDisplay";
 import type { MarketplaceSellerProfile } from "@/lib/marketplace/load-seller-profile";
@@ -44,9 +45,7 @@ function MerchantIdentityChips({
 }) {
   return (
     <>
-      <span className="inline-flex items-center font-mono font-bold text-[9px] text-brand bg-[rgba(212,165,116,0.06)] border border-brand/20 px-1.5 py-0.5 rounded-[3px] max-w-max select-none tracking-wide">
-        認證商家
-      </span>
+      <CertifiedMerchantBadge />
       {profile.kycVerified ? (
         <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success bg-[rgba(16,185,129,0.12)] px-2 py-0.5 rounded-md border border-success/20 font-bold">
           ✓ KYC 已驗證

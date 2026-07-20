@@ -88,6 +88,7 @@ export type PublicProfilePageBootstrapResult =
 
 export async function getPublicProfilePageBootstrap(
   profileKey: string,
+  options?: { persona?: ReviewPersona },
 ): Promise<PublicProfilePageBootstrapResult> {
   const trimmedKey = profileKey.trim();
   if (!trimmedKey) {
@@ -99,13 +100,18 @@ export async function getPublicProfilePageBootstrap(
   }
 
   try {
-    const baseProfile = await loadMarketplaceSellerProfile(trimmedKey);
+    const requestedPersona = options?.persona;
+    const baseProfile = await loadMarketplaceSellerProfile(
+      trimmedKey,
+      requestedPersona,
+    );
     if (!baseProfile) {
       return { success: false, error: "找不到此用戶", notFound: true };
     }
 
     const reviewPersona: ReviewPersona =
-      baseProfile.role === "merchant" ? "merchant" : "member";
+      requestedPersona ??
+      (baseProfile.role === "merchant" ? "merchant" : "member");
 
     const [listingsResult, reviewsResult] = await Promise.all([
       searchMarketplaceSellerListings({
