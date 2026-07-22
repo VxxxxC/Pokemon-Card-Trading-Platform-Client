@@ -32,7 +32,7 @@ export default async function AdminLayout({
               aria-hidden="true"
             />
             <span className="font-sans text-sm font-bold text-text-primary">
-              後台管理控制艙
+              管理員控制台
             </span>
             <span className="rounded-full border border-warning/20 bg-[rgba(239,68,68,0.10)] px-2 py-0.5 font-mono text-[10px] text-warning">
               ADMIN
