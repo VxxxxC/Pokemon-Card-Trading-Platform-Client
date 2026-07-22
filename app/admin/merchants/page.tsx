@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
   Table,
@@ -204,9 +205,8 @@ const initialAuditLogs: OverrideAuditLog[] = [
 ];
 
 export default function AdminMerchantsPage() {
-  const [activeTab, setActiveTab] = useState<
-    "stripe" | "onboarding" | "override"
-  >("stripe");
+  const [activeTab, setActiveTab] = useState<"stripe" | "onboarding">("stripe");
+  const [isOverrideOpen, setIsOverrideOpen] = useState(false);
 
   // Datasets State
   const [stripeRecords] = useState<StripeKycRecord[]>(initialStripeRecords);
@@ -358,23 +358,41 @@ export default function AdminMerchantsPage() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-100px)] space-y-4">
-      {/* ── Page Header & Top Nav Selector ────────────────────────────── */}
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div className="bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <h1 className="font-sans font-bold text-[20px] text-text-primary">
-          商戶與 KYC 審查
-        </h1>
-        <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-          管理 Stripe KYC 狀態、商戶提現證照人工複審、以及特殊權限變更覆寫控制
-        </p>
+      <div className="flex items-end justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+        <div>
+          <h1 className="font-sans font-bold text-[20px] text-text-primary">
+            商戶與 KYC 審查
+          </h1>
+          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+            管理 Stripe KYC 狀態、商戶提現證照人工複審、以及特殊權限變更覆寫控制
+          </p>
+        </div>
+
+        {/* ── Privilege Override Toggle Button (Standalone) ── */}
+        <button
+          type="button"
+          onClick={() => setIsOverrideOpen((prev) => !prev)}
+          className={`shrink-0 flex items-center gap-2 h-9 px-3.5 rounded-xl font-sans text-xs font-semibold border transition-all active:scale-[0.98] ${
+            isOverrideOpen
+              ? "bg-warning text-[#17130f] border-warning shadow-md shadow-warning/10"
+              : "bg-bg-elevated text-warning border-warning/20 hover:bg-[rgba(239,68,68,0.10)]"
+          }`}
+        >
+          <span>⚠️</span>
+          <span className="inline">權限覆寫</span>
+          <span className="font-mono text-[10px]">
+            {isOverrideLocked ? "🔒" : "🔓"}
+          </span>
+        </button>
       </div>
 
       {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
       <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             onClick={() => setActiveTab("stripe")}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
+            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "stripe"
                 ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
@@ -388,7 +406,7 @@ export default function AdminMerchantsPage() {
 
           <button
             onClick={() => setActiveTab("onboarding")}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
+            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "onboarding"
                 ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
@@ -401,22 +419,248 @@ export default function AdminMerchantsPage() {
               </span>
             )}
           </button>
-
-          <button
-            onClick={() => setActiveTab("override")}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
-              activeTab === "override"
-                ? "bg-warning text-[#17130f] font-bold shadow-md shadow-warning/10"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-            }`}
-          >
-            <span className="truncate">⚠️ 權限覆寫</span>
-            <span className="font-mono text-[10px] shrink-0">
-              {isOverrideLocked ? "🔒" : "🔓"}
-            </span>
-          </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isOverrideOpen && (
+          <>
+            {/* Backdrop blur layer */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1, ease: "linear" }}
+              className="fixed inset-0 z-60 bg-[#17130f]/90 backdrop-blur-sm"
+              onClick={() => setIsOverrideOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Overlay window */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{
+                duration: 0.5,
+                ease: "linear",
+              }}
+              className="fixed inset-0 z-[70] sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(92vw,1100px)] sm:max-h-[min(85vh,800px)] sm:rounded-2xl bg-bg-card border border-[rgba(237,232,224,0.08)] shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Overlay header */}
+              <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-[rgba(237,232,224,0.08)] bg-[rgba(239,68,68,0.04)]">
+                <div className="flex items-center gap-2">
+                  <span className="text-warning text-[20px]">⚠️</span>
+                  <h2 className="font-sans font-bold text-[16px] text-warning">
+                    管理員特權覆寫面板
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOverrideOpen(false)}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                  aria-label="關閉"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Overlay body */}
+              <div className="flex-1 overflow-y-auto p-5">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Control Panel */}
+                  <div className="bg-[rgba(239,68,68,0.04)] rounded-2xl border border-warning/20 p-5 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
+                        解鎖後可強制繞過標準 KYC
+                        流程，直接修改用戶角色權限或封禁其 Stripe Connect
+                        金流通道。**所有操作均會強制存入不可篡改的審計日誌
+                        (Audit Log)。**
+                      </p>
+
+                      {/* Safety Lock Toggle Switch */}
+                      <div className="bg-bg-card rounded-xl border border-[rgba(239,68,68,0.15)] p-4 flex items-center justify-between">
+                        <div>
+                          <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                            覆寫安全鎖狀態
+                          </span>
+                          <span
+                            className={`font-sans font-bold text-[13px] ${isOverrideLocked ? "text-success" : "text-warning"}`}
+                          >
+                            {isOverrideLocked
+                              ? "🔒 系統已安全鎖定"
+                              : "🔓 已解除安全鎖"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsOverrideLocked(!isOverrideLocked);
+                            toast(
+                              isOverrideLocked
+                                ? "特權覆寫安全鎖已解除"
+                                : "特權覆寫安全鎖已重新啟用",
+                            );
+                          }}
+                          className={`h-9 px-3.5 font-sans font-semibold text-[11px] rounded-xl border transition-all active:scale-[0.98] ${
+                            isOverrideLocked
+                              ? "bg-[rgba(239,68,68,0.10)] text-warning border-warning/20 hover:bg-[rgba(239,68,68,0.15)]"
+                              : "bg-success text-[#111] border-transparent hover:bg-success/90"
+                          }`}
+                        >
+                          {isOverrideLocked ? "解除鎖定" : "重啟安全鎖"}
+                        </button>
+                      </div>
+
+                      {/* Override Command Form */}
+                      {!isOverrideLocked ? (
+                        <div className="bg-bg-card rounded-xl border border-[rgba(237,232,224,0.12)] p-4 space-y-3 animate-fade-in">
+                          <span className="font-sans font-bold text-[12px] text-text-primary block border-b border-[rgba(237,232,224,0.08)] pb-2">
+                            執行特權覆寫指令
+                          </span>
+                          <div className="space-y-2.5">
+                            <div>
+                              <label className="font-mono text-[10px] text-text-disabled block mb-1">
+                                目標用戶 (ID / Handle / Email)
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="例: USR-0042 或 @kuro_gamer"
+                                value={overrideTargetUser}
+                                onChange={(e) =>
+                                  setOverrideTargetUser(e.target.value)
+                                }
+                                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="font-mono text-[10px] text-text-disabled block mb-1">
+                                特權指令類型
+                              </label>
+                              <select
+                                value={overrideAction}
+                                onChange={(e) =>
+                                  setOverrideAction(e.target.value)
+                                }
+                                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-2 font-sans text-xs text-text-primary focus:outline-none"
+                              >
+                                <option>升級為 MERCHANT (商戶)</option>
+                                <option>降級為 USER (一般會員)</option>
+                                <option>強制免 KYC 提現放行</option>
+                                <option>強制封禁其 Stripe Connect 帳戶</option>
+                                <option>重置 Stripe KYC 連結狀態</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="font-mono text-[10px] text-text-disabled block mb-1">
+                                操作理由 (必填 Audit Log 存檔)
+                              </label>
+                              <textarea
+                                rows={2}
+                                placeholder="請輸入本次人工覆寫的詳細理由..."
+                                value={overrideReason}
+                                onChange={(e) =>
+                                  setOverrideReason(e.target.value)
+                                }
+                                className="w-full bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg p-2.5 font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                              />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={handleExecuteOverride}
+                              className="w-full h-9 bg-warning text-[#17130f] font-sans font-bold text-xs rounded-lg active:scale-[0.98] hover:bg-warning/90 transition-all shadow-md shadow-warning/10"
+                            >
+                              🚀 執行特權覆寫指令
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl border border-[rgba(237,232,224,0.06)] bg-bg-page text-center space-y-1">
+                          <p className="font-sans text-xs text-text-disabled">
+                            指令輸入框已隱藏
+                          </p>
+                          <p className="font-mono text-[10px] text-text-disabled">
+                            請先點擊上方『解除鎖定』按鈕以進行覆寫操作
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Audit Log Table (Span 2 Cols) */}
+                  <div className="lg:col-span-2 bg-bg-page rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 flex flex-col justify-between space-y-3">
+                    <div>
+                      <h3 className="font-sans font-bold text-[14px] text-text-primary mb-1">
+                        特權覆寫審計日誌 (Audit Logs)
+                      </h3>
+                      <p className="font-sans text-[11px] text-text-secondary mb-3">
+                        不可篡改的全站管理員操作歷史軌跡
+                      </p>
+
+                      <div className="rounded-xl border border-[rgba(237,232,224,0.08)] overflow-x-scroll no-scrollbar">
+                        <Table>
+                          <TableHeader className="bg-bg-elevated/50">
+                            <TableRow className="border-b border-[rgba(237,232,224,0.08)]">
+                              <TableHead className="font-mono text-[11px] text-text-secondary h-9">
+                                日誌編號
+                              </TableHead>
+                              <TableHead className="font-sans text-[11px] text-text-secondary h-9">
+                                管理員
+                              </TableHead>
+                              <TableHead className="font-mono text-[11px] text-text-secondary h-9">
+                                目標用戶
+                              </TableHead>
+                              <TableHead className="font-sans text-[11px] text-text-secondary h-9">
+                                特權動作
+                              </TableHead>
+                              <TableHead className="font-sans text-[11px] text-text-secondary h-9">
+                                操作理由
+                              </TableHead>
+                              <TableHead className="font-mono text-[11px] text-text-secondary h-9 text-right">
+                                時間
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {auditLogs.map((log) => (
+                              <TableRow
+                                key={log.id}
+                                className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/30"
+                              >
+                                <TableCell className="font-mono text-[10px] text-text-disabled py-2.5">
+                                  #{log.id}
+                                </TableCell>
+                                <TableCell className="font-mono text-[11px] text-text-secondary py-2.5 whitespace-nowrap">
+                                  {log.adminEmail}
+                                </TableCell>
+                                <TableCell className="font-mono text-[11px] text-brand font-bold py-2.5 whitespace-nowrap">
+                                  {log.targetUser}
+                                </TableCell>
+                                <TableCell className="font-sans text-[11px] text-warning font-semibold py-2.5 whitespace-nowrap">
+                                  {log.action}
+                                </TableCell>
+                                <TableCell className="font-sans text-[11px] text-text-primary py-2.5 max-w-[200px] truncate">
+                                  {log.reason}
+                                </TableCell>
+                                <TableCell className="font-mono text-[10px] text-text-disabled text-right py-2.5 whitespace-nowrap">
+                                  {log.timestamp}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
       <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
@@ -774,201 +1018,6 @@ export default function AdminMerchantsPage() {
                   })}
                 </TableBody>
               </Table>
-            </div>
-          </div>
-        )}
-
-        {/* ── TAB 3: 權限覆寫 (Security Lock & Privilege Override) ───────── */}
-        {activeTab === "override" && (
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Control Panel */}
-            <div className="bg-[rgba(239,68,68,0.04)] rounded-2xl border border-warning/20 p-5 space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-warning text-[20px]">⚠️</span>
-                  <h2 className="font-sans font-bold text-[16px] text-warning">
-                    管理員特權覆寫面板
-                  </h2>
-                </div>
-                <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
-                  解鎖後可強制繞過標準 KYC 流程，直接修改用戶角色權限或封禁其
-                  Stripe Connect
-                  金流通道。**所有操作均會強制存入不可篡改的審計日誌 (Audit
-                  Log)。**
-                </p>
-
-                {/* Safety Lock Toggle Switch */}
-                <div className="bg-bg-card rounded-xl border border-[rgba(239,68,68,0.15)] p-4 flex items-center justify-between">
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      覆寫安全鎖狀態
-                    </span>
-                    <span
-                      className={`font-sans font-bold text-[13px] ${isOverrideLocked ? "text-success" : "text-warning"}`}
-                    >
-                      {isOverrideLocked
-                        ? "🔒 系統已安全鎖定"
-                        : "🔓 已解除安全鎖"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                    setIsOverrideLocked(!isOverrideLocked);
-                    toast(
-                      isOverrideLocked
-                        ? "特權覆寫安全鎖已解除"
-                        : "特權覆寫安全鎖已重新啟用",
-                    );
-                    }}
-                    className={`h-9 px-3.5 font-sans font-semibold text-[11px] rounded-xl border transition-all active:scale-[0.98] ${
-                      isOverrideLocked
-                        ? "bg-[rgba(239,68,68,0.10)] text-warning border-warning/20 hover:bg-[rgba(239,68,68,0.15)]"
-                        : "bg-success text-[#111] border-transparent hover:bg-success/90"
-                    }`}
-                  >
-                    {isOverrideLocked ? "解除鎖定" : "重啟安全鎖"}
-                  </button>
-                </div>
-
-                {/* Override Command Form */}
-                {!isOverrideLocked ? (
-                  <div className="bg-bg-card rounded-xl border border-[rgba(237,232,224,0.12)] p-4 space-y-3 animate-fade-in">
-                    <span className="font-sans font-bold text-[12px] text-text-primary block border-b border-[rgba(237,232,224,0.08)] pb-2">
-                      執行特權覆寫指令
-                    </span>
-                    <div className="space-y-2.5">
-                      <div>
-                        <label className="font-mono text-[10px] text-text-disabled block mb-1">
-                          目標用戶 (ID / Handle / Email)
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="例: USR-0042 或 @kuro_gamer"
-                          value={overrideTargetUser}
-                          onChange={(e) =>
-                            setOverrideTargetUser(e.target.value)
-                          }
-                          className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="font-mono text-[10px] text-text-disabled block mb-1">
-                          特權指令類型
-                        </label>
-                        <select
-                          value={overrideAction}
-                          onChange={(e) => setOverrideAction(e.target.value)}
-                          className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-2 font-sans text-xs text-text-primary focus:outline-none"
-                        >
-                          <option>升級為 MERCHANT (商戶)</option>
-                          <option>降級為 USER (一般會員)</option>
-                          <option>強制免 KYC 提現放行</option>
-                          <option>強制封禁其 Stripe Connect 帳戶</option>
-                          <option>重置 Stripe KYC 連結狀態</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="font-mono text-[10px] text-text-disabled block mb-1">
-                          操作理由 (必填 Audit Log 存檔)
-                        </label>
-                        <textarea
-                          rows={2}
-                          placeholder="請輸入本次人工覆寫的詳細理由..."
-                          value={overrideReason}
-                          onChange={(e) => setOverrideReason(e.target.value)}
-                          className="w-full bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg p-2.5 font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
-                        />
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleExecuteOverride}
-                        className="w-full h-9 bg-warning text-[#17130f] font-sans font-bold text-xs rounded-lg active:scale-[0.98] hover:bg-warning/90 transition-all shadow-md shadow-warning/10"
-                      >
-                        🚀 執行特權覆寫指令
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-xl border border-[rgba(237,232,224,0.06)] bg-bg-page text-center space-y-1">
-                    <p className="font-sans text-xs text-text-disabled">
-                      指令輸入框已隱藏
-                    </p>
-                    <p className="font-mono text-[10px] text-text-disabled">
-                      請先點擊上方『解除鎖定』按鈕以進行覆寫操作
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Audit Log Table (Span 2 Cols) */}
-            <div className="lg:col-span-2 bg-bg-page rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 flex flex-col justify-between space-y-3">
-              <div>
-                <h3 className="font-sans font-bold text-[14px] text-text-primary mb-1">
-                  特權覆寫審計日誌 (Audit Logs)
-                </h3>
-                <p className="font-sans text-[11px] text-text-secondary mb-3">
-                  不可篡改的全站管理員操作歷史軌跡
-                </p>
-
-                <div className="rounded-xl border border-[rgba(237,232,224,0.08)] overflow-x-auto">
-                  <Table>
-                    <TableHeader className="bg-bg-elevated/50">
-                      <TableRow className="border-b border-[rgba(237,232,224,0.08)]">
-                        <TableHead className="font-mono text-[11px] text-text-secondary h-9">
-                          日誌編號
-                        </TableHead>
-                        <TableHead className="font-sans text-[11px] text-text-secondary h-9">
-                          管理員
-                        </TableHead>
-                        <TableHead className="font-mono text-[11px] text-text-secondary h-9">
-                          目標用戶
-                        </TableHead>
-                        <TableHead className="font-sans text-[11px] text-text-secondary h-9">
-                          特權動作
-                        </TableHead>
-                        <TableHead className="font-sans text-[11px] text-text-secondary h-9">
-                          操作理由
-                        </TableHead>
-                        <TableHead className="font-mono text-[11px] text-text-secondary h-9 text-right">
-                          時間
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {auditLogs.map((log) => (
-                        <TableRow
-                          key={log.id}
-                          className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/30"
-                        >
-                          <TableCell className="font-mono text-[10px] text-text-disabled py-2.5">
-                            #{log.id}
-                          </TableCell>
-                          <TableCell className="font-mono text-[11px] text-text-secondary py-2.5 whitespace-nowrap">
-                            {log.adminEmail}
-                          </TableCell>
-                          <TableCell className="font-mono text-[11px] text-brand font-bold py-2.5 whitespace-nowrap">
-                            {log.targetUser}
-                          </TableCell>
-                          <TableCell className="font-sans text-[11px] text-warning font-semibold py-2.5 whitespace-nowrap">
-                            {log.action}
-                          </TableCell>
-                          <TableCell className="font-sans text-[11px] text-text-primary py-2.5 max-w-[200px] truncate">
-                            {log.reason}
-                          </TableCell>
-                          <TableCell className="font-mono text-[10px] text-text-disabled text-right py-2.5 whitespace-nowrap">
-                            {log.timestamp}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
             </div>
           </div>
         )}

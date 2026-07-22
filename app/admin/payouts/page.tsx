@@ -314,10 +314,10 @@ export default function AdminPayoutsPage() {
 
       {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
       <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <div className="grid grid-cols-2 md:grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             onClick={() => setActiveTab("fps")}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
+            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "fps"
                 ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
@@ -331,7 +331,7 @@ export default function AdminPayoutsPage() {
 
           <button
             onClick={() => setActiveTab("stripe")}
-            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
+            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "stripe"
                 ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
