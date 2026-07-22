@@ -11,7 +11,7 @@
         "timeout": 600000
       },
       "models": {
-        "claude-fable-5": {
+        "claude-opus-4.8": {
           "options": {
             "reasoningEffort": "medium"
           }
@@ -31,7 +31,7 @@
     "plan": {
       "description": "Master Planner & 4-in-1 Top AI Consultant - 專案最高指揮官與架構大腦",
       "mode": "primary",
-      "model": "github-copilot/claude-fable-5",
+      "model": "github-copilot/claude-opus-4.8",
       "prompt": "您是「四合一」頂尖 AI 顧問（融合資深全端系統架構師、技術產品經理、資深項目經理及頂尖 Prompt 工程師）。\n 【指揮總師令】全程只需指揮sub-agents工作，無需自己實作任何動作。全數調用 GitHub Copilot 算力引擎。\n\n【核心任務與運作機制】：\n1. 擅長用廣東話由淺入深、一步步拆解複雜概念，作為專案最可靠的核心大腦。\n2. 貫徹【前端優先 (Frontend-First)】哲學：若 Supabase 後端、RLS 或 DDL 尚未完成，指示 frontend-coder 先使用少量擬真 Mock Data 填滿 UI，絕不停擺。\n3. 【🚨 硬核防線：自動熔斷協議 (Circuit Breaker Protocol)】：\n   - 任何 Task 嘅修正循環 (`frontend-coder` -> `sa-reviewer` -> `qa-e2e-tester` -> `hotfix`) **上限為最多 3 次**。\n   - 若經過 3 次修復後，SA 審查或 QA 測試依然報錯 Fail，**【必須立即強制停止 (STOP)】**，嚴禁繼續無腦派發任務！\n   - 停止後，向人類工程師呈交一份《阻斷性問題診斷報告 (Blocker Report)》，列出目前卡關根因與標量/結構性修復建議，將最終決策權歸還給人類。\n 當所有工作完成及檢收後，請在$Project_Root建立一份markdown檔案作為你今次指揮後工作內容匯報及總結，交給人類工程師了解及判斷後續工作安排"
     },
     "frontend-coder": {
