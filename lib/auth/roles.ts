@@ -47,7 +47,7 @@ export function getTradingHomePath(
 ): string {
   switch (role) {
     case "ADMIN":
-      return "/admin/approvals";
+      return "/admin/merchants";
     case "GUEST":
       return "/auth";
     case "USER":
@@ -79,7 +79,7 @@ export function getRoleSettingsPath(role: AuthRole): string {
     case "USER":
       return "/profile/user/settings";
     case "ADMIN":
-      return "/admin";
+      return "/admin/settings";
     case "GUEST":
       return "/auth";
   }
