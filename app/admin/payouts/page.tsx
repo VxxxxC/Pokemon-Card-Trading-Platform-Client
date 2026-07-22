@@ -1,42 +1,132 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-// Types for components
+// ── Types Definitions ────────────────────────────────────────────────────────
 interface WithdrawalRequest {
   id: string;
-  merchantName: string;
+  userName: string;
   amount: number;
-  bankName: string;
-  bankAccount: string;
   fpsId: string;
   status: "pending" | "processing" | "completed" | "failed";
   submittedAt: string;
 }
 
-interface StripePayoutFlow {
+interface MerchantStripeAccount {
   id: string;
   subAccountId: string;
   merchantName: string;
-  amount: number;
-  status: "succeeded" | "pending" | "failed";
-  time: string;
+  balance: number;
+  totalPayout: number;
+  platformCommission: number;
+  status: "active" | "restricted";
 }
 
-// Initial mock data
+// ── Initial Mock Data ────────────────────────────────────────────────────────
 const initialWithdrawals: WithdrawalRequest[] = [
-  { id: "WD-1002", merchantName: "KojiTCG Premium", amount: 48500, bankName: "恒生銀行 (024)", bankAccount: "382-849-***-001", fpsId: "10283472", status: "pending", submittedAt: "2025/5/21 10:30" },
-  { id: "WD-1003", merchantName: "TokyoRareCards", amount: 32400, bankName: "匯豐銀行 (004)", bankAccount: "848-204-***-882", fpsId: "94829374", status: "pending", submittedAt: "2025/5/20 15:45" },
-  { id: "WD-1004", merchantName: "OsakaPokéCards", amount: 15600, bankName: "渣打銀行 (003)", bankAccount: "294-118-***-002", fpsId: "84729110", status: "pending", submittedAt: "2025/5/20 18:22" },
-  { id: "WD-1005", merchantName: "NagoyaTCG", amount: 62000, bankName: "中國銀行 (012)", bankAccount: "937-228-***-119", fpsId: "37482910", status: "pending", submittedAt: "2025/5/19 11:15" },
-  { id: "WD-1001", merchantName: "Taiwan x Japan TCG", amount: 19800, bankName: "匯豐銀行 (004)", bankAccount: "582-938-***-203", fpsId: "19384720", status: "completed", submittedAt: "2025/5/14 09:00" },
+  {
+    id: "WD-1002",
+    userName: "KojiTCG_Collector",
+    amount: 48500,
+    fpsId: "10283472",
+    status: "pending",
+    submittedAt: "2025/5/21 10:30",
+  },
+  {
+    id: "WD-1003",
+    userName: "TokyoRare_HongKong",
+    amount: 32400,
+    fpsId: "94829374",
+    status: "pending",
+    submittedAt: "2025/5/20 15:45",
+  },
+  {
+    id: "WD-1004",
+    userName: "OsakaPoke_Alex",
+    amount: 15600,
+    fpsId: "84729110",
+    status: "pending",
+    submittedAt: "2025/5/20 18:22",
+  },
+  {
+    id: "WD-1005",
+    userName: "Nagoya_CardVault",
+    amount: 62000,
+    fpsId: "37482910",
+    status: "pending",
+    submittedAt: "2025/5/19 11:15",
+  },
+  {
+    id: "WD-1001",
+    userName: "JapanTCG_Trader",
+    amount: 19800,
+    fpsId: "19384720",
+    status: "completed",
+    submittedAt: "2025/5/14 09:00",
+  },
+  {
+    id: "WD-1006",
+    userName: "Pikachu_Specialist",
+    amount: 8900,
+    fpsId: "58291044",
+    status: "pending",
+    submittedAt: "2025/5/18 14:10",
+  },
+  {
+    id: "WD-1007",
+    userName: "Charizard_Vault_HK",
+    amount: 105000,
+    fpsId: "88291023",
+    status: "pending",
+    submittedAt: "2025/5/17 20:05",
+  },
 ];
 
-const initialStripeFlows: StripePayoutFlow[] = [
-  { id: "ST-8812", subAccountId: "acct_1NfG82H", merchantName: "HarutoCards Premium", amount: 12400, status: "succeeded", time: "5分鐘前" },
-  { id: "ST-8813", subAccountId: "acct_1MeF83J", merchantName: "AikoRare Collection", amount: 8200, status: "succeeded", time: "18分鐘前" },
-  { id: "ST-8814", subAccountId: "acct_1KyT92K", merchantName: "Daichi Rare Cards", amount: 24500, status: "pending", time: "1小時前" },
-  { id: "ST-8815", subAccountId: "acct_1NfG82H", merchantName: "HarutoCards Premium", amount: 5600, status: "succeeded", time: "3小時前" },
+const initialMerchantAccounts: MerchantStripeAccount[] = [
+  {
+    id: "M-01",
+    subAccountId: "acct_1NfG82H",
+    merchantName: "HarutoCards Premium",
+    balance: 142000,
+    totalPayout: 1280000,
+    platformCommission: 64000,
+    status: "active",
+  },
+  {
+    id: "M-02",
+    subAccountId: "acct_1MeF83J",
+    merchantName: "AikoRare Collection",
+    balance: 89000,
+    totalPayout: 840000,
+    platformCommission: 42000,
+    status: "active",
+  },
+  {
+    id: "M-03",
+    subAccountId: "acct_1KyT92K",
+    merchantName: "Daichi Rare Cards",
+    balance: 215000,
+    totalPayout: 1950000,
+    platformCommission: 97500,
+    status: "active",
+  },
+  {
+    id: "M-04",
+    subAccountId: "acct_1PzX44L",
+    merchantName: "KuroGamer TCG",
+    balance: 12000,
+    totalPayout: 310000,
+    platformCommission: 15500,
+    status: "restricted",
+  },
 ];
 
 const STATUS_BADGES = {
@@ -47,8 +137,23 @@ const STATUS_BADGES = {
 };
 
 export default function AdminPayoutsPage() {
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>(initialWithdrawals);
-  const [stripeFlows] = useState<StripePayoutFlow[]>(initialStripeFlows);
+  const [activeTab, setActiveTab] = useState<"fps" | "stripe">("fps");
+  const [withdrawals, setWithdrawals] =
+    useState<WithdrawalRequest[]>(initialWithdrawals);
+  const [merchantAccounts] = useState<MerchantStripeAccount[]>(
+    initialMerchantAccounts,
+  );
+
+  // Search and Filter state
+  const [fpsSearch, setFpsSearch] = useState("");
+  const [stripeSearch, setStripeSearch] = useState("");
+
+  // Checkbox multi-select state
+  const [selectedFpsIds, setSelectedFpsIds] = useState<Set<string>>(new Set());
+  const [selectedStripeIds, setSelectedStripeIds] = useState<Set<string>>(
+    new Set(),
+  );
+
   const [notif, setNotif] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
@@ -56,44 +161,194 @@ export default function AdminPayoutsPage() {
     setTimeout(() => setNotif(null), 4000);
   };
 
-  const handleAction = (id: string, newStatus: "completed" | "processing" | "failed") => {
-    setWithdrawals((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, status: newStatus } : w))
+  // ── Filtered Datasets ──────────────────────────────────────────────────────
+  const filteredWithdrawals = useMemo(() => {
+    return withdrawals.filter(
+      (w) =>
+        w.userName.toLowerCase().includes(fpsSearch.toLowerCase()) ||
+        w.fpsId.includes(fpsSearch) ||
+        w.id.toLowerCase().includes(fpsSearch.toLowerCase()),
     );
-    const actionLabel = newStatus === "completed" ? "手動銷帳成功" : newStatus === "processing" ? "已開始處理" : "已標記失敗";
+  }, [withdrawals, fpsSearch]);
+
+  const filteredMerchants = useMemo(() => {
+    return merchantAccounts.filter(
+      (m) =>
+        m.merchantName.toLowerCase().includes(stripeSearch.toLowerCase()) ||
+        m.subAccountId.toLowerCase().includes(stripeSearch.toLowerCase()),
+    );
+  }, [merchantAccounts, stripeSearch]);
+
+  // ── Multi-select Handlers ──────────────────────────────────────────────────
+  const toggleSelectAllFps = () => {
+    if (selectedFpsIds.size === filteredWithdrawals.length) {
+      setSelectedFpsIds(new Set());
+    } else {
+      setSelectedFpsIds(new Set(filteredWithdrawals.map((w) => w.id)));
+    }
+  };
+
+  const toggleSelectFpsRow = (id: string) => {
+    const next = new Set(selectedFpsIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedFpsIds(next);
+  };
+
+  const toggleSelectAllStripe = () => {
+    if (selectedStripeIds.size === filteredMerchants.length) {
+      setSelectedStripeIds(new Set());
+    } else {
+      setSelectedStripeIds(new Set(filteredMerchants.map((m) => m.id)));
+    }
+  };
+
+  const toggleSelectStripeRow = (id: string) => {
+    const next = new Set(selectedStripeIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedStripeIds(next);
+  };
+
+  // ── FPS Actions ─────────────────────────────────────────────────────────────
+  const handleAction = (
+    id: string,
+    newStatus: "completed" | "processing" | "failed",
+  ) => {
+    setWithdrawals((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, status: newStatus } : w)),
+    );
+    const actionLabel =
+      newStatus === "completed"
+        ? "手動銷帳成功"
+        : newStatus === "processing"
+          ? "已開始處理"
+          : "已標記失敗";
     showNotification(`提現單 ${id} ${actionLabel}`);
   };
 
-  const handleExportCSV = () => {
-    // Generate simple mock CSV export file
-    const headers = "提現單號,商戶名稱,提現金額(HK$),銀行名稱,銀行賬號,FPS ID,提交時間,狀態\n";
-    const rows = withdrawals
-      .filter((w) => w.status === "pending")
+  const handleBatchComplete = () => {
+    if (selectedFpsIds.size === 0) return;
+    setWithdrawals((prev) =>
+      prev.map((w) =>
+        selectedFpsIds.has(w.id) ? { ...w, status: "completed" } : w,
+      ),
+    );
+    showNotification(`已批量完成 ${selectedFpsIds.size} 筆提現單銷帳！`);
+    setSelectedFpsIds(new Set());
+  };
+
+  const handleExportFpsCSV = (exportSelectedOnly = false) => {
+    const targetList = exportSelectedOnly
+      ? withdrawals.filter((w) => selectedFpsIds.has(w.id))
+      : withdrawals.filter((w) => w.status === "pending");
+
+    if (targetList.length === 0) {
+      showNotification("沒有可導出的提現紀錄！");
+      return;
+    }
+
+    const headers = "提現單號,用戶名稱,提現金額(HK$),FPS ID,提交時間,狀態\n";
+    const rows = targetList
       .map(
         (w) =>
-          `${w.id},"${w.merchantName}",${w.amount},"${w.bankName}","${w.bankAccount}","${w.fpsId}","${w.submittedAt}",${w.status}`
+          `${w.id},"${w.userName}",${w.amount},"${w.fpsId}","${w.submittedAt}",${w.status}`,
       )
       .join("\n");
-    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(headers + rows);
+    const csvContent =
+      "data:text/csv;charset=utf-8," + encodeURIComponent(headers + rows);
     const link = document.createElement("a");
     link.setAttribute("href", csvContent);
-    link.setAttribute("download", `HKCV_Payout_Export_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `HKCV_FPS_Payout_Export_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    showNotification("已成功導出待處理 FPS Payout CSV 文件！");
+    showNotification(
+      `已成功導出 ${targetList.length} 筆 FPS Payout CSV 文件！`,
+    );
+  };
+
+  // ── Merchant Stripe CSV Export ─────────────────────────────────────────────
+  const handleExportMerchantCSV = (exportSelectedOnly = false) => {
+    const targetList = exportSelectedOnly
+      ? merchantAccounts.filter((m) => selectedStripeIds.has(m.id))
+      : filteredMerchants;
+
+    if (targetList.length === 0) {
+      showNotification("沒有可導出的商戶流水紀錄！");
+      return;
+    }
+
+    const headers =
+      "商戶名稱,Stripe帳戶ID,帳戶餘額(HK$),已分賬總額(HK$),平台5%佣金分成(HK$),帳戶狀態\n";
+    const rows = targetList
+      .map(
+        (m) =>
+          `"${m.merchantName}","${m.subAccountId}",${m.balance},${m.totalPayout},${m.platformCommission},${m.status === "active" ? "正常運作" : "風控限制"}`,
+      )
+      .join("\n");
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," + encodeURIComponent(headers + rows);
+    const link = document.createElement("a");
+    link.setAttribute("href", csvContent);
+    link.setAttribute(
+      "download",
+      `HKCV_Merchant_Stripe_Export_${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showNotification(`已成功導出 ${targetList.length} 筆商戶流水 CSV 文件！`);
   };
 
   return (
-    <div className="space-y-6">
-      {/* ── Page Header ───────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div className="flex flex-col min-h-[calc(100vh-100px)] space-y-4">
+      {/* ── Page Header & Top Nav Selector ────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
         <div>
-          <h1 className="font-sans font-bold text-[24px] text-text-primary">財務與結算管控台</h1>
-          <p className="font-sans text-[13px] text-text-secondary mt-0.5">
-            人手 FPS 結算批處理、Stripe Connect 自動撥款流水及商戶總賬戶餘額監控
+          <h1 className="font-sans font-bold text-[20px] text-text-primary">
+            財務與結算管控台
+          </h1>
+          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+            人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與 5% 佣金收益監控
           </p>
+        </div>
+
+        {/* ── Top Nav Tab Selector ── */}
+        <div className="flex items-center gap-1.5 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)] shrink-0">
+          <button
+            onClick={() => setActiveTab("fps")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+              activeTab === "fps"
+                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span>🏦 FPS 批次處理</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full">
+              {withdrawals.filter((w) => w.status === "pending").length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("stripe")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+              activeTab === "stripe"
+                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span>💳 商戶流水 (Stripe)</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full">
+              {merchantAccounts.length}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -105,162 +360,348 @@ export default function AdminPayoutsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* ── Left Section: 每週五人手 FPS 批處理 ────────────────────── */}
-        <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="font-sans font-bold text-[16px] text-text-primary">
-                  每週五人手 FPS 批處理
-                </h2>
-                <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-                  處理商戶申請的本地銀行 FPS 提現請求（免手續費）
-                </p>
-              </div>
-              <button
-                onClick={handleExportCSV}
-                className="h-9 px-4 bg-brand text-[#17130f] font-sans font-semibold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
+      {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
+      <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
+        {/* ── Tab 1: FPS 批次處理 View ──────────────────────────────────── */}
+        {activeTab === "fps" && (
+          <div className="flex-1 flex flex-col justify-between space-y-4">
+            {/* Toolbar: Search + Clean Toggleable Batch Action */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72 md:w-80">
+                <input
+                  type="text"
+                  placeholder="搜尋用戶名稱、FPS ID 或單號..."
+                  value={fpsSearch}
+                  onChange={(e) => setFpsSearch(e.target.value)}
+                  className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="absolute left-3 top-2.5 text-text-disabled"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                導出 Payout CSV
-              </button>
+              </div>
+
+              {/* Action Cluster (Toggle between Selection Mode & Full Mode) */}
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedFpsIds.size > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 animate-fade-in">
+                    <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
+                      已選 {selectedFpsIds.size} 筆
+                    </span>
+                    <button
+                      onClick={() => handleExportFpsCSV(true)}
+                      className="h-9 px-3 bg-bg-elevated border border-[rgba(237,232,224,0.12)] text-text-primary hover:text-brand font-sans text-xs rounded-xl hover:bg-bg-hover transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      📥 導出已選 ({selectedFpsIds.size})
+                    </button>
+                    <button
+                      onClick={handleBatchComplete}
+                      className="h-9 px-3.5 bg-success text-[#111] font-sans font-bold text-xs rounded-xl hover:bg-success/90 transition-transform whitespace-nowrap flex items-center gap-1 shadow-md shadow-success/10"
+                    >
+                      ✓ 批量銷帳
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleExportFpsCSV(false)}
+                    className="h-9 px-4 bg-brand text-[#17130f] font-sans font-semibold text-xs rounded-xl hover:bg-brand-hover transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10 whitespace-nowrap"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    全量導出 Payout CSV
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {withdrawals.map((w) => {
-                const isPending = w.status === "pending";
-                return (
-                  <div
-                    key={w.id}
-                    className={`bg-bg-page rounded-xl border p-4 transition-colors ${
-                      isPending ? "border-[rgba(212,165,116,0.15)]" : "border-[rgba(237,232,224,0.06)]"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="font-mono text-[10px] text-text-disabled">#{w.id}</span>
-                          <span className="font-sans font-semibold text-[14px] text-text-primary">
-                            {w.merchantName}
+            {/* High-Density Data Table */}
+            <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
+                  <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
+                    <TableHead className="w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredWithdrawals.length > 0 &&
+                          selectedFpsIds.size === filteredWithdrawals.length
+                        }
+                        onChange={toggleSelectAllFps}
+                        className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                      />
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      提現單號
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                      用戶名稱
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      提現金額
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      FPS ID
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      提交時間
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+                      狀態
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
+                      操作
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredWithdrawals.map((w) => {
+                    const isSelected = selectedFpsIds.has(w.id);
+                    const isPending = w.status === "pending";
+                    return (
+                      <TableRow
+                        key={w.id}
+                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
+                          isSelected
+                            ? "bg-[rgba(212,165,116,0.08)]"
+                            : "hover:bg-bg-elevated/40"
+                        }`}
+                      >
+                        <TableCell className="w-10 text-center py-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectFpsRow(w.id)}
+                            className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled py-3">
+                          #{w.id}
+                        </TableCell>
+                        <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                          {w.userName}
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-[13px] text-text-primary text-right py-3 whitespace-nowrap">
+                          HK$ {w.amount.toLocaleString("zh-TW")}
+                        </TableCell>
+                        <TableCell className="font-mono text-[12px] text-brand font-bold py-3 whitespace-nowrap">
+                          {w.fpsId}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                          {w.submittedAt}
+                        </TableCell>
+                        <TableCell className="text-center py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STATUS_BADGES[w.status]}`}
+                          >
+                            {w.status === "pending"
+                              ? "待處理"
+                              : w.status === "completed"
+                                ? "已完成"
+                                : "處理中"}
                           </span>
-                          <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${STATUS_BADGES[w.status]}`}>
-                            {w.status === "pending" ? "待處理" : w.status === "completed" ? "已完成" : "處理中"}
-                          </span>
-                        </div>
-                        <div className="font-mono text-[11px] text-text-secondary space-y-0.5">
-                          <p>銀行：{w.bankName}</p>
-                          <p>賬號：{w.bankAccount}</p>
-                          <p>FPS ID: <span className="text-brand font-bold">{w.fpsId}</span></p>
-                          <p className="text-[10px] text-text-disabled">提交時間：{w.submittedAt}</p>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0 flex flex-col items-end gap-2">
-                        <div>
-                          <span className="font-mono text-[10px] text-text-disabled block uppercase">提現金額</span>
-                          <span className="font-mono font-bold text-[16px] text-text-primary">
-                            HK$ {w.amount.toLocaleString("zh-TW")}
-                          </span>
-                        </div>
-
-                        {isPending && (
-                          <div className="flex gap-1.5 mt-1">
-                            <button
-                              onClick={() => handleAction(w.id, "completed")}
-                              className="h-8 px-3 bg-success text-[#111] font-sans font-bold text-[11px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform"
-                            >
-                              ✓ 銷帳
-                            </button>
-                            <button
-                              onClick={() => handleAction(w.id, "failed")}
-                              className="h-8 px-3 bg-[rgba(239,68,68,0.10)] text-warning font-mono text-[11px] rounded-lg border border-warning/20 hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.98] transition-transform"
-                            >
-                              ✕ 駁回
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                        </TableCell>
+                        <TableCell className="text-right py-3 whitespace-nowrap">
+                          {isPending ? (
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => handleAction(w.id, "completed")}
+                                className="h-7 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform"
+                              >
+                                ✓ 銷帳
+                              </button>
+                              <button
+                                onClick={() => handleAction(w.id, "failed")}
+                                className="h-7 px-2.5 bg-[rgba(239,68,68,0.10)] text-warning font-mono text-[10px] rounded-lg border border-warning/20 hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.98] transition-transform"
+                              >
+                                ✕ 駁回
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="font-mono text-[10px] text-text-disabled">
+                              —
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
-        </section>
+        )}
 
-        {/* ── Right Section: Stripe Connect 流水監控 ─────────────────── */}
-        <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between">
-          <div>
-            <h2 className="font-sans font-bold text-[16px] text-text-primary mb-1">
-              Stripe Connect 流水監控
-            </h2>
-            <p className="font-sans text-[12px] text-text-secondary mb-4">
-              即時統計 Stripe Connect 商戶子賬戶（自動拆賬）與平台的結算資金
-            </p>
-
-            {/* Merchant Balances Metric card */}
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              <div className="bg-bg-page rounded-xl border border-[rgba(237,232,224,0.06)] p-3">
-                <span className="font-mono text-[10px] text-text-disabled block uppercase">Stripe 子帳戶總餘額</span>
-                <p className="font-mono font-bold text-[18px] text-text-primary mt-0.5">
-                  HK$ 1,482,900
-                </p>
-                <p className="font-mono text-[10px] text-text-disabled mt-0.5">
-                  ● 382 個聯網帳戶
-                </p>
+        {/* ── Tab 2: 商戶流水 (Stripe Accounts) View ──────────────────────── */}
+        {activeTab === "stripe" && (
+          <div className="flex-1 flex flex-col justify-between space-y-4">
+            {/* Toolbar: Search + Export CSV Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72 md:w-80">
+                <input
+                  type="text"
+                  placeholder="搜尋商戶名稱或 Stripe 帳戶 ID..."
+                  value={stripeSearch}
+                  onChange={(e) => setStripeSearch(e.target.value)}
+                  className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="absolute left-3 top-2.5 text-text-disabled"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
               </div>
-              <div className="bg-bg-page rounded-xl border border-[rgba(237,232,224,0.06)] p-3">
-                <span className="font-mono text-[10px] text-text-disabled block uppercase">自動待結算資金</span>
-                <p className="font-mono font-bold text-[18px] text-brand mt-0.5">
-                  HK$ 392,100
-                </p>
-                <p className="font-mono text-[10px] text-text-disabled mt-0.5">
-                  ● 48 小時內自動發放
-                </p>
+
+              {/* Action Cluster (Merchant CSV Export) */}
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedStripeIds.size > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 animate-fade-in">
+                    <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
+                      已選 {selectedStripeIds.size} 筆商戶
+                    </span>
+                    <button
+                      onClick={() => handleExportMerchantCSV(true)}
+                      className="h-9 px-3 bg-brand text-[#17130f] font-sans font-semibold text-xs rounded-xl hover:bg-brand-hover transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10 whitespace-nowrap"
+                    >
+                      📥 導出已選商戶 CSV ({selectedStripeIds.size})
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => handleExportMerchantCSV(false)}
+                    className="h-9 px-4 bg-brand text-[#17130f] font-sans font-semibold text-xs rounded-xl hover:bg-brand-hover transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10 whitespace-nowrap"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    全量導出商戶 CSV
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h3 className="font-sans font-semibold text-[13px] text-text-secondary mb-2">
-                自動拆賬流水 (Stripe Transfers)
-              </h3>
-              <div className="bg-bg-page rounded-xl border border-[rgba(237,232,224,0.06)] overflow-hidden">
-                {stripeFlows.map((flow, i) => (
-                  <div
-                    key={flow.id}
-                    className={`flex items-center justify-between gap-4 px-4 py-3 ${
-                      i > 0 ? "border-t border-[rgba(237,232,224,0.06)]" : ""
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="font-sans font-semibold text-[13px] text-text-primary">
-                          {flow.merchantName}
-                        </span>
-                        <span className="font-mono text-[9px] text-text-disabled">({flow.subAccountId})</span>
-                      </div>
-                      <p className="font-mono text-[10px] text-text-disabled">流水號：{flow.id} · {flow.time}</p>
-                    </div>
-                    <div className="text-right shrink-0 flex items-center gap-3">
-                      <div>
-                        <p className="font-mono font-semibold text-[13px] text-text-primary">
-                          +HK$ {flow.amount.toLocaleString("zh-TW")}
-                        </p>
-                        <p className="font-mono text-[9px] text-success text-right">自動劃撥</p>
-                      </div>
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${flow.status === "succeeded" ? "bg-success" : "bg-warning animate-pulse"}`} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+            {/* High-Density Data Table */}
+            <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
+                  <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
+                    <TableHead className="w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredMerchants.length > 0 &&
+                          selectedStripeIds.size === filteredMerchants.length
+                        }
+                        onChange={toggleSelectAllStripe}
+                        className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                      />
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                      商戶名稱
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      Stripe 帳戶 ID
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      帳戶餘額 (Balance)
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      已分賬總額 (Payouts)
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      平台 5% 佣金分成
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+                      帳戶狀態
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMerchants.map((merchant) => {
+                    const isSelected = selectedStripeIds.has(merchant.id);
+                    return (
+                      <TableRow
+                        key={merchant.id}
+                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
+                          isSelected
+                            ? "bg-[rgba(212,165,116,0.08)]"
+                            : "hover:bg-bg-elevated/40"
+                        }`}
+                      >
+                        <TableCell className="w-10 text-center py-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectStripeRow(merchant.id)}
+                            className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                          />
+                        </TableCell>
+                        <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                          {merchant.merchantName}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                          {merchant.subAccountId}
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-[13px] text-text-primary text-right py-3 whitespace-nowrap">
+                          HK$ {merchant.balance.toLocaleString("zh-TW")}
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-[13px] text-success text-right py-3 whitespace-nowrap">
+                          HK$ {merchant.totalPayout.toLocaleString("zh-TW")}
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-[13px] text-brand text-right py-3 whitespace-nowrap">
+                          HK${" "}
+                          {merchant.platformCommission.toLocaleString("zh-TW")}
+                        </TableCell>
+                        <TableCell className="text-center py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${merchant.status === "active" ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20" : "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"}`}
+                          >
+                            {merchant.status === "active"
+                              ? "正常運作"
+                              : "風控限制"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </div>
-        </section>
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-interface KycApplication {
+// ── Types Definitions ────────────────────────────────────────────────────────
+interface StripeKycRecord {
+  id: string;
+  shopName: string;
+  handle: string;
+  stripeAccountId: string;
+  kycStatus: "verified" | "pending" | "restricted";
+  payoutStatus: "enabled" | "suspended";
+  totalTrades: number;
+  rating: number;
+  updatedAt: string;
+}
+
+interface MerchantOnboardingApp {
   id: string;
   applicantName: string;
   handle: string;
@@ -14,25 +35,206 @@ interface KycApplication {
   status: "pending" | "approved" | "rejected";
 }
 
-const initialApplications: KycApplication[] = [
-  { id: "KYC-2025-041", applicantName: "鈴木 Haruto", handle: "@haruto_tcg", shopName: "HarutoCards Premium", submittedAt: "2025/5/21 09:14", docType: "日本護照", totalTrades: 42, rating: 4.8, status: "pending" },
-  { id: "KYC-2025-040", applicantName: "中村 Aiko", handle: "@aiko_collector", shopName: "AikoRare Collection", submittedAt: "2025/5/20 16:52", docType: "政府身份證", totalTrades: 18, rating: 4.6, status: "pending" },
-  { id: "KYC-2025-039", applicantName: "渡辺 Ren", handle: "@ren_cards", shopName: "渡辺カード専門店", submittedAt: "2025/5/19 11:30", docType: "駕駛執照", totalTrades: 65, rating: 5.0, status: "pending" },
-  { id: "KYC-2025-038", applicantName: "林 Wei-Chen", handle: "@weichen_tcg", shopName: "Taiwan x Japan TCG", submittedAt: "2025/5/18 14:05", docType: "商業登記證", totalTrades: 31, rating: 4.9, status: "pending" },
-  { id: "KYC-2025-037", applicantName: "佐藤 Mio", handle: "@mio_pokéshop", shopName: "Mio PokéShop", submittedAt: "2025/5/17 09:22", docType: "日本護照", totalTrades: 12, rating: 4.5, status: "pending" },
-  { id: "KYC-2025-036", applicantName: "高橋 Daichi", handle: "@daichi_rare", shopName: "Daichi Rare Cards", submittedAt: "2025/5/15 17:48", docType: "政府身份證", totalTrades: 89, rating: 4.95, status: "approved" },
-  { id: "KYC-2025-034", applicantName: "伊藤 Nana", handle: "@nana_tcg", shopName: "NanaTCG 精品店", submittedAt: "2025/5/12 10:11", docType: "駕駛執照", totalTrades: 5, rating: 3.8, status: "rejected" },
+interface OverrideAuditLog {
+  id: string;
+  adminEmail: string;
+  targetUser: string;
+  action: string;
+  reason: string;
+  timestamp: string;
+}
+
+// ── Initial Mock Datasets ────────────────────────────────────────────────────
+const initialStripeRecords: StripeKycRecord[] = [
+  {
+    id: "M-001",
+    shopName: "HarutoCards Premium",
+    handle: "@haruto_tcg",
+    stripeAccountId: "acct_1NfG82H",
+    kycStatus: "verified",
+    payoutStatus: "enabled",
+    totalTrades: 142,
+    rating: 4.9,
+    updatedAt: "2025/5/21 14:00",
+  },
+  {
+    id: "M-002",
+    shopName: "AikoRare Collection",
+    handle: "@aiko_collector",
+    stripeAccountId: "acct_1MeF83J",
+    kycStatus: "verified",
+    payoutStatus: "enabled",
+    totalTrades: 88,
+    rating: 4.8,
+    updatedAt: "2025/5/20 11:20",
+  },
+  {
+    id: "M-003",
+    shopName: "Daichi Rare Cards",
+    handle: "@daichi_rare",
+    stripeAccountId: "acct_1KyT92K",
+    kycStatus: "verified",
+    payoutStatus: "enabled",
+    totalTrades: 215,
+    rating: 4.95,
+    updatedAt: "2025/5/19 18:05",
+  },
+  {
+    id: "M-004",
+    shopName: "KuroGamer TCG",
+    handle: "@kuro_gamer",
+    stripeAccountId: "acct_1PzX44L",
+    kycStatus: "restricted",
+    payoutStatus: "suspended",
+    totalTrades: 32,
+    rating: 3.9,
+    updatedAt: "2025/5/18 09:12",
+  },
+  {
+    id: "M-005",
+    shopName: "TokyoRare_HongKong",
+    handle: "@tokyo_rare_hk",
+    stripeAccountId: "acct_1QmA99M",
+    kycStatus: "pending",
+    payoutStatus: "suspended",
+    totalTrades: 15,
+    rating: 4.5,
+    updatedAt: "2025/5/17 16:30",
+  },
 ];
 
-const STATUS_CONFIG = {
-  pending: { label: "待審核", className: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20" },
-  approved: { label: "已批准", className: "text-success bg-[rgba(16,185,129,0.12)] border-success/20" },
-  rejected: { label: "已拒絕", className: "text-text-secondary bg-bg-elevated border-transparent" },
-};
+const initialOnboardingApps: MerchantOnboardingApp[] = [
+  {
+    id: "KYC-2025-041",
+    applicantName: "鈴木 Haruto",
+    handle: "@haruto_tcg",
+    shopName: "HarutoCards Premium",
+    submittedAt: "2025/5/21 09:14",
+    docType: "日本護照",
+    totalTrades: 42,
+    rating: 4.8,
+    status: "pending",
+  },
+  {
+    id: "KYC-2025-040",
+    applicantName: "中村 Aiko",
+    handle: "@aiko_collector",
+    shopName: "AikoRare Collection",
+    submittedAt: "2025/5/20 16:52",
+    docType: "政府身份證",
+    totalTrades: 18,
+    rating: 4.6,
+    status: "pending",
+  },
+  {
+    id: "KYC-2025-039",
+    applicantName: "渡辺 Ren",
+    handle: "@ren_cards",
+    shopName: "渡辺カード専門店",
+    submittedAt: "2025/5/19 11:30",
+    docType: "駕駛執照",
+    totalTrades: 65,
+    rating: 5.0,
+    status: "pending",
+  },
+  {
+    id: "KYC-2025-038",
+    applicantName: "林 Wei-Chen",
+    handle: "@weichen_tcg",
+    shopName: "Taiwan x Japan TCG",
+    submittedAt: "2025/5/18 14:05",
+    docType: "商業登記證",
+    totalTrades: 31,
+    rating: 4.9,
+    status: "pending",
+  },
+  {
+    id: "KYC-2025-037",
+    applicantName: "佐藤 Mio",
+    handle: "@mio_pokéshop",
+    shopName: "Mio PokéShop",
+    submittedAt: "2025/5/17 09:22",
+    docType: "日本護照",
+    totalTrades: 12,
+    rating: 4.5,
+    status: "pending",
+  },
+  {
+    id: "KYC-2025-036",
+    applicantName: "高橋 Daichi",
+    handle: "@daichi_rare",
+    shopName: "Daichi Rare Cards",
+    submittedAt: "2025/5/15 17:48",
+    docType: "政府身份證",
+    totalTrades: 89,
+    rating: 4.95,
+    status: "approved",
+  },
+  {
+    id: "KYC-2025-034",
+    applicantName: "伊藤 Nana",
+    handle: "@nana_tcg",
+    shopName: "NanaTCG 精品店",
+    submittedAt: "2025/5/12 10:11",
+    docType: "駕駛執照",
+    totalTrades: 5,
+    rating: 3.8,
+    status: "rejected",
+  },
+];
+
+const initialAuditLogs: OverrideAuditLog[] = [
+  {
+    id: "LOG-881",
+    adminEmail: "admin@hkcv.io",
+    targetUser: "USR-0042 (KuroGamer TCG)",
+    action: "強制封禁其 Stripe Connect 帳戶",
+    reason: "收到 3 宗假卡舉報，暫停放款等待調查",
+    timestamp: "2025/5/21 11:30",
+  },
+  {
+    id: "LOG-880",
+    adminEmail: "admin@hkcv.io",
+    targetUser: "USR-0012 (Daichi Rare Cards)",
+    action: "升級為 MERCHANT (商戶)",
+    reason: "人工確認實體店營業執照無誤",
+    timestamp: "2025/5/19 14:15",
+  },
+];
 
 export default function AdminMerchantsPage() {
-  const [apps, setApps] = useState<KycApplication[]>(initialApplications);
+  const [activeTab, setActiveTab] = useState<
+    "stripe" | "onboarding" | "override"
+  >("stripe");
+
+  // Datasets State
+  const [stripeRecords] = useState<StripeKycRecord[]>(initialStripeRecords);
+  const [onboardingApps, setOnboardingApps] = useState<MerchantOnboardingApp[]>(
+    initialOnboardingApps,
+  );
+  const [auditLogs, setAuditLogs] =
+    useState<OverrideAuditLog[]>(initialAuditLogs);
+
+  // Search & Filter State
+  const [stripeSearch, setStripeSearch] = useState("");
+  const [onboardingSearch, setOnboardingSearch] = useState("");
+  const [onboardingFilter, setOnboardingFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("all");
+
+  // Selection Checkboxes
+  const [selectedStripeIds, setSelectedStripeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedAppIds, setSelectedAppIds] = useState<Set<string>>(new Set());
+
+  // Security Override Lock State
   const [isOverrideLocked, setIsOverrideLocked] = useState(true);
+  const [overrideTargetUser, setOverrideTargetUser] = useState("");
+  const [overrideAction, setOverrideAction] =
+    useState("升級為 MERCHANT (商戶)");
+  const [overrideReason, setOverrideReason] = useState("");
+
   const [notif, setNotif] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
@@ -40,45 +242,183 @@ export default function AdminMerchantsPage() {
     setTimeout(() => setNotif(null), 4000);
   };
 
-  const handleApprove = (id: string) => {
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "approved" as const } : a))
+  // ── Filtered Datasets ──────────────────────────────────────────────────────
+  const filteredStripe = useMemo(() => {
+    return stripeRecords.filter(
+      (s) =>
+        s.shopName.toLowerCase().includes(stripeSearch.toLowerCase()) ||
+        s.handle.toLowerCase().includes(stripeSearch.toLowerCase()) ||
+        s.stripeAccountId.toLowerCase().includes(stripeSearch.toLowerCase()),
+    );
+  }, [stripeRecords, stripeSearch]);
+
+  const filteredOnboarding = useMemo(() => {
+    return onboardingApps.filter((a) => {
+      const matchesSearch =
+        a.shopName.toLowerCase().includes(onboardingSearch.toLowerCase()) ||
+        a.applicantName
+          .toLowerCase()
+          .includes(onboardingSearch.toLowerCase()) ||
+        a.handle.toLowerCase().includes(onboardingSearch.toLowerCase()) ||
+        a.id.toLowerCase().includes(onboardingSearch.toLowerCase());
+
+      if (onboardingFilter === "all") return matchesSearch;
+      return matchesSearch && a.status === onboardingFilter;
+    });
+  }, [onboardingApps, onboardingSearch, onboardingFilter]);
+
+  // ── Multi-select Handlers ──────────────────────────────────────────────────
+  const toggleSelectAllStripe = () => {
+    if (selectedStripeIds.size === filteredStripe.length) {
+      setSelectedStripeIds(new Set());
+    } else {
+      setSelectedStripeIds(new Set(filteredStripe.map((s) => s.id)));
+    }
+  };
+
+  const toggleSelectStripeRow = (id: string) => {
+    const next = new Set(selectedStripeIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedStripeIds(next);
+  };
+
+  const toggleSelectAllApps = () => {
+    if (selectedAppIds.size === filteredOnboarding.length) {
+      setSelectedAppIds(new Set());
+    } else {
+      setSelectedAppIds(new Set(filteredOnboarding.map((a) => a.id)));
+    }
+  };
+
+  const toggleSelectAppRow = (id: string) => {
+    const next = new Set(selectedAppIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedAppIds(next);
+  };
+
+  // ── Onboarding Actions ─────────────────────────────────────────────────────
+  const handleApproveApp = (id: string) => {
+    setOnboardingApps((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, status: "approved" as const } : a,
+      ),
     );
     showNotification(`已批准申請 ${id}，用戶已正式升級為商戶 (MERCHANT)。`);
   };
 
-  const handleReject = (id: string) => {
-    setApps((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "rejected" as const } : a))
+  const handleRejectApp = (id: string) => {
+    setOnboardingApps((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, status: "rejected" as const } : a,
+      ),
     );
-    showNotification(`已駁回申請 ${id}，將通知用戶重新上載證照。`);
+    showNotification(`已駁回申請 ${id}，已通知用戶重新補交資料。`);
   };
 
-  const handleToggleLock = () => {
-    setIsOverrideLocked(!isOverrideLocked);
-    showNotification(isOverrideLocked ? "⚠️ 管理員人工覆寫權限鎖已解除！" : "🔒 管理員人工覆寫權限鎖已重新啟用。");
+  const handleBatchApproveApps = () => {
+    if (selectedAppIds.size === 0) return;
+    setOnboardingApps((prev) =>
+      prev.map((a) =>
+        selectedAppIds.has(a.id) ? { ...a, status: "approved" } : a,
+      ),
+    );
+    showNotification(`已批量批准 ${selectedAppIds.size} 筆商戶入駐申請！`);
+    setSelectedAppIds(new Set());
   };
 
-  const pendingCount = apps.filter((a) => a.status === "pending").length;
-  const approvedCount = apps.filter((a) => a.status === "approved").length;
-  const rejectedCount = apps.filter((a) => a.status === "rejected").length;
+  // ── Override Actions ───────────────────────────────────────────────────────
+  const handleExecuteOverride = () => {
+    if (!overrideTargetUser.trim()) {
+      showNotification("❌ 請輸入目標用戶 ID 或 Handle！");
+      return;
+    }
+    if (!overrideReason.trim()) {
+      showNotification("❌ 強制執行特權覆寫時必須填寫『操作理由』以備審計！");
+      return;
+    }
+
+    const newLog: OverrideAuditLog = {
+      id: `LOG-${Math.floor(100 + Math.random() * 900)}`,
+      adminEmail: "admin@hkcv.io",
+      targetUser: overrideTargetUser,
+      action: overrideAction,
+      reason: overrideReason,
+      timestamp: new Date().toLocaleString("zh-TW", { hour12: false }),
+    };
+
+    setAuditLogs([newLog, ...auditLogs]);
+    showNotification(
+      `🚀 特權指令『${overrideAction}』已執行，已存入 Audit Log！`,
+    );
+    setOverrideTargetUser("");
+    setOverrideReason("");
+  };
+
+  const pendingCount = onboardingApps.filter(
+    (a) => a.status === "pending",
+  ).length;
 
   return (
-    <div className="space-y-6">
-      {/* ── Page Header ───────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+    <div className="flex flex-col min-h-[calc(100vh-100px)] space-y-4">
+      {/* ── Page Header & Top Nav Selector ────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
         <div>
-          <h1 className="font-sans font-bold text-[24px] text-text-primary">商戶與 KYC 審查</h1>
-          <p className="font-sans text-[13px] text-text-secondary mt-0.5">
+          <h1 className="font-sans font-bold text-[20px] text-text-primary">
+            商戶與 KYC 審查
+          </h1>
+          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
             管理 Stripe KYC 狀態、商戶提現證照人工複審、以及特殊權限變更覆寫控制
           </p>
         </div>
-        {pendingCount > 0 && (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[12px] text-warning bg-[rgba(239,68,68,0.10)] border border-warning/25 px-3 py-1.5 rounded-xl shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" aria-hidden="true" />
-            {pendingCount} 件待處理
-          </span>
-        )}
+
+        {/* ── Top Nav Tab Selector ── */}
+        <div className="flex flex-wrap items-center gap-1.5 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)] shrink-0">
+          <button
+            onClick={() => setActiveTab("stripe")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+              activeTab === "stripe"
+                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span>💳 Stripe認證狀態</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full">
+              {stripeRecords.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("onboarding")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+              activeTab === "onboarding"
+                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span>🪪 商戶入駐審核</span>
+            {pendingCount > 0 && (
+              <span className="font-mono text-[10px] bg-warning text-[#17130f] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                {pendingCount} 待審
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab("override")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+              activeTab === "override"
+                ? "bg-warning text-[#17130f] shadow-md shadow-warning/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span>⚠️ 權限覆寫</span>
+            <span className="font-mono text-[10px]">
+              {isOverrideLocked ? "🔒" : "🔓"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* ── Notification Toast ────────────────────────────────────────── */}
@@ -89,178 +429,560 @@ export default function AdminMerchantsPage() {
         </div>
       )}
 
-      {/* ── Stripe KYC 狀態牆 ───────────────────────────────────────── */}
-      <section aria-labelledby="status-wall-heading">
-        <h2 id="status-wall-heading" className="font-sans font-semibold text-[15px] text-text-secondary mb-3">
-          Stripe KYC 全局狀態牆
-        </h2>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "待審核 (PENDING)", value: pendingCount, color: "text-warning", bg: "bg-[rgba(239,68,68,0.02)] border-warning/15" },
-            { label: "已驗證商戶 (VERIFIED)", value: approvedCount, color: "text-success", bg: "bg-[rgba(16,185,129,0.02)] border-success/15" },
-            { label: "被拒絕/失效 (REJECTED)", value: rejectedCount, color: "text-text-secondary", bg: "bg-bg-card border-[rgba(237,232,224,0.08)]" },
-          ].map(({ label, value, color, bg }) => (
-            <div key={label} className={`rounded-2xl border p-4 text-center transition-all ${bg}`}>
-              <p className={`font-mono font-bold text-[26px] ${color}`}>{value}</p>
-              <p className="font-mono text-[11px] text-text-secondary mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
-        {/* ── Left Column: 商戶證照人工複審面板 ──────────────────────── */}
-        <section aria-labelledby="applications-heading" className="space-y-4">
-          <h2 id="applications-heading" className="font-sans font-bold text-[16px] text-text-primary">
-            商戶證照人工複審面板
-          </h2>
-          <div className="space-y-3">
-            {apps.map((app) => {
-              const { label, className } = STATUS_CONFIG[app.status];
-              const isPending = app.status === "pending";
-              return (
-                <div
-                  key={app.id}
-                  className={`bg-bg-card rounded-2xl border p-4 transition-colors ${
-                    isPending ? "border-[rgba(212,165,116,0.18)]" : "border-[rgba(237,232,224,0.08)]"
-                  }`}
+      {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
+      <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
+        {/* ── TAB 1: Stripe認證狀態 Data Table ─────────────────────────── */}
+        {activeTab === "stripe" && (
+          <div className="flex-1 flex flex-col justify-between space-y-4">
+            {/* Toolbar: Search */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <input
+                  type="text"
+                  placeholder="搜尋店舖名稱、Handle 或 Stripe ID..."
+                  value={stripeSearch}
+                  onChange={(e) => setStripeSearch(e.target.value)}
+                  className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="absolute left-3 top-2.5 text-text-disabled"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <p className="font-sans text-[15px] font-semibold text-text-primary">
-                          {app.shopName}
-                        </p>
-                        <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${className}`}>
-                          {label}
-                        </span>
-                      </div>
-                      <p className="font-sans text-[13px] text-text-secondary">
-                        申請人：{app.applicantName} ({app.handle})
-                      </p>
-                      <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                        <span className="font-mono text-[11px] text-text-disabled">#{app.id}</span>
-                        <span className="font-mono text-[11px] text-text-disabled">提交：{app.submittedAt}</span>
-                        <span className="font-mono text-[11px] text-text-secondary">證件：{app.docType}</span>
-                      </div>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="font-mono text-[11px] text-text-secondary">
-                          累計成交 {app.totalTrades} 筆
-                        </span>
-                        <span className="font-mono text-[11px] text-text-secondary">
-                          評分 ★ {app.rating}
-                        </span>
-                      </div>
-                    </div>
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </div>
 
-                    {/* Review Actions */}
-                    <div className="flex flex-col gap-2 shrink-0 self-end sm:self-start">
-                      <button
-                        type="button"
-                        onClick={() => showNotification(`正在下載並展示 ${app.id} 的 ${app.docType} 證照文件...`)}
-                        className="flex items-center justify-center gap-1.5 h-9 px-3 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-xl font-mono text-[11px] text-text-secondary hover:text-text-primary transition-colors"
+              {selectedStripeIds.size > 0 && (
+                <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1 rounded-lg">
+                  已選擇 {selectedStripeIds.size} 筆商戶
+                </span>
+              )}
+            </div>
+
+            {/* Data Table */}
+            <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
+                  <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
+                    <TableHead className="w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredStripe.length > 0 &&
+                          selectedStripeIds.size === filteredStripe.length
+                        }
+                        onChange={toggleSelectAllStripe}
+                        className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                      />
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                      商戶店舖名稱
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      用戶 Handle
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      Stripe Account ID
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+                      Stripe KYC 狀態
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+                      提現權限
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      成交筆數 / 評分
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      最後更新時間
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStripe.map((s) => {
+                    const isSelected = selectedStripeIds.has(s.id);
+                    return (
+                      <TableRow
+                        key={s.id}
+                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
+                          isSelected
+                            ? "bg-[rgba(212,165,116,0.08)]"
+                            : "hover:bg-bg-elevated/40"
+                        }`}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                        </svg>
-                        查看複審文件
-                      </button>
-
-                      {isPending && (
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(app.id)}
-                            className="flex-1 h-9 px-3 bg-success text-[#111] font-sans font-semibold text-[12px] rounded-xl hover:bg-success/90 active:scale-[0.98] transition-all"
+                        <TableCell className="w-10 text-center py-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectStripeRow(s.id)}
+                            className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                          />
+                        </TableCell>
+                        <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                          {s.shopName}
+                        </TableCell>
+                        <TableCell className="font-mono text-[12px] text-text-secondary py-3 whitespace-nowrap">
+                          {s.handle}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                          {s.stripeAccountId}
+                        </TableCell>
+                        <TableCell className="text-center py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
+                              s.kycStatus === "verified"
+                                ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
+                                : s.kycStatus === "pending"
+                                  ? "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20"
+                                  : "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
+                            }`}
                           >
-                            ✓ 批准
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleReject(app.id)}
-                            className="flex-1 h-9 px-3 bg-[rgba(239,68,68,0.10)] text-warning font-sans font-medium text-[12px] rounded-xl border border-warning/20 hover:bg-[rgba(239,68,68,0.18)] active:scale-[0.98] transition-all"
+                            {s.kycStatus === "verified"
+                              ? "已驗證 (VERIFIED)"
+                              : s.kycStatus === "pending"
+                                ? "待驗證"
+                                : "已限制 (RESTRICTED)"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
+                              s.payoutStatus === "enabled"
+                                ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
+                                : "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
+                            }`}
                           >
-                            ✕ 駁回
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                            {s.payoutStatus === "enabled" ? "已啟用" : "已暫停"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono text-[12px] text-text-primary text-right py-3 whitespace-nowrap">
+                          {s.totalTrades} 筆 · ★ {s.rating}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled text-right py-3 whitespace-nowrap">
+                          {s.updatedAt}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </section>
+        )}
 
-        {/* ── Right Column: 管理員人工覆寫權限鎖 ──────────────────────── */}
-        <section aria-labelledby="override-heading" className="space-y-4">
-          <h2 id="override-heading" className="font-sans font-bold text-[16px] text-text-primary">
-            特權與安全設定
-          </h2>
-
-          <div className="bg-[rgba(239,68,68,0.04)] rounded-2xl border border-warning/20 p-5 space-y-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-warning text-[18px]">⚠️</span>
-                <h3 className="font-sans font-semibold text-[14px] text-warning">
-                  管理員人工覆寫權限鎖
-                </h3>
-              </div>
-              <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
-                解鎖後，可對個別商戶進行權限手動升級、封禁、或免去 KYC 檢查直接開啟提現。此特權操作將留下審計日誌 (Audit Logs)。
-              </p>
-            </div>
-
-            <div className="bg-bg-card rounded-xl border border-[rgba(239,68,68,0.15)] p-4 flex items-center justify-between">
-              <div>
-                <span className="font-mono text-[10px] text-text-disabled uppercase block">覆寫安全狀態</span>
-                <span className={`font-sans font-bold text-[13px] ${isOverrideLocked ? "text-success" : "text-warning"}`}>
-                  {isOverrideLocked ? "🔒 安全鎖定中" : "🔓 已解除安全鎖"}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleToggleLock}
-                className={`h-9 px-4 font-sans font-semibold text-[11px] rounded-xl border transition-all active:scale-[0.98] ${
-                  isOverrideLocked
-                    ? "bg-[rgba(239,68,68,0.10)] text-warning border-warning/20 hover:bg-[rgba(239,68,68,0.15)]"
-                    : "bg-success text-[#111] border-transparent hover:bg-success/90"
-                }`}
-              >
-                {isOverrideLocked ? "解除安全鎖" : "重啟安全鎖"}
-              </button>
-            </div>
-
-            {!isOverrideLocked && (
-              <div className="bg-bg-card rounded-xl border border-[rgba(237,232,224,0.08)] p-4 space-y-3 animate-fade-in">
-                <span className="font-sans font-semibold text-[12px] text-text-primary block">
-                  特權指令執行
-                </span>
-                <div className="space-y-2">
+        {/* ── TAB 2: 商戶入駐審核 Data Table ─────────────────────────────── */}
+        {activeTab === "onboarding" && (
+          <div className="flex-1 flex flex-col justify-between space-y-4">
+            {/* Toolbar: Search + Filter Tabs + Batch Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-64">
                   <input
                     type="text"
-                    placeholder="輸入商戶 ID (例: USR-0002)..."
-                    className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none"
+                    placeholder="搜尋申請人、店舖名稱..."
+                    value={onboardingSearch}
+                    onChange={(e) => setOnboardingSearch(e.target.value)}
+                    className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
                   />
-                  <select className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-2 font-sans text-[11px] text-text-secondary focus:outline-none appearance-none">
-                    <option>升級為 MERCHANT (商戶)</option>
-                    <option>降級為 USER (一般會員)</option>
-                    <option>強制免 KYC 提現</option>
-                    <option>強制封禁其 Stripe Connect 帳戶</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => showNotification("特權指令已執行！")}
-                    className="w-full h-9 bg-warning text-[#17130f] font-sans font-bold text-[11px] rounded-lg active:scale-[0.98] hover:bg-warning/90 transition-all"
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="absolute left-3 top-2.5 text-text-disabled"
                   >
-                    🚀 執行特權覆寫
-                  </button>
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)]">
+                  {(["all", "pending", "approved", "rejected"] as const).map(
+                    (filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setOnboardingFilter(filter)}
+                        className={`px-2.5 py-1 rounded-lg font-sans text-[11px] transition-colors ${
+                          onboardingFilter === filter
+                            ? "bg-bg-elevated text-brand font-semibold"
+                            : "text-text-secondary hover:text-text-primary"
+                        }`}
+                      >
+                        {filter === "all"
+                          ? "全部"
+                          : filter === "pending"
+                            ? "待審核"
+                            : filter === "approved"
+                              ? "已批准"
+                              : "已拒絕"}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
-            )}
+
+              {/* Batch Action Toolbar */}
+              {selectedAppIds.size > 0 && (
+                <div className="flex items-center gap-2 animate-fade-in">
+                  <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
+                    已選 {selectedAppIds.size} 筆
+                  </span>
+                  <button
+                    onClick={handleBatchApproveApps}
+                    className="h-9 px-3.5 bg-success text-[#111] font-sans font-bold text-xs rounded-xl hover:bg-success/90 transition-transform whitespace-nowrap shadow-md shadow-success/10"
+                  >
+                    ✓ 批量批准升級
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Data Table */}
+            <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
+                  <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
+                    <TableHead className="w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredOnboarding.length > 0 &&
+                          selectedAppIds.size === filteredOnboarding.length
+                        }
+                        onChange={toggleSelectAllApps}
+                        className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                      />
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      申請單號
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                      店舖名稱
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                      申請人 / Handle
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                      提交證件類別
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                      歷史成交 / 評分
+                    </TableHead>
+                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                      提交時間
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+                      審核狀態
+                    </TableHead>
+                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
+                      操作
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOnboarding.map((app) => {
+                    const isSelected = selectedAppIds.has(app.id);
+                    const isPending = app.status === "pending";
+                    return (
+                      <TableRow
+                        key={app.id}
+                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
+                          isSelected
+                            ? "bg-[rgba(212,165,116,0.08)]"
+                            : "hover:bg-bg-elevated/40"
+                        }`}
+                      >
+                        <TableCell className="w-10 text-center py-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectAppRow(app.id)}
+                            className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                          />
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled py-3">
+                          #{app.id}
+                        </TableCell>
+                        <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                          {app.shopName}
+                        </TableCell>
+                        <TableCell className="font-sans text-[12px] text-text-secondary py-3 whitespace-nowrap">
+                          {app.applicantName}{" "}
+                          <span className="font-mono text-[10px] text-text-disabled">
+                            ({app.handle})
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-sans text-[12px] text-text-primary py-3 whitespace-nowrap">
+                          {app.docType}
+                        </TableCell>
+                        <TableCell className="font-mono text-[12px] text-text-primary text-right py-3 whitespace-nowrap">
+                          {app.totalTrades} 筆 · ★ {app.rating}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                          {app.submittedAt}
+                        </TableCell>
+                        <TableCell className="text-center py-3 whitespace-nowrap">
+                          <span
+                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
+                              app.status === "pending"
+                                ? "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
+                                : app.status === "approved"
+                                  ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
+                                  : "text-text-secondary bg-bg-elevated border-transparent"
+                            }`}
+                          >
+                            {app.status === "pending"
+                              ? "待審核"
+                              : app.status === "approved"
+                                ? "已批准"
+                                : "已拒絕"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right py-3 whitespace-nowrap">
+                          <div className="flex justify-end items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                showNotification(
+                                  `正在讀取 ${app.id} 證件檔案 (${app.docType})...`,
+                                )
+                              }
+                              className="h-7 px-2 bg-bg-elevated border border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-text-primary font-mono text-[10px] rounded-lg transition-colors"
+                            >
+                              📄 證照
+                            </button>
+                            {isPending && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveApp(app.id)}
+                                  className="h-7 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform"
+                                >
+                                  ✓ 批准
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectApp(app.id)}
+                                  className="h-7 px-2.5 bg-[rgba(239,68,68,0.10)] text-warning font-mono text-[10px] rounded-lg border border-warning/20 hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.98] transition-transform"
+                                >
+                                  ✕ 駁回
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </section>
+        )}
+
+        {/* ── TAB 3: 權限覆寫 (Security Lock & Privilege Override) ───────── */}
+        {activeTab === "override" && (
+          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Control Panel */}
+            <div className="bg-[rgba(239,68,68,0.04)] rounded-2xl border border-warning/20 p-5 space-y-4 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-warning text-[20px]">⚠️</span>
+                  <h2 className="font-sans font-bold text-[16px] text-warning">
+                    管理員特權覆寫面板
+                  </h2>
+                </div>
+                <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
+                  解鎖後可強制繞過標準 KYC 流程，直接修改用戶角色權限或封禁其
+                  Stripe Connect
+                  金流通道。**所有操作均會強制存入不可篡改的審計日誌 (Audit
+                  Log)。**
+                </p>
+
+                {/* Safety Lock Toggle Switch */}
+                <div className="bg-bg-card rounded-xl border border-[rgba(239,68,68,0.15)] p-4 flex items-center justify-between">
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      覆寫安全鎖狀態
+                    </span>
+                    <span
+                      className={`font-sans font-bold text-[13px] ${isOverrideLocked ? "text-success" : "text-warning"}`}
+                    >
+                      {isOverrideLocked
+                        ? "🔒 系統已安全鎖定"
+                        : "🔓 已解除安全鎖"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOverrideLocked(!isOverrideLocked);
+                      showNotification(
+                        isOverrideLocked
+                          ? "⚠️ 特權覆寫安全鎖已解除！"
+                          : "🔒 特權覆寫安全鎖已重新啟用。",
+                      );
+                    }}
+                    className={`h-9 px-3.5 font-sans font-semibold text-[11px] rounded-xl border transition-all active:scale-[0.98] ${
+                      isOverrideLocked
+                        ? "bg-[rgba(239,68,68,0.10)] text-warning border-warning/20 hover:bg-[rgba(239,68,68,0.15)]"
+                        : "bg-success text-[#111] border-transparent hover:bg-success/90"
+                    }`}
+                  >
+                    {isOverrideLocked ? "解除鎖定" : "重啟安全鎖"}
+                  </button>
+                </div>
+
+                {/* Override Command Form */}
+                {!isOverrideLocked ? (
+                  <div className="bg-bg-card rounded-xl border border-[rgba(237,232,224,0.12)] p-4 space-y-3 animate-fade-in">
+                    <span className="font-sans font-bold text-[12px] text-text-primary block border-b border-[rgba(237,232,224,0.08)] pb-2">
+                      執行特權覆寫指令
+                    </span>
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="font-mono text-[10px] text-text-disabled block mb-1">
+                          目標用戶 (ID / Handle / Email)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="例: USR-0042 或 @kuro_gamer"
+                          value={overrideTargetUser}
+                          onChange={(e) =>
+                            setOverrideTargetUser(e.target.value)
+                          }
+                          className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-mono text-[10px] text-text-disabled block mb-1">
+                          特權指令類型
+                        </label>
+                        <select
+                          value={overrideAction}
+                          onChange={(e) => setOverrideAction(e.target.value)}
+                          className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-2 font-sans text-xs text-text-primary focus:outline-none"
+                        >
+                          <option>升級為 MERCHANT (商戶)</option>
+                          <option>降級為 USER (一般會員)</option>
+                          <option>強制免 KYC 提現放行</option>
+                          <option>強制封禁其 Stripe Connect 帳戶</option>
+                          <option>重置 Stripe KYC 連結狀態</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-mono text-[10px] text-text-disabled block mb-1">
+                          操作理由 (必填 Audit Log 存檔)
+                        </label>
+                        <textarea
+                          rows={2}
+                          placeholder="請輸入本次人工覆寫的詳細理由..."
+                          value={overrideReason}
+                          onChange={(e) => setOverrideReason(e.target.value)}
+                          className="w-full bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg p-2.5 font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleExecuteOverride}
+                        className="w-full h-9 bg-warning text-[#17130f] font-sans font-bold text-xs rounded-lg active:scale-[0.98] hover:bg-warning/90 transition-all shadow-md shadow-warning/10"
+                      >
+                        🚀 執行特權覆寫指令
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-[rgba(237,232,224,0.06)] bg-bg-page text-center space-y-1">
+                    <p className="font-sans text-xs text-text-disabled">
+                      指令輸入框已隱藏
+                    </p>
+                    <p className="font-mono text-[10px] text-text-disabled">
+                      請先點擊上方『解除鎖定』按鈕以進行覆寫操作
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Audit Log Table (Span 2 Cols) */}
+            <div className="lg:col-span-2 bg-bg-page rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 flex flex-col justify-between space-y-3">
+              <div>
+                <h3 className="font-sans font-bold text-[14px] text-text-primary mb-1">
+                  特權覆寫審計日誌 (Audit Logs)
+                </h3>
+                <p className="font-sans text-[11px] text-text-secondary mb-3">
+                  不可篡改的全站管理員操作歷史軌跡
+                </p>
+
+                <div className="rounded-xl border border-[rgba(237,232,224,0.08)] overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-bg-elevated/50">
+                      <TableRow className="border-b border-[rgba(237,232,224,0.08)]">
+                        <TableHead className="font-mono text-[11px] text-text-secondary h-9">
+                          日誌編號
+                        </TableHead>
+                        <TableHead className="font-sans text-[11px] text-text-secondary h-9">
+                          管理員
+                        </TableHead>
+                        <TableHead className="font-mono text-[11px] text-text-secondary h-9">
+                          目標用戶
+                        </TableHead>
+                        <TableHead className="font-sans text-[11px] text-text-secondary h-9">
+                          特權動作
+                        </TableHead>
+                        <TableHead className="font-sans text-[11px] text-text-secondary h-9">
+                          操作理由
+                        </TableHead>
+                        <TableHead className="font-mono text-[11px] text-text-secondary h-9 text-right">
+                          時間
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {auditLogs.map((log) => (
+                        <TableRow
+                          key={log.id}
+                          className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/30"
+                        >
+                          <TableCell className="font-mono text-[10px] text-text-disabled py-2.5">
+                            #{log.id}
+                          </TableCell>
+                          <TableCell className="font-mono text-[11px] text-text-secondary py-2.5 whitespace-nowrap">
+                            {log.adminEmail}
+                          </TableCell>
+                          <TableCell className="font-mono text-[11px] text-brand font-bold py-2.5 whitespace-nowrap">
+                            {log.targetUser}
+                          </TableCell>
+                          <TableCell className="font-sans text-[11px] text-warning font-semibold py-2.5 whitespace-nowrap">
+                            {log.action}
+                          </TableCell>
+                          <TableCell className="font-sans text-[11px] text-text-primary py-2.5 max-w-[200px] truncate">
+                            {log.reason}
+                          </TableCell>
+                          <TableCell className="font-mono text-[10px] text-text-disabled text-right py-2.5 whitespace-nowrap">
+                            {log.timestamp}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
