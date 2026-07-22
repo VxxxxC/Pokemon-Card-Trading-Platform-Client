@@ -3,6 +3,7 @@
   "model": "github-copilot/claude-fable-5",
   "small_model": "github-copilot/gemini-3.5-flash",
   "default_agent": "plan",
+  "instructions": ["copilot-instructions.md", ".stitch/designs/DESIGN.md"],
   "provider": {
     "github-copilot": {
       "options": {
