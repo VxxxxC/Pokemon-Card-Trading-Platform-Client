@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -235,13 +236,6 @@ export default function AdminMerchantsPage() {
     useState("升級為 MERCHANT (商戶)");
   const [overrideReason, setOverrideReason] = useState("");
 
-  const [notif, setNotif] = useState<string | null>(null);
-
-  const showNotification = (msg: string) => {
-    setNotif(msg);
-    setTimeout(() => setNotif(null), 4000);
-  };
-
   // ── Filtered Datasets ──────────────────────────────────────────────────────
   const filteredStripe = useMemo(() => {
     return stripeRecords.filter(
@@ -305,7 +299,9 @@ export default function AdminMerchantsPage() {
         a.id === id ? { ...a, status: "approved" as const } : a,
       ),
     );
-    showNotification(`已批准申請 ${id}，用戶已正式升級為商戶 (MERCHANT)。`);
+    toast.success(`已批准申請 ${id}`, {
+      description: "用戶已正式升級為商戶 (MERCHANT)",
+    });
   };
 
   const handleRejectApp = (id: string) => {
@@ -314,7 +310,7 @@ export default function AdminMerchantsPage() {
         a.id === id ? { ...a, status: "rejected" as const } : a,
       ),
     );
-    showNotification(`已駁回申請 ${id}，已通知用戶重新補交資料。`);
+    toast.warning(`已駁回申請 ${id}，已通知用戶重新補交資料。`);
   };
 
   const handleBatchApproveApps = () => {
@@ -324,18 +320,18 @@ export default function AdminMerchantsPage() {
         selectedAppIds.has(a.id) ? { ...a, status: "approved" } : a,
       ),
     );
-    showNotification(`已批量批准 ${selectedAppIds.size} 筆商戶入駐申請！`);
+    toast.success(`已批量批准 ${selectedAppIds.size} 筆商戶入駐申請！`);
     setSelectedAppIds(new Set());
   };
 
   // ── Override Actions ───────────────────────────────────────────────────────
   const handleExecuteOverride = () => {
     if (!overrideTargetUser.trim()) {
-      showNotification("❌ 請輸入目標用戶 ID 或 Handle！");
+      toast.error("請輸入目標用戶 ID 或 Handle");
       return;
     }
     if (!overrideReason.trim()) {
-      showNotification("❌ 強制執行特權覆寫時必須填寫『操作理由』以備審計！");
+      toast.error("強制執行特權覆寫時必須填寫『操作理由』以備審計");
       return;
     }
 
@@ -349,9 +345,9 @@ export default function AdminMerchantsPage() {
     };
 
     setAuditLogs([newLog, ...auditLogs]);
-    showNotification(
-      `🚀 特權指令『${overrideAction}』已執行，已存入 Audit Log！`,
-    );
+    toast.success(`特權指令『${overrideAction}』已執行`, {
+      description: "已存入 Audit Log",
+    });
     setOverrideTargetUser("");
     setOverrideReason("");
   };
@@ -363,43 +359,44 @@ export default function AdminMerchantsPage() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-100px)] space-y-4">
       {/* ── Page Header & Top Nav Selector ────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <div>
-          <h1 className="font-sans font-bold text-[20px] text-text-primary">
-            商戶與 KYC 審查
-          </h1>
-          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-            管理 Stripe KYC 狀態、商戶提現證照人工複審、以及特殊權限變更覆寫控制
-          </p>
-        </div>
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
+      <div className="bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+        <h1 className="font-sans font-bold text-[20px] text-text-primary">
+          商戶與 KYC 審查
+        </h1>
+        <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+          管理 Stripe KYC 狀態、商戶提現證照人工複審、以及特殊權限變更覆寫控制
+        </p>
+      </div>
 
-        {/* ── Top Nav Tab Selector ── */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)] shrink-0">
+      {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
+      <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5">
           <button
             onClick={() => setActiveTab("stripe")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "stripe"
-                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
             }`}
           >
-            <span>💳 Stripe認證狀態</span>
-            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full">
+            <span className="truncate">💳 Stripe 認證狀態</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
               {stripeRecords.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("onboarding")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "onboarding"
-                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
             }`}
           >
-            <span>🪪 商戶入駐審核</span>
+            <span className="truncate">🪪 商戶入駐審核</span>
             {pendingCount > 0 && (
-              <span className="font-mono text-[10px] bg-warning text-[#17130f] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+              <span className="font-mono text-[10px] bg-warning text-[#17130f] font-bold px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
                 {pendingCount} 待審
               </span>
             )}
@@ -407,27 +404,19 @@ export default function AdminMerchantsPage() {
 
           <button
             onClick={() => setActiveTab("override")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "override"
-                ? "bg-warning text-[#17130f] shadow-md shadow-warning/10"
+                ? "bg-warning text-[#17130f] font-bold shadow-md shadow-warning/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
             }`}
           >
-            <span>⚠️ 權限覆寫</span>
-            <span className="font-mono text-[10px]">
+            <span className="truncate">⚠️ 權限覆寫</span>
+            <span className="font-mono text-[10px] shrink-0">
               {isOverrideLocked ? "🔒" : "🔓"}
             </span>
           </button>
         </div>
       </div>
-
-      {/* ── Notification Toast ────────────────────────────────────────── */}
-      {notif && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-[#2e2925] border-l-4 border-brand px-4 py-3 rounded shadow-xl animate-fade-in">
-          <span className="text-brand font-sans text-sm">✦</span>
-          <span className="font-sans text-xs text-text-primary">{notif}</span>
-        </div>
-      )}
 
       {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
       <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
@@ -752,7 +741,7 @@ export default function AdminMerchantsPage() {
                             <button
                               type="button"
                               onClick={() =>
-                                showNotification(
+                                toast.info(
                                   `正在讀取 ${app.id} 證件檔案 (${app.docType})...`,
                                 )
                               }
@@ -825,12 +814,12 @@ export default function AdminMerchantsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setIsOverrideLocked(!isOverrideLocked);
-                      showNotification(
-                        isOverrideLocked
-                          ? "⚠️ 特權覆寫安全鎖已解除！"
-                          : "🔒 特權覆寫安全鎖已重新啟用。",
-                      );
+                    setIsOverrideLocked(!isOverrideLocked);
+                    toast(
+                      isOverrideLocked
+                        ? "特權覆寫安全鎖已解除"
+                        : "特權覆寫安全鎖已重新啟用",
+                    );
                     }}
                     className={`h-9 px-3.5 font-sans font-semibold text-[11px] rounded-xl border transition-all active:scale-[0.98] ${
                       isOverrideLocked

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -154,13 +155,6 @@ export default function AdminPayoutsPage() {
     new Set(),
   );
 
-  const [notif, setNotif] = useState<string | null>(null);
-
-  const showNotification = (msg: string) => {
-    setNotif(msg);
-    setTimeout(() => setNotif(null), 4000);
-  };
-
   // ── Filtered Datasets ──────────────────────────────────────────────────────
   const filteredWithdrawals = useMemo(() => {
     return withdrawals.filter(
@@ -224,7 +218,7 @@ export default function AdminPayoutsPage() {
         : newStatus === "processing"
           ? "已開始處理"
           : "已標記失敗";
-    showNotification(`提現單 ${id} ${actionLabel}`);
+    toast.success(`提現單 ${id} ${actionLabel}`);
   };
 
   const handleBatchComplete = () => {
@@ -234,7 +228,7 @@ export default function AdminPayoutsPage() {
         selectedFpsIds.has(w.id) ? { ...w, status: "completed" } : w,
       ),
     );
-    showNotification(`已批量完成 ${selectedFpsIds.size} 筆提現單銷帳！`);
+    toast.success(`已批量完成 ${selectedFpsIds.size} 筆提現單銷帳！`);
     setSelectedFpsIds(new Set());
   };
 
@@ -244,7 +238,7 @@ export default function AdminPayoutsPage() {
       : withdrawals.filter((w) => w.status === "pending");
 
     if (targetList.length === 0) {
-      showNotification("沒有可導出的提現紀錄！");
+      toast.warning("沒有可導出的提現紀錄！");
       return;
     }
 
@@ -267,9 +261,7 @@ export default function AdminPayoutsPage() {
     link.click();
     document.body.removeChild(link);
 
-    showNotification(
-      `已成功導出 ${targetList.length} 筆 FPS Payout CSV 文件！`,
-    );
+    toast.success(`已成功導出 ${targetList.length} 筆 FPS Payout CSV 文件！`);
   };
 
   // ── Merchant Stripe CSV Export ─────────────────────────────────────────────
@@ -279,7 +271,7 @@ export default function AdminPayoutsPage() {
       : filteredMerchants;
 
     if (targetList.length === 0) {
-      showNotification("沒有可導出的商戶流水紀錄！");
+      toast.warning("沒有可導出的商戶流水紀錄！");
       return;
     }
 
@@ -304,61 +296,54 @@ export default function AdminPayoutsPage() {
     link.click();
     document.body.removeChild(link);
 
-    showNotification(`已成功導出 ${targetList.length} 筆商戶流水 CSV 文件！`);
+    toast.success(`已成功導出 ${targetList.length} 筆商戶流水 CSV 文件！`);
   };
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-100px)] space-y-4">
       {/* ── Page Header & Top Nav Selector ────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <div>
-          <h1 className="font-sans font-bold text-[20px] text-text-primary">
-            財務與結算管控台
-          </h1>
-          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-            人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與 5% 佣金收益監控
-          </p>
-        </div>
+      {/* ── Page Header ─────────────────────────────────────────────────────── */}
+      <div className="bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+        <h1 className="font-sans font-bold text-[20px] text-text-primary">
+          財務與結算管控台
+        </h1>
+        <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+          人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與 5% 佣金收益監控
+        </p>
+      </div>
 
-        {/* ── Top Nav Tab Selector ── */}
-        <div className="flex items-center gap-1.5 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)] shrink-0">
+      {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
+      <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-1.5">
           <button
             onClick={() => setActiveTab("fps")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "fps"
-                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
             }`}
           >
-            <span>🏦 FPS 批次處理</span>
-            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full">
+            <span className="truncate">🏦 FPS 批次處理</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
               {withdrawals.filter((w) => w.status === "pending").length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("stripe")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-sans text-xs font-semibold transition-all ${
+            className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
               activeTab === "stripe"
-                ? "bg-brand text-[#17130f] shadow-md shadow-brand/10"
+                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
             }`}
           >
-            <span>💳 商戶流水 (Stripe)</span>
-            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full">
+            <span className="truncate">💳 商戶流水 (Stripe)</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
               {merchantAccounts.length}
             </span>
           </button>
         </div>
       </div>
-
-      {/* ── Notification Toast ────────────────────────────────────────── */}
-      {notif && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-[#2e2925] border-l-4 border-success px-4 py-3 rounded shadow-xl animate-fade-in">
-          <span className="text-success font-sans text-sm">✓</span>
-          <span className="font-sans text-xs text-text-primary">{notif}</span>
-        </div>
-      )}
 
       {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
       <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
