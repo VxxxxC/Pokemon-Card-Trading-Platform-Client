@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface CardEntry {
   id: string;
@@ -12,68 +13,214 @@ interface CardEntry {
   source: "tcgdex" | "snkrdunk" | "manual";
   cachedAt: string;
   needsReview: boolean;
+  imageUrl?: string;
 }
 
-interface CrawlerLog {
-  timestamp: string;
-  jobId: string;
-  targetSet: string;
-  status: "success" | "warning" | "failed";
-  cardsCrawled: number;
-  message: string;
-}
+const ITEMS_PER_PAGE = 6;
 
 const initialCards: CardEntry[] = [
-  { id: "DB-001", cardNo: "sv2a-182", name: "Charizard ex SAR", nameJP: "リザードン ex SAR", set: "151 (sv2a)", rarity: "SAR", source: "snkrdunk", cachedAt: "2025/5/21 12:00", needsReview: false },
-  { id: "DB-002", cardNo: "sv6a-109", name: "Umbreon ex SAR", nameJP: "ブラッキー ex SAR", set: "Night Wanderer (sv6a)", rarity: "SAR", source: "snkrdunk", cachedAt: "2025/5/21 12:00", needsReview: false },
-  { id: "DB-003", cardNo: "sv4a-237", name: "Gardevoir ex SAR", nameJP: "サーナイト ex SAR", set: "Shiny Treasure (sv4a)", rarity: "SAR", source: "tcgdex", cachedAt: "2025/5/20 08:30", needsReview: false },
-  { id: "DB-004", cardNo: "promo-032", name: "Pikachu PROMO", nameJP: "ピカチュウ PROMO", set: "Pokémon Center 限定 2024", rarity: "PROMO", source: "manual", cachedAt: "2025/5/18 15:22", needsReview: false },
-  { id: "DB-005", cardNo: "s12a-301", name: "Arceus VSTAR UR", nameJP: "アルセウス VSTAR UR", set: "VSTAR Universe (s12a)", rarity: "UR", source: "tcgdex", cachedAt: "2025/5/21 12:00", needsReview: false },
-  { id: "DB-006", cardNo: "gym-042", name: "Sabrina's Gengar", nameJP: "ナツメのゲンガー", set: "Gym Heroes (第1弾·舊版)", rarity: "Holo", source: "manual", cachedAt: "2025/5/19 10:15", needsReview: true },
-  { id: "DB-007", cardNo: "vc2-033", name: "Venusaur-Holo", nameJP: "フシギバナ Holo", set: "Base Set 2nd Edition", rarity: "Holo", source: "manual", cachedAt: "2025/5/17 09:00", needsReview: true },
+  {
+    id: "DB-001",
+    cardNo: "sv2a-182",
+    name: "Charizard ex SAR",
+    nameJP: "リザードン ex SAR",
+    set: "151 (sv2a)",
+    rarity: "SAR",
+    source: "snkrdunk",
+    cachedAt: "2025/5/21 12:00",
+    needsReview: false,
+  },
+  {
+    id: "DB-002",
+    cardNo: "sv6a-109",
+    name: "Umbreon ex SAR",
+    nameJP: "ブラッキー ex SAR",
+    set: "Night Wanderer (sv6a)",
+    rarity: "SAR",
+    source: "snkrdunk",
+    cachedAt: "2025/5/21 12:00",
+    needsReview: false,
+  },
+  {
+    id: "DB-003",
+    cardNo: "sv4a-237",
+    name: "Gardevoir ex SAR",
+    nameJP: "サーナイト ex SAR",
+    set: "Shiny Treasure (sv4a)",
+    rarity: "SAR",
+    source: "tcgdex",
+    cachedAt: "2025/5/20 08:30",
+    needsReview: false,
+  },
+  {
+    id: "DB-004",
+    cardNo: "promo-032",
+    name: "Pikachu PROMO",
+    nameJP: "ピカチュウ PROMO",
+    set: "Pokémon Center 限定 2024",
+    rarity: "PROMO",
+    source: "manual",
+    cachedAt: "2025/5/18 15:22",
+    needsReview: false,
+  },
+  {
+    id: "DB-005",
+    cardNo: "s12a-301",
+    name: "Arceus VSTAR UR",
+    nameJP: "アルセウス VSTAR UR",
+    set: "VSTAR Universe (s12a)",
+    rarity: "UR",
+    source: "tcgdex",
+    cachedAt: "2025/5/21 12:00",
+    needsReview: false,
+  },
+  {
+    id: "DB-006",
+    cardNo: "gym-042",
+    name: "Sabrina's Gengar",
+    nameJP: "ナツメのゲンガー",
+    set: "Gym Heroes (第1弾·舊版)",
+    rarity: "Holo",
+    source: "manual",
+    cachedAt: "2025/5/19 10:15",
+    needsReview: true,
+  },
+  {
+    id: "DB-007",
+    cardNo: "vc2-033",
+    name: "Venusaur-Holo",
+    nameJP: "フシギバナ Holo",
+    set: "Base Set 2nd Edition",
+    rarity: "Holo",
+    source: "manual",
+    cachedAt: "2025/5/17 09:00",
+    needsReview: true,
+  },
 ];
 
-const initialLogs: CrawlerLog[] = [
-  { timestamp: "2025/5/21 13:00", jobId: "JOB-942", targetSet: "Night Wanderer (sv6a)", status: "success", cardsCrawled: 42, message: "行情快取更新成功，已抓取最新 42 條成交數據。" },
-  { timestamp: "2025/5/21 12:00", jobId: "JOB-941", targetSet: "Mask of Change (sv6)", status: "success", cardsCrawled: 120, message: "行情快取更新成功，最新 120 條成交記錄已寫入資料庫。" },
-  { timestamp: "2025/5/21 11:00", jobId: "JOB-940", targetSet: "VSTAR Universe (s12a)", status: "warning", cardsCrawled: 85, message: "部分日文行情獲取超時 (Timeout)，15 個條目使用本地降級估值。" },
-  { timestamp: "2025/5/21 10:00", jobId: "JOB-939", targetSet: "Scarlet ex (sv1s)", status: "failed", cardsCrawled: 0, message: "SNKRDUNK 網關阻斷 (403 Forbidden)，代理 IP 已被風控阻擋。" },
-];
-
-const SOURCE_BADGE = {
-  tcgdex: { label: "TCGdex API", className: "text-success bg-[rgba(16,185,129,0.12)] border-success/20" },
-  snkrdunk: { label: "SNKRDUNK 行情", className: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20" },
-  manual: { label: "手動錄入", className: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20" },
+const SOURCE_BADGE: Record<
+  CardEntry["source"],
+  { label: string; className: string }
+> = {
+  tcgdex: {
+    label: "TCGdex API",
+    className: "text-success bg-[rgba(16,185,129,0.12)] border-success/20",
+  },
+  snkrdunk: {
+    label: "SNKRDUNK 行情",
+    className: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
+  },
+  manual: {
+    label: "manual",
+    className: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
+  },
 };
+
+function CardThumb({ card }: { card: CardEntry }) {
+  if (card.imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={card.imageUrl}
+        alt={card.name}
+        className="w-11 h-14 rounded-lg object-cover border border-[rgba(237,232,224,0.10)] shrink-0"
+      />
+    );
+  }
+  return (
+    <div className="w-11 h-14 rounded-lg bg-bg-page border border-[rgba(237,232,224,0.08)] flex items-center justify-center shrink-0">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#50453b"
+        strokeWidth="2"
+      >
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <polyline points="21 15 16 10 5 21" />
+      </svg>
+    </div>
+  );
+}
 
 export default function AdminCatalogPage() {
   const [cards, setCards] = useState<CardEntry[]>(initialCards);
-  const [logs, setLogs] = useState<CrawlerLog[]>(initialLogs);
   const [searchQuery, setSearchQuery] = useState("");
-  const [notif, setNotif] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Form states for manual entry
+  // Panel 1: DB 讀取表單
+  const [dbQuery, setDbQuery] = useState("");
+
+  // Panel 2: 手動錄入表單
   const [cardNo, setCardNo] = useState("");
   const [cardName, setCardName] = useState("");
   const [cardNameJp, setCardNameJp] = useState("");
   const [cardSet, setCardSet] = useState("");
   const [cardRarity, setCardRarity] = useState("SAR");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageFileName, setImageFileName] = useState<string>("");
+  const objectUrlRef = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form states for API fetch
-  const [importQuery, setImportQuery] = useState("");
+  const clearObjectUrl = () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  };
 
-  const showNotification = (msg: string) => {
-    setNotif(msg);
-    setTimeout(() => setNotif(null), 4000);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("僅支援圖片格式檔案 (image/*)");
+      return;
+    }
+    clearObjectUrl();
+    const url = URL.createObjectURL(file);
+    objectUrlRef.current = url;
+    setImagePreview(url);
+    setImageFileName(file.name);
+    setImageUrl("");
+  };
+
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setImageUrl(value);
+    if (value) {
+      clearObjectUrl();
+      setImageFileName("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setImagePreview(value);
+    } else if (!objectUrlRef.current) {
+      setImagePreview("");
+    }
+  };
+
+  const resetImage = () => {
+    clearObjectUrl();
+    setImagePreview("");
+    setImageUrl("");
+    setImageFileName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!cardNo || !cardName || !cardSet) {
-      showNotification("❌ 請填寫所有必填欄位 (卡牌編號, 英文名稱, 系列名稱)！");
+      toast.error("請填寫所有必填欄位（卡牌編號、英文/漢語名稱、系列名稱）");
+      return;
+    }
+    if (!imagePreview) {
+      toast.error("請上傳卡牌圖片或提供圖片 URL");
       return;
     }
 
+    // Mock 上傳：真實環境會壓縮並上傳至 Supabase Storage CDN
+    const finalImageUrl = imagePreview;
     const newCard: CardEntry = {
       id: `DB-${Math.floor(100 + Math.random() * 900)}`,
       cardNo,
@@ -82,139 +229,135 @@ export default function AdminCatalogPage() {
       set: cardSet,
       rarity: cardRarity,
       source: "manual",
-      cachedAt: "剛剛手動手填",
+      cachedAt: "剛剛手動錄入",
       needsReview: true,
+      imageUrl: finalImageUrl,
     };
 
-    setCards([newCard, ...cards]);
-    showNotification(`✅ 手動錄入成功！卡牌條目 #${newCard.id} 已建立，狀態為待審核。`);
+    setCards((prev) => [newCard, ...prev]);
+    // 防止 revoke 影響已寫入記錄的 blob URL：交出 ref 擁有權
+    objectUrlRef.current = null;
+    toast.success(`手動錄入成功！條目 #${newCard.id} 已建立，狀態為待審核。`, {
+      description: `圖片已 mock 上傳至 Supabase Storage CDN`,
+    });
 
-    // Reset form fields
     setCardNo("");
     setCardName("");
     setCardNameJp("");
     setCardSet("");
+    setImagePreview("");
+    setImageUrl("");
+    setImageFileName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setCurrentPage(1);
   };
 
-  const handleApiImport = (e: React.FormEvent) => {
+  const handleDbLookup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!importQuery) {
-      showNotification("❌ 請輸入要導入的卡牌編號或關鍵字！");
+    if (!dbQuery.trim()) {
+      toast.error("請輸入卡牌編號、系列代碼或 ID");
       return;
     }
-
-    showNotification(`🔍 正在向 TCGdex / SNKRDUNK API 查詢 "${importQuery}"...`);
-
-    setTimeout(() => {
-      const isExist = cards.some((c) => c.cardNo.toLowerCase() === importQuery.toLowerCase());
-      if (isExist) {
-        showNotification("⚠️ 該卡牌編號在本地資料庫中已存在快取。");
-        return;
-      }
-
-      const importedCard: CardEntry = {
-        id: `DB-${Math.floor(100 + Math.random() * 900)}`,
-        cardNo: importQuery,
-        name: `${importQuery.toUpperCase()} Premium Card`,
-        nameJP: `${importQuery.toUpperCase()} 特賞カード`,
-        set: "隨機導入套裝 (Set)",
-        rarity: "UR",
-        source: "tcgdex",
-        cachedAt: "剛剛 API 導入",
-        needsReview: false,
-      };
-
-      setCards((prev) => [importedCard, ...prev]);
-      showNotification(`🎉 成功從 API 導入條目: ${importedCard.name}`);
-      setImportQuery("");
-    }, 1200);
+    const q = dbQuery.trim().toLowerCase();
+    const found = cards.find(
+      (c) => c.cardNo.toLowerCase() === q || c.id.toLowerCase() === q,
+    );
+    if (found) {
+      toast.success(`已於本地 DB 索引找到條目 ${found.cardNo}`, {
+        description: `${found.name}｜${found.set}｜${found.rarity}｜來源 ${SOURCE_BADGE[found.source].label}`,
+      });
+      setSearchQuery(dbQuery.trim());
+      setCurrentPage(1);
+    } else {
+      toast.warning(`DB 中查無 "${dbQuery.trim()}" 的快取條目`, {
+        description: "請確認卡牌編號，或改用手動錄入建立條目。",
+      });
+    }
   };
 
-  const handleTriggerCrawler = () => {
-    showNotification("🚀 已向遠端 Node.js Queue 派發手動行情抓取任務 (夜巡/Mask of Change)...");
-    setTimeout(() => {
-      const newLog: CrawlerLog = {
-        timestamp: new Date().toLocaleDateString("zh-TW") + " " + new Date().toLocaleTimeString("zh-TW"),
-        jobId: `JOB-${Math.floor(900 + Math.random() * 100)}`,
-        targetSet: "夜巡 (sv6a)",
-        status: "success",
-        cardsCrawled: 42,
-        message: "手動觸發爬蟲成功：42 條 SNKRDUNK 行情、品相溢價估值數據已寫入資料庫！",
-      };
-      setLogs([newLog, ...logs]);
-      showNotification("🎉 爬蟲行情快取抓取成功！已寫入最近日誌記錄。");
-    }, 1500);
-  };
-
-  const filteredCards = cards.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.cardNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.set.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCards = useMemo(
+    () =>
+      cards.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.cardNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          c.set.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [cards, searchQuery],
   );
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCards.length / ITEMS_PER_PAGE),
+  );
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * ITEMS_PER_PAGE;
+  const pagedCards = filteredCards.slice(pageStart, pageStart + ITEMS_PER_PAGE);
+  const rangeStart = filteredCards.length === 0 ? 0 : pageStart + 1;
+  const rangeEnd = Math.min(pageStart + ITEMS_PER_PAGE, filteredCards.length);
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="space-y-6">
       {/* ── Page Header ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h1 className="font-sans font-bold text-[24px] text-text-primary">卡牌字典與行情</h1>
+          <h1 className="font-sans font-bold text-[24px] text-text-primary">
+            卡牌字典資料庫
+          </h1>
           <p className="font-sans text-[13px] text-text-secondary mt-0.5">
-            同步與導入官方 TCGdex API 卡牌名冊，監控 SNKRDUNK 日本即時未拆盒、單卡行情爬蟲
+            檢視 Supabase 本地快取卡牌名冊，並手動錄入無 API
+            覆蓋的小眾／舊版卡牌條目
           </p>
         </div>
       </div>
 
-      {/* ── Notification Toast ────────────────────────────────────────── */}
-      {notif && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-[#2e2925] border-l-4 border-brand px-4 py-3 rounded shadow-xl animate-fade-in">
-          <span className="text-brand font-sans text-sm">🗃️</span>
-          <span className="font-sans text-xs text-text-primary">{notif}</span>
-        </div>
-      )}
-
-      {/* ── Top Level Grid: Forms for catalog creation ───────────────── */}
+      {/* ── Top Level Grid: Forms ────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PANEL 1: API Data Fetch and Import */}
+        {/* PANEL 1: DB 資料讀取表單 */}
         <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between">
           <div className="space-y-4">
             <div>
               <h2 className="font-sans font-semibold text-[16px] text-text-primary">
-                API 智能卡牌資料擷取
+                查詢資料庫
               </h2>
               <p className="font-sans text-[12px] text-text-secondary mt-1">
-                輸入卡牌編號，全自動調用官方及第三方 TCGdex API，自動補全卡牌的高清圖片、罕貴度、日文原名
+                依卡牌編號、系列代碼或條目
+                ID，直接查詢並檢視資料庫中已快取的卡牌記錄
               </p>
             </div>
 
-            <form onSubmit={handleApiImport} className="flex gap-2.5">
+            <form onSubmit={handleDbLookup} className="flex gap-2.5">
               <input
                 type="text"
-                value={importQuery}
-                onChange={(e) => setImportQuery(e.target.value)}
+                value={dbQuery}
+                onChange={(e) => setDbQuery(e.target.value)}
                 placeholder="例：sv2a-182 / sv6a-109..."
-                className="flex-1 h-10 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-text-primary placeholder-text-disabled focus:outline-none"
+                className="flex-1 h-10 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-text-primary placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
               />
               <button
                 type="submit"
                 className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform shrink-0 shadow-lg shadow-brand/10"
               >
-                📥 導入與快取
+                🔍
               </button>
             </form>
-            <div className="p-3 bg-bg-page rounded-xl border border-[rgba(237,232,224,0.04)] text-[11px] font-mono text-text-secondary space-y-1">
-              <p>● API 備用渠道：[TCGdex API] / [JustTCG]</p>
-              <p>● 自動建立：高清圖檔會自動壓縮上傳至 Supabase Storage CDN</p>
-            </div>
           </div>
         </section>
 
-        {/* PANEL 2: Manual Card Creation Form */}
+        {/* PANEL 2: 小眾卡牌手動錄入 */}
         <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
           <h2 className="font-sans font-semibold text-[16px] text-text-primary mb-3">
             小眾卡牌手動錄入（無 API 覆蓋）
           </h2>
-          <form onSubmit={handleManualSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <form
+            onSubmit={handleManualSubmit}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3.5"
+          >
             <div>
               <label className="font-mono text-[11px] text-text-secondary block mb-1">
                 卡牌編號 <span className="text-warning">*</span>
@@ -224,7 +367,7 @@ export default function AdminCatalogPage() {
                 value={cardNo}
                 onChange={(e) => setCardNo(e.target.value)}
                 placeholder="例：promo-102"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none"
+                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
               />
             </div>
             <div>
@@ -236,7 +379,7 @@ export default function AdminCatalogPage() {
                 value={cardName}
                 onChange={(e) => setCardName(e.target.value)}
                 placeholder="例：Pikachu PROMO"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none"
+                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
               />
             </div>
             <div>
@@ -248,7 +391,7 @@ export default function AdminCatalogPage() {
                 value={cardNameJp}
                 onChange={(e) => setCardNameJp(e.target.value)}
                 placeholder="例：ピカチュウ"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none"
+                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
               />
             </div>
             <div>
@@ -260,7 +403,7 @@ export default function AdminCatalogPage() {
                 value={cardSet}
                 onChange={(e) => setCardSet(e.target.value)}
                 placeholder="例：Base Set 2nd"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none"
+                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
               />
             </div>
             <div>
@@ -270,7 +413,7 @@ export default function AdminCatalogPage() {
               <select
                 value={cardRarity}
                 onChange={(e) => setCardRarity(e.target.value)}
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none appearance-none"
+                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)] appearance-none"
               >
                 <option value="SAR">SAR</option>
                 <option value="UR">UR</option>
@@ -288,35 +431,123 @@ export default function AdminCatalogPage() {
                 新增手動條目
               </button>
             </div>
+
+            {/* 圖片上傳（File input + URL 雙模式） */}
+            <div className="sm:col-span-2">
+              <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                卡牌圖片 <span className="text-warning">*</span>
+              </label>
+              <div className="flex gap-3">
+                <div className="shrink-0">
+                  {imagePreview ? (
+                    <div className="relative w-16 h-[88px]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreview}
+                        alt="預覽"
+                        className="w-16 h-[88px] rounded-lg object-cover border border-[rgba(237,232,224,0.12)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={resetImage}
+                        aria-label="移除圖片"
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warning text-white text-[10px] font-bold flex items-center justify-center active:scale-[0.9] transition-transform"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-16 h-[88px] rounded-lg bg-bg-page border border-dashed border-[rgba(237,232,224,0.16)] flex items-center justify-center">
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#50453b"
+                        strokeWidth="2"
+                      >
+                        <rect
+                          x="3"
+                          y="3"
+                          width="18"
+                          height="18"
+                          rx="2"
+                          ry="2"
+                        />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="w-full text-[11px] font-mono text-text-secondary file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[rgba(212,165,116,0.15)] file:text-brand file:font-sans file:font-bold file:text-[11px] file:cursor-pointer hover:file:bg-[rgba(212,165,116,0.25)]"
+                  />
+                  <input
+                    type="text"
+                    value={imageUrl}
+                    onChange={handleUrlChange}
+                    placeholder="或貼上圖片 URL（備援）"
+                    className="w-full h-8 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
+                  />
+                  {imageFileName && (
+                    <p className="font-mono text-[10px] text-text-disabled truncate">
+                      已選：{imageFileName}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
           </form>
         </section>
       </div>
 
-      {/* ── Lower Split Section: Card Catalog + Crawler Monitoring ───── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
-        {/* Card Dictionary Table */}
-        <section aria-labelledby="dictionary-heading" className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h2 id="dictionary-heading" className="font-sans font-bold text-[16px] text-text-primary">
-              卡牌名冊字典快取 ({filteredCards.length})
-            </h2>
-            <div className="flex items-center h-9 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden px-3 max-w-[200px]">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#50453b" strokeWidth="2.5" className="shrink-0">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜尋編號或卡名..."
-                className="w-full h-full bg-transparent px-2 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none"
-              />
-            </div>
+      {/* ── 手動錄入記錄 ─────────────────────────────────────────────── */}
+      <section aria-labelledby="records-heading" className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2
+            id="records-heading"
+            className="font-sans font-bold text-[16px] text-text-primary"
+          >
+            手動錄入記錄 ({filteredCards.length})
+          </h2>
+          <div className="flex items-center h-9 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden px-3 max-w-[240px]">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#50453b"
+              strokeWidth="2.5"
+              className="shrink-0"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="搜尋編號、卡名或系列..."
+              className="w-full h-full bg-transparent px-2 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none"
+            />
           </div>
+        </div>
 
-          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-            {filteredCards.map((card, i) => {
+        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
+          {pagedCards.length === 0 ? (
+            <div className="px-4 py-12 text-center">
+              <p className="font-sans text-[13px] text-text-secondary">
+                查無符合條件的卡牌記錄。試試調整搜尋關鍵字，或於上方手動錄入新條目。
+              </p>
+            </div>
+          ) : (
+            pagedCards.map((card, i) => {
               const badge = SOURCE_BADGE[card.source];
               return (
                 <div
@@ -325,6 +556,7 @@ export default function AdminCatalogPage() {
                     i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
                   } ${card.needsReview ? "bg-[rgba(239,68,68,0.02)]" : ""}`}
                 >
+                  <CardThumb card={card} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-mono text-[10px] text-brand bg-[rgba(212,165,116,0.12)] px-1.5 py-0.5 rounded border border-brand/20">
@@ -338,89 +570,83 @@ export default function AdminCatalogPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-sans text-[11px] text-text-secondary">{card.set}</span>
+                      <span className="font-sans text-[11px] text-text-secondary">
+                        {card.set}
+                      </span>
                       <span className="font-mono text-[10px] text-text-disabled uppercase">
                         {card.rarity}
                       </span>
-                      <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${badge.className}`}>
+                      <span
+                        className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${badge.className}`}
+                      >
                         {badge.label}
                       </span>
                       {card.needsReview && (
                         <span className="font-mono text-[9px] text-warning bg-[rgba(239,68,68,0.10)] px-1.5 py-0.5 rounded border border-warning/15">
-                          待審核
+                          needsReview
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end gap-1 font-mono">
-                    <span className="text-[10px] text-text-disabled block">最後同步</span>
-                    <span className="text-[11px] text-text-secondary">{card.cachedAt}</span>
+                    <span className="text-[10px] text-text-disabled block">
+                      最後同步
+                    </span>
+                    <span className="text-[11px] text-text-secondary">
+                      {card.cachedAt}
+                    </span>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </section>
+            })
+          )}
+        </div>
 
-        {/* SNKRDUNK 行情爬蟲日誌 */}
-        <section aria-labelledby="crawler-heading" className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 id="crawler-heading" className="font-sans font-bold text-[16px] text-text-primary">
-              SNKRDUNK 爬蟲行情監控
-            </h2>
+        {/* Pagination Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <span className="font-mono text-[11px] text-text-secondary">
+            顯示第 {rangeStart} - {rangeEnd} 筆，共 {filteredCards.length}{" "}
+            筆記錄
+          </span>
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={handleTriggerCrawler}
-              className="h-8 px-3 bg-bg-card border border-brand/30 rounded-xl font-mono text-[11px] text-brand hover:bg-[rgba(212,165,116,0.08)] active:scale-[0.98] transition-all shrink-0"
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="h-8 px-3 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-lg font-mono text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-hover active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
             >
-              🔄 立即手動同步
+              ← 上一頁
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    aria-current={page === safePage ? "page" : undefined}
+                    className={`h-8 w-8 rounded-lg font-mono text-[11px] active:scale-[0.98] transition-all ${
+                      page === safePage
+                        ? "bg-brand text-[#17130f] font-bold"
+                        : "bg-bg-card border border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-text-primary hover:bg-bg-hover"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ),
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              className="h-8 px-3 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-lg font-mono text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-hover active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
+            >
+              下一頁 →
             </button>
           </div>
-
-          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 space-y-3.5">
-            <div className="bg-bg-page border border-[rgba(237,232,224,0.06)] rounded-xl p-3 flex justify-between font-mono text-[11px] text-text-secondary">
-              <div>
-                <span className="text-text-disabled block">爬蟲同步頻率</span>
-                <span className="text-text-primary font-bold">每 4 小時自動抓取</span>
-              </div>
-              <div className="text-right">
-                <span className="text-text-disabled block">最近成功率</span>
-                <span className="text-success font-bold">98.4% (9/10)</span>
-              </div>
-            </div>
-
-            <div className="space-y-2.5">
-              <span className="font-sans font-bold text-[12px] text-text-secondary block">
-                最近 4 次抓取日誌
-              </span>
-              {logs.map((log) => (
-                <div
-                  key={log.jobId}
-                  className="bg-bg-page rounded-xl border border-[rgba(237,232,224,0.05)] p-3 flex flex-col gap-1.5"
-                >
-                  <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        log.status === "success" ? "bg-success" : log.status === "warning" ? "bg-warning animate-pulse" : "bg-warning"
-                      }`} />
-                      <span className="text-text-primary font-semibold">{log.targetSet}</span>
-                    </div>
-                    <span className="text-[10px] text-text-disabled">{log.timestamp}</span>
-                  </div>
-
-                  <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
-                    {log.message}
-                  </p>
-
-                  <div className="flex items-center justify-between gap-2 border-t border-[rgba(237,232,224,0.04)] pt-2 font-mono text-[10px] text-text-disabled">
-                    <span>任務號：{log.jobId}</span>
-                    <span className="text-text-primary">抓取件數：{log.cardsCrawled} 件</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
