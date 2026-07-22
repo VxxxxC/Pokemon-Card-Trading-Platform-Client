@@ -14,12 +14,7 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { sendMessage } from "@/app/actions/chat";
-import { submitUserReport } from "@/app/actions/reports";
 import { isAmlSensitiveChatContent } from "@/app/lib/chat/realtimeChatMessages";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
@@ -59,10 +54,10 @@ const ReviewModal = dynamic(
   { ssr: false },
 );
 
-const ChatReportDialogBody = dynamic(
+const UserReportModal = dynamic(
   () =>
-    import("@/app/components/chat/ChatReportDialogBody").then(
-      (module) => module.ChatReportDialogBody,
+    import("@/app/components/report/UserReportModal").then(
+      (module) => module.UserReportModal,
     ),
   { ssr: false },
 );
@@ -599,9 +594,6 @@ export function GlobalChatConsole({
   const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const onClose = useCallback(() => setIsChatOpen(false), [setIsChatOpen]);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportCategory, setReportCategory] = useState<string>("");
-  const [reportDetails, setReportDetails] = useState<string>("");
-  const [isReportSubmitting, setIsReportSubmitting] = useState(false);
 
   const [composerByRoomId, setComposerByRoomId] = useState<
     Record<string, string>
@@ -755,68 +747,6 @@ export function GlobalChatConsole({
   const activeRoom = useMemo(
     () => chats.find((room) => room.id === activeRoomId) ?? null,
     [activeRoomId, chats],
-  );
-
-  const handleReportConfirm = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-
-      if (!reportCategory) {
-        toast.error("❌ 請選擇舉報事項類別");
-        return;
-      }
-
-      if (!activeRoom || !isDbChatRoomId(activeRoomId)) {
-        toast.error("對話尚未建立，無法舉報");
-        return;
-      }
-
-      if (isReportSubmitting) {
-        return;
-      }
-
-      setIsReportSubmitting(true);
-
-      try {
-        const result = await submitUserReport({
-          reportedUserId: activeRoom.partnerId,
-          category: reportCategory,
-          details: reportDetails,
-          chatRoomId: activeRoomId,
-        });
-
-        if (!result.success) {
-          toast.error(result.error);
-          return;
-        }
-
-        toast.success("⚠️ 舉報信號已受理", {
-          description:
-            "【" +
-            reportCategory +
-            "】風控隊列已啟動，案件詳情已留存快照。",
-          className:
-            "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
-        });
-
-        setIsReportOpen(false);
-        setReportCategory("");
-        setReportDetails("");
-      } catch (error) {
-        const msg =
-          error instanceof Error ? error.message : "提交舉報時發生錯誤";
-        toast.error(msg);
-      } finally {
-        setIsReportSubmitting(false);
-      }
-    },
-    [
-      activeRoom,
-      activeRoomId,
-      isReportSubmitting,
-      reportCategory,
-      reportDetails,
-    ],
   );
 
   const { reviewedOrderIds, isReviewLoading } = useRoomReviewedOrderIds(
@@ -1092,9 +1022,13 @@ export function GlobalChatConsole({
                 </Link>
               </div>
               <div className="flex items-center gap-2">
-                <AlertDialogTrigger className={reportButtonClass}>
+                <button
+                  type="button"
+                  onClick={() => setIsReportOpen(true)}
+                  className={reportButtonClass}
+                >
                   舉報
-                </AlertDialogTrigger>
+                </button>
                 <button
                   type="button"
                   onClick={onClose}
@@ -1375,9 +1309,13 @@ export function GlobalChatConsole({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <AlertDialogTrigger className={reportButtonClass}>
+                  <button
+                    type="button"
+                    onClick={() => setIsReportOpen(true)}
+                    className={reportButtonClass}
+                  >
                     舉報
-                  </AlertDialogTrigger>
+                  </button>
                   <button
                     type="button"
                     onClick={onClose}
@@ -1463,33 +1401,18 @@ export function GlobalChatConsole({
         />
       ) : null}
 
-      <AlertDialog
-      open={isReportOpen}
-      onOpenChange={(open) => {
-        setIsReportOpen(open);
-        if (!open) {
-          setReportCategory("");
-          setReportDetails("");
-        }
-      }}
-    >
       {isMounted ? createPortal(chatConsoleLayer, document.body) : null}
 
-      {isReportOpen ? (
-        <ChatReportDialogBody
-          reportCategory={reportCategory}
-          reportDetails={reportDetails}
-          isSubmitting={isReportSubmitting}
-          onCategoryChange={(value) => setReportCategory(value)}
-          onDetailsChange={setReportDetails}
-          onConfirm={handleReportConfirm}
-          onCancel={() => {
-            setReportCategory("");
-            setReportDetails("");
-          }}
+      {activeRoom ? (
+        <UserReportModal
+          isOpen={isReportOpen}
+          onOpenChange={setIsReportOpen}
+          targetUserId={activeRoom.partnerId}
+          targetUserName={activeRoom.partnerName}
+          targetType="chat_message"
+          chatRoomId={activeRoomId}
         />
       ) : null}
-    </AlertDialog>
     </>
   );
 }

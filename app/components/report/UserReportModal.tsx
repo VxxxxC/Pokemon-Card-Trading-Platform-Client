@@ -1,0 +1,248 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { submitUserReport } from "@/app/actions/reports";
+
+interface UserReportModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  targetUserId: string;
+  targetUserName: string;
+  targetType?: "user" | "merchant" | "chat_message";
+  chatRoomId?: string;
+  onSuccess?: () => void;
+}
+
+const REPORT_CATEGORIES = [
+  {
+    value: "惡意欺詐 / 虛假交易",
+    label: "🛑 惡意欺詐 / 虛假交易 (FRAUD)",
+  },
+  {
+    value: "言語辱罵 / 不當言論",
+    label: "💬 言語辱罵 / 不當言論 (HARASS)",
+  },
+  {
+    value: "誘導私下交易",
+    label: "🔒 誘導私下交易 / 逃避中介 (OFFLINE)",
+  },
+  {
+    value: "其他違規行為",
+    label: "⚙️ 其他違規行為 (OTHER)",
+  },
+] as const;
+
+type ReportCategoryValue = (typeof REPORT_CATEGORIES)[number]["value"];
+
+export function UserReportModal({
+  isOpen,
+  onOpenChange,
+  targetUserId,
+  targetUserName,
+  targetType = "user",
+  chatRoomId,
+  onSuccess,
+}: UserReportModalProps) {
+  const [reportCategory, setReportCategory] = useState<ReportCategoryValue | "">("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const titleText =
+    targetType === "chat_message"
+      ? "🚩 提交交易違規舉報"
+      : targetType === "merchant"
+        ? "🚩 舉報該商戶用戶"
+        : "🚩 舉報該用戶";
+
+  const descriptionText =
+    targetType === "chat_message"
+      ? "Secure Risk Mediation Protocol"
+      : "Merchant Compliance Audit Protocol";
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      onOpenChange(open);
+      if (!open) {
+        setReportCategory("");
+        setReportDetails("");
+      }
+    },
+    [onOpenChange],
+  );
+
+  const handleConfirm = useCallback(
+    async (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+
+      if (!reportCategory) {
+        toast.error("❌ 請選擇舉報事項類別");
+        return;
+      }
+
+      if (isSubmitting) {
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        const payload: {
+          reportedUserId: string;
+          category: string;
+          details: string;
+          chatRoomId?: string;
+        } = {
+          reportedUserId: targetUserId,
+          category: reportCategory,
+          details: reportDetails,
+        };
+
+        if (chatRoomId?.trim()) {
+          payload.chatRoomId = chatRoomId.trim();
+        }
+
+        const result = await submitUserReport(payload);
+
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+
+        const description =
+          targetType === "chat_message"
+            ? `【${reportCategory}】風控隊列已啟動，案件詳情已留存快照。`
+            : `【${reportCategory}】商戶風控隊列已啟動。已對該用戶實施鏈上行為快照。`;
+
+        toast.success("⚠️ 舉報信號已受理", {
+          description,
+          className:
+            "bg-[#26211C] border border-red-500/30 text-[#eae1da] font-sans shadow-2xl",
+        });
+
+        setReportCategory("");
+        setReportDetails("");
+        onOpenChange(false);
+        onSuccess?.();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "提交舉報時發生錯誤";
+        toast.error(message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      reportCategory,
+      reportDetails,
+      isSubmitting,
+      targetUserId,
+      targetType,
+      chatRoomId,
+      onOpenChange,
+      onSuccess,
+    ],
+  );
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
+      <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_12px_40px_rgba(239,68,68,0.15)] rounded-2xl max-w-sm p-6 animate-scaleUp">
+        <AlertDialogHeader className="text-left place-items-start gap-1">
+          <AlertDialogTitle className="text-[16px] font-black text-[#eae1da] flex items-center gap-2">
+            {titleText}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-[11px] font-mono leading-normal text-[#8A8680] uppercase tracking-wider">
+            {descriptionText}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-4 py-3 font-sans text-[13px] w-full">
+          <div className="space-y-1.5">
+            <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
+              選擇舉報事項類別
+            </label>
+            <Select
+              value={reportCategory}
+              onValueChange={(value) =>
+                setReportCategory((value ?? "") as ReportCategoryValue | "")
+              }
+            >
+              <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-xl text-[#eae1da] font-sans text-[12px] hover:bg-[#2c2722] transition-colors focus:ring-0 focus:border-brand/40">
+                <SelectValue placeholder="點擊展開合約違規類別" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
+                {REPORT_CATEGORIES.map((category) => (
+                  <SelectItem
+                    key={category.value}
+                    value={category.value}
+                    className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                  >
+                    {category.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="user-report-details"
+              className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide"
+            >
+              舉報或投訴之詳細事實敍述
+            </label>
+            <textarea
+              id="user-report-details"
+              value={reportDetails}
+              onChange={(event) => setReportDetails(event.target.value)}
+              placeholder={`請具體提供與 ${targetUserName} 相關的違規事實（例如：收到貨件與敘述嚴重不符、使用侮辱性詞彙、誘導私下交易等），以利風控官快速調閱存證。`}
+              rows={3}
+              className="w-full bg-[#17130f] border border-white/5 rounded-xl text-[12.5px] font-sans text-[#eae1da] placeholder:text-[#50453b] p-3 focus:outline-none focus:border-brand/40 transition-colors resize-none leading-relaxed"
+            />
+          </div>
+
+          <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
+            ⚠️
+            聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨賬戶風控扣分限制。
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2 pt-1 w-full">
+          <AlertDialogAction
+            type="button"
+            onClick={handleConfirm}
+            disabled={isSubmitting}
+            className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
+          >
+            {isSubmitting ? "提交中…" : "🚀 確認提交安全審查"}
+          </AlertDialogAction>
+          <AlertDialogCancel
+            onClick={() => {
+              setReportCategory("");
+              setReportDetails("");
+            }}
+            className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
+          >
+            取消返回
+          </AlertDialogCancel>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
