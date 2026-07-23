@@ -232,9 +232,6 @@ export default function AdminDisputesPage() {
                 <TableHead className="font-sans text-[12px] font-semibold text-[#d4c4b7]">
                   案件狀態
                 </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-[#d4c4b7]">
-                  操作
-                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -269,7 +266,6 @@ export default function AdminDisputesPage() {
                 filtered.map((c) => (
                   <TableRow
                     key={c.id}
-                    onClick={() => handleRowClick(c.id)}
                     className="cursor-pointer border-white/[0.06] transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-[#39342f]"
                   >
                     <TableCell>
