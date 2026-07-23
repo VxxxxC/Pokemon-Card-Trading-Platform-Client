@@ -98,21 +98,21 @@ interface SystemService {
 const initialServices: SystemService[] = [
   {
     id: "supabase",
-    name: "後台服務器 Supabase API",
+    name: "後台服務器",
     subName: "Database & Auth Engine",
     status: "online",
     latency: 28,
   },
   {
     id: "crawler",
-    name: "SNKRDUNK / Mercari 爬蟲引擎",
+    name: "爬蟲引擎",
     subName: "Market Real-time Aggregator",
     status: "online",
     latency: 142,
   },
   {
     id: "stripe",
-    name: "Stripe API 金流網關",
+    name: "Stripe API",
     subName: "Escrow & Payout Gateway",
     status: "online",
     latency: 85,
