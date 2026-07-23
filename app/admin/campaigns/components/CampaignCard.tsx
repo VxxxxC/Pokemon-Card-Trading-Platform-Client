@@ -3,8 +3,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export type CampaignStatus = "active" | "scheduled" | "expired";
+export type CampaignStatus = "active" | "paused" | "expired";
 export type Audience = "guest" | "member" | "vip";
 export type AntiFraud = "ip" | "email_sms" | "kyc" | "stripe_device";
 export type RewardType =
@@ -42,7 +49,7 @@ export interface CampaignItem {
 
 interface CampaignCardProps {
   campaign: CampaignItem;
-  onToggleStatus: (id: string) => void;
+  onToggleStatus: (id: string, newStatus?: CampaignStatus) => void;
 }
 
 const audienceDisplayMap: Record<Audience, string> = {
@@ -70,17 +77,21 @@ export function CampaignCard({ campaign, onToggleStatus }: CampaignCardProps) {
     switch (status) {
       case "active":
         return <Badge variant="success">進行中</Badge>;
-      case "scheduled":
+      case "paused":
         return (
           <Badge
             variant="outline"
-            className="border-brand/40 text-brand bg-brand/10 font-mono text-[10px]"
+            className="border-amber-500/40 text-amber-500 bg-amber-500/10 font-mono text-[10px]"
           >
-            待開始
+            已暫停
           </Badge>
         );
       case "expired":
-        return <Badge variant="secondary">已結束</Badge>;
+        return (
+          <Badge variant="default" className="text-text-disabled">
+            已結束
+          </Badge>
+        );
       default:
         return <Badge variant="ghost">未知</Badge>;
     }
@@ -92,7 +103,7 @@ export function CampaignCard({ campaign, onToggleStatus }: CampaignCardProps) {
   return (
     <Card className="bg-transparent border-0 border-b border-[rgba(237,232,224,0.06)] rounded-none last:border-b-0 hover:bg-bg-hover/50 transition-colors">
       <CardContent className="p-4 sm:p-5 flex flex-col gap-3.5">
-        {/* ── Header: ID, Title, Type, Status & Switch ───────────────────── */}
+        {/* ── Header: ID, Title, Type, Status & Switch / Select ───────────────────── */}
         <div className="flex items-start justify-between gap-3 w-full flex-wrap">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -126,18 +137,28 @@ export function CampaignCard({ campaign, onToggleStatus }: CampaignCardProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap">
             {statusBadge(campaign.status)}
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[10px] text-text-secondary">
-                {campaign.status === "active" ? "開啟" : "關閉"}
-              </span>
-              <Switch
-                checked={campaign.status === "active"}
-                onCheckedChange={() => onToggleStatus(campaign.id)}
-                className="data-[state=checked]:bg-success data-[state=unchecked]:bg-bg-elevated"
-              />
-            </div>
+
+            {campaign.status !== "expired" ? (
+              <div
+                className="flex items-center gap-1.5"
+                title="切換 進行中 / 已暫停"
+              >
+                <span className="font-mono text-[10px] text-text-secondary">
+                  {campaign.status === "active" ? "開啟" : "關閉"}
+                </span>
+                <Switch
+                  checked={campaign.status === "active"}
+                  onCheckedChange={() => {
+                    const nextStatus =
+                      campaign.status === "active" ? "paused" : "active";
+                    onToggleStatus(campaign.id, nextStatus);
+                  }}
+                  className="data-[state=checked]:bg-success data-[state=unchecked]:bg-bg-elevated"
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
