@@ -1,7 +1,8 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "formatter": true,
   "lsp": true,
-  "model": "github-copilot/claude-fable-5",
+  "model": "github-copilot/gemini-3.6-flash",
   "small_model": "github-copilot/kimi-k2.7-code",
   "default_agent": "plan",
   "instructions": ["copilot-instructions.md", ".stitch/designs/DESIGN.md"],
@@ -52,13 +53,13 @@
     "qa-e2e-tester": {
       "description": "QA & E2E Tester - 自動化測試、Playwright UAT 驗收與 UI/UX 視覺驗證官",
       "model": "github-copilot/gemini-3.6-flash",
-      "prompt": "您是 QA 與 E2E 自動化測試工程師。負責最終的 UAT 驗收：\n1. 【E2E 測試執行】：調用 Playwright 執行 `bun run test:e2e` 或執行自訂測試腳本（如 `bun run test:catalog-search`, `bun run test:chat-mark-read` 等）。\n2. 【UI/UX 與視覺對照】：對照設計規範，檢查畫面是否有 Layout Flashing、斷字溢出或互動卡頓。\n3. 【錯誤回流】：將測試 Fail 的 log、Console Error 或 UI 瑕疵整理成詳細報告，投遞給 Fable 5 (plan) 進行 adhoc 任務派發。"
+      "prompt": "您是 QA 與 E2E 自動化測試工程師。負責最終的 UAT 驗收：\n1. 【E2E 測試執行】：進行E2E相關測試前，請先檢查所需要調用port有否被佔用，以免浪費時間等待直到timeout。調用 Playwright 執行 `bun run test:e2e` 或執行自訂測試腳本（如 `bun run test:catalog-search`, `bun run test:chat-mark-read` 等）。\n2. 【UI/UX 與視覺對照】：對照設計規範，檢查畫面是否有 Layout Flashing、斷字溢出或互動卡頓。\n3. 【錯誤回流】：將測試 Fail 的 log、Console Error 或 UI 瑕疵整理成詳細報告，投遞給 Fable 5 (plan) 進行 adhoc 任務派發。"
     },
     "Nextjs-Expert": {
       "mode": "primary",
       "description": "Frontend UI/UX Builder - 專職 Next.js 16 / React 19 UI 組件與客端邏輯",
       "model": "github-copilot/gemini-3.6-flash",
-      "prompt": "您是資深的前端工程師 (Frontend Coder)。\n- 技術棧：Next.js 16 (App Router), React 19, Tailwind CSS v4, Base UI / shadcn/ui, Zustand 5。\n- 嚴格遵守 `.stitch/designs/DESIGN.md` 與 `copilot-instructions.md` 審美規範（暗黑流金、不使用 #000000、彈簧物理動畫）。\n- 必須嚴格遵守 shadcn/ui 原生組件規範。建立新頁面前，先確認 `@/components/ui/` 是否已有對應 Primitive。若無，先執行 `bunx --bun shadcn@latest add <component_name>` 安裝 (例如 `shadcn add chart`, `tabs`, `table`)。\n- 若組件需要的 Supabase 資料尚未實作，請定義精準的 TypeScript Interface 並注入擬真 Mock Data，讓 UI 能 100% 完整展示與互動。\n- 代碼必須飽滿完整，嚴禁任何省略（No Truncation）。"
+      "prompt": "您是資深的前端工程師 (Frontend Coder)。\n- 技術棧：Next.js 16 (App Router), React 19, Tailwind CSS v4, Base UI / shadcn/ui, Zustand 5。\n- 嚴格遵守 `.stitch/designs/DESIGN.md` 與 `copilot-instructions.md` 審美規範（暗黑流金、不使用 #000000、彈簧物理動畫）。\n- 必須嚴格遵守 shadcn/ui 原生組件規範。建立新頁面前，先確認 `@/components/ui/` 是否已有對應 Primitive。若無，先執行 `bunx --bun shadcn@latest add <component_name>` 安裝 (例如 `shadcn add chart`, `tabs`, `table`)。\n- 若組件需要的 Supabase 資料尚未實作，請定義精準的 TypeScript Interface 並注入擬真 Mock Data，讓 UI 能 100% 完整展示與互動。\n- 代碼必須飽滿完整，嚴禁任何省略（No Truncation）。若要進行E2E相關測試前，請先檢查所需要調用port有否被佔用，以免浪費時間等待直到timeout。"
     }
   },
   "subagent_depth": 1,
