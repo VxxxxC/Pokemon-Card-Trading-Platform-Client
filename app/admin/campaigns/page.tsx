@@ -42,6 +42,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Accordion } from "@/app/components/ui/Accordion";
 
 import {
   CampaignCard,
@@ -317,6 +318,9 @@ export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignItem[]>(initialCampaigns);
   const [activeTab, setActiveTab] = useState<"templates" | "roi">("templates");
 
+  // Accordion state
+  const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
+
   // Form states
   const [campName, setCampName] = useState("");
   const [campBannerUrl, setCampBannerUrl] = useState("");
@@ -585,218 +589,229 @@ export default function AdminCampaignsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-start">
             {/* Left: New Campaign Form */}
             <section className={sectionClass}>
-              <div className="mb-4">
-                <h2 className="font-sans font-bold text-[16px] text-text-primary">
-                  新活動範本發行
-                </h2>
-                <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-                  快速配置獎勵內容、限制門檻，發行立即同步至前台「任務活動」中
-                </p>
-              </div>
-
-              <form onSubmit={handleCreateCampaign} className="space-y-5">
-                {/* Block 1: Basic Info */}
-                <div className="space-y-3">
-                  <p className="font-sans font-semibold text-[13px] text-text-primary">
-                    基本資料
-                  </p>
-                  <div className="space-y-2">
-                    <Label className="font-mono text-[11px] text-text-secondary">
-                      活動名稱 <span className="text-warning">*</span>
-                    </Label>
-                    <Input
-                      type="text"
-                      value={campName}
-                      onChange={(e) => setCampName(e.target.value)}
-                      placeholder="例：秋季新卡包集章免佣"
-                      className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-mono text-[11px] text-text-secondary">
-                      推廣橫額 Banner URL
-                    </Label>
-                    <Input
-                      type="text"
-                      value={campBannerUrl}
-                      onChange={(e) => setCampBannerUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="font-mono text-[11px] text-text-secondary">
-                        開始日期
-                      </Label>
-                      <Input
-                        type="date"
-                        value={campStartDate}
-                        onChange={(e) => setCampStartDate(e.target.value)}
-                        className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-mono text-[11px] text-text-secondary">
-                        結束日期
-                      </Label>
-                      <Input
-                        type="date"
-                        value={campEndDate}
-                        onChange={(e) => setCampEndDate(e.target.value)}
-                        className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-                      />
+              <Accordion
+                isOpen={isNewCampaignOpen}
+                onToggle={() => setIsNewCampaignOpen((prev) => !prev)}
+                className="border-b-0 py-0"
+                title={
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-sans font-bold text-[16px] text-text-primary tracking-normal normal-case">
+                        建立新活動
+                      </span>
                     </div>
                   </div>
-                </div>
-
-                {/* Block 2: Audience & Anti-fraud */}
-                <div className="space-y-3">
-                  <p className="font-sans font-semibold text-[13px] text-text-primary">
-                    限制與防刷
-                  </p>
-                  <div className="space-y-2">
-                    <Label className="font-mono text-[11px] text-text-secondary">
-                      目標對象 <span className="text-warning">*</span>
-                    </Label>
-                    <Select
-                      value={campAudience}
-                      onValueChange={(val) => {
-                        const next = val as Audience;
-                        setCampAudience(next);
-                        setCampTasks([]);
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {audienceOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-mono text-[11px] text-text-secondary">
-                      防刷機制 <span className="text-warning">*</span>
-                    </Label>
-                    <Select
-                      value={campAntiFraud}
-                      onValueChange={(val) =>
-                        setCampAntiFraud(val as AntiFraud)
-                      }
-                    >
-                      <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {antiFraudOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Block 3: Trigger Tasks */}
-                <div className="space-y-3">
-                  <p className="font-sans font-semibold text-[13px] text-text-primary">
-                    任務觸發條件
-                  </p>
-                  <div className="space-y-2">
-                    {taskOptionsByAudience[campAudience].map((task) => (
-                      <label
-                        key={task}
-                        className="flex items-center gap-2.5 cursor-pointer group"
-                      >
-                        <Checkbox
-                          checked={campTasks.includes(task)}
-                          onCheckedChange={() => toggleTask(task)}
-                          className="border-[rgba(237,232,224,0.12)] data-[state=checked]:bg-brand data-[state=checked]:text-[#17130f]"
-                        />
-                        <span className="font-sans text-[12px] text-text-secondary group-hover:text-text-primary transition-colors">
-                          {task}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Block 4: Reward */}
-                <div className="space-y-3">
-                  <p className="font-sans font-semibold text-[13px] text-text-primary">
-                    獎勵內容配置
-                  </p>
-                  <div className="space-y-2">
-                    <Label className="font-mono text-[11px] text-text-secondary">
-                      獎勵類型 <span className="text-warning">*</span>
-                    </Label>
-                    <Select
-                      value={campRewardType}
-                      onValueChange={(val) =>
-                        setCampRewardType(val as RewardType)
-                      }
-                    >
-                      <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rewardTypeOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label className="font-mono text-[11px] text-text-secondary">
-                        獎勵數值 <span className="text-warning">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={campRewardValue}
-                        onChange={(e) => setCampRewardValue(e.target.value)}
-                        placeholder="例：5"
-                        className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-mono text-[11px] text-text-secondary">
-                        派發總量限制
-                      </Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={campRewardLimit}
-                        onChange={(e) => setCampRewardLimit(e.target.value)}
-                        placeholder="例：1000"
-                        className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full h-11 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform shadow-md shadow-brand/10"
+                }
+              >
+                <form
+                  onSubmit={handleCreateCampaign}
+                  className="space-y-5 pt-3"
                 >
-                  建立並預排發佈
-                </Button>
+                  {/* Block 1: Basic Info */}
+                  <div className="space-y-3">
+                    <p className="font-sans font-semibold text-[13px] text-text-primary">
+                      基本資料
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[11px] text-text-secondary">
+                        活動名稱 <span className="text-warning">*</span>
+                      </Label>
+                      <Input
+                        type="text"
+                        value={campName}
+                        onChange={(e) => setCampName(e.target.value)}
+                        placeholder="例：秋季新卡包集章免佣"
+                        className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[11px] text-text-secondary">
+                        推廣橫額 Banner URL
+                      </Label>
+                      <Input
+                        type="text"
+                        value={campBannerUrl}
+                        onChange={(e) => setCampBannerUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="font-mono text-[11px] text-text-secondary">
+                          開始日期
+                        </Label>
+                        <Input
+                          type="date"
+                          value={campStartDate}
+                          onChange={(e) => setCampStartDate(e.target.value)}
+                          className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-mono text-[11px] text-text-secondary">
+                          結束日期
+                        </Label>
+                        <Input
+                          type="date"
+                          value={campEndDate}
+                          onChange={(e) => setCampEndDate(e.target.value)}
+                          className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-                <p className="font-mono text-[10px] text-text-disabled leading-relaxed">
-                  註：目前為本地 mock 流程。遠端儲存接口已預留於
-                  <code className="text-brand">handleCreateCampaignRemote</code>
-                  。
-                </p>
-              </form>
+                  {/* Block 2: Audience & Anti-fraud */}
+                  <div className="space-y-3">
+                    <p className="font-sans font-semibold text-[13px] text-text-primary">
+                      限制與防刷
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[11px] text-text-secondary">
+                        目標對象 <span className="text-warning">*</span>
+                      </Label>
+                      <Select
+                        value={campAudience}
+                        onValueChange={(val) => {
+                          const next = val as Audience;
+                          setCampAudience(next);
+                          setCampTasks([]);
+                        }}
+                      >
+                        <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {audienceOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[11px] text-text-secondary">
+                        防刷機制 <span className="text-warning">*</span>
+                      </Label>
+                      <Select
+                        value={campAntiFraud}
+                        onValueChange={(val) =>
+                          setCampAntiFraud(val as AntiFraud)
+                        }
+                      >
+                        <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {antiFraudOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Block 3: Trigger Tasks */}
+                  <div className="space-y-3">
+                    <p className="font-sans font-semibold text-[13px] text-text-primary">
+                      任務觸發條件
+                    </p>
+                    <div className="space-y-2">
+                      {taskOptionsByAudience[campAudience].map((task) => (
+                        <label
+                          key={task}
+                          className="flex items-center gap-2.5 cursor-pointer group"
+                        >
+                          <Checkbox
+                            checked={campTasks.includes(task)}
+                            onCheckedChange={() => toggleTask(task)}
+                            className="border-[rgba(237,232,224,0.12)] data-[state=checked]:bg-brand data-[state=checked]:text-[#17130f]"
+                          />
+                          <span className="font-sans text-[12px] text-text-secondary group-hover:text-text-primary transition-colors">
+                            {task}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Block 4: Reward */}
+                  <div className="space-y-3">
+                    <p className="font-sans font-semibold text-[13px] text-text-primary">
+                      獎勵內容配置
+                    </p>
+                    <div className="space-y-2">
+                      <Label className="font-mono text-[11px] text-text-secondary">
+                        獎勵類型 <span className="text-warning">*</span>
+                      </Label>
+                      <Select
+                        value={campRewardType}
+                        onValueChange={(val) =>
+                          setCampRewardType(val as RewardType)
+                        }
+                      >
+                        <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rewardTypeOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="font-mono text-[11px] text-text-secondary">
+                          獎勵數值 <span className="text-warning">*</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={campRewardValue}
+                          onChange={(e) => setCampRewardValue(e.target.value)}
+                          placeholder="例：5"
+                          className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-mono text-[11px] text-text-secondary">
+                          派發總量限制
+                        </Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={campRewardLimit}
+                          onChange={(e) => setCampRewardLimit(e.target.value)}
+                          placeholder="例：1000"
+                          className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-11 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform shadow-md shadow-brand/10"
+                  >
+                    建立並預排發佈
+                  </Button>
+
+                  <p className="font-mono text-[10px] text-text-disabled leading-relaxed">
+                    註：目前為本地 mock 流程。遠端儲存接口已預留於
+                    <code className="text-brand">
+                      handleCreateCampaignRemote
+                    </code>
+                    。
+                  </p>
+                </form>
+              </Accordion>
             </section>
 
             {/* Right: Campaign List */}

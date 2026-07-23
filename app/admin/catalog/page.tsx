@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Accordion } from "@/app/components/ui/Accordion";
 
 interface CardEntry {
   id: string;
@@ -154,6 +155,7 @@ export default function AdminCatalogPage() {
   const [dbQuery, setDbQuery] = useState("");
 
   // Panel 2: 手動錄入表單
+  const [isManualInputOpen, setIsManualInputOpen] = useState(false);
   const [cardNo, setCardNo] = useState("");
   const [cardName, setCardName] = useState("");
   const [cardNameJp, setCardNameJp] = useState("");
@@ -351,159 +353,169 @@ export default function AdminCatalogPage() {
 
         {/* PANEL 2: 小眾卡牌手動錄入 */}
         <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
-          <h2 className="font-sans font-semibold text-[16px] text-text-primary mb-3">
-            小眾卡牌手動錄入（無 API 覆蓋）
-          </h2>
-          <form
-            onSubmit={handleManualSubmit}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-3.5"
+          <Accordion
+            isOpen={isManualInputOpen}
+            onToggle={() => setIsManualInputOpen((prev) => !prev)}
+            className="border-b-0 py-0"
+            title={
+              <div className="flex items-center gap-2">
+                <span className="font-sans font-semibold text-[15px] sm:text-[16px] text-text-primary tracking-normal normal-case">
+                  手動錄入卡牌
+                </span>
+              </div>
+            }
           >
-            <div>
-              <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                卡牌編號 <span className="text-warning">*</span>
-              </label>
-              <input
-                type="text"
-                value={cardNo}
-                onChange={(e) => setCardNo(e.target.value)}
-                placeholder="例：promo-102"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                英文/漢語名稱 <span className="text-warning">*</span>
-              </label>
-              <input
-                type="text"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-                placeholder="例：Pikachu PROMO"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                日文原名
-              </label>
-              <input
-                type="text"
-                value={cardNameJp}
-                onChange={(e) => setCardNameJp(e.target.value)}
-                placeholder="例：ピカチュウ"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                系列/卡包名稱 <span className="text-warning">*</span>
-              </label>
-              <input
-                type="text"
-                value={cardSet}
-                onChange={(e) => setCardSet(e.target.value)}
-                placeholder="例：Base Set 2nd"
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                罕貴度 (Rarity)
-              </label>
-              <select
-                value={cardRarity}
-                onChange={(e) => setCardRarity(e.target.value)}
-                className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)] appearance-none"
-              >
-                <option value="SAR">SAR</option>
-                <option value="UR">UR</option>
-                <option value="SR">SR</option>
-                <option value="AR">AR</option>
-                <option value="Holo">Holo</option>
-                <option value="PROMO">PROMO</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full h-9 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform"
-              >
-                新增手動條目
-              </button>
-            </div>
+            <form
+              onSubmit={handleManualSubmit}
+              className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2"
+            >
+              <div>
+                <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                  卡牌編號 <span className="text-warning">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cardNo}
+                  onChange={(e) => setCardNo(e.target.value)}
+                  placeholder="例：promo-102"
+                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
+                />
+              </div>
+              <div>
+                <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                  英文/漢語名稱 <span className="text-warning">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cardName}
+                  onChange={(e) => setCardName(e.target.value)}
+                  placeholder="例：Pikachu PROMO"
+                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
+                />
+              </div>
+              <div>
+                <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                  日文原名
+                </label>
+                <input
+                  type="text"
+                  value={cardNameJp}
+                  onChange={(e) => setCardNameJp(e.target.value)}
+                  placeholder="例：ピカチュウ"
+                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
+                />
+              </div>
+              <div>
+                <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                  系列/卡包名稱 <span className="text-warning">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={cardSet}
+                  onChange={(e) => setCardSet(e.target.value)}
+                  placeholder="例：Base Set 2nd"
+                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
+                />
+              </div>
+              <div>
+                <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                  罕貴度 (Rarity)
+                </label>
+                <select
+                  value={cardRarity}
+                  onChange={(e) => setCardRarity(e.target.value)}
+                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)] appearance-none"
+                >
+                  <option value="SAR">SAR</option>
+                  <option value="UR">UR</option>
+                  <option value="SR">SR</option>
+                  <option value="AR">AR</option>
+                  <option value="Holo">Holo</option>
+                  <option value="PROMO">PROMO</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="w-full h-9 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform"
+                >
+                  新增手動條目
+                </button>
+              </div>
 
-            {/* 圖片上傳（File input + URL 雙模式） */}
-            <div className="sm:col-span-2">
-              <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                卡牌圖片 <span className="text-warning">*</span>
-              </label>
-              <div className="flex gap-3">
-                <div className="shrink-0">
-                  {imagePreview ? (
-                    <div className="relative w-16 h-[88px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={imagePreview}
-                        alt="預覽"
-                        className="w-16 h-[88px] rounded-lg object-cover border border-[rgba(237,232,224,0.12)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={resetImage}
-                        aria-label="移除圖片"
-                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warning text-white text-[10px] font-bold flex items-center justify-center active:scale-[0.9] transition-transform"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-16 h-[88px] rounded-lg bg-bg-page border border-dashed border-[rgba(237,232,224,0.16)] flex items-center justify-center">
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#50453b"
-                        strokeWidth="2"
-                      >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          ry="2"
+              {/* 圖片上傳（File input + URL 雙模式） */}
+              <div className="sm:col-span-2">
+                <label className="font-mono text-[11px] text-text-secondary block mb-1">
+                  卡牌圖片 <span className="text-warning">*</span>
+                </label>
+                <div className="flex gap-3">
+                  <div className="shrink-0">
+                    {imagePreview ? (
+                      <div className="relative w-16 h-[88px]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={imagePreview}
+                          alt="預覽"
+                          className="w-16 h-[88px] rounded-lg object-cover border border-[rgba(237,232,224,0.12)]"
                         />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 space-y-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="w-full text-[11px] font-mono text-text-secondary file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[rgba(212,165,116,0.15)] file:text-brand file:font-sans file:font-bold file:text-[11px] file:cursor-pointer hover:file:bg-[rgba(212,165,116,0.25)]"
-                  />
-                  <input
-                    type="text"
-                    value={imageUrl}
-                    onChange={handleUrlChange}
-                    placeholder="或貼上圖片 URL（備援）"
-                    className="w-full h-8 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-                  />
-                  {imageFileName && (
-                    <p className="font-mono text-[10px] text-text-disabled truncate">
-                      已選：{imageFileName}
-                    </p>
-                  )}
+                        <button
+                          type="button"
+                          onClick={resetImage}
+                          aria-label="移除圖片"
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warning text-white text-[10px] font-bold flex items-center justify-center active:scale-[0.9] transition-transform"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-16 h-[88px] rounded-lg bg-bg-page border border-dashed border-[rgba(237,232,224,0.16)] flex items-center justify-center">
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#50453b"
+                          strokeWidth="2"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            ry="2"
+                          />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="w-full text-[11px] font-mono text-text-secondary file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[rgba(212,165,116,0.15)] file:text-brand file:font-sans file:font-bold file:text-[11px] file:cursor-pointer hover:file:bg-[rgba(212,165,116,0.25)]"
+                    />
+                    <input
+                      type="text"
+                      value={imageUrl}
+                      onChange={handleUrlChange}
+                      placeholder="或貼上圖片 URL（備援）"
+                      className="w-full h-8 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
+                    />
+                    {imageFileName && (
+                      <p className="font-mono text-[10px] text-text-disabled truncate">
+                        已選：{imageFileName}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </Accordion>
         </section>
       </div>
 
