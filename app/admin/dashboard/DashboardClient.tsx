@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
@@ -122,6 +122,19 @@ const initialServices: SystemService[] = [
 export default function AdminDashboardClient() {
   const router = useRouter();
 
+  // Scroll ref and state for top KPI cards mobile indicator
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+
+  const handleKPIContainerScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollLeft, clientWidth } = scrollContainerRef.current;
+    if (clientWidth > 0) {
+      const index = Math.round(scrollLeft / (clientWidth * 0.7));
+      setActiveCardIndex(index >= 1 ? 1 : 0);
+    }
+  };
+
   // State for collapsible seller pool detail
   const [showSellerPoolDetails, setShowSellerPoolDetails] = useState(false);
 
@@ -154,10 +167,7 @@ export default function AdminDashboardClient() {
   };
 
   const handleAlertClick = () => {
-    toast.error("即將前往爭議與舉報工作台...", {
-      description: `優先處理 ${unprocessedDisputes} 件未處理高風險爭議`,
-    });
-    router.push("/admin/disputes");
+    router.push("/admin/disputes?status=pending");
   };
 
   return (
@@ -214,17 +224,42 @@ export default function AdminDashboardClient() {
         <div className="flex items-center justify-between mb-3">
           <span className="font-sans font-semibold text-[13px] text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
             <Wallet className="w-4 h-4 text-brand" />
-            頂部黃金視覺區 • 核心營收與 GMV KPI
+            核心營收與 GMV KPI
           </span>
-          <span className="text-[11px] font-mono text-text-disabled hidden sm:inline">
-            左右滑動查看卡片 (Mobile Touch Scrollable)
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Mobile Pagination Indicator */}
+            <div className="flex items-center gap-2 lg:hidden font-mono text-[11px] text-text-secondary">
+              <span className="bg-bg-card border border-[rgba(237,232,224,0.08)] px-2 py-0.5 rounded-full text-brand font-medium">
+                {activeCardIndex + 1} / 2 卡片
+              </span>
+              <div className="flex items-center gap-1">
+                <span
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    activeCardIndex === 0
+                      ? "w-4 bg-brand"
+                      : "w-1.5 bg-[rgba(237,232,224,0.2)]"
+                  }`}
+                />
+                <span
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    activeCardIndex === 1
+                      ? "w-4 bg-brand"
+                      : "w-1.5 bg-[rgba(237,232,224,0.2)]"
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Mobile horizontal scrollable flex container, desktop 2-column grid */}
-        <div className="overflow-x-auto scrollbar-none flex gap-3.5 snap-x snap-mandatory pb-2 lg:grid lg:grid-cols-2 lg:pb-0">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleKPIContainerScroll}
+          className="overflow-x-auto scrollbar-none flex gap-3.5 snap-x snap-mandatory pb-2 lg:grid lg:grid-cols-2 lg:pb-0"
+        >
           {/* CARD A: 平台淨營收統計 (Net Revenues) */}
-          <div className="snap-start min-w-[88vw] sm:min-w-[360px] lg:min-w-0 flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
+          <div className="snap-start min-w-[82vw] sm:min-w-[360px] lg:min-w-0 flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
             {/* Background subtle gold glow accent */}
             <div className="absolute -top-12 -right-12 w-32 h-32 bg-brand/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -307,7 +342,7 @@ export default function AdminDashboardClient() {
           </div>
 
           {/* CARD B: 交易所交易量分析 (GMV & Volume) */}
-          <div className="snap-start min-w-[88vw] sm:min-w-[360px] lg:min-w-0 flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
+          <div className="snap-start min-w-[82vw] sm:min-w-[360px] lg:min-w-0 flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
             {/* Background subtle gold glow accent */}
             <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -319,7 +354,7 @@ export default function AdminDashboardClient() {
                     <Briefcase className="w-4 h-4" />
                   </div>
                   <span className="font-sans font-semibold text-[14px] text-text-secondary">
-                    交易所交易量分析
+                    交易量分析
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
@@ -484,6 +519,7 @@ export default function AdminDashboardClient() {
                     ))}
                   </Pie>
                   <Tooltip
+                    wrapperStyle={{ zIndex: 50 }}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -517,7 +553,7 @@ export default function AdminDashboardClient() {
               </ResponsiveContainer>
 
               {/* Donut Center Label */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 z-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="font-mono text-[10px] text-text-disabled uppercase">
                   總註冊用戶量
                 </span>
@@ -619,7 +655,7 @@ export default function AdminDashboardClient() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push("/admin/merchants")}
+                onClick={() => router.push("/admin/merchants?tab=onboarding")}
                 className="text-brand hover:text-brand-hover p-0 h-auto font-mono text-[11px] hover:bg-transparent gap-1"
               >
                 前往審核商戶 <ArrowRight className="w-3 h-3" />

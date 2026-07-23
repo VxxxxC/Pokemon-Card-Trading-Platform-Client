@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -66,10 +66,17 @@ function categoryBadgeClasses(category: DisputeCase["category"]): string {
   }
 }
 
-export default function AdminDisputesPage() {
+function AdminDisputesContent({
+  statusParam,
+}: {
+  statusParam: string | null;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<TabValue>("all");
+  const [activeTab, setActiveTab] = useState<TabValue>(
+    statusParam === "pending" ? "pending" : "all",
+  );
+
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -425,5 +432,30 @@ export default function AdminDisputesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function DisputesPageContentWithKey() {
+  const searchParams = useSearchParams();
+  const statusParam = searchParams.get("status");
+  return (
+    <AdminDisputesContent
+      key={statusParam || "default"}
+      statusParam={statusParam}
+    />
+  );
+}
+
+export default function AdminDisputesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-4 text-[#d4c4b7] font-mono text-xs">
+          載入爭議資料中...
+        </div>
+      }
+    >
+      <DisputesPageContentWithKey />
+    </Suspense>
   );
 }

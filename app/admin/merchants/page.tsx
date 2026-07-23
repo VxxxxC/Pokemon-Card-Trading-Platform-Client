@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -490,8 +491,11 @@ const initialAuditLogs: OverrideAuditLog[] = [
   },
 ];
 
-export default function AdminMerchantsPage() {
-  const [activeTab, setActiveTab] = useState<"stripe" | "onboarding">("stripe");
+function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
+  const [activeTab, setActiveTab] = useState<"stripe" | "onboarding">(
+    tabParam === "onboarding" ? "onboarding" : "stripe",
+  );
+
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
 
   // Datasets State
@@ -1462,5 +1466,30 @@ export default function AdminMerchantsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function MerchantsPageContentWithKey() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  return (
+    <AdminMerchantsContent
+      key={tabParam || "default"}
+      tabParam={tabParam}
+    />
+  );
+}
+
+export default function AdminMerchantsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-4 text-text-secondary font-mono text-xs">
+          載入商戶資料中...
+        </div>
+      }
+    >
+      <MerchantsPageContentWithKey />
+    </Suspense>
   );
 }
