@@ -70,6 +70,8 @@ export default function AdminDisputesPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const counts = useMemo(() => {
     const all = mockDisputes.length;
@@ -110,6 +112,12 @@ export default function AdminDisputesPage() {
       return matchesTab && searchable.includes(q);
     });
   }, [activeTab, query]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedDisputes = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   const handleRowClick = (id: string) => {
     router.push(`/admin/disputes/${id}`);
@@ -163,14 +171,20 @@ export default function AdminDisputesPage() {
             type="text"
             placeholder="搜尋案件單號、被舉報人、舉報人、類別..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setCurrentPage(1);
+            }}
             className="h-10 border-white/10 bg-[#17130f] pl-9 text-[#eae1da] placeholder:text-[#50453b] focus-visible:border-[#d4a574]/40 focus-visible:ring-[#d4a574]/40"
           />
         </div>
 
         <Tabs
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as TabValue)}
+          onValueChange={(v) => {
+            setActiveTab(v as TabValue);
+            setCurrentPage(1);
+          }}
           className="w-full lg:w-auto"
         >
           <TabsList className="h-10 w-full border border-white/10 bg-[#26211C] p-1 lg:w-auto">
@@ -263,7 +277,7 @@ export default function AdminDisputesPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((c) => (
+                paginatedDisputes.map((c) => (
                   <TableRow
                     key={c.id}
                     className="cursor-pointer border-white/[0.06] transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:bg-[#39342f]"
@@ -354,6 +368,61 @@ export default function AdminDisputesPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* ── Table Pagination Bar ───────────────────────────────────── */}
+        {filtered.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-[#17130f] border-t border-white/10 rounded-b-xl">
+            <div className="font-mono text-[12px] text-[#d4c4b7]">
+              顯示第{" "}
+              <span className="font-bold text-[#eae1da]">
+                {(currentPage - 1) * pageSize + 1}
+              </span>{" "}
+              -{" "}
+              <span className="font-bold text-[#eae1da]">
+                {Math.min(currentPage * pageSize, filtered.length)}
+              </span>{" "}
+              筆，共{" "}
+              <span className="font-bold text-[#d4a574]">
+                {filtered.length}
+              </span>{" "}
+              筆資料
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                className="h-8 px-2.5 rounded-lg border border-white/10 bg-[#26211C] font-sans text-xs text-[#d4c4b7] hover:text-[#eae1da] hover:bg-[#2e2925] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                上一頁
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
+                    currentPage === p
+                      ? "bg-[#d4a574] text-[#17130f] font-bold shadow-sm shadow-[#d4a574]/20"
+                      : "border border-white/10 bg-[#26211C] text-[#d4c4b7] hover:text-[#eae1da] hover:bg-[#2e2925]"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                className="h-8 px-2.5 rounded-lg border border-white/10 bg-[#26211C] font-sans text-xs text-[#d4c4b7] hover:text-[#eae1da] hover:bg-[#2e2925] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                下一頁
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

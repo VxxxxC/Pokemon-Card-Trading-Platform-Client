@@ -89,6 +89,110 @@ const initialWithdrawals: WithdrawalRequest[] = [
     status: "pending",
     submittedAt: "2025/5/17 20:05",
   },
+  {
+    id: "WD-1008",
+    userName: "MewtwoMaster_99",
+    amount: 27500,
+    fpsId: "77281920",
+    status: "processing",
+    submittedAt: "2025/5/17 11:20",
+  },
+  {
+    id: "WD-1009",
+    userName: "Gengar_Store_JP",
+    amount: 41000,
+    fpsId: "66291033",
+    status: "completed",
+    submittedAt: "2025/5/16 16:40",
+  },
+  {
+    id: "WD-1010",
+    userName: "KyotoCards_Official",
+    amount: 13500,
+    fpsId: "55210944",
+    status: "failed",
+    submittedAt: "2025/5/16 09:15",
+  },
+  {
+    id: "WD-1011",
+    userName: "Fukuoka_PokeHub",
+    amount: 89000,
+    fpsId: "44102933",
+    status: "pending",
+    submittedAt: "2025/5/15 22:10",
+  },
+  {
+    id: "WD-1012",
+    userName: "Rayquaza_Vault",
+    amount: 53000,
+    fpsId: "33019288",
+    status: "completed",
+    submittedAt: "2025/5/15 14:30",
+  },
+  {
+    id: "WD-1013",
+    userName: "Eevee_Kingdom_HK",
+    amount: 19500,
+    fpsId: "22019388",
+    status: "pending",
+    submittedAt: "2025/5/14 18:00",
+  },
+  {
+    id: "WD-1014",
+    userName: "Snorlax_Bed_TCG",
+    amount: 31000,
+    fpsId: "11029384",
+    status: "completed",
+    submittedAt: "2025/5/13 12:45",
+  },
+  {
+    id: "WD-1015",
+    userName: "Lugias_Lair_2025",
+    amount: 78000,
+    fpsId: "99018273",
+    status: "pending",
+    submittedAt: "2025/5/13 08:30",
+  },
+  {
+    id: "WD-1016",
+    userName: "Umbreon_Moon_HK",
+    amount: 22000,
+    fpsId: "88019283",
+    status: "processing",
+    submittedAt: "2025/5/12 21:10",
+  },
+  {
+    id: "WD-1017",
+    userName: "Dragonite_Fly_JP",
+    amount: 46000,
+    fpsId: "77019284",
+    status: "completed",
+    submittedAt: "2025/5/12 15:50",
+  },
+  {
+    id: "WD-1018",
+    userName: "Shinobi_TCG_Shop",
+    amount: 11500,
+    fpsId: "66019285",
+    status: "failed",
+    submittedAt: "2025/5/11 10:20",
+  },
+  {
+    id: "WD-1019",
+    userName: "Kanto_Classics_HK",
+    amount: 92000,
+    fpsId: "55019286",
+    status: "pending",
+    submittedAt: "2025/5/10 19:40",
+  },
+  {
+    id: "WD-1020",
+    userName: "Johto_Gold_TCG",
+    amount: 35000,
+    fpsId: "44019287",
+    status: "completed",
+    submittedAt: "2025/5/10 11:15",
+  },
 ];
 
 const initialMerchantAccounts: MerchantStripeAccount[] = [
@@ -128,6 +232,132 @@ const initialMerchantAccounts: MerchantStripeAccount[] = [
     platformCommission: 15500,
     status: "restricted",
   },
+  {
+    id: "M-05",
+    subAccountId: "acct_1QmA99M",
+    merchantName: "TokyoRare_HongKong",
+    balance: 67000,
+    totalPayout: 540000,
+    platformCommission: 27000,
+    status: "active",
+  },
+  {
+    id: "M-06",
+    subAccountId: "acct_1RnB88N",
+    merchantName: "Kyoto Vault TCG",
+    balance: 112000,
+    totalPayout: 920000,
+    platformCommission: 46000,
+    status: "active",
+  },
+  {
+    id: "M-07",
+    subAccountId: "acct_1SoC77O",
+    merchantName: "Osaka PokeCenter HK",
+    balance: 45000,
+    totalPayout: 410000,
+    platformCommission: 20500,
+    status: "active",
+  },
+  {
+    id: "M-08",
+    subAccountId: "acct_1TpD66P",
+    merchantName: "Fukuoka Card Kingdom",
+    balance: 88000,
+    totalPayout: 760000,
+    platformCommission: 38000,
+    status: "active",
+  },
+  {
+    id: "M-09",
+    subAccountId: "acct_1UqE55Q",
+    merchantName: "Sapporo Rare Vault",
+    balance: 23000,
+    totalPayout: 180000,
+    platformCommission: 9000,
+    status: "restricted",
+  },
+  {
+    id: "M-10",
+    subAccountId: "acct_1VrF44R",
+    merchantName: "Kobe Collectibles Studio",
+    balance: 156000,
+    totalPayout: 1450000,
+    platformCommission: 72500,
+    status: "active",
+  },
+  {
+    id: "M-11",
+    subAccountId: "acct_1WsG33S",
+    merchantName: "Yokohama TCG Emporium",
+    balance: 94000,
+    totalPayout: 880000,
+    platformCommission: 44000,
+    status: "active",
+  },
+  {
+    id: "M-12",
+    subAccountId: "acct_1XtH22T",
+    merchantName: "Sendai Poke Station",
+    balance: 31000,
+    totalPayout: 290000,
+    platformCommission: 14500,
+    status: "active",
+  },
+  {
+    id: "M-13",
+    subAccountId: "acct_1YuI11U",
+    merchantName: "Nagoya Card Central",
+    balance: 178000,
+    totalPayout: 1620000,
+    platformCommission: 81000,
+    status: "active",
+  },
+  {
+    id: "M-14",
+    subAccountId: "acct_1ZvJ00V",
+    merchantName: "Hiroshima Rare Cards",
+    balance: 52000,
+    totalPayout: 480000,
+    platformCommission: 24000,
+    status: "active",
+  },
+  {
+    id: "M-15",
+    subAccountId: "acct_2AkK99W",
+    merchantName: "Nara Collectors Hub",
+    balance: 19000,
+    totalPayout: 150000,
+    platformCommission: 7500,
+    status: "restricted",
+  },
+  {
+    id: "M-16",
+    subAccountId: "acct_2BlL88X",
+    merchantName: "Chiba TCG Outlet",
+    balance: 83000,
+    totalPayout: 710000,
+    platformCommission: 35500,
+    status: "active",
+  },
+  {
+    id: "M-17",
+    subAccountId: "acct_2CmM77Y",
+    merchantName: "Saitama Card Vault",
+    balance: 125000,
+    totalPayout: 1100000,
+    platformCommission: 55000,
+    status: "active",
+  },
+  {
+    id: "M-18",
+    subAccountId: "acct_2DnN66Z",
+    merchantName: "Shizuoka Poke World",
+    balance: 41000,
+    totalPayout: 360000,
+    platformCommission: 18000,
+    status: "active",
+  },
 ];
 
 const STATUS_BADGES = {
@@ -148,6 +378,11 @@ export default function AdminPayoutsPage() {
   // Search and Filter state
   const [fpsSearch, setFpsSearch] = useState("");
   const [stripeSearch, setStripeSearch] = useState("");
+
+  // Pagination State
+  const [fpsPage, setFpsPage] = useState(1);
+  const [stripePage, setStripePage] = useState(1);
+  const pageSize = 10;
 
   // Checkbox multi-select state
   const [selectedFpsIds, setSelectedFpsIds] = useState<Set<string>>(new Set());
@@ -172,6 +407,19 @@ export default function AdminPayoutsPage() {
         m.subAccountId.toLowerCase().includes(stripeSearch.toLowerCase()),
     );
   }, [merchantAccounts, stripeSearch]);
+
+  // ── Paginated Datasets ──────────────────────────────────────────────────────
+  const totalFpsPages = Math.ceil(filteredWithdrawals.length / pageSize) || 1;
+  const paginatedWithdrawals = useMemo(() => {
+    const start = (fpsPage - 1) * pageSize;
+    return filteredWithdrawals.slice(start, start + pageSize);
+  }, [filteredWithdrawals, fpsPage, pageSize]);
+
+  const totalStripePages = Math.ceil(filteredMerchants.length / pageSize) || 1;
+  const paginatedMerchants = useMemo(() => {
+    const start = (stripePage - 1) * pageSize;
+    return filteredMerchants.slice(start, start + pageSize);
+  }, [filteredMerchants, stripePage, pageSize]);
 
   // ── Multi-select Handlers ──────────────────────────────────────────────────
   const toggleSelectAllFps = () => {
@@ -357,7 +605,10 @@ export default function AdminPayoutsPage() {
                   type="text"
                   placeholder="搜尋用戶名稱、FPS ID 或單號..."
                   value={fpsSearch}
-                  onChange={(e) => setFpsSearch(e.target.value)}
+                  onChange={(e) => {
+                    setFpsSearch(e.target.value);
+                    setFpsPage(1);
+                  }}
                   className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
                 />
                 <svg
@@ -457,7 +708,7 @@ export default function AdminPayoutsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredWithdrawals.map((w) => {
+                  {paginatedWithdrawals.map((w) => {
                     const isSelected = selectedFpsIds.has(w.id);
                     const isPending = w.status === "pending";
                     return (
@@ -531,6 +782,63 @@ export default function AdminPayoutsPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* ── FPS Table Pagination ─────────────────────────────────── */}
+            {filteredWithdrawals.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
+                <div className="font-mono text-[12px] text-text-secondary">
+                  顯示第{" "}
+                  <span className="font-bold text-text-primary">
+                    {(fpsPage - 1) * pageSize + 1}
+                  </span>{" "}
+                  -{" "}
+                  <span className="font-bold text-text-primary">
+                    {Math.min(fpsPage * pageSize, filteredWithdrawals.length)}
+                  </span>{" "}
+                  筆，共{" "}
+                  <span className="font-bold text-brand">
+                    {filteredWithdrawals.length}
+                  </span>{" "}
+                  筆資料
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={fpsPage === 1}
+                    onClick={() => setFpsPage((prev) => Math.max(prev - 1, 1))}
+                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    上一頁
+                  </button>
+                  {Array.from({ length: totalFpsPages }, (_, i) => i + 1).map(
+                    (p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setFpsPage(p)}
+                        className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
+                          fpsPage === p
+                            ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
+                            : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    type="button"
+                    disabled={fpsPage === totalFpsPages}
+                    onClick={() =>
+                      setFpsPage((prev) => Math.min(prev + 1, totalFpsPages))
+                    }
+                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    下一頁
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -544,7 +852,10 @@ export default function AdminPayoutsPage() {
                   type="text"
                   placeholder="搜尋商戶名稱或 Stripe 帳戶 ID..."
                   value={stripeSearch}
-                  onChange={(e) => setStripeSearch(e.target.value)}
+                  onChange={(e) => {
+                    setStripeSearch(e.target.value);
+                    setStripePage(1);
+                  }}
                   className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
                 />
                 <svg
@@ -635,7 +946,7 @@ export default function AdminPayoutsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMerchants.map((merchant) => {
+                  {paginatedMerchants.map((merchant) => {
                     const isSelected = selectedStripeIds.has(merchant.id);
                     return (
                       <TableRow
@@ -685,6 +996,67 @@ export default function AdminPayoutsPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {/* ── Stripe Table Pagination ─────────────────────────────────── */}
+            {filteredMerchants.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
+                <div className="font-mono text-[12px] text-text-secondary">
+                  顯示第{" "}
+                  <span className="font-bold text-text-primary">
+                    {(stripePage - 1) * pageSize + 1}
+                  </span>{" "}
+                  -{" "}
+                  <span className="font-bold text-text-primary">
+                    {Math.min(stripePage * pageSize, filteredMerchants.length)}
+                  </span>{" "}
+                  筆，共{" "}
+                  <span className="font-bold text-brand">
+                    {filteredMerchants.length}
+                  </span>{" "}
+                  筆資料
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={stripePage === 1}
+                    onClick={() =>
+                      setStripePage((prev) => Math.max(prev - 1, 1))
+                    }
+                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    上一頁
+                  </button>
+                  {Array.from({ length: totalStripePages }, (_, i) => i + 1).map(
+                    (p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setStripePage(p)}
+                        className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
+                          stripePage === p
+                            ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
+                            : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    type="button"
+                    disabled={stripePage === totalStripePages}
+                    onClick={() =>
+                      setStripePage((prev) =>
+                        Math.min(prev + 1, totalStripePages),
+                      )
+                    }
+                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    下一頁
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
