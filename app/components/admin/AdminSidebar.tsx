@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { href: "/admin/merchants", label: "商戶與 KYC 審查", icon: "🪪" },
   { href: "/admin/disputes", label: "舉報與爭議仲裁", icon: "⚖️" },
   { href: "/admin/catalog", label: "卡牌字典與行情", icon: "🗃️" },
-  { href: "/admin/campaigns", label: "任務活動建立器", icon: "🎯" },
+  { href: "/admin/campaigns", label: "積分與任務活動", icon: "🎯" },
   { href: "/admin/settings", label: "全局系統配置", icon: "⚙️" },
 ] as const;
 

@@ -53,7 +53,6 @@ const systemServices = [
 
 const systemDisputes = {
   unprocessed: 5,
-  critical: 2,
 };
 
 export default function AdminDashboardPage() {
@@ -233,7 +232,7 @@ export default function AdminDashboardPage() {
 
       {/* ── 系統運作狀態：精簡 3 大服務橫向 Status Bar ────────────────── */}
       <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex flex-row items-center justify-between gap-3 mb-4">
           <h2 className="font-sans font-semibold text-[14px] text-text-secondary">
             🤖 系統運作狀態
           </h2>
@@ -244,8 +243,7 @@ export default function AdminDashboardPage() {
                 : "text-success bg-[rgba(16,185,129,0.12)]"
             }`}
           >
-            未處理舉報 {systemDisputes.unprocessed} 件（緊急{" "}
-            {systemDisputes.critical} 件）
+            未處理舉報 {systemDisputes.unprocessed} 件
           </span>
         </div>
 

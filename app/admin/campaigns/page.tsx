@@ -16,10 +16,54 @@ interface CampaignItem {
 }
 
 const initialCampaigns: CampaignItem[] = [
-  { id: "CMP-01", name: "2026年夏季首購禮", type: "首購立減", reward: "立減 HK$100", rules: "單筆交易滿 HK$1000 可用，限每人領一次，限綁定信用卡實名用戶", clicks: 3820, redeems: 1240, roi: "284%", status: "active", createdAt: "2026/06/01" },
-  { id: "CMP-02", name: "商戶春季入駐紅包", type: "商戶邀請", reward: "提現免手續費券 * 3", rules: "邀請 1 個實名商戶且其上架 5 件卡牌，贈送給邀請人", clicks: 1240, redeems: 320, roi: "192%", status: "active", createdAt: "2026/05/15" },
-  { id: "CMP-03", name: "夜巡 (sv6a) 單卡免佣", type: "佣金減免", reward: "免 5% 交易佣金", rules: "只限交易 sv6a 夜巡特別盒/單卡，每筆免佣上限 HK$200", clicks: 5820, redeems: 1840, roi: "412%", status: "active", createdAt: "2026/06/10" },
-  { id: "CMP-04", name: "2025聖誕狂歡節", type: "特定卡包補貼", reward: "全場免運費", rules: "聖誕當日全場通用，平台定額補貼 HK$30 運費", clicks: 9420, redeems: 4200, roi: "154%", status: "expired", createdAt: "2025/12/24" },
+  {
+    id: "CMP-01",
+    name: "2026年夏季首購禮",
+    type: "首購立減",
+    reward: "立減 HK$100",
+    rules: "單筆交易滿 HK$1000 可用，限每人領一次，限綁定信用卡實名用戶",
+    clicks: 3820,
+    redeems: 1240,
+    roi: "284%",
+    status: "active",
+    createdAt: "2026/06/01",
+  },
+  {
+    id: "CMP-02",
+    name: "商戶春季入駐紅包",
+    type: "商戶邀請",
+    reward: "提現免手續費券 * 3",
+    rules: "邀請 1 個實名商戶且其上架 5 件卡牌，贈送給邀請人",
+    clicks: 1240,
+    redeems: 320,
+    roi: "192%",
+    status: "active",
+    createdAt: "2026/05/15",
+  },
+  {
+    id: "CMP-03",
+    name: "夜巡 (sv6a) 單卡免佣",
+    type: "佣金減免",
+    reward: "免 5% 交易佣金",
+    rules: "只限交易 sv6a 夜巡特別盒/單卡，每筆免佣上限 HK$200",
+    clicks: 5820,
+    redeems: 1840,
+    roi: "412%",
+    status: "active",
+    createdAt: "2026/06/10",
+  },
+  {
+    id: "CMP-04",
+    name: "2025聖誕狂歡節",
+    type: "特定卡包補貼",
+    reward: "全場免運費",
+    rules: "聖誕當日全場通用，平台定額補貼 HK$30 運費",
+    clicks: 9420,
+    redeems: 4200,
+    roi: "154%",
+    status: "expired",
+    createdAt: "2025/12/24",
+  },
 ];
 
 export default function AdminCampaignsPage() {
@@ -28,7 +72,9 @@ export default function AdminCampaignsPage() {
 
   // Form states
   const [campName, setCampName] = useState("");
-  const [campType, setCampType] = useState<"首購立減" | "商戶邀請" | "佣金減免" | "特定卡包補貼">("首購立減");
+  const [campType, setCampType] = useState<
+    "首購立減" | "商戶邀請" | "佣金減免" | "特定卡包補貼"
+  >("首購立減");
   const [campReward, setCampReward] = useState("");
   const [campRules, setCampRules] = useState("");
   const [campLimit, setCampLimit] = useState("限每人一次且實名認證");
@@ -59,7 +105,9 @@ export default function AdminCampaignsPage() {
     };
 
     setCampaigns([newCamp, ...campaigns]);
-    showNotification(`✅ 活動範本 "${campName}" 建立成功！目前狀態為：預排發佈 (Scheduled)。`);
+    showNotification(
+      `✅ 活動範本 "${campName}" 建立成功！目前狀態為：預排發佈 (Scheduled)。`,
+    );
 
     // Reset Form
     setCampName("");
@@ -76,7 +124,7 @@ export default function AdminCampaignsPage() {
           return { ...c, status: nextStatus };
         }
         return c;
-      })
+      }),
     );
     showNotification(`已手動變更活動 ${id} 的發佈狀態。`);
   };
@@ -91,9 +139,12 @@ export default function AdminCampaignsPage() {
       {/* ── Page Header ───────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h1 className="font-sans font-bold text-[24px] text-text-primary">任務活動建立器</h1>
-          <p className="font-sans text-[13px] text-text-secondary mt-0.5">
-            建立、發行全平台營銷活動，配置拉新/首購免稅與佣金折扣，並進行營銷 ROI 精準監控
+          <h1 className="font-sans font-bold text-[24px] text-text-primary">
+            積分與任務活動
+          </h1>
+          <p className="font-sans text-xs text-text-secondary mt-0.5">
+            <div>建立、發行全平台營銷活動，配置各項積分任務與佣金折扣</div>
+            <div>營銷 ROI 精準監控</div>
           </p>
         </div>
       </div>
@@ -108,19 +159,41 @@ export default function AdminCampaignsPage() {
 
       {/* ── ROI 與核銷分析面板 Metrics ─────────────────────────────────── */}
       <section aria-labelledby="roi-heading">
-        <h2 id="roi-heading" className="font-sans font-semibold text-[15px] text-text-secondary mb-3">
+        <h2
+          id="roi-heading"
+          className="font-sans font-semibold text-[15px] text-text-secondary mb-3"
+        >
           活動 ROI 與核銷分析面板
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: "活躍活動件數 (ACTIVE)", value: `${activeCount} 個`, color: "text-brand" },
-            { label: "全平台累計核銷 (REDEEMS)", value: `${totalRedeems.toLocaleString("zh-TW")} 次`, color: "text-success" },
+            {
+              label: "活躍活動件數 (ACTIVE)",
+              value: `${activeCount} 個`,
+              color: "text-brand",
+            },
+            {
+              label: "全平台累計核銷 (REDEEMS)",
+              value: `${totalRedeems.toLocaleString("zh-TW")} 次`,
+              color: "text-success",
+            },
             { label: "平均營銷 ROI", value: averageRoi, color: "text-brand" },
-            { label: "營銷專項補貼池", value: "HK$ 150,000", color: "text-text-primary" },
+            {
+              label: "營銷專項補貼池",
+              value: "HK$ 150,000",
+              color: "text-text-primary",
+            },
           ].map(({ label, value, color }) => (
-            <div key={label} className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-3.5 text-center">
-              <p className={`font-mono font-bold text-[22px] ${color}`}>{value}</p>
-              <p className="font-mono text-[11px] text-text-secondary mt-1">{label}</p>
+            <div
+              key={label}
+              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] px-4 py-3.5 text-center"
+            >
+              <p className={`font-mono font-bold text-[22px] ${color}`}>
+                {value}
+              </p>
+              <p className="font-mono text-[11px] text-text-secondary mt-1">
+                {label}
+              </p>
             </div>
           ))}
         </div>
@@ -159,7 +232,9 @@ export default function AdminCampaignsPage() {
               </label>
               <select
                 value={campType}
-                onChange={(e) => setCampType(e.target.value as CampaignItem["type"])}
+                onChange={(e) =>
+                  setCampType(e.target.value as CampaignItem["type"])
+                }
                 className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-2 font-sans text-[12px] text-text-primary focus:outline-none appearance-none"
               >
                 <option value="首購立減">首購立減紅包 (拉新)</option>
@@ -204,10 +279,18 @@ export default function AdminCampaignsPage() {
                 onChange={(e) => setCampLimit(e.target.value)}
                 className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-2 font-sans text-[12px] text-text-primary focus:outline-none appearance-none"
               >
-                <option value="限每人一次且實名認證">限每人一次且必須過 KYC 實名</option>
-                <option value="限綁定相同 Stripe 信用卡">限綁定相同 Stripe 信用卡與裝置</option>
-                <option value="限商戶提現專用，不可轉讓">限商戶提現抵扣，防刷機制級別最高</option>
-                <option value="無特別防刷限制">不限制 (適用無資金風險之活動)</option>
+                <option value="限每人一次且實名認證">
+                  限每人一次且必須過 KYC 實名
+                </option>
+                <option value="限綁定相同 Stripe 信用卡">
+                  限綁定相同 Stripe 信用卡與裝置
+                </option>
+                <option value="限商戶提現專用，不可轉讓">
+                  限商戶提現抵扣，防刷機制級別最高
+                </option>
+                <option value="無特別防刷限制">
+                  不限制 (適用無資金風險之活動)
+                </option>
               </select>
             </div>
 
@@ -222,7 +305,10 @@ export default function AdminCampaignsPage() {
 
         {/* Right: Campaign list & Performance tracking */}
         <section aria-labelledby="performance-heading" className="space-y-3">
-          <h2 id="performance-heading" className="font-sans font-bold text-[15px] text-text-secondary">
+          <h2
+            id="performance-heading"
+            className="font-sans font-bold text-[15px] text-text-secondary"
+          >
             行銷活動核銷明細與 ROI 列表
           </h2>
 
@@ -235,7 +321,9 @@ export default function AdminCampaignsPage() {
                 <div className="flex items-start justify-between gap-3 w-full flex-wrap">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-mono text-[10px] text-text-disabled">#{camp.id}</span>
+                      <span className="font-mono text-[10px] text-text-disabled">
+                        #{camp.id}
+                      </span>
                       <h3 className="font-sans font-semibold text-[14px] text-text-primary">
                         {camp.name}
                       </h3>
@@ -243,19 +331,29 @@ export default function AdminCampaignsPage() {
                         {camp.type}
                       </span>
                     </div>
-                    <p className="font-sans text-[11px] text-text-disabled">限制規則：{camp.rules}</p>
-                    <p className="font-mono text-[10px] text-text-disabled mt-1">創建日期：{camp.createdAt}</p>
+                    <p className="font-sans text-[11px] text-text-disabled">
+                      限制規則：{camp.rules}
+                    </p>
+                    <p className="font-mono text-[10px] text-text-disabled mt-1">
+                      創建日期：{camp.createdAt}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${
-                      camp.status === "active"
-                        ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
+                    <span
+                      className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${
+                        camp.status === "active"
+                          ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
+                          : camp.status === "scheduled"
+                            ? "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20"
+                            : "text-text-disabled bg-bg-elevated border-transparent"
+                      }`}
+                    >
+                      {camp.status === "active"
+                        ? "進行中"
                         : camp.status === "scheduled"
-                        ? "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20"
-                        : "text-text-disabled bg-bg-elevated border-transparent"
-                    }`}>
-                      {camp.status === "active" ? "進行中" : camp.status === "scheduled" ? "待開始" : "已結束"}
+                          ? "待開始"
+                          : "已結束"}
                     </span>
                     <button
                       type="button"
@@ -269,20 +367,36 @@ export default function AdminCampaignsPage() {
 
                 <div className="grid grid-cols-4 gap-2 bg-bg-page border border-[rgba(237,232,224,0.05)] rounded-xl p-3 text-center font-mono text-[11px]">
                   <div>
-                    <span className="text-text-disabled text-[9px] block uppercase">獎勵</span>
-                    <span className="text-brand font-semibold block mt-0.5">{camp.reward}</span>
+                    <span className="text-text-disabled text-[9px] block uppercase">
+                      獎勵
+                    </span>
+                    <span className="text-brand font-semibold block mt-0.5">
+                      {camp.reward}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-text-disabled text-[9px] block uppercase">曝光點擊</span>
-                    <span className="text-text-primary font-bold block mt-0.5">{camp.clicks}</span>
+                    <span className="text-text-disabled text-[9px] block uppercase">
+                      曝光點擊
+                    </span>
+                    <span className="text-text-primary font-bold block mt-0.5">
+                      {camp.clicks}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-text-disabled text-[9px] block uppercase">核銷次數</span>
-                    <span className="text-success font-bold block mt-0.5">{camp.redeems}</span>
+                    <span className="text-text-disabled text-[9px] block uppercase">
+                      核銷次數
+                    </span>
+                    <span className="text-success font-bold block mt-0.5">
+                      {camp.redeems}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-text-disabled text-[9px] block uppercase">精準 ROI</span>
-                    <span className="text-brand font-black block mt-0.5">{camp.roi}</span>
+                    <span className="text-text-disabled text-[9px] block uppercase">
+                      精準 ROI
+                    </span>
+                    <span className="text-brand font-black block mt-0.5">
+                      {camp.roi}
+                    </span>
                   </div>
                 </div>
               </div>
