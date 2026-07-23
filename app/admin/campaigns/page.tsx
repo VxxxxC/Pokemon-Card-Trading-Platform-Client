@@ -467,26 +467,6 @@ export default function AdminCampaignsPage() {
     toast.info(`已手動變更活動 ${id} 的發佈狀態。`);
   };
 
-  const riskBadge = (status: AuditRow["riskStatus"]) => {
-    switch (status) {
-      case "normal":
-        return <Badge variant="success">正常</Badge>;
-      case "review":
-        return (
-          <Badge
-            variant="outline"
-            className="border-brand/40 text-brand bg-brand/10"
-          >
-            審查中
-          </Badge>
-        );
-      case "suspicious":
-        return <Badge variant="destructive">可疑</Badge>;
-      default:
-        return <Badge variant="ghost">未知</Badge>;
-    }
-  };
-
   const sectionClass =
     "bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5";
 
@@ -1073,7 +1053,7 @@ export default function AdminCampaignsPage() {
           <Card className="bg-bg-card border-[rgba(237,232,224,0.08)]">
             <CardHeader>
               <CardTitle className="font-sans font-semibold text-[15px] text-text-primary">
-                核銷稽核
+                核銷記錄
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1104,16 +1084,13 @@ export default function AdminCampaignsPage() {
                     <TableHead className="font-mono text-[11px] text-text-secondary uppercase">
                       核銷時間
                     </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary uppercase">
-                      風控狀態
-                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {auditRows.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="border-[rgba(237,232,224,0.06)] hover:bg-bg-hover"
+                      className="bg border-[rgba(237,232,224,0.06)] hover:bg-bg-hover"
                     >
                       <TableCell className="font-mono text-[11px] text-text-disabled">
                         {row.id}
@@ -1141,7 +1118,6 @@ export default function AdminCampaignsPage() {
                       <TableCell className="font-mono text-[11px] text-text-disabled">
                         {row.redeemedAt}
                       </TableCell>
-                      <TableCell>{riskBadge(row.riskStatus)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
