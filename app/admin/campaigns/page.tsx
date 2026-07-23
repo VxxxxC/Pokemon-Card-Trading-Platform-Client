@@ -35,7 +35,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   ChartContainer,
@@ -316,7 +315,7 @@ const rewardTypeOptions: { value: RewardType; label: string }[] = [
 
 export default function AdminCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignItem[]>(initialCampaigns);
-  const [activeTab, setActiveTab] = useState<string>("templates");
+  const [activeTab, setActiveTab] = useState<"templates" | "roi">("templates");
 
   // Form states
   const [campName, setCampName] = useState("");
@@ -326,8 +325,9 @@ export default function AdminCampaignsPage() {
   const [campAudience, setCampAudience] = useState<Audience>("guest");
   const [campAntiFraud, setCampAntiFraud] = useState<AntiFraud>("ip");
   const [campTasks, setCampTasks] = useState<string[]>([]);
-  const [campRewardType, setCampRewardType] =
-    useState<RewardType>("commission_discount");
+  const [campRewardType, setCampRewardType] = useState<RewardType>(
+    "commission_discount",
+  );
   const [campRewardValue, setCampRewardValue] = useState("");
   const [campRewardLimit, setCampRewardLimit] = useState("");
 
@@ -369,7 +369,10 @@ export default function AdminCampaignsPage() {
       rewardTypeOptions.find((opt) => opt.value === campRewardType)?.label ??
       campRewardType;
 
-    const formattedRewardDisplay = rewardTypeLabel.replace("n", campRewardValue);
+    const formattedRewardDisplay = rewardTypeLabel.replace(
+      "n",
+      campRewardValue,
+    );
 
     const nextId =
       campaigns.length > 0
@@ -545,29 +548,40 @@ export default function AdminCampaignsPage() {
       </section>
 
       {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-        <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-          <TabsList className="grid grid-cols-2 gap-1.5 w-full bg-transparent p-0 border-0 h-auto">
-            <TabsTrigger
-              value="templates"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 data-[state=active]:bg-brand data-[state=active]:text-[#17130f] data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=active]:shadow-brand/10 text-text-secondary hover:text-text-primary hover:bg-bg-elevated border-0 cursor-pointer"
-            >
-              <span className="truncate">🎯 活動範本</span>
-              <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
-                {campaigns.length}
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="roi"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 data-[state=active]:bg-brand data-[state=active]:text-[#17130f] data-[state=active]:font-bold data-[state=active]:shadow-md data-[state=active]:shadow-brand/10 text-text-secondary hover:text-text-primary hover:bg-bg-elevated border-0 cursor-pointer"
-            >
-              <span className="truncate">📊 ROI 與核銷</span>
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveTab("templates")}
+            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
+              activeTab === "templates"
+                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span className="truncate">🎯 活動範本</span>
+            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
+              {campaigns.length}
+            </span>
+          </button>
 
-        {/* ── TAB 1: 活動範本 ─────────────────────────────────────────── */}
-        <TabsContent value="templates" className="space-y-5">
+          <button
+            type="button"
+            onClick={() => setActiveTab("roi")}
+            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
+              activeTab === "roi"
+                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
+                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            }`}
+          >
+            <span className="truncate">📊 ROI 與核銷</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── TAB 1: 活動範本 ─────────────────────────────────────────── */}
+      {activeTab === "templates" && (
+        <div className="space-y-5">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-start">
             {/* Left: New Campaign Form */}
             <section className={sectionClass}>
@@ -671,7 +685,9 @@ export default function AdminCampaignsPage() {
                     </Label>
                     <Select
                       value={campAntiFraud}
-                      onValueChange={(val) => setCampAntiFraud(val as AntiFraud)}
+                      onValueChange={(val) =>
+                        setCampAntiFraud(val as AntiFraud)
+                      }
                     >
                       <SelectTrigger className="w-full h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary">
                         <SelectValue />
@@ -784,7 +800,10 @@ export default function AdminCampaignsPage() {
             </section>
 
             {/* Right: Campaign List */}
-            <section aria-labelledby="template-list-heading" className="space-y-3">
+            <section
+              aria-labelledby="template-list-heading"
+              className="space-y-3"
+            >
               <h2
                 id="template-list-heading"
                 className="font-sans font-bold text-[15px] text-text-secondary flex items-center justify-between"
@@ -806,10 +825,12 @@ export default function AdminCampaignsPage() {
               </div>
             </section>
           </div>
-        </TabsContent>
+        </div>
+      )}
 
-        {/* ── TAB 2: ROI與核銷 ────────────────────────────────────────── */}
-        <TabsContent value="roi" className="space-y-6">
+      {/* ── TAB 2: ROI與核銷 ────────────────────────────────────────── */}
+      {activeTab === "roi" && (
+        <div className="space-y-6">
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <Card className="bg-bg-card border-[rgba(237,232,224,0.08)]">
@@ -946,7 +967,9 @@ export default function AdminCampaignsPage() {
                         tickLine={false}
                         axisLine={false}
                         tickMargin={10}
-                        tickFormatter={(v: number) => `$${(v / 1000).toFixed(1)}k`}
+                        tickFormatter={(v: number) =>
+                          `$${(v / 1000).toFixed(1)}k`
+                        }
                         style={{
                           fill: "#8A8680",
                           fontSize: 10,
@@ -1093,12 +1116,12 @@ export default function AdminCampaignsPage() {
                         {row.orderId}
                       </TableCell>
                       <TableCell className="font-mono text-[11px] text-right text-success">
-                        {row.commission === 0
-                          ? "—"
-                          : `HK$ ${row.commission}`}
+                        {row.commission === 0 ? "—" : `HK$ ${row.commission}`}
                       </TableCell>
                       <TableCell className="font-mono text-[11px] text-right text-text-primary">
-                        {row.gmv === 0 ? "—" : `HK$ ${row.gmv.toLocaleString("zh-TW")}`}
+                        {row.gmv === 0
+                          ? "—"
+                          : `HK$ ${row.gmv.toLocaleString("zh-TW")}`}
                       </TableCell>
                       <TableCell className="font-mono text-[11px] text-text-disabled">
                         {row.redeemedAt}
@@ -1110,8 +1133,8 @@ export default function AdminCampaignsPage() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
   );
 }
