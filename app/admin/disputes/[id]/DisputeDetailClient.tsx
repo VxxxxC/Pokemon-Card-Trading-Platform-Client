@@ -50,17 +50,11 @@ function cn(...classes: Array<string | false | undefined>): string {
 function statusBadgeClasses(status: DisputeStatus): string {
   switch (status) {
     case "pending":
-      return "bg-[rgba(239,68,68,0.12)] text-[#ef4444] border-[#ef4444]/20";
-    case "investigating":
-      return "bg-[rgba(212,165,116,0.15)] text-[#d4a574] border-[#d4a574]/20";
-    case "buyer_refunded":
+      return "bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border-[#f59e0b]/20";
+    case "completed":
       return "bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]/20";
-    case "seller_released":
-      return "bg-[rgba(212,165,116,0.12)] text-[#d4c4b7] border-white/10";
-    case "frozen":
-      return "bg-[#2e2925] text-[#8A8680] border-white/10";
     default:
-      return "bg-[#2e2925] text-[#8A8680] border-white/10";
+      return "bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]/20";
   }
 }
 
@@ -142,18 +136,7 @@ export default function DisputeDetailClient({
     const selected = STATUS_SELECT_OPTIONS.find((o) => o.value === action);
     const label = selected?.label ?? action;
 
-    let nextStatus = status;
-    if (action === "buyer_refunded" || action === "buyer_refunded_partial") {
-      nextStatus = "buyer_refunded";
-    } else if (action === "seller_released") {
-      nextStatus = "seller_released";
-    } else if (action === "frozen") {
-      nextStatus = "frozen";
-    } else if (action === "ban") {
-      nextStatus = "frozen";
-    }
-
-    setStatus(nextStatus);
+    setStatus("completed");
     setAuditLog((prev) => [
       ...prev,
       {

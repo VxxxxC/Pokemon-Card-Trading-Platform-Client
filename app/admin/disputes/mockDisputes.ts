@@ -1,9 +1,4 @@
-export type DisputeStatus =
-  | "pending"
-  | "investigating"
-  | "buyer_refunded"
-  | "seller_released"
-  | "frozen";
+export type DisputeStatus = "pending" | "completed";
 
 export type DisputeCategory =
   | "惡意欺詐"
@@ -66,10 +61,7 @@ export interface DisputeCase {
 
 export const statusLabelMap: Record<DisputeStatus, string> = {
   pending: "待處理",
-  investigating: "調查中",
-  buyer_refunded: "買家勝訴",
-  seller_released: "賣家勝訴",
-  frozen: "已凍結",
+  completed: "已完成",
 };
 
 export const categoryLabelMap: Record<DisputeCategory, string> = {
@@ -164,7 +156,7 @@ export const mockDisputes: DisputeCase[] = [
     submittedAt: "2025-05-20 09:12",
     description:
       "買家在聊天中要求繞過平台以 PayMe 付款，並提議先轉部分訂金至 9123 4567，賣家拒絕後舉報。平台風控檢測到關鍵字觸發此爭議單。",
-    status: "investigating",
+    status: "pending",
     escrowStep: "payment",
     chatHistory: [
       {
@@ -239,7 +231,7 @@ export const mockDisputes: DisputeCase[] = [
     submittedAt: "2025-05-18 16:40",
     description:
       "快遞狀態顯示已簽收，但買家表示未收到包裹。經與順豐核對，簽收地址與買家地址不符。",
-    status: "buyer_refunded",
+    status: "completed",
     escrowStep: "shipped",
     chatHistory: [
       {
@@ -295,7 +287,7 @@ export const mockDisputes: DisputeCase[] = [
     submittedAt: "2025-05-17 20:15",
     description:
       "賣家使用經過修圖的卡牌照片誤導買家，實物為 counterfeit（ counterfeit 封裝盒）。買家提交第三方 PSA Expert 檢驗報告佐證。",
-    status: "frozen",
+    status: "completed",
     escrowStep: "custody",
     chatHistory: [
       {
@@ -412,7 +404,7 @@ export const mockDisputes: DisputeCase[] = [
     submittedAt: "2025-05-15 10:08",
     description:
       "賣家描述為「完美無瑕」，實物正面右上角有指紋壓痕。買家認為評級應下調，要求部分退款或退回。",
-    status: "seller_released",
+    status: "completed",
     escrowStep: "released",
     chatHistory: [
       {
@@ -475,7 +467,7 @@ export const mockDisputes: DisputeCase[] = [
     submittedAt: "2025-05-14 17:33",
     description:
       "包裹運輸途中滯留大阪海關超過 21 天，賣家未及時提供報關文件，買家要求退款並由賣家承擔關稅損失。",
-    status: "investigating",
+    status: "pending",
     escrowStep: "shipped",
     chatHistory: [
       {
@@ -539,7 +531,7 @@ export const mockDisputes: DisputeCase[] = [
     submittedAt: "2025-05-13 08:45",
     description:
       "賣家帳號註冊後 24 小時內上架高價卡並完成收款，隨後失聯。該帳號經排查與先前被封禁帳號存在 IP 關聯。",
-    status: "buyer_refunded",
+    status: "completed",
     escrowStep: "released",
     chatHistory: [
       {
@@ -629,7 +621,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_0RvA69S99sWz1G6i0jK1lM2n",
     submittedAt: "2025-05-11 19:10",
     description: "賣家多次發送外部通訊軟體賬號要求轉帳打折交易，風控自動凍結資金。",
-    status: "investigating",
+    status: "pending",
     escrowStep: "payment",
     chatHistory: [],
     evidence: { photos: ["風控對話高亮報告"] },
@@ -647,7 +639,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_1SwB70T00tXa2H7j1kL2mM3o",
     submittedAt: "2025-05-10 11:05",
     description: "包裹快遞運送遺失，物流承運商已出具丟失證明，申請平台託管金退還買家。",
-    status: "buyer_refunded",
+    status: "completed",
     escrowStep: "shipped",
     chatHistory: [],
     evidence: { photos: ["物流官方丟失證明文件"] },
@@ -665,7 +657,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_2TxC81U11uYb3I8k2lL3nM4p",
     submittedAt: "2025-05-09 18:30",
     description: "涉及高額假卡重組盒詐騙案，法務與警方已介入，賬戶全面凍結中。",
-    status: "frozen",
+    status: "completed",
     escrowStep: "custody",
     chatHistory: [],
     evidence: { photos: ["警方調查通知書"] },
@@ -683,7 +675,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_3UyD92V22vZc4J9l3mM4nO5q",
     submittedAt: "2025-05-08 14:00",
     description: "買家聲稱背面色差嚴重，但對比 BGS 官方數據庫後確認為正常印刷差異，裁定放款。",
-    status: "seller_released",
+    status: "completed",
     escrowStep: "released",
     chatHistory: [],
     evidence: { photos: ["BGS 官方紀錄備份"] },
@@ -719,7 +711,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_5WaF14X44xbE6L1n5oP6qQ7s",
     submittedAt: "2025-05-06 20:45",
     description: "買家舉報賣家附帶名片並標註「私下轉帳免 5% 佣金」，平台調查中。",
-    status: "investigating",
+    status: "pending",
     escrowStep: "payment",
     chatHistory: [],
     evidence: { photos: ["名片拍攝照片", "私訊對話截圖"] },
@@ -737,7 +729,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_6XbG25Y55ycF7M2o6pQ7rR8t",
     submittedAt: "2025-05-05 13:10",
     description: "賣家空包發貨，拆箱影片證明箱內僅有報紙與石頭，已判定全額退款並封禁賣家。",
-    status: "buyer_refunded",
+    status: "completed",
     escrowStep: "custody",
     chatHistory: [],
     evidence: { photos: ["空包拆箱全程影片"] },
@@ -773,7 +765,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_8ZdI47A77aeH9O4q8rS9tT0v",
     submittedAt: "2025-05-03 10:25",
     description: "快遞外箱嚴重擠壓變形，內部卡盒是否有受損尚在鑑定中。",
-    status: "investigating",
+    status: "completed",
     escrowStep: "shipped",
     chatHistory: [],
     evidence: { photos: ["變形外箱照片"] },
@@ -791,7 +783,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_9AeJ58B88bfI0P5r9sT0uU1w",
     submittedAt: "2025-05-02 22:15",
     description: "對話觸發警示後，賣家解釋僅為解答見面交收疑問，無私下轉帳行為，審核後放款。",
-    status: "seller_released",
+    status: "completed",
     escrowStep: "released",
     chatHistory: [],
     evidence: { photos: ["完整聊天對話紀錄"] },
@@ -809,7 +801,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_0BfK69C99cgJ1Q6s0tU1vV2x",
     submittedAt: "2025-05-01 12:40",
     description: "古董卡品相爭議，賣家漏標邊角重磨（re-colored），驗證後買家勝訴。",
-    status: "buyer_refunded",
+    status: "completed",
     escrowStep: "custody",
     chatHistory: [],
     evidence: { photos: ["紫外線螢光檢驗圖"] },
@@ -845,7 +837,7 @@ export const mockDisputes: DisputeCase[] = [
     stripeChargeId: "ch_2DhM81E11eiL3S8u2vW3xX4z",
     submittedAt: "2025-04-29 08:30",
     description: "順豐保價快遞索賠程序進行中，買賣雙方已達成暫緩放款共識。",
-    status: "investigating",
+    status: "completed",
     escrowStep: "shipped",
     chatHistory: [],
     evidence: { photos: ["順豐理賠申請單"] },

@@ -37,17 +37,11 @@ function formatCurrency(n: number): string {
 function statusBadgeClasses(status: DisputeStatus): string {
   switch (status) {
     case "pending":
-      return "bg-[rgba(239,68,68,0.12)] text-[#ef4444] border-[#ef4444]/20";
-    case "investigating":
-      return "bg-[rgba(212,165,116,0.15)] text-[#d4a574] border-[#d4a574]/20";
-    case "buyer_refunded":
+      return "bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border-[#f59e0b]/20";
+    case "completed":
       return "bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]/20";
-    case "seller_released":
-      return "bg-[rgba(212,165,116,0.12)] text-[#d4c4b7] border-white/10";
-    case "frozen":
-      return "bg-[#2e2925] text-[#8A8680] border-white/10";
     default:
-      return "bg-[#2e2925] text-[#8A8680] border-white/10";
+      return "bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]/20";
   }
 }
 
@@ -74,7 +68,11 @@ function AdminDisputesContent({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabValue>(
-    statusParam === "pending" ? "pending" : "all",
+    statusParam === "pending"
+      ? "pending"
+      : statusParam === "completed" || statusParam === "resolved"
+        ? "completed"
+        : "all",
   );
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,13 +81,8 @@ function AdminDisputesContent({
   const counts = useMemo(() => {
     const all = mockDisputes.length;
     const pending = mockDisputes.filter((c) => c.status === "pending").length;
-    const investigating = mockDisputes.filter(
-      (c) => c.status === "investigating",
-    ).length;
-    const resolved = mockDisputes.filter((c) =>
-      ["buyer_refunded", "seller_released", "frozen"].includes(c.status),
-    ).length;
-    return { all, pending, investigating, resolved };
+    const completed = mockDisputes.filter((c) => c.status === "completed").length;
+    return { all, pending, completed };
   }, []);
 
   const filtered = useMemo(() => {
@@ -98,11 +91,7 @@ function AdminDisputesContent({
       const matchesTab =
         activeTab === "all"
           ? true
-          : activeTab === "buyer_refunded" ||
-              activeTab === "seller_released" ||
-              activeTab === "frozen"
-            ? ["buyer_refunded", "seller_released", "frozen"].includes(c.status)
-            : c.status === activeTab;
+          : c.status === activeTab;
 
       if (!q) return matchesTab;
 
@@ -144,7 +133,7 @@ function AdminDisputesContent({
         </div>
         <div className="flex flex-wrap gap-3">
           <div className="rounded-xl border border-white/10 bg-[#26211C] px-4 py-2">
-            <span className="block font-mono text-[18px] font-semibold text-[#ef4444]">
+            <span className="block font-mono text-[18px] font-semibold text-[#f59e0b]">
               {counts.pending.toString().padStart(2, "0")}
             </span>
             <span className="block font-sans text-[11px] text-[#d4c4b7]">
@@ -152,19 +141,11 @@ function AdminDisputesContent({
             </span>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#26211C] px-4 py-2">
-            <span className="block font-mono text-[18px] font-semibold text-[#d4a574]">
-              {counts.investigating.toString().padStart(2, "0")}
-            </span>
-            <span className="block font-sans text-[11px] text-[#d4c4b7]">
-              調查中
-            </span>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-[#26211C] px-4 py-2">
             <span className="block font-mono text-[18px] font-semibold text-[#10b981]">
-              {counts.resolved.toString().padStart(2, "0")}
+              {counts.completed.toString().padStart(2, "0")}
             </span>
             <span className="block font-sans text-[11px] text-[#d4c4b7]">
-              已裁決結案
+              已完成
             </span>
           </div>
         </div>
@@ -205,19 +186,13 @@ function AdminDisputesContent({
               value="pending"
               className="flex-1 text-[13px] text-[#d4c4b7] data-active:bg-[#d4a574]/15 data-active:text-[#d4a574]"
             >
-              待處理
+              待處理 ({counts.pending})
             </TabsTrigger>
             <TabsTrigger
-              value="investigating"
+              value="completed"
               className="flex-1 text-[13px] text-[#d4c4b7] data-active:bg-[#d4a574]/15 data-active:text-[#d4a574]"
             >
-              調查中
-            </TabsTrigger>
-            <TabsTrigger
-              value="resolved"
-              className="flex-1 text-[13px] text-[#d4c4b7] data-active:bg-[#d4a574]/15 data-active:text-[#d4a574]"
-            >
-              已裁決
+              已完成 ({counts.completed})
             </TabsTrigger>
           </TabsList>
         </Tabs>
