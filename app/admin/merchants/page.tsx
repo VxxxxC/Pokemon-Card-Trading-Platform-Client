@@ -517,7 +517,7 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
   const [onboardingSearch, setOnboardingSearch] = useState("");
   const [onboardingFilter, setOnboardingFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
-  >("all");
+  >(tabParam === "onboarding" ? "pending" : "all");
 
   // Pagination State
   const [stripePage, setStripePage] = useState(1);
