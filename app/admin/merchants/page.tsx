@@ -48,6 +48,8 @@ interface OverrideAuditLog {
 }
 
 // ── Initial Mock Datasets ────────────────────────────────────────────────────
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: stripe_connect_accounts, kyc_applications | View / RPC: list_merchant_kyc_records
 const initialStripeRecords: StripeKycRecord[] = [
   {
     id: "M-001",
@@ -249,6 +251,8 @@ const initialStripeRecords: StripeKycRecord[] = [
   },
 ];
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: kyc_applications | View / RPC: list_kyc_applications
 const initialOnboardingApps: MerchantOnboardingApp[] = [
   {
     id: "KYC-2025-041",
@@ -472,6 +476,8 @@ const initialOnboardingApps: MerchantOnboardingApp[] = [
   },
 ];
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: audit_logs | View / RPC: list_admin_audit_logs
 const initialAuditLogs: OverrideAuditLog[] = [
   {
     id: "LOG-881",
@@ -1148,22 +1154,23 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
                   >
                     上一頁
                   </button>
-                  {Array.from({ length: totalStripePages }, (_, i) => i + 1).map(
-                    (p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setStripePage(p)}
-                        className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
-                          stripePage === p
-                            ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                            : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  )}
+                  {Array.from(
+                    { length: totalStripePages },
+                    (_, i) => i + 1,
+                  ).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setStripePage(p)}
+                      className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
+                        stripePage === p
+                          ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
+                          : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
                   <button
                     type="button"
                     disabled={stripePage === totalStripePages}
@@ -1431,22 +1438,23 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
                   >
                     上一頁
                   </button>
-                  {Array.from({ length: totalOnboardingPages }, (_, i) => i + 1).map(
-                    (p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setOnboardingPage(p)}
-                        className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
-                          onboardingPage === p
-                            ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                            : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ),
-                  )}
+                  {Array.from(
+                    { length: totalOnboardingPages },
+                    (_, i) => i + 1,
+                  ).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setOnboardingPage(p)}
+                      className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
+                        onboardingPage === p
+                          ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
+                          : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
                   <button
                     type="button"
                     disabled={onboardingPage === totalOnboardingPages}
@@ -1473,10 +1481,7 @@ function MerchantsPageContentWithKey() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   return (
-    <AdminMerchantsContent
-      key={tabParam || "default"}
-      tabParam={tabParam}
-    />
+    <AdminMerchantsContent key={tabParam || "default"} tabParam={tabParam} />
   );
 }
 

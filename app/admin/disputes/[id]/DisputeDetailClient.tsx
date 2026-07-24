@@ -123,6 +123,8 @@ export default function DisputeDetailClient({
     [dispute.escrowStep],
   );
 
+  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+  // Target Table: user_reports, orders, escrow_accounts | View / RPC: resolve_arbitration_case
   const handleSubmit = () => {
     if (!action) {
       toast.error("請先選擇仲裁判定動作。", {

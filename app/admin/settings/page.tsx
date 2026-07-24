@@ -26,6 +26,8 @@ export default function AdminSettingsPage() {
     setTimeout(() => setNotif(null), 4000);
   };
 
+  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+  // Target Table: platform_settings | View / RPC: update_platform_settings
   const handleSaveFinancials = (e: React.FormEvent) => {
     e.preventDefault();
     showNotification("✅ 核心財務變數已更新！新費率與費用參數已寫入系統核心表。");

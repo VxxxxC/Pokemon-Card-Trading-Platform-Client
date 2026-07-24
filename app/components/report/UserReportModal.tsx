@@ -87,6 +87,8 @@ export function UserReportModal({
     [onOpenChange],
   );
 
+  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+  // Target Table: user_reports | View / RPC: submit_user_report
   const handleConfirm = useCallback(
     async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();

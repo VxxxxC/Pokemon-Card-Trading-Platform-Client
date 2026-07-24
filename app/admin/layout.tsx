@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   SidebarProvider,

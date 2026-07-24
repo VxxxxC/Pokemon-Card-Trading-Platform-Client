@@ -22,6 +22,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Mock metrics data aligned with master taxonomy
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: profiles | View / RPC: get_user_ecology_stats
 const userEcology = {
   totalUsers: 4829,
   totalUsersFormatted: "4,829",
@@ -62,6 +64,8 @@ const userEcology = {
   ],
 };
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: orders, listings | View / RPC: get_market_volume_metrics
 const marketVolume = {
   totalGmv: "HK$ 24,840,000",
   monthlyGmv: "HK$ 3,842,000",
@@ -76,6 +80,8 @@ const marketVolume = {
   },
 };
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: orders, platform_settings, payout_requests | View / RPC: get_platform_revenue_metrics
 const revenues = {
   totalCommission: "HK$ 1,242,000",
   monthlyCommission: "HK$ 192,100",
@@ -95,6 +101,8 @@ interface SystemService {
   latency: number;
 }
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: platform_settings | View / RPC: get_system_services_status
 const initialServices: SystemService[] = [
   {
     id: "supabase",

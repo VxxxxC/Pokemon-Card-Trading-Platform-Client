@@ -93,6 +93,8 @@ const dateRangeOptions: { key: DateRange; label: string }[] = [
   { key: "12m", label: "12個月" },
 ];
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: campaigns | View / RPC: list_campaigns
 const initialCampaigns: CampaignItem[] = [
   {
     id: "CMP-01",
@@ -348,6 +350,8 @@ const initialCampaigns: CampaignItem[] = [
   },
 ];
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: campaign_redemptions, audit_logs | View / RPC: list_campaign_redemption_audits
 const auditRows: AuditRow[] = [
   {
     id: "RDM-2026-8821",
@@ -968,6 +972,8 @@ export default function AdminCampaignsPage() {
     resetForm();
   };
 
+  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+  // Target Table: campaigns | View / RPC: create_campaign
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleCreateCampaignRemote(_data: {
     name: string;

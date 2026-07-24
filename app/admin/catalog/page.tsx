@@ -19,6 +19,8 @@ interface CardEntry {
 
 const ITEMS_PER_PAGE = 6;
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: card_catalog | View / RPC: list_card_catalog_entries
 const initialCards: CardEntry[] = [
   {
     id: "DB-001",
@@ -210,6 +212,8 @@ export default function AdminCatalogPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+  // Target Table: card_catalog | View / RPC: insert_card_catalog_entry
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!cardNo || !cardName || !cardSet) {

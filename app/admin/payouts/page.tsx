@@ -32,6 +32,8 @@ interface MerchantStripeAccount {
 }
 
 // ── Initial Mock Data ────────────────────────────────────────────────────────
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: payout_requests | View / RPC: list_payout_requests
 const initialWithdrawals: WithdrawalRequest[] = [
   {
     id: "WD-1002",
@@ -195,6 +197,8 @@ const initialWithdrawals: WithdrawalRequest[] = [
   },
 ];
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: stripe_connect_accounts, profiles | View / RPC: list_merchant_stripe_accounts
 const initialMerchantAccounts: MerchantStripeAccount[] = [
   {
     id: "M-01",

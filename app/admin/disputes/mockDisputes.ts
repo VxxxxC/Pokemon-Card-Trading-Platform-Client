@@ -86,6 +86,8 @@ const evidencePhotos = [
   "PSA 認證標籤特寫",
 ];
 
+// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
+// Target Table: user_reports, orders, chat_messages | View / RPC: list_dispute_cases
 export const mockDisputes: DisputeCase[] = [
   {
     id: "DSP-2025-302",
