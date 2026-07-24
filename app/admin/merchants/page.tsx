@@ -525,9 +525,6 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
   const pageSize = 10;
 
   // Selection Checkboxes
-  const [selectedStripeIds, setSelectedStripeIds] = useState<Set<string>>(
-    new Set(),
-  );
   const [selectedAppIds, setSelectedAppIds] = useState<Set<string>>(new Set());
 
   // Security Override Lock State
@@ -577,20 +574,6 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
   }, [filteredOnboarding, onboardingPage, pageSize]);
 
   // ── Multi-select Handlers ──────────────────────────────────────────────────
-  const toggleSelectAllStripe = () => {
-    if (selectedStripeIds.size === filteredStripe.length) {
-      setSelectedStripeIds(new Set());
-    } else {
-      setSelectedStripeIds(new Set(filteredStripe.map((s) => s.id)));
-    }
-  };
-
-  const toggleSelectStripeRow = (id: string) => {
-    const next = new Set(selectedStripeIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedStripeIds(next);
-  };
 
   const toggleSelectAllApps = () => {
     if (selectedAppIds.size === filteredOnboarding.length) {
@@ -1008,12 +991,6 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-
-              {selectedStripeIds.size > 0 && (
-                <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1 rounded-lg">
-                  已選擇 {selectedStripeIds.size} 筆商戶
-                </span>
-              )}
             </div>
 
             {/* Data Table */}
@@ -1021,17 +998,7 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
               <Table>
                 <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
                   <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-                    <TableHead className="w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={
-                          filteredStripe.length > 0 &&
-                          selectedStripeIds.size === filteredStripe.length
-                        }
-                        onChange={toggleSelectAllStripe}
-                        className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
-                      />
-                    </TableHead>
+                    <TableHead className="w-10 text-center"></TableHead>
                     <TableHead className="font-sans text-[11px] text-text-secondary h-10">
                       商戶店舖名稱
                     </TableHead>
@@ -1057,24 +1024,12 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
                 </TableHeader>
                 <TableBody>
                   {paginatedStripe.map((s) => {
-                    const isSelected = selectedStripeIds.has(s.id);
                     return (
                       <TableRow
                         key={s.id}
-                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
-                          isSelected
-                            ? "bg-[rgba(212,165,116,0.08)]"
-                            : "hover:bg-bg-elevated/40"
-                        }`}
+                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors`}
                       >
-                        <TableCell className="w-10 text-center py-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelectStripeRow(s.id)}
-                            className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
-                          />
-                        </TableCell>
+                        <TableCell className="w-10 text-center py-3"></TableCell>
                         <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
                           {s.shopName}
                         </TableCell>
