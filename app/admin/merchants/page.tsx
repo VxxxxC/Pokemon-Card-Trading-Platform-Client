@@ -667,7 +667,8 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
           </p>
         </div>
 
-        {/* ── Privilege Override Toggle Button (Standalone) ── */}
+        {/* 
+          ── Privilege Override Toggle Button (Standalone) ── 
         <button
           type="button"
           onClick={() => setIsOverrideOpen((prev) => !prev)}
@@ -683,6 +684,7 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
             {isOverrideLocked ? "🔒" : "🔓"}
           </span>
         </button>
+          */}
       </div>
 
       {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
