@@ -8,6 +8,8 @@ interface SmartSearchProps {
   onSelect: (name: string) => void;
   listings: MarketplaceListing[];
   isOpen: boolean;
+  /** 設為 true 時不渲染下拉建議清單，向後相容既有呼叫端。 */
+  suppressDropdown?: boolean;
 }
 
 export function SmartSearch({
@@ -15,7 +17,9 @@ export function SmartSearch({
   onSelect,
   listings,
   isOpen,
+  suppressDropdown = false,
 }: SmartSearchProps) {
+  if (suppressDropdown) return null;
   if (!isOpen || !query) return null;
 
   // Filter listings based on card name or code/id matching the query

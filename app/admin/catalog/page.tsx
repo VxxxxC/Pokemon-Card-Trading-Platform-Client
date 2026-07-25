@@ -1,182 +1,352 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
-import { Accordion } from "@/app/components/ui/Accordion";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import { CatalogCard } from "@/app/components/admin/CatalogCard";
+import { ImageViewer } from "@/app/components/shared/ImageViewer";
+import { Pagination } from "@/app/components/ui/Pagination";
+import {
+  listAdminCatalogEntries,
+  type AdminCatalogEntry,
+  type AdminCatalogItemKind,
+} from "@/app/actions/adminCatalog";
+import { CATALOG_TYPE_LABELS, type CatalogType } from "@/lib/constants/commerce";
 
-interface CardEntry {
-  id: string;
-  cardNo: string;
-  name: string;
-  nameJP: string;
-  set: string;
-  rarity: string;
-  source: "tcgdex" | "snkrdunk" | "manual";
-  cachedAt: string;
-  needsReview: boolean;
-  imageUrl?: string;
-}
+const PAGE_SIZE = 24;
+const SEARCH_DEBOUNCE_MS = 300;
 
-const ITEMS_PER_PAGE = 6;
-
-// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: card_catalog | View / RPC: list_card_catalog_entries
-const initialCards: CardEntry[] = [
-  {
-    id: "DB-001",
-    cardNo: "sv2a-182",
-    name: "Charizard ex SAR",
-    nameJP: "リザードン ex SAR",
-    set: "151 (sv2a)",
-    rarity: "SAR",
-    source: "snkrdunk",
-    cachedAt: "2025/5/21 12:00",
-    needsReview: false,
-  },
-  {
-    id: "DB-002",
-    cardNo: "sv6a-109",
-    name: "Umbreon ex SAR",
-    nameJP: "ブラッキー ex SAR",
-    set: "Night Wanderer (sv6a)",
-    rarity: "SAR",
-    source: "snkrdunk",
-    cachedAt: "2025/5/21 12:00",
-    needsReview: false,
-  },
-  {
-    id: "DB-003",
-    cardNo: "sv4a-237",
-    name: "Gardevoir ex SAR",
-    nameJP: "サーナイト ex SAR",
-    set: "Shiny Treasure (sv4a)",
-    rarity: "SAR",
-    source: "tcgdex",
-    cachedAt: "2025/5/20 08:30",
-    needsReview: false,
-  },
-  {
-    id: "DB-004",
-    cardNo: "promo-032",
-    name: "Pikachu PROMO",
-    nameJP: "ピカチュウ PROMO",
-    set: "Pokémon Center 限定 2024",
-    rarity: "PROMO",
-    source: "manual",
-    cachedAt: "2025/5/18 15:22",
-    needsReview: false,
-  },
-  {
-    id: "DB-005",
-    cardNo: "s12a-301",
-    name: "Arceus VSTAR UR",
-    nameJP: "アルセウス VSTAR UR",
-    set: "VSTAR Universe (s12a)",
-    rarity: "UR",
-    source: "tcgdex",
-    cachedAt: "2025/5/21 12:00",
-    needsReview: false,
-  },
-  {
-    id: "DB-006",
-    cardNo: "gym-042",
-    name: "Sabrina's Gengar",
-    nameJP: "ナツメのゲンガー",
-    set: "Gym Heroes (第1弾·舊版)",
-    rarity: "Holo",
-    source: "manual",
-    cachedAt: "2025/5/19 10:15",
-    needsReview: true,
-  },
-  {
-    id: "DB-007",
-    cardNo: "vc2-033",
-    name: "Venusaur-Holo",
-    nameJP: "フシギバナ Holo",
-    set: "Base Set 2nd Edition",
-    rarity: "Holo",
-    source: "manual",
-    cachedAt: "2025/5/17 09:00",
-    needsReview: true,
-  },
+const RARITY_OPTIONS = [
+  { value: "SAR", label: "SAR" },
+  { value: "UR", label: "UR" },
+  { value: "SR", label: "SR" },
+  { value: "AR", label: "AR" },
+  { value: "RR", label: "RR" },
+  { value: "R", label: "R" },
+  { value: "U", label: "U" },
+  { value: "C", label: "C" },
+  { value: "Holo", label: "Holo" },
+  { value: "PROMO", label: "PROMO" },
 ];
 
-const SOURCE_BADGE: Record<
-  CardEntry["source"],
-  { label: string; className: string }
-> = {
-  tcgdex: {
-    label: "TCGdex API",
-    className: "text-success bg-[rgba(16,185,129,0.12)] border-success/20",
-  },
-  snkrdunk: {
-    label: "SNKRDUNK 行情",
-    className: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
-  },
-  manual: {
-    label: "manual",
-    className: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
-  },
+const BOX_SET_CATEGORY_OPTIONS: { value: CatalogType; label: string }[] = [
+  { value: "booster_pack", label: "補充包" },
+  { value: "gift_set", label: "禮盒組" },
+  { value: "starter_deck", label: "起始牌組" },
+];
+
+type ManualEntryBase = {
+  id: string;
+  cardNumber: string;
+  setCode: string;
+  nameEn: string;
+  nameZh: string;
+  nameJa: string;
+  rarity: string;
+  imageSource: string;
+  createdAt: string;
 };
 
-function CardThumb({ card }: { card: CardEntry }) {
-  if (card.imageUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={card.imageUrl}
-        alt={card.name}
-        className="w-11 h-14 rounded-lg object-cover border border-[rgba(237,232,224,0.10)] shrink-0"
-      />
-    );
-  }
-  return (
-    <div className="w-11 h-14 rounded-lg bg-bg-page border border-[rgba(237,232,224,0.08)] flex items-center justify-center shrink-0">
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#50453b"
-        strokeWidth="2"
-      >
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <polyline points="21 15 16 10 5 21" />
-      </svg>
-    </div>
-  );
-}
+type ManualCardEntry = ManualEntryBase & {
+  itemKind: "card";
+};
+
+type ManualBoxSetEntry = ManualEntryBase & {
+  itemKind: "box_set";
+  category: CatalogType;
+  janCode: string;
+};
+
+type ManualEntry = ManualCardEntry | ManualBoxSetEntry;
+
+type FormErrors = {
+  cardNumber?: boolean;
+  setCode?: boolean;
+  nameLanguages?: boolean;
+  category?: boolean;
+  janCode?: boolean;
+  image?: boolean;
+  rarity?: boolean;
+};
+
+const TABS_TRIGGER_CLASS =
+  "min-h-[44px] px-4 py-2 rounded-lg font-sans text-[13px] transition-colors data-[state=active]:bg-bg-elevated data-[state=active]:text-brand data-[state=active]:font-semibold text-text-secondary hover:text-text-primary";
 
 export default function AdminCatalogPage() {
-  const [cards, setCards] = useState<CardEntry[]>(initialCards);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  // ── Catalog browsing state
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [itemKind, setItemKind] = useState<AdminCatalogItemKind>("card");
+  const [page, setPage] = useState(1);
+  const [entries, setEntries] = useState<AdminCatalogEntry[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Panel 1: DB 讀取表單
-  const [dbQuery, setDbQuery] = useState("");
-
-  // Panel 2: 手動錄入表單
-  const [isManualInputOpen, setIsManualInputOpen] = useState(false);
-  const [cardNo, setCardNo] = useState("");
-  const [cardName, setCardName] = useState("");
-  const [cardNameJp, setCardNameJp] = useState("");
-  const [cardSet, setCardSet] = useState("");
-  const [cardRarity, setCardRarity] = useState("SAR");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [imageFileName, setImageFileName] = useState<string>("");
+  // ── Manual entry local state (db has no INSERT policy yet)
+  const [manualEntries, setManualEntries] = useState<ManualEntry[]>([]);
+  const [isManualDialogOpen, setIsManualDialogOpen] = useState(false);
+  const [manualTab, setManualTab] = useState<AdminCatalogItemKind>("card");
+  const [pendingManualEntries, setPendingManualEntries] = useState<
+    Record<
+      AdminCatalogItemKind,
+      | Omit<ManualCardEntry, "id" | "itemKind" | "createdAt">
+      | Omit<ManualBoxSetEntry, "id" | "itemKind" | "createdAt">
+    >
+  >({
+    card: {
+      cardNumber: "",
+      setCode: "",
+      nameEn: "",
+      nameZh: "",
+      nameJa: "",
+      rarity: "SAR",
+      imageSource: "",
+    },
+    box_set: {
+      cardNumber: "",
+      setCode: "",
+      nameEn: "",
+      nameZh: "",
+      nameJa: "",
+      rarity: "SAR",
+      imageSource: "",
+      category: "booster_pack",
+      janCode: "",
+    },
+  });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageFileName, setImageFileName] = useState("");
   const objectUrlRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const clearObjectUrl = () => {
+  // ── Image viewer state
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
+
+  // ── Search debounce
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, itemKind]);
+
+  // ── Fetch catalog entries with race-condition guard
+  useEffect(() => {
+    let stale = false;
+
+    async function load() {
+      setIsLoading(true);
+      setError(null);
+
+      const result = await listAdminCatalogEntries({
+        query: debouncedQuery,
+        itemKind,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+
+      if (stale) return;
+
+      if (!result.success) {
+        setError(result.error);
+        setEntries([]);
+        setTotal(0);
+        setIsLoading(false);
+        return;
+      }
+
+      setEntries(result.data);
+      setTotal(result.total);
+      setError(null);
+      setIsLoading(false);
+    }
+
+    load();
+
+    return () => {
+      stale = true;
+    };
+  }, [debouncedQuery, itemKind, page]);
+
+  // 手動錄入條目僅存在於前端 local state（product_catalog 未有 INSERT policy）。
+  //
+  // 【設計決策】唔可以將 local 條目混入 DB 嘅 server-side 分頁：
+  // server 用 .range() 按 PAGE_SIZE 切片，如果前端再 prepend 本地條目並裁切，
+  // 就會將該頁最後一筆 DB 資料擠走，而下一頁嘅 range 又唔會補回，造成資料永久遺失。
+  // 因此手動條目獨立成一個 pending section 顯示，完全唔參與 DB 分頁計算。
+  const manualForKind = useMemo<AdminCatalogEntry[]>(
+    () =>
+      manualEntries
+        .filter((m) => m.itemKind === itemKind)
+        .map((m) => ({
+          id: m.id,
+          nameJa: m.nameJa || m.nameZh || m.nameEn,
+          nameEn: m.nameEn || null,
+          nameZh: m.nameZh || null,
+          setCode: m.setCode,
+          cardNumber: m.cardNumber || null,
+          displayId: null,
+          janCode: m.itemKind === "box_set" ? m.janCode : null,
+          imageUrl: m.imageSource,
+          type: m.itemKind === "box_set" ? m.category : "single_card",
+          rarity: m.rarity,
+          pokemonStage: null,
+          updatedAt: m.createdAt,
+        })),
+    [manualEntries, itemKind],
+  );
+
+  const totalPages = useMemo(
+    () => (total === 0 ? 0 : Math.ceil(total / PAGE_SIZE)),
+    [total],
+  );
+  const safePage = useMemo(
+    () => (totalPages === 0 ? 1 : Math.min(page, totalPages)),
+    [page, totalPages],
+  );
+
+  useEffect(() => {
+    if (safePage !== page && totalPages > 0) {
+      setPage(safePage);
+    }
+  }, [safePage, page, totalPages]);
+
+  // ImageViewer 以「pending section 在前、DB Grid 在後」嘅視覺順序組成單一圖片陣列，
+  // 令左右揭頁次序同畫面所見一致。
+  const viewerEntries = useMemo(
+    () => [...manualForKind, ...entries],
+    [manualForKind, entries],
+  );
+
+  const viewerImages = useMemo(
+    () => viewerEntries.map((entry) => entry.imageUrl),
+    [viewerEntries],
+  );
+
+  function handleImageClick(entry: AdminCatalogEntry) {
+    const index = viewerEntries.findIndex((e) => e.id === entry.id);
+    setViewerInitialIndex(Math.max(0, index));
+    setViewerOpen(true);
+  }
+
+  function clearObjectUrl() {
     if (objectUrlRef.current) {
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
     }
-  };
+  }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  function resetImagePreview() {
+    clearObjectUrl();
+    setImagePreview("");
+    setImageFileName("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function resetManualForm(kind: AdminCatalogItemKind) {
+    setPendingManualEntries((prev) => ({
+      ...prev,
+      [kind]:
+        kind === "card"
+          ? {
+              cardNumber: "",
+              setCode: "",
+              nameEn: "",
+              nameZh: "",
+              nameJa: "",
+              rarity: "SAR",
+              imageSource: "",
+            }
+          : {
+              cardNumber: "",
+              setCode: "",
+              nameEn: "",
+              nameZh: "",
+              nameJa: "",
+              rarity: "SAR",
+              imageSource: "",
+              category: "booster_pack",
+              janCode: "",
+            },
+    }));
+    resetImagePreview();
+    setFormErrors({});
+  }
+
+  function handleOpenManualDialog() {
+    setManualTab(itemKind);
+    resetManualForm(itemKind);
+    setIsManualDialogOpen(true);
+  }
+
+  function handleCloseManualDialog() {
+    setIsManualDialogOpen(false);
+    resetImagePreview();
+  }
+
+  function updateManualField<K extends keyof ManualEntryBase>(
+    kind: AdminCatalogItemKind,
+    field: K,
+    value: ManualEntryBase[K],
+  ) {
+    setPendingManualEntries((prev) => ({
+      ...prev,
+      [kind]: { ...prev[kind], [field]: value },
+    }));
+    if (formErrors[field as keyof FormErrors]) {
+      setFormErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  }
+
+  function updateBoxSetField(
+    field: "category" | "janCode",
+    value: CatalogType | string,
+  ) {
+    setPendingManualEntries((prev) => ({
+      ...prev,
+      box_set: { ...prev.box_set, [field]: value },
+    }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -188,12 +358,13 @@ export default function AdminCatalogPage() {
     objectUrlRef.current = url;
     setImagePreview(url);
     setImageFileName(file.name);
-    setImageUrl("");
-  };
+    updateManualField(manualTab, "imageSource", url);
+    setFormErrors((prev) => ({ ...prev, image: false }));
+  }
 
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setImageUrl(value);
+  function handleImageUrlChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value.trim();
+    updateManualField(manualTab, "imageSource", value);
     if (value) {
       clearObjectUrl();
       setImageFileName("");
@@ -202,109 +373,93 @@ export default function AdminCatalogPage() {
     } else if (!objectUrlRef.current) {
       setImagePreview("");
     }
-  };
+    setFormErrors((prev) => ({ ...prev, image: false }));
+  }
 
-  const resetImage = () => {
-    clearObjectUrl();
-    setImagePreview("");
-    setImageUrl("");
-    setImageFileName("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
+  function validateManualForm(): boolean {
+    const current = pendingManualEntries[manualTab];
+    const errors: FormErrors = {};
 
-  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-  // Target Table: card_catalog | View / RPC: insert_card_catalog_entry
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cardNo || !cardName || !cardSet) {
-      toast.error("請填寫所有必填欄位（卡牌編號、英文/漢語名稱、系列名稱）");
+    if (!current.cardNumber.trim()) {
+      errors.cardNumber = true;
+    }
+    if (!current.setCode.trim()) {
+      errors.setCode = true;
+    }
+    if (!current.nameEn.trim() && !current.nameZh.trim() && !current.nameJa.trim()) {
+      errors.nameLanguages = true;
+    }
+    if (!current.rarity.trim()) {
+      errors.rarity = true;
+    }
+    if (!current.imageSource.trim()) {
+      errors.image = true;
+    }
+
+    if (manualTab === "box_set") {
+      const box = current as ManualBoxSetEntry;
+      if (!box.category) {
+        errors.category = true;
+      }
+      if (!/^\d+$/.test(box.janCode.trim())) {
+        errors.janCode = true;
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  function handleManualSubmit() {
+    if (!validateManualForm()) {
+      if (formErrors.nameLanguages) {
+        toast.error("請至少輸入一種語言嘅卡牌名稱（英文／中文／日文）");
+      } else if (manualTab === "box_set" && formErrors.janCode) {
+        toast.error("JAN Code 必須為全數字");
+      } else {
+        toast.error("請填寫所有必填欄位並檢查格式");
+      }
       return;
     }
-    if (!imagePreview) {
-      toast.error("請上傳卡牌圖片或提供圖片 URL");
-      return;
-    }
 
-    // Mock 上傳：真實環境會壓縮並上傳至 Supabase Storage CDN
-    const finalImageUrl = imagePreview;
-    const newCard: CardEntry = {
-      id: `DB-${Math.floor(100 + Math.random() * 900)}`,
-      cardNo,
-      name: cardName,
-      nameJP: cardNameJp || "—",
-      set: cardSet,
-      rarity: cardRarity,
-      source: "manual",
-      cachedAt: "剛剛手動錄入",
-      needsReview: true,
-      imageUrl: finalImageUrl,
-    };
+    const current = pendingManualEntries[manualTab];
+    const newEntry: ManualEntry =
+      manualTab === "box_set"
+        ? {
+            ...(current as ManualBoxSetEntry),
+            id: `MANUAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            itemKind: "box_set",
+            createdAt: new Date().toISOString(),
+          }
+        : {
+            ...(current as ManualCardEntry),
+            id: `MANUAL-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            itemKind: "card",
+            createdAt: new Date().toISOString(),
+          };
 
-    setCards((prev) => [newCard, ...prev]);
-    // 防止 revoke 影響已寫入記錄的 blob URL：交出 ref 擁有權
-    objectUrlRef.current = null;
-    toast.success(`手動錄入成功！條目 #${newCard.id} 已建立，狀態為待審核。`, {
-      description: `圖片已 mock 上傳至 Supabase Storage CDN`,
-    });
+    // TODO: [Supabase Wiring] Target Table: product_catalog | RPC: insert_card_catalog_entry
+    // 目前 product_catalog 只有 SELECT policy，未有 INSERT policy。
+    // 待補 migration（admin insert policy + is_admin() SECURITY DEFINER）後改為真正寫入。
+    setManualEntries((prev) => [newEntry, ...prev]);
+    toast.success("已新增手動錄入條目（尚未寫入資料庫）");
 
-    setCardNo("");
-    setCardName("");
-    setCardNameJp("");
-    setCardSet("");
-    setImagePreview("");
-    setImageUrl("");
-    setImageFileName("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    setCurrentPage(1);
-  };
+    handleCloseManualDialog();
+    resetManualForm(manualTab);
+  }
 
-  const handleDbLookup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!dbQuery.trim()) {
-      toast.error("請輸入卡牌編號、系列代碼或 ID");
-      return;
-    }
-    const q = dbQuery.trim().toLowerCase();
-    const found = cards.find(
-      (c) => c.cardNo.toLowerCase() === q || c.id.toLowerCase() === q,
-    );
-    if (found) {
-      toast.success(`已於本地 DB 索引找到條目 ${found.cardNo}`, {
-        description: `${found.name}｜${found.set}｜${found.rarity}｜來源 ${SOURCE_BADGE[found.source].label}`,
-      });
-      setSearchQuery(dbQuery.trim());
-      setCurrentPage(1);
-    } else {
-      toast.warning(`DB 中查無 "${dbQuery.trim()}" 的快取條目`, {
-        description: "請確認卡牌編號，或改用手動錄入建立條目。",
-      });
-    }
-  };
-
-  const filteredCards = useMemo(
-    () =>
-      cards.filter(
-        (c) =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.cardNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.set.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-    [cards, searchQuery],
-  );
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredCards.length / ITEMS_PER_PAGE),
-  );
-  const safePage = Math.min(currentPage, totalPages);
-  const pageStart = (safePage - 1) * ITEMS_PER_PAGE;
-  const pagedCards = filteredCards.slice(pageStart, pageStart + ITEMS_PER_PAGE);
-  const rangeStart = filteredCards.length === 0 ? 0 : pageStart + 1;
-  const rangeEnd = Math.min(pageStart + ITEMS_PER_PAGE, filteredCards.length);
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    setCurrentPage(1);
+  const gridItemVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.05,
+        type: "spring" as const,
+        stiffness: 300,
+        damping: 25,
+      },
+    }),
   };
 
   return (
@@ -316,353 +471,538 @@ export default function AdminCatalogPage() {
             卡牌字典資料庫
           </h1>
           <p className="font-sans text-[13px] text-text-secondary mt-0.5">
-            檢視 Supabase 本地快取卡牌名冊，並手動錄入無 API
-            覆蓋的小眾／舊版卡牌條目
+            檢視並管理 product_catalog 卡牌資料；手動錄入工具供無 API
+            覆蓋的小眾或舊版卡牌條目使用。
           </p>
         </div>
       </div>
 
-      {/* ── Top Level Grid: Forms ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PANEL 1: DB 資料讀取表單 */}
-        <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between">
-          <div className="space-y-4">
-            <div>
-              <h2 className="font-sans font-semibold text-[16px] text-text-primary">
-                查詢資料庫
-              </h2>
-              <p className="font-sans text-[12px] text-text-secondary mt-1">
-                依卡牌編號、系列代碼或條目
-                ID，直接查詢並檢視資料庫中已快取的卡牌記錄
-              </p>
-            </div>
-
-            <form onSubmit={handleDbLookup} className="flex gap-2.5">
-              <input
-                type="text"
-                value={dbQuery}
-                onChange={(e) => setDbQuery(e.target.value)}
-                placeholder="例：sv2a-182 / sv6a-109..."
-                className="flex-1 h-10 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-4 font-mono text-[13px] text-text-primary placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-              />
-              <button
-                type="submit"
-                className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform shrink-0 shadow-lg shadow-brand/10"
-              >
-                🔍
-              </button>
-            </form>
-          </div>
-        </section>
-
-        {/* PANEL 2: 小眾卡牌手動錄入 */}
-        <section className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5">
-          <Accordion
-            isOpen={isManualInputOpen}
-            onToggle={() => setIsManualInputOpen((prev) => !prev)}
-            className="border-b-0 py-0"
-            title={
-              <div className="flex items-center gap-2">
-                <span className="font-sans font-semibold text-[15px] sm:text-[16px] text-text-primary tracking-normal normal-case">
-                  手動錄入卡牌
-                </span>
-              </div>
-            }
+      {/* ── Search + Manual Entry Trigger ─────────────────────────────── */}
+      <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 space-y-4">
+        <div className="relative w-full">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled pointer-events-none"
           >
-            <form
-              onSubmit={handleManualSubmit}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2"
-            >
-              <div>
-                <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                  卡牌編號 <span className="text-warning">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={cardNo}
-                  onChange={(e) => setCardNo(e.target.value)}
-                  placeholder="例：promo-102"
-                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-                />
-              </div>
-              <div>
-                <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                  英文/漢語名稱 <span className="text-warning">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={cardName}
-                  onChange={(e) => setCardName(e.target.value)}
-                  placeholder="例：Pikachu PROMO"
-                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-                />
-              </div>
-              <div>
-                <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                  日文原名
-                </label>
-                <input
-                  type="text"
-                  value={cardNameJp}
-                  onChange={(e) => setCardNameJp(e.target.value)}
-                  placeholder="例：ピカチュウ"
-                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-                />
-              </div>
-              <div>
-                <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                  系列/卡包名稱 <span className="text-warning">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={cardSet}
-                  onChange={(e) => setCardSet(e.target.value)}
-                  placeholder="例：Base Set 2nd"
-                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-                />
-              </div>
-              <div>
-                <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                  罕貴度 (Rarity)
-                </label>
-                <select
-                  value={cardRarity}
-                  onChange={(e) => setCardRarity(e.target.value)}
-                  className="w-full h-9 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[12px] text-text-primary focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)] appearance-none"
-                >
-                  <option value="SAR">SAR</option>
-                  <option value="UR">UR</option>
-                  <option value="SR">SR</option>
-                  <option value="AR">AR</option>
-                  <option value="Holo">Holo</option>
-                  <option value="PROMO">PROMO</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full h-9 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-transform"
-                >
-                  新增手動條目
-                </button>
-              </div>
-
-              {/* 圖片上傳（File input + URL 雙模式） */}
-              <div className="sm:col-span-2">
-                <label className="font-mono text-[11px] text-text-secondary block mb-1">
-                  卡牌圖片 <span className="text-warning">*</span>
-                </label>
-                <div className="flex gap-3">
-                  <div className="shrink-0">
-                    {imagePreview ? (
-                      <div className="relative w-16 h-[88px]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={imagePreview}
-                          alt="預覽"
-                          className="w-16 h-[88px] rounded-lg object-cover border border-[rgba(237,232,224,0.12)]"
-                        />
-                        <button
-                          type="button"
-                          onClick={resetImage}
-                          aria-label="移除圖片"
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warning text-white text-[10px] font-bold flex items-center justify-center active:scale-[0.9] transition-transform"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-16 h-[88px] rounded-lg bg-bg-page border border-dashed border-[rgba(237,232,224,0.16)] flex items-center justify-center">
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#50453b"
-                          strokeWidth="2"
-                        >
-                          <rect
-                            x="3"
-                            y="3"
-                            width="18"
-                            height="18"
-                            rx="2"
-                            ry="2"
-                          />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <polyline points="21 15 16 10 5 21" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="w-full text-[11px] font-mono text-text-secondary file:mr-3 file:h-8 file:px-3 file:rounded-lg file:border-0 file:bg-[rgba(212,165,116,0.15)] file:text-brand file:font-sans file:font-bold file:text-[11px] file:cursor-pointer hover:file:bg-[rgba(212,165,116,0.25)]"
-                    />
-                    <input
-                      type="text"
-                      value={imageUrl}
-                      onChange={handleUrlChange}
-                      placeholder="或貼上圖片 URL（備援）"
-                      className="w-full h-8 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(212,165,116,0.40)]"
-                    />
-                    {imageFileName && (
-                      <p className="font-mono text-[10px] text-text-disabled truncate">
-                        已選：{imageFileName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </form>
-          </Accordion>
-        </section>
-      </div>
-
-      {/* ── 手動錄入記錄 ─────────────────────────────────────────────── */}
-      <section aria-labelledby="records-heading" className="space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h2
-            id="records-heading"
-            className="font-sans font-bold text-[16px] text-text-primary"
-          >
-            手動錄入記錄 ({filteredCards.length})
-          </h2>
-          <div className="flex items-center h-9 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden px-3 max-w-[240px]">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#50453b"
-              strokeWidth="2.5"
-              className="shrink-0"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="搜尋編號、卡名或系列..."
-              className="w-full h-full bg-transparent px-2 font-mono text-[11px] text-text-primary placeholder-text-disabled focus:outline-none"
-            />
-          </div>
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <Input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜尋編號、卡名、系列代碼或 JAN Code..."
+            className="w-full h-11 pl-10 pr-4 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-[14px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40"
+          />
+          <SmartSearch
+            query={query}
+            onSelect={() => {}}
+            listings={[]}
+            isOpen={false}
+            suppressDropdown
+          />
         </div>
 
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {pagedCards.length === 0 ? (
-            <div className="px-4 py-12 text-center">
-              <p className="font-sans text-[13px] text-text-secondary">
-                查無符合條件的卡牌記錄。試試調整搜尋關鍵字，或於上方手動錄入新條目。
-              </p>
+        <Button
+          type="button"
+          onClick={handleOpenManualDialog}
+          className="w-full min-h-[44px] bg-brand text-[#17130f] font-sans font-bold text-[14px] rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-transform shadow-lg shadow-brand/10"
+        >
+          手動錄入卡牌
+        </Button>
+      </div>
+
+      {/* ── Catalog Tabs & Grid ───────────────────────────────────────── */}
+      <Tabs
+        value={itemKind}
+        onValueChange={(value) => setItemKind(value as AdminCatalogItemKind)}
+        className="space-y-4"
+      >
+        <TabsList className="bg-bg-card border border-[rgba(237,232,224,0.08)] p-1 rounded-xl">
+          <TabsTrigger value="card" className={TABS_TRIGGER_CLASS}>
+            獨立卡
+          </TabsTrigger>
+          <TabsTrigger value="box_set" className={TABS_TRIGGER_CLASS}>
+            Box / Set
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="card" className="space-y-4">
+          {renderGrid()}
+        </TabsContent>
+        <TabsContent value="box_set" className="space-y-4">
+          {renderGrid()}
+        </TabsContent>
+      </Tabs>
+
+      <ImageViewer
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={viewerImages}
+        initialIndex={viewerInitialIndex}
+      />
+
+      {/* ── Full-screen Manual Entry Dialog ─────────────────────────────
+          注意：DialogContent base class 含 `sm:max-w-sm` 同 `ring-1`。
+          tailwind-merge 無法以無斷點嘅 `max-w-full` 蓋過帶斷點嘅 `sm:max-w-sm`，
+          故必須顯式加 `sm:max-w-full`；`ring-0` 同理用嚟清走 base 嘅 ring。 */}
+      <Dialog open={isManualDialogOpen} onOpenChange={setIsManualDialogOpen}>
+        <DialogContent
+          showCloseButton={false}
+          className="fixed inset-0 top-0 left-0 z-[70] w-full max-w-full sm:max-w-full h-[100dvh] max-h-[100dvh] translate-x-0 translate-y-0 rounded-none p-0 gap-0 flex flex-col overflow-hidden bg-bg-card border-0 ring-0"
+        >
+          {/* Sticky header */}
+          <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4 px-5 py-4 border-b border-[rgba(237,232,224,0.08)] bg-bg-card">
+            <DialogTitle className="font-sans font-bold text-[18px] text-text-primary">
+              手動錄入卡牌
+            </DialogTitle>
+            <button
+              type="button"
+              onClick={handleCloseManualDialog}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+              aria-label="關閉"
+            >
+              ✕
+            </button>
+          </DialogHeader>
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto p-5">
+            <Tabs
+              value={manualTab}
+              onValueChange={(value) => setManualTab(value as AdminCatalogItemKind)}
+              className="space-y-5"
+            >
+              <TabsList className="bg-bg-page border border-[rgba(237,232,224,0.08)] p-1 rounded-xl">
+                <TabsTrigger value="card" className={TABS_TRIGGER_CLASS}>
+                  獨立卡
+                </TabsTrigger>
+                <TabsTrigger value="box_set" className={TABS_TRIGGER_CLASS}>
+                  Box / Set
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="card" className="space-y-5">
+                {renderManualForm("card")}
+              </TabsContent>
+              <TabsContent value="box_set" className="space-y-5">
+                {renderManualForm("box_set")}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Sticky footer */}
+          <DialogFooter className="shrink-0 flex-col sm:flex-row justify-end gap-2 px-5 py-4 border-t border-[rgba(237,232,224,0.08)] bg-bg-page rounded-none m-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCloseManualDialog}
+              className="min-h-[44px] px-5 rounded-lg border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary font-sans font-semibold text-[13px] hover:bg-bg-elevated hover:text-text-primary active:scale-[0.98]"
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleManualSubmit}
+              className="min-h-[44px] px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-lg hover:bg-brand-hover active:scale-[0.98]"
+            >
+              送出
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+
+  function renderGrid() {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden"
+            >
+              <Skeleton className="w-full aspect-[3/4] bg-[#26211C]" />
+              <div className="p-4 space-y-2">
+                <Skeleton className="h-4 w-3/4 bg-[#26211C]" />
+                <Skeleton className="h-3 w-1/2 bg-[#26211C]" />
+              </div>
             </div>
-          ) : (
-            pagedCards.map((card, i) => {
-              const badge = SOURCE_BADGE[card.source];
-              return (
-                <div
-                  key={card.id}
-                  className={`flex items-center gap-3 px-4 py-3.5 hover:bg-bg-hover transition-colors ${
-                    i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""
-                  } ${card.needsReview ? "bg-[rgba(239,68,68,0.02)]" : ""}`}
-                >
-                  <CardThumb card={card} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-mono text-[10px] text-brand bg-[rgba(212,165,116,0.12)] px-1.5 py-0.5 rounded border border-brand/20">
-                        {card.cardNo}
-                      </span>
-                      <p className="font-sans text-[13px] font-semibold text-text-primary truncate">
-                        {card.name}
-                      </p>
-                      <span className="font-mono text-[10px] text-text-disabled truncate max-w-[120px]">
-                        {card.nameJP}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-sans text-[11px] text-text-secondary">
-                        {card.set}
-                      </span>
-                      <span className="font-mono text-[10px] text-text-disabled uppercase">
-                        {card.rarity}
-                      </span>
-                      <span
-                        className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${badge.className}`}
-                      >
-                        {badge.label}
-                      </span>
-                      {card.needsReview && (
-                        <span className="font-mono text-[9px] text-warning bg-[rgba(239,68,68,0.10)] px-1.5 py-0.5 rounded border border-warning/15">
-                          needsReview
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0 flex flex-col items-end gap-1 font-mono">
-                    <span className="text-[10px] text-text-disabled block">
-                      最後同步
+          ))}
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)]">
+          <p className="font-sans text-[15px] text-warning text-center">
+            {error}
+          </p>
+          <p className="font-sans text-[13px] text-text-secondary mt-2 text-center">
+            請稍後再試，或檢查搜尋關鍵字是否包含特殊字元。
+          </p>
+        </div>
+      );
+    }
+
+    if (manualForKind.length === 0 && entries.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)]">
+          <p className="font-sans text-[15px] text-text-primary text-center">
+            暫無符合條件的卡牌資料
+          </p>
+          <p className="font-sans text-[13px] text-text-secondary mt-2 text-center">
+            調整搜尋關鍵字，或是點擊「手動錄入卡牌」新增一筆資料。
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {/* ── Pending manual entries — 獨立區塊，不參與 DB 分頁 ───────── */}
+        <AnimatePresence>
+          {manualForKind.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+              aria-labelledby="pending-manual-heading"
+            >
+              <div className="space-y-3 p-4 rounded-2xl bg-[rgba(212,165,116,0.06)] border border-brand/20">
+                <div className="flex items-center gap-2">
+                  <span className="text-brand text-[13px]">✎</span>
+                  <h3
+                    id="pending-manual-heading"
+                    className="font-sans text-[13px] font-semibold text-text-primary"
+                  >
+                    待寫入資料庫的手動錄入條目
+                    <span className="ml-2 font-mono text-brand">
+                      {manualForKind.length}
                     </span>
-                    <span className="text-[11px] text-text-secondary">
-                      {card.cachedAt}
-                    </span>
-                  </div>
+                  </h3>
                 </div>
-              );
-            })
+                <p className="font-sans text-[12px] text-text-secondary">
+                  以下條目僅暫存於本次瀏覽階段，尚未寫入
+                  <span className="font-mono"> product_catalog</span>
+                  ，重新整理後將會消失。
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {manualForKind.map((entry, i) => (
+                    <div key={entry.id} className="relative">
+                      <div className="absolute -top-2 -right-2 z-10">
+                        <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-brand text-[#17130f] border border-brand/30 shadow-md">
+                          待審核
+                        </span>
+                      </div>
+                      <CatalogCard
+                        entry={entry}
+                        onImageClick={handleImageClick}
+                        imagePriority={i < 4}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+        >
+          {entries.map((entry, i) => (
+            <motion.div
+              key={entry.id}
+              custom={i}
+              variants={gridItemVariants}
+              className="relative"
+            >
+              <CatalogCard
+                entry={entry}
+                onImageClick={handleImageClick}
+                imagePriority={manualForKind.length === 0 && i < 4}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          totalItems={total}
+          itemsPerPage={PAGE_SIZE}
+          itemLabel="筆資料"
+          enableScroll={false}
+        />
+      </>
+    );
+  }
+
+  function renderManualForm(kind: AdminCatalogItemKind) {
+    const current = pendingManualEntries[kind];
+
+    return (
+      <div className="max-w-3xl mx-auto space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[11px] text-text-secondary">
+              卡牌編號 <span className="text-warning">*</span>
+            </Label>
+            <Input
+              type="text"
+              value={current.cardNumber}
+              onChange={(e) =>
+                updateManualField(kind, "cardNumber", e.target.value)
+              }
+              placeholder="例：promo-102"
+              className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                formErrors.cardNumber ? "border-warning" : ""
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[11px] text-text-secondary">
+              系列/卡包代碼 <span className="text-warning">*</span>
+            </Label>
+            <Input
+              type="text"
+              value={current.setCode}
+              onChange={(e) => updateManualField(kind, "setCode", e.target.value)}
+              placeholder="例：SV2a"
+              className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                formErrors.setCode ? "border-warning" : ""
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[11px] text-text-secondary">
+              英文名稱
+            </Label>
+            <Input
+              type="text"
+              value={current.nameEn}
+              onChange={(e) =>
+                updateManualField(kind, "nameEn", e.target.value)
+              }
+              placeholder="例：Pikachu PROMO"
+              className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                formErrors.nameLanguages ? "border-warning" : ""
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[11px] text-text-secondary">
+              中文名稱
+            </Label>
+            <Input
+              type="text"
+              value={current.nameZh}
+              onChange={(e) =>
+                updateManualField(kind, "nameZh", e.target.value)
+              }
+              placeholder="例：皮卡丘 推廣卡"
+              className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                formErrors.nameLanguages ? "border-warning" : ""
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[11px] text-text-secondary">
+              日文名稱
+            </Label>
+            <Input
+              type="text"
+              value={current.nameJa}
+              onChange={(e) =>
+                updateManualField(kind, "nameJa", e.target.value)
+              }
+              placeholder="例：ピカチュウ"
+              className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                formErrors.nameLanguages ? "border-warning" : ""
+              }`}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-mono text-[11px] text-text-secondary">
+              罕有度 <span className="text-warning">*</span>
+            </Label>
+            <Select
+              value={current.rarity}
+              onValueChange={(value) =>
+                updateManualField(kind, "rarity", value ?? "")
+              }
+            >
+              <SelectTrigger
+                className={`h-10 w-full bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary ${
+                  formErrors.rarity ? "border-warning" : ""
+                }`}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#26211C]">
+                {RARITY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {kind === "box_set" && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="font-mono text-[11px] text-text-secondary">
+                  Category <span className="text-warning">*</span>
+                </Label>
+                <Select
+                  value={(current as ManualBoxSetEntry).category}
+                  onValueChange={(value) =>
+                    updateBoxSetField("category", (value as CatalogType) ?? "booster_pack")
+                  }
+                >
+                  <SelectTrigger
+                    className={`h-10 w-full bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary ${
+                      formErrors.category ? "border-warning" : ""
+                    }`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#26211C]">
+                    {BOX_SET_CATEGORY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="font-mono text-[11px] text-text-secondary">
+                  JAN Code <span className="text-warning">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={(current as ManualBoxSetEntry).janCode}
+                  onChange={(e) => updateBoxSetField("janCode", e.target.value)}
+                  placeholder="例：4904140548311"
+                  className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                    formErrors.janCode ? "border-warning" : ""
+                  }`}
+                />
+              </div>
+            </>
           )}
         </div>
 
-        {/* Pagination Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <span className="font-mono text-[11px] text-text-secondary">
-            顯示第 {rangeStart} - {rangeEnd} 筆，共 {filteredCards.length}{" "}
-            筆記錄
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={safePage <= 1}
-              className="h-8 px-3 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-lg font-mono text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-hover active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
-            >
-              ← 上一頁
-            </button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, idx) => idx + 1).map(
-                (page) => (
+        {formErrors.nameLanguages && (
+          <p className="font-sans text-[12px] text-warning">
+            請至少輸入一種語言嘅卡牌名稱（英文／中文／日文）
+          </p>
+        )}
+
+        {/* Image upload */}
+        <div className="space-y-1.5">
+          <Label className="font-mono text-[11px] text-text-secondary">
+            卡牌圖片 <span className="text-warning">*</span>
+          </Label>
+          <div className="flex gap-4">
+            <div className="shrink-0">
+              {imagePreview ? (
+                <div className="relative w-20 h-[110px]">
+                  <Image
+                    src={imagePreview}
+                    alt="預覽"
+                    fill
+                    className="rounded-lg object-cover border border-[rgba(237,232,224,0.12)]"
+                  />
                   <button
-                    key={page}
                     type="button"
-                    onClick={() => setCurrentPage(page)}
-                    aria-current={page === safePage ? "page" : undefined}
-                    className={`h-8 w-8 rounded-lg font-mono text-[11px] active:scale-[0.98] transition-all ${
-                      page === safePage
-                        ? "bg-brand text-[#17130f] font-bold"
-                        : "bg-bg-card border border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-text-primary hover:bg-bg-hover"
-                    }`}
+                    onClick={() => {
+                      resetImagePreview();
+                      updateManualField(kind, "imageSource", "");
+                    }}
+                    aria-label="移除圖片"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-warning text-white text-[10px] font-bold flex items-center justify-center active:scale-[0.9] transition-transform"
                   >
-                    {page}
+                    ✕
                   </button>
-                ),
+                </div>
+              ) : (
+                <div className="w-20 h-[110px] rounded-lg bg-bg-page border border-dashed border-[rgba(237,232,224,0.16)] flex items-center justify-center">
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#50453b"
+                    strokeWidth="2"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </div>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage >= totalPages}
-              className="h-8 px-3 bg-bg-card border border-[rgba(237,232,224,0.12)] rounded-lg font-mono text-[11px] text-text-secondary hover:text-text-primary hover:bg-bg-hover active:scale-[0.98] transition-all disabled:opacity-40 disabled:pointer-events-none"
-            >
-              下一頁 →
-            </button>
+
+            <div className="flex-1 space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full text-[11px] font-mono text-text-secondary file:mr-3 file:h-9 file:px-3 file:rounded-lg file:border-0 file:bg-[rgba(212,165,116,0.15)] file:text-brand file:font-sans file:font-bold file:text-[11px] file:cursor-pointer hover:file:bg-[rgba(212,165,116,0.25)]"
+              />
+              <Input
+                type="text"
+                value={current.imageSource}
+                onChange={handleImageUrlChange}
+                placeholder="或貼上圖片 URL（備援）"
+                className={`h-9 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-lg px-3 font-mono text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
+                  formErrors.image ? "border-warning" : ""
+                }`}
+              />
+              {imageFileName && (
+                <p className="font-mono text-[10px] text-text-disabled truncate">
+                  已選：{imageFileName}
+                </p>
+              )}
+            </div>
           </div>
         </div>
-      </section>
-    </div>
-  );
+
+        {/* Type preview */}
+        <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page p-3">
+          <p className="font-sans text-[12px] text-text-secondary">
+            即將新增條目類型：
+            <span className="text-brand font-semibold ml-1">
+              {kind === "card"
+                ? "獨立卡（single_card）"
+                : `Box/Set（${CATALOG_TYPE_LABELS[(current as ManualBoxSetEntry).category]}）`}
+            </span>
+          </p>
+        </div>
+      </div>
+    );
+  }
 }
