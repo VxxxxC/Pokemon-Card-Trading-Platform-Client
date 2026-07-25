@@ -82,6 +82,15 @@ const revenues = {
   totalAppraisals: "3,213 筆",
 };
 
+// TODO: [Stripe Wiring] Replace mock data with real Stripe API call
+// Target API: stripe.balance.retrieve | Fallback: mock
+const stripePlatformBalance = {
+  available: 1284650,
+  pending: 236800,
+  currency: "HKD",
+  lastSyncedAt: "2026-07-26 09:42",
+};
+
 interface SystemService {
   id: string;
   name: string;
@@ -281,6 +290,47 @@ export default function AdminDashboardClient() {
                     </span>
                     <span className="font-mono font-bold text-[15px] sm:text-[16px] text-brand">
                       {revenues.appraisalFeePerCard}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-white/[0.08]" />
+
+              {/* Third block: Stripe 平台帳戶餘額 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-sans font-semibold text-[13px] text-text-secondary block">
+                    Stripe 平台帳戶餘額
+                  </span>
+                  <span className="text-text-secondary text-[11px] font-mono">
+                    最後同步：{stripePlatformBalance.lastSyncedAt}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      可用餘額 (Available)
+                    </span>
+                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-brand">
+                      HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      待結算 (Pending)
+                    </span>
+                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
+                      HK$ {stripePlatformBalance.pending.toLocaleString("zh-TW")}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      幣種
+                    </span>
+                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
+                      {stripePlatformBalance.currency}
                     </span>
                   </div>
                 </div>

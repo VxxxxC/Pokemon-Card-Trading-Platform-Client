@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RefreshCw } from "lucide-react";
 
 // ── Types Definitions ────────────────────────────────────────────────────────
 interface WithdrawalRequest {
@@ -312,6 +313,25 @@ const initialWithdrawals: WithdrawalRequest[] = [
 // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
 // Target Table: merchant_ledgers, merchant_orders, profiles | View / RPC: list_merchant_stripe_flows
 // Note: merchant_ledgers.stripe_transfer_id and merchant_ledgers.order_id already exist in the real schema.
+
+// TODO: [Stripe Wiring] Replace mock data with real Stripe API call
+// Target API: stripe.balance.retrieve | Fallback: mock
+const stripePlatformBalance = {
+  available: 1284650,
+  pending: 236800,
+  todayIn: 87450,
+  currency: "HKD",
+  lastSyncedAt: "2026-07-26 09:42",
+};
+
+// TODO: [Stripe Wiring] Replace mock data with real Stripe API call
+// Target API: stripe.payouts.list({ limit, starting_after }) | Fallback: mock
+const STRIPE_LOG_PAYOUT_COUNT = 38;
+
+// TODO: [Stripe Wiring] Replace mock data with real Stripe API call
+// Target API: stripe.transfers.list({ limit, starting_after }) | Fallback: mock
+const STRIPE_LOG_TRANSFER_COUNT = 38;
+
 const initialMerchantFlows: MerchantStripeFlow[] = [
   {
     stripeTransferId: "tr_3Nf82HKojiTCa1Bz",
@@ -574,6 +594,145 @@ function SortSelect<V extends string>({
   );
 }
 
+type StripeLogStatus = "paid" | "pending" | "in_transit" | "failed";
+
+type StripeLogVariant = "payout" | "transfer";
+
+interface StripePayoutLog {
+  id: string;
+  recipient: string;
+  amount: number;
+  status: StripeLogStatus;
+  createdAt: string;
+}
+
+interface StripeTransferLog {
+  id: string;
+  merchantName: string;
+  splitAmount: number;
+  platformCommission: number;
+  status: StripeLogStatus;
+  createdAt: string;
+}
+
+type StripeLogRow = StripePayoutLog | StripeTransferLog;
+
+const STRIPE_LOG_PAGE_SIZE = 15;
+
+const STRIPE_LOG_STATUS_LABELS: Record<StripeLogStatus, string> = {
+  paid: "已到賬",
+  pending: "處理中",
+  in_transit: "轉賬中",
+  failed: "失敗",
+};
+
+const STRIPE_LOG_STATUS_CLASSES: Record<StripeLogStatus, string> = {
+  paid: "text-success bg-[rgba(16,185,129,0.12)] border-success/20",
+  pending: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
+  in_transit: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
+  failed: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
+};
+
+const PAYOUT_RECIPIENTS = [
+  "KojiTCG_Collector",
+  "TokyoRare_HongKong",
+  "OsakaPoke_Alex",
+  "Nagoya_CardVault",
+  "JapanTCG_Trader",
+  "Pikachu_Specialist",
+  "Charizard_Vault_HK",
+  "MewtwoMaster_99",
+  "Gengar_Store_JP",
+  "KyotoCards_Official",
+  "Fukuoka_PokeHub",
+  "Rayquaza_Vault",
+  "Eevee_Kingdom_HK",
+  "Snorlax_Bed_TCG",
+  "Lugias_Lair_2025",
+  "Umbreon_Moon_HK",
+  "Dragonite_Fly_JP",
+  "Shinobi_TCG_Shop",
+  "Kanto_Classics_HK",
+];
+
+const TRANSFER_MERCHANTS = [
+  "HarutoCards Premium",
+  "AikoRare Collection",
+  "Daichi Rare Cards",
+  "KuroGamer TCG",
+  "TokyoRare_HongKong",
+  "Kyoto Vault TCG",
+  "Osaka PokeCenter HK",
+  "Fukuoka Card Kingdom",
+];
+
+// Deterministic, SSR-safe helpers for Stripe log generation.
+const makePayoutId = (seq: number) =>
+  `po_1QxAbC${String(seq).padStart(22, "0")}XYZ`;
+const makeTransferId = (seq: number) =>
+  `tr_1QxDeF${String(seq).padStart(22, "0")}XYZ`;
+
+const cyclePayoutStatus = (seq: number): StripeLogStatus => {
+  const cycle = seq % 5;
+  if (cycle === 0) return "paid";
+  if (cycle === 1 || cycle === 2) return "in_transit";
+  if (cycle === 3) return "pending";
+  return "failed";
+};
+
+const cycleTransferStatus = (seq: number): StripeLogStatus => {
+  const cycle = seq % 6;
+  if (cycle === 0 || cycle === 1) return "paid";
+  if (cycle === 2 || cycle === 3) return "in_transit";
+  if (cycle === 4) return "pending";
+  return "failed";
+};
+
+const makePayoutDate = (seq: number) => {
+  // Seq 1 is latest, seq 38 is oldest. Base day: 2026-07-26.
+  const base = new Date(2026, 6, 26, 18, 30, 0).getTime();
+  const offsetMinutes = (STRIPE_LOG_PAYOUT_COUNT - seq) * 65;
+  const d = new Date(base - offsetMinutes * 60 * 1000);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+const makeTransferDate = (seq: number) => {
+  const base = new Date(2026, 6, 26, 17, 15, 0).getTime();
+  const offsetMinutes = (STRIPE_LOG_TRANSFER_COUNT - seq) * 95;
+  const d = new Date(base - offsetMinutes * 60 * 1000);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+const MOCK_PAYOUT_LOGS: StripePayoutLog[] = Array.from(
+  { length: STRIPE_LOG_PAYOUT_COUNT },
+  (_, i) => {
+    const seq = i + 1;
+    return {
+      id: makePayoutId(seq),
+      recipient: PAYOUT_RECIPIENTS[seq % PAYOUT_RECIPIENTS.length],
+      amount: 9800 + (seq % 47) * 1450,
+      status: cyclePayoutStatus(seq),
+      createdAt: makePayoutDate(seq),
+    };
+  },
+).sort((a, b) => parseLocalDate(b.createdAt) - parseLocalDate(a.createdAt));
+
+const MOCK_TRANSFER_LOGS: StripeTransferLog[] = Array.from(
+  { length: STRIPE_LOG_TRANSFER_COUNT },
+  (_, i) => {
+    const seq = i + 1;
+    const splitAmount = 24000 + (seq % 61) * 1850;
+    return {
+      id: makeTransferId(seq),
+      merchantName: TRANSFER_MERCHANTS[seq % TRANSFER_MERCHANTS.length],
+      splitAmount,
+      platformCommission: Math.round(splitAmount * 0.05),
+      status: cycleTransferStatus(seq),
+      createdAt: makeTransferDate(seq),
+    };
+  },
+).sort((a, b) => parseLocalDate(b.createdAt) - parseLocalDate(a.createdAt));
+
 function FilterChips<K extends string>({
   options,
   active,
@@ -602,6 +761,192 @@ function FilterChips<K extends string>({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
+  const [page, setPage] = useState(1);
+
+  const rows: StripeLogRow[] =
+    variant === "payout" ? MOCK_PAYOUT_LOGS : MOCK_TRANSFER_LOGS;
+
+  const totalPages = Math.ceil(rows.length / STRIPE_LOG_PAGE_SIZE) || 1;
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * STRIPE_LOG_PAGE_SIZE;
+    return rows.slice(start, start + STRIPE_LOG_PAGE_SIZE);
+  }, [rows, page]);
+
+  const title =
+    variant === "payout"
+      ? "Stripe Log — 平台放款紀錄"
+      : "Stripe Log — 商戶交易紀錄";
+  const subtitle =
+    variant === "payout"
+      ? "平台 Stripe 帳戶撥款至會員收款帳戶之交易日誌"
+      : "商戶 Stripe Connect 子帳戶分賬與交易日誌";
+
+  const headers =
+    variant === "payout"
+      ? ["Payout ID", "收款會員", "金額", "狀態", "建立時間"]
+      : [
+          "Transfer ID",
+          "商戶名稱",
+          "分賬金額",
+          "平台分成",
+          "狀態",
+          "建立時間",
+        ];
+
+  return (
+    <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[420px]">
+      <div className="space-y-1">
+        <h3 className="font-sans font-bold text-[16px] text-text-primary">
+          {title}
+        </h3>
+        <p className="font-sans text-[12px] text-text-secondary">{subtitle}</p>
+      </div>
+
+      <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
+        <Table>
+          <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
+            <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
+              {headers.map((header) => (
+                <TableHead
+                  key={header}
+                  className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap"
+                >
+                  {header}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedRows.map((row) => {
+              if (variant === "payout") {
+                const payout = row as StripePayoutLog;
+                return (
+                  <TableRow
+                    key={payout.id}
+                    className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/40 transition-colors"
+                  >
+                    <TableCell className="py-3 whitespace-nowrap">
+                      <span
+                        className="font-mono text-[11px] text-text-disabled truncate max-w-[140px] block"
+                        title={payout.id}
+                      >
+                        {payout.id}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                      {payout.recipient}
+                    </TableCell>
+                    <TableCell className="font-mono font-bold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                      HK$ {payout.amount.toLocaleString("zh-TW")}
+                    </TableCell>
+                    <TableCell className="py-3 whitespace-nowrap">
+                      <span
+                        className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[payout.status]}`}
+                      >
+                        {STRIPE_LOG_STATUS_LABELS[payout.status]}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                      {payout.createdAt}
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+              const transfer = row as StripeTransferLog;
+              return (
+                <TableRow
+                  key={transfer.id}
+                  className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/40 transition-colors"
+                >
+                  <TableCell className="py-3 whitespace-nowrap">
+                    <span
+                      className="font-mono text-[11px] text-text-disabled truncate max-w-[140px] block"
+                      title={transfer.id}
+                    >
+                      {transfer.id}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                    {transfer.merchantName}
+                  </TableCell>
+                  <TableCell className="font-mono font-bold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                    HK$ {transfer.splitAmount.toLocaleString("zh-TW")}
+                  </TableCell>
+                  <TableCell className="font-mono font-bold text-[13px] text-brand text-right py-3 whitespace-nowrap">
+                    HK$ {transfer.platformCommission.toLocaleString("zh-TW")}
+                  </TableCell>
+                  <TableCell className="py-3 whitespace-nowrap">
+                    <span
+                      className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[transfer.status]}`}
+                    >
+                      {STRIPE_LOG_STATUS_LABELS[transfer.status]}
+                      </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                    {transfer.createdAt}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {rows.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
+          <div className="font-mono text-[12px] text-text-secondary">
+            顯示第{" "}
+            <span className="font-bold text-text-primary">
+              {(page - 1) * STRIPE_LOG_PAGE_SIZE + 1}
+            </span>{" "}
+            -{" "}
+            <span className="font-bold text-text-primary">
+              {Math.min(page * STRIPE_LOG_PAGE_SIZE, rows.length)}
+            </span>{" "}
+            筆，共{" "}
+            <span className="font-bold text-brand">{rows.length}</span>{" "}
+            筆資料
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={page === 1}
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+              className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] disabled:active:scale-100"
+            >
+              上一頁
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={`min-h-[44px] h-11 w-11 rounded-lg font-mono text-xs font-semibold transition-all active:scale-[0.98] ${
+                  page === p
+                    ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
+                    : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={page === totalPages}
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+              className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] disabled:active:scale-100"
+            >
+              下一頁
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -909,6 +1254,60 @@ export default function AdminPayoutsPage() {
         <p className="font-sans text-[12px] text-text-secondary mt-0.5">
           人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與 5% 佣金收益監控
         </p>
+      </div>
+
+      {/* ── Stripe 平台帳戶餘額 ─────────────────────────────────────────────── */}
+      <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 relative overflow-hidden">
+        <div className="flex items-start sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-sans font-bold text-[16px] text-text-primary">
+              Stripe 平台帳戶餘額
+            </h2>
+            <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+              平台 Stripe Connect 主帳戶即時資金狀況
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toast.success("已重新整理 Stripe 帳戶餘額")}
+            className="min-h-[44px] h-9 px-3 border border-brand/30 text-brand font-sans text-[12px] rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            重新整理
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+              可用餘額 (Available)
+            </span>
+            <span className="font-mono font-bold text-[24px] text-brand tracking-tight leading-none block mt-1">
+              HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
+            </span>
+          </div>
+          <div>
+            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+              待結算 (Pending)
+            </span>
+            <span className="font-mono font-bold text-[24px] text-text-primary tracking-tight leading-none block mt-1">
+              HK$ {stripePlatformBalance.pending.toLocaleString("zh-TW")}
+            </span>
+          </div>
+          <div>
+            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+              今日入賬 (Today In)
+            </span>
+            <span className="font-mono font-bold text-[24px] text-success tracking-tight leading-none block mt-1">
+              HK$ {stripePlatformBalance.todayIn.toLocaleString("zh-TW")}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] font-mono text-[11px] text-text-secondary">
+          最後同步：{stripePlatformBalance.lastSyncedAt} · 幣種{" "}
+          {stripePlatformBalance.currency}
+        </div>
       </div>
 
       {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
@@ -1227,6 +1626,9 @@ export default function AdminPayoutsPage() {
           </div>
         )}
 
+        {/* Stripe payout log (outside main table container, sibling) */}
+        {activeTab === "fps" && <StripeLogPanel variant="payout" />}
+
         {/* ── Tab 2: 商戶流水 (Stripe) View ──────────────────────── */}
         {activeTab === "stripe" && (
           <div className="flex-1 flex flex-col justify-between space-y-4">
@@ -1474,6 +1876,9 @@ export default function AdminPayoutsPage() {
             )}
           </div>
         )}
+
+        {/* Stripe transfer log (outside main table container, sibling) */}
+        {activeTab === "stripe" && <StripeLogPanel variant="transfer" />}
       </div>
     </div>
   );
