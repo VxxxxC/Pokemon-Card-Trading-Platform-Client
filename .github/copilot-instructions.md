@@ -150,6 +150,14 @@ export default async function OrdersGatewayPage() {
 - **預檢機制強制執行**：任何時候修改、重構或修正疑似與後端資料庫（Supabase / PostgreSQL）、API 接口、資料庫欄位或實體表（Tables）相關的變量名稱、型態（Types / Interfaces）、函數名稱或數據模型（Data Models）時，**必須強制在動工前全面檢索與閱讀 `$PROJECT_ROOT/docs/dev/` 下的所有架構與追蹤文件**（特別是 `database.md`, `api.md`, `server.md` 以及 `follow-up/` 子目錄中的整合合約）。
 - **零數據衝突防線 (Zero Data Conflict)**：必須核對物理資料表欄位名稱與前端的映射，嚴禁因重命名引起與 Production 數據庫 Schema 或 API payload 的語義漂移（Interface Drift）與數據衝突。如發現不對稱，必須依循 DDL 的唯一真理源 (SSOT) 進行精準適配，不可盲目更名。
 
+### 6. E2E 測試資安防線與憑證保護鐵律 (E2E Credential Safeguard Mandate)
+
+- **硬性禁止防线**：嚴禁任何 AI 代理人（包含 QA-Tester、BAAS 工程師或腳本）調用 Supabase Admin Service Role Key、curl、Node.js 腳本或 SQL 去修改 `.env` 中指定的管理員 (Admin) 或真實測試帳戶密碼。
+- **正統 E2E 測試機制**：
+  1. 測試必須使用專屬的沙盒測試帳號 (`e2e_test_user@hkcardvault.internal`)。
+  2. 或使用 Playwright 官方推薦的 `playwright/.auth/user.json` (Storage State) 預存 Session 進行無密碼直接注入。
+  3. 任何嘗試透過 Service Role 改寫 Password 的操作將被視為資安違規行為。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
