@@ -47,7 +47,7 @@ export function getTradingHomePath(
 ): string {
   switch (role) {
     case "ADMIN":
-      return "/admin/merchants";
+      return "/admin/user_control";
     case "GUEST":
       return "/auth";
     case "USER":

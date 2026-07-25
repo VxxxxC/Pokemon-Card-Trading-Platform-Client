@@ -33,6 +33,8 @@ export interface DisputeAuditEntry {
   action: string;
   reason: string;
   timestamp: string;
+  /** 凍結涉事帳戶時填寫的凍結天數。 */
+  freezeDays?: number;
 }
 
 export interface DisputeAccused {
@@ -69,6 +71,14 @@ export const categoryLabelMap: Record<DisputeCategory, string> = {
   卡牌品相不符: "卡牌品相不符",
   誘導私下交易: "誘導私下交易",
   物流爭議: "物流爭議",
+};
+
+export const arbitrationActionLabelMap: Record<string, string> = {
+  buyer_refunded: "全額退款給買家",
+  buyer_refunded_partial: "部分退款給買家",
+  seller_released: "強制釋放款項給賣家",
+  frozen: "標記完成並結案",
+  freeze_account: "凍結涉事帳戶",
 };
 
 const evidencePhotos = [

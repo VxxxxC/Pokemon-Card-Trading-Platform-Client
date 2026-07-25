@@ -526,7 +526,7 @@ export default function AdminDashboardClient() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/admin/merchants")}
+              onClick={() => router.push("/admin/user_control")}
               className="text-brand hover:text-brand-hover p-0 h-auto font-mono text-[11px] hover:bg-transparent gap-1"
             >
               前往審核商戶 <ArrowRight className="w-3 h-3" />

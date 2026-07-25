@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import {
   statusLabelMap,
   type DisputeCase,
   type DisputeStatus,
+  arbitrationActionLabelMap,
 } from "../mockDisputes";
 
 interface DisputeDetailClientProps {
@@ -36,8 +37,13 @@ const STATUS_SELECT_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "buyer_refunded_partial", label: "部分退款給買家 (Partial Refund)" },
   { value: "seller_released", label: "強制釋放款項給賣家 (Release to Seller)" },
   { value: "frozen", label: "標記完成並結案 (Mark Complete)" },
-  { value: "ban", label: "強制封禁涉事違規帳號 (Ban Offending User)" },
+  {
+    value: "freeze_account",
+    label: "凍結涉事帳戶 (Freeze Account)",
+  },
 ];
+
+const FREEZE_ACTION_VALUE = "freeze_account";
 
 function formatCurrency(n: number): string {
   return `HK$ ${n.toLocaleString("zh-HK")}`;
@@ -101,20 +107,63 @@ function highlightSensitiveKeywords(text: string): React.ReactNode {
   return parts.length > 0 ? parts : text;
 }
 
+function isValidFreezeDays(value: string | undefined): value is string {
+  if (value === undefined) return false;
+  const n = Number(value);
+  return value !== "" && Number.isFinite(n) && n >= 1 && n <= 365;
+}
+
+function getCurrentTimestamp(): string {
+  return new Date().toISOString().replace("T", " ").slice(0, 16);
+}
+
 export default function DisputeDetailClient({
   dispute,
 }: DisputeDetailClientProps) {
   const router = useRouter();
-  const [status, setStatus] = useState<DisputeStatus>(dispute.status);
+  const [caseState, setCaseState] = useState<DisputeCase>(() => dispute);
   const [action, setAction] = useState<string>("");
   const [reason, setReason] = useState<string>("");
+  const [freezeDays, setFreezeDays] = useState<string>("7");
   const [auditLog, setAuditLog] = useState<DisputeCase["auditLog"]>(
     dispute.auditLog,
   );
 
   const activeStepIndex = useMemo(
-    () => ESCROW_STEPS.findIndex((s) => s.key === dispute.escrowStep),
-    [dispute.escrowStep],
+    () => ESCROW_STEPS.findIndex((s) => s.key === caseState.escrowStep),
+    [caseState.escrowStep],
+  );
+
+  // Keep form frozen-days default when action switches back to freeze.
+  // Leave explicit for deterministic UI state.
+
+  const appendSystemMessage = useCallback(
+    (message: string, timestamp: string) => {
+      setCaseState((prev) => ({
+        ...prev,
+        chatHistory: [
+          ...prev.chatHistory,
+          { sender: "system", name: "系統 Escrow 通知", message, timestamp },
+        ],
+      }));
+    },
+    [],
+  );
+
+  const clearForm = useCallback(() => {
+    setAction("");
+    setReason("");
+    setFreezeDays("7");
+  }, []);
+
+  const buildAuditReason = useCallback(
+    (baseReason: string, selectedAction: string): string => {
+      if (selectedAction === FREEZE_ACTION_VALUE && isValidFreezeDays(freezeDays)) {
+        return `${baseReason}（凍結 ${Number(freezeDays)} 日）`;
+      }
+      return baseReason;
+    },
+    [freezeDays],
   );
 
   // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
@@ -132,26 +181,36 @@ export default function DisputeDetailClient({
       });
       return;
     }
+    if (action === FREEZE_ACTION_VALUE && !isValidFreezeDays(freezeDays)) {
+      toast.error("請輸入 1 至 365 之間嘅凍結天數");
+      return;
+    }
 
-    const selected = STATUS_SELECT_OPTIONS.find((o) => o.value === action);
-    const label = selected?.label ?? action;
+    const selectedLabel = arbitrationActionLabelMap[action] ?? action;
+    const auditReason = buildAuditReason(reason.trim(), action);
+    const timestamp = getCurrentTimestamp();
 
-    setStatus("completed");
+    setCaseState((prev) => ({ ...prev, status: "completed" }));
     setAuditLog((prev) => [
       ...prev,
       {
-        action: label,
-        reason: reason.trim(),
-        timestamp: new Date().toISOString().replace("T", " ").slice(0, 16),
+        action: selectedLabel,
+        reason: auditReason,
+        timestamp,
+        ...(action === FREEZE_ACTION_VALUE
+          ? { freezeDays: Number(freezeDays) }
+          : {}),
       },
     ]);
 
-    toast.success(`案件 ${dispute.id} 已執行最終仲裁裁決`, {
-      description: label,
-    });
+    const systemMessage =
+      `[系統仲裁通知] 管理員已完成本案仲裁：${selectedLabel}。` +
+      `已向舉報方 ${caseState.reporter} 發送裁決回覆，案件狀態更新為「已完成」。`;
+    appendSystemMessage(systemMessage, timestamp);
 
-    setAction("");
-    setReason("");
+    toast.success(`已向舉報方 ${caseState.reporter} 發送裁決通知，案件狀態更新為已完成`);
+
+    clearForm();
   };
 
   return (
@@ -168,54 +227,57 @@ export default function DisputeDetailClient({
       </Button>
 
       {/* ── Case Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
+        <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
         <div className="flex flex-col flex-wrap gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono text-[18px] font-bold text-[#eae1da]">
-              {dispute.id}
+              {caseState.id}
             </span>
             <Badge
               variant="outline"
-              className={categoryBadgeClasses(dispute.category)}
+              className={categoryBadgeClasses(caseState.category)}
             >
-              {dispute.category}
+              {caseState.category}
             </Badge>
             <span
               className={cn(
                 "rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium",
-                dispute.severity === "critical"
+                caseState.severity === "critical"
                   ? "border-[#ef4444]/20 bg-[#ef4444]/10 text-[#ef4444]"
                   : "border-white/10 bg-[#2e2925] text-[#d4c4b7]",
               )}
             >
-              {dispute.severity === "critical" ? "緊急" : "一般"}
+              {caseState.severity === "critical" ? "緊急" : "一般"}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline" className={statusBadgeClasses(status)}>
-              {statusLabelMap[status]}
+            <Badge
+              variant="outline"
+              className={statusBadgeClasses(caseState.status)}
+            >
+              {statusLabelMap[caseState.status]}
             </Badge>
             <span className="font-sans text-[12px] text-[#8A8680]">
-              提交於 {dispute.submittedAt}
+              提交於 {caseState.submittedAt}
             </span>
           </div>
         </div>
 
         <div className="border-t border-white/[0.06] pt-4">
           <h1 className="font-sans text-[20px] font-bold text-[#eae1da]">
-            {dispute.cardName}
+            {caseState.cardName}
           </h1>
           <p className="mt-1 font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
-            {dispute.description}
+            {caseState.description}
           </p>
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-sans text-[12px] text-[#8A8680]">
             <span>
-              舉報方：<span className="text-[#d4c4b7]">{dispute.reporter}</span>
+              舉報方：<span className="text-[#d4c4b7]">{caseState.reporter}</span>
             </span>
             <span>
               被控方：
               <span className="text-[#d4c4b7]">
-                {dispute.accused.name} {dispute.accused.handle}
+                {caseState.accused.name} {caseState.accused.handle}
               </span>
             </span>
           </div>
@@ -231,11 +293,11 @@ export default function DisputeDetailClient({
               唯讀聊天室歷史
             </h2>
             <span className="font-mono text-[10px] text-[#8A8680]">
-              {dispute.chatHistory.length} 則訊息
+              {caseState.chatHistory.length} 則訊息
             </span>
           </div>
           <div className="space-y-4">
-            {dispute.chatHistory.map((chat, index) => {
+            {caseState.chatHistory.map((chat, index) => {
               if (chat.sender === "system") {
                 return (
                   <div key={index} className="flex justify-center py-1">
@@ -341,7 +403,7 @@ export default function DisputeDetailClient({
                   卡牌名稱及評級
                 </span>
                 <span className="block font-sans text-[13px] font-medium text-[#eae1da]">
-                  {dispute.cardName}
+                  {caseState.cardName}
                 </span>
               </div>
               <div>
@@ -349,7 +411,7 @@ export default function DisputeDetailClient({
                   關聯訂單
                 </span>
                 <span className="block font-mono text-[13px] text-[#d4a574]">
-                  {dispute.orderId}
+                  {caseState.orderId}
                 </span>
               </div>
               <div>
@@ -358,9 +420,9 @@ export default function DisputeDetailClient({
                 </span>
                 <span
                   className="block truncate font-mono text-[13px] text-[#eae1da]"
-                  title={dispute.stripeChargeId}
+                  title={caseState.stripeChargeId}
                 >
-                  {dispute.stripeChargeId}
+                  {caseState.stripeChargeId}
                 </span>
               </div>
               <div>
@@ -368,7 +430,7 @@ export default function DisputeDetailClient({
                   託管金額
                 </span>
                 <span className="block font-mono text-[18px] font-semibold text-[#eae1da]">
-                  {formatCurrency(dispute.escrowAmount)}
+                  {formatCurrency(caseState.escrowAmount)}
                 </span>
               </div>
             </div>
@@ -379,7 +441,7 @@ export default function DisputeDetailClient({
                 佐證材料
               </h3>
               <ul className="mt-2 space-y-1.5">
-                {dispute.evidence.photos.map((photo, index) => (
+                {caseState.evidence.photos.map((photo, index) => (
                   <li
                     key={index}
                     className="font-sans text-[12px] text-[#d4c4b7]"
@@ -388,17 +450,17 @@ export default function DisputeDetailClient({
                     {photo}
                   </li>
                 ))}
-                {dispute.evidence.videoUrl && (
+                {caseState.evidence.videoUrl && (
                   <li className="font-sans text-[12px]">
                     <span className="mr-1 text-[#8A8680]">•</span>
                     影片證據：
                     <a
-                      href={dispute.evidence.videoUrl}
+                      href={caseState.evidence.videoUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="ml-1 font-mono text-[#d4a574] underline underline-offset-2 hover:text-[#e8b896]"
                     >
-                      {dispute.evidence.videoUrl}
+                      {caseState.evidence.videoUrl}
                     </a>
                   </li>
                 )}
@@ -440,6 +502,36 @@ export default function DisputeDetailClient({
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Backend hard threshold notice (always visible) */}
+              <div className="bg-bg-elevated/50 rounded-r-lg border-l-2 border-brand/40 py-2 pl-3">
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  系統已設定不可修改嘅自動封禁閾值，被舉報方累計檢報數超標將由系統自動封禁帳戶，管理員無法覆寫此規則。
+                </p>
+              </div>
+
+              {action === FREEZE_ACTION_VALUE && (
+                <div>
+                  <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
+                    凍結天數
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={1}
+                      max={365}
+                      required
+                      value={freezeDays}
+                      onChange={(e) => setFreezeDays(e.target.value)}
+                      placeholder="請輸入 1 至 365"
+                      className="w-full h-10 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card px-3 pr-12 font-mono text-[13px] text-text-primary placeholder:text-text-disabled outline-none transition-all focus-visible:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/40"
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] text-text-secondary">
+                      日
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
