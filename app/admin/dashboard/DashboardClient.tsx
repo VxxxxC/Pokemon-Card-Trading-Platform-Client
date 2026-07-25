@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
@@ -10,12 +10,9 @@ import {
   Users,
   Wallet,
   Activity,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
   ArrowRight,
   CheckCircle2,
-  Building2,
   DollarSign,
   Briefcase,
 } from "lucide-react";
@@ -68,29 +65,21 @@ const userEcology = {
 // Target Table: orders, listings | View / RPC: get_market_volume_metrics
 const marketVolume = {
   totalGmv: "HK$ 24,840,000",
-  monthlyGmv: "HK$ 3,842,000",
+  settledCount: "2,842 筆",
+  listingCount: "18,402 件",
   growthRate: "+28.4%",
-  totalSettledCount: "2,842 筆",
-  pendingSettledCount: "148 筆",
-  sellerPool: {
-    totalListings: "18,402 件",
-    activeListings: "12,104 件",
-    averageListingPrice: "HK$ 2,050",
-    escrowLockedAmount: "HK$ 1,840,000",
-  },
 };
 
 // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: orders, platform_settings, payout_requests | View / RPC: get_platform_revenue_metrics
+// Target Table: orders, platform_settings | View / RPC: get_platform_revenue_metrics
 const revenues = {
   totalCommission: "HK$ 1,242,000",
   monthlyCommission: "HK$ 192,100",
   commissionRate: "5.0%",
   commissionGrowth: "+5.2%",
-  appraisalPool: "HK$ 482,000",
+  appraisalTotal: "HK$ 482,000",
   appraisalFeePerCard: "HK$ 150",
   totalAppraisals: "3,213 筆",
-  netPayoutPool: "HK$ 320,400",
 };
 
 interface SystemService {
@@ -130,28 +119,9 @@ const initialServices: SystemService[] = [
 export default function AdminDashboardClient() {
   const router = useRouter();
 
-  // Scroll ref and state for top KPI cards mobile indicator
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
-
-  const handleKPIContainerScroll = () => {
-    if (!scrollContainerRef.current) return;
-    const { scrollLeft, clientWidth } = scrollContainerRef.current;
-    if (clientWidth > 0) {
-      const index = Math.round(scrollLeft / (clientWidth * 0.7));
-      setActiveCardIndex(index >= 1 ? 1 : 0);
-    }
-  };
-
-  // State for collapsible seller pool detail
-  const [showSellerPoolDetails, setShowSellerPoolDetails] = useState(false);
-
   // State for system services latency check
   const [services, setServices] = useState<SystemService[]>(initialServices);
   const [isRefreshingServices, setIsRefreshingServices] = useState(false);
-
-  // Selected cohort for interactive breakdown
-  const [selectedCohort, setSelectedCohort] = useState<string | null>(null);
 
   // Urgent alerts count
   const unprocessedDisputes = 5;
@@ -234,65 +204,36 @@ export default function AdminDashboardClient() {
             <Wallet className="w-4 h-4 text-brand" />
             核心營收與 GMV KPI
           </span>
-          <div className="flex items-center gap-2">
-            {/* Mobile Pagination Indicator */}
-            <div className="flex items-center gap-2 lg:hidden font-mono text-[11px] text-text-secondary">
-              <span className="bg-bg-card border border-[rgba(237,232,224,0.08)] px-2 py-0.5 rounded-full text-brand font-medium">
-                {activeCardIndex + 1} / 2 卡片
-              </span>
-              <div className="flex items-center gap-1">
-                <span
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    activeCardIndex === 0
-                      ? "w-4 bg-brand"
-                      : "w-1.5 bg-[rgba(237,232,224,0.2)]"
-                  }`}
-                />
-                <span
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    activeCardIndex === 1
-                      ? "w-4 bg-brand"
-                      : "w-1.5 bg-[rgba(237,232,224,0.2)]"
-                  }`}
-                />
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Mobile horizontal scrollable flex container, desktop 2-column grid */}
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleKPIContainerScroll}
-          className="overflow-x-auto scrollbar-none flex gap-3.5 snap-x snap-mandatory pb-2 lg:grid lg:grid-cols-2 lg:pb-0"
-        >
+        <div className="flex flex-col gap-6">
           {/* CARD A: 平台淨營收統計 (Net Revenues) */}
-          <div className="snap-start min-w-[82vw] sm:min-w-[360px] lg:min-w-0 flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
+          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
             {/* Background subtle gold glow accent */}
             <div className="absolute -top-12 -right-12 w-32 h-32 bg-brand/5 rounded-full blur-2xl pointer-events-none" />
 
-            <div>
-              {/* Card A Header */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
-                    <DollarSign className="w-4 h-4" />
-                  </div>
-                  <span className="font-sans font-semibold text-[14px] text-text-secondary">
-                    平台淨營收統計
-                  </span>
+            {/* Card A Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                  <DollarSign className="w-4 h-4" />
                 </div>
-                <span className="font-mono text-[11px] text-brand bg-[rgba(212,165,116,0.12)] border border-brand/20 px-2.5 py-0.5 rounded-full font-medium">
-                  佣金率 {revenues.commissionRate}
+                <span className="font-sans font-semibold text-[14px] text-text-secondary">
+                  平台淨營收統計
                 </span>
               </div>
+              <span className="font-mono text-[11px] text-brand bg-[rgba(212,165,116,0.12)] border border-brand/20 px-2.5 py-0.5 rounded-full font-medium">
+                佣金率 {revenues.commissionRate}
+              </span>
+            </div>
 
-              {/* Huge Metric: 累計純佣金收入 */}
-              <div className="mt-3 mb-4">
-                <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-                  累計純佣金收入 (Net Revenue)
+            <div className="space-y-5">
+              {/* Upper block: 佣金 */}
+              <div>
+                <span className="font-sans font-semibold text-[13px] text-text-secondary block mb-2">
+                  佣金
                 </span>
-                <div className="flex items-baseline gap-2.5 mt-1">
+                <div className="flex items-baseline gap-2.5">
                   <span className="font-mono font-bold text-[30px] sm:text-[32px] text-text-primary tracking-tight leading-none">
                     {revenues.totalCommission}
                   </span>
@@ -308,158 +249,91 @@ export default function AdminDashboardClient() {
                   </span>
                 </p>
               </div>
-            </div>
 
-            {/* Secondary Metric & Detailed Pool Breakdown */}
-            <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 mt-2 space-y-2">
-              <div className="flex items-center justify-between bg-bg-page/60 rounded-xl px-3 py-2 border border-[rgba(237,232,224,0.05)]">
-                <div>
-                  <span className="font-mono text-[10px] text-text-disabled block uppercase">
-                    專項鎖定資金池總量
-                  </span>
-                  <span className="font-mono font-bold text-[15px] text-emerald-400">
-                    {revenues.appraisalPool}
-                  </span>
-                </div>
-                <span className="font-mono text-[10px] text-text-secondary bg-bg-elevated px-2 py-1 rounded border border-[rgba(237,232,224,0.08)]">
-                  Appraisal + Payout Pool
+              {/* Divider */}
+              <div className="border-t border-white/[0.08]" />
+
+              {/* Lower block: 鑑定費用 */}
+              <div className="space-y-3">
+                <span className="font-sans font-semibold text-[13px] text-text-secondary block">
+                  鑑定費用
                 </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 font-mono text-[11px] pt-1">
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-text-secondary">已鑑定卡數</span>
-                  <span className="text-text-primary font-medium">
-                    {revenues.totalAppraisals}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-text-secondary">單件鑑定費</span>
-                  <span className="text-text-primary font-medium">
-                    {revenues.appraisalFeePerCard}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-[11px] col-span-2 border-t border-[rgba(237,232,224,0.06)] pt-1.5">
-                  <span className="text-text-secondary">流動結算資金池</span>
-                  <span className="text-text-primary font-medium">
-                    {revenues.netPayoutPool}
-                  </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      鑑定費總額
+                    </span>
+                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
+                      {revenues.appraisalTotal}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      已鑑定卡數
+                    </span>
+                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
+                      {revenues.totalAppraisals}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
+                      單件鑑定費
+                    </span>
+                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-brand">
+                      {revenues.appraisalFeePerCard}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* CARD B: 交易所交易量分析 (GMV & Volume) */}
-          <div className="snap-start min-w-[82vw] sm:min-w-[360px] lg:min-w-0 flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
+          {/* CARD B: 交易量分析 (GMV & Volume) */}
+          <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 relative overflow-hidden group hover:border-[rgba(212,165,116,0.3)] transition-all">
             {/* Background subtle gold glow accent */}
             <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
 
-            <div>
-              {/* Card B Header */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                    <Briefcase className="w-4 h-4" />
-                  </div>
-                  <span className="font-sans font-semibold text-[14px] text-text-secondary">
-                    交易量分析
-                  </span>
+            {/* Card B Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <Briefcase className="w-4 h-4" />
                 </div>
-                <span className="font-mono text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {marketVolume.growthRate} vs 上月
+                <span className="font-sans font-semibold text-[14px] text-text-secondary">
+                  交易量分析
                 </span>
               </div>
-
-              {/* Huge Metric: 全平台總成交額 (GMV) */}
-              <div className="mt-3 mb-4">
-                <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-                  全平台總成交額 (GMV)
-                </span>
-                <p className="font-mono font-bold text-[30px] sm:text-[32px] text-brand tracking-tight leading-none mt-1">
-                  {marketVolume.totalGmv}
-                </p>
-                <p className="font-mono text-[11px] text-text-secondary mt-1">
-                  本月 GMV：
-                  <span className="text-text-primary font-medium">
-                    {marketVolume.monthlyGmv}
-                  </span>
-                </p>
-              </div>
+              <span className="font-mono text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                {marketVolume.growthRate} vs 上月
+              </span>
             </div>
 
-            {/* Secondary Metrics & Collapsible Seller Pool */}
-            <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 mt-2 space-y-2">
-              <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                <div className="bg-bg-page/60 p-2 rounded-lg border border-[rgba(237,232,224,0.05)]">
-                  <span className="text-text-disabled text-[10px] block">
-                    已成交數量
-                  </span>
-                  <span className="text-text-primary font-bold text-[13px]">
-                    {marketVolume.totalSettledCount}
-                  </span>
-                </div>
-                <div className="bg-bg-page/60 p-2 rounded-lg border border-[rgba(237,232,224,0.05)]">
-                  <span className="text-text-disabled text-[10px] block">
-                    待託管結算
-                  </span>
-                  <span className="text-brand font-bold text-[13px]">
-                    {marketVolume.pendingSettledCount}
-                  </span>
-                </div>
+            {/* Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                  總成交 (GMV)
+                </span>
+                <span className="font-mono font-bold text-[26px] sm:text-[28px] text-brand tracking-tight leading-none block mt-1">
+                  {marketVolume.totalGmv}
+                </span>
               </div>
-
-              {/* Collapsible / Secondary: 賣方現貨池 */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowSellerPoolDetails(!showSellerPoolDetails)
-                  }
-                  className="w-full flex items-center justify-between text-[11px] font-mono text-text-secondary bg-bg-elevated/70 hover:bg-bg-elevated px-3 py-1.5 rounded-lg border border-[rgba(237,232,224,0.08)] transition-colors active:scale-[0.99]"
-                >
-                  <span className="flex items-center gap-1.5 text-text-primary font-medium">
-                    <Building2 className="w-3.5 h-3.5 text-brand" />
-                    賣方現貨池 ({marketVolume.sellerPool.totalListings})
-                  </span>
-                  <span className="flex items-center gap-1 text-[10px] text-brand">
-                    {showSellerPoolDetails ? "收起" : "展開詳情"}
-                    {showSellerPoolDetails ? (
-                      <ChevronUp className="w-3 h-3" />
-                    ) : (
-                      <ChevronDown className="w-3 h-3" />
-                    )}
-                  </span>
-                </button>
-
-                {showSellerPoolDetails && (
-                  <div className="mt-2 p-3 bg-bg-page/80 rounded-xl border border-[rgba(237,232,224,0.08)] space-y-1.5 font-mono text-[11px] animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">總上架數量</span>
-                      <span className="text-text-primary font-medium">
-                        {marketVolume.sellerPool.totalListings}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">活躍現貨刊登</span>
-                      <span className="text-emerald-400 font-medium">
-                        {marketVolume.sellerPool.activeListings}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-secondary">現貨平均單價</span>
-                      <span className="text-text-primary font-medium">
-                        {marketVolume.sellerPool.averageListingPrice}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t border-[rgba(237,232,224,0.06)] pt-1">
-                      <span className="text-text-secondary">託管鎖定價值</span>
-                      <span className="text-brand font-medium">
-                        {marketVolume.sellerPool.escrowLockedAmount}
-                      </span>
-                    </div>
-                  </div>
-                )}
+              <div>
+                <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                  成交量
+                </span>
+                <span className="font-mono font-bold text-[18px] sm:text-[20px] text-text-primary tracking-tight leading-none block mt-1">
+                  {marketVolume.settledCount}
+                </span>
+              </div>
+              <div>
+                <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                  現貨總數
+                </span>
+                <span className="font-mono font-bold text-[18px] sm:text-[20px] text-text-primary tracking-tight leading-none block mt-1">
+                  {marketVolume.listingCount}
+                </span>
               </div>
             </div>
           </div>
@@ -496,9 +370,9 @@ export default function AdminDashboardClient() {
         </div>
 
         {/* Main Metric Hero inside Zone 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          {/* Left / Donut Chart Visualization */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-center p-3 bg-bg-page/50 rounded-xl border border-[rgba(237,232,224,0.06)] relative">
+        <div className="max-w-2xl mx-auto">
+          {/* Donut Chart Visualization */}
+          <div className="flex flex-col items-center justify-center p-3 bg-bg-page/50 rounded-xl border border-[rgba(237,232,224,0.06)] relative">
             <div className="w-full h-[200px] sm:h-[220px] relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -517,12 +391,7 @@ export default function AdminDashboardClient() {
                       <Cell
                         key={entry.key}
                         fill={entry.color}
-                        stroke={
-                          selectedCohort === entry.key ? "#FFFFFF" : "none"
-                        }
-                        strokeWidth={2}
-                        className="transition-all duration-300 cursor-pointer hover:opacity-80"
-                        onClick={() => setSelectedCohort(entry.key)}
+                        className="transition-all duration-300 hover:opacity-80"
                       />
                     ))}
                   </Pie>
@@ -595,80 +464,23 @@ export default function AdminDashboardClient() {
             </div>
           </div>
 
-          {/* Right / Interactive Cohort Breakdown Cards */}
-          <div className="lg:col-span-7 space-y-3">
-            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-              身份權限動態分佈 (點擊卡片查看詳細說明)
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {userEcology.distribution.map((item) => {
-                const isSelected = selectedCohort === item.key;
-                return (
-                  <div
-                    key={item.key}
-                    onClick={() => {
-                      setSelectedCohort(isSelected ? null : item.key);
-                    }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between active:scale-[0.98] ${
-                      isSelected
-                        ? "bg-bg-elevated border-brand shadow-lg ring-1 ring-brand/40"
-                        : "bg-bg-page/80 border-[rgba(237,232,224,0.08)] hover:bg-bg-hover hover:border-[rgba(237,232,224,0.15)]"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span
-                          className="font-mono text-[10px] px-1.5 py-0.5 rounded border"
-                          style={{
-                            color: item.color,
-                            borderColor: `${item.color}33`,
-                            backgroundColor: `${item.color}15`,
-                          }}
-                        >
-                          {item.pctStr}
-                        </span>
-                      </div>
-                      <span className="font-sans font-semibold text-[13px] text-text-primary block truncate">
-                        {item.role}
-                      </span>
-                      <p className="font-mono font-bold text-[20px] text-text-primary mt-1">
-                        {item.formattedCount}
-                        <span className="text-[11px] text-text-disabled font-normal ml-1">
-                          人
-                        </span>
-                      </p>
-                    </div>
-
-                    <p className="font-sans text-[11px] text-text-secondary mt-2 line-clamp-2">
-                      {item.description}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between bg-bg-page/40 rounded-xl px-4 py-2.5 border border-[rgba(237,232,224,0.06)] font-mono text-[11px]">
-              <span className="text-text-secondary flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                商戶審核隊列：
-                <span className="text-text-primary font-medium">
-                  118 件待審核
-                </span>
+          {/* Merchant onboarding queue footer */}
+          <div className="flex items-center justify-between bg-bg-page/40 rounded-xl px-4 py-2.5 border border-[rgba(237,232,224,0.06)] font-mono text-[11px]">
+            <span className="text-text-secondary flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              商戶審核隊列：
+              <span className="text-text-primary font-medium">
+                118 件待審核
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/admin/merchants?tab=onboarding")}
-                className="text-brand hover:text-brand-hover p-0 h-auto font-mono text-[11px] hover:bg-transparent gap-1"
-              >
-                前往審核商戶 <ArrowRight className="w-3 h-3" />
-              </Button>
-            </div>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/admin/merchants")}
+              className="text-brand hover:text-brand-hover p-0 h-auto font-mono text-[11px] hover:bg-transparent gap-1"
+            >
+              前往審核商戶 <ArrowRight className="w-3 h-3" />
+            </Button>
           </div>
         </div>
       </section>
