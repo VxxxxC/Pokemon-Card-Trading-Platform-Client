@@ -35,6 +35,8 @@ import {
   resolveMemberOrderIdForUser,
 } from "@/lib/member-order/resolve-order-id";
 import { resolveMerchantOrderIdForMerchant } from "@/lib/merchant-order/resolve-order-id";
+import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getMerchantSellerActionFlags } from "@/app/lib/merchant-order/merchant-seller-actions";
 import {
   loadBuyerMerchantTradingOrders,
@@ -1115,17 +1117,28 @@ export async function getMerchantOrderDetail(
       return { success: false, error: "請登入以查閱訂單" };
     }
 
+    // Admin override：管理員可由後台「商戶流水」跨越 merchant_id scope 唯讀查閱任何訂單。
+    // TODO: [Admin Override] service-role 讀取暫代 RLS policy，待 DB 層補上
+    //       is_admin() SECURITY DEFINER + merchant_orders admin bypass policy 後移除。
+    const isAdminViewer = await isCurrentUserAdmin(supabase, user.id);
+    // NOTE: service-role client 與 SSR client 的泛型簽名不同（supabase-js v2 為 4 個泛型，
+    //       @supabase/ssr 為 3 個），此處僅為型別對齊，執行期行為一致。
+    const db = isAdminViewer
+      ? (createAdminClient() as unknown as typeof supabase)
+      : supabase;
+
     const resolved = await resolveMerchantOrderIdForMerchant(
-      supabase,
+      db,
       orderId,
       user.id,
+      { adminOverride: isAdminViewer },
     );
     if (!resolved.ok) {
       return { success: false, error: resolved.error };
     }
     const trimmedOrderId = resolved.id;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("merchant_orders")
       .select(
         `
@@ -1174,11 +1187,11 @@ export async function getMerchantOrderDetail(
       return { success: false, error: "找不到指定的交易訂單記錄" };
     }
 
-    if (row.merchant_id !== user.id) {
+    if (!isAdminViewer && row.merchant_id !== user.id) {
       return { success: false, error: "您沒有權限查閱此訂單" };
     }
 
-    const { data: reviewRows, error: reviewError } = await supabase
+    const { data: reviewRows, error: reviewError } = await db
       .from("transaction_reviews")
       .select("id")
       .eq("merchant_order_id", trimmedOrderId)
@@ -1292,17 +1305,30 @@ export async function getMemberOrderDetail(
       return { success: false, error: "請登入以查閱訂單" };
     }
 
+    // Admin override：管理員可由後台「FPS 批次處理」跨越交易雙方 scope 唯讀查閱任何訂單。
+    // TODO: [Admin Override] service-role 讀取暫代 RLS policy，待 DB 層補上
+    //       is_admin() SECURITY DEFINER + member_orders admin bypass policy 後移除。
+    // TODO: [Admin Override] 管理員非交易方，mapMemberOrderDetailRow 會將其視為賣方視角
+    //       (persona = "sell")，後續應加入獨立的 admin 唯讀 persona。
+    const isAdminViewer = await isCurrentUserAdmin(supabase, user.id);
+    // NOTE: service-role client 與 SSR client 的泛型簽名不同（supabase-js v2 為 4 個泛型，
+    //       @supabase/ssr 為 3 個），此處僅為型別對齊，執行期行為一致。
+    const db = isAdminViewer
+      ? (createAdminClient() as unknown as typeof supabase)
+      : supabase;
+
     const resolved = await resolveMemberOrderIdForUser(
-      supabase,
+      db,
       orderId,
       user.id,
+      { adminOverride: isAdminViewer },
     );
     if (!resolved.ok) {
       return { success: false, error: resolved.error };
     }
     const trimmedOrderId = resolved.id;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("member_orders")
       .select(
         `
@@ -1361,11 +1387,11 @@ export async function getMemberOrderDetail(
       return { success: false, error: "找不到指定的交易訂單記錄" };
     }
 
-    if (row.buyer_id !== user.id && row.seller_id !== user.id) {
+    if (!isAdminViewer && row.buyer_id !== user.id && row.seller_id !== user.id) {
       return { success: false, error: "您沒有權限查閱此訂單" };
     }
 
-    const { data: reviewRows, error: reviewError } = await supabase
+    const { data: reviewRows, error: reviewError } = await db
       .from("transaction_reviews")
       .select("id")
       .eq("member_order_id", trimmedOrderId)

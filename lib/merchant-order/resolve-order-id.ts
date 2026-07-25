@@ -11,17 +11,38 @@ export type ResolveMerchantOrderIdResult =
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
+/**
+ * Admin override：管理員後台（商戶流水 / 爭議仲裁）需要跨越 merchant_id scope
+ * 讀取任何一張獨立商戶訂單，以進行反洗錢逐單追蹤。
+ *
+ * TODO: [Admin Override] 目前由 caller 傳入 service-role client 並跳過 merchant_id
+ *       filter 暫代 RLS policy，待 DB 層補上 is_admin() SECURITY DEFINER 函數與
+ *       merchant_orders 的 admin bypass policy 後應改回統一走 RLS。
+ */
+export type ResolveMerchantOrderIdOptions = {
+  adminOverride?: boolean;
+};
+
+/** 依 admin override 決定是否套用 merchant_id scope 限制。 */
+function withMerchantScope<T extends { eq: (column: string, value: string) => T }>(
+  query: T,
+  merchantId: string,
+  adminOverride: boolean,
+): T {
+  return adminOverride ? query : query.eq("merchant_id", merchantId);
+}
+
 async function lookupMerchantOrderById(
   supabase: ServerSupabaseClient,
   merchantId: string,
   orderId: string,
+  adminOverride: boolean,
 ): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("merchant_orders")
-    .select("id")
-    .eq("id", orderId)
-    .eq("merchant_id", merchantId)
-    .maybeSingle();
+  const { data, error } = await withMerchantScope(
+    supabase.from("merchant_orders").select("id").eq("id", orderId),
+    merchantId,
+    adminOverride,
+  ).maybeSingle();
 
   if (error) {
     return null;
@@ -35,13 +56,16 @@ async function lookupMerchantOrderByOrderNumber(
   supabase: ServerSupabaseClient,
   merchantId: string,
   orderNumber: string,
+  adminOverride: boolean,
 ): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("merchant_orders")
-    .select("id")
-    .eq("order_number", orderNumber.toUpperCase())
-    .eq("merchant_id", merchantId)
-    .maybeSingle();
+  const { data, error } = await withMerchantScope(
+    supabase
+      .from("merchant_orders")
+      .select("id")
+      .eq("order_number", orderNumber.toUpperCase()),
+    merchantId,
+    adminOverride,
+  ).maybeSingle();
 
   if (error) {
     return null;
@@ -55,7 +79,9 @@ export async function resolveMerchantOrderIdForMerchant(
   supabase: ServerSupabaseClient,
   orderIdOrNumber: string,
   merchantId: string,
+  options: ResolveMerchantOrderIdOptions = {},
 ): Promise<ResolveMerchantOrderIdResult> {
+  const adminOverride = options.adminOverride === true;
   const trimmed = orderIdOrNumber.trim();
   if (!trimmed) {
     return { ok: false, error: "找不到此訂單" };
@@ -66,6 +92,7 @@ export async function resolveMerchantOrderIdForMerchant(
       supabase,
       merchantId,
       trimmed,
+      adminOverride,
     );
     if (byOrderId) {
       return { ok: true, id: byOrderId };
@@ -77,6 +104,7 @@ export async function resolveMerchantOrderIdForMerchant(
       supabase,
       merchantId,
       trimmed,
+      adminOverride,
     );
     if (byOrderNumber) {
       return { ok: true, id: byOrderNumber };
