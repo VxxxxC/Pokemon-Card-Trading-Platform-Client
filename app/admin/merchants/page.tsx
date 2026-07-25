@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -13,29 +12,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+// 通過 Stripe KYC 即自動 trigger webhook 註冊商戶，故毋須人工入駐審核流程。
+
 // ── Types Definitions ────────────────────────────────────────────────────────
 interface StripeKycRecord {
   id: string;
   shopName: string;
   handle: string;
+  // TODO: [Supabase Wiring] 電郵來源為 auth.users.email，須透過 profiles / users view 一併查出
+  email: string;
   stripeAccountId: string;
-  kycStatus: "verified" | "pending" | "restricted";
-  payoutStatus: "enabled" | "suspended";
-  totalTrades: number;
-  rating: number;
+  kycStatus: "verified" | "pending" | "rejected";
   updatedAt: string;
-}
-
-interface MerchantOnboardingApp {
-  id: string;
-  applicantName: string;
-  handle: string;
-  shopName: string;
-  submittedAt: string;
-  docType: string;
-  totalTrades: number;
-  rating: number;
-  status: "pending" | "approved" | "rejected";
 }
 
 interface OverrideAuditLog {
@@ -55,424 +43,163 @@ const initialStripeRecords: StripeKycRecord[] = [
     id: "M-001",
     shopName: "HarutoCards Premium",
     handle: "@haruto_tcg",
+    email: "contact@harutocards.hk",
     stripeAccountId: "acct_1NfG82H",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 142,
-    rating: 4.9,
     updatedAt: "2025/5/21 14:00",
   },
   {
     id: "M-002",
     shopName: "AikoRare Collection",
     handle: "@aiko_collector",
+    email: "contact@aikorare.hk",
     stripeAccountId: "acct_1MeF83J",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 88,
-    rating: 4.8,
     updatedAt: "2025/5/20 11:20",
   },
   {
     id: "M-003",
     shopName: "Daichi Rare Cards",
     handle: "@daichi_rare",
+    email: "contact@daichirare.hk",
     stripeAccountId: "acct_1KyT92K",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 215,
-    rating: 4.95,
     updatedAt: "2025/5/19 18:05",
   },
   {
     id: "M-004",
     shopName: "KuroGamer TCG",
     handle: "@kuro_gamer",
+    email: "contact@kurogamer.hk",
     stripeAccountId: "acct_1PzX44L",
-    kycStatus: "restricted",
-    payoutStatus: "suspended",
-    totalTrades: 32,
-    rating: 3.9,
+    kycStatus: "rejected",
     updatedAt: "2025/5/18 09:12",
   },
   {
     id: "M-005",
     shopName: "TokyoRare_HongKong",
     handle: "@tokyo_rare_hk",
+    email: "contact@tokyorarehk.hk",
     stripeAccountId: "acct_1QmA99M",
     kycStatus: "pending",
-    payoutStatus: "suspended",
-    totalTrades: 15,
-    rating: 4.5,
     updatedAt: "2025/5/17 16:30",
   },
   {
     id: "M-006",
     shopName: "Osaka_PokeMaster",
     handle: "@osaka_pokemaster",
+    email: "contact@osakapokemaster.hk",
     stripeAccountId: "acct_1RnB88N",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 120,
-    rating: 4.85,
     updatedAt: "2025/5/17 10:15",
   },
   {
     id: "M-007",
     shopName: "KyotoVault_Studio",
     handle: "@kyotovault",
+    email: "contact@kyotovault.hk",
     stripeAccountId: "acct_1SoC77O",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 175,
-    rating: 4.92,
     updatedAt: "2025/5/16 20:40",
   },
   {
     id: "M-008",
     shopName: "Fukuoka_TCG_Hub",
     handle: "@fukuoka_hub",
+    email: "contact@fukuokatcghub.hk",
     stripeAccountId: "acct_1TpD66P",
     kycStatus: "pending",
-    payoutStatus: "suspended",
-    totalTrades: 8,
-    rating: 4.2,
     updatedAt: "2025/5/16 14:00",
   },
   {
     id: "M-009",
     shopName: "Sapporo_Rare_Studio",
     handle: "@sappororare",
+    email: "contact@sappororare.hk",
     stripeAccountId: "acct_1UqE55Q",
-    kycStatus: "restricted",
-    payoutStatus: "suspended",
-    totalTrades: 24,
-    rating: 3.7,
+    kycStatus: "rejected",
     updatedAt: "2025/5/15 18:25",
   },
   {
     id: "M-010",
     shopName: "Nagoya_Card_Base",
     handle: "@nagoyabase",
+    email: "contact@nagoyabase.hk",
     stripeAccountId: "acct_1VrF44R",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 290,
-    rating: 4.98,
     updatedAt: "2025/5/15 12:10",
   },
   {
     id: "M-011",
     shopName: "Kobe_Collectors_HK",
     handle: "@kobe_hk",
+    email: "contact@kobecollectors.hk",
     stripeAccountId: "acct_1WsG33S",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 160,
-    rating: 4.88,
     updatedAt: "2025/5/14 21:50",
   },
   {
     id: "M-012",
     shopName: "Yokohama_Rare_Vault",
     handle: "@yokohama_vault",
+    email: "contact@yokohamararevault.hk",
     stripeAccountId: "acct_1XtH22T",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 95,
-    rating: 4.75,
     updatedAt: "2025/5/14 11:30",
   },
   {
     id: "M-013",
     shopName: "Sendai_Poke_Corner",
     handle: "@sendai_poke",
+    email: "contact@sendaipokecorner.hk",
     stripeAccountId: "acct_1YuI11U",
     kycStatus: "pending",
-    payoutStatus: "suspended",
-    totalTrades: 12,
-    rating: 4.4,
     updatedAt: "2025/5/13 17:05",
   },
   {
     id: "M-014",
     shopName: "Hiroshima_TCG_Store",
     handle: "@hiroshima_tcg",
+    email: "contact@hiroshimatcg.hk",
     stripeAccountId: "acct_1ZvJ00V",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 82,
-    rating: 4.81,
     updatedAt: "2025/5/13 09:40",
   },
   {
     id: "M-015",
     shopName: "Chiba_Poke_Outlet",
     handle: "@chiba_poke",
+    email: "contact@chibapokeoutlet.hk",
     stripeAccountId: "acct_2AkK99W",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 135,
-    rating: 4.9,
     updatedAt: "2025/5/12 16:15",
   },
   {
     id: "M-016",
     shopName: "Saitama_Card_Center",
     handle: "@saitamacard",
+    email: "contact@saitamacardcenter.hk",
     stripeAccountId: "acct_2BlL88X",
-    kycStatus: "restricted",
-    payoutStatus: "suspended",
-    totalTrades: 19,
-    rating: 3.8,
+    kycStatus: "rejected",
     updatedAt: "2025/5/11 22:00",
   },
   {
     id: "M-017",
     shopName: "Nara_Legend_Vault",
     handle: "@naralegend",
+    email: "contact@naralegendvault.hk",
     stripeAccountId: "acct_2CmM77Y",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 210,
-    rating: 4.96,
     updatedAt: "2025/5/11 13:20",
   },
   {
     id: "M-018",
     shopName: "Shizuoka_Gold_Cards",
     handle: "@shizuokagold",
+    email: "contact@shizuokagoldcards.hk",
     stripeAccountId: "acct_2DnN66Z",
     kycStatus: "verified",
-    payoutStatus: "enabled",
-    totalTrades: 64,
-    rating: 4.7,
     updatedAt: "2025/5/10 18:45",
-  },
-];
-
-// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: kyc_applications | View / RPC: list_kyc_applications
-const initialOnboardingApps: MerchantOnboardingApp[] = [
-  {
-    id: "KYC-2025-041",
-    applicantName: "鈴木 Haruto",
-    handle: "@haruto_tcg",
-    shopName: "HarutoCards Premium",
-    submittedAt: "2025/5/21 09:14",
-    docType: "日本護照",
-    totalTrades: 42,
-    rating: 4.8,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-040",
-    applicantName: "中村 Aiko",
-    handle: "@aiko_collector",
-    shopName: "AikoRare Collection",
-    submittedAt: "2025/5/20 16:52",
-    docType: "政府身份證",
-    totalTrades: 18,
-    rating: 4.6,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-039",
-    applicantName: "渡辺 Ren",
-    handle: "@ren_cards",
-    shopName: "渡辺カード専門店",
-    submittedAt: "2025/5/19 11:30",
-    docType: "駕駛執照",
-    totalTrades: 65,
-    rating: 5.0,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-038",
-    applicantName: "林 Wei-Chen",
-    handle: "@weichen_tcg",
-    shopName: "Taiwan x Japan TCG",
-    submittedAt: "2025/5/18 14:05",
-    docType: "商業登記證",
-    totalTrades: 31,
-    rating: 4.9,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-037",
-    applicantName: "佐藤 Mio",
-    handle: "@mio_pokéshop",
-    shopName: "Mio PokéShop",
-    submittedAt: "2025/5/17 09:22",
-    docType: "日本護照",
-    totalTrades: 12,
-    rating: 4.5,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-036",
-    applicantName: "高橋 Daichi",
-    handle: "@daichi_rare",
-    shopName: "Daichi Rare Cards",
-    submittedAt: "2025/5/15 17:48",
-    docType: "政府身份證",
-    totalTrades: 89,
-    rating: 4.95,
-    status: "approved",
-  },
-  {
-    id: "KYC-2025-035",
-    applicantName: "陳 Ka-Wai",
-    handle: "@kawai_tcg",
-    shopName: "Ka Wai Poke Vault",
-    submittedAt: "2025/5/14 15:30",
-    docType: "香港永久居民身份證",
-    totalTrades: 54,
-    rating: 4.85,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-034",
-    applicantName: "伊藤 Nana",
-    handle: "@nana_tcg",
-    shopName: "NanaTCG 精品店",
-    submittedAt: "2025/5/12 10:11",
-    docType: "駕駛執照",
-    totalTrades: 5,
-    rating: 3.8,
-    status: "rejected",
-  },
-  {
-    id: "KYC-2025-033",
-    applicantName: "小林 Kenji",
-    handle: "@kenji_cards",
-    shopName: "Kenji Japan Collectibles",
-    submittedAt: "2025/5/11 20:00",
-    docType: "日本護照",
-    totalTrades: 77,
-    rating: 4.92,
-    status: "approved",
-  },
-  {
-    id: "KYC-2025-032",
-    applicantName: "黃 Chun-Yin",
-    handle: "@cy_poke",
-    shopName: "Chun Yin Rare TCG",
-    submittedAt: "2025/5/11 11:45",
-    docType: "商業登記證",
-    totalTrades: 28,
-    rating: 4.7,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-031",
-    applicantName: "山本 Yui",
-    handle: "@yuki_tcg",
-    shopName: "Yui Poke Paradise",
-    submittedAt: "2025/5/10 18:20",
-    docType: "駕駛執照",
-    totalTrades: 92,
-    rating: 4.98,
-    status: "approved",
-  },
-  {
-    id: "KYC-2025-030",
-    applicantName: "張 Kin-Man",
-    handle: "@km_vault",
-    shopName: "Kin Man Card Vault",
-    submittedAt: "2025/5/09 14:15",
-    docType: "香港永久居民身份證",
-    totalTrades: 15,
-    rating: 4.1,
-    status: "rejected",
-  },
-  {
-    id: "KYC-2025-029",
-    applicantName: "加藤 Riku",
-    handle: "@riku_shop",
-    shopName: "Riku TCG Studio",
-    submittedAt: "2025/5/08 22:05",
-    docType: "政府身份證",
-    totalTrades: 38,
-    rating: 4.75,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-028",
-    applicantName: "李 Siu-Lung",
-    handle: "@siulung_poke",
-    shopName: "Dragon TCG HK",
-    submittedAt: "2025/5/08 10:30",
-    docType: "商業登記證",
-    totalTrades: 110,
-    rating: 4.9,
-    status: "approved",
-  },
-  {
-    id: "KYC-2025-027",
-    applicantName: "吉田 Hinata",
-    handle: "@hinata_cards",
-    shopName: "Hinata Rare Hub",
-    submittedAt: "2025/5/07 16:50",
-    docType: "日本護照",
-    totalTrades: 22,
-    rating: 4.6,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-026",
-    applicantName: "吳 Wing-Sze",
-    handle: "@wingsze_tcg",
-    shopName: "Wing Sze Poke Shop",
-    submittedAt: "2025/5/06 12:00",
-    docType: "香港永久居民身份證",
-    totalTrades: 45,
-    rating: 4.82,
-    status: "approved",
-  },
-  {
-    id: "KYC-2025-025",
-    applicantName: "松本 Kaito",
-    handle: "@kaito_vault",
-    shopName: "Kaito Card Master",
-    submittedAt: "2025/5/05 19:10",
-    docType: "駕駛執照",
-    totalTrades: 8,
-    rating: 3.9,
-    status: "rejected",
-  },
-  {
-    id: "KYC-2025-024",
-    applicantName: "鄭 Ho-Yin",
-    handle: "@hoyin_tcg",
-    shopName: "Ho Yin TCG Station",
-    submittedAt: "2025/5/05 09:25",
-    docType: "商業登記證",
-    totalTrades: 60,
-    rating: 4.88,
-    status: "approved",
-  },
-  {
-    id: "KYC-2025-023",
-    applicantName: "井上 Sakura",
-    handle: "@sakura_poke",
-    shopName: "Sakura Poke Boutique",
-    submittedAt: "2025/5/04 15:40",
-    docType: "日本護照",
-    totalTrades: 33,
-    rating: 4.78,
-    status: "pending",
-  },
-  {
-    id: "KYC-2025-022",
-    applicantName: "郭 Tsz-Kin",
-    handle: "@tszkin_vault",
-    shopName: "Tsz Kin Card Vault",
-    submittedAt: "2025/5/03 11:15",
-    docType: "香港永久居民身份證",
-    totalTrades: 84,
-    rating: 4.95,
-    status: "approved",
   },
 ];
 
@@ -497,35 +224,22 @@ const initialAuditLogs: OverrideAuditLog[] = [
   },
 ];
 
-function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
-  const [activeTab, setActiveTab] = useState<"stripe" | "onboarding">(
-    tabParam === "onboarding" ? "onboarding" : "stripe",
-  );
-
+export default function AdminMerchantsPage() {
   const [isOverrideOpen, setIsOverrideOpen] = useState(false);
 
   // Datasets State
   const [stripeRecords] = useState<StripeKycRecord[]>(initialStripeRecords);
-  const [onboardingApps, setOnboardingApps] = useState<MerchantOnboardingApp[]>(
-    initialOnboardingApps,
-  );
   const [auditLogs, setAuditLogs] =
     useState<OverrideAuditLog[]>(initialAuditLogs);
 
   // Search & Filter State
   const [stripeSearch, setStripeSearch] = useState("");
-  const [onboardingSearch, setOnboardingSearch] = useState("");
-  const [onboardingFilter, setOnboardingFilter] = useState<
-    "all" | "pending" | "approved" | "rejected"
-  >(tabParam === "onboarding" ? "pending" : "all");
+  type StripeFilter = "all" | "pending" | "verified" | "rejected";
+  const [stripeFilter, setStripeFilter] = useState<StripeFilter>("pending");
 
   // Pagination State
   const [stripePage, setStripePage] = useState(1);
-  const [onboardingPage, setOnboardingPage] = useState(1);
   const pageSize = 10;
-
-  // Selection Checkboxes
-  const [selectedAppIds, setSelectedAppIds] = useState<Set<string>>(new Set());
 
   // Security Override Lock State
   const [isOverrideLocked, setIsOverrideLocked] = useState(true);
@@ -534,93 +248,40 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
     useState("升級為 MERCHANT (商戶)");
   const [overrideReason, setOverrideReason] = useState("");
 
-  // ── Filtered Datasets ──────────────────────────────────────────────────────
+  // ── Filter Counts ───────────────────────────────────────────────────────────
+  const stripeCounts = useMemo(() => {
+    return {
+      all: stripeRecords.length,
+      pending: stripeRecords.filter((s) => s.kycStatus === "pending").length,
+      verified: stripeRecords.filter((s) => s.kycStatus === "verified").length,
+      rejected: stripeRecords.filter((s) => s.kycStatus === "rejected").length,
+    };
+  }, [stripeRecords]);
+
+  // ── Filtered & Paginated Stripe Records ─────────────────────────────────────
   const filteredStripe = useMemo(() => {
-    return stripeRecords.filter(
+    const matchesFilter =
+      stripeFilter === "all"
+        ? stripeRecords
+        : stripeRecords.filter((s) => s.kycStatus === stripeFilter);
+
+    const q = stripeSearch.toLowerCase();
+    if (!q) return matchesFilter;
+
+    return matchesFilter.filter(
       (s) =>
-        s.shopName.toLowerCase().includes(stripeSearch.toLowerCase()) ||
-        s.handle.toLowerCase().includes(stripeSearch.toLowerCase()) ||
-        s.stripeAccountId.toLowerCase().includes(stripeSearch.toLowerCase()),
+        s.shopName.toLowerCase().includes(q) ||
+        s.handle.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q) ||
+        s.stripeAccountId.toLowerCase().includes(q),
     );
-  }, [stripeRecords, stripeSearch]);
+  }, [stripeRecords, stripeFilter, stripeSearch]);
 
-  const filteredOnboarding = useMemo(() => {
-    return onboardingApps.filter((a) => {
-      const matchesSearch =
-        a.shopName.toLowerCase().includes(onboardingSearch.toLowerCase()) ||
-        a.applicantName
-          .toLowerCase()
-          .includes(onboardingSearch.toLowerCase()) ||
-        a.handle.toLowerCase().includes(onboardingSearch.toLowerCase()) ||
-        a.id.toLowerCase().includes(onboardingSearch.toLowerCase());
-
-      if (onboardingFilter === "all") return matchesSearch;
-      return matchesSearch && a.status === onboardingFilter;
-    });
-  }, [onboardingApps, onboardingSearch, onboardingFilter]);
-
-  // ── Paginated Datasets ──────────────────────────────────────────────────────
   const totalStripePages = Math.ceil(filteredStripe.length / pageSize) || 1;
   const paginatedStripe = useMemo(() => {
     const start = (stripePage - 1) * pageSize;
     return filteredStripe.slice(start, start + pageSize);
   }, [filteredStripe, stripePage, pageSize]);
-
-  const totalOnboardingPages =
-    Math.ceil(filteredOnboarding.length / pageSize) || 1;
-  const paginatedOnboarding = useMemo(() => {
-    const start = (onboardingPage - 1) * pageSize;
-    return filteredOnboarding.slice(start, start + pageSize);
-  }, [filteredOnboarding, onboardingPage, pageSize]);
-
-  // ── Multi-select Handlers ──────────────────────────────────────────────────
-
-  const toggleSelectAllApps = () => {
-    if (selectedAppIds.size === filteredOnboarding.length) {
-      setSelectedAppIds(new Set());
-    } else {
-      setSelectedAppIds(new Set(filteredOnboarding.map((a) => a.id)));
-    }
-  };
-
-  const toggleSelectAppRow = (id: string) => {
-    const next = new Set(selectedAppIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedAppIds(next);
-  };
-
-  // ── Onboarding Actions ─────────────────────────────────────────────────────
-  const handleApproveApp = (id: string) => {
-    setOnboardingApps((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, status: "approved" as const } : a,
-      ),
-    );
-    toast.success(`已批准申請 ${id}`, {
-      description: "用戶已正式升級為商戶 (MERCHANT)",
-    });
-  };
-
-  const handleRejectApp = (id: string) => {
-    setOnboardingApps((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, status: "rejected" as const } : a,
-      ),
-    );
-    toast.warning(`已駁回申請 ${id}，已通知用戶重新補交資料。`);
-  };
-
-  const handleBatchApproveApps = () => {
-    if (selectedAppIds.size === 0) return;
-    setOnboardingApps((prev) =>
-      prev.map((a) =>
-        selectedAppIds.has(a.id) ? { ...a, status: "approved" } : a,
-      ),
-    );
-    toast.success(`已批量批准 ${selectedAppIds.size} 筆商戶入駐申請！`);
-    setSelectedAppIds(new Set());
-  };
 
   // ── Override Actions ───────────────────────────────────────────────────────
   const handleExecuteOverride = () => {
@@ -650,12 +311,18 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
     setOverrideReason("");
   };
 
-  const pendingCount = onboardingApps.filter(
-    (a) => a.status === "pending",
-  ).length;
+  const handleSearchChange = (value: string) => {
+    setStripeSearch(value);
+    setStripePage(1);
+  };
+
+  const handleFilterChange = (filter: StripeFilter) => {
+    setStripeFilter(filter);
+    setStripePage(1);
+  };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-100px)] space-y-4">
+    <div className="flex flex-col min-h-[calc(100dvh-100px)] space-y-4">
       {/* ── Page Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-end justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
         <div>
@@ -663,7 +330,7 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
             商戶與 KYC 審查
           </h1>
           <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-            管理 Stripe KYC 狀態、商戶提現證照人工複審、以及特殊權限變更覆寫控制
+            管理 Stripe KYC 認證狀態 — 通過 KYC 即自動註冊為認證商戶
           </p>
         </div>
 
@@ -685,41 +352,6 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
           </span>
         </button>
           */}
-      </div>
-
-      {/* ── Full-Width Segmented Tab Selector ───────────────────────────────── */}
-      <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            onClick={() => setActiveTab("stripe")}
-            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
-              activeTab === "stripe"
-                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-            }`}
-          >
-            <span className="truncate">💳 Stripe 認證狀態</span>
-            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
-              {stripeRecords.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("onboarding")}
-            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
-              activeTab === "onboarding"
-                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-            }`}
-          >
-            <span className="truncate">🪪 商戶入駐審核</span>
-            {pendingCount > 0 && (
-              <span className="font-mono text-[10px] bg-warning text-[#17130f] font-bold px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
-                {pendingCount} 待審
-              </span>
-            )}
-          </button>
-        </div>
       </div>
 
       <AnimatePresence>
@@ -758,7 +390,7 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
                 <button
                   type="button"
                   onClick={() => setIsOverrideOpen(false)}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
                   aria-label="關閉"
                 >
                   ✕
@@ -964,20 +596,17 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
 
       {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
       <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
-        {/* ── TAB 1: Stripe認證狀態 Data Table ─────────────────────────── */}
-        {activeTab === "stripe" && (
-          <div className="flex-1 flex flex-col justify-between space-y-4">
-            {/* Toolbar: Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* ── Stripe KYC Data Table ─────────────────────────── */}
+        <div className="flex-1 flex flex-col justify-between space-y-4">
+          {/* Toolbar: Search + Filter Chips */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-full sm:w-80">
                 <input
                   type="text"
-                  placeholder="搜尋店舖名稱、Handle 或 Stripe ID..."
+                  placeholder="搜尋店舖名稱、Handle、電郵或 Stripe ID..."
                   value={stripeSearch}
-                  onChange={(e) => {
-                    setStripeSearch(e.target.value);
-                    setStripePage(1);
-                  }}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
                 />
                 <svg
@@ -993,465 +622,167 @@ function AdminMerchantsContent({ tabParam }: { tabParam: string | null }) {
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-            </div>
 
-            {/* Data Table */}
-            <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
-                  <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-                    <TableHead className="w-10 text-center"></TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
-                      商戶店舖名稱
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                      用戶 Handle
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                      Stripe Account ID
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
-                      Stripe KYC 狀態
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
-                      提現權限
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
-                      成交筆數 / 評分
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
-                      最後更新時間
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedStripe.map((s) => {
-                    return (
-                      <TableRow
-                        key={s.id}
-                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors`}
-                      >
-                        <TableCell className="w-10 text-center py-3"></TableCell>
-                        <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                          {s.shopName}
-                        </TableCell>
-                        <TableCell className="font-mono text-[12px] text-text-secondary py-3 whitespace-nowrap">
-                          {s.handle}
-                        </TableCell>
-                        <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                          {s.stripeAccountId}
-                        </TableCell>
-                        <TableCell className="text-center py-3 whitespace-nowrap">
-                          <span
-                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
-                              s.kycStatus === "verified"
-                                ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
-                                : s.kycStatus === "pending"
-                                  ? "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20"
-                                  : "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
-                            }`}
-                          >
-                            {s.kycStatus === "verified"
-                              ? "已驗證 (VERIFIED)"
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)]">
+                {(
+                  [
+                    { key: "all", label: "全部" },
+                    { key: "pending", label: "待審核" },
+                    { key: "verified", label: "已認證" },
+                    { key: "rejected", label: "已拒絕" },
+                  ] as { key: StripeFilter; label: string }[]
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleFilterChange(key)}
+                    className={`min-h-[44px] px-3 py-1 rounded-lg font-sans text-[11px] transition-colors ${
+                      stripeFilter === key
+                        ? "bg-bg-elevated text-brand font-semibold"
+                        : "text-text-secondary hover:text-text-primary"
+                    }`}
+                  >
+                    {label} ({stripeCounts[key]})
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
+                <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
+                  <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+                    商戶店舖名稱
+                  </TableHead>
+                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                    用戶 Handle
+                  </TableHead>
+                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                    電郵
+                  </TableHead>
+                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                    Stripe Account ID
+                  </TableHead>
+                  <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+                    Stripe KYC 狀態
+                  </TableHead>
+                  <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+                    最後更新時間
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedStripe.map((s) => {
+                  return (
+                    <TableRow
+                      key={s.id}
+                      className="border-b border-[rgba(237,232,224,0.06)] transition-colors"
+                    >
+                      <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                        {s.shopName}
+                      </TableCell>
+                      <TableCell className="font-mono text-[12px] text-text-secondary py-3 whitespace-nowrap">
+                        {s.handle}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-text-secondary py-3 whitespace-nowrap">
+                        {s.email}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                        {s.stripeAccountId}
+                      </TableCell>
+                      <TableCell className="text-center py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
+                            s.kycStatus === "verified"
+                              ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
                               : s.kycStatus === "pending"
-                                ? "待驗證"
-                                : "已限制 (RESTRICTED)"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center py-3 whitespace-nowrap">
-                          <span
-                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
-                              s.payoutStatus === "enabled"
-                                ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
+                                ? "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20"
                                 : "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
-                            }`}
-                          >
-                            {s.payoutStatus === "enabled" ? "已啟用" : "已暫停"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-mono text-[12px] text-text-primary text-right py-3 whitespace-nowrap">
-                          {s.totalTrades} 筆 · ★ {s.rating}
-                        </TableCell>
-                        <TableCell className="font-mono text-[11px] text-text-disabled text-right py-3 whitespace-nowrap">
-                          {s.updatedAt}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* ── Stripe Table Pagination ─────────────────────────────────── */}
-            {filteredStripe.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-                <div className="font-mono text-[12px] text-text-secondary">
-                  顯示第{" "}
-                  <span className="font-bold text-text-primary">
-                    {(stripePage - 1) * pageSize + 1}
-                  </span>{" "}
-                  -{" "}
-                  <span className="font-bold text-text-primary">
-                    {Math.min(stripePage * pageSize, filteredStripe.length)}
-                  </span>{" "}
-                  筆，共{" "}
-                  <span className="font-bold text-brand">
-                    {filteredStripe.length}
-                  </span>{" "}
-                  筆資料
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={stripePage === 1}
-                    onClick={() =>
-                      setStripePage((prev) => Math.max(prev - 1, 1))
-                    }
-                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    上一頁
-                  </button>
-                  {Array.from(
-                    { length: totalStripePages },
-                    (_, i) => i + 1,
-                  ).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setStripePage(p)}
-                      className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
-                        stripePage === p
-                          ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                          : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={stripePage === totalStripePages}
-                    onClick={() =>
-                      setStripePage((prev) =>
-                        Math.min(prev + 1, totalStripePages),
-                      )
-                    }
-                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    下一頁
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── TAB 2: 商戶入駐審核 Data Table ─────────────────────────────── */}
-        {activeTab === "onboarding" && (
-          <div className="flex-1 flex flex-col justify-between space-y-4">
-            {/* Toolbar: Search + Filter Tabs + Batch Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full sm:w-64">
-                  <input
-                    type="text"
-                    placeholder="搜尋申請人、店舖名稱..."
-                    value={onboardingSearch}
-                    onChange={(e) => {
-                      setOnboardingSearch(e.target.value);
-                      setOnboardingPage(1);
-                    }}
-                    className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
-                  />
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="absolute left-3 top-2.5 text-text-disabled"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </div>
-
-                {/* Filter Pills */}
-                <div className="flex items-center gap-1 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)]">
-                  {(["all", "pending", "approved", "rejected"] as const).map(
-                    (filter) => (
-                      <button
-                        key={filter}
-                        onClick={() => {
-                          setOnboardingFilter(filter);
-                          setOnboardingPage(1);
-                        }}
-                        className={`px-2.5 py-1 rounded-lg font-sans text-[11px] transition-colors ${
-                          onboardingFilter === filter
-                            ? "bg-bg-elevated text-brand font-semibold"
-                            : "text-text-secondary hover:text-text-primary"
-                        }`}
-                      >
-                        {filter === "all"
-                          ? "全部"
-                          : filter === "pending"
-                            ? "待審核"
-                            : filter === "approved"
-                              ? "已批准"
-                              : "已拒絕"}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </div>
-
-              {/* Batch Action Toolbar */}
-              {selectedAppIds.size > 0 && (
-                <div className="flex items-center gap-2 animate-fade-in">
-                  <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
-                    已選 {selectedAppIds.size} 筆
-                  </span>
-                  <button
-                    onClick={handleBatchApproveApps}
-                    className="h-9 px-3.5 bg-success text-[#111] font-sans font-bold text-xs rounded-xl hover:bg-success/90 transition-transform whitespace-nowrap shadow-md shadow-success/10"
-                  >
-                    ✓ 批量批准升級
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Data Table */}
-            <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
-                  <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-                    <TableHead className="w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={
-                          filteredOnboarding.length > 0 &&
-                          selectedAppIds.size === filteredOnboarding.length
-                        }
-                        onChange={toggleSelectAllApps}
-                        className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
-                      />
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                      申請單號
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
-                      店舖名稱
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
-                      申請人 / Handle
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10">
-                      提交證件類別
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
-                      歷史成交 / 評分
-                    </TableHead>
-                    <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                      提交時間
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
-                      審核狀態
-                    </TableHead>
-                    <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
-                      操作
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedOnboarding.map((app) => {
-                    const isSelected = selectedAppIds.has(app.id);
-                    const isPending = app.status === "pending";
-                    return (
-                      <TableRow
-                        key={app.id}
-                        className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
-                          isSelected
-                            ? "bg-[rgba(212,165,116,0.08)]"
-                            : "hover:bg-bg-elevated/40"
-                        }`}
-                      >
-                        <TableCell className="w-10 text-center py-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelectAppRow(app.id)}
-                            className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-[11px] text-text-disabled py-3">
-                          #{app.id}
-                        </TableCell>
-                        <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                          {app.shopName}
-                        </TableCell>
-                        <TableCell className="font-sans text-[12px] text-text-secondary py-3 whitespace-nowrap">
-                          {app.applicantName}{" "}
-                          <span className="font-mono text-[10px] text-text-disabled">
-                            ({app.handle})
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-sans text-[12px] text-text-primary py-3 whitespace-nowrap">
-                          {app.docType}
-                        </TableCell>
-                        <TableCell className="font-mono text-[12px] text-text-primary text-right py-3 whitespace-nowrap">
-                          {app.totalTrades} 筆 · ★ {app.rating}
-                        </TableCell>
-                        <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                          {app.submittedAt}
-                        </TableCell>
-                        <TableCell className="text-center py-3 whitespace-nowrap">
-                          <span
-                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
-                              app.status === "pending"
-                                ? "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
-                                : app.status === "approved"
-                                  ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
-                                  : "text-text-secondary bg-bg-elevated border-transparent"
-                            }`}
-                          >
-                            {app.status === "pending"
+                          }`}
+                        >
+                          {s.kycStatus === "verified"
+                            ? "已認證"
+                            : s.kycStatus === "pending"
                               ? "待審核"
-                              : app.status === "approved"
-                                ? "已批准"
-                                : "已拒絕"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right py-3 whitespace-nowrap">
-                          <div className="flex justify-end items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                toast.info(
-                                  `正在讀取 ${app.id} 證件檔案 (${app.docType})...`,
-                                )
-                              }
-                              className="h-7 px-2 bg-bg-elevated border border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-text-primary font-mono text-[10px] rounded-lg transition-colors"
-                            >
-                              📄 證照
-                            </button>
-                            {isPending && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveApp(app.id)}
-                                  className="h-7 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform"
-                                >
-                                  ✓ 批准
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRejectApp(app.id)}
-                                  className="h-7 px-2.5 bg-[rgba(239,68,68,0.10)] text-warning font-mono text-[10px] rounded-lg border border-warning/20 hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.98] transition-transform"
-                                >
-                                  ✕ 駁回
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* ── Onboarding Table Pagination ─────────────────────────────── */}
-            {filteredOnboarding.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-                <div className="font-mono text-[12px] text-text-secondary">
-                  顯示第{" "}
-                  <span className="font-bold text-text-primary">
-                    {(onboardingPage - 1) * pageSize + 1}
-                  </span>{" "}
-                  -{" "}
-                  <span className="font-bold text-text-primary">
-                    {Math.min(
-                      onboardingPage * pageSize,
-                      filteredOnboarding.length,
-                    )}
-                  </span>{" "}
-                  筆，共{" "}
-                  <span className="font-bold text-brand">
-                    {filteredOnboarding.length}
-                  </span>{" "}
-                  筆資料
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={onboardingPage === 1}
-                    onClick={() =>
-                      setOnboardingPage((prev) => Math.max(prev - 1, 1))
-                    }
-                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    上一頁
-                  </button>
-                  {Array.from(
-                    { length: totalOnboardingPages },
-                    (_, i) => i + 1,
-                  ).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setOnboardingPage(p)}
-                      className={`h-8 w-8 rounded-lg font-mono text-xs font-semibold transition-all ${
-                        onboardingPage === p
-                          ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                          : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={onboardingPage === totalOnboardingPages}
-                    onClick={() =>
-                      setOnboardingPage((prev) =>
-                        Math.min(prev + 1, totalOnboardingPages),
-                      )
-                    }
-                    className="h-8 px-2.5 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    下一頁
-                  </button>
-                </div>
-              </div>
-            )}
+                              : "已拒絕"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-text-disabled text-right py-3 whitespace-nowrap">
+                        {s.updatedAt}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
-        )}
+
+          {/* ── Stripe Table Pagination ─────────────────────────────────── */}
+          {filteredStripe.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
+              <div className="font-mono text-[12px] text-text-secondary">
+                顯示第{" "}
+                <span className="font-bold text-text-primary">
+                  {(stripePage - 1) * pageSize + 1}
+                </span>{" "}
+                -{" "}
+                <span className="font-bold text-text-primary">
+                  {Math.min(stripePage * pageSize, filteredStripe.length)}
+                </span>{" "}
+                筆，共{" "}
+                <span className="font-bold text-brand">
+                  {filteredStripe.length}
+                </span>{" "}
+                筆資料
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={stripePage === 1}
+                  onClick={() =>
+                    setStripePage((prev) => Math.max(prev - 1, 1))
+                  }
+                  className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  上一頁
+                </button>
+                {Array.from(
+                  { length: totalStripePages },
+                  (_, i) => i + 1,
+                ).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setStripePage(p)}
+                    className={`min-h-[44px] h-11 w-11 rounded-lg font-mono text-xs font-semibold transition-all ${
+                      stripePage === p
+                        ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
+                        : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={stripePage === totalStripePages}
+                  onClick={() =>
+                    setStripePage((prev) =>
+                      Math.min(prev + 1, totalStripePages),
+                    )
+                  }
+                  className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  下一頁
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  );
-}
-
-function MerchantsPageContentWithKey() {
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab");
-  return (
-    <AdminMerchantsContent key={tabParam || "default"} tabParam={tabParam} />
-  );
-}
-
-export default function AdminMerchantsPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="p-4 text-text-secondary font-mono text-xs">
-          載入商戶資料中...
-        </div>
-      }
-    >
-      <MerchantsPageContentWithKey />
-    </Suspense>
   );
 }
