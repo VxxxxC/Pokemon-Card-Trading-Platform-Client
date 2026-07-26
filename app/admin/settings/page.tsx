@@ -201,37 +201,6 @@ export default function AdminSettingsPage() {
         </form>
       </section>
 
-      {/* ── Container 2: 平台聲明與交易條款編輯器 ─────────────────────── */}
-      <section aria-labelledby="terms-heading" className={sectionClass}>
-        <h2
-          id="terms-heading"
-          className="font-sans font-bold text-[16px] text-text-primary mb-1"
-        >
-          平台聲明與交易條款編輯器
-        </h2>
-        <p className="font-sans text-[12px] text-text-secondary mb-4">
-          編修前台用戶服務協議、商戶提現守則及隱私政策聲明（實時發佈更新）
-        </p>
-
-        <form onSubmit={handleSaveTerms} className="space-y-4">
-          <div className="bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl p-3">
-            <textarea
-              value={termsText}
-              onChange={(e) => setTermsText(e.target.value)}
-              rows={8}
-              className="w-full bg-transparent font-sans text-[12px] text-text-primary leading-relaxed placeholder-text-disabled focus:outline-none resize-none"
-            />
-          </div>
-
-          <Button
-            type="submit"
-            className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
-          >
-            發佈最新條款聲明
-          </Button>
-        </form>
-      </section>
-
       {/* ── Container 3: 安全風控防線閾值變更 ─────────────────────────── */}
       <section aria-labelledby="security-heading" className={sectionClass}>
         <h2
@@ -310,6 +279,37 @@ export default function AdminSettingsPage() {
             className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
           >
             更新安全風控門檻
+          </Button>
+        </form>
+      </section>
+
+      {/* ── Container 2: 平台聲明與交易條款編輯器 ─────────────────────── */}
+      <section aria-labelledby="terms-heading" className={sectionClass}>
+        <h2
+          id="terms-heading"
+          className="font-sans font-bold text-[16px] text-text-primary mb-1"
+        >
+          平台聲明與交易條款編輯器
+        </h2>
+        <p className="font-sans text-[12px] text-text-secondary mb-4">
+          編修前台用戶服務協議、商戶提現守則及隱私政策聲明（實時發佈更新）
+        </p>
+
+        <form onSubmit={handleSaveTerms} className="space-y-4">
+          <div className="bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl p-3">
+            <textarea
+              value={termsText}
+              onChange={(e) => setTermsText(e.target.value)}
+              rows={8}
+              className="w-full bg-transparent font-sans text-[12px] text-text-primary leading-relaxed placeholder-text-disabled focus:outline-none resize-none"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
+          >
+            發佈最新條款聲明
           </Button>
         </form>
       </section>
