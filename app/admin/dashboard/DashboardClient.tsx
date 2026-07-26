@@ -252,10 +252,7 @@ export default function AdminDashboardClient() {
                   </span>
                 </div>
                 <p className="font-mono text-[11px] text-text-secondary mt-1">
-                  本月佣金收益：
-                  <span className="text-text-primary font-medium">
-                    {revenues.monthlyCommission}
-                  </span>
+                  本月佣金收益：{revenues.monthlyCommission}
                 </p>
               </div>
 
@@ -263,77 +260,36 @@ export default function AdminDashboardClient() {
               <div className="border-t border-white/[0.08]" />
 
               {/* Lower block: 鑑定費用 */}
-              <div className="space-y-3">
-                <span className="font-sans font-semibold text-[13px] text-text-secondary block">
+              <div>
+                <span className="font-sans font-semibold text-[13px] text-text-secondary block mb-2">
                   鑑定費用
                 </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      鑑定費總額
-                    </span>
-                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
-                      {revenues.appraisalTotal}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      已鑑定卡數
-                    </span>
-                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
-                      {revenues.totalAppraisals}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      單件鑑定費
-                    </span>
-                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-brand">
-                      {revenues.appraisalFeePerCard}
-                    </span>
-                  </div>
+                <div className="flex items-baseline gap-2.5">
+                  <span className="font-mono font-bold text-[30px] sm:text-[32px] text-text-primary tracking-tight leading-none">
+                    {revenues.appraisalTotal}
+                  </span>
                 </div>
+                <p className="font-mono text-[11px] text-text-secondary mt-1">
+                  已鑑定卡數：{revenues.totalAppraisals} · 單件鑑定費：{revenues.appraisalFeePerCard}
+                </p>
               </div>
 
               {/* Divider */}
               <div className="border-t border-white/[0.08]" />
 
               {/* Third block: Stripe 平台帳戶餘額 */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-sans font-semibold text-[13px] text-text-secondary block">
-                    Stripe 平台帳戶餘額
-                  </span>
-                  <span className="text-text-secondary text-[11px] font-mono">
-                    最後同步：{stripePlatformBalance.lastSyncedAt}
+              <div>
+                <span className="font-sans font-semibold text-[13px] text-text-secondary block mb-2">
+                  Stripe 平台帳戶餘額
+                </span>
+                <div className="flex items-baseline gap-2.5">
+                  <span className="font-mono font-bold text-[30px] sm:text-[32px] text-brand tracking-tight leading-none">
+                    HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      可用餘額 (Available)
-                    </span>
-                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-brand">
-                      HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      待結算 (Pending)
-                    </span>
-                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
-                      HK$ {stripePlatformBalance.pending.toLocaleString("zh-TW")}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-mono text-[10px] text-text-disabled uppercase block">
-                      幣種
-                    </span>
-                    <span className="font-mono font-bold text-[15px] sm:text-[16px] text-text-primary">
-                      {stripePlatformBalance.currency}
-                    </span>
-                  </div>
-                </div>
+                <p className="font-mono text-[11px] text-text-secondary mt-1">
+                  Stripe Connect 官方即時可用清算資金
+                </p>
               </div>
             </div>
           </div>
