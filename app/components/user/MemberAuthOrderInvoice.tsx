@@ -37,14 +37,16 @@ export function MemberAuthOrderInvoice({
   // Resolve Escrow Release details
   const displayPayoutId =
     payoutId ??
-    `PO-${(orderNumber ? orderNumber.replace("ORD-", "") : (orderId ? orderId.slice(0, 8).toUpperCase() : "20260721-881"))}`;
+    `PO-${orderNumber ? orderNumber.replace("ORD-", "") : orderId ? orderId.slice(0, 8).toUpperCase() : "20260721-881"}`;
   const displayReleasedAmount = releasedAmount ?? finalPrice;
   const displayPlatformFee = platformFee ?? MEMBER_AUTH_SERVICE_FEE;
 
   const currentReleaseStatus = (() => {
     if (explicitReleaseStatus) return explicitReleaseStatus;
-    if (status === "completed" || escrowStatus === "released") return "completed";
-    if (status === "cancelled" || explicitReleaseStatus === "rejected") return "rejected";
+    if (status === "completed" || escrowStatus === "released")
+      return "completed";
+    if (status === "cancelled" || explicitReleaseStatus === "rejected")
+      return "rejected";
     return "pending";
   })();
 
@@ -91,25 +93,27 @@ export function MemberAuthOrderInvoice({
 
       <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
         <div className="flex justify-between">
-          <span>商品最終成交價 (Subtotal)</span>
+          <span>商品最終成交價</span>
           <span className="text-text-primary">
             {"HK$ " + finalPrice.toLocaleString("zh-TW")}
           </span>
         </div>
         <div className="flex justify-between">
-          <span>順豐速遞本港運費 (Shipping)</span>
+          <span>速遞本港運費</span>
           <span className="text-text-primary">
             {"HK$ " + MEMBER_AUTH_SHIPPING_FEE.toLocaleString("zh-TW")}
           </span>
         </div>
         <div className="flex justify-between text-[#ef4444]">
-          <span>平台免郵定額補貼 (Subsidy)</span>
+          {/* TODO: depends on coupon redeem */}
+          <span>免郵補貼</span>
           <span>
             {"-HK$ " + MEMBER_AUTH_PLATFORM_SUBSIDY.toLocaleString("zh-TW")}
           </span>
         </div>
         <div className="flex justify-between text-brand">
-          <span>官方第三方鑑定服務費 (Authentication)</span>
+          {/* TODO: depends on admin settings for authentication charge */}
+          <span>鑑定服務費</span>
           <span className="font-bold">
             {"HK$ " + MEMBER_AUTH_SERVICE_FEE.toLocaleString("zh-TW")}
           </span>
@@ -118,7 +122,10 @@ export function MemberAuthOrderInvoice({
         <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
           <span>{isSeller ? "最終實收總額" : "最終扣款總額"}</span>
           <span className="text-brand font-mono text-[18px] md:text-[24px]">
-            {"HK$ " + totalAmount.toLocaleString("zh-TW")}
+            {isSeller
+              ? "HK$ " +
+                (totalAmount - MEMBER_AUTH_SERVICE_FEE).toLocaleString("zh-TW")
+              : "HK$ " + totalAmount.toLocaleString("zh-TW")}
           </span>
         </div>
 
@@ -126,26 +133,25 @@ export function MemberAuthOrderInvoice({
         <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] bg-[#17130f]/60 rounded-xl p-3.5 space-y-2.5">
           <div className="flex items-center justify-between pb-1 border-b border-white/5">
             <span className="font-sans font-bold text-[12px] text-text-primary">
-              🔒 資金託管放款明細 (Escrow Release)
+              🔒 資金放款明細{" "}
             </span>
             {releaseBadge}
           </div>
           <div className="flex justify-between items-center text-[11.5px]">
-            <span className="text-text-secondary">提現單號 (Payout ID)</span>
+            <span className="text-text-secondary">提現單號</span>
             <span className="font-mono text-brand font-medium">
               {displayPayoutId}
             </span>
           </div>
           <div className="flex justify-between items-center text-[11.5px]">
-            <span className="text-text-secondary">釋放金額 (Released Amount)</span>
+            <span className="text-text-secondary">釋放金額 </span>
             <span className="font-mono text-brand font-bold">
               {"HK$ " + displayReleasedAmount.toLocaleString("zh-TW")}
             </span>
           </div>
           <div className="flex justify-between items-center text-[11.5px]">
-            <span className="text-text-secondary">
-              平台鑑定與服務費 (Platform Fee)
-            </span>
+            <span className="text-text-secondary">鑑定服務費</span>
+            {/* TODO: depends on admin settings for authentication charge */}
             <span className="font-mono text-text-primary">
               {"HK$ " + displayPlatformFee.toLocaleString("zh-TW")}
             </span>

@@ -177,10 +177,7 @@ export function MemberOrderDetailView({
     }
 
     setIsActionLoading(true);
-    const result = await submitInboundTracking(
-      order.id,
-      inboundTrackingInput,
-    );
+    const result = await submitInboundTracking(order.id, inboundTrackingInput);
     setIsActionLoading(false);
 
     if (!result.success) {
@@ -290,9 +287,7 @@ export function MemberOrderDetailView({
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 請與{isBuyer ? "賣家" : "買家"}
                 約定面交時間地點，現場點清錢貨後，
-                {isBuyer
-                  ? "點擊確認完成。"
-                  : "待買家確認完成交易。"}
+                {isBuyer ? "點擊確認完成。" : "待買家確認完成交易。"}
               </p>
               <div className="flex flex-col gap-2">
                 {isBuyer && (
@@ -535,7 +530,9 @@ export function MemberOrderDetailView({
                     >
                       <Image
                         src={imageUrl}
-                        alt={order.product.cardName + " 實物照 " + (photoIdx + 1)}
+                        alt={
+                          order.product.cardName + " 實物照 " + (photoIdx + 1)
+                        }
                         fill
                         sizes="(max-width: 768px) 100vw, 400px"
                         className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"

@@ -306,7 +306,10 @@ export function MerchantOrderDetailView({
               <button
                 type="button"
                 onClick={() => {
-                  void runMerchantLogisticsStub(order.id, order.trackingNo ?? "");
+                  void runMerchantLogisticsStub(
+                    order.id,
+                    order.trackingNo ?? "",
+                  );
                 }}
                 className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
               >
@@ -409,7 +412,7 @@ export function MerchantOrderDetailView({
         )}
 
         <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h3 className="font-sans font-extrabold text-[14.5px] text-[#eae1da]">
               🧾 交易資產最終交收電子收據
             </h3>
@@ -420,23 +423,25 @@ export function MerchantOrderDetailView({
 
           <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
             <div className="flex justify-between">
-              <span>商品最終成交價 (Subtotal)</span>
+              <span>商品最終成交價</span>
               <span className="text-text-primary">
                 HK$ {order.amount.toLocaleString("zh-TW")}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>順豐速遞本港運費 (Shipping)</span>
+              <span>速遞本港運費</span>
               <span className="text-text-primary">HK$ 30</span>
             </div>
             <div className="flex justify-between text-[#ef4444]">
-              <span>平台免郵定額補貼 (Subsidy)</span>
+              {/* TODO: depends on coupon redeem */}
+              <span>免郵補貼</span>
               <span>-HK$ 30</span>
             </div>
 
             {order.hasAuthenticationToggle && (
               <div className="flex justify-between text-brand">
-                <span>官方第三方鑑定服務費 (Authentication)</span>
+                {/* TODO: depends on admin settings for authentication charge */}
+                <span>鑑定服務費</span>
                 <span className="font-bold">HK$ 150</span>
               </div>
             )}
@@ -444,10 +449,7 @@ export function MerchantOrderDetailView({
             <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
               <span>最終實收總額</span>
               <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                HK${" "}
-                {(
-                  order.amount + (order.hasAuthenticationToggle ? 150 : 0)
-                ).toLocaleString("zh-TW")}
+                HK$ {order.amount.toLocaleString("zh-TW")}
               </span>
             </div>
 
@@ -455,28 +457,23 @@ export function MerchantOrderDetailView({
             <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] bg-[#17130f]/60 rounded-xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between pb-1 border-b border-white/5">
                 <span className="font-sans font-bold text-[12px] text-text-primary">
-                  💳 Stripe 託管交易與平台扣費 (Escrow Details)
-                </span>
-                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border bg-brand/10 text-brand border-brand/30">
-                  Stripe Verified
+                  💳 Stripe交易明細
                 </span>
               </div>
               <div className="flex justify-between items-center text-[11.5px]">
-                <span className="text-text-secondary">Stripe 流水號 (Transfer / Charge ID)</span>
+                <span className="text-text-secondary">Stripe 流水號</span>
                 <span className="font-mono text-brand font-medium">
-                  {((merchantOrder as unknown as Record<string, unknown>).stripeChargeId as string) ??
-                    ((merchantOrder as unknown as Record<string, unknown>).stripeTransferId as string) ??
-                    `tr_3M8x${merchantOrder.id.replaceAll("-", "").slice(0, 16)}`}
+                  {`tr_3M8x${merchantOrder.id.replaceAll("-", "").slice(0, 16)}`}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[11.5px]">
-                <span className="text-text-secondary">平台費用 (Platform Fee)</span>
+                <span className="text-text-secondary">平台費用</span>
                 <span className="font-mono text-warning font-semibold">
+                  {/* TODO: depends on admin settings for authentication charge */}
                   HK${" "}
-                  {(
-                    ((merchantOrder as unknown as Record<string, unknown>).platformFee as number) ??
-                    (order.hasAuthenticationToggle ? 150 : 0)
-                  ).toLocaleString("zh-TW")}
+                  {(order.hasAuthenticationToggle ? 150 : 0).toLocaleString(
+                    "zh-TW",
+                  )}
                 </span>
               </div>
             </div>

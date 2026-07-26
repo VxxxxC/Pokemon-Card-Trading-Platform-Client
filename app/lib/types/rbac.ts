@@ -1,4 +1,4 @@
-export type UserRole = 'USER' | 'MERCHANT' | 'ADMIN' | 'PENDING_MERCHANT';
+export type UserRole = "USER" | "MERCHANT" | "ADMIN" | "PENDING_MERCHANT";
 
 export interface UserProfile {
   id: string;
@@ -39,13 +39,23 @@ export interface EscrowStep {
 }
 
 export const ESCROW_STEPS: EscrowStep[] = [
-  { id: 'payment',  label: '付款',   description: '買家已付卡價與鑑定服務費' },
-  { id: 'custody',  label: '保管中', description: '賣家已將卡牌寄往平台倉庫' },
-  { id: 'grading',  label: '鑑定中', description: '平台第三方鑑定機構處理中' },
-  { id: 'shipped',  label: '已發貨', description: '平台已代發貨，卡牌運送中' },
-  { id: 'released', label: '已釋放', description: '款項已釋放給賣家' },
+  { id: "payment", label: "已付款", description: "買家已付卡價與鑑定服務費" },
+  { id: "custody", label: "保管中", description: "賣家已將卡牌寄往平台倉庫" },
+  { id: "grading", label: "鑑定中", description: "平台第三方鑑定機構處理中" },
+  { id: "shipped", label: "已發貨", description: "平台已代發貨，卡牌運送中" },
+  { id: "released", label: "已釋放", description: "款項已釋放給賣家" },
 ];
 
-export type OrderStatus = 'payment' | 'custody' | 'shipped' | 'grading' | 'released';
-export type ListingStatus = 'active' | 'sold' | 'draft' | 'pending' | 'inactive';
-export type KycStatus = 'pending' | 'approved' | 'rejected';
+export type OrderStatus =
+  | "payment"
+  | "custody"
+  | "shipped"
+  | "grading"
+  | "released";
+export type ListingStatus =
+  | "active"
+  | "sold"
+  | "draft"
+  | "pending"
+  | "inactive";
+export type KycStatus = "pending" | "approved" | "rejected";

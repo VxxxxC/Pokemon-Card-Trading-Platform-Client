@@ -31,7 +31,7 @@ export function MemberP2pOrderInvoice({
 
       <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
         <div className="flex justify-between">
-          <span>商品最終成交價 (Subtotal)</span>
+          <span>商品最終成交價</span>
           <span className="text-text-primary">
             {"HK$ " + finalPrice.toLocaleString("zh-TW")}
           </span>
