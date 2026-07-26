@@ -320,7 +320,6 @@ const stripePlatformBalance = {
   available: 1284650,
   pending: 236800,
   todayIn: 87450,
-  currency: "HKD",
   lastSyncedAt: "2026-07-26 09:42",
 };
 
@@ -790,14 +789,7 @@ function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
   const headers =
     variant === "payout"
       ? ["Payout ID", "收款會員", "金額", "狀態", "建立時間"]
-      : [
-          "Transfer ID",
-          "商戶名稱",
-          "分賬金額",
-          "平台分成",
-          "狀態",
-          "建立時間",
-        ];
+      : ["Transfer ID", "商戶名稱", "分賬金額", "平台分成", "狀態", "建立時間"];
 
   return (
     <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[420px]">
@@ -886,7 +878,7 @@ function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
                       className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[transfer.status]}`}
                     >
                       {STRIPE_LOG_STATUS_LABELS[transfer.status]}
-                      </span>
+                    </span>
                   </TableCell>
                   <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
                     {transfer.createdAt}
@@ -909,8 +901,7 @@ function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
             <span className="font-bold text-text-primary">
               {Math.min(page * STRIPE_LOG_PAGE_SIZE, rows.length)}
             </span>{" "}
-            筆，共{" "}
-            <span className="font-bold text-brand">{rows.length}</span>{" "}
+            筆，共 <span className="font-bold text-brand">{rows.length}</span>{" "}
             筆資料
           </div>
           <div className="flex items-center gap-1.5">
@@ -995,7 +986,9 @@ export default function AdminPayoutsPage() {
     let list = withdrawals;
 
     if (fpsFilter === "incomplete") {
-      list = list.filter((w) => w.status === "pending" || w.status === "processing");
+      list = list.filter(
+        (w) => w.status === "pending" || w.status === "processing",
+      );
     } else if (fpsFilter !== "all") {
       list = list.filter((w) => w.status === fpsFilter);
     }
@@ -1074,7 +1067,8 @@ export default function AdminPayoutsPage() {
     });
   }, [filteredMerchantFlows, stripeSort]);
 
-  const totalStripePages = Math.ceil(sortedMerchantFlows.length / pageSize) || 1;
+  const totalStripePages =
+    Math.ceil(sortedMerchantFlows.length / pageSize) || 1;
   const paginatedMerchantFlows = useMemo(() => {
     const start = (stripePage - 1) * pageSize;
     return sortedMerchantFlows.slice(start, start + pageSize);
@@ -1131,7 +1125,9 @@ export default function AdminPayoutsPage() {
     if (selectedStripeIds.size === filteredMerchantFlows.length) {
       setSelectedStripeIds(new Set());
     } else {
-      setSelectedStripeIds(new Set(filteredMerchantFlows.map((m) => m.stripeTransferId)));
+      setSelectedStripeIds(
+        new Set(filteredMerchantFlows.map((m) => m.stripeTransferId)),
+      );
     }
   };
 
@@ -1187,7 +1183,8 @@ export default function AdminPayoutsPage() {
       return;
     }
 
-    const headers = "提現單號,訂單號,用戶名稱,提現金額(HK$),FPS ID,提交時間,狀態\n";
+    const headers =
+      "提現單號,訂單號,用戶名稱,提現金額(HK$),FPS ID,提交時間,狀態\n";
     const rows = targetList
       .map(
         (w) =>
@@ -1252,7 +1249,7 @@ export default function AdminPayoutsPage() {
           財務與結算管控台
         </h1>
         <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-          人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與 5% 佣金收益監控
+          人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與佣金收益監控
         </p>
       </div>
 
@@ -1305,8 +1302,7 @@ export default function AdminPayoutsPage() {
         </div>
 
         <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] font-mono text-[11px] text-text-secondary">
-          最後同步：{stripePlatformBalance.lastSyncedAt} · 幣種{" "}
-          {stripePlatformBalance.currency}
+          最後同步：{stripePlatformBalance.lastSyncedAt}
         </div>
       </div>
 
@@ -1536,7 +1532,9 @@ export default function AdminPayoutsPage() {
                             <button
                               type="button"
                               onClick={() =>
-                                router.push(`/profile/user/orderDetail/${w.orderNumber}`)
+                                router.push(
+                                  `/profile/user/orderDetail/${w.orderNumber}`,
+                                )
                               }
                               className="min-h-[44px] h-9 px-2.5 text-brand font-sans text-[11px] font-medium rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-transform whitespace-nowrap"
                             >
@@ -1545,7 +1543,9 @@ export default function AdminPayoutsPage() {
                             {isPending && (
                               <>
                                 <button
-                                  onClick={() => handleAction(w.id, "completed")}
+                                  onClick={() =>
+                                    handleAction(w.id, "completed")
+                                  }
                                   className="min-h-[44px] h-9 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform"
                                 >
                                   ✓ 銷帳
@@ -1712,7 +1712,8 @@ export default function AdminPayoutsPage() {
                         type="checkbox"
                         checked={
                           filteredMerchantFlows.length > 0 &&
-                          selectedStripeIds.size === filteredMerchantFlows.length
+                          selectedStripeIds.size ===
+                            filteredMerchantFlows.length
                         }
                         onChange={toggleSelectAllStripe}
                         className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
@@ -1749,7 +1750,9 @@ export default function AdminPayoutsPage() {
                 </TableHeader>
                 <TableBody>
                   {paginatedMerchantFlows.map((flow) => {
-                    const isSelected = selectedStripeIds.has(flow.stripeTransferId);
+                    const isSelected = selectedStripeIds.has(
+                      flow.stripeTransferId,
+                    );
                     return (
                       <TableRow
                         key={flow.stripeTransferId}
@@ -1823,7 +1826,10 @@ export default function AdminPayoutsPage() {
                   </span>{" "}
                   -{" "}
                   <span className="font-bold text-text-primary">
-                    {Math.min(stripePage * pageSize, sortedMerchantFlows.length)}
+                    {Math.min(
+                      stripePage * pageSize,
+                      sortedMerchantFlows.length,
+                    )}
                   </span>{" "}
                   筆，共{" "}
                   <span className="font-bold text-brand">
