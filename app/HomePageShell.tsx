@@ -10,6 +10,7 @@ import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
+import { AnnouncementModal } from "@/app/components/announcements/AnnouncementModal";
 import { markHomeClientMount } from "@/app/lib/home/perf-log-client";
 
 const PwaInstallPrompt = dynamic(
@@ -42,6 +43,7 @@ export function HomePageShell({
       <PwaInlineBanner />
       <PriceTicker />
       <PwaInstallPrompt />
+      <AnnouncementModal />
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         <HeroSearch showCheckIn={showCheckIn} />
