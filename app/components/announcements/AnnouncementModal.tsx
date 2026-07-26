@@ -27,14 +27,16 @@ import {
 
 export function AnnouncementModal() {
   const [open, setOpen] = useState(false);
-  const [activeAnnouncements, setActiveAnnouncements] = useState<Announcement[]>([]);
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    Announcement[]
+  >([]);
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [count, setCount] = useState(0);
 
   // Autoplay plugin reference with 5s interval
   const autoplayPlugin = useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true })
+    Autoplay({ delay: 5000, stopOnInteraction: false, stopOnMouseEnter: true }),
   );
 
   useEffect(() => {
@@ -138,7 +140,7 @@ export function AnnouncementModal() {
 
                       {/* Date Badge on Image */}
                       <div className="absolute bottom-2.5 left-3 sm:bottom-3 sm:left-4">
-                        <span className="rounded-full border border-[rgba(237,232,224,0.15)] bg-black/70 backdrop-blur-md px-2.5 py-0.5 sm:px-3 sm:py-1 font-mono text-[9px] sm:text-[10px] font-bold text-brand">
+                        <span className="rounded-full border border-[rgba(237,232,224,0.15)] bg-black/70 backdrop-blur-md px-2.5 py-0.5 sm:px-3 sm:py-1 font-mono text-xs font-bold text-brand">
                           活動期間: {item.startDate} ~ {item.endDate}
                         </span>
                       </div>
