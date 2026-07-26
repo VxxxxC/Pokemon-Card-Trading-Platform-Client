@@ -60,6 +60,24 @@ function formatStatusTabLabel(
   return count > 0 ? `${label} (${count})` : label;
 }
 
+function isRawCardOrder(order: UserTradingOrder): boolean {
+  const o = order as unknown as Record<string, unknown>;
+  if (o.isRawCard === true || o.cardType === "RAW" || o.isRaw === true) {
+    return true;
+  }
+  const company = (order.listing?.gradingCompany ?? "").toUpperCase().trim();
+  if (
+    !company ||
+    company === "RAW" ||
+    company === "RAW CARD" ||
+    company === "NONE" ||
+    company === "裸卡"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function renderStatusBadge(order: UserTradingOrder) {
   if (order.useAuthentication && order.status === "pending" && order.escrowStatus) {
     switch (order.escrowStatus) {
@@ -122,6 +140,7 @@ export function UserTradingClient({
   const [persona, setPersona] = useState<PersonaFilter>("all");
   const [tabStatus, setTabStatus] = useState<TabStatusFilter>(initialTabStatus);
   const [searchQuery, setSearchQuery] = useState("");
+  const [onlyRawChecked, setOnlyRawChecked] = useState(false);
   const [activeReview, setActiveReview] = useState<ActiveReviewState>(null);
 
   const {
@@ -300,30 +319,42 @@ export function UserTradingClient({
               </div>
             </div>
 
-            <div className="flex gap-1.5 flex-wrap justify-start sm:justify-start">
-              {PERSONA_OPTIONS.map((option) => {
-                const isActive = persona === option.value;
-                const btnClass = isActive
-                  ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs"
-                  : "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setPersona(option.value)}
-                    className={cn(
-                      "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer",
-                      btnClass,
-                    )}
-                  >
-                    {formatPersonaTabLabel(
-                      option.value,
-                      option.label,
-                      filterCounts,
-                    )}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex gap-1.5 flex-wrap justify-start">
+                {PERSONA_OPTIONS.map((option) => {
+                  const isActive = persona === option.value;
+                  const btnClass = isActive
+                    ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs"
+                    : "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setPersona(option.value)}
+                      className={cn(
+                        "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer",
+                        btnClass,
+                      )}
+                    >
+                      {formatPersonaTabLabel(
+                        option.value,
+                        option.label,
+                        filterCounts,
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none px-3 py-1.5 rounded-xl bg-[#17130f] border border-white/5 hover:border-brand/30 transition-colors w-fit">
+                <input
+                  type="checkbox"
+                  checked={onlyRawChecked}
+                  onChange={(e) => setOnlyRawChecked(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer accent-brand"
+                />
+                <span className="font-medium text-text-secondary">只顯示 RAW/裸卡</span>
+              </label>
             </div>
           </div>
 
@@ -332,14 +363,22 @@ export function UserTradingClient({
               <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
                 <div className="mx-auto w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
               </div>
-            ) : orders.length === 0 ? (
-              <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
-                <p className="font-sans text-[13px] text-text-disabled">
-                  沒有符合當前篩選與關鍵字的交易訂單記錄。
-                </p>
-              </div>
-            ) : (
-              orders.map((order) => {
+            ) : (() => {
+              const displayOrders = onlyRawChecked
+                ? orders.filter(isRawCardOrder)
+                : orders;
+
+              if (displayOrders.length === 0) {
+                return (
+                  <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
+                    <p className="font-sans text-[13px] text-text-disabled">
+                      沒有符合當前篩選與關鍵字的交易訂單記錄。
+                    </p>
+                  </div>
+                );
+              }
+
+              return displayOrders.map((order) => {
                 const authActions = order.useAuthentication
                   ? getMemberAuthOrderActions({
                       persona: order.persona,
@@ -350,32 +389,32 @@ export function UserTradingClient({
                   : null;
 
                 return (
-                <UserOrderRow
-                  key={order.id}
-                  order={mapTradingOrderToSaleOrder(order)}
-                  detailOrderId={order.id}
-                  orderNumber={order.orderNumber}
-                  statusBadge={renderStatusBadge(order)}
-                  onOpenReview={handleOpenReview}
-                  dbOrderContext={{
-                    orderKind: order.orderKind,
-                    orderId: order.id,
-                    revieweeId: order.counterparty.id,
-                    dbStatus: order.status ?? "",
-                    hasReviewedByMe: order.hasReviewedByMe,
-                    useAuthentication: order.useAuthentication,
-                    escrowStatus: order.escrowStatus,
-                    canPay: authActions?.canPay ?? false,
-                    canCancel:
-                      authActions?.canCancel ??
-                      (order.persona === "sell" &&
-                        PENDING_ACTION_STATUSES.has(order.status ?? "")),
-                    onRefresh: handleRefreshOrders,
-                  }}
-                />
-              );
-              })
-            )}
+                  <UserOrderRow
+                    key={order.id}
+                    order={mapTradingOrderToSaleOrder(order)}
+                    detailOrderId={order.id}
+                    orderNumber={order.orderNumber}
+                    statusBadge={renderStatusBadge(order)}
+                    onOpenReview={handleOpenReview}
+                    dbOrderContext={{
+                      orderKind: order.orderKind,
+                      orderId: order.id,
+                      revieweeId: order.counterparty.id,
+                      dbStatus: order.status ?? "",
+                      hasReviewedByMe: order.hasReviewedByMe,
+                      useAuthentication: order.useAuthentication,
+                      escrowStatus: order.escrowStatus,
+                      canPay: authActions?.canPay ?? false,
+                      canCancel:
+                        authActions?.canCancel ??
+                        (order.persona === "sell" &&
+                          PENDING_ACTION_STATUSES.has(order.status ?? "")),
+                      onRefresh: handleRefreshOrders,
+                    }}
+                  />
+                );
+              });
+            })()}
           </div>
 
           {paginationMeta.total > 0 && (

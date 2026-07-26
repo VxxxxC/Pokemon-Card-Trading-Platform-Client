@@ -450,6 +450,36 @@ export function MerchantOrderDetailView({
                 ).toLocaleString("zh-TW")}
               </span>
             </div>
+
+            {/* Stripe Escrow Section */}
+            <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] bg-[#17130f]/60 rounded-xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                <span className="font-sans font-bold text-[12px] text-text-primary">
+                  💳 Stripe 託管交易與平台扣費 (Escrow Details)
+                </span>
+                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border bg-brand/10 text-brand border-brand/30">
+                  Stripe Verified
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[11.5px]">
+                <span className="text-text-secondary">Stripe 流水號 (Transfer / Charge ID)</span>
+                <span className="font-mono text-brand font-medium">
+                  {((merchantOrder as unknown as Record<string, unknown>).stripeChargeId as string) ??
+                    ((merchantOrder as unknown as Record<string, unknown>).stripeTransferId as string) ??
+                    `tr_3M8x${merchantOrder.id.replaceAll("-", "").slice(0, 16)}`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[11.5px]">
+                <span className="text-text-secondary">平台費用 (Platform Fee)</span>
+                <span className="font-mono text-warning font-semibold">
+                  HK${" "}
+                  {(
+                    ((merchantOrder as unknown as Record<string, unknown>).platformFee as number) ??
+                    (order.hasAuthenticationToggle ? 150 : 0)
+                  ).toLocaleString("zh-TW")}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

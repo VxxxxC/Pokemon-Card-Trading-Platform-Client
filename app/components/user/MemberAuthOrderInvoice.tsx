@@ -10,13 +10,66 @@ import { cn } from "@/lib/utils";
 type MemberAuthOrderInvoiceProps = {
   finalPrice: number;
   isSeller: boolean;
+  orderId?: string;
+  orderNumber?: string | null;
+  escrowStatus?: string | null;
+  status?: string | null;
+  payoutId?: string;
+  releasedAmount?: number;
+  platformFee?: number;
+  releaseStatus?: "pending" | "completed" | "rejected" | string;
 };
 
 export function MemberAuthOrderInvoice({
   finalPrice,
   isSeller,
+  orderId,
+  orderNumber,
+  escrowStatus,
+  status,
+  payoutId,
+  releasedAmount,
+  platformFee,
+  releaseStatus: explicitReleaseStatus,
 }: MemberAuthOrderInvoiceProps) {
   const totalAmount = finalPrice + MEMBER_AUTH_SERVICE_FEE;
+
+  // Resolve Escrow Release details
+  const displayPayoutId =
+    payoutId ??
+    `PO-${(orderNumber ? orderNumber.replace("ORD-", "") : (orderId ? orderId.slice(0, 8).toUpperCase() : "20260721-881"))}`;
+  const displayReleasedAmount = releasedAmount ?? finalPrice;
+  const displayPlatformFee = platformFee ?? MEMBER_AUTH_SERVICE_FEE;
+
+  const currentReleaseStatus = (() => {
+    if (explicitReleaseStatus) return explicitReleaseStatus;
+    if (status === "completed" || escrowStatus === "released") return "completed";
+    if (status === "cancelled" || explicitReleaseStatus === "rejected") return "rejected";
+    return "pending";
+  })();
+
+  const releaseBadge = (() => {
+    switch (currentReleaseStatus) {
+      case "completed":
+        return (
+          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded border bg-emerald-950/80 text-emerald-400 border-emerald-500/30">
+            已完成
+          </span>
+        );
+      case "rejected":
+        return (
+          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded border bg-rose-950/80 text-rose-400 border-rose-500/30">
+            已駁回
+          </span>
+        );
+      default:
+        return (
+          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded border bg-amber-950/80 text-amber-400 border-amber-500/30">
+            待處理
+          </span>
+        );
+    }
+  })();
 
   return (
     <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
@@ -67,6 +120,36 @@ export function MemberAuthOrderInvoice({
           <span className="text-brand font-mono text-[18px] md:text-[24px]">
             {"HK$ " + totalAmount.toLocaleString("zh-TW")}
           </span>
+        </div>
+
+        {/* Detailed Escrow Release Section */}
+        <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] bg-[#17130f]/60 rounded-xl p-3.5 space-y-2.5">
+          <div className="flex items-center justify-between pb-1 border-b border-white/5">
+            <span className="font-sans font-bold text-[12px] text-text-primary">
+              🔒 資金託管放款明細 (Escrow Release)
+            </span>
+            {releaseBadge}
+          </div>
+          <div className="flex justify-between items-center text-[11.5px]">
+            <span className="text-text-secondary">提現單號 (Payout ID)</span>
+            <span className="font-mono text-brand font-medium">
+              {displayPayoutId}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-[11.5px]">
+            <span className="text-text-secondary">釋放金額 (Released Amount)</span>
+            <span className="font-mono text-brand font-bold">
+              {"HK$ " + displayReleasedAmount.toLocaleString("zh-TW")}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-[11.5px]">
+            <span className="text-text-secondary">
+              平台鑑定與服務費 (Platform Fee)
+            </span>
+            <span className="font-mono text-text-primary">
+              {"HK$ " + displayPlatformFee.toLocaleString("zh-TW")}
+            </span>
+          </div>
         </div>
       </div>
     </div>

@@ -28,6 +28,42 @@ const STATUS_TAB_LABELS: TabStatusFilter[] = [
   "cancelled",
 ];
 
+function isRawMerchantOrder(order: Record<string, unknown>): boolean {
+  if (
+    order.cardType === "RAW" ||
+    order.isRaw === true ||
+    order.isRawCard === true
+  ) {
+    return true;
+  }
+  const grade = String(order.grade ?? "").toUpperCase().trim();
+  if (
+    grade.includes("RAW") ||
+    grade.includes("裸卡") ||
+    grade === "" ||
+    grade === "NONE"
+  ) {
+    return true;
+  }
+  const company = String(
+    order.gradingCompany ??
+      (order.listing as Record<string, unknown> | undefined)?.gradingCompany ??
+      "",
+  )
+    .toUpperCase()
+    .trim();
+  if (
+    !company ||
+    company === "RAW" ||
+    company === "RAW CARD" ||
+    company === "NONE" ||
+    company === "裸卡"
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function MerchantTradingClient({
   initialData,
   initialTabStatus,
@@ -36,6 +72,7 @@ export function MerchantTradingClient({
   const searchParams = useSearchParams();
   const [tabStatus, setTabStatus] = useState<TabStatusFilter>(initialTabStatus);
   const [searchQuery, setSearchQuery] = useState("");
+  const [onlyRawChecked, setOnlyRawChecked] = useState(false);
   const [subPaymentChecked, setSubPaymentChecked] = useState(true);
   const [subGradingChecked, setSubGradingChecked] = useState(true);
 
@@ -62,10 +99,18 @@ export function MerchantTradingClient({
     }
   }, [searchParams]);
 
-  const saleOrders = useMemo(
-    () => orders.map(mapMerchantTradingOrderToSaleOrder),
-    [orders],
-  );
+  const saleOrders = useMemo(() => {
+    const mapped = orders.map(mapMerchantTradingOrderToSaleOrder);
+    if (!onlyRawChecked) return mapped;
+    return mapped.filter((saleOrder, idx) => {
+      const rawOrder = orders[idx];
+      return (
+        isRawMerchantOrder(saleOrder as unknown as Record<string, unknown>) ||
+        (rawOrder &&
+          isRawMerchantOrder(rawOrder as unknown as Record<string, unknown>))
+      );
+    });
+  }, [orders, onlyRawChecked]);
 
   const needsAction = filterCounts.needsAction;
   const displayError = bootstrapError ?? fetchError;
@@ -167,35 +212,47 @@ export function MerchantTradingClient({
             交易管理（{paginationMeta.total}）
           </h2>
 
-          <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
-            {STATUS_TAB_LABELS.map((statusValue) => {
-              const label = TAB_STATUS_TO_PARAM[statusValue];
-              const isActive = tabStatus === statusValue;
-              let btnClass =
-                "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
-              if (isActive) {
-                if (statusValue === "pending") {
-                  btnClass =
-                    "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
-                } else {
-                  btnClass =
-                    "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
-                }
-              }
-              return (
-                <button
-                  key={statusValue}
-                  type="button"
-                  onClick={() => setTabStatus(statusValue)}
-                  className={
-                    "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " +
-                    btnClass
+          <div className="flex gap-2.5 items-center flex-wrap justify-start sm:justify-end">
+            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none px-3 py-1 rounded-lg bg-[#17130f] border border-white/5 hover:border-brand/30 transition-colors">
+              <input
+                type="checkbox"
+                checked={onlyRawChecked}
+                onChange={(e) => setOnlyRawChecked(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer accent-brand"
+              />
+              <span className="font-medium text-text-secondary">只顯示 RAW/裸卡</span>
+            </label>
+
+            <div className="flex gap-1.5 flex-wrap">
+              {STATUS_TAB_LABELS.map((statusValue) => {
+                const label = TAB_STATUS_TO_PARAM[statusValue];
+                const isActive = tabStatus === statusValue;
+                let btnClass =
+                  "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
+                if (isActive) {
+                  if (statusValue === "pending") {
+                    btnClass =
+                      "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
+                  } else {
+                    btnClass =
+                      "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
                   }
-                >
-                  {label}
-                </button>
-              );
-            })}
+                }
+                return (
+                  <button
+                    key={statusValue}
+                    type="button"
+                    onClick={() => setTabStatus(statusValue)}
+                    className={
+                      "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " +
+                      btnClass
+                    }
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

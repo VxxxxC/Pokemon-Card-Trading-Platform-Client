@@ -63,6 +63,8 @@ export type UserSettingsData = {
   email: string;
   avatarUrl: string;
   role: Tables<"profiles">["role"];
+  bankAccount?: string;
+  fpsId?: string;
 };
 
 export type PublicProfilePageProfile = import("@/lib/marketplace/load-seller-profile").MarketplaceSellerProfile & {
@@ -335,6 +337,8 @@ export async function updateUserProfile(
     shortDescription: (
       (formData.get("shortDescription") as string | null) ?? ""
     ).trim(),
+    bankAccount: ((formData.get("bankAccount") as string | null) ?? "").trim(),
+    fpsId: ((formData.get("fpsId") as string | null) ?? "").trim(),
   };
 
   const errors = validateUserProfileFields(fields);

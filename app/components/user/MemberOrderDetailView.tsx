@@ -508,6 +508,10 @@ export function MemberOrderDetailView({
           <MemberAuthOrderInvoice
             finalPrice={order.finalPrice}
             isSeller={isSeller}
+            orderId={order.id}
+            orderNumber={order.orderNumber}
+            escrowStatus={order.escrowStatus}
+            status={order.status}
           />
         )}
 

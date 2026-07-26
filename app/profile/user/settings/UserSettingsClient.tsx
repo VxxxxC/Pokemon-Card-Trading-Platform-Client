@@ -39,12 +39,16 @@ export function UserSettingsClient({ initialData }: Props) {
   useEffect(() => {
     if (wasPending.current && !isPending) {
       if (errors === null) {
-        toast.success("個人資料已更新");
+        toast.success("個人資料及收款資料已更新");
         router.refresh();
       } else if (errors.username) {
         toast.error(errors.username);
       } else if (errors.displayName) {
         toast.error(errors.displayName);
+      } else if (errors.bankAccount) {
+        toast.error(errors.bankAccount);
+      } else if (errors.fpsId) {
+        toast.error(errors.fpsId);
       } else if (errors.form) {
         toast.error(errors.form);
       }
@@ -167,6 +171,54 @@ export function UserSettingsClient({ initialData }: Props) {
                     {errors.shortDescription}
                   </p>
                 )}
+              </div>
+
+              <div className="pt-2 border-t border-[rgba(237,232,224,0.08)] space-y-4">
+                <div>
+                  <label
+                    htmlFor="bank-account"
+                    className="font-mono text-[12px] text-text-secondary block mb-1.5"
+                  >
+                    銀行名稱及帳號 (Bank Name & Account Number)
+                  </label>
+                  <input
+                    id="bank-account"
+                    name="bankAccount"
+                    type="text"
+                    defaultValue={initialData.bankAccount ?? ""}
+                    key={`bankAccount-${initialData.bankAccount ?? ""}`}
+                    placeholder="例：滙豐銀行 123-456789-001"
+                    className={`${fieldClass(!!errors?.bankAccount)} h-11 px-4`}
+                  />
+                  {errors?.bankAccount && (
+                    <p className="mt-1 font-sans text-[12px] text-warning">
+                      {errors.bankAccount}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="fps-id"
+                    className="font-mono text-[12px] text-text-secondary block mb-1.5"
+                  >
+                    轉數快 (FPS ID / Phone / Email)
+                  </label>
+                  <input
+                    id="fps-id"
+                    name="fpsId"
+                    type="text"
+                    defaultValue={initialData.fpsId ?? ""}
+                    key={`fpsId-${initialData.fpsId ?? ""}`}
+                    placeholder="例：16888888 或 91234567 或 user@example.com"
+                    className={`${fieldClass(!!errors?.fpsId)} h-11 px-4`}
+                  />
+                  {errors?.fpsId && (
+                    <p className="mt-1 font-sans text-[12px] text-warning">
+                      {errors.fpsId}
+                    </p>
+                  )}
+                </div>
               </div>
               <button
                 type="submit"
