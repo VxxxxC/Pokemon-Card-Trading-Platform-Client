@@ -128,7 +128,7 @@ export default function AdminCatalogPage() {
       nameEn: "",
       nameZh: "",
       nameJa: "",
-      rarity: "SAR",
+      rarity: "",
       imageSource: "",
     },
     box_set: {
@@ -137,7 +137,7 @@ export default function AdminCatalogPage() {
       nameEn: "",
       nameZh: "",
       nameJa: "",
-      rarity: "SAR",
+      rarity: "",
       imageSource: "",
       category: "booster_pack",
     },
@@ -298,7 +298,7 @@ export default function AdminCatalogPage() {
               nameEn: "",
               nameZh: "",
               nameJa: "",
-              rarity: "SAR",
+              rarity: "",
               imageSource: "",
             }
           : {
@@ -307,7 +307,7 @@ export default function AdminCatalogPage() {
               nameEn: "",
               nameZh: "",
               nameJa: "",
-              rarity: "SAR",
+              rarity: "",
               imageSource: "",
               category: "booster_pack",
             },
@@ -435,6 +435,8 @@ export default function AdminCatalogPage() {
         formErrors.cardNumber
       ) {
         toast.error("輸入之 JAN Code 必須為全數字 13 位條碼");
+      } else if (formErrors.rarity) {
+        toast.error("請選擇罕有度");
       } else {
         toast.error("請填寫所有必填欄位並檢查格式");
       }
@@ -785,7 +787,7 @@ export default function AdminCatalogPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Category Dropdown at the VERY TOP for Box/Set */}
           {kind === "box_set" && (
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5 min-w-0 sm:col-span-2">
               <Label className="font-mono text-[11px] text-text-secondary">
                 Category <span className="text-warning">*</span>
               </Label>
@@ -799,13 +801,13 @@ export default function AdminCatalogPage() {
                 }
               >
                 <SelectTrigger
-                  className={`h-10 w-full bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary ${
+                  className={`h-10 w-full min-w-0 max-w-full overflow-hidden truncate bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary ${
                     formErrors.category ? "border-warning" : ""
                   }`}
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#26211C]">
+                <SelectContent className="bg-[#26211C] w-[var(--radix-select-trigger-width)] max-w-full">
                   {BOX_SET_CATEGORY_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -817,7 +819,7 @@ export default function AdminCatalogPage() {
           )}
 
           {/* 編號 (Renamed from 卡牌編號) */}
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Label className="font-mono text-[11px] text-text-secondary">
               編號 <span className="text-warning">*</span>
             </Label>
@@ -841,7 +843,7 @@ export default function AdminCatalogPage() {
             )}
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Label className="font-mono text-[11px] text-text-secondary">
               系列/卡包代碼 <span className="text-warning">*</span>
             </Label>
@@ -858,7 +860,7 @@ export default function AdminCatalogPage() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Label className="font-mono text-[11px] text-text-secondary">
               英文名稱
             </Label>
@@ -875,7 +877,7 @@ export default function AdminCatalogPage() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Label className="font-mono text-[11px] text-text-secondary">
               中文名稱
             </Label>
@@ -892,7 +894,7 @@ export default function AdminCatalogPage() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Label className="font-mono text-[11px] text-text-secondary">
               日文名稱
             </Label>
@@ -909,7 +911,7 @@ export default function AdminCatalogPage() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <Label className="font-mono text-[11px] text-text-secondary">
               罕有度 <span className="text-warning">*</span>
             </Label>
@@ -920,13 +922,13 @@ export default function AdminCatalogPage() {
               }
             >
               <SelectTrigger
-                className={`h-10 w-full bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary ${
+                className={`h-10 w-full min-w-0 max-w-full overflow-hidden truncate bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary ${
                   formErrors.rarity ? "border-warning" : ""
                 }`}
               >
-                <SelectValue />
+                <SelectValue placeholder="請選擇罕有度 *" />
               </SelectTrigger>
-              <SelectContent className="bg-[#26211C]">
+              <SelectContent className="bg-[#26211C] w-[var(--radix-select-trigger-width)] max-w-full">
                 {RARITY_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
