@@ -18,7 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RefreshCw } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { subDays, format, startOfDay, endOfDay } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { RefreshCw, Search, X, Calendar as CalendarIcon } from "lucide-react";
 
 // ── Types Definitions ────────────────────────────────────────────────────────
 interface WithdrawalRequest {
@@ -575,7 +583,9 @@ function SortSelect<V extends string>({
           aria-label="排序方式"
           className="w-44 min-w-44 min-h-[44px] h-11 bg-[#26211C] border border-white/5 rounded-[8px] text-[#eae1da] font-sans text-[12px] hover:bg-[#322a24] hover:border-white/10 transition-colors focus-visible:ring-0 focus-visible:border-brand/40"
         >
-          <SelectValue placeholder="預設排序" />
+          <SelectValue placeholder="預設排序">
+            {options.find((opt) => opt.value === value)?.label ?? "預設排序"}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12.5px] shadow-2xl">
           {options.map((option) => (
@@ -766,16 +776,77 @@ function FilterChips<K extends string>({
 
 function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
-  const rows: StripeLogRow[] =
+  const rawRows: StripeLogRow[] =
     variant === "payout" ? MOCK_PAYOUT_LOGS : MOCK_TRANSFER_LOGS;
 
-  const totalPages = Math.ceil(rows.length / STRIPE_LOG_PAGE_SIZE) || 1;
+  const filteredRows = useMemo(() => {
+    let result = rawRows;
+
+    // Search query filter
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      if (variant === "payout") {
+        result = result.filter((row) => {
+          const payout = row as StripePayoutLog;
+          const statusLabel = STRIPE_LOG_STATUS_LABELS[payout.status] || "";
+          return (
+            payout.id.toLowerCase().includes(q) ||
+            payout.recipient.toLowerCase().includes(q) ||
+            payout.status.toLowerCase().includes(q) ||
+            statusLabel.includes(q)
+          );
+        });
+      } else {
+        result = result.filter((row) => {
+          const transfer = row as StripeTransferLog;
+          const statusLabel = STRIPE_LOG_STATUS_LABELS[transfer.status] || "";
+          return (
+            transfer.id.toLowerCase().includes(q) ||
+            transfer.merchantName.toLowerCase().includes(q) ||
+            transfer.status.toLowerCase().includes(q) ||
+            statusLabel.includes(q)
+          );
+        });
+      }
+    }
+
+    // Date range filter according to createdAt timestamp
+    if (dateRange?.from || dateRange?.to) {
+      const fromMs = dateRange.from ? startOfDay(dateRange.from).getTime() : 0;
+      const toMs = dateRange.to ? endOfDay(dateRange.to).getTime() : Infinity;
+
+      result = result.filter((row) => {
+        const timestamp = parseLocalDate(row.createdAt);
+        return timestamp >= fromMs && timestamp <= toMs;
+      });
+    }
+
+    return result;
+  }, [rawRows, variant, searchQuery, dateRange]);
+
+  const totalPages =
+    Math.ceil(filteredRows.length / STRIPE_LOG_PAGE_SIZE) || 1;
 
   const paginatedRows = useMemo(() => {
     const start = (page - 1) * STRIPE_LOG_PAGE_SIZE;
-    return rows.slice(start, start + STRIPE_LOG_PAGE_SIZE);
-  }, [rows, page]);
+    return filteredRows.slice(start, start + STRIPE_LOG_PAGE_SIZE);
+  }, [filteredRows, page]);
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setPage(1);
+  };
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    setPage(1);
+  };
 
   const title =
     variant === "payout"
@@ -793,11 +864,89 @@ function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
 
   return (
     <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[420px]">
-      <div className="space-y-1">
-        <h3 className="font-sans font-bold text-[16px] text-text-primary">
-          {title}
-        </h3>
-        <p className="font-sans text-[12px] text-text-secondary">{subtitle}</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="font-sans font-bold text-[16px] text-text-primary">
+            {title}
+          </h3>
+          <p className="font-sans text-[12px] text-text-secondary">{subtitle}</p>
+        </div>
+
+        {/* Filter Toolbar: Searchbar + Date Range Picker */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search Input */}
+          <div className="relative w-full sm:w-60">
+            <input
+              type="text"
+              placeholder={
+                variant === "payout"
+                  ? "搜尋 Payout ID、收款人或狀態..."
+                  : "搜尋 Transfer ID、商戶或狀態..."
+              }
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full h-10 pl-9 pr-8 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+            />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-text-disabled" />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => handleSearchChange("")}
+                className="absolute right-2.5 top-2.5 text-text-disabled hover:text-text-primary"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Date Range Picker */}
+          <Popover>
+            <PopoverTrigger className="min-h-[44px] h-10 px-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary hover:bg-bg-elevated hover:border-brand/40 transition-colors flex items-center gap-2">
+              <CalendarIcon className="w-3.5 h-3.5 text-brand" />
+              <span>
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    `${format(dateRange.from, "yyyy/MM/dd")} - ${format(dateRange.to, "yyyy/MM/dd")}`
+                  ) : (
+                    `${format(dateRange.from, "yyyy/MM/dd")} - 選擇`
+                  )
+                ) : (
+                  "選擇日期範圍"
+                )}
+              </span>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-0 bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] shadow-2xl z-50"
+              align="end"
+            >
+              <div className="p-3 border-b border-white/10 flex items-center justify-between gap-4">
+                <span className="font-sans text-xs font-semibold text-text-primary">
+                  日誌日期範圍篩選
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDateRangeChange({
+                      from: subDays(new Date(), 30),
+                      to: new Date(),
+                    })
+                  }
+                  className="font-mono text-[11px] text-brand hover:underline"
+                >
+                  近 30 天
+                </button>
+              </div>
+              <Calendar
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={handleDateRangeChange}
+                numberOfMonths={1}
+                className="p-3 bg-transparent text-[#eae1da]"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
@@ -815,82 +964,93 @@ function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedRows.map((row) => {
-              if (variant === "payout") {
-                const payout = row as StripePayoutLog;
+            {paginatedRows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={headers.length}
+                  className="text-center py-8 font-sans text-xs text-text-secondary"
+                >
+                  沒有符合條件的 Stripe 日誌紀錄
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedRows.map((row) => {
+                if (variant === "payout") {
+                  const payout = row as StripePayoutLog;
+                  return (
+                    <TableRow
+                      key={payout.id}
+                      className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/40 transition-colors"
+                    >
+                      <TableCell className="py-3 whitespace-nowrap">
+                        <span
+                          className="font-mono text-[11px] text-text-disabled truncate max-w-[140px] block"
+                          title={payout.id}
+                        >
+                          {payout.id}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                        {payout.recipient}
+                      </TableCell>
+                      <TableCell className="font-mono font-bold text-[13px] text-text-primary py-3 whitespace-nowrap">
+                        HK$ {payout.amount.toLocaleString("zh-TW")}
+                      </TableCell>
+                      <TableCell className="py-3 whitespace-nowrap">
+                        <span
+                          className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[payout.status]}`}
+                        >
+                          {STRIPE_LOG_STATUS_LABELS[payout.status]}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                        {payout.createdAt}
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                const transfer = row as StripeTransferLog;
                 return (
                   <TableRow
-                    key={payout.id}
+                    key={transfer.id}
                     className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/40 transition-colors"
                   >
                     <TableCell className="py-3 whitespace-nowrap">
                       <span
                         className="font-mono text-[11px] text-text-disabled truncate max-w-[140px] block"
-                        title={payout.id}
+                        title={transfer.id}
                       >
-                        {payout.id}
+                        {transfer.id}
                       </span>
                     </TableCell>
                     <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                      {payout.recipient}
+                      {transfer.merchantName}
                     </TableCell>
                     <TableCell className="font-mono font-bold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                      HK$ {payout.amount.toLocaleString("zh-TW")}
+                      HK$ {transfer.splitAmount.toLocaleString("zh-TW")}
+                    </TableCell>
+                    <TableCell className="font-mono font-bold text-[13px] text-brand text-right py-3 whitespace-nowrap">
+                      HK$ {transfer.platformCommission.toLocaleString("zh-TW")}
                     </TableCell>
                     <TableCell className="py-3 whitespace-nowrap">
                       <span
-                        className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[payout.status]}`}
+                        className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[transfer.status]}`}
                       >
-                        {STRIPE_LOG_STATUS_LABELS[payout.status]}
+                        {STRIPE_LOG_STATUS_LABELS[transfer.status]}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                      {payout.createdAt}
+                      {transfer.createdAt}
                     </TableCell>
                   </TableRow>
                 );
-              }
-              const transfer = row as StripeTransferLog;
-              return (
-                <TableRow
-                  key={transfer.id}
-                  className="border-b border-[rgba(237,232,224,0.06)] hover:bg-bg-elevated/40 transition-colors"
-                >
-                  <TableCell className="py-3 whitespace-nowrap">
-                    <span
-                      className="font-mono text-[11px] text-text-disabled truncate max-w-[140px] block"
-                      title={transfer.id}
-                    >
-                      {transfer.id}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                    {transfer.merchantName}
-                  </TableCell>
-                  <TableCell className="font-mono font-bold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                    HK$ {transfer.splitAmount.toLocaleString("zh-TW")}
-                  </TableCell>
-                  <TableCell className="font-mono font-bold text-[13px] text-brand text-right py-3 whitespace-nowrap">
-                    HK$ {transfer.platformCommission.toLocaleString("zh-TW")}
-                  </TableCell>
-                  <TableCell className="py-3 whitespace-nowrap">
-                    <span
-                      className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${STRIPE_LOG_STATUS_CLASSES[transfer.status]}`}
-                    >
-                      {STRIPE_LOG_STATUS_LABELS[transfer.status]}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                    {transfer.createdAt}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+              })
+            )}
           </TableBody>
         </Table>
       </div>
 
-      {rows.length > 0 && (
+      {filteredRows.length > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
           <div className="font-mono text-[12px] text-text-secondary">
             顯示第{" "}
@@ -899,9 +1059,10 @@ function StripeLogPanel({ variant }: { variant: StripeLogVariant }) {
             </span>{" "}
             -{" "}
             <span className="font-bold text-text-primary">
-              {Math.min(page * STRIPE_LOG_PAGE_SIZE, rows.length)}
+              {Math.min(page * STRIPE_LOG_PAGE_SIZE, filteredRows.length)}
             </span>{" "}
-            筆，共 <span className="font-bold text-brand">{rows.length}</span>{" "}
+            筆，共{" "}
+            <span className="font-bold text-brand">{filteredRows.length}</span>{" "}
             筆資料
           </div>
           <div className="flex items-center gap-1.5">
