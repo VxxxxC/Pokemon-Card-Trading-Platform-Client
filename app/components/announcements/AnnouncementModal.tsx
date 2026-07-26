@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import Autoplay from "embla-carousel-autoplay";
-import { Sparkles, ArrowRight, Megaphone, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, Megaphone, ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   Dialog,
@@ -80,16 +79,16 @@ export function AnnouncementModal() {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[92vw] sm:max-w-lg p-0 overflow-hidden border border-[rgba(237,232,224,0.15)] bg-[#26211C] text-text-primary shadow-2xl rounded-2xl outline-none">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[92vw] sm:max-w-lg p-0 overflow-hidden border border-[rgba(237,232,224,0.15)] bg-[#26211C] text-text-primary shadow-2xl rounded-2xl outline-none min-w-0 flex flex-col">
         {/* Modal Header Badge Bar */}
-        <div className="flex items-center justify-between border-b border-[rgba(237,232,224,0.08)] bg-[#17130f] px-4 py-3 sm:px-5">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between border-b border-[rgba(237,232,224,0.08)] bg-[#17130f] px-4 py-3 sm:px-5 shrink-0 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand/10 border border-brand/20">
               <Megaphone className="h-4 w-4 text-brand" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <DialogTitle className="font-sans text-xs sm:text-sm font-bold text-text-primary tracking-wide flex items-center gap-1.5 truncate">
-                最新活動與公告
+                <span className="truncate">最新活動與公告</span>
                 <Sparkles className="h-3.5 w-3.5 text-brand shrink-0" />
               </DialogTitle>
               <DialogDescription className="text-[10px] sm:text-[11px] font-mono text-text-secondary truncate">
@@ -100,14 +99,14 @@ export function AnnouncementModal() {
 
           <Badge
             variant="outline"
-            className="border-brand/30 bg-brand/10 font-mono text-[10px] text-brand px-2 py-0.5 shrink-0"
+            className="border-brand/30 bg-brand/10 font-mono text-[10px] text-brand px-2 py-0.5 shrink-0 ml-2"
           >
             {currentSlide + 1} / {count || activeAnnouncements.length}
           </Badge>
         </div>
 
         {/* Carousel Section */}
-        <div className="relative group">
+        <div className="relative group w-full min-w-0 max-w-full overflow-hidden flex-1 bg-[#26211C]">
           <Carousel
             setApi={setApi}
             plugins={[autoplayPlugin.current]}
@@ -115,14 +114,17 @@ export function AnnouncementModal() {
               loop: true,
               align: "start",
             }}
-            className="w-full"
+            className="w-full min-w-0 max-w-full overflow-hidden"
           >
-            <CarouselContent className="-ml-0">
+            <CarouselContent className="-ml-0 min-w-0 max-w-full flex">
               {activeAnnouncements.map((item) => (
-                <CarouselItem key={item.id} className="pl-0">
-                  <div className="flex flex-col">
+                <CarouselItem
+                  key={item.id}
+                  className="pl-0 min-w-0 shrink-0 grow-0 basis-full max-w-full w-full overflow-hidden"
+                >
+                  <div className="flex flex-col w-full min-w-0 max-w-full overflow-hidden">
                     {/* Poster Image Container */}
-                    <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#17130f]">
+                    <div className="relative aspect-[16/9] w-full min-w-0 max-w-full overflow-hidden bg-[#17130f] shrink-0">
                       <Image
                         src={item.imageUrl}
                         alt={item.title}
@@ -142,27 +144,15 @@ export function AnnouncementModal() {
                       </div>
                     </div>
 
-                    {/* Announcement Details Box */}
-                    <div className="p-4 sm:p-5 space-y-2.5 sm:space-y-3 bg-[#26211C]">
-                      <h3 className="font-sans text-sm sm:text-base font-bold text-text-primary leading-snug line-clamp-2">
+                    {/* Announcement Details Box - Only Content, No Redirect Button */}
+                    <div className="p-4 sm:p-5 space-y-2 sm:space-y-2.5 bg-[#26211C] w-full min-w-0 max-w-full overflow-y-auto max-h-[35vh]">
+                      <h3 className="font-sans text-sm sm:text-base font-bold text-text-primary leading-snug break-words">
                         {item.title}
                       </h3>
 
-                      <p className="font-sans text-xs text-text-secondary leading-relaxed line-clamp-3">
+                      <p className="font-sans text-xs sm:text-sm text-text-secondary leading-relaxed break-words whitespace-pre-line">
                         {item.content}
                       </p>
-
-                      {/* Link Action CTA if available */}
-                      {item.linkUrl && (
-                        <div className="pt-1.5 sm:pt-2">
-                          <Link href={item.linkUrl} onClick={handleClose}>
-                            <Button className="w-full bg-brand text-[#17130f] font-bold hover:bg-[#e8b896] active:scale-[0.98] transition-transform text-xs h-8 sm:h-9">
-                              <span>立即了解詳情</span>
-                              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                            </Button>
-                          </Link>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </CarouselItem>
@@ -176,7 +166,7 @@ export function AnnouncementModal() {
               <button
                 type="button"
                 onClick={() => api?.scrollPrev()}
-                className="absolute left-2 sm:left-3 top-1/3 -translate-y-1/2 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md opacity-80 hover:opacity-100 transition-opacity hover:bg-black/90 active:scale-95"
+                className="absolute left-2 sm:left-3 top-1/3 -translate-y-1/2 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md opacity-80 hover:opacity-100 transition-opacity hover:bg-black/90 active:scale-95 z-10"
                 aria-label="Previous slide"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -184,7 +174,7 @@ export function AnnouncementModal() {
               <button
                 type="button"
                 onClick={() => api?.scrollNext()}
-                className="absolute right-2 sm:right-3 top-1/3 -translate-y-1/2 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md opacity-80 hover:opacity-100 transition-opacity hover:bg-black/90 active:scale-95"
+                className="absolute right-2 sm:right-3 top-1/3 -translate-y-1/2 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md opacity-80 hover:opacity-100 transition-opacity hover:bg-black/90 active:scale-95 z-10"
                 aria-label="Next slide"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -193,10 +183,10 @@ export function AnnouncementModal() {
           )}
         </div>
 
-        {/* Modal Footer with Indicator Dots & Action */}
-        <div className="flex items-center justify-between border-t border-[rgba(237,232,224,0.08)] bg-[#17130f] px-4 py-2.5 sm:px-5 sm:py-3">
+        {/* Modal Footer with Indicator Dots & Close Button */}
+        <div className="flex items-center justify-between border-t border-[rgba(237,232,224,0.08)] bg-[#17130f] px-4 py-2.5 sm:px-5 sm:py-3 shrink-0 min-w-0">
           {/* Indicator Dots */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 min-w-0">
             {activeAnnouncements.map((item, idx) => (
               <button
                 key={item.id}
@@ -218,7 +208,7 @@ export function AnnouncementModal() {
             variant="ghost"
             size="sm"
             onClick={handleClose}
-            className="h-7 sm:h-8 text-xs text-text-secondary hover:bg-[#2e2925] hover:text-text-primary"
+            className="h-7 sm:h-8 text-xs text-text-secondary hover:bg-[#2e2925] hover:text-text-primary shrink-0"
           >
             關閉視窗
           </Button>

@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { Megaphone, ArrowRight, Sparkles, Clock, CheckCircle2, History } from "lucide-react";
+import { Megaphone, Sparkles, Clock, CheckCircle2, History } from "lucide-react";
 
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
@@ -11,7 +10,6 @@ import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { Footer } from "@/app/components/navigation/Footer";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   MOCK_ANNOUNCEMENTS,
   getAnnouncementStatus,
@@ -182,33 +180,24 @@ export default function PublicAnnouncementsPage() {
                       </div>
                     </div>
 
-                    {/* Announcement Details Body */}
+                    {/* Announcement Details Body - Content Only */}
                     <div className="p-5 space-y-3">
                       <h2 className="font-sans text-base sm:text-lg font-bold text-text-primary leading-snug group-hover:text-brand transition-colors">
                         {item.title}
                       </h2>
 
-                      <p className="font-sans text-xs sm:text-sm text-text-secondary leading-relaxed">
+                      <p className="font-sans text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-line">
                         {item.content}
                       </p>
                     </div>
                   </div>
 
-                  {/* Card Footer Action */}
-                  <div className="p-5 pt-0 border-t border-transparent flex items-center justify-between">
-                    {item.linkUrl ? (
-                      <Link href={item.linkUrl} className="w-full">
-                        <Button className="w-full bg-brand text-[#17130f] font-bold hover:bg-[#e8b896] active:scale-[0.98] transition-all text-xs h-9">
-                          <span>前往活動頁面 / 查看詳情</span>
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <div className="w-full py-2 font-mono text-[11px] text-text-disabled flex items-center justify-end gap-1">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                        <span>官方消息</span>
-                      </div>
-                    )}
+                  {/* Card Footer Badge */}
+                  <div className="px-5 pb-4 pt-0 flex items-center justify-end">
+                    <div className="py-1 font-mono text-[11px] text-text-disabled flex items-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>官方消息</span>
+                    </div>
                   </div>
                 </div>
               );
