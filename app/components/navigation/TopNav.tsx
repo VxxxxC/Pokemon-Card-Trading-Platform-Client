@@ -5,12 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { Megaphone } from "lucide-react";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { getProfileHomePath } from "@/lib/auth/roles";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
+import {
+  MOCK_ANNOUNCEMENTS,
+  getActiveAnnouncements,
+} from "@/app/lib/mockAnnouncements";
 import {
   ChatUnreadDot,
   ChatUnreadDotInline,
@@ -150,8 +155,23 @@ export function TopNav() {
             })}
           </nav>
 
-          {/* 右側：狀態、收件匣、登入 */}
-          <div className="flex items-center gap-4 shrink-0 ml-auto">
+          {/* 右側：狀態、公告、收件匣、登入 */}
+          <div className="flex items-center gap-3 shrink-0 ml-auto">
+            {/* 📢 官方公告按鈕 */}
+            <Link
+              href="/announcements"
+              title="官方公告"
+              className="relative p-2 text-text-secondary hover:text-brand transition-colors rounded-xl hover:bg-[#26211C] active:scale-[0.95]"
+            >
+              <Megaphone className="h-5 w-5" />
+              {getActiveAnnouncements(MOCK_ANNOUNCEMENTS).length > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand" />
+                </span>
+              )}
+            </Link>
+
             {/* 📥 收件匣下拉選單入口 */}
             <div className="relative" ref={popoverRef}>
               <button
