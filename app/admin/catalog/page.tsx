@@ -11,12 +11,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -37,7 +32,10 @@ import {
   type AdminCatalogEntry,
   type AdminCatalogItemKind,
 } from "@/app/actions/adminCatalog";
-import { CATALOG_TYPE_LABELS, type CatalogType } from "@/lib/constants/commerce";
+import {
+  CATALOG_TYPE_LABELS,
+  type CatalogType,
+} from "@/lib/constants/commerce";
 
 const PAGE_SIZE = 24;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -55,10 +53,11 @@ const RARITY_OPTIONS = [
   { value: "PROMO", label: "PROMO" },
 ];
 
-const BOX_SET_CATEGORY_OPTIONS: { value: CatalogType; label: string }[] = [
+const BOX_SET_CATEGORY_OPTIONS: { value: CatalogType | "jan_code"; label: string }[] = [
   { value: "booster_pack", label: "補充包" },
   { value: "gift_set", label: "禮盒組" },
   { value: "starter_deck", label: "起始牌組" },
+  { value: "jan_code", label: "JAN 條碼規格" },
 ];
 
 type ManualEntryBase = {
@@ -79,8 +78,7 @@ type ManualCardEntry = ManualEntryBase & {
 
 type ManualBoxSetEntry = ManualEntryBase & {
   itemKind: "box_set";
-  category: CatalogType;
-  janCode: string;
+  category: CatalogType | "jan_code";
 };
 
 type ManualEntry = ManualCardEntry | ManualBoxSetEntry;
@@ -90,13 +88,17 @@ type FormErrors = {
   setCode?: boolean;
   nameLanguages?: boolean;
   category?: boolean;
-  janCode?: boolean;
   image?: boolean;
   rarity?: boolean;
 };
 
 const TABS_TRIGGER_CLASS =
   "min-h-[44px] px-4 py-2 rounded-lg font-sans text-[13px] transition-colors data-[state=active]:bg-bg-elevated data-[state=active]:text-brand data-[state=active]:font-semibold text-text-secondary hover:text-text-primary";
+
+const getCategoryLabel = (cat: CatalogType | "jan_code") => {
+  if (cat === "jan_code") return "JAN 條碼規格";
+  return CATALOG_TYPE_LABELS[cat as CatalogType] || cat;
+};
 
 export default function AdminCatalogPage() {
   // ── Catalog browsing state
@@ -138,7 +140,6 @@ export default function AdminCatalogPage() {
       rarity: "SAR",
       imageSource: "",
       category: "booster_pack",
-      janCode: "",
     },
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -219,9 +220,17 @@ export default function AdminCatalogPage() {
           setCode: m.setCode,
           cardNumber: m.cardNumber || null,
           displayId: null,
-          janCode: m.itemKind === "box_set" ? m.janCode : null,
+          janCode:
+            m.itemKind === "box_set" && m.category === "jan_code"
+              ? m.cardNumber
+              : null,
           imageUrl: m.imageSource,
-          type: m.itemKind === "box_set" ? m.category : "single_card",
+          type:
+            m.itemKind === "box_set"
+              ? m.category === "jan_code"
+                ? "booster_pack"
+                : m.category
+              : "single_card",
           rarity: m.rarity,
           pokemonStage: null,
           updatedAt: m.createdAt,
@@ -301,7 +310,6 @@ export default function AdminCatalogPage() {
               rarity: "SAR",
               imageSource: "",
               category: "booster_pack",
-              janCode: "",
             },
     }));
     resetImagePreview();
@@ -334,8 +342,8 @@ export default function AdminCatalogPage() {
   }
 
   function updateBoxSetField(
-    field: "category" | "janCode",
-    value: CatalogType | string,
+    field: "category",
+    value: CatalogType | "jan_code",
   ) {
     setPendingManualEntries((prev) => ({
       ...prev,
@@ -386,7 +394,11 @@ export default function AdminCatalogPage() {
     if (!current.setCode.trim()) {
       errors.setCode = true;
     }
-    if (!current.nameEn.trim() && !current.nameZh.trim() && !current.nameJa.trim()) {
+    if (
+      !current.nameEn.trim() &&
+      !current.nameZh.trim() &&
+      !current.nameJa.trim()
+    ) {
       errors.nameLanguages = true;
     }
     if (!current.rarity.trim()) {
@@ -401,8 +413,10 @@ export default function AdminCatalogPage() {
       if (!box.category) {
         errors.category = true;
       }
-      if (!/^\d+$/.test(box.janCode.trim())) {
-        errors.janCode = true;
+      if (box.category === "jan_code") {
+        if (!/^\d+$/.test(box.cardNumber.trim())) {
+          errors.cardNumber = true;
+        }
       }
     }
 
@@ -414,8 +428,13 @@ export default function AdminCatalogPage() {
     if (!validateManualForm()) {
       if (formErrors.nameLanguages) {
         toast.error("請至少輸入一種語言嘅卡牌名稱（英文／中文／日文）");
-      } else if (manualTab === "box_set" && formErrors.janCode) {
-        toast.error("JAN Code 必須為全數字");
+      } else if (
+        manualTab === "box_set" &&
+        (pendingManualEntries.box_set as ManualBoxSetEntry).category ===
+          "jan_code" &&
+        formErrors.cardNumber
+      ) {
+        toast.error("輸入之 JAN Code 必須為全數字 13 位條碼");
       } else {
         toast.error("請填寫所有必填欄位並檢查格式");
       }
@@ -575,7 +594,9 @@ export default function AdminCatalogPage() {
           <div className="flex-1 overflow-y-auto p-5">
             <Tabs
               value={manualTab}
-              onValueChange={(value) => setManualTab(value as AdminCatalogItemKind)}
+              onValueChange={(value) =>
+                setManualTab(value as AdminCatalogItemKind)
+              }
               className="space-y-5"
             >
               <TabsList className="bg-bg-page border border-[rgba(237,232,224,0.08)] p-1 rounded-xl">
@@ -623,15 +644,18 @@ export default function AdminCatalogPage() {
     if (isLoading) {
       return (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+          {Array.from({ length: 24 }).map((_, i) => (
             <div
               key={i}
-              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden"
+              className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-3 flex flex-col justify-between h-full space-y-3"
             >
-              <Skeleton className="w-full aspect-[3/4] bg-[#26211C]" />
-              <div className="p-4 space-y-2">
+              <Skeleton className="w-full aspect-[3/4] rounded-xl bg-[#26211C]" />
+              <div className="space-y-2">
                 <Skeleton className="h-4 w-3/4 bg-[#26211C]" />
-                <Skeleton className="h-3 w-1/2 bg-[#26211C]" />
+                <div className="flex items-center justify-between gap-2">
+                  <Skeleton className="h-3 w-1/3 bg-[#26211C]" />
+                  <Skeleton className="h-3 w-1/4 bg-[#26211C]" />
+                </div>
               </div>
             </div>
           ))}
@@ -744,7 +768,7 @@ export default function AdminCatalogPage() {
           totalItems={total}
           itemsPerPage={PAGE_SIZE}
           itemLabel="筆資料"
-          enableScroll={false}
+          enableScroll={true}
         />
       </>
     );
@@ -752,25 +776,69 @@ export default function AdminCatalogPage() {
 
   function renderManualForm(kind: AdminCatalogItemKind) {
     const current = pendingManualEntries[kind];
+    const isJanCodeCategory =
+      kind === "box_set" &&
+      (current as ManualBoxSetEntry).category === "jan_code";
 
     return (
       <div className="max-w-3xl mx-auto space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Category Dropdown at the VERY TOP for Box/Set */}
+          {kind === "box_set" && (
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="font-mono text-[11px] text-text-secondary">
+                Category <span className="text-warning">*</span>
+              </Label>
+              <Select
+                value={(current as ManualBoxSetEntry).category}
+                onValueChange={(value) =>
+                  updateBoxSetField(
+                    "category",
+                    (value as CatalogType | "jan_code") ?? "booster_pack",
+                  )
+                }
+              >
+                <SelectTrigger
+                  className={`h-10 w-full bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary ${
+                    formErrors.category ? "border-warning" : ""
+                  }`}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#26211C]">
+                  {BOX_SET_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* 編號 (Renamed from 卡牌編號) */}
           <div className="space-y-1.5">
             <Label className="font-mono text-[11px] text-text-secondary">
-              卡牌編號 <span className="text-warning">*</span>
+              編號 <span className="text-warning">*</span>
             </Label>
             <Input
-              type="text"
+              type={isJanCodeCategory ? "number" : "text"}
               value={current.cardNumber}
               onChange={(e) =>
                 updateManualField(kind, "cardNumber", e.target.value)
               }
-              placeholder="例：promo-102"
+              placeholder={
+                isJanCodeCategory ? "例：4904140548311" : "例：promo-102"
+              }
               className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
                 formErrors.cardNumber ? "border-warning" : ""
               }`}
             />
+            {isJanCodeCategory && (
+              <p className="text-brand text-[11px] font-mono mt-1">
+                💡 提示：輸入之 JAN Code 必須為全數字 13 位條碼
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -780,7 +848,9 @@ export default function AdminCatalogPage() {
             <Input
               type="text"
               value={current.setCode}
-              onChange={(e) => updateManualField(kind, "setCode", e.target.value)}
+              onChange={(e) =>
+                updateManualField(kind, "setCode", e.target.value)
+              }
               placeholder="例：SV2a"
               className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
                 formErrors.setCode ? "border-warning" : ""
@@ -865,53 +935,6 @@ export default function AdminCatalogPage() {
               </SelectContent>
             </Select>
           </div>
-
-          {kind === "box_set" && (
-            <>
-              <div className="space-y-1.5">
-                <Label className="font-mono text-[11px] text-text-secondary">
-                  Category <span className="text-warning">*</span>
-                </Label>
-                <Select
-                  value={(current as ManualBoxSetEntry).category}
-                  onValueChange={(value) =>
-                    updateBoxSetField("category", (value as CatalogType) ?? "booster_pack")
-                  }
-                >
-                  <SelectTrigger
-                    className={`h-10 w-full bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-sans text-[13px] text-text-primary ${
-                      formErrors.category ? "border-warning" : ""
-                    }`}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#26211C]">
-                    {BOX_SET_CATEGORY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="font-mono text-[11px] text-text-secondary">
-                  JAN Code <span className="text-warning">*</span>
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={(current as ManualBoxSetEntry).janCode}
-                  onChange={(e) => updateBoxSetField("janCode", e.target.value)}
-                  placeholder="例：4904140548311"
-                  className={`h-10 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl px-3 font-mono text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 ${
-                    formErrors.janCode ? "border-warning" : ""
-                  }`}
-                />
-              </div>
-            </>
-          )}
         </div>
 
         {formErrors.nameLanguages && (
@@ -998,7 +1021,7 @@ export default function AdminCatalogPage() {
             <span className="text-brand font-semibold ml-1">
               {kind === "card"
                 ? "獨立卡（single_card）"
-                : `Box/Set（${CATALOG_TYPE_LABELS[(current as ManualBoxSetEntry).category]}）`}
+                : `Box/Set（${getCategoryLabel((current as ManualBoxSetEntry).category)}）`}
             </span>
           </p>
         </div>
