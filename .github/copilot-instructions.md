@@ -154,7 +154,13 @@ export default async function OrdersGatewayPage() {
 
 - **硬性禁止防线**：嚴禁任何 AI 代理人（包含 QA-Tester、BAAS 工程師或腳本）調用 Supabase Admin Service Role Key、curl、Node.js 腳本或 SQL 去修改 `.env` 中指定的管理員 (Admin) 或真實測試帳戶密碼。
 - **正統 E2E 測試機制**：
-  1. 測試必須使用專屬的沙盒測試帳號 (`e2e_test_user@hkcardvault.internal`)。
+  1. 測試必須使用專屬的沙盒測試帳號:
+     |Level|Email|Passworld|
+     |-|-|-|
+     |Admin|e2eadmin@t.com|Abcd1234!|
+     |Merchant|merchant@t.com|Abcd1234!|
+     |Member|c01@t.com|Abcd1234!|
+
   2. 或使用 Playwright 官方推薦的 `playwright/.auth/user.json` (Storage State) 預存 Session 進行無密碼直接注入。
   3. 任何嘗試透過 Service Role 改寫 Password 的操作將被視為資安違規行為。
 
