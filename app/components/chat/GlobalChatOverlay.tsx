@@ -12,7 +12,6 @@ import {
   findRoomByPartnerName,
   mergeChatRoomsWithDb,
 } from "@/app/lib/chat/mergeChatRooms";
-import { roomNeedsThreadHydration } from "@/app/lib/chat/roomHydration";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import { roomMatchesViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
 import { useChatRoomRealtime } from "@/app/lib/hooks/useChatRoomRealtime";
@@ -162,15 +161,14 @@ export function GlobalChatOverlay() {
       .getState()
       .chats.find((room) => room.id === roomId);
 
-    if (!roomNeedsThreadHydration(activeRoom)) {
-      return;
-    }
-
     const requestId = ++threadRequestIdRef.current;
     setThreadLoadingRoomId(roomId);
 
     try {
-      const result = await hydrateChatRoomThread(roomId);
+      const result = await hydrateChatRoomThread(
+        roomId,
+        activeRoom?.threadHydrated ? { force: true } : undefined,
+      );
 
       if (requestId !== threadRequestIdRef.current) {
         return;

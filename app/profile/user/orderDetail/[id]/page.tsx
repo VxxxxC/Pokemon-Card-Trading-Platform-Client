@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState, useSyncExternalStore } from "r
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  getMemberOrderDetail,
+  getUserOrderDetail,
   type MemberOrderDetail,
 } from "@/app/actions/orders";
 import { ReviewModal } from "@/app/components/trading/ReviewModal";
@@ -41,7 +41,7 @@ export default function UserOrderDetailPage() {
     }
 
     setIsLoading(true);
-    const result = await getMemberOrderDetail(orderId);
+    const result = await getUserOrderDetail(orderId);
     setIsLoading(false);
 
     if (!result.success) {

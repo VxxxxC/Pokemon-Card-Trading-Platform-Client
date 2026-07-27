@@ -25,6 +25,26 @@ function isRealtimeDbRoom(roomId: string): boolean {
   return isDbChatRoomId(roomId);
 }
 
+const roomHydrateQueues = new Map<string, Promise<void>>();
+
+async function enqueueRoomHydrate(roomId: string): Promise<void> {
+  const previous = roomHydrateQueues.get(roomId) ?? Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(async () => {
+      await hydrateChatRoomThread(roomId, { force: true });
+    });
+  roomHydrateQueues.set(roomId, next);
+
+  try {
+    await next;
+  } finally {
+    if (roomHydrateQueues.get(roomId) === next) {
+      roomHydrateQueues.delete(roomId);
+    }
+  }
+}
+
 async function removeChatInboxChannels(
   supabase: ReturnType<typeof createClient>,
 ) {
@@ -92,12 +112,8 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
         }
       };
 
-      if (
-        isInitialOfferRealtimeMessage(row) &&
-        isChatOpen &&
-        activeRoomId === row.room_id
-      ) {
-        await hydrateChatRoomThread(row.room_id, { force: true });
+      if (isInitialOfferRealtimeMessage(row)) {
+        await enqueueRoomHydrate(row.room_id);
         markActiveThreadReadIfNeeded();
         return;
       }
