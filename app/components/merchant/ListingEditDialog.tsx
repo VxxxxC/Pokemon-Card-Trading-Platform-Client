@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import {
   DEFAULT_GRADING_OPTION_ID,
   GRADING_OPTION_GROUPS,
@@ -84,6 +85,9 @@ export function ListingEditDialog({
   );
   const [sellerDescription, setSellerDescription] = useState(item.conditionDesc);
   const [isActive, setIsActive] = useState(item.status === "active");
+  const [hasAuthenticationToggle, setHasAuthenticationToggle] = useState(
+    item.useAuthentication ?? true,
+  );
   const [photoSlots, setPhotoSlots] = useState<PhotoSlotState[]>(() =>
     buildInitialSlots(item.images),
   );
@@ -204,6 +208,7 @@ export function ListingEditDialog({
       price: parsedPrice,
       sellerDescription: sellerDescription.trim() || undefined,
       isActive,
+      useAuthentication: hasAuthenticationToggle,
       imageSlots: photoSlots.map((slot) => ({
         file: slot.file,
         existingUrl: slot.existingUrl ?? slot.previewUrl ?? undefined,
@@ -275,10 +280,14 @@ export function ListingEditDialog({
                     setGradingOptionId(value ?? DEFAULT_GRADING_OPTION_ID)
                   }
                 >
-                  <SelectTrigger className="mt-1 w-full h-10 border-0 bg-transparent px-0 text-[13px] font-bold text-text-primary shadow-none focus:ring-0">
+                  <SelectTrigger className="w-full h-10 border border-white/10 bg-[#120F0C] rounded-xl px-3 text-[13px] font-bold text-text-primary focus:ring-1 focus:ring-brand/40">
                     <SelectValue placeholder="選擇鑑定或裸卡品相" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da] max-h-72">
+                  <SelectContent
+                    alignItemWithTrigger={false}
+                    sideOffset={4}
+                    className="z-[9999] w-(--anchor-width) max-h-60 overflow-y-auto bg-[#26211C] border border-[rgba(237,232,224,0.15)] text-[#eae1da] shadow-2xl rounded-xl"
+                  >
                     {GRADING_OPTION_GROUPS.map((group) => (
                       <SelectGroup key={group.key}>
                         <SelectLabel>{group.label}</SelectLabel>
@@ -292,6 +301,26 @@ export function ListingEditDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <label
+                  htmlFor={`edit-auth-${item.id}`}
+                  className="font-sans text-[13px] font-semibold text-text-primary"
+                >
+                  開放官方中介鑑定
+                </label>
+                <span className="font-sans text-[11px] text-text-secondary mt-0.5 leading-relaxed">
+                  允許買家付費加購 HKCardVault 官方第三方專業鑑定與託管交收
+                </span>
+              </div>
+              <Switch
+                id={`edit-auth-${item.id}`}
+                checked={hasAuthenticationToggle}
+                onCheckedChange={setHasAuthenticationToggle}
+                aria-label="開放官方中介鑑定"
+              />
             </div>
 
             <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col">

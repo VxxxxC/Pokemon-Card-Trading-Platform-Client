@@ -173,6 +173,10 @@ export async function submitCardListingWithProgress(
           }
           formData.append("listingId", input.listingId);
           formData.append("isActive", String(input.isActive ?? true));
+          formData.append(
+            "useAuthentication",
+            String(input.useAuthentication ?? true),
+          );
           return updateCardListing(formData);
         })()
       : await (() => {

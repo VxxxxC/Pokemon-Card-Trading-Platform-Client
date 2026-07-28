@@ -284,6 +284,7 @@ function parseUpdateCardListingForm(formData: FormData): {
     price: number;
     sellerDescription?: string;
     isActive: boolean;
+    useAuthentication: boolean;
   };
   preUploaded: PreUploadedListingImage[] | null;
 } {
@@ -300,6 +301,11 @@ function parseUpdateCardListingForm(formData: FormData): {
     isActiveRaw === null
       ? true
       : isActiveRaw === "true" || isActiveRaw === "on";
+  const useAuthenticationRaw = formData.get("useAuthentication");
+  const useAuthentication =
+    useAuthenticationRaw === null
+      ? true
+      : useAuthenticationRaw === "true" || useAuthenticationRaw === "on";
   const uploadedImagesRaw = String(formData.get("uploadedImages") ?? "").trim();
   const preUploaded = uploadedImagesRaw
     ? parsePreUploadedImages(uploadedImagesRaw)
@@ -312,6 +318,7 @@ function parseUpdateCardListingForm(formData: FormData): {
       price,
       sellerDescription: sellerDescription || undefined,
       isActive,
+      useAuthentication,
     },
     preUploaded,
   };
@@ -459,9 +466,7 @@ export async function updateCardListing(
         seller_description: fields.sellerDescription ?? null,
         status: fields.isActive ? "active" : "inactive",
         use_authentication:
-          grading.grader === "RAW"
-            ? existingListing.use_authentication
-            : false,
+          grading.grader === "RAW" ? fields.useAuthentication : false,
       })
       .eq("id", fields.listingId)
       .eq("seller_id", user.id)
