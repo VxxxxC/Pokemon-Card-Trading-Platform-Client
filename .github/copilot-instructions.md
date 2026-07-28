@@ -129,7 +129,14 @@ export default async function OrdersGatewayPage() {
   - **`Omit<Type, Keys>`**：剔除現有模型中的敏感或多餘欄位，派生出清爽的渲染子集。
   - **`Partial<Type>`**：將目標模型的全量屬性轉為可選（Optional），用於過濾器或暫存狀態線。
   - **`Required<Type>`**：強迫某些可選屬性在核心交易階段必須 100% 飽滿存在。
-- **目標效果**：用最少、最優雅的 TypeScript 語意代碼，換取 100% 穩健的強型態編譯防線，從根源上斬斷程式碼退化與過度包裝。
+  - **目標效果**：用最少、最優雅的 TypeScript 語意代碼，換取 100% 穩健的強型態編譯防線，從根源上斬斷程式碼退化與過度包裝。
+
+#### Component-Level DRY / Anti-Wrapper 鐵律
+
+- **嚴禁重複彈窗/表單組件**：當兩個或以上組件（如新增與編輯 listing）共用相同業務邏輯、狀態與 UI 片段時，必須統一為單一 **engine component**（例如 `ListingFormModal`），以 `mode` 或類似 prop 區分行為，而非複製出多個高度相似的 wrapper 檔案。
+- **遷移後清理舊 wrapper**：完成統一化後，必須立即刪除不再需要的舊 wrapper 檔案（如 `AddAssetModal.tsx`、`ListingEditDialog.tsx`），不得在 codebase 中留下「橋接層」或「零用途保留檔案」。
+- **最小 component 層級**：layout 或 call site 應直接引用統一 engine component，避免再包一層只轉發 props 的「純 wrapper」。
+- **活用 `Pick` / `Omit` / `Partial` 抽離 props**：為不同 mode 定義 discriminated union props，而非重建一組相似的 interface。
 
 ### 3. 交易全額結算防線 (Full Pay Architecture Mandate)
 

@@ -8,7 +8,7 @@ import { PwaNetworkBanner } from "@/app/components/pwa/PwaNetworkBanner";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
-import { AddAssetModal } from "@/app/components/shared/AddAssetModal";
+import { ListingFormModal } from "@/app/components/shared/ListingFormModal";
 import { ListingSubmitOverlay } from "@/components/listings/ListingSubmitOverlay";
 import { RoleProvider } from "@/app/components/providers/RoleProvider";
 import { ActiveListingPersonaSync } from "@/app/components/providers/ActiveListingPersonaSync";
@@ -318,7 +318,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <PasswordUpdatedToast />
         </Suspense>
-        <AddAssetModal />
+        <ListingFormModal mode="create" />
         <ListingSubmitOverlay />
         <GlobalChatOverlay />
         <ExecutionSlideOverHost />

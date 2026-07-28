@@ -7,7 +7,7 @@ import { CiBullhorn } from "react-icons/ci";
 import type { ListingStatus } from "@/app/lib/types/rbac";
 import type { ListingImage } from "@/lib/listings/images";
 import { Pagination } from "@/app/components/ui/Pagination";
-import { ListingEditDialog } from "@/app/components/merchant/ListingEditDialog";
+import { ListingFormModal } from "@/app/components/shared/ListingFormModal";
 
 // ─── Data Contracts ────────────────────────────────────────────────────────────
 
@@ -126,10 +126,11 @@ function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
         </div>
       </button>
 
-      {isOpen && canEdit ? (
-        <ListingEditDialog
-          open
-          onOpenChange={setIsOpen}
+      {canEdit ? (
+        <ListingFormModal
+          mode="edit"
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
           sku={sku}
           item={item}
         />

@@ -77,7 +77,7 @@ import {
 } from "@/components/ui/dialog";
 import { bunnyObjectKeyFromCdnUrl } from "@/lib/storage/bunny";
 import { invalidateMarketplaceListingDetailCache } from "@/app/lib/hooks/useMarketplaceListingDetail";
-import type { ListingSellerPersona } from "@/app/store/useUIStore";
+import { useUIStore } from "@/app/store/useUIStore";
 import type { SellFromCollectionPrefill } from "@/app/store/useUIStore";
 
 // ─── Shared Data Contracts ───────────────────────────────────────────────────
@@ -110,20 +110,14 @@ type PhotoSlot = {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-type BaseListingFormModalProps = {
+type CreateListingFormModalProps = {
+  mode: "create";
+};
+
+type EditListingFormModalProps = {
+  mode: "edit";
   isOpen: boolean;
   onClose: () => void;
-};
-
-type CreateListingFormModalProps = BaseListingFormModalProps & {
-  mode: "create";
-  initialViewMode?: "hobby" | "merch";
-  sellPrefill?: SellFromCollectionPrefill | null;
-  sellerPersona?: ListingSellerPersona;
-};
-
-type EditListingFormModalProps = BaseListingFormModalProps & {
-  mode: "edit";
   sku: Pick<SKUGroup, "cardName" | "cardNo">;
   item: CardInstance;
   onSaved?: () => void;
@@ -194,29 +188,33 @@ function catalogSelectionError(itemType: "card" | "box_set"): string {
 
 function formatDisplayTitle(
   mode: "create" | "edit",
-  viewMode: "hobby" | "merch",
+  addAssetMode: "hobby" | "merch",
   itemType: "card" | "box_set",
   hasPrefill: boolean,
 ): string {
   if (mode === "edit") return "卡牌實物詳情與編輯";
   if (hasPrefill) return "上架出售收藏";
-  if (viewMode === "hobby") return "收藏愛好";
+  if (addAssetMode === "hobby") return "收藏愛好";
   return itemType === "box_set" ? "新增密封盒組商品" : "新增單卡商品";
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ListingFormModal(props: ListingFormModalProps) {
-  const { mode, isOpen, onClose } = props;
+  const { mode } = props;
   const isCreate = mode === "create";
   const isEdit = mode === "edit";
 
-  const createProps = isCreate ? props : undefined;
   const editProps = isEdit ? props : undefined;
 
-  const initialViewMode = createProps?.initialViewMode ?? "hobby";
-  const sellPrefill = createProps?.sellPrefill ?? null;
-  const sellerPersona = createProps?.sellerPersona ?? "member";
+  const createIsOpen = useUIStore((state) => state.isAddAssetOpen);
+  const addAssetMode = useUIStore((state) => state.addAssetMode);
+  const sellPrefill = useUIStore((state) => state.addAssetSellPrefill);
+  const sellerPersona = useUIStore((state) => state.addAssetSellerPersona);
+  const closeCreateModal = useUIStore((state) => state.closeAddAssetModal);
+
+  const isOpen = isEdit ? editProps!.isOpen : createIsOpen;
+  const onClose = isEdit ? editProps!.onClose : closeCreateModal;
 
   const isMemberPersonaActive = useIsMemberPersonaActive();
   const listingSubmitPhase = useListingSubmitStore((state) => state.phase);
@@ -227,7 +225,6 @@ export function ListingFormModal(props: ListingFormModalProps) {
     listingSubmitPhase !== "error";
 
   // ── Create-mode state ───────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<"hobby" | "merch">(initialViewMode);
   const [itemType, setItemType] = useState<"card" | "box_set">("card");
   const [setCode, setSetCode] = useState("");
   const [collectionAddPrompt, setCollectionAddPrompt] =
@@ -261,7 +258,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
     [gradingId],
   );
   const isRawSelected = isRawGradingOption(selectedGrading);
-  const isMerch = isEdit || viewMode === "merch";
+  const isMerch = isEdit || addAssetMode === "merch";
   const showAuthToggle = isCreate
     ? isMerch && itemType === "card" && isRawSelected
     : isRawSelected;
@@ -292,7 +289,6 @@ export function ListingFormModal(props: ListingFormModalProps) {
           sellPrefill.itemKind ?? catalogItemKindFromType(suggestion.type),
         );
         setSetCode(sellPrefill.catalog.setCode);
-        setViewMode("merch");
         setGradingId(sellPrefill.gradingOptionId);
         setSealState(sellPrefill.sealState ?? defaultSealedProductScore());
         setPrice(String(sellPrefill.sellingPrice));
@@ -301,7 +297,6 @@ export function ListingFormModal(props: ListingFormModalProps) {
         );
       } else {
         catalogSearch.clearSearch();
-        setViewMode(initialViewMode);
         setItemType("card");
         setSetCode("");
         setGradingId(DEFAULT_GRADING_OPTION_ID);
@@ -324,7 +319,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
       setActiveSlotIndex(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, mode, sellPrefill, initialViewMode, editProps?.item.id]);
+  }, [isOpen, mode, sellPrefill, addAssetMode, editProps?.item.id]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -464,7 +459,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isCreate && viewMode === "hobby") {
+    if (isCreate && addAssetMode === "hobby") {
       if (!isMemberPersonaActive) {
         toast.error(MEMBER_PERSONA_FEATURES_BLOCKED_ERROR);
         return;
@@ -498,7 +493,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
       return;
     }
 
-    if (isCreate && viewMode === "merch" && itemType === "box_set") {
+    if (isCreate && addAssetMode === "merch" && itemType === "box_set") {
       const imageFiles = photoSlots
         .map((slot) => slot.file)
         .filter((file): file is File => file !== null);
@@ -566,7 +561,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
       return;
     }
 
-    if (isCreate && viewMode === "merch" && itemType === "card") {
+    if (isCreate && addAssetMode === "merch" && itemType === "card") {
       const imageFiles = photoSlots
         .map((slot) => slot.file)
         .filter((file): file is File => file !== null);
@@ -1177,7 +1172,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
   };
 
   const renderPriceField = () => {
-    if (isCreate && viewMode === "hobby") {
+    if (isCreate && addAssetMode === "hobby") {
       return (
         <div className="space-y-1.5 animate-fadeIn">
           <label className="font-sans font-bold text-[#d4c4b7]">
@@ -1277,7 +1272,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
             <DialogTitle className="font-sans font-bold text-[18px] text-text-primary tracking-tight">
               {formatDisplayTitle(
                 mode,
-                viewMode,
+                addAssetMode,
                 itemType,
                 Boolean(sellPrefill),
               )}
@@ -1292,35 +1287,6 @@ export function ListingFormModal(props: ListingFormModalProps) {
 
           <form onSubmit={handleSubmit} className="mt-3 space-y-4">
             {renderCatalogSection()}
-
-            {isCreate && !sellPrefill && (
-              <div className="flex gap-2">
-                {(
-                  [
-                    { value: "hobby" as const, label: "收藏愛好" },
-                    { value: "merch" as const, label: "新增商品" },
-                  ] as const
-                ).map(({ value, label }) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setViewMode(value);
-                      if (value === "hobby" && !isMemberPersonaActive) {
-                        toast.error(MEMBER_PERSONA_FEATURES_BLOCKED_ERROR);
-                      }
-                    }}
-                    className={`flex-1 h-9 rounded-lg border font-sans text-[12px] font-bold transition-colors ${
-                      viewMode === value
-                        ? "border-brand bg-[rgba(212,165,116,0.12)] text-brand"
-                        : "border-white/10 bg-[#17130f] text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
 
             <div
               className={`grid gap-3.5 ${
@@ -1358,7 +1324,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
                     ? "確認儲存修改"
                     : sellPrefill
                       ? "🚀 確認上架發售"
-                      : viewMode === "hobby"
+                      : addAssetMode === "hobby"
                         ? "★ 收錄至私藏愛好"
                         : itemType === "box_set"
                           ? "🚀 立即發佈盒組上架"
