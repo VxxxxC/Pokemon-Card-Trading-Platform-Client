@@ -15,6 +15,7 @@ import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActi
 import { MEMBER_PERSONA_FEATURES_BLOCKED_ERROR } from "@/lib/auth/member-persona-features";
 import { useListingSubmitStore } from "@/app/store/useListingSubmitStore";
 import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch";
+import { invalidateMarketplaceListingDetailCache } from "@/app/lib/hooks/useMarketplaceListingDetail";
 import type { ProductCatalogSuggestion } from "@/app/actions/productCatalog";
 import {
   DEFAULT_GRADING_OPTION_ID,
@@ -552,6 +553,7 @@ export function AddAssetModal() {
 
       const hadSellPrefill = Boolean(sellPrefill);
 
+      invalidateMarketplaceListingDetailCache();
       window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
 
       if (hadSellPrefill) {
@@ -662,6 +664,7 @@ export function AddAssetModal() {
         new CustomEvent("global-asset-successfully-added", { detail: payload }),
       );
 
+      invalidateMarketplaceListingDetailCache();
       window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
 
       if (hadSellPrefill) {

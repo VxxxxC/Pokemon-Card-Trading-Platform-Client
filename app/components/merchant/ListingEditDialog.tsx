@@ -33,6 +33,7 @@ import {
   type ListingImage,
 } from "@/lib/listings/images";
 import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listing";
+import { invalidateMarketplaceListingDetailCache } from "@/app/lib/hooks/useMarketplaceListingDetail";
 import {
   LISTING_DESCRIPTION_MAX,
   validateImageFile,
@@ -229,6 +230,7 @@ export function ListingEditDialog({
     toast.success(`「${sku.cardName} · ${item.grade}」修改已儲存`);
     onOpenChange(false);
     onSaved?.();
+    invalidateMarketplaceListingDetailCache();
     window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
   };
 

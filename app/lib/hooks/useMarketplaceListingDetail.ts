@@ -22,6 +22,18 @@ const inflightDetailRequests = new Map<
   Promise<MarketplaceListingDetail | null>
 >();
 
+export function invalidateMarketplaceListingDetailCache(
+  listingId?: string,
+): void {
+  if (listingId) {
+    listingDetailCache.delete(listingId);
+    inflightDetailRequests.delete(listingId);
+  } else {
+    listingDetailCache.clear();
+    inflightDetailRequests.clear();
+  }
+}
+
 function filtersKey(filters: MarketplaceListingDetailFilters): string {
   return [filters.listingId ?? "", String(filters.enabled)].join("|");
 }
