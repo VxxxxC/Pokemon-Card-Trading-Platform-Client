@@ -25,6 +25,7 @@ import {
   DEFAULT_GRADING_OPTION_ID,
   GRADING_OPTION_GROUPS,
   getGradingOptionsByGroup,
+  isRawGradingOptionId,
 } from "@/lib/grading/options";
 import {
   LISTING_IMAGE_MAX,
@@ -97,6 +98,8 @@ export function ListingEditDialog({
   const [activeReplaceIndex, setActiveReplaceIndex] = useState<number | null>(
     null,
   );
+
+  const isRawSelected = isRawGradingOptionId(gradingOptionId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoSlotsRef = useRef<PhotoSlotState[]>(photoSlots);
@@ -208,7 +211,7 @@ export function ListingEditDialog({
       price: parsedPrice,
       sellerDescription: sellerDescription.trim() || undefined,
       isActive,
-      useAuthentication: hasAuthenticationToggle,
+      useAuthentication: isRawSelected ? hasAuthenticationToggle : false,
       imageSlots: photoSlots.map((slot) => ({
         file: slot.file,
         existingUrl: slot.existingUrl ?? slot.previewUrl ?? undefined,
@@ -303,25 +306,27 @@ export function ListingEditDialog({
               </div>
             </div>
 
-            <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex items-center justify-between gap-3">
-              <div className="flex flex-col">
-                <label
-                  htmlFor={`edit-auth-${item.id}`}
-                  className="font-sans text-[13px] font-semibold text-text-primary"
-                >
-                  開放官方中介鑑定
-                </label>
-                <span className="font-sans text-[11px] text-text-secondary mt-0.5 leading-relaxed">
-                  允許買家付費加購 HKCardVault 官方第三方專業鑑定與託管交收
-                </span>
+            {isRawSelected && (
+              <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <label
+                    htmlFor={`edit-auth-${item.id}`}
+                    className="font-sans text-[13px] font-semibold text-text-primary"
+                  >
+                    開放官方中介鑑定
+                  </label>
+                  <span className="font-sans text-[11px] text-text-secondary mt-0.5 leading-relaxed">
+                    允許買家付費加購 HKCardVault 官方第三方專業鑑定與託管交收
+                  </span>
+                </div>
+                <Switch
+                  id={`edit-auth-${item.id}`}
+                  checked={hasAuthenticationToggle}
+                  onCheckedChange={setHasAuthenticationToggle}
+                  aria-label="開放官方中介鑑定"
+                />
               </div>
-              <Switch
-                id={`edit-auth-${item.id}`}
-                checked={hasAuthenticationToggle}
-                onCheckedChange={setHasAuthenticationToggle}
-                aria-label="開放官方中介鑑定"
-              />
-            </div>
+            )}
 
             <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col">
               <div className="flex items-center justify-between">
