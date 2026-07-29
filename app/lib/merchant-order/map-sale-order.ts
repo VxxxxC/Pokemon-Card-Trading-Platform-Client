@@ -24,9 +24,18 @@ export function mapMerchantEscrowToOrderStatus(
       return "shipped";
     case "payment_held":
       return "payment";
+    case "pending_payment":
+      return "payment";
     default:
       return "payment";
   }
+}
+
+/** pending_payment 訂單雖仍在 payment 階段，但商戶未收到款項，不可出貨。 */
+export function resolveMerchantStatusLabelOverride(
+  escrowStatus: MerchantEscrowStatus | null,
+): string | undefined {
+  return escrowStatus === "pending_payment" ? "待買家付款" : undefined;
 }
 
 function formatListingGrade(order: MerchantTradingOrder): string {
@@ -67,6 +76,7 @@ export function mapMerchantTradingOrderToSaleOrder(
     grade: formatListingGrade(order),
     amount: order.finalPrice,
     status: mapMerchantEscrowToOrderStatus(order.escrowStatus),
+    statusLabelOverride: resolveMerchantStatusLabelOverride(order.escrowStatus),
     createdAt: formatOrderDateTime(order.createdAt),
     orderType: "B2C",
     userContext: "SELLER",

@@ -99,6 +99,8 @@ export function MemberOrderDetailView({
         : [];
 
   const isPending = isPendingMemberOrderStatus(order.status);
+  // B2C 託管訂單未完成 Stripe 付款前，唔可以確認收貨 / 進入交割流程。
+  const isPendingEscrowPayment = order.pendingPayment;
   const showReviewCta =
     order.status === "completed" &&
     !order.hasReviewedByMe &&
@@ -278,11 +280,31 @@ export function MemberOrderDetailView({
         </div>
       </div>
 
+      {isPendingEscrowPayment && (
+        <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
+          <p className="text-[12.5px] text-text-secondary leading-relaxed">
+            {isBuyer
+              ? "此訂單尚未完成託管付款，請先完成 Stripe 全額支付，資金將由平台鎖定託管。"
+              : "等待買家完成託管付款，收款後方可安排出貨。"}
+          </p>
+          {isBuyer && (
+            <button
+              type="button"
+              disabled={isActionLoading}
+              onClick={() => router.push("/checkout/" + order.id)}
+              className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-sans font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              前往付款
+            </button>
+          )}
+        </div>
+      )}
+
       {useMeetupUi ? (
         <div className="space-y-4">
           <MemberP2pOrderTimeline status={order.status} />
 
-          {isPending && (
+          {isPending && !isPendingEscrowPayment && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 請與{isBuyer ? "賣家" : "買家"}
@@ -361,6 +383,7 @@ export function MemberOrderDetailView({
           <MemberAuthOrderTimeline
             status={order.status}
             escrowStatus={order.escrowStatus}
+            paymentConfirmedAt={order.paymentConfirmedAt}
           />
 
           {order.escrowStatus === "payment" && order.canPay ? (

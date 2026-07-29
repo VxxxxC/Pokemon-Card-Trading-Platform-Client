@@ -289,6 +289,10 @@ export type UserTradingOrder = {
   hasReviewedByMe: boolean;
   useAuthentication: boolean;
   escrowStatus: MemberEscrowStatus | null;
+  /** B2C 商戶訂單尚未完成 Stripe 託管付款（escrow_status = pending_payment）。 */
+  pendingPayment: boolean;
+  /** 鑑定託管訂單買家完成 mock / 正式付款時間 */
+  paymentConfirmedAt?: string | null;
   counterparty: UserTradingOrderCounterparty;
   listing: {
     gradingCompany: string;
@@ -370,6 +374,7 @@ type MemberOrderDetailQueryRow = {
   listing_id: string;
   use_authentication: boolean;
   escrow_status: MemberEscrowStatus | null;
+  payment_confirmed_at: string | null;
   inbound_tracking_no: string | null;
   outbound_tracking_no: string | null;
   listings: {
@@ -531,6 +536,7 @@ function mapRpcRow(
     hasReviewedByMe: row.has_reviewed_by_me,
     useAuthentication: row.use_authentication,
     escrowStatus: row.escrow_status,
+    pendingPayment: false,
     counterparty: toCounterparty({
       id: row.counterparty_id,
       displayName: row.counterparty_display_name ?? "未知用戶",
@@ -1277,6 +1283,8 @@ function mapMemberOrderDetailRow(
     hasReviewedByMe,
     useAuthentication: row.use_authentication,
     escrowStatus: row.escrow_status,
+    pendingPayment: false,
+    paymentConfirmedAt: row.payment_confirmed_at,
     counterparty: toCounterparty({
       id: counterpartyProfile.id,
       displayName: counterpartyProfile.display_name ?? "未知用戶",
@@ -1322,6 +1330,7 @@ function mapBuyerMerchantOrderDetailRow(
   const listingImageUrls = parseListingImageUrls(row.listings.images);
   const useAuthentication = Boolean(row.requires_authentication);
   const status = mapMerchantEscrowToMemberStatus(row.escrow_status);
+  const pendingPayment = row.escrow_status === "pending_payment";
   const createdAt = row.created_at ?? new Date().toISOString();
   const expiresAt = new Date(
     new Date(createdAt).getTime() + 14 * 24 * 60 * 60 * 1000,
@@ -1347,6 +1356,7 @@ function mapBuyerMerchantOrderDetailRow(
     hasReviewedByMe,
     useAuthentication,
     escrowStatus: null,
+    pendingPayment,
     counterparty: {
       id: row.merchant_id,
       displayName: shop?.shop_name?.trim() || "認證商戶",
@@ -1374,9 +1384,9 @@ function mapBuyerMerchantOrderDetailRow(
     outboundTrackingNo: null,
     paymentAmount: calculateMemberAuthPaymentTotal(Number(row.final_price)),
     listingAcceptsBuyerAuth: useAuthentication,
-    canPay: authActions.canPay,
+    canPay: pendingPayment,
     canSubmitInbound: false,
-    canConfirmReceipt: authActions.canConfirmReceipt,
+    canConfirmReceipt: !pendingPayment && authActions.canConfirmReceipt,
     canCancel: false,
   };
 }
@@ -1576,6 +1586,7 @@ export async function getMemberOrderDetail(
           listing_id,
           use_authentication,
           escrow_status,
+          payment_confirmed_at,
           inbound_tracking_no,
           outbound_tracking_no,
           listings!inner (

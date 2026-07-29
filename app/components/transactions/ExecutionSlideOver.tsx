@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
+import { buyNowListing } from "@/app/actions/buy-now";
 import { makeOffer } from "@/app/actions/offers";
+import { openBuyNowChatSession } from "@/lib/chat/open-buy-now-session";
 import { trackListingView } from "@/lib/listings/track-listing-view";
 import { Switch } from "@/components/ui/switch";
 import { BUYER_AUTH_DISABLED_COPY } from "@/lib/listings/auth-service-copy";
@@ -45,6 +47,7 @@ export function ExecutionSlideOver({
   const [customPrice, setCustomPrice] = useState("");
   const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
 
   // ImageViewer integration states
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -130,6 +133,30 @@ export function ExecutionSlideOver({
   const isSealedListing =
     detail != null &&
     isSealedProductGrade(detail.gradingCompany, detail.gradingScore);
+
+  const canBuyNow = !isOwnListing && !isGuest;
+
+  const handleBuyNow = async () => {
+    if (!listingId) {
+      toast.error("找不到此掛單");
+      return;
+    }
+
+    setIsBuyingNow(true);
+    const result = await buyNowListing(listingId, useAuthentication);
+    setIsBuyingNow(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    openBuyNowChatSession(result.data);
+    onClose();
+    toast.success("🧾 交易已成立", {
+      description: "已為您開啟與賣家的安全對話，請於對話中完成後續交收步驟。",
+    });
+  };
 
   const handleSendCounterOffer = async () => {
     if (!listingId) {
@@ -439,10 +466,24 @@ export function ExecutionSlideOver({
           </div>
 
           {/* Bottom Action Footer Container */}
-          <div className="px-5 py-4 border-t border-white/[0.07] shrink-0 bg-[#26211C]">
+          <div className="px-5 py-4 border-t border-white/[0.07] shrink-0 bg-[#26211C] space-y-2">
+            {canBuyNow && (
+              <button
+                type="button"
+                disabled={isBuyingNow || isSubmitting || !listingId}
+                onClick={handleBuyNow}
+                className="w-full h-11 bg-[#17130f] border border-brand/40 text-brand font-sans font-black text-[13px] rounded-xl hover:bg-[#1f1a15] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 focus:outline-none disabled:opacity-60"
+              >
+                {isBuyingNow ? (
+                  <div className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  `⚡ 立即以 HK$ ${order.price.toLocaleString()} 購買`
+                )}
+              </button>
+            )}
             <button
               type="button"
-              disabled={isSubmitting || !listingId || isOwnListing}
+              disabled={isSubmitting || isBuyingNow || !listingId || isOwnListing}
               onClick={handleSendCounterOffer}
               className="w-full h-11 bg-brand text-[#1A1612] font-sans font-black text-[13px] rounded-xl hover:bg-[#e8b896] active:scale-[0.98] transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 focus:outline-none disabled:opacity-60"
             >

@@ -48,6 +48,7 @@ export function isOpenMerchantBuyerOrder(
   escrowStatus: Tables<"merchant_orders">["escrow_status"],
 ): boolean {
   return (
+    escrowStatus === "pending_payment" ||
     escrowStatus === "payment_held" ||
     escrowStatus === "authenticating" ||
     escrowStatus === "authenticated"

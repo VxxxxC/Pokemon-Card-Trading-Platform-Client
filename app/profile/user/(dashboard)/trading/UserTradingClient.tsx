@@ -79,6 +79,14 @@ function isRawCardOrder(order: UserTradingOrder): boolean {
 }
 
 function renderStatusBadge(order: UserTradingOrder) {
+  if (order.pendingPayment) {
+    return (
+      <Badge variant="secondary" className="bg-amber-950 text-amber-400">
+        待付款
+      </Badge>
+    );
+  }
+
   if (order.useAuthentication && order.status === "pending" && order.escrowStatus) {
     switch (order.escrowStatus) {
       case "payment":
@@ -405,6 +413,7 @@ export function UserTradingClient({
                       useAuthentication: order.useAuthentication,
                       escrowStatus: order.escrowStatus,
                       canPay: authActions?.canPay ?? false,
+                      pendingPayment: order.pendingPayment,
                       canCancel:
                         authActions?.canCancel ??
                         (order.persona === "sell" &&

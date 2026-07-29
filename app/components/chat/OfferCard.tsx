@@ -104,6 +104,15 @@ function isTerminalOfferStatus(
   );
 }
 
+function needsAcceptedOrderContext(
+  context: OfferCardContext | null | undefined,
+): boolean {
+  if (context?.offer.status !== "accepted") {
+    return false;
+  }
+  return !context.orderId;
+}
+
 function OfferCardThumbnail({
   imageUrl,
   cardName,
@@ -162,9 +171,13 @@ export function OfferCardComponent({
     (state) => state.applyOfferRejected,
   );
 
+  const offerId = message.offer_id?.trim() ?? "";
+  const offerLedger = useHkCardVaultStore((state) =>
+    offerId ? state.offers[offerId] : undefined,
+  );
+
   const resolvedRoomId =
     roomId ?? message.room_id?.trim() ?? activeRoomId;
-  const offerId = message.offer_id?.trim() ?? "";
 
   const [context, setContext] = useState<OfferCardContext | null>(
     initialContext,
@@ -209,7 +222,7 @@ export function OfferCardComponent({
       }
 
       const cached = readCachedOfferCardContext(offerId);
-      if (cached) {
+      if (cached && !needsAcceptedOrderContext(cached)) {
         applyFetchedContext(cached);
         setContextError(null);
         setIsLoadingContext(false);
@@ -250,18 +263,19 @@ export function OfferCardComponent({
 
     const hydrated = isRenderableOfferContext(initialContext);
     const terminal = isTerminalOfferStatus(initialContext?.offer.status);
+    const needsOrderContext = needsAcceptedOrderContext(initialContext);
 
-    if (hydrated && terminal) {
+    if (hydrated && terminal && !needsOrderContext) {
       setIsLoadingContext(false);
       return;
     }
 
-    if (hydrated) {
+    if (hydrated && !needsOrderContext) {
       setIsLoadingContext(false);
       return;
     }
 
-    void loadContext();
+    void loadContext({ silent: hydrated });
   }, [initialContext, loadContext, offerId]);
 
   const isBuyer =
@@ -470,6 +484,30 @@ export function OfferCardComponent({
 
   if (!context) return null;
 
+  const ledgerOrderId =
+    offerLedger?.orderKind === "merchant"
+      ? offerLedger.merchantOrderId
+      : offerLedger?.memberOrderId;
+  const resolvedOrderId = context.orderId ?? ledgerOrderId ?? null;
+  const resolvedOrderKind =
+    context.orderKind ?? offerLedger?.orderKind ?? undefined;
+  const ledgerPaymentHref = offerLedger?.paymentHref ?? null;
+  const resolvedPaymentHref =
+    context.paymentHref ??
+    ledgerPaymentHref ??
+    (resolvedOrderKind === "merchant" && resolvedOrderId
+      ? `/checkout/${resolvedOrderId}`
+      : (context.canPayAuth ||
+            (useAuthentication && isBuyer && resolvedOrderKind === "member")) &&
+          resolvedOrderId
+        ? `/profile/user/orderDetail/${resolvedOrderId}`
+        : null);
+  const resolvedOrderDetailHref =
+    context.orderDetailHref ??
+    (resolvedOrderId
+      ? `/profile/user/orderDetail/${resolvedOrderId}`
+      : null);
+
   const cardMeta = [
     context.setCode,
     context.cardNumber ?? context.displayId,
@@ -559,6 +597,15 @@ export function OfferCardComponent({
           <Alert className="border-[#10b981]/30 bg-[#10b981]/10 text-[#10b981]">
             <AlertDescription className="text-[12px] font-medium leading-relaxed">
               ✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）
+              {resolvedOrderKind === "merchant" && context.pendingPayment
+                ? "；請完成託管付款以鎖定資產。"
+                : null}
+              {resolvedOrderKind === "member" &&
+              useAuthentication &&
+              isBuyer &&
+              resolvedPaymentHref
+                ? "；請完成託管付款以啟動鑑定流程。"
+                : null}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -783,6 +830,38 @@ export function OfferCardComponent({
                 </div>
               </AlertDialogContent>
             </AlertDialog>
+          ) : null}
+        </CardFooter>
+      ) : null}
+
+      {isAccepted && isBuyer ? (
+        <CardFooter className="flex flex-col gap-2 border-t border-white/5 bg-transparent px-4 py-3">
+          {resolvedPaymentHref ? (
+            <Button
+              type="button"
+              className="h-9 w-full rounded-lg bg-brand font-bold text-[#1A1612] hover:bg-[#e8b896]"
+              onClick={() => {
+                router.push(resolvedPaymentHref);
+                setIsChatOpen(false);
+              }}
+            >
+              前往付款
+            </Button>
+          ) : null}
+          {resolvedOrderDetailHref && !resolvedPaymentHref ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 w-full rounded-lg border-white/15 bg-transparent text-[12px] font-bold text-brand hover:bg-brand/10"
+              onClick={() => {
+                router.push(resolvedOrderDetailHref);
+                setIsChatOpen(false);
+              }}
+            >
+              {resolvedOrderKind === "member" && !useAuthentication
+                ? "查看訂單 / 交收指引"
+                : "查看訂單詳情"}
+            </Button>
           ) : null}
         </CardFooter>
       ) : null}

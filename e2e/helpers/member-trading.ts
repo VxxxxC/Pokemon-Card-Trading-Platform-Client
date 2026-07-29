@@ -395,6 +395,8 @@ export async function submitBuyerOfferFromDetail(
   await buyButton.click();
   await dismissBlockingOverlays(buyerPage);
 
+  await buyerPage.getByRole("button", { name: "改為議價出價" }).click();
+
   const slideOver = buyerPage.locator("div.fixed.inset-0.z-\\[400\\]");
   await expect(slideOver.locator("#exe-negotiation-price")).toBeVisible({
     timeout: 20_000,

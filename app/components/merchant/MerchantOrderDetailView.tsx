@@ -210,7 +210,20 @@ export function MerchantOrderDetailView({
             </div>
           )}
 
-          {order.status === "payment" && (
+          {merchantOrder.escrowStatus === "pending_payment" && (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                訂單已成立，正在等待買家完成託管付款{" "}
+                <span className="text-brand font-mono font-bold">
+                  HK$ {order.amount.toLocaleString("zh-TW")}
+                </span>
+                。 收款確認後方可安排出貨。
+              </p>
+            </div>
+          )}
+
+          {order.status === "payment" &&
+            merchantOrder.escrowStatus !== "pending_payment" && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 買家已完成此交易的全額付款{" "}

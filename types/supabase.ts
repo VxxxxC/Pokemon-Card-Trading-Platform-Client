@@ -739,45 +739,63 @@ export type Database = {
       }
       merchant_orders: {
         Row: {
+          auth_fee: number
           buyer_id: string
           created_at: string | null
           escrow_status: Database["public"]["Enums"]["escrow_state"] | null
           final_price: number
           id: string
+          item_subtotal: number | null
           listing_id: string
           logistics_proof_path: string | null
           merchant_id: string
           order_number: string | null
+          paid_at: string | null
           requires_authentication: boolean | null
+          shipping_fee: number
+          shipping_method: string | null
           stripe_payment_intent_id: string | null
+          total_amount: number | null
           updated_at: string | null
         }
         Insert: {
+          auth_fee?: number
           buyer_id: string
           created_at?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_state"] | null
           final_price: number
           id?: string
+          item_subtotal?: number | null
           listing_id: string
           logistics_proof_path?: string | null
           merchant_id: string
           order_number?: string | null
+          paid_at?: string | null
           requires_authentication?: boolean | null
+          shipping_fee?: number
+          shipping_method?: string | null
           stripe_payment_intent_id?: string | null
+          total_amount?: number | null
           updated_at?: string | null
         }
         Update: {
+          auth_fee?: number
           buyer_id?: string
           created_at?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_state"] | null
           final_price?: number
           id?: string
+          item_subtotal?: number | null
           listing_id?: string
           logistics_proof_path?: string | null
           merchant_id?: string
           order_number?: string | null
+          paid_at?: string | null
           requires_authentication?: boolean | null
+          shipping_fee?: number
+          shipping_method?: string | null
           stripe_payment_intent_id?: string | null
+          total_amount?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1691,6 +1709,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_merchant_checkout_auth_fee: {
+        Args: { p_use_auth: boolean }
+        Returns: number
+      }
+      fn_merchant_checkout_shipping_fee: {
+        Args: { p_shipping_method: string }
+        Returns: number
+      }
       fn_merchant_order_is_auth_in_progress: {
         Args: {
           p_escrow_status: Database["public"]["Enums"]["escrow_state"]
@@ -1699,6 +1725,10 @@ export type Database = {
         Returns: boolean
       }
       fn_merchant_order_is_open: {
+        Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] }
+        Returns: boolean
+      }
+      fn_merchant_order_is_payment_stage: {
         Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] }
         Returns: boolean
       }
@@ -1862,6 +1892,18 @@ export type Database = {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
       }
+      rpc_attach_merchant_order_payment_intent: {
+        Args: { p_order_id: string; p_payment_intent_id: string }
+        Returns: Json
+      }
+      rpc_buy_now_listing: {
+        Args: { p_buyer_id: string; p_listing_id: string; p_use_auth?: boolean }
+        Returns: Json
+      }
+      rpc_buy_now_merchant_listing: {
+        Args: { p_buyer_id: string; p_listing_id: string; p_use_auth?: boolean }
+        Returns: Json
+      }
       rpc_cancel_member_order: {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
@@ -1930,6 +1972,14 @@ export type Database = {
         Args: { p_read_at?: string; p_room_id: string }
         Returns: Json
       }
+      rpc_mark_merchant_order_paid: {
+        Args: {
+          p_amounts?: Json
+          p_order_id: string
+          p_payment_intent_id: string
+        }
+        Returns: Json
+      }
       rpc_mock_pay_member_auth_order: {
         Args: {
           p_buyer_id: string
@@ -1944,6 +1994,14 @@ export type Database = {
           p_content: string
           p_new_price: number
           p_offer_id: string
+        }
+        Returns: Json
+      }
+      rpc_prepare_merchant_order_payment: {
+        Args: {
+          p_order_id: string
+          p_shipping_method: string
+          p_use_auth?: boolean
         }
         Returns: Json
       }
@@ -2267,6 +2325,7 @@ export type Database = {
         | "starter_deck"
         | "accessories"
       escrow_state:
+        | "pending_payment"
         | "payment_held"
         | "authenticating"
         | "authenticated"
@@ -2444,6 +2503,7 @@ export const Constants = {
         "accessories",
       ],
       escrow_state: [
+        "pending_payment",
         "payment_held",
         "authenticating",
         "authenticated",

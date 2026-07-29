@@ -168,13 +168,29 @@ interface Message {
 
 ## 5. 託管結帳與金流 (Escrow Checkout & Settlement)
 
+### 5.1 B2C 商戶託管結帳（✅ 已落地，Payment Milestone 1）
+
+`app/actions/merchant-checkout.ts` / `app/actions/buy-now.ts` — 詳細契約見 [merchant-checkout/backend.md](./follow-up/merchant-checkout/backend.md) · [buy-now-chat/backend.md](./follow-up/buy-now-chat/backend.md)。
+
 | 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
 |------|------|--------------|----------|------|
-| `POST` | `/api/checkout/quote` | `QuoteInput` | `QuoteResult` | USER+ |
-| `POST` | `/api/checkout/create-payment-intent` | `{ listingId, ...QuoteInput }` | `{ clientSecret, ledgerCode }` | USER+ |
-| `GET` | `/api/orders/[id]` | — | `Order` | 買賣雙方 |
-| `GET` | `/api/orders?role=buyer\|seller&scope=active\|completed` | query | `Order[]` | 本人 |
-| `PATCH` | `[Server Action] shipOrder` | `{ orderId, trackingNo }` | `Order` | 賣家 |
+| `POST` | `[Server Action] buyNowListing` | `(listingId, useAuth?)` | `{ orderId, orderNumber, orderKind, roomId, offerId, paymentHref, … }` | 買家（非自售） |
+| `POST` | `[Server Action] buyNowMerchantListing` | `(listingId, useAuth?)` | 同上（`buyNowListing` 別名） | 買家（非自售） |
+| `GET` | `[Server Action] loadMerchantCheckoutOrder` | `(orderIdOrNumber)` | `MerchantCheckoutOrder` | 訂單買家 |
+| `POST` | `[Server Action] createMerchantOrderPaymentIntent` | `(orderIdOrNumber, { shippingMethod, useAuth })` | `{ clientSecret, publishableKey, itemSubtotal, shippingFee, authFee, totalAmount }` | 訂單買家 |
+| `GET` | `[Server Action] getMerchantCheckoutPaymentStatus` | `(orderIdOrNumber)` | `{ escrowStatus, totalAmount, paidAt }` | 訂單買家 |
+
+金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`final_price + 運費(SF 30 / 面交 0) + 鑑定費(150 / 0)`；優惠券未接後端，暫不折扣。資金 100% 收入平台帳戶託管，**無** `application_fee_amount` / `transfer_data`。
+
+### 5.2 規劃中 / 未落地的 REST 介面
+
+| 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
+|------|------|--------------|----------|------|
+| `POST` | `/api/checkout/quote` | `QuoteInput` | `QuoteResult` | USER+ ⏳ |
+| `POST` | `/api/checkout/create-payment-intent` | `{ listingId, ...QuoteInput }` | `{ clientSecret, ledgerCode }` | USER+ ⏳（已由 5.1 server action 取代） |
+| `GET` | `/api/orders/[id]` | — | `Order` | 買賣雙方 ⏳ |
+| `GET` | `/api/orders?role=buyer\|seller&scope=active\|completed` | query | `Order[]` | 本人 ⏳ |
+| `PATCH` | `[Server Action] shipOrder` | `{ orderId, trackingNo }` | `Order` | 賣家 ⏳ |
 
 ```ts
 // 對齊 checkout/[id]/page.tsx 計算引擎

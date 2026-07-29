@@ -268,29 +268,7 @@ test.describe("D. BuyButton interactions", () => {
     ).toBeVisible();
   });
 
-  test("D2 buyer opens the execution slide-over without guest lock", async ({
-    page,
-  }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "buyer",
-      "Buyer-only BuyButton interaction",
-    );
-
-    if (!hasCoreMerchantFixtures()) {
-      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
-    }
-
-    const productTitle = await openCoreDetailPage(page);
-    await page.getByRole("button", { name: /立即購買/ }).click();
-
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
-    await expect(
-      page.getByRole("heading", { level: 2, name: productTitle }),
-    ).toBeVisible();
-    await expect(page.getByText("對接賣家商號")).toBeVisible();
-  });
-
-  test("D3 buyer can close the execution slide-over", async ({
+  test("D2 buyer opens the buy-now confirm dialog without guest lock", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -304,13 +282,42 @@ test.describe("D. BuyButton interactions", () => {
 
     await openCoreDetailPage(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
-    await expect(page.locator("div.fixed.inset-0.z-\\[400\\]")).toBeVisible();
 
-    await page
-      .locator("div.fixed.inset-0.z-\\[400\\] .absolute.inset-0")
-      .click({ position: { x: 8, y: 8 } });
+    await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "確認立即購買" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "確認立即購買" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "改為議價出價" }),
+    ).toBeVisible();
+  });
 
-    await expect(page.locator("div.fixed.inset-0.z-\\[400\\]")).toHaveCount(0);
+  test("D3 buyer can close the buy-now confirm dialog", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "buyer",
+      "Buyer-only BuyButton interaction",
+    );
+
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
+
+    await openCoreDetailPage(page);
+    await page.getByRole("button", { name: /立即購買/ }).click();
+    await expect(
+      page.getByRole("heading", { name: "確認立即購買" }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "取消" }).click();
+
+    await expect(
+      page.getByRole("heading", { name: "確認立即購買" }),
+    ).toHaveCount(0);
   });
 });
 
@@ -342,7 +349,7 @@ test.describe("E. Content integrity", () => {
 });
 
 test.describe("F. Known suspicious behaviors", () => {
-  test("F1 buyer can open slide-over immediately after hard reload without guest lock", async ({
+  test("F1 buyer can open buy-now confirm dialog immediately after hard reload without guest lock", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -363,7 +370,9 @@ test.describe("F. Known suspicious behaviors", () => {
     await page.getByRole("button", { name: /立即購買/ }).click();
 
     await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
-    await expect(page.locator("div.fixed.inset-0.z-\\[400\\]")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "確認立即購買" }),
+    ).toBeVisible();
   });
 
   test("F2 product_id route resolves to the same canonical listing as listing UUID", async ({

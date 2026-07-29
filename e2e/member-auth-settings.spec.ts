@@ -62,7 +62,9 @@ test.describe("Member auth redirect and settings", () => {
     await dismissBlockingOverlays(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
     await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
-    await expect(page.getByText("對接賣家商號")).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "確認立即購買" }),
+    ).toBeVisible({
       timeout: 15_000,
     });
   });

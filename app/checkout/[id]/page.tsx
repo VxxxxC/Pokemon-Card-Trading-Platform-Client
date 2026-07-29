@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore, use } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, use } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +18,16 @@ import {
 } from "@/components/ui/select";
 import { X } from "lucide-react";
 import { IoChevronBack } from "react-icons/io5";
+import {
+  createMerchantOrderPaymentIntent,
+  loadMerchantCheckoutOrder,
+  type MerchantCheckoutOrder,
+} from "@/app/actions/merchant-checkout";
+import {
+  AUTHENTICATION_FEE,
+  SF_SHIPPING_FEE,
+  type MerchantShippingMethod,
+} from "@/lib/merchant-checkout/pricing";
 
 interface CheckoutItem {
   id: string;
@@ -28,39 +40,6 @@ interface CheckoutItem {
   seller: string;
 }
 
-const MOCK_INVENTORY_DATABASE: Record<string, CheckoutItem> = {
-  "sv4a-box": {
-    id: "sv4a-box",
-    name: "Shiny Treasure ex Box (高級擴充包)",
-    set: "High Class Pack",
-    rarity: "BOX",
-    grade: "【全新未拆封】附官方防偽縮膜",
-    price: 3500,
-    image: "https://picsum.photos/seed/sv4a/400/280",
-    seller: "東京秋葉原直送店",
-  },
-  "sv2a-182": {
-    id: "sv2a-182",
-    name: "Charizard ex SAR (噴火龍 ex)",
-    set: "Pokémon Card 151",
-    rarity: "SAR",
-    grade: "【美品 S】裸卡直送",
-    price: 2150,
-    image: "https://picsum.photos/seed/user-zard/400/280",
-    seller: "旺角卡店 · 專業認證商戶",
-  },
-  "sv2a-215": {
-    id: "sv2a-215",
-    name: "Pikachu AR (經典肥皮卡丘)",
-    set: "Pokémon Card 151",
-    rarity: "AR",
-    grade: "【微傷 A】卡盒割愛",
-    price: 620,
-    image: "https://picsum.photos/seed/user-pika/400/280",
-    seller: "卡牌珍藏家阿木",
-  },
-};
-
 // Available Coupon Repository
 interface Coupon {
   code: string;
@@ -68,23 +47,94 @@ interface Coupon {
   discount: number;
 }
 
-const AVAILABLE_COUPONS: Coupon[] = [
-  {
-    code: "WELCOME-TCG-50",
-    label: "🎟️ 新手註冊放卡開路禮 (減 HK$50)",
-    discount: 50,
-  },
-  {
-    code: "SF-FREE-DUANWU",
-    label: "🎟️ 端午現貨節免運費券 (減 HK$30)",
-    discount: 30,
-  },
-  {
-    code: "VIP-DISCOUNT-100",
-    label: "🎟️ 核心散戶尊享高能券 (減 HK$100)",
-    discount: 100,
-  },
-];
+// 優惠券後端（platform coupons）未落地，Milestone 1 一律唔折扣。
+const AVAILABLE_COUPONS: Coupon[] = [];
+
+const stripePromiseCache = new Map<string, Promise<StripeJs | null>>();
+
+function getStripePromise(publishableKey: string): Promise<StripeJs | null> {
+  const cached = stripePromiseCache.get(publishableKey);
+  if (cached) {
+    return cached;
+  }
+  const promise = loadStripe(publishableKey);
+  stripePromiseCache.set(publishableKey, promise);
+  return promise;
+}
+
+function EscrowPaymentForm({
+  orderId,
+  totalAmount,
+}: {
+  orderId: string;
+  totalAmount: number;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const router = useRouter();
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!stripe || !elements) {
+      return;
+    }
+
+    setIsConfirming(true);
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/checkout/${orderId}/success`,
+      },
+      redirect: "if_required",
+    });
+
+    if (error) {
+      setIsConfirming(false);
+      toast.error("⚠️ 付款未完成", {
+        description: error.message ?? "請確認卡片資料後重試。",
+      });
+      return;
+    }
+
+    if (
+      paymentIntent?.status === "succeeded" ||
+      paymentIntent?.status === "processing"
+    ) {
+      toast.success("🎉 付款已送出！", {
+        description: "資金正在進入平台託管，稍後即可於交易管理查看。",
+      });
+      router.push(`/checkout/${orderId}/success`);
+      return;
+    }
+
+    setIsConfirming(false);
+    toast.info("付款仍待完成", {
+      description: "請依指示完成驗證後再試。",
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <PaymentElement options={{ layout: "tabs" }} />
+      <button
+        type="button"
+        disabled={isConfirming || !stripe || !elements}
+        onClick={handleConfirm}
+        className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer focus:outline-none"
+      >
+        {isConfirming ? (
+          <>
+            <Spinner className="text-[#1A1612] size-4 animate-spin" />
+            <span>正在處理安全金流支付...</span>
+          </>
+        ) : (
+          <span>🔒 確認支付 HK$ {totalAmount.toLocaleString()}</span>
+        )}
+      </button>
+    </div>
+  );
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -102,7 +152,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   );
 
   // Delivery configuration states
-  const [shippingType, setShippingType] = useState<"sf" | "meetup">("sf");
+  const [shippingType, setShippingType] = useState<MerchantShippingMethod>("sf");
   const [sfLockerCode, setSfLockerCode] = useState("H852UA14P");
   const [sfAddress, setSfAddress] = useState("旺角中心地下順豐智能櫃");
   const [buyerPhone, setBuyerPhone] = useState("91234567");
@@ -118,6 +168,50 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   const [buyerRemark, setBuyerRemark] = useState("");
   const [isPaying, setIsPaying] = useState(false);
 
+  // Stripe escrow payment wiring
+  const [order, setOrder] = useState<MerchantCheckoutOrder | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoadingOrder, setIsLoadingOrder] = useState(true);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOrder = async () => {
+      const result = await loadMerchantCheckoutOrder(paramsId);
+      if (cancelled) {
+        return;
+      }
+
+      if (!result.success) {
+        setLoadError(result.error);
+        setOrder(null);
+        setIsLoadingOrder(false);
+        return;
+      }
+
+      setOrder(result.data);
+      setAuthServiceEnabled(result.data.requiresAuthentication);
+      if (result.data.shippingMethod) {
+        setShippingType(result.data.shippingMethod);
+      }
+      setLoadError(null);
+      setIsLoadingOrder(false);
+    };
+
+    void loadOrder();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [paramsId]);
+
+  const stripeInstance = useMemo(
+    () => (publishableKey ? getStripePromise(publishableKey) : null),
+    [publishableKey],
+  );
+
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
@@ -126,8 +220,41 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
     );
   }
 
-  const currentItem =
-    MOCK_INVENTORY_DATABASE[paramsId] || MOCK_INVENTORY_DATABASE["sv2a-182"];
+  if (isLoadingOrder) {
+    return (
+      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-[#17130f] text-[#eae1da] flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="font-sans text-[14px] text-[#d4c4b7]">
+          {loadError ?? "找不到此結帳訂單"}
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push("/profile/user/trading")}
+          className="h-11 px-5 rounded-xl bg-brand text-[#1A1612] font-sans font-bold text-[13.5px] focus:outline-none"
+        >
+          前往交易管理
+        </button>
+      </div>
+    );
+  }
+
+  const currentItem: CheckoutItem = {
+    id: order.orderNumber ?? order.orderId,
+    name: order.product.cardName,
+    set: order.product.setCode,
+    rarity: order.product.displayId ?? order.product.cardNumber ?? "—",
+    grade: order.product.gradeLabel,
+    price: order.itemSubtotal,
+    image: order.product.imageUrl,
+    seller: order.merchant.shopName,
+  };
 
   // Handle coupon selection from dropdown
   const handleCouponSelect = (couponCode: string) => {
@@ -152,8 +279,8 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
   // Financial calculations
   const itemSubtotal = currentItem.price;
-  const shippingFee = shippingType === "sf" ? 30 : 0;
-  const authFee = authServiceEnabled ? 150 : 0;
+  const shippingFee = shippingType === "sf" ? SF_SHIPPING_FEE : 0;
+  const authFee = authServiceEnabled ? AUTHENTICATION_FEE : 0;
   const totalDiscount = selectedCoupons.reduce((sum, code) => {
     const coupon = AVAILABLE_COUPONS.find((c) => c.code === code);
     return sum + (coupon?.discount || 0);
@@ -163,7 +290,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
     0,
   );
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (shippingType === "sf" && (!sfLockerCode || !buyerPhone)) {
       toast.error("⚠️ 資料未補全", {
         description: "請填寫順豐自提櫃代碼及聯絡電話。",
@@ -179,17 +306,25 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
       duration: 2000,
     });
 
-    // ⏱️ Simulate 2-second real network handshake delay latency
-    setTimeout(() => {
-      // TODO: [API / STRIPE WEBHOCK]: Real backend integration checks hook here
-      setIsPaying(false);
+    const result = await createMerchantOrderPaymentIntent(order.orderId, {
+      shippingMethod: shippingType,
+      useAuth: authServiceEnabled,
+    });
 
-      toast.success("🎉 支付成功！", {
-        description: `商品 [${currentItem.name}] 已成功進入中介安全交割程序。`,
+    setIsPaying(false);
+
+    if (!result.success) {
+      toast.error("⚠️ 無法建立託管付款", {
+        description: result.error,
       });
+      return;
+    }
 
-      router.push(`/checkout/${paramsId}/success`);
-    }, 2000);
+    setPublishableKey(result.data.publishableKey);
+    setClientSecret(result.data.clientSecret);
+    toast.success("✅ 託管付款已建立", {
+      description: `請輸入付款資料以完成 HK$ ${result.data.totalAmount.toLocaleString()} 支付。`,
+    });
   };
 
   return (
@@ -210,6 +345,14 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
             {currentItem.name}・商品序號: {currentItem.id}
           </p>
         </div>
+
+        {!order.isPayable && (
+          <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4">
+            <p className="font-sans text-[12.5px] text-brand">
+              此訂單已完成付款或已進入下一階段，無法重複支付。
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Form Entries Column */}
@@ -353,9 +496,18 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                 <Switch
                   checked={authServiceEnabled}
                   onCheckedChange={setAuthServiceEnabled}
+                  disabled={
+                    !order.listingAcceptsAuthentication ||
+                    clientSecret !== null
+                  }
                   className="data-checked:bg-brand data-unchecked:bg-[#39342f]"
                 />
               </div>
+              {!order.listingAcceptsAuthentication && (
+                <p className="mt-2 font-sans text-[11px] text-text-disabled">
+                  此賣家未開放平台鑑定加購服務。
+                </p>
+              )}
               {authServiceEnabled && (
                 <div className="mt-3 bg-[#17130f] rounded-xl p-3 border border-brand/20">
                   <p className="font-sans text-[11px] text-brand leading-relaxed">
@@ -377,6 +529,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               <div className="space-y-3">
                 <Select
                   value=""
+                  disabled={AVAILABLE_COUPONS.length === 0}
                   onValueChange={(value) => {
                     if (value && typeof value === "string") {
                       handleCouponSelect(value);
@@ -385,7 +538,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                 >
                   <SelectTrigger className="w-full h-10 bg-[#17130f] border-white/10 text-[#eae1da] hover:border-brand/30 transition-colors">
                     <SelectValue
-                      placeholder="選擇優惠券..."
+                      placeholder="優惠券功能即將開放（本次結帳暫不折扣）"
                       className="text-[#d4c4b7]"
                     />
                   </SelectTrigger>
@@ -513,23 +666,38 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                 </p>
               </div>
 
-              <button
-                type="button"
-                disabled={isPaying}
-                onClick={handleProceedToPayment}
-                className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer focus:outline-none"
-              >
-                {isPaying ? (
-                  <>
-                    <Spinner className="text-[#1A1612] size-4 animate-spin" />
-                    <span>正在處理安全金流支付...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⚡ 鎖定資產並進入安全託管支付</span>
-                  </>
-                )}
-              </button>
+              {clientSecret && stripeInstance ? (
+                <Elements
+                  stripe={stripeInstance}
+                  options={{
+                    clientSecret,
+                    appearance: { theme: "night", labels: "floating" },
+                  }}
+                >
+                  <EscrowPaymentForm
+                    orderId={order.orderId}
+                    totalAmount={finalTotal}
+                  />
+                </Elements>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isPaying || !order.isPayable}
+                  onClick={handleProceedToPayment}
+                  className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer focus:outline-none"
+                >
+                  {isPaying ? (
+                    <>
+                      <Spinner className="text-[#1A1612] size-4 animate-spin" />
+                      <span>正在處理安全金流支付...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>⚡ 鎖定資產並進入安全託管支付</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
