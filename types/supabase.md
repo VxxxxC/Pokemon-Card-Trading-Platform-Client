@@ -38,6 +38,7 @@ type UserRole = Enums<"user_role">;
 |------|--------|
 | `catalog_type` | `single_card`, `booster_pack`, `booster_box`, `gift_set`, `starter_deck`, `accessories` |
 | `escrow_state` | `payment_held`, `authenticating`, `authenticated`, `completed_and_transferred`, `refunded` |
+| `kyc_application_status` | `pending`, `approved`, `rejected` |
 | `kyc_state` | `pending`, `verified`, `rejected` |
 | `listing_engagement_event_type` | `view`, `offer` |
 | `listing_status` | `active`, `sold`, `inactive` |
@@ -74,6 +75,7 @@ type UserRole = Enums<"user_role">;
 | `fn_bump_listing_offers_count` | `{ p_actor_id?: string; p_listing_id: string }` | `undefined` |
 | `fn_chat_party_profile_snippet` | `{ p_persona: Database["public"]["Enums"]["seller_persona_type"] p_profile_id: string }` | `Json` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
+| `fn_effective_check_in_streak` | `{ p_user_id: string }` | `number` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
 | `fn_issue_reward_from_template` | `{ p_grant_dedup_key?: string p_template_id: string p_user_id: string }` | `string` |
 | `fn_map_merchant_escrow_to_member_status` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] }` | `Database["public"]["Enums"]["member_order_state"]` |
@@ -88,9 +90,11 @@ type UserRole = Enums<"user_role">;
 | `fn_resolve_member_listing_id` | `{ p_listing_ref: string; p_seller_id: string }` | `string` |
 | `fn_reward_template_has_stock` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] }` | `boolean` |
 | `fn_reward_template_progress_detail` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `Json` |
+| `fn_sync_broken_check_in_streak` | `{ p_user_id: string }` | `number` |
 | `fn_template_is_eligible` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `{ eligible: boolean grant_dedup_key: string }[]` |
 | `fn_try_auto_grant_rewards` | `{ p_user_id: string };` | `Json` |
 | `fn_try_reveal_order_reviews` | `{ p_order_id: string; p_order_kind: string }` | `boolean` |
+| `generate_merchant_shop_handle` | `never;` | `string` |
 | `generate_profile_username` | `never;` | `string` |
 | `get_chat_room_thread` | `{ p_room_id: string };` | `Json } | { Args: { p_before_created_at?: string p_limit?: number p_room_id: string } Returns: Json` |
 | `get_gamification_stats_for_me` | `never;` | `Json` |
@@ -130,6 +134,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_send_chat_message` | `{ p_content: string; p_room_id: string; p_sender_id: string }` | `Json` |
 | `rpc_submit_inbound_tracking` | `{ p_order_id: string; p_seller_id: string; p_tracking_no: string }` | `Json` |
+| `rpc_submit_merchant_kyc_application` | `{ p_application: Json; p_documents: Json; p_user_id: string }` | `Json` |
 | `rpc_submit_outbound_tracking` | `{ p_order_id: string; p_tracking_no: string }` | `Json` |
 | `rpc_submit_transaction_review` | `{ p_comment?: string p_order_id: string p_rating: number p_reviewee_id: string p_user_id?: string }` | `Json` |
 | `run_auto_grant_rewards_for_me` | `never;` | `Json` |
@@ -137,7 +142,7 @@ type UserRole = Enums<"user_role">;
 | `search_marketplace_products_browse` | `{ p_page?: number; p_page_size?: number; p_sort?: string }` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_seller_listings` | `{ p_grade_filters?: Json p_name_query?: string p_page?: number p_page_size?: number p_price_max?: n…` | `{ card_number: string created_at: string display_id: string grading_company: string grading_score: …` |
 | `search_merchant_trading_orders` | `{ p_include_auth_in_progress?: boolean p_include_payment_pending?: boolean p_page?: number p_page_s…` | `{ buyer_avatar_path: string buyer_display_name: string buyer_id: string buyer_username: string card…` |
-| `search_product_catalog` | `{ p_item_type?: string; p_query: string }` | `{ card_number: string display_id: string id: string image_url: string name_en: string name_ja: stri…` |
+| `search_product_catalog` | `{ p_item_type?: string; p_query: string }` | `{ card_number: string display_id: string id: string image_url: string jan_code: string name_en: str…` |
 | `search_public_profile_reviews` | `{ p_page?: number p_page_size?: number p_persona: Database["public"]["Enums"]["review_persona"] p_p…` | `{ aggregate_rating: number comment: string created_at: string is_merchant_tx: boolean page: number …` |
 | `search_user_trading_orders` | `{ p_page?: number p_page_size?: number p_persona?: string p_search_query?: string p_tab_status?: st…` | `{ buyer_id: string card_number: string catalog_image_url: string count_needs_action: number count_p…` |
 
@@ -214,6 +219,58 @@ type UserRole = Enums<"user_role">;
 
 ---
 
+### `kyc_applications`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `bank_account_holder` | `string | null` | Yes |
+| `bank_account_masked` | `string | null` | Yes |
+| `bank_account_number` | `string | null` | Yes |
+| `bank_code` | `string | null` | Yes |
+| `bank_name` | `string | null` | Yes |
+| `br_number` | `string` | No |
+| `branch_code` | `string | null` | Yes |
+| `company_address` | `Json` | No |
+| `company_name_en` | `string` | No |
+| `company_name_zh` | `string | null` | Yes |
+| `company_phone` | `string` | No |
+| `created_at` | `string` | No |
+| `id` | `string` | No |
+| `reject_reason` | `string | null` | Yes |
+| `rep_address` | `Json` | No |
+| `rep_dob` | `string` | No |
+| `rep_email` | `string` | No |
+| `rep_hkid` | `string` | No |
+| `rep_name_en` | `string` | No |
+| `rep_name_zh` | `string | null` | Yes |
+| `rep_phone` | `string` | No |
+| `rep_title` | `string` | No |
+| `reviewed_at` | `string | null` | Yes |
+| `reviewed_by` | `string | null` | Yes |
+| `status` | `kyc_application_status` | No |
+| `updated_at` | `string` | No |
+| `user_id` | `string` | No |
+
+**Foreign keys:** `reviewed_by` → `profiles`
+
+---
+
+### `kyc_documents`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `application_id` | `string` | No |
+| `content_type` | `string` | No |
+| `created_at` | `string` | No |
+| `document_type` | `string` | No |
+| `id` | `string` | No |
+| `storage_path` | `string` | No |
+| `stripe_file_id` | `string | null` | Yes |
+
+**Foreign keys:** `application_id` → `kyc_applications`
+
+---
+
 ### `kyc_records`
 
 *Domain:* Merchant KYC
@@ -224,6 +281,8 @@ type UserRole = Enums<"user_role">;
 | `kyc_status` | `kyc_state | null` | Yes |
 | `merchant_id` | `string` | No |
 | `stripe_account_id` | `string | null` | Yes |
+| `stripe_charges_enabled` | `boolean` | No |
+| `stripe_payouts_enabled` | `boolean` | No |
 | `updated_at` | `string | null` | Yes |
 | `verified_at` | `string | null` | Yes |
 
@@ -657,7 +716,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**25 tables**
+**27 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -665,6 +724,8 @@ type UserRole = Enums<"user_role">;
 | `chat_room_reads` | — |
 | `chat_rooms` | Messaging |
 | `gamification_stats` | Gamification |
+| `kyc_applications` | — |
+| `kyc_documents` | — |
 | `kyc_records` | Merchant KYC |
 | `listing_bookmarks` | Marketplace bookmarks |
 | `listing_engagement_events` | — |

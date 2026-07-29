@@ -220,12 +220,157 @@ export type Database = {
           },
         ]
       }
+      kyc_applications: {
+        Row: {
+          bank_account_holder: string | null
+          bank_account_masked: string | null
+          bank_account_number: string | null
+          bank_code: string | null
+          bank_name: string | null
+          br_number: string
+          branch_code: string | null
+          company_address: Json
+          company_name_en: string
+          company_name_zh: string | null
+          company_phone: string
+          created_at: string
+          id: string
+          reject_reason: string | null
+          rep_address: Json
+          rep_dob: string
+          rep_email: string
+          rep_hkid: string
+          rep_name_en: string
+          rep_name_zh: string | null
+          rep_phone: string
+          rep_title: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["kyc_application_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank_account_holder?: string | null
+          bank_account_masked?: string | null
+          bank_account_number?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
+          br_number: string
+          branch_code?: string | null
+          company_address: Json
+          company_name_en: string
+          company_name_zh?: string | null
+          company_phone: string
+          created_at?: string
+          id?: string
+          reject_reason?: string | null
+          rep_address: Json
+          rep_dob: string
+          rep_email: string
+          rep_hkid: string
+          rep_name_en: string
+          rep_name_zh?: string | null
+          rep_phone: string
+          rep_title: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["kyc_application_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank_account_holder?: string | null
+          bank_account_masked?: string | null
+          bank_account_number?: string | null
+          bank_code?: string | null
+          bank_name?: string | null
+          br_number?: string
+          branch_code?: string | null
+          company_address?: Json
+          company_name_en?: string
+          company_name_zh?: string | null
+          company_phone?: string
+          created_at?: string
+          id?: string
+          reject_reason?: string | null
+          rep_address?: Json
+          rep_dob?: string
+          rep_email?: string
+          rep_hkid?: string
+          rep_name_en?: string
+          rep_name_zh?: string | null
+          rep_phone?: string
+          rep_title?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["kyc_application_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kyc_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kyc_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kyc_documents: {
+        Row: {
+          application_id: string
+          content_type: string
+          created_at: string
+          document_type: string
+          id: string
+          storage_path: string
+          stripe_file_id: string | null
+        }
+        Insert: {
+          application_id: string
+          content_type: string
+          created_at?: string
+          document_type: string
+          id?: string
+          storage_path: string
+          stripe_file_id?: string | null
+        }
+        Update: {
+          application_id?: string
+          content_type?: string
+          created_at?: string
+          document_type?: string
+          id?: string
+          storage_path?: string
+          stripe_file_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kyc_documents_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "kyc_applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kyc_records: {
         Row: {
           created_at: string | null
           kyc_status: Database["public"]["Enums"]["kyc_state"] | null
           merchant_id: string
           stripe_account_id: string | null
+          stripe_charges_enabled: boolean
+          stripe_payouts_enabled: boolean
           updated_at: string | null
           verified_at: string | null
         }
@@ -234,6 +379,8 @@ export type Database = {
           kyc_status?: Database["public"]["Enums"]["kyc_state"] | null
           merchant_id: string
           stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_payouts_enabled?: boolean
           updated_at?: string | null
           verified_at?: string | null
         }
@@ -242,6 +389,8 @@ export type Database = {
           kyc_status?: Database["public"]["Enums"]["kyc_state"] | null
           merchant_id?: string
           stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean
+          stripe_payouts_enabled?: boolean
           updated_at?: string | null
           verified_at?: string | null
         }
@@ -1514,6 +1663,10 @@ export type Database = {
         Args: { p_description?: string; p_mission_id: string; p_points: number }
         Returns: Json
       }
+      fn_effective_check_in_streak: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       fn_grant_points_from_template: {
         Args: { p_template_id: string; p_user_id: string }
         Returns: Json
@@ -1593,6 +1746,10 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_sync_broken_check_in_streak: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       fn_template_is_eligible: {
         Args: {
           p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
@@ -1608,6 +1765,7 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: boolean
       }
+      generate_merchant_shop_handle: { Args: never; Returns: string }
       generate_profile_username: { Args: never; Returns: string }
       get_chat_room_thread:
         | { Args: { p_room_id: string }; Returns: Json }
@@ -1799,6 +1957,10 @@ export type Database = {
       }
       rpc_submit_inbound_tracking: {
         Args: { p_order_id: string; p_seller_id: string; p_tracking_no: string }
+        Returns: Json
+      }
+      rpc_submit_merchant_kyc_application: {
+        Args: { p_application: Json; p_documents: Json; p_user_id: string }
         Returns: Json
       }
       rpc_submit_outbound_tracking: {
@@ -2110,6 +2272,7 @@ export type Database = {
         | "authenticated"
         | "completed_and_transferred"
         | "refunded"
+      kyc_application_status: "pending" | "approved" | "rejected"
       kyc_state: "pending" | "verified" | "rejected"
       listing_engagement_event_type: "view" | "offer"
       listing_status: "active" | "sold" | "inactive"
@@ -2287,6 +2450,7 @@ export const Constants = {
         "completed_and_transferred",
         "refunded",
       ],
+      kyc_application_status: ["pending", "approved", "rejected"],
       kyc_state: ["pending", "verified", "rejected"],
       listing_engagement_event_type: ["view", "offer"],
       listing_status: ["active", "sold", "inactive"],

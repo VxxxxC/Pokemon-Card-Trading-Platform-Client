@@ -133,8 +133,7 @@ export async function login(
   redirect(getRoleDefaultLandingPath(role));
 }
 
-export async function registerMember(
-  _prev: AuthFormErrors | null,
+async function registerMemberAccount(
   formData: FormData,
 ): Promise<AuthFormErrors | null> {
   const fields = parseRegisterFields(formData);
@@ -177,8 +176,32 @@ export async function registerMember(
     return { email: "帳戶已建立，但用戶名稱設定失敗，請聯絡客服" };
   }
 
+  return null;
+}
+
+export async function registerMember(
+  _prev: AuthFormErrors | null,
+  formData: FormData,
+): Promise<AuthFormErrors | null> {
+  const errors = await registerMemberAccount(formData);
+  if (errors) return errors;
+
   const role = await resolveCurrentAuthRole();
   redirect(getRoleDefaultLandingPath(role));
+}
+
+/**
+ * 「登記成為商戶」註冊分流：先建立普通 member 帳戶（role 不變），
+ * 成功後直接帶去商戶 KYC 申請頁提交公司資料及文件。
+ */
+export async function registerMemberForMerchantApply(
+  _prev: AuthFormErrors | null,
+  formData: FormData,
+): Promise<AuthFormErrors | null> {
+  const errors = await registerMemberAccount(formData);
+  if (errors) return errors;
+
+  redirect("/profile/user/merchant-apply");
 }
 
 export async function logout(): Promise<void> {

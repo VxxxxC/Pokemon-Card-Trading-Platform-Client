@@ -10,7 +10,11 @@ import {
 import Link from "next/link";
 // 🟢 核心引入：加裝 useSearchParams 捕捉大盤外部跳轉載荷
 import { useRouter, useSearchParams } from "next/navigation";
-import { login, registerMember } from "@/app/actions/auth";
+import {
+  login,
+  registerMember,
+  registerMemberForMerchantApply,
+} from "@/app/actions/auth";
 import { validateRegisterFields } from "@/lib/auth/validation";
 
 type Tab = "login" | "register";
@@ -231,8 +235,8 @@ export function AuthForm() {
     if (Object.keys(validationErrors).length) return validationErrors;
 
     if (merchantSelected) {
-      setIsMerchantSubmitted(true);
-      return null;
+      // 真實註冊 member 帳戶後直接帶去商戶 KYC 申請頁（/profile/user/merchant-apply）
+      return registerMemberForMerchantApply(prev, formData);
     }
 
     return registerMember(prev, formData);
