@@ -1940,6 +1940,13 @@ export async function completeMemberOrder(
 export async function mockPayMemberAuthOrder(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
+  if (process.env.NODE_ENV === "production") {
+    return {
+      success: false,
+      error: "模擬付款僅供開發環境使用，請使用 Stripe 完成託管付款",
+    };
+  }
+
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
   }

@@ -182,7 +182,19 @@ interface Message {
 
 金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`final_price + 運費(SF 30 / 面交 0) + 鑑定費(150 / 0)`；優惠券未接後端，暫不折扣。資金 100% 收入平台帳戶託管，**無** `application_fee_amount` / `transfer_data`。
 
-### 5.2 規劃中 / 未落地的 REST 介面
+### 5.2 Member 鑑定託管結帳（✅ 已落地，Payment Milestone 1.5）
+
+`app/actions/member-auth-checkout.ts` — 僅 `member_orders.use_authentication=true`；P2P 無鑑定不接 Stripe。詳見 [member-auth-checkout/backend.md](./follow-up/member-auth-checkout/backend.md)。
+
+| 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
+|------|------|--------------|----------|------|
+| `GET` | `[Server Action] loadMemberAuthCheckoutOrder` | `(orderIdOrNumber)` | `MemberAuthCheckoutOrder` | 訂單買賣雙方 |
+| `POST` | `[Server Action] createMemberAuthPaymentIntent` | `(orderIdOrNumber)` | `{ clientSecret, publishableKey, itemSubtotal, authFee, totalAmount }` | 訂單買家 |
+| `GET` | `[Server Action] getMemberAuthPaymentStatus` | `(orderIdOrNumber)` | `{ escrowStatus, paymentConfirmedAt, totalAmount }` | 訂單參與方 |
+
+金額：`final_price + HK$150` 鑑定費（`rpc_prepare_member_auth_order_payment`）。付款 UI 在 `/profile/user/orderDetail/[id]`；webhook `order_kind=member_auth` → `payment` → `custody`。
+
+### 5.3 規劃中 / 未落地的 REST 介面
 
 | 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
 |------|------|--------------|----------|------|

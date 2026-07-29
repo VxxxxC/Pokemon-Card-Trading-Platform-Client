@@ -119,6 +119,7 @@ type UserRole = Enums<"user_role">;
 | `resolve_listing_market_price_company` | `{ p_grading_company: string }` | `string` |
 | `resolve_listing_market_price_score` | `{ p_grading_company: string; p_grading_score: string }` | `string` |
 | `rpc_accept_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
+| `rpc_attach_member_auth_order_payment_intent` | `{ p_order_id: string; p_payment_intent_id: string }` | `Json` |
 | `rpc_attach_merchant_order_payment_intent` | `{ p_order_id: string; p_payment_intent_id: string }` | `Json` |
 | `rpc_buy_now_listing` | `{ p_buyer_id: string; p_listing_id: string; p_use_auth?: boolean }` | `Json` |
 | `rpc_buy_now_merchant_listing` | `{ p_buyer_id: string; p_listing_id: string; p_use_auth?: boolean }` | `Json` |
@@ -135,9 +136,11 @@ type UserRole = Enums<"user_role">;
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_mark_chat_room_read` | `{ p_read_at?: string; p_room_id: string }` | `Json` |
+| `rpc_mark_member_auth_order_paid` | `{ p_amounts?: Json p_order_id: string p_payment_intent_id: string }` | `Json` |
 | `rpc_mark_merchant_order_paid` | `{ p_amounts?: Json p_order_id: string p_payment_intent_id: string }` | `Json` |
 | `rpc_mock_pay_member_auth_order` | `{ p_buyer_id: string p_mock_session_id?: string p_order_id: string }` | `Json` |
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
+| `rpc_prepare_member_auth_order_payment` | `{ p_order_id: string }` | `Json` |
 | `rpc_prepare_merchant_order_payment` | `{ p_order_id: string p_shipping_method: string p_use_auth?: boolean }` | `Json` |
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_send_chat_message` | `{ p_content: string; p_room_id: string; p_sender_id: string }` | `Json` |
@@ -372,6 +375,7 @@ type UserRole = Enums<"user_role">;
 
 | Column | Type | Nullable |
 |--------|------|----------|
+| `auth_fee` | `number` | No |
 | `auth_result` | `string | null` | Yes |
 | `buyer_id` | `string` | No |
 | `created_at` | `string | null` | Yes |
@@ -381,6 +385,7 @@ type UserRole = Enums<"user_role">;
 | `final_price` | `number` | No |
 | `id` | `string` | No |
 | `inbound_tracking_no` | `string | null` | Yes |
+| `item_subtotal` | `number | null` | Yes |
 | `listing_id` | `string` | No |
 | `logistics_proof_path` | `string | null` | Yes |
 | `meetup_details` | `Json | null` | Yes |
@@ -391,6 +396,8 @@ type UserRole = Enums<"user_role">;
 | `platform_received_at` | `string | null` | Yes |
 | `seller_id` | `string` | No |
 | `status` | `member_order_state | null` | Yes |
+| `stripe_payment_intent_id` | `string | null` | Yes |
+| `total_amount` | `number | null` | Yes |
 | `updated_at` | `string | null` | Yes |
 | `use_authentication` | `boolean` | No |
 

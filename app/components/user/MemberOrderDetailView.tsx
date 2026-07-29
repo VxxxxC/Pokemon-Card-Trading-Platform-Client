@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/orders";
 import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDevPanel";
 import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
+import { MemberAuthStripePaymentPanel } from "@/app/components/transactions/MemberAuthStripePaymentPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
@@ -61,6 +62,10 @@ function dispatchPortfolioRefresh(): void {
   window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
   window.dispatchEvent(new CustomEvent("collection-should-refresh"));
 }
+
+const stripePaymentAvailable =
+  typeof process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.trim().length > 0;
 
 export function MemberOrderDetailView({
   order,
@@ -387,13 +392,23 @@ export function MemberOrderDetailView({
           />
 
           {order.escrowStatus === "payment" && order.canPay ? (
-            <MemberAuthMockPaymentPanel
-              orderId={order.id}
-              finalPrice={order.finalPrice}
-              paymentAmount={order.paymentAmount}
-              disabled={isActionLoading}
-              onSuccess={onRefresh}
-            />
+            stripePaymentAvailable ? (
+              <MemberAuthStripePaymentPanel
+                orderId={order.id}
+                finalPrice={order.finalPrice}
+                paymentAmount={order.paymentAmount}
+                disabled={isActionLoading}
+                onSuccess={onRefresh}
+              />
+            ) : (
+              <MemberAuthMockPaymentPanel
+                orderId={order.id}
+                finalPrice={order.finalPrice}
+                paymentAmount={order.paymentAmount}
+                disabled={isActionLoading}
+                onSuccess={onRefresh}
+              />
+            )
           ) : null}
 
           {order.escrowStatus === "custody" && isSeller ? (

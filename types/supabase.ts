@@ -594,6 +594,7 @@ export type Database = {
       }
       member_orders: {
         Row: {
+          auth_fee: number
           auth_result: string | null
           buyer_id: string
           created_at: string | null
@@ -605,6 +606,7 @@ export type Database = {
           final_price: number
           id: string
           inbound_tracking_no: string | null
+          item_subtotal: number | null
           listing_id: string
           logistics_proof_path: string | null
           meetup_details: Json | null
@@ -615,10 +617,13 @@ export type Database = {
           platform_received_at: string | null
           seller_id: string
           status: Database["public"]["Enums"]["member_order_state"] | null
+          stripe_payment_intent_id: string | null
+          total_amount: number | null
           updated_at: string | null
           use_authentication: boolean
         }
         Insert: {
+          auth_fee?: number
           auth_result?: string | null
           buyer_id: string
           created_at?: string | null
@@ -630,6 +635,7 @@ export type Database = {
           final_price: number
           id?: string
           inbound_tracking_no?: string | null
+          item_subtotal?: number | null
           listing_id: string
           logistics_proof_path?: string | null
           meetup_details?: Json | null
@@ -640,10 +646,13 @@ export type Database = {
           platform_received_at?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["member_order_state"] | null
+          stripe_payment_intent_id?: string | null
+          total_amount?: number | null
           updated_at?: string | null
           use_authentication?: boolean
         }
         Update: {
+          auth_fee?: number
           auth_result?: string | null
           buyer_id?: string
           created_at?: string | null
@@ -655,6 +664,7 @@ export type Database = {
           final_price?: number
           id?: string
           inbound_tracking_no?: string | null
+          item_subtotal?: number | null
           listing_id?: string
           logistics_proof_path?: string | null
           meetup_details?: Json | null
@@ -665,6 +675,8 @@ export type Database = {
           platform_received_at?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["member_order_state"] | null
+          stripe_payment_intent_id?: string | null
+          total_amount?: number | null
           updated_at?: string | null
           use_authentication?: boolean
         }
@@ -1892,6 +1904,10 @@ export type Database = {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
       }
+      rpc_attach_member_auth_order_payment_intent: {
+        Args: { p_order_id: string; p_payment_intent_id: string }
+        Returns: Json
+      }
       rpc_attach_merchant_order_payment_intent: {
         Args: { p_order_id: string; p_payment_intent_id: string }
         Returns: Json
@@ -1972,6 +1988,14 @@ export type Database = {
         Args: { p_read_at?: string; p_room_id: string }
         Returns: Json
       }
+      rpc_mark_member_auth_order_paid: {
+        Args: {
+          p_amounts?: Json
+          p_order_id: string
+          p_payment_intent_id: string
+        }
+        Returns: Json
+      }
       rpc_mark_merchant_order_paid: {
         Args: {
           p_amounts?: Json
@@ -1995,6 +2019,10 @@ export type Database = {
           p_new_price: number
           p_offer_id: string
         }
+        Returns: Json
+      }
+      rpc_prepare_member_auth_order_payment: {
+        Args: { p_order_id: string }
         Returns: Json
       }
       rpc_prepare_merchant_order_payment: {

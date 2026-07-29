@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Stripe webhook：
  * - `account.updated`：同步 connected account 的 charges_enabled / payouts_enabled 返
  *   kyc_records（fail-closed：兩者皆 true 先算 Stripe 就緒，可成為 transfer 收款方）。
- * - `payment_intent.succeeded`：B2C 商戶訂單全額入平台託管，pending_payment → payment_held。
+ * - `payment_intent.succeeded`：B2C 商戶訂單全額入平台託管，pending_payment → payment_held；
+ *   鑑定託管 member 訂單 payment → custody。
  * - `payment_intent.payment_failed`：只留痕，訂單維持 pending_payment 讓買家重試。
  *
  * 需要 env：STRIPE_WEBHOOK_SECRET（Stripe dashboard webhook endpoint 的 signing secret）。
@@ -18,6 +19,14 @@ type AdminSupabaseClient = ReturnType<typeof createAdminClient>;
 type MarkPaidRpcClient = {
   rpc(
     fn: "rpc_mark_merchant_order_paid",
+    args: {
+      p_order_id: string;
+      p_payment_intent_id: string;
+      p_amounts: Record<string, string>;
+    },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "rpc_mark_member_auth_order_paid",
     args: {
       p_order_id: string;
       p_payment_intent_id: string;
@@ -47,6 +56,30 @@ function readMerchantOrderMetadata(
     "total_amount",
     "shipping_method",
   ] as const) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      amounts[key] = value.trim();
+    }
+  }
+
+  return { orderId, amounts };
+}
+
+function readMemberAuthOrderMetadata(
+  paymentIntent: Stripe.PaymentIntent,
+): { orderId: string; amounts: Record<string, string> } | null {
+  const metadata = paymentIntent.metadata ?? {};
+  if (metadata.order_kind !== "member_auth") {
+    return null;
+  }
+
+  const orderId = metadata.order_id?.trim();
+  if (!orderId) {
+    return null;
+  }
+
+  const amounts: Record<string, string> = {};
+  for (const key of ["item_subtotal", "auth_fee", "total_amount"] as const) {
     const value = metadata[key];
     if (typeof value === "string" && value.trim()) {
       amounts[key] = value.trim();
@@ -107,6 +140,53 @@ async function handleMerchantPaymentSucceeded(
   return { ok: true };
 }
 
+async function handleMemberAuthPaymentSucceeded(
+  admin: AdminSupabaseClient,
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const parsed = readMemberAuthOrderMetadata(paymentIntent);
+  if (!parsed) {
+    return { ok: true };
+  }
+
+  const { error } = await (admin as unknown as MarkPaidRpcClient).rpc(
+    "rpc_mark_member_auth_order_paid",
+    {
+      p_order_id: parsed.orderId,
+      p_payment_intent_id: paymentIntent.id,
+      p_amounts: parsed.amounts,
+    },
+  );
+
+  if (error) {
+    console.error(
+      "[stripe/webhook] rpc_mark_member_auth_order_paid",
+      parsed.orderId,
+      error.message,
+    );
+    return { ok: false, error: "member auth order settlement failed" };
+  }
+
+  return { ok: true };
+}
+
+async function handlePaymentIntentSucceeded(
+  admin: AdminSupabaseClient,
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const orderKind = paymentIntent.metadata?.order_kind?.trim();
+
+  if (orderKind === "member_auth") {
+    return handleMemberAuthPaymentSucceeded(admin, paymentIntent);
+  }
+
+  if (orderKind === "merchant") {
+    return handleMerchantPaymentSucceeded(admin, paymentIntent);
+  }
+
+  return { ok: true };
+}
+
 export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
@@ -154,7 +234,7 @@ export async function POST(request: Request) {
       }
 
       case "payment_intent.succeeded": {
-        const result = await handleMerchantPaymentSucceeded(
+        const result = await handlePaymentIntentSucceeded(
           createAdminClient(),
           event.data.object as Stripe.PaymentIntent,
         );
