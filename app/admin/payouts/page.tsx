@@ -543,6 +543,13 @@ export default function AdminPayoutsPage() {
     };
   }, [withdrawals]);
 
+  // ── FPS Pending Total Amount (pending + processing) ────────────────────────
+  const fpsPendingTotalAmount = useMemo(() => {
+    return withdrawals
+      .filter((w) => w.status === "pending" || w.status === "processing")
+      .reduce((sum, w) => sum + w.amount, 0);
+  }, [withdrawals]);
+
   // ── FPS Data Pipeline: filter chip → search → sort → paginate ──────────────
   const filteredWithdrawals = useMemo(() => {
     let list = withdrawals;
@@ -815,20 +822,28 @@ export default function AdminPayoutsPage() {
         </p>
       </div>
 
-      {/* ── Stripe 平台帳戶餘額 ─────────────────────────────────────────────── */}
+      {/* ── 頂部餘額 / FPS 提現總覽卡片 ────────────────────────────────────────── */}
       <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 relative overflow-hidden">
         <div className="flex items-start sm:items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="font-sans font-bold text-[16px] text-text-primary">
-              Stripe 平台帳戶餘額
+              {activeTab === "fps" ? "FPS 提現總覽" : "Stripe 平台帳戶餘額"}
             </h2>
             <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-              平台 Stripe Connect 主帳戶即時資金狀況
+              {activeTab === "fps"
+                ? "待處理與處理中提現之總額"
+                : "平台 Stripe Connect 主帳戶即時資金狀況"}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => toast.success("已重新整理 Stripe 帳戶餘額")}
+            onClick={() =>
+              toast.success(
+                activeTab === "fps"
+                  ? "已重新整理 FPS 提現資料"
+                  : "已重新整理 Stripe 帳戶餘額",
+              )
+            }
             className="min-h-[44px] h-9 px-3 border border-brand/30 text-brand font-sans text-[12px] rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-all flex items-center gap-1.5 shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -836,35 +851,66 @@ export default function AdminPayoutsPage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-              可用餘額 (Available)
-            </span>
-            <span className="font-mono font-bold text-[24px] text-brand tracking-tight leading-none block mt-1">
-              HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
-            </span>
+        {activeTab === "fps" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                待處理筆數
+              </span>
+              <span className="font-mono font-bold text-[24px] text-warning tracking-tight leading-none block mt-1">
+                {withdrawals.filter((w) => w.status === "pending").length}
+              </span>
+            </div>
+            <div>
+              <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                待處理/處理中提現總額 (Pending FPS Payouts)
+              </span>
+              <span className="font-mono font-bold text-[24px] text-brand tracking-tight leading-none block mt-1">
+                HK$ {fpsPendingTotalAmount.toLocaleString("zh-TW")}
+              </span>
+            </div>
+            <div>
+              <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                處理中筆數
+              </span>
+              <span className="font-mono font-bold text-[24px] text-warning tracking-tight leading-none block mt-1">
+                {withdrawals.filter((w) => w.status === "processing").length}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-              待結算 (Pending)
-            </span>
-            <span className="font-mono font-bold text-[24px] text-text-primary tracking-tight leading-none block mt-1">
-              HK$ {stripePlatformBalance.pending.toLocaleString("zh-TW")}
-            </span>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                可用餘額 (Available)
+              </span>
+              <span className="font-mono font-bold text-[24px] text-brand tracking-tight leading-none block mt-1">
+                HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
+              </span>
+            </div>
+            <div>
+              <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                待結算 (Pending)
+              </span>
+              <span className="font-mono font-bold text-[24px] text-text-primary tracking-tight leading-none block mt-1">
+                HK$ {stripePlatformBalance.pending.toLocaleString("zh-TW")}
+              </span>
+            </div>
+            <div>
+              <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+                今日入賬 (Today In)
+              </span>
+              <span className="font-mono font-bold text-[24px] text-success tracking-tight leading-none block mt-1">
+                HK$ {stripePlatformBalance.todayIn.toLocaleString("zh-TW")}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-              今日入賬 (Today In)
-            </span>
-            <span className="font-mono font-bold text-[24px] text-success tracking-tight leading-none block mt-1">
-              HK$ {stripePlatformBalance.todayIn.toLocaleString("zh-TW")}
-            </span>
-          </div>
-        </div>
+        )}
 
         <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] font-mono text-[11px] text-text-secondary">
-          最後同步：{stripePlatformBalance.lastSyncedAt}
+          {activeTab === "fps"
+            ? "即時運算"
+            : `最後同步：${stripePlatformBalance.lastSyncedAt}`}
         </div>
       </div>
 
