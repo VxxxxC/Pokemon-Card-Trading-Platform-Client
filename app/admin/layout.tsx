@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/app/components/admin/AdminSidebar";
+import { requireAdminRole } from "@/app/actions/admin-settings";
 
 export const metadata: Metadata = { title: "後台管理 — HKCardVault" };
 
@@ -15,7 +16,8 @@ export default async function AdminLayout({
 }: {
   children: ReactNode;
 }) {
-  // 預設收合；用戶切換後以 cookie 記憶側欄開合狀態（跨頁面 / 重載持久化）
+  await requireAdminRole();
+
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
