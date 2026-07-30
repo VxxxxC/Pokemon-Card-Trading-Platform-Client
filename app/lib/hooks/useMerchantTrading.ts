@@ -31,6 +31,7 @@ type UseMerchantTradingOptions = {
   searchQuery?: string;
   includePaymentPending?: boolean;
   includeAuthInProgress?: boolean;
+  onlyRaw?: boolean;
   initialData?: MerchantTradingInitialData;
 };
 
@@ -59,8 +60,9 @@ function buildListKey(
   pageSize: number,
   includePaymentPending: boolean,
   includeAuthInProgress: boolean,
+  onlyRaw: boolean,
 ): string {
-  return `${tabStatus}:${query}:${pageSize}:${includePaymentPending}:${includeAuthInProgress}`;
+  return `${tabStatus}:${query}:${pageSize}:${includePaymentPending}:${includeAuthInProgress}:${onlyRaw}`;
 }
 
 export function useMerchantTrading(
@@ -70,6 +72,7 @@ export function useMerchantTrading(
   const searchQuery = options.searchQuery ?? "";
   const includePaymentPending = options.includePaymentPending ?? true;
   const includeAuthInProgress = options.includeAuthInProgress ?? true;
+  const onlyRaw = options.onlyRaw ?? false;
   const hasInitialBootstrap = hasMerchantTradingInitialBootstrap(
     options.initialData,
   );
@@ -103,6 +106,7 @@ export function useMerchantTrading(
       options.initialData?.meta?.pageSize ?? TRADING_DEFAULT_PAGE_SIZE,
       includePaymentPending,
       includeAuthInProgress,
+      false,
     ),
   );
   const initialPageRef = useRef(options.initialData?.meta?.page ?? 1);
@@ -115,6 +119,7 @@ export function useMerchantTrading(
     pageSize,
     includePaymentPending,
     includeAuthInProgress,
+    onlyRaw,
   );
   const isInitialListKey = listKey === initialListKey;
 
@@ -137,6 +142,7 @@ export function useMerchantTrading(
     pageSize,
     includePaymentPending,
     includeAuthInProgress,
+    onlyRaw,
   ]);
 
   useEffect(() => {
@@ -194,6 +200,7 @@ export function useMerchantTrading(
         pageSize,
         includePaymentPending,
         includeAuthInProgress,
+        onlyRaw,
       });
 
       if (cancelled) return;
@@ -229,6 +236,7 @@ export function useMerchantTrading(
     pageSize,
     includePaymentPending,
     includeAuthInProgress,
+    onlyRaw,
     refreshKey,
     hasInitialBootstrap,
     isInitialListKey,

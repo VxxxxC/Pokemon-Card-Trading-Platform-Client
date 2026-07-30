@@ -28,42 +28,6 @@ const STATUS_TAB_LABELS: TabStatusFilter[] = [
   "cancelled",
 ];
 
-function isRawMerchantOrder(order: Record<string, unknown>): boolean {
-  if (
-    order.cardType === "RAW" ||
-    order.isRaw === true ||
-    order.isRawCard === true
-  ) {
-    return true;
-  }
-  const grade = String(order.grade ?? "").toUpperCase().trim();
-  if (
-    grade.includes("RAW") ||
-    grade.includes("裸卡") ||
-    grade === "" ||
-    grade === "NONE"
-  ) {
-    return true;
-  }
-  const company = String(
-    order.gradingCompany ??
-      (order.listing as Record<string, unknown> | undefined)?.gradingCompany ??
-      "",
-  )
-    .toUpperCase()
-    .trim();
-  if (
-    !company ||
-    company === "RAW" ||
-    company === "RAW CARD" ||
-    company === "NONE" ||
-    company === "裸卡"
-  ) {
-    return true;
-  }
-  return false;
-}
-
 export function MerchantTradingClient({
   initialData,
   initialTabStatus,
@@ -86,6 +50,7 @@ export function MerchantTradingClient({
   } = useMerchantTrading({
     tabStatus,
     searchQuery,
+    onlyRaw: onlyRawChecked,
     includePaymentPending: subPaymentChecked,
     includeAuthInProgress: subGradingChecked,
     initialData,
@@ -100,17 +65,8 @@ export function MerchantTradingClient({
   }, [searchParams]);
 
   const saleOrders = useMemo(() => {
-    const mapped = orders.map(mapMerchantTradingOrderToSaleOrder);
-    if (!onlyRawChecked) return mapped;
-    return mapped.filter((saleOrder, idx) => {
-      const rawOrder = orders[idx];
-      return (
-        isRawMerchantOrder(saleOrder as unknown as Record<string, unknown>) ||
-        (rawOrder &&
-          isRawMerchantOrder(rawOrder as unknown as Record<string, unknown>))
-      );
-    });
-  }, [orders, onlyRawChecked]);
+    return orders.map(mapMerchantTradingOrderToSaleOrder);
+  }, [orders]);
 
   const needsAction = filterCounts.needsAction;
   const displayError = bootstrapError ?? fetchError;

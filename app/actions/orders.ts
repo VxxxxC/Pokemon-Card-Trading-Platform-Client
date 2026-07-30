@@ -176,12 +176,124 @@ async function loadReviewedMerchantOrderIds(
   return new Set(data ?? []);
 }
 
-function paginateMergedOrders(
+function isRawGradingCompany(company: string): boolean {
+  const normalized = (company ?? "").toUpperCase().trim();
+  return (
+    !normalized ||
+    normalized === "RAW" ||
+    normalized === "RAW CARD" ||
+    normalized === "NONE" ||
+    normalized === "裸卡"
+  );
+}
+
+function isMemberOrderOpen(order: UserTradingOrder): boolean {
+  if (order.useAuthentication) {
+    return (
+      order.status === "pending" &&
+      order.escrowStatus !== null &&
+      order.escrowStatus !== "released" &&
+      order.escrowStatus !== "cancelled"
+    );
+  }
+  return order.status === "pending" || order.status === "meetup_arranged";
+}
+
+function isMerchantOrderOpen(order: MerchantTradingOrder): boolean {
+  return (
+    order.escrowStatus === "payment_held" ||
+    order.escrowStatus === "authenticating" ||
+    order.escrowStatus === "authenticated"
+  );
+}
+
+function applyMemberTabFilter(
   orders: UserTradingOrder[],
+  tabStatus: "all" | "pending" | "completed" | "cancelled",
+): UserTradingOrder[] {
+  if (tabStatus === "all") return orders;
+  if (tabStatus === "pending") return orders.filter(isMemberOrderOpen);
+  if (tabStatus === "completed") return orders.filter((o) => o.status === "completed");
+  if (tabStatus === "cancelled") return orders.filter((o) => o.status === "cancelled");
+  return orders;
+}
+
+function applyMerchantTabFilter(
+  orders: MerchantTradingOrder[],
+  tabStatus: "all" | "pending" | "completed" | "cancelled",
+): MerchantTradingOrder[] {
+  if (tabStatus === "all") return orders;
+  if (tabStatus === "pending") return orders.filter(isMerchantOrderOpen);
+  if (tabStatus === "completed")
+    return orders.filter((o) => o.escrowStatus === "completed_and_transferred");
+  if (tabStatus === "cancelled")
+    return orders.filter((o) => o.escrowStatus === "refunded");
+  return orders;
+}
+
+function recalculateUserFilterCounts(
+  memberOrders: UserTradingOrder[],
+  merchantBuyCount: number,
+  persona: "all" | "buy" | "sell",
+): TradingOrdersFilterCounts {
+  const sellCount = memberOrders.filter((o) => o.persona === "sell").length;
+  const buyMemberCount = memberOrders.filter((o) => o.persona === "buy").length;
+  const totalBuy = buyMemberCount + merchantBuyCount;
+
+  const relevantMember =
+    persona === "sell"
+      ? memberOrders.filter((o) => o.persona === "sell")
+      : persona === "buy"
+        ? memberOrders.filter((o) => o.persona === "buy")
+        : memberOrders;
+
+  return {
+    persona: {
+      all: sellCount + totalBuy,
+      buy: totalBuy,
+      sell: sellCount,
+    },
+    status: {
+      all: relevantMember.length,
+      pending: relevantMember.filter(isMemberOrderOpen).length,
+      completed: relevantMember.filter((o) => o.status === "completed").length,
+      cancelled: relevantMember.filter((o) => o.status === "cancelled").length,
+    },
+    needsAction: memberOrders.filter(isMemberOrderOpen).length,
+  };
+}
+
+function recalculateMerchantFilterCounts(
+  orders: MerchantTradingOrder[],
+): MerchantTradingFilterCounts {
+  return {
+    status: {
+      all: orders.length,
+      pending: orders.filter(isMerchantOrderOpen).length,
+      completed: orders.filter(
+        (o) => o.escrowStatus === "completed_and_transferred",
+      ).length,
+      cancelled: orders.filter((o) => o.escrowStatus === "refunded").length,
+    },
+    needsAction: orders.filter((o) => o.escrowStatus === "payment_held").length,
+    pendingSub: {
+      payment: orders.filter((o) => o.escrowStatus === "payment_held").length,
+      authInProgress: orders.filter(
+        (o) =>
+          (o.requiresAuthentication ?? false) &&
+          (o.escrowStatus === "authenticating" ||
+            o.escrowStatus === "authenticated"),
+      ).length,
+    },
+  };
+}
+
+function paginateMergedOrders<T>(
+  orders: T[],
   page: number,
   pageSize: number,
 ): {
-  data: UserTradingOrder[];
+  data: T[];
   meta: TradingOrdersPaginationMeta;
 } {
   const total = orders.length;
@@ -266,6 +378,7 @@ export type GetUserTradingOrdersInput = {
   searchQuery?: string;
   page?: number;
   pageSize?: number;
+  onlyRaw?: boolean;
 };
 
 export type UserTradingOrderCounterparty = {
@@ -623,6 +736,214 @@ export async function searchUserTradingOrders(
       return { success: false, error: "請登入以查閱訂單" };
     }
 
+    if (input.persona === "sell" && input.onlyRaw) {
+      // Fetch all sell orders across pages
+      const allMemberOrders: UserTradingOrder[] = [];
+      let fetchPage = 1;
+      const MAX_FETCH_PAGES = 100;
+
+      while (fetchPage <= MAX_FETCH_PAGES) {
+        const loopArgs: SearchUserTradingOrdersRpcArgs = {
+          p_persona: "sell",
+          p_tab_status: "all",
+          p_search_query: input.searchQuery?.trim() || undefined,
+          p_page: fetchPage,
+          p_page_size: 50,
+        };
+
+        const { data: loopData, error: loopError } = await (
+          supabase as unknown as {
+            rpc: (
+              fn: "search_user_trading_orders",
+              args: SearchUserTradingOrdersRpcArgs,
+            ) => Promise<{
+              data: SearchUserTradingOrdersRpcRow[] | null;
+              error: { message: string } | null;
+            }>;
+          }
+        ).rpc("search_user_trading_orders", loopArgs);
+
+        if (loopError) {
+          console.error("[searchUserTradingOrders] onlyRaw loop", loopError.message);
+          return { success: false, error: "無法載入訂單" };
+        }
+
+        const loopRows = (loopData ?? []) as SearchUserTradingOrdersRpcRow[];
+        if (loopRows.length === 0) break;
+
+        const mapped = (
+          await Promise.all(
+            loopRows.map((row) => mapRpcRowForUser(supabase, user.id, row)),
+          )
+        ).filter((o): o is UserTradingOrder => o !== null);
+
+        allMemberOrders.push(...mapped);
+
+        const loopMeta = toPaginationMeta(loopRows[0], fetchPage, 50);
+        if (fetchPage >= loopMeta.totalPages) break;
+        fetchPage++;
+      }
+
+      if (fetchPage > MAX_FETCH_PAGES) {
+        console.warn(
+          "[searchUserTradingOrders] onlyRaw fetch limit reached",
+          { fetched: allMemberOrders.length, maxPages: MAX_FETCH_PAGES },
+        );
+      }
+
+      // Filter for RAW
+      const rawOrders = allMemberOrders.filter((o) =>
+        isRawGradingCompany(o.listing.gradingCompany),
+      );
+
+      // Recalculate filter counts (across all tabs)
+      const filters = recalculateUserFilterCounts(rawOrders, 0, "sell");
+
+      // Apply tab filter
+      const tabFiltered = applyMemberTabFilter(rawOrders, input.tabStatus);
+
+      // Paginate
+      const paginated = paginateMergedOrders(tabFiltered, page, pageSize);
+
+      if (isTradingPerfLogEnabled()) {
+        tradingPerfLog(
+          `onlyRaw sell fetched=${allMemberOrders.length} raw=${rawOrders.length} rpcMs=${Math.round(tradingPerfNow() - totalStart)}`,
+        );
+      }
+
+      return {
+        success: true,
+        data: paginated.data,
+        meta: paginated.meta,
+        filters,
+      };
+    }
+
+    if (input.onlyRaw) {
+      // Fetch all member orders across pages
+      const allMemberOrders: UserTradingOrder[] = [];
+      let fetchPage = 1;
+      const MAX_FETCH_PAGES = 100;
+
+      while (fetchPage <= MAX_FETCH_PAGES) {
+        const loopArgs: SearchUserTradingOrdersRpcArgs = {
+          p_persona: input.persona,
+          p_tab_status: "all",
+          p_search_query: input.searchQuery?.trim() || undefined,
+          p_page: fetchPage,
+          p_page_size: 50,
+        };
+
+        const { data: loopData, error: loopError } = await (
+          supabase as unknown as {
+            rpc: (
+              fn: "search_user_trading_orders",
+              args: SearchUserTradingOrdersRpcArgs,
+            ) => Promise<{
+              data: SearchUserTradingOrdersRpcRow[] | null;
+              error: { message: string } | null;
+            }>;
+          }
+        ).rpc("search_user_trading_orders", loopArgs);
+
+        if (loopError) {
+          console.error("[searchUserTradingOrders] onlyRaw loop", loopError.message);
+          return { success: false, error: "無法載入訂單" };
+        }
+
+        const loopRows = (loopData ?? []) as SearchUserTradingOrdersRpcRow[];
+        if (loopRows.length === 0) break;
+
+        const mapped = (
+          await Promise.all(
+            loopRows.map((row) => mapRpcRowForUser(supabase, user.id, row)),
+          )
+        ).filter((o): o is UserTradingOrder => o !== null);
+
+        allMemberOrders.push(...mapped);
+
+        const loopMeta = toPaginationMeta(loopRows[0], fetchPage, 50);
+        if (fetchPage >= loopMeta.totalPages) break;
+        fetchPage++;
+      }
+
+      if (fetchPage > MAX_FETCH_PAGES) {
+        console.warn(
+          "[searchUserTradingOrders] onlyRaw fetch limit reached",
+          { fetched: allMemberOrders.length, maxPages: MAX_FETCH_PAGES },
+        );
+      }
+
+      // Filter member orders for RAW
+      const rawMemberOrders = allMemberOrders.filter((o) =>
+        isRawGradingCompany(o.listing.gradingCompany),
+      );
+
+      // Fetch and filter merchant buyer orders
+      const merchantBuyerOrders = await loadBuyerMerchantTradingOrders(
+        supabase,
+        user.id,
+        new Set(),
+      );
+      const reviewedMerchantIds = await loadReviewedMerchantOrderIds(
+        supabase,
+        merchantBuyerOrders.map((order) => order.id),
+      );
+      const merchantWithReview = merchantBuyerOrders.map((order) => ({
+        ...order,
+        hasReviewedByMe: reviewedMerchantIds.has(order.id),
+      }));
+
+      const rawMerchantOrders = merchantWithReview.filter(
+        (order) =>
+          merchantBuyerOrderMatchesSearch(order, input.searchQuery) &&
+          isRawGradingCompany(order.listing.gradingCompany),
+      );
+
+      // Merge
+      const personaFilteredMember =
+        input.persona === "buy"
+          ? rawMemberOrders.filter((o) => o.persona === "buy")
+          : rawMemberOrders;
+
+      const combined = [...personaFilteredMember, ...rawMerchantOrders].sort(
+        (left, right) => {
+          const leftTime = new Date(left.createdAt ?? 0).getTime();
+          const rightTime = new Date(right.createdAt ?? 0).getTime();
+          return rightTime - leftTime;
+        },
+      );
+
+      // Recalculate filter counts
+      const merchantBuyRawCount = rawMerchantOrders.filter(
+        (o) => o.persona === "buy",
+      ).length;
+      const filters = recalculateUserFilterCounts(
+        personaFilteredMember,
+        merchantBuyRawCount,
+        input.persona,
+      );
+
+      // Apply tab filter
+      const tabFiltered = applyMemberTabFilter(combined, input.tabStatus);
+
+      // Paginate
+      const paginated = paginateMergedOrders(tabFiltered, page, pageSize);
+
+      if (isTradingPerfLogEnabled()) {
+        tradingPerfLog(
+          `onlyRaw buy/all member=${allMemberOrders.length} rawMember=${rawMemberOrders.length} merchantRaw=${rawMerchantOrders.length} rpcMs=${Math.round(tradingPerfNow() - totalStart)}`,
+        );
+      }
+
+      return {
+        success: true,
+        data: paginated.data,
+        meta: paginated.meta,
+        filters,
+      };
+    }
+
     const rpcArgs: SearchUserTradingOrdersRpcArgs = {
       p_persona: input.persona,
       p_tab_status: input.tabStatus,
@@ -793,6 +1114,7 @@ export type GetMerchantTradingOrdersInput = {
   pageSize?: number;
   includePaymentPending?: boolean;
   includeAuthInProgress?: boolean;
+  onlyRaw?: boolean;
 };
 
 export type MerchantTradingBuyer = {
@@ -978,6 +1300,84 @@ export async function searchMerchantTradingOrders(
 
     if (!user) {
       return { success: false, error: "請登入以查閱訂單" };
+    }
+
+    if (input.onlyRaw) {
+      const allOrders: MerchantTradingOrder[] = [];
+      let fetchPage = 1;
+      const MAX_FETCH_PAGES = 100;
+
+      while (fetchPage <= MAX_FETCH_PAGES) {
+        const loopArgs: SearchMerchantTradingOrdersRpcArgs = {
+          p_tab_status: "all",
+          p_search_query: input.searchQuery?.trim() || undefined,
+          p_page: fetchPage,
+          p_page_size: 50,
+          p_include_payment_pending: input.includePaymentPending ?? true,
+          p_include_auth_in_progress: input.includeAuthInProgress ?? true,
+        };
+
+        const { data: loopData, error: loopError } = await (
+          supabase as unknown as {
+            rpc: (
+              fn: "search_merchant_trading_orders",
+              args: SearchMerchantTradingOrdersRpcArgs,
+            ) => Promise<{
+              data: SearchMerchantTradingOrdersRpcRow[] | null;
+              error: { message: string } | null;
+            }>;
+          }
+        ).rpc("search_merchant_trading_orders", loopArgs);
+
+        if (loopError) {
+          console.error("[searchMerchantTradingOrders] onlyRaw loop", loopError.message);
+          return { success: false, error: "無法載入訂單" };
+        }
+
+        const loopRows = (loopData ?? []) as SearchMerchantTradingOrdersRpcRow[];
+        if (loopRows.length === 0) break;
+
+        const mapped = loopRows.map(mapMerchantRpcRow);
+        allOrders.push(...mapped);
+
+        const loopMeta = toMerchantPaginationMeta(loopRows[0], fetchPage, 50);
+        if (fetchPage >= loopMeta.totalPages) break;
+        fetchPage++;
+      }
+
+      if (fetchPage > MAX_FETCH_PAGES) {
+        console.warn(
+          "[searchMerchantTradingOrders] onlyRaw fetch limit reached",
+          { fetched: allOrders.length, maxPages: MAX_FETCH_PAGES },
+        );
+      }
+
+      // Filter for RAW
+      const rawOrders = allOrders.filter((o) =>
+        isRawGradingCompany(o.listing.gradingCompany),
+      );
+
+      // Recalculate filter counts
+      const filters = recalculateMerchantFilterCounts(rawOrders);
+
+      // Apply tab filter
+      const tabFiltered = applyMerchantTabFilter(rawOrders, input.tabStatus);
+
+      // Paginate
+      const paginated = paginateMergedOrders(tabFiltered, page, pageSize);
+
+      if (isTradingPerfLogEnabled()) {
+        tradingPerfLog(
+          `merchant.onlyRaw fetched=${allOrders.length} raw=${rawOrders.length} rpcMs=${Math.round(tradingPerfNow() - totalStart)}`,
+        );
+      }
+
+      return {
+        success: true,
+        data: paginated.data,
+        meta: paginated.meta,
+        filters,
+      };
     }
 
     const rpcArgs: SearchMerchantTradingOrdersRpcArgs = {

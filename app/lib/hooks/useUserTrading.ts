@@ -31,6 +31,7 @@ type UseUserTradingOptions = {
   persona?: PersonaFilter;
   tabStatus?: TabStatusFilter;
   searchQuery?: string;
+  onlyRaw?: boolean;
   initialData?: TradingInitialData;
 };
 
@@ -58,8 +59,9 @@ function buildListKey(
   tabStatus: TabStatusFilter,
   query: string,
   pageSize: number,
+  onlyRaw: boolean,
 ): string {
-  return `${persona}:${tabStatus}:${query}:${pageSize}`;
+  return `${persona}:${tabStatus}:${query}:${pageSize}:${onlyRaw}`;
 }
 
 export function useUserTrading(
@@ -68,6 +70,7 @@ export function useUserTrading(
   const persona = options.persona ?? "all";
   const tabStatus = options.tabStatus ?? "all";
   const searchQuery = options.searchQuery ?? "";
+  const onlyRaw = options.onlyRaw ?? false;
   const hasInitialBootstrap = hasTradingInitialBootstrap(options.initialData);
 
   const [pageSize, setPageSize] = useState(
@@ -92,13 +95,13 @@ export function useUserTrading(
   const mountLoggedRef = useRef(false);
   const skippedInitialFetchRef = useRef(false);
   const [initialListKey] = useState(() =>
-    buildListKey(persona, tabStatus, "", TRADING_DEFAULT_PAGE_SIZE),
+    buildListKey(persona, tabStatus, "", TRADING_DEFAULT_PAGE_SIZE, false),
   );
   const initialPageRef = useRef(options.initialData?.meta?.page ?? 1);
 
   const debouncedQueryRef = useRef(searchQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
-  const listKey = buildListKey(persona, tabStatus, debouncedQuery, pageSize);
+  const listKey = buildListKey(persona, tabStatus, debouncedQuery, pageSize, onlyRaw);
   const isInitialListKey = listKey === initialListKey;
 
   useEffect(() => {
@@ -114,7 +117,7 @@ export function useUserTrading(
 
   useEffect(() => {
     queueMicrotask(() => setPage(1));
-  }, [persona, tabStatus, debouncedQuery, pageSize]);
+  }, [persona, tabStatus, debouncedQuery, pageSize, onlyRaw]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -170,6 +173,7 @@ export function useUserTrading(
         searchQuery: debouncedQuery.trim() || undefined,
         page,
         pageSize,
+        onlyRaw,
       });
 
       if (cancelled) return;
@@ -204,6 +208,7 @@ export function useUserTrading(
     debouncedQuery,
     page,
     pageSize,
+    onlyRaw,
     refreshKey,
     hasInitialBootstrap,
     isInitialListKey,

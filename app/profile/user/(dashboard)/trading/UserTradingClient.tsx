@@ -60,24 +60,6 @@ function formatStatusTabLabel(
   return count > 0 ? `${label} (${count})` : label;
 }
 
-function isRawCardOrder(order: UserTradingOrder): boolean {
-  const o = order as unknown as Record<string, unknown>;
-  if (o.isRawCard === true || o.cardType === "RAW" || o.isRaw === true) {
-    return true;
-  }
-  const company = (order.listing?.gradingCompany ?? "").toUpperCase().trim();
-  if (
-    !company ||
-    company === "RAW" ||
-    company === "RAW CARD" ||
-    company === "NONE" ||
-    company === "裸卡"
-  ) {
-    return true;
-  }
-  return false;
-}
-
 function renderStatusBadge(order: UserTradingOrder) {
   if (order.useAuthentication && order.status === "pending" && order.escrowStatus) {
     switch (order.escrowStatus) {
@@ -156,6 +138,7 @@ export function UserTradingClient({
     persona,
     tabStatus,
     searchQuery,
+    onlyRaw: onlyRawChecked,
     initialData,
   });
 
@@ -364,9 +347,7 @@ export function UserTradingClient({
                 <div className="mx-auto w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
               </div>
             ) : (() => {
-              const displayOrders = onlyRawChecked
-                ? orders.filter(isRawCardOrder)
-                : orders;
+              const displayOrders = orders;
 
               if (displayOrders.length === 0) {
                 return (
