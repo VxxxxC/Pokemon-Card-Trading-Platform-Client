@@ -890,8 +890,9 @@ export default function AdminPayoutsPage() {
             </div>
             <div>
               <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
-                待結算 (Pending)
+                待釋放 (Escrow Pending)
               </span>
+              {/* TODO: [Supabase Wiring] Dynamic Sum = orders.filter(o => o.useAuthentication === true && o.gradingStatus === 'passed_authentic' && o.status !== 'completed').reduce((sum, o) => sum + o.totalPaid, 0) */}
               <span className="font-mono font-bold text-[24px] text-text-primary tracking-tight leading-none block mt-1">
                 HK$ {stripePlatformBalance.pending.toLocaleString("zh-TW")}
               </span>

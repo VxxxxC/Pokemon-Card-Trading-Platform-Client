@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "數據總覽", icon: "📊" },
   { href: "/admin/announcements", label: "公告管理", icon: "📢" },
   { href: "/admin/payouts", label: "財務與結算管控台", icon: "💰" },
+  { href: "/admin/orders", label: "訂單與鑑定管理", icon: "📦" },
   { href: "/admin/user_control", label: "用戶管理", icon: "👥" },
   { href: "/admin/disputes", label: "舉報與爭議仲裁", icon: "⚖️" },
   { href: "/admin/catalog", label: "卡牌字典與行情", icon: "🗃️" },
