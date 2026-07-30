@@ -40,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/app/components/ui/Pagination";
 
 import type {
   AdminOrderRowItem,
@@ -186,7 +187,9 @@ function DateRangePicker({
           defaultMonth={value?.from}
           selected={value}
           onSelect={onChange}
-          numberOfMonths={1}
+          numberOfMonths={2}
+          // @ts-expect-error react-day-picker v10 類型未包含 initialFocus；於 Popover 打開時聚焦 Calendar 為 UX 必要行為
+          initialFocus
           className="p-3 bg-transparent text-text-primary"
         />
       </PopoverContent>
@@ -248,13 +251,11 @@ export default function AdminOrdersPage() {
     }
 
     // Date range filter
-    if (platformDateRange?.from || platformDateRange?.to) {
-      const fromMs = platformDateRange.from
-        ? startOfDay(platformDateRange.from).getTime()
-        : 0;
+    if (platformDateRange?.from) {
+      const fromMs = startOfDay(platformDateRange.from).getTime();
       const toMs = platformDateRange.to
         ? endOfDay(platformDateRange.to).getTime()
-        : Infinity;
+        : endOfDay(platformDateRange.from).getTime();
       list = list.filter((o) => {
         const ts = parseLocalDate(o.createdAt);
         return ts >= fromMs && ts <= toMs;
@@ -308,13 +309,11 @@ export default function AdminOrdersPage() {
     }
 
     // Date range filter
-    if (gradingDateRange?.from || gradingDateRange?.to) {
-      const fromMs = gradingDateRange.from
-        ? startOfDay(gradingDateRange.from).getTime()
-        : 0;
+    if (gradingDateRange?.from) {
+      const fromMs = startOfDay(gradingDateRange.from).getTime();
       const toMs = gradingDateRange.to
         ? endOfDay(gradingDateRange.to).getTime()
-        : Infinity;
+        : endOfDay(gradingDateRange.from).getTime();
       list = list.filter((o) => {
         const ts = parseLocalDate(o.createdAt);
         return ts >= fromMs && ts <= toMs;
@@ -684,57 +683,18 @@ export default function AdminOrdersPage() {
 
       {/* Pagination */}
       {sortedPlatformOrders.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-          <div className="font-mono text-[12px] text-text-secondary">
-            顯示第{" "}
-            <span className="font-bold text-text-primary">
-              {(platformPage - 1) * PAGE_SIZE + 1}
-            </span>{" "}
-            -{" "}
-            <span className="font-bold text-text-primary">
-              {Math.min(platformPage * PAGE_SIZE, sortedPlatformOrders.length)}
-            </span>{" "}
-            筆，共{" "}
-            <span className="font-bold text-brand">
-              {sortedPlatformOrders.length}
-            </span>{" "}
-            筆資料
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={platformPage === 1}
-              onClick={() => setPlatformPage((prev) => Math.max(prev - 1, 1))}
-              className="min-h-[44px] h-10 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,transform] duration-150 active:scale-[0.98] disabled:active:scale-100"
-            >
-              上一頁
-            </button>
-            {Array.from({ length: totalPlatformPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPlatformPage(p)}
-                className={cn(
-                  "min-h-[44px] h-10 w-10 rounded-lg font-mono text-xs font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.98]",
-                  platformPage === p
-                    ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                    : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated",
-                )}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              type="button"
-              disabled={platformPage === totalPlatformPages}
-              onClick={() =>
-                setPlatformPage((prev) => Math.min(prev + 1, totalPlatformPages))
-              }
-              className="min-h-[44px] h-10 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,transform] duration-150 active:scale-[0.98] disabled:active:scale-100"
-            >
-              下一頁
-            </button>
-          </div>
+        <div id="platform-orders-list" className="pt-2">
+          <Pagination
+            currentPage={platformPage}
+            totalPages={totalPlatformPages}
+            onPageChange={(page) => setPlatformPage(page)}
+            itemLabel="筆平台訂單"
+            totalItems={sortedPlatformOrders.length}
+            itemsPerPage={PAGE_SIZE}
+            enableScroll={true}
+            scrollBlock="start"
+            scrollToViewId="platform-orders-list"
+          />
         </div>
       )}
     </div>
@@ -898,16 +858,14 @@ export default function AdminOrdersPage() {
                     <TableRow
                       key={order.id}
                       className={cn(
-                        "border-b border-[rgba(237,232,224,0.06)] transition-colors cursor-pointer",
+                        "border-b border-[rgba(237,232,224,0.06)] transition-colors",
                         isSelected
                           ? "bg-[rgba(212,165,116,0.08)]"
                           : "hover:bg-bg-elevated/40",
                       )}
-                      onClick={() => handleRowClick(order.id)}
                     >
                       <TableCell
                         className="w-10 text-center py-3"
-                        onClick={(e) => e.stopPropagation()}
                       >
                         <Checkbox
                           checked={isSelected}
@@ -985,36 +943,38 @@ export default function AdminOrdersPage() {
                           {order.outboundTrackingNo ?? "—"}
                         </span>
                       </TableCell>
-                      <TableCell
-                        className="py-3 whitespace-nowrap text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {order.gradingStatus === "pending_grading" ? (
-                          <div className="flex justify-end items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                applyGradingStatus("passed_authentic", new Set([order.id]))
-                              }
-                              className="min-h-[44px] h-9 px-2.5 bg-success text-[#17130f] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform duration-150"
-                            >
-                              鑑定通過
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                applyGradingStatus("failed_fake", new Set([order.id]))
-                              }
-                              className="min-h-[44px] h-9 px-2.5 bg-error text-[#17130f] font-sans font-bold text-[10px] rounded-lg hover:bg-error/90 active:scale-[0.98] transition-transform duration-150"
-                            >
-                              鑑定不通過
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="font-sans text-[11px] text-text-disabled">
-                            —
-                          </span>
-                        )}
+                      <TableCell className="py-3 whitespace-nowrap text-right">
+                        <div className="flex justify-end items-center gap-1.5">
+                          {order.gradingStatus === "pending_grading" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  applyGradingStatus("passed_authentic", new Set([order.id]))
+                                }
+                                className="min-h-[44px] h-9 px-2.5 bg-success text-[#17130f] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform duration-150"
+                              >
+                                鑑定通過
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  applyGradingStatus("failed_fake", new Set([order.id]))
+                                }
+                                className="min-h-[44px] h-9 px-2.5 bg-error text-[#17130f] font-sans font-bold text-[10px] rounded-lg hover:bg-error/90 active:scale-[0.98] transition-transform duration-150"
+                              >
+                                鑑定不通過
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRowClick(order.id)}
+                            className="min-h-[44px] h-9 px-2.5 bg-bg-elevated border border-white/10 text-text-primary font-sans font-semibold text-[11px] rounded-lg hover:border-brand/40 hover:text-brand active:scale-[0.98] transition-[color,background-color,border-color,transform] duration-150"
+                          >
+                            查看訂單
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -1026,57 +986,18 @@ export default function AdminOrdersPage() {
 
         {/* Pagination */}
         {sortedGradingOrders.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border-t border-[rgba(237,232,224,0.08)] rounded-b-xl">
-            <div className="font-mono text-[12px] text-text-secondary">
-              顯示第{" "}
-              <span className="font-bold text-text-primary">
-                {(gradingPage - 1) * PAGE_SIZE + 1}
-              </span>{" "}
-              -{" "}
-              <span className="font-bold text-text-primary">
-                {Math.min(gradingPage * PAGE_SIZE, sortedGradingOrders.length)}
-              </span>{" "}
-              筆，共{" "}
-              <span className="font-bold text-brand">
-                {sortedGradingOrders.length}
-              </span>{" "}
-              筆資料
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={gradingPage === 1}
-                onClick={() => setGradingPage((prev) => Math.max(prev - 1, 1))}
-              className="min-h-[44px] h-10 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,transform] duration-150 active:scale-[0.98] disabled:active:scale-100"
-            >
-              上一頁
-              </button>
-                {Array.from({ length: totalGradingPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setGradingPage(p)}
-                  className={cn(
-                    "min-h-[44px] h-10 w-10 rounded-lg font-mono text-xs font-semibold transition-[color,background-color,transform] duration-150 active:scale-[0.98]",
-                    gradingPage === p
-                      ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                      : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated",
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                type="button"
-                disabled={gradingPage === totalGradingPages}
-                onClick={() =>
-                  setGradingPage((prev) => Math.min(prev + 1, totalGradingPages))
-                }
-                className="min-h-[44px] h-10 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-[color,background-color,transform] duration-150 active:scale-[0.98] disabled:active:scale-100"
-              >
-                下一頁
-              </button>
-            </div>
+          <div id="grading-orders-list" className="pt-2">
+            <Pagination
+              currentPage={gradingPage}
+              totalPages={totalGradingPages}
+              onPageChange={(page) => setGradingPage(page)}
+              itemLabel="筆鑑定訂單"
+              totalItems={sortedGradingOrders.length}
+              itemsPerPage={PAGE_SIZE}
+              enableScroll={true}
+              scrollBlock="start"
+              scrollToViewId="grading-orders-list"
+            />
           </div>
         )}
       </div>

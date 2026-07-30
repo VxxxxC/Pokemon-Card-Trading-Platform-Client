@@ -5,8 +5,11 @@ import type {
   OrderSellerPersona,
 } from "./types";
 
-export const parseLocalDate = (s: string) =>
-  new Date(s.replace(/\//g, "-")).getTime();
+export const parseLocalDate = (s: string): number => {
+  const m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+  if (!m) return NaN;
+  return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
+};
 
 // Deterministic UUID-lookalike so the mock data is SSR-safe.
 export const mockUuid = (seq: number) => {
