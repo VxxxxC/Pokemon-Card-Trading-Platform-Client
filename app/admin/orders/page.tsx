@@ -590,6 +590,7 @@ export default function AdminOrdersPage() {
   // ── Render: Platform Tab ──────────────────────────────────────────────────
   const renderPlatformTab = () => (
     <div className="space-y-4">
+      <div id="platform-tab-top" />
       {/* Toolbar */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -693,7 +694,7 @@ export default function AdminOrdersPage() {
             itemsPerPage={PAGE_SIZE}
             enableScroll={true}
             scrollBlock="start"
-            scrollToViewId="platform-orders-list"
+            scrollToViewId="platform-tab-top"
           />
         </div>
       )}
@@ -703,6 +704,7 @@ export default function AdminOrdersPage() {
   // ── Render: Grading Tab ───────────────────────────────────────────────────
   const renderGradingTab = () => (
     <div className="space-y-4">
+      <div id="grading-tab-top" />
       {/* Toolbar */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -810,6 +812,9 @@ export default function AdminOrdersPage() {
                   />
                 </TableHead>
                 <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+                  訂單建立日期
+                </TableHead>
+                <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
                   訂單編號
                 </TableHead>
                 <TableHead className="font-sans text-[11px] text-text-secondary h-10 whitespace-nowrap">
@@ -845,7 +850,7 @@ export default function AdminOrdersPage() {
               {sortedGradingOrders.length === 0 ? (
                 <TableRow className="border-transparent hover:bg-transparent">
                   <TableCell
-                    colSpan={11}
+                    colSpan={12}
                     className="py-16 text-center text-text-secondary font-sans text-[14px]"
                   >
                     目前沒有符合篩選條件的鑑定訂單。
@@ -872,6 +877,11 @@ export default function AdminOrdersPage() {
                           onCheckedChange={() => toggleSelectRow(order.id)}
                           aria-label={`選擇 ${order.orderNumber}`}
                         />
+                      </TableCell>
+                      <TableCell className="py-3 whitespace-nowrap">
+                        <span className="font-mono text-[11px] text-text-secondary">
+                          {order.createdAt}
+                        </span>
                       </TableCell>
                       <TableCell className="py-3 whitespace-nowrap">
                         <span className="font-mono text-[11px] text-brand">
@@ -996,7 +1006,7 @@ export default function AdminOrdersPage() {
               itemsPerPage={PAGE_SIZE}
               enableScroll={true}
               scrollBlock="start"
-              scrollToViewId="grading-orders-list"
+              scrollToViewId="grading-tab-top"
             />
           </div>
         )}
