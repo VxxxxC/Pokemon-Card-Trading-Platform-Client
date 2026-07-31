@@ -200,7 +200,7 @@ export function UserOrderRow({
               labelOverride={
                 dbOrderContext?.canPay || dbOrderContext?.pendingPayment
                   ? "待付款"
-                  : undefined
+                  : order.statusLabelOverride
               }
             />
           )}

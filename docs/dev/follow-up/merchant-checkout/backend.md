@@ -1,19 +1,19 @@
-# Merchant Checkout — 平台 Stripe 收款（Payment Milestone 1）
+# Merchant Checkout — 平台 Stripe 收款與 Connect 撥款（Milestone 1–2）
 
 > B2C 商戶訂單真實收款：買家全額付款 → 資金 100% 入**平台** Stripe 帳戶託管 → webhook 確認後 `payment_held`。
-> 撥款給商戶（`transfers.create`）與平台佣金屬 **Milestone 2**，本階段刻意唔用 `application_fee_amount` / `transfer_data`。
+> 買家確認收貨後，以 separate charge + transfer 將卡價扣固定 8% 佣金及買家支付運費撥至 Merchant Connect；鑑定費全數留平台。
 
 ## 1. 託管狀態機（本階段新增前置狀態）
 
 ```
 pending_payment ──▶ payment_held ──▶ authenticating ──▶ authenticated ──▶ completed_and_transferred
-   （訂單成立         （Stripe 收款              …                              （Milestone 2 才真正
-    未付款）           確認、資金託管）                                            transfer 給商戶）
+   （訂單成立         （Stripe 收款              …                              （Connect transfer
+    未付款）           確認、資金託管）                                            已建立並入帳）
 ```
 
 - 訂單成立（接受出價 / 立即購買）→ `pending_payment`
-- `payment_intent.succeeded` webhook → `payment_held`
-- `rpc_complete_merchant_order` 的 allowed-from **不含** `pending_payment`，未付款無法確認收貨
+- `payment_intent.succeeded` webhook → `payment_held`（非鑑定 automatic）；鑑定單 `capture_mode=manual` 時改由 `amount_capturable_updated` → `authorized`
+- `rpc_prepare_merchant_order_payout` 的 allowed-from **不含** `pending_payment`，未付款無法確認收貨
 - `getMerchantSellerActionFlags().canSubmitLogistics` 仍只認 `payment_held`，未收款不可出貨
 
 ## 2. Migrations
@@ -24,6 +24,9 @@ pending_payment ──▶ payment_held ──▶ authenticating ──▶ authen
 | `20260729110000_merchant_order_stripe_payment.sql` | `merchant_orders` 金額明細欄位；`rpc_accept_offer` merchant 分支改 `pending_payment`；新 `rpc_buy_now_merchant_listing`；新 `rpc_mark_merchant_order_paid` |
 | `20260729120000_merchant_order_payment_prepare.sql` | `fn_merchant_checkout_shipping_fee` / `fn_merchant_checkout_auth_fee`；`rpc_prepare_merchant_order_payment`；`rpc_attach_merchant_order_payment_intent` |
 | `20260729130000_merchant_trading_pending_payment_facets.sql` | `fn_merchant_order_is_open` 納入 `pending_payment`；新 `fn_merchant_order_is_payment_stage`；重建 `search_merchant_trading_orders` facets |
+| `20260729180000_merchant_connect_payout.sql` | payout snapshot 欄位與唯一索引；prepare/finalize/failed RPC；撤銷舊 completion bypass |
+| `20260730100000_escrow_p0_manual_capture.sql` | `payment_capture_status`；鑑定單 `capture_method: manual` + partial auth_fee capture |
+| `20260731120000_merchant_pending_payment_expiry.sql` | 48h `pending_payment` 逾時 RPC + `fn_merchant_order_needs_seller_action` auth inbound only |
 
 ### `merchant_orders` 新欄位
 
@@ -36,6 +39,11 @@ pending_payment ──▶ payment_held ──▶ authenticating ──▶ authen
 | `total_amount` | 託管總額 = 三者之和 |
 | `paid_at` | webhook 確認收款時間 |
 | `stripe_payment_intent_id` | 既有欄位，本階段開始實際使用（partial index） |
+| `commission_rate_applied` / `commission_amount` | 本單固定佣金 snapshot（第一版 8%） |
+| `merchant_payout_amount` | `item_subtotal - commission + shipping_fee` |
+| `stripe_transfer_id` / `stripe_destination_account_id` | Connect transfer 對帳資料 |
+| `buyer_confirmed_at` / `payout_status` | 買家確認及 `pending/processing/paid/failed` saga 狀態 |
+| `payout_attempted_at` / `transferred_at` / `payout_error` | 撥款稽核及安全化錯誤 |
 
 舊有 `payment_held` 訂單已回填 `item_subtotal` / `total_amount` = `final_price`。
 
@@ -61,6 +69,13 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 - 寫 `paid_at` + 金額明細（`p_amounts` 缺欄位則保留 DB 現值）
 - Insert `merchant_ledgers`（`transaction_type='escrow_payment'`，同一訂單只插一次）
 
+### Merchant payout RPCs
+
+- `rpc_prepare_merchant_order_payout(p_order_id)`：authenticated buyer only；鎖單、重驗 KYC/Connect、snapshot 8% 佣金及 payout，支援重試。
+- `rpc_finalize_merchant_order_payout(...)`：service-role only；核對 transfer 金額／destination，冪等寫 `commission_deduction` + `payout` ledger，再進入 `completed_and_transferred`。
+- `rpc_mark_merchant_order_payout_failed(p_order_id, p_error)`：service-role only；保留 snapshot，記錄可重試失敗。
+- 舊 `rpc_complete_merchant_order(UUID, UUID)` 已撤銷 authenticated execute，不能繞過真實 transfer。
+
 > `merchant_orders` 對 `authenticated` 只開放 `SELECT`（`merchant_orders_participant_read`），所以結帳期間所有寫入都經上述 RPC，唔用 service-role client。
 
 ## 4. Server Actions — `app/actions/merchant-checkout.ts`
@@ -71,6 +86,7 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 | `loadMerchantCheckoutOrder(orderIdOrNumber)` | 結帳頁快照：金額、`isPayable`、`shippingMethod`、`listingAcceptsAuthentication`、商戶與商品資料 |
 | `createMerchantOrderPaymentIntent(orderIdOrNumber, { shippingMethod, useAuth })` | `{ clientSecret, publishableKey, itemSubtotal, shippingFee, authFee, totalAmount }` |
 | `getMerchantCheckoutPaymentStatus(orderIdOrNumber)` | `{ escrowStatus, totalAmount, paidAt }`，成功頁輪詢用 |
+| `completeMerchantOrder(orderId)` | 買家確認收貨 → prepare payout → `transfers.create` → finalize；回傳既有 `{ success }` contract |
 
 `createMerchantOrderPaymentIntent` 流程：
 
@@ -79,7 +95,7 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 3. 訂單必須 `pending_payment`
 4. **Fail-closed**：商戶 `kyc_records` 需通過 `isMerchantPayoutReady()`（verified + charges + payouts）
 5. `rpc_prepare_merchant_order_payment` 取得權威金額
-6. PaymentIntent：`amount = total_amount × 100`、`currency: 'hkd'`、`automatic_payment_methods`、**無** `application_fee_amount` / `transfer_data`
+6. PaymentIntent：`amount = total_amount × 100`、`currency: 'hkd'`、`automatic_payment_methods`、**無** `application_fee_amount` / `transfer_data`；鑑定單（`useAuth`）另設 `capture_method: manual` + `payment_method_options.card.request_multicapture: if_available`（staged partial capture）
 7. 已有 PI 則 retrieve：`succeeded` / `processing` 直接擋（防重複收款）；`canceled` 重新建立；其餘 `update` amount
 8. `rpc_attach_merchant_order_payment_intent` 回寫 PI id
 
@@ -90,10 +106,32 @@ PaymentIntent `metadata`：`order_kind: 'merchant'`、`order_id`、`order_number
 | 事件 | 動作 |
 |------|------|
 | `account.updated` | （既有）同步 `kyc_records.stripe_charges_enabled` / `stripe_payouts_enabled` |
-| `payment_intent.succeeded` | `metadata.order_kind === 'merchant'` → `rpc_mark_merchant_order_paid`（service-role client） |
+| `payment_intent.amount_capturable_updated` | 鑑定單 authorize → `authorized` + `custody` / `payment_held` |
+| `payment_intent.succeeded` | 非鑑定 merchant 全額入帳；鑑定 partial auth_fee finalize |
+| `payment_intent.canceled` | 鑑定單 void → `payment_capture_status=voided` |
 | `payment_intent.payment_failed` | 只 `console.warn` 留痕，訂單維持 `pending_payment` 讓買家重試 |
+| `transfer.created` | `metadata.order_kind === 'merchant_payout'` → 冪等 finalize |
+| `refund.created` | 鑑定失敗退款 finalize |
 
-非 merchant metadata 的 PI 直接回 `200`，避免 Stripe 重試風暴。
+事件清單 SSOT：`lib/stripe/webhook-events.ts`。
+
+### 本機 dev
+
+```bash
+bun run stripe:webhook:listen
+```
+
+將 CLI 印出嘅 `whsec_...` 設入 `.env` 的 `STRIPE_WEBHOOK_SECRET`，另開 terminal 跑 `bun run dev`。
+
+### Dashboard / staging 同步 events
+
+```bash
+# 更新帳戶上所有 webhook endpoint 的 enabled_events
+bun run stripe:webhook:sync
+
+# 若尚無 endpoint，建立一個（換成你的域名）
+bun run stripe:webhook:sync -- --url https://YOUR_DOMAIN/api/stripe/webhook
+```
 
 ## 6. Env
 
@@ -111,8 +149,7 @@ PaymentIntent `metadata`：`order_kind: 'merchant'`、`order_id`、`order_number
 bunx supabase db push
 bun run supabase:types
 bunx tsc --noEmit && bun run lint && bun run build:ci
-stripe listen --forward-to localhost:3000/api/stripe/webhook \
-  --events account.updated,payment_intent.succeeded,payment_intent.payment_failed
+bun run stripe:webhook:listen   # 本機；見 lib/stripe/webhook-events.ts
 ```
 
 驗收流程：
@@ -123,25 +160,57 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook \
 4. Webhook 到達後訂單 `payment_held`、`paid_at` 有值、`merchant_ledgers` 出現一筆 `escrow_payment`
 5. 未付款前商戶無「確認訂單並移交保管」CTA，買家無「確認完成」CTA
 6. 重送同一 `payment_intent.succeeded` 事件 → `already_applied: true`，`merchant_ledgers` 不重複
+7. 買家確認收貨 → Stripe Transfer destination 為商戶 Connect；金額為卡價扣 8% + 運費
+8. 訂單 `completed_and_transferred`、`payout_status=paid`，ledger 各只有一筆 `commission_deduction` / `payout`
 
 ### 本次已驗證
 
 | 項目 | 結果 |
 |------|------|
-| `bunx supabase db push` | ✅ `20260729100000`–`20260729130000` 已同步 remote（`supabase migration list` local/remote 對齊） |
+| `bunx supabase db push` | ✅ `20260729180000_merchant_connect_payout.sql` 已同步 remote |
 | `bunx tsc --noEmit` | ✅ 0 error |
-| `bun run lint` | ✅ 0 error（13 個 warning 全為既有檔案，非本次新增） |
+| `bun run lint` | ✅ 0 error（既有 warnings） |
 | `bun run build:ci` | ✅ 空 Supabase env 下通過，`/checkout/[id]` 與 `/checkout/[id]/success` 皆為 `ƒ` dynamic |
-| `stripe trigger payment_intent.succeeded` | ✅ `200`；CLI fixture 無 `order_kind=merchant` metadata，走略過分支不報錯 |
-| `stripe trigger payment_intent.payment_failed` | ✅ `200` 並留痕 `[stripe/webhook] payment_intent.payment_failed pi_… Your card was declined.` |
+| DB contract | ✅ 100 + 30 + 150 → commission 8、payout 122；非買家拒絕；finalize replay 各一筆 ledger |
+| Stripe test transfer | ✅ `pi_3TyXtx…` → `tr_3TyXtx…`，HK$121.08 到 test Connect，重送 idempotency key 得同一 transfer |
+| `transfer.created` 簽名 webhook replay | ✅ 200；finalize 已完成時安全回 `already_applied` |
 
-⚠️ **未能自動驗證**：真實買家付款 → `pending_payment → payment_held` 全鏈路，因 `.env` 仍缺
-`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`（Payment Element 無法載入）。補上 key 後請按上面 1–6 步人手跑一次。
+## 8. 非鑑定單 E2E 驗證清單（`useAuth=false`）
 
-## 8. 已知缺口（Milestone 2）
+前置：`bun run stripe:webhook:listen` + `bun run dev`；商戶 KYC verified + Connect `charges_enabled` & `payouts_enabled`。
 
-- `pending_payment` 訂單**無過期 / 取消機制** → listing 會一直鎖住
-- 未有 `transfers.create` 撥款、平台佣金、`platform_settings` 抽成率
+| # | 步驟 | 預期 |
+|---|------|------|
+| 1 | Buy now（**不勾鑑定**） | `pending_payment`，listing `inactive` |
+| 2 | `/checkout/[orderId]` → SF/meetup → `4242…` | PI `capture_method=automatic` |
+| 3 | Webhook `payment_intent.succeeded` | `payment_held`，`paid_at`，ledger `escrow_payment` ×1 |
+| 4 | 買家 `/profile/user/trading` → 確認完成 | `completeMerchantOrder` |
+| 5 | Stripe Dashboard | Transfer 至 Connect；金額 = 卡價 − 8% + 運費 |
+| 6 | DB | `completed_and_transferred`；`commission_deduction` + `payout` ledger 各一筆 |
+| 7 | Webhook replay | `already_applied`，無重複 ledger |
+
+> 鑑定單（`useAuth=true`）需 Stripe account 開通 online multicapture 後再測。
+
+## 10. `pending_payment` 48h 逾時 — 手動驗證（cron）
+
+Cron：`GET /api/cron/expire-merchant-pending-payment`（`vercel.json` 每小時）。RPC：`rpc_list_merchant_pending_payment_expiry_candidates` + `rpc_finalize_merchant_pending_payment_expiry`（migration `20260731120000`）。
+
+前置：`bun run dev`；`.env` 設 `CRON_SECRET`、`SUPABASE_SERVICE_ROLE_KEY`（Stripe PI cancel 為 best-effort）。
+
+| # | 步驟 | 預期 |
+|---|------|------|
+| 1 | 商戶 listing buy now，**不付款**（勿完成 checkout） | `pending_payment`，listing `inactive` |
+| 2 | 記錄 `order_id`、`listing_id` | — |
+| 3 | Dev only — backdate 訂單：`UPDATE merchant_orders SET created_at = now() - interval '49 hours' WHERE id = '<uuid>' AND escrow_status = 'pending_payment'` | — |
+| 4 | `curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/expire-merchant-pending-payment` | JSON `expired >= 1` |
+| 5 | DB | `escrow_status = refunded`；`listings.status = active` |
+| 6 | 再跑一次 curl | 冪等，無副作用 |
+| 7 | （可選）若曾建立 PI | Stripe PI `canceled` 或已終態 |
+
+## 9. 已知缺口
+
+- ~~`pending_payment` 訂單**無過期 / 取消機制**~~ → `rpc_finalize_merchant_pending_payment_expiry` + cron（見 migration `20260731120000`）
+- 佣金率暫固定 8%，未接 `platform_settings` / Admin 動態設定
 - 優惠券未接後端，checkout 券選單暫時 disabled，總額不折扣
 - 收件資料（電話 / 順豐櫃 / 面交備註 / 買家備註）仍只留前端 state，未有 DB 欄位
-- C2C `member_orders` 仍走 mock pay
+- Refund / transfer reversal 尚未落地；Member C2C payout 屬另一流程

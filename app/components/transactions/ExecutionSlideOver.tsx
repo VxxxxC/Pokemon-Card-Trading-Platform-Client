@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { buyNowListing } from "@/app/actions/buy-now";
 import { makeOffer } from "@/app/actions/offers";
-import { openBuyNowChatSession } from "@/lib/chat/open-buy-now-session";
+import { completeBuyNowFlow } from "@/lib/chat/complete-buy-now-flow";
 import { trackListingView } from "@/lib/listings/track-listing-view";
 import { Switch } from "@/components/ui/switch";
 import { BUYER_AUTH_DISABLED_COPY } from "@/lib/listings/auth-service-copy";
@@ -44,6 +45,7 @@ export function ExecutionSlideOver({
   card,
   productId,
 }: ExecutionSlideOverProps) {
+  const router = useRouter();
   const [customPrice, setCustomPrice] = useState("");
   const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -151,8 +153,14 @@ export function ExecutionSlideOver({
       return;
     }
 
-    openBuyNowChatSession(result.data);
+    const flow = completeBuyNowFlow(result.data, router);
     onClose();
+    if (flow === "checkout") {
+      toast.success("🧾 交易已成立", {
+        description: "請於結帳頁完成託管付款。",
+      });
+      return;
+    }
     toast.success("🧾 交易已成立", {
       description: "已為您開啟與賣家的安全對話，請於對話中完成後續交收步驟。",
     });

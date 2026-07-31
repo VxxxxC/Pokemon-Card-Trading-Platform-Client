@@ -31,6 +31,16 @@ function getStripePromise(publishableKey: string): Promise<StripeJs | null> {
   return promise;
 }
 
+function isMemberAuthPaymentIntentAuthorized(
+  status: string | undefined,
+): boolean {
+  return (
+    status === "succeeded" ||
+    status === "processing" ||
+    status === "requires_capture"
+  );
+}
+
 function MemberAuthEscrowPaymentForm({
   orderId,
   totalAmount,
@@ -82,10 +92,7 @@ function MemberAuthEscrowPaymentForm({
       return;
     }
 
-    if (
-      paymentIntent?.status === "succeeded" ||
-      paymentIntent?.status === "processing"
-    ) {
+    if (isMemberAuthPaymentIntentAuthorized(paymentIntent?.status)) {
       const settled = await pollPaymentStatus();
       setIsConfirming(false);
       if (settled) {

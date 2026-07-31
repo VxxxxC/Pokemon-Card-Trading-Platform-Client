@@ -20,6 +20,7 @@ import { X } from "lucide-react";
 import { IoChevronBack } from "react-icons/io5";
 import {
   createMerchantOrderPaymentIntent,
+  getMerchantCheckoutPaymentStatus,
   loadMerchantCheckoutOrder,
   type MerchantCheckoutOrder,
 } from "@/app/actions/merchant-checkout";
@@ -62,6 +63,33 @@ function getStripePromise(publishableKey: string): Promise<StripeJs | null> {
   return promise;
 }
 
+const ESCROW_POLL_INTERVAL_MS = 2000;
+const ESCROW_POLL_MAX_ATTEMPTS = 8;
+
+function isMerchantPaymentIntentAuthorized(
+  status: string | undefined,
+): boolean {
+  return (
+    status === "succeeded" ||
+    status === "processing" ||
+    status === "requires_capture"
+  );
+}
+
+async function pollMerchantCheckoutPaid(orderId: string): Promise<boolean> {
+  for (let attempt = 0; attempt < ESCROW_POLL_MAX_ATTEMPTS; attempt += 1) {
+    const result = await getMerchantCheckoutPaymentStatus(orderId);
+    if (
+      result.success &&
+      result.data.escrowStatus !== "pending_payment"
+    ) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, ESCROW_POLL_INTERVAL_MS));
+  }
+  return false;
+}
+
 function EscrowPaymentForm({
   orderId,
   totalAmount,
@@ -97,13 +125,17 @@ function EscrowPaymentForm({
       return;
     }
 
-    if (
-      paymentIntent?.status === "succeeded" ||
-      paymentIntent?.status === "processing"
-    ) {
-      toast.success("🎉 付款已送出！", {
-        description: "資金正在進入平台託管，稍後即可於交易管理查看。",
-      });
+    if (isMerchantPaymentIntentAuthorized(paymentIntent?.status)) {
+      const settled = await pollMerchantCheckoutPaid(orderId);
+      if (settled) {
+        toast.success("🎉 付款已送出！", {
+          description: "資金正在進入平台託管，稍後即可於交易管理查看。",
+        });
+      } else {
+        toast.info("付款處理中", {
+          description: "已收到付款指令，正在等待金流確認並鎖定託管。",
+        });
+      }
       router.push(`/checkout/${orderId}/success`);
       return;
     }

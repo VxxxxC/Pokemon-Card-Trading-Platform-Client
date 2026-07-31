@@ -9,6 +9,7 @@ import {
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
 import { resolveMerchantOrderIdForBuyer } from "@/lib/merchant-order/resolve-order-id";
+import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS } from "@/lib/payments/escrow-payment-intent";
 import { getStripeClient, getStripePublishableKey } from "@/lib/stripe/env";
 import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -64,6 +65,7 @@ export type MerchantCheckoutPaymentStatus = {
   escrowStatus: MerchantEscrowStatus;
   totalAmount: number;
   paidAt: string | null;
+  paymentCaptureStatus: string | null;
 };
 
 type CheckoutOrderQueryRow = Pick<
@@ -83,6 +85,7 @@ type CheckoutOrderQueryRow = Pick<
   | "escrow_status"
   | "requires_authentication"
   | "stripe_payment_intent_id"
+  | "payment_capture_status"
 > & {
   listings: {
     grading_company: string;
@@ -117,6 +120,7 @@ const CHECKOUT_ORDER_SELECT = `
   escrow_status,
   requires_authentication,
   stripe_payment_intent_id,
+  payment_capture_status,
   listings (
     grading_company,
     grading_score,
@@ -473,8 +477,11 @@ export async function createMerchantOrderPaymentIntent(
       return { success: false, error: "訂單金額異常，請聯絡客服" };
     }
 
+    const captureMethod = options.useAuth ? "manual" : "automatic";
+
     const metadata: Stripe.MetadataParam = {
       order_kind: "merchant",
+      ...(options.useAuth ? { capture_mode: "manual" } : {}),
       order_id: prepared.order_id,
       order_number: row.order_number ?? "",
       buyer_id: user.id,
@@ -501,10 +508,16 @@ export async function createMerchantOrderPaymentIntent(
         };
       }
 
-      if (existing.status !== "canceled") {
+      if (existing.status === "requires_capture") {
+        paymentIntent = existing;
+      } else if (existing.status !== "canceled") {
         paymentIntent = await stripe.paymentIntents.update(existing.id, {
           amount: amountInCents,
           metadata,
+          capture_method: captureMethod,
+          ...(options.useAuth
+            ? { payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS }
+            : {}),
         });
       }
     }
@@ -513,9 +526,12 @@ export async function createMerchantOrderPaymentIntent(
       paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency: "hkd",
-        capture_method: "automatic",
+        capture_method: captureMethod,
         automatic_payment_methods: { enabled: true },
         metadata,
+        ...(options.useAuth
+          ? { payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS }
+          : {}),
       });
     }
 
@@ -598,6 +614,7 @@ export async function getMerchantCheckoutPaymentStatus(
         escrowStatus: row.escrow_status,
         totalAmount: Number(row.total_amount ?? row.final_price),
         paidAt: row.paid_at,
+        paymentCaptureStatus: row.payment_capture_status ?? null,
       },
     };
   } catch (error) {

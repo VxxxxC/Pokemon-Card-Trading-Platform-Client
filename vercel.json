@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/aggregate-prices",
       "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/expire-merchant-pending-payment",
+      "schedule": "0 * * * *"
     }
   ]
 }

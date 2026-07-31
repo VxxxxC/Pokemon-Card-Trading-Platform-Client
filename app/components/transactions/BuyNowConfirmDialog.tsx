@@ -2,11 +2,12 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { buyNowListing } from "@/app/actions/buy-now";
 import type { MarketplaceListing } from "@/app/components/marketplace/MarketplaceCard";
 import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
-import { openBuyNowChatSession } from "@/lib/chat/open-buy-now-session";
+import { completeBuyNowFlow } from "@/lib/chat/complete-buy-now-flow";
 import { BUYER_AUTH_DISABLED_COPY } from "@/lib/listings/auth-service-copy";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -34,6 +35,7 @@ export function BuyNowConfirmDialog({
   listing,
   onNegotiate,
 }: BuyNowConfirmDialogProps) {
+  const router = useRouter();
   const listingId = listing?.id?.trim() ?? null;
   const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,8 +78,16 @@ export function BuyNowConfirmDialog({
       return;
     }
 
-    openBuyNowChatSession(result.data);
+    const flow = completeBuyNowFlow(result.data, router);
     handleDialogOpenChange(false);
+
+    if (flow === "checkout") {
+      toast.success("🧾 交易已成立", {
+        description: "請於結帳頁完成託管付款。",
+        duration: 4000,
+      });
+      return;
+    }
 
     toast.success("🧾 交易已成立", {
       description: "已為您開啟與賣家的安全對話，請於對話中完成後續交收步驟。",
@@ -90,6 +100,7 @@ export function BuyNowConfirmDialog({
     listingId,
     handleDialogOpenChange,
     useAuthentication,
+    router,
   ]);
 
   if (!listing) {

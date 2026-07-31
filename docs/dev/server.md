@@ -69,7 +69,7 @@ pending_payment ──▶ payment_held ──▶ authenticating ──▶ authen
 
 ### 3.1 建立全額 PaymentIntent
 
-> **實作決策（Payment Milestone 1，已落地）：** 託管語意為「**確認收貨先放款**」，因此收款採 **separate charge**——資金 100% 收入**平台**帳戶，**唔用** `application_fee_amount` / `transfer_data` 即時分賬。撥款給商戶改為訂單完成時以 `transfers.create` 執行（Milestone 2）。
+> **實作決策（Payment Milestone 1–2，已落地）：** 託管語意為「**確認收貨先放款**」，因此收款採 **separate charge**——資金 100% 收入**平台**帳戶，**唔用** `application_fee_amount` / `transfer_data` 即時分賬。買家確認收貨後才以具 idempotency key 的 `transfers.create` 撥款給商戶。
 >
 > 實際程式：[`app/actions/merchant-checkout.ts`](../../app/actions/merchant-checkout.ts) · 詳細契約見 [merchant-checkout/backend.md](./follow-up/merchant-checkout/backend.md)。
 
@@ -99,10 +99,10 @@ await stripe.paymentIntents.create({
 
 | 項目 | 計算 | 說明 |
 |------|------|------|
-| 平台佣金 | `itemSubtotal × commission_rate` | `commission_rate` 由 `platform_settings` 動態設定 — ⏳ **Milestone 2 未落地** |
+| 平台佣金 | `round(itemSubtotal × 8%, 2)` | 第一版固定 8%；每單 snapshot，動態 `platform_settings` 後續落地 |
 | 運費補貼 | 使用免運券時，由平台佣金扣除定額補貼給賣家 | 對齊 `requirement.md` 1.5 — ⏳ 未落地 |
 | 鑑定費 | HK$150（`authFee`） | 可選增值服務，獨立行項，不入賣家分賬本金 |
-| 賣家實收 | `totalAmount − 平台佣金` | 訂單完成時以 `transfers.create` 撥款 — ⏳ **Milestone 2** |
+| 賣家實收 | `itemSubtotal − 平台佣金 + shippingFee` | 買家確認收貨時以 `transfers.create` 撥至 Merchant Connect |
 
 ---
 
@@ -121,7 +121,7 @@ await stripe.paymentIntents.create({
 | `payment_intent.payment_failed` | `console.warn` 留痕，訂單維持待付款讓買家重試（listing 保持 `inactive`） | 維持 `pending_payment` | ✅ 已落地 |
 | `account.updated` | 同步 `kyc_records.stripe_charges_enabled` / `stripe_payouts_enabled` | — | ✅ 已落地 |
 | `charge.refunded` | `escrow_status='refunded'`、回滾 `listings='active'` | `* → refunded` | ⏳ 未落地 |
-| `transfer.created` | 確認商戶撥款、寫入撥款流水 | `completed_and_transferred` 後留痕 | ⏳ Milestone 2 |
+| `transfer.created` | 核對 order metadata、金額與 destination；冪等 finalize 及補償 action 中斷 | `* → completed_and_transferred` | ✅ 已落地 |
 
 > **冪等性：** `rpc_mark_merchant_order_paid` 只允許 `pending_payment → payment_held`，重送同一事件回 `already_applied: true`；`merchant_ledgers` 以 `(order_id, transaction_type)` 存在性檢查防重複入帳。訂單已綁定另一個 PaymentIntent 時會 raise，攔截錯誤入帳。
 
@@ -129,13 +129,23 @@ await stripe.paymentIntents.create({
 
 ## 5. 結算與釋放 (Settlement & Release)
 
-```ts
-// [Server Action] confirmReceipt / releaseEscrow  [買家本人 or 鑑定通過]
-// 1. 驗證 escrow_status IN ('shipped', 'grading')
-// 2. UPDATE orders SET escrow_status = 'released'
-// 3. 若使用 transfer_data 即時分賬，款項已在賣家 Connected Account；此步確認解除爭議窗口
-// 4. 觸發雙向評分邀請、累加賣家 totalSalesCount
-```
+Merchant B2C 的 `completeMerchantOrder` 執行可重試 saga：
+
+1. `rpc_prepare_merchant_order_payout` 驗證 buyer、付款狀態、KYC/Connect，鎖定 8% 佣金及 payout snapshot。
+2. 從 succeeded PaymentIntent 取得 `latest_charge`，用 `source_transaction` + `merchant-order-payout:<orderId>` idempotency key 建立 transfer。
+3. service-role `rpc_finalize_merchant_order_payout` 核對 amount/destination，寫 `commission_deduction` / `payout` ledger，最後進入 `completed_and_transferred`。
+4. `transfer.created` webhook 呼叫同一 finalize RPC，補償 transfer 成功後 server 中斷。
+
+**鑑定訂單 guard：** `requires_authentication=true` 時，買家確認收貨／撥款僅允許 `authenticated + auth_result=passed + outbound_tracking_no` 非空。
+
+### 5.1 Admin 鑑定失敗部分退款 saga
+
+`adminFailGradingAndRefund`：
+
+1. `rpc_admin_prepare_auth_refund` 鎖單、snapshot `refund_amount = item_subtotal + shipping_fee`（Member 無運費則僅卡價）、設 `processing`。
+2. `stripe.refunds.create`（idempotency `auth-grading-refund:<kind>:<orderId>`）。
+3. service-role `rpc_finalize_auth_refund` 更新訂單為 cancelled/refunded、listing 回 `active`、寫 audit。
+4. `refund.created` webhook 補償 finalize（冪等）。
 
 ---
 

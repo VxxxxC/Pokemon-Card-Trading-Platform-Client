@@ -33,6 +33,33 @@ function formatListingGrade(order: UserTradingOrder): string {
   return formatTradeGradeLabel(gradingCompany, gradingScore);
 }
 
+/** Overview / list rows without explicit statusBadge — avoid mislabeling P2P meetup as 已付款. */
+export function resolveUserTradingStatusLabelOverride(
+  order: UserTradingOrder,
+): string | undefined {
+  if (order.pendingPayment) {
+    return order.persona === "sell" ? "待買家付款" : "待付款";
+  }
+
+  if (
+    !order.useAuthentication &&
+    (order.status === "pending" || order.status === "meetup_arranged")
+  ) {
+    return "待處理";
+  }
+
+  if (
+    order.useAuthentication &&
+    order.status === "pending" &&
+    order.escrowStatus === "payment" &&
+    !order.paymentConfirmedAt
+  ) {
+    return "待付款";
+  }
+
+  return undefined;
+}
+
 function formatOrderDateTime(createdAt: string | null): string {
   if (!createdAt) {
     return "";
@@ -79,5 +106,6 @@ export function mapTradingOrderToSaleOrder(order: UserTradingOrder): SaleOrder {
     userContext: isBuyer ? "BUYER" : "SELLER",
     productListingId: order.id,
     hasAuthenticationToggle: order.useAuthentication,
+    statusLabelOverride: resolveUserTradingStatusLabelOverride(order),
   };
 }

@@ -14,6 +14,8 @@
     "test:member-order-complete-rpc": "bun run scripts/test-member-order-complete-rpc.ts",
     "test:chat-mark-read": "bun run scripts/test-chat-mark-read.ts",
     "test:member-auth-mock-flow": "bun run scripts/run-member-auth-mock-flow.ts",
+    "stripe:webhook:listen": "bash scripts/stripe-webhook-listen.sh",
+    "stripe:webhook:sync": "bun run scripts/stripe-webhook-sync-endpoint.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed"

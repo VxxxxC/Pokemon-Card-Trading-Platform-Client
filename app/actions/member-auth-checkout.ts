@@ -2,6 +2,7 @@
 
 import type Stripe from "stripe";
 import { getMemberAuthOrderActions } from "@/app/lib/member-order/auth-escrow";
+import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS } from "@/lib/payments/escrow-payment-intent";
 import { calculateMemberAuthPaymentTotal } from "@/lib/payments/member-auth-payment";
 import { resolveMemberOrderIdForUser } from "@/lib/member-order/resolve-order-id";
 import { getStripeClient, getStripePublishableKey } from "@/lib/stripe/env";
@@ -41,6 +42,7 @@ export type MemberAuthPaymentStatus = {
   orderNumber: string | null;
   escrowStatus: MemberEscrowStatus | null;
   paymentConfirmedAt: string | null;
+  paymentCaptureStatus: string | null;
   totalAmount: number;
 };
 
@@ -60,6 +62,7 @@ type MemberAuthCheckoutRow = Pick<
   | "status"
   | "payment_confirmed_at"
   | "stripe_payment_intent_id"
+  | "payment_capture_status"
 >;
 
 type PrepareMemberAuthPaymentPayload = {
@@ -100,7 +103,8 @@ const MEMBER_AUTH_CHECKOUT_SELECT = `
   use_authentication,
   status,
   payment_confirmed_at,
-  stripe_payment_intent_id
+  stripe_payment_intent_id,
+  payment_capture_status
 `;
 
 function asMemberAuthCheckoutRpcClient(
@@ -329,6 +333,7 @@ export async function createMemberAuthPaymentIntent(
 
     const metadata: Stripe.MetadataParam = {
       order_kind: "member_auth",
+      capture_mode: "manual",
       order_id: prepared.order_id,
       order_number: row.order_number ?? "",
       buyer_id: user.id,
@@ -357,10 +362,14 @@ export async function createMemberAuthPaymentIntent(
           };
         }
 
-        if (existing.status !== "canceled") {
+        if (existing.status === "requires_capture") {
+          paymentIntent = existing;
+        } else if (existing.status !== "canceled") {
           paymentIntent = await stripe.paymentIntents.update(existing.id, {
             amount: amountInCents,
             metadata,
+            capture_method: "manual",
+            payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS,
           });
         }
       } catch (retrieveError) {
@@ -380,9 +389,10 @@ export async function createMemberAuthPaymentIntent(
       paymentIntent = await stripe.paymentIntents.create({
         amount: amountInCents,
         currency: "hkd",
-        capture_method: "automatic",
+        capture_method: "manual",
         automatic_payment_methods: { enabled: true },
         metadata,
+        payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS,
       });
     }
 
@@ -460,6 +470,7 @@ export async function getMemberAuthPaymentStatus(
         orderNumber: row.order_number,
         escrowStatus: row.escrow_status,
         paymentConfirmedAt: row.payment_confirmed_at,
+        paymentCaptureStatus: row.payment_capture_status ?? null,
         totalAmount: Number(
           row.total_amount ?? calculateMemberAuthPaymentTotal(Number(row.final_price)),
         ),

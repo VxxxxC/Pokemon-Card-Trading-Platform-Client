@@ -20,6 +20,7 @@ import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOr
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
+import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
@@ -93,7 +94,10 @@ export function MemberOrderDetailView({
     gradeLabel;
   const displayOrderNumber = order.orderNumber ?? order.id;
   const createdAtLabel = formatMemberOrderDateTime(order.createdAt);
-  const useMeetupUi = isMeetupOnlyMemberOrder(order.useAuthentication);
+  const useMerchantB2cEscrowUi =
+    order.orderKind === "merchant" && !order.useAuthentication;
+  const useMeetupUi =
+    isMeetupOnlyMemberOrder(order.useAuthentication) && !useMerchantB2cEscrowUi;
   const [inboundTrackingInput, setInboundTrackingInput] = useState("");
 
   const galleryImages =
@@ -305,7 +309,27 @@ export function MemberOrderDetailView({
         </div>
       )}
 
-      {useMeetupUi ? (
+      {useMerchantB2cEscrowUi ? (
+        <div className="space-y-4">
+          {isPending && !isPendingEscrowPayment && (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                {isBuyer
+                  ? "款項已由平台 Stripe 託管。收到商戶寄出的卡牌並驗貨後，請確認完成交易以釋放撥款。"
+                  : "買家已完成託管付款，請安排發貨。待買家確認收貨後，平台將撥款至您的 Connect 帳戶。"}
+              </p>
+              {isBuyer && (
+                <MemberOrderCompleteConfirmDialog
+                  disabled={isActionLoading}
+                  isActionLoading={isActionLoading}
+                  onConfirm={handleComplete}
+                  triggerClassName="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      ) : useMeetupUi ? (
         <div className="space-y-4">
           <MemberP2pOrderTimeline status={order.status} />
 
@@ -532,7 +556,15 @@ export function MemberOrderDetailView({
       )}
 
       <div className="grid grid-cols-1 gap-6 items-start">
-        {useMeetupUi ? (
+        {useMerchantB2cEscrowUi ? (
+          <MemberMerchantB2cOrderInvoice
+            itemSubtotal={order.itemSubtotal ?? order.finalPrice}
+            shippingFee={order.shippingFee ?? 0}
+            shippingMethod={order.shippingMethod ?? null}
+            totalAmount={order.totalAmount ?? order.finalPrice}
+            isSeller={isSeller}
+          />
+        ) : useMeetupUi ? (
           <MemberP2pOrderInvoice
             finalPrice={order.finalPrice}
             isSeller={isSeller}

@@ -94,7 +94,7 @@ export function mapMerchantOrderDetailToSaleOrder(
     ...base,
     orderNumber: detail.orderNumber ?? undefined,
     productListingId: detail.listingId,
-    trackingNo: detail.logisticsProofPath ?? undefined,
+    trackingNo: detail.inboundTrackingNo ?? detail.logisticsProofPath ?? undefined,
     avatarSeed: detail.buyer.id,
   };
 }

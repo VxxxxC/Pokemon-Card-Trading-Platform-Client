@@ -10,11 +10,13 @@ export type MerchantSellerActionFlags = {
 export function getMerchantSellerActionFlags(input: {
   escrowStatus: MerchantEscrowStatus;
   hasReviewedByMe: boolean;
+  requiresAuthentication?: boolean | null;
 }): MerchantSellerActionFlags {
-  const { escrowStatus, hasReviewedByMe } = input;
+  const { escrowStatus, hasReviewedByMe, requiresAuthentication } = input;
 
   return {
-    canSubmitLogistics: escrowStatus === "payment_held",
+    canSubmitLogistics:
+      escrowStatus === "payment_held" && Boolean(requiresAuthentication),
     canReviewBuyer:
       escrowStatus === "completed_and_transferred" && !hasReviewedByMe,
   };
