@@ -171,6 +171,31 @@ export default async function OrdersGatewayPage() {
   2. 或使用 Playwright 官方推薦的 `playwright/.auth/user.json` (Storage State) 預存 Session 進行無密碼直接注入。
   3. 任何嘗試透過 Service Role 改寫 Password 的操作將被視為資安違規行為。
 
+### 7. 👑 Git Commit 原子化提交鐵律 (Atomic Git Commit Mandate)
+
+**核心原則**：嚴禁「任務結束後一次過提交幾十個檔案/幾千行代碼」的反模式（Monolithic Commit）。Git Commit 必須保持**極高頻率、小步快跑、微粒度（Atomic Level）**。
+
+1. **微／原子級提交原則 (Atomic Commits First)**：
+   - 每當完成一個獨立的小修改（例如：新增一個 Helper Function、微調單一 Component 樣式、新增/修訂 TypeScript Interface、修正單一 Selector Bug），必須**立即進行一次 Git Commit**。
+   - 目的：確保每一個 Commit 都可獨立被 Review、Track 以及用 `git revert` 單獨回滾。
+
+2. **完整邏輯單元例外 (Cohesive Feature Exception)**：
+   - **例外情況**：若修改屬於一個完整且不可分割的業務 Logic（例如：新增一個 Zustand State + 寫對應的 Server Action + 修改消費該 State 的 Component），允許在**該完整 Logic 修改完畢且確認可運作後**進行一次提交。
+   - **Commit Message 要求**：必須在內文中清晰描述這項完整 Logic 的內容，以及修訂過程中建立/修改了哪些 Function、Variable 或 Constant。
+
+3. **Conventional Commits 格式強制規範**：
+   所有 Commit Message 必須嚴格遵從 Conventional Commits 格式：
+   - `feat(scope)`: 新增功能 / 組件 / 頁面 (例: `feat(orders): add date range filter parser`)
+   - `fix(scope)`: 修復特定 Bug (例: `fix(select): resolve dropdown width layout shift on reopen`)
+   - `refactor(scope)`: 重構邏輯，不影響外部功能 (例: `refactor(payouts): extract mock data to separate file`)
+   - `style(scope)`: UI/UX 樣式微調 (例: `style(nav): adjust button padding and active state styling`)
+   - `docs(scope)`: 更新註釋或文檔
+   - `chore(scope)`: 配置檔或依賴變更
+
+4. **Commit 前的安全門檻**：
+   - 每次提交前，必須確保當前修改無語法錯誤，且不破壞整體 Compile (`bunx tsc --noEmit`)，確保每一個 Commit 都是「可建置、可運行 (Buildable)」的獨立節點。
+   - 嚴禁將工作總結 Markdown、熔斷報錯檔等暫存檔混入代碼 Commit 中。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
