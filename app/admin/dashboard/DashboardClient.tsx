@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
@@ -17,79 +17,75 @@ import {
   Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { AdminDashboardMetrics } from "@/lib/admin-dashboard/types";
 
-// Mock metrics data aligned with master taxonomy
-// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: profiles | View / RPC: get_user_ecology_stats
-const userEcology = {
-  totalUsers: 4829,
-  totalUsersFormatted: "4,829",
-  bannedUsers: 14,
-  activeRatio: "64.2%",
-  activeCount: "3,100",
-  distribution: [
-    {
-      key: "user",
-      role: "一般會員 (USER)",
-      count: 4215,
-      formattedCount: "4,215",
-      pct: 87.3,
-      pctStr: "87.3%",
-      color: "#D4A574", // Warm Gold
-      description: "個人買家與卡牌玩家",
-    },
-    {
-      key: "merchant",
-      role: "認證商戶 (MERCHANT)",
-      count: 487,
-      formattedCount: "487",
-      pct: 10.1,
-      pctStr: "10.1%",
-      color: "#10B981", // Bullish Jade Green
-      description: "已通過企業或實體店驗證",
-    },
-    {
-      key: "pending",
-      role: "待審核商戶",
-      count: 118,
-      formattedCount: "118",
-      pct: 2.4,
-      pctStr: "2.4%",
-      color: "#F59E0B", // Amber Warning
-      description: "等待管理員人工資質審查",
-    },
-  ],
+type AdminDashboardClientProps = {
+  metrics: AdminDashboardMetrics | null;
+  loadError: string | null;
 };
 
-// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: orders, listings | View / RPC: get_market_volume_metrics
-const marketVolume = {
-  totalGmv: "HK$ 24,840,000",
-  settledCount: "2,842 筆",
-  listingCount: "18,402 件",
-  growthRate: "+28.4%",
+const EMPTY_METRICS: AdminDashboardMetrics = {
+  userEcology: {
+    totalUsers: 0,
+    totalUsersFormatted: "0",
+    bannedUsers: null,
+    activeRatio: null,
+    activeCount: null,
+    distribution: [],
+  },
+  marketVolume: {
+    totalGmv: "HK$ 0",
+    settledCount: "0 筆",
+    listingCount: "0 件",
+    growthRate: null,
+  },
+  revenues: {
+    totalCommission: "HK$ 0",
+    monthlyCommission: "HK$ 0",
+    commissionRate: "8.0%",
+    commissionGrowth: null,
+    appraisalTotal: "HK$ 0",
+    appraisalFeePerCard: "HK$ 150",
+    totalAppraisals: "0 筆",
+  },
+  stripeBalance: {
+    availableFormatted: "—",
+    pendingFormatted: "—",
+    currency: "HKD",
+    lastSyncedAt: new Date(0).toISOString(),
+    unavailable: true,
+    unavailableReason: null,
+  },
+  alerts: {
+    unprocessedReports: 0,
+  },
+  syncedAt: new Date(0).toISOString(),
 };
 
-// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: orders, platform_settings | View / RPC: get_platform_revenue_metrics
-const revenues = {
-  totalCommission: "HK$ 1,242,000",
-  monthlyCommission: "HK$ 192,100",
-  commissionRate: "5.0%",
-  commissionGrowth: "+5.2%",
-  appraisalTotal: "HK$ 482,000",
-  appraisalFeePerCard: "HK$ 150",
-  totalAppraisals: "3,213 筆",
-};
+function formatSyncedAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
 
-// TODO: [Stripe Wiring] Replace mock data with real Stripe API call
-// Target API: stripe.balance.retrieve | Fallback: mock
-const stripePlatformBalance = {
-  available: 1284650,
-  pending: 236800,
-  currency: "HKD",
-  lastSyncedAt: "2026-07-26 09:42",
-};
+  return `${date.toLocaleDateString("zh-TW", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })} ${date.toLocaleTimeString("zh-TW", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })}`;
+}
+
+function formatGrowthLabel(value: string | null): string {
+  return value ?? "N/A";
+}
+
+function formatOptionalMetric(value: string | null): string {
+  return value ?? "—";
+}
 
 interface SystemService {
   id: string;
@@ -125,15 +121,35 @@ const initialServices: SystemService[] = [
   },
 ];
 
-export default function AdminDashboardClient() {
+export default function AdminDashboardClient({
+  metrics,
+  loadError,
+}: AdminDashboardClientProps) {
   const router = useRouter();
+  const [isRefreshingMetrics, startMetricsRefresh] = useTransition();
+
+  const dashboardMetrics = metrics ?? EMPTY_METRICS;
+  const userEcology = dashboardMetrics.userEcology;
+  const marketVolume = dashboardMetrics.marketVolume;
+  const revenues = dashboardMetrics.revenues;
+  const stripeBalance = dashboardMetrics.stripeBalance;
+  const unprocessedReports = dashboardMetrics.alerts.unprocessedReports;
+  const pendingKycCount =
+    userEcology.distribution.find((segment) => segment.key === "pending")
+      ?.count ?? 0;
+  const ecologySummary = userEcology.distribution
+    .map((segment) => `${segment.role.split(" ")[0]} (${segment.pctStr})`)
+    .join(" | ");
 
   // State for system services latency check
   const [services, setServices] = useState<SystemService[]>(initialServices);
   const [isRefreshingServices, setIsRefreshingServices] = useState(false);
 
-  // Urgent alerts count
-  const unprocessedDisputes = 5;
+  const handleRefreshMetrics = () => {
+    startMetricsRefresh(() => {
+      router.refresh();
+    });
+  };
 
   const handleRefreshServices = () => {
     setIsRefreshingServices(true);
@@ -171,17 +187,7 @@ export default function AdminDashboardClient() {
             </span>
           </div>
           <p className="font-mono text-[12px] text-text-secondary mt-1">
-            最後同步：
-            {new Date().toLocaleDateString("zh-TW", {
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            })}{" "}
-            {new Date().toLocaleTimeString("zh-TW", {
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: false,
-            })}
+            最後同步：{formatSyncedAt(dashboardMetrics.syncedAt)}
           </p>
         </div>
 
@@ -190,19 +196,23 @@ export default function AdminDashboardClient() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefreshServices}
-            disabled={isRefreshingServices}
+            onClick={handleRefreshMetrics}
+            disabled={isRefreshingMetrics}
             className="border-[rgba(237,232,224,0.12)] bg-bg-card hover:bg-bg-hover text-text-primary text-[12px] h-9 gap-1.5 active:scale-[0.98]"
           >
             <RefreshCw
               className={`w-3.5 h-3.5 text-brand ${
-                isRefreshingServices ? "animate-spin" : ""
+                isRefreshingMetrics ? "animate-spin" : ""
               }`}
             />
             重新整理數據
           </Button>
         </div>
       </div>
+
+      {loadError ? (
+        <p>{loadError}</p>
+      ) : null}
 
       {/* ────────────────────────────────────────────────────────────── */}
       {/* 1. 頂部黃金視覺區 (Top Hero Zone): 平台營收與交易量 KPI 大卡片 */}
@@ -248,7 +258,7 @@ export default function AdminDashboardClient() {
                   </span>
                   <span className="inline-flex items-center gap-0.5 font-mono text-[12px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                     <TrendingUp className="w-3 h-3" />
-                    {revenues.commissionGrowth}
+                    {formatGrowthLabel(revenues.commissionGrowth)}
                   </span>
                 </div>
                 <p className="font-mono text-[11px] text-text-secondary mt-1">
@@ -284,11 +294,34 @@ export default function AdminDashboardClient() {
                 </span>
                 <div className="flex items-baseline gap-2.5">
                   <span className="font-mono font-bold text-[30px] sm:text-[32px] text-brand tracking-tight leading-none">
-                    HK$ {stripePlatformBalance.available.toLocaleString("zh-TW")}
+                    {stripeBalance.availableFormatted}
                   </span>
                 </div>
+                <div className="mt-2 space-y-1">
+                  <p className="font-mono text-[11px] text-text-secondary">
+                    可用餘額 (Available){" "}
+                    <span className="font-mono text-text-primary">
+                      {stripeBalance.availableFormatted}
+                    </span>
+                  </p>
+                  <p className="font-mono text-[11px] text-text-secondary">
+                    待結算 (Pending){" "}
+                    <span className="font-mono text-text-primary">
+                      {stripeBalance.pendingFormatted}
+                    </span>
+                  </p>
+                  <p className="font-mono text-[11px] text-text-secondary">
+                    幣種{" "}
+                    <span className="font-mono text-text-primary">
+                      {stripeBalance.currency}
+                    </span>
+                  </p>
+                </div>
                 <p className="font-mono text-[11px] text-text-secondary mt-1">
-                  Stripe Connect 官方即時可用清算資金
+                  {stripeBalance.unavailable
+                    ? (stripeBalance.unavailableReason ??
+                      "Stripe Connect 官方即時可用清算資金")
+                    : "Stripe Connect 官方即時可用清算資金"}
                 </p>
               </div>
             </div>
@@ -311,7 +344,7 @@ export default function AdminDashboardClient() {
               </div>
               <span className="font-mono text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
-                {marketVolume.growthRate} vs 上月
+                {formatGrowthLabel(marketVolume.growthRate)} vs 上月
               </span>
             </div>
 
@@ -367,10 +400,16 @@ export default function AdminDashboardClient() {
           <div className="flex items-center gap-2">
             <span className="font-mono text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full font-medium flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              活躍用戶比率 {userEcology.activeRatio} ({userEcology.activeCount})
+              活躍用戶比率 {formatOptionalMetric(userEcology.activeRatio)} (
+              {formatOptionalMetric(userEcology.activeCount)})
             </span>
             <span className="font-mono text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded-full">
-              已封鎖 {userEcology.bannedUsers} 戶
+              已封鎖 {formatOptionalMetric(
+                userEcology.bannedUsers === null
+                  ? null
+                  : String(userEcology.bannedUsers),
+              )}{" "}
+              戶
             </span>
           </div>
         </div>
@@ -465,7 +504,7 @@ export default function AdminDashboardClient() {
                 ))}
               </div>
               <p className="text-center font-mono text-[10px] text-text-secondary">
-                一般會員 (87.3%) | 認證商戶 (10.1%) | 待審核 (2.4%)
+                {ecologySummary || "—"}
               </p>
             </div>
           </div>
@@ -476,7 +515,7 @@ export default function AdminDashboardClient() {
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               商戶審核隊列：
               <span className="text-text-primary font-medium">
-                118 件待審核
+                {pendingKycCount} 件待審核
               </span>
             </span>
             <Button
@@ -553,6 +592,7 @@ export default function AdminDashboardClient() {
 
         {/* ── 未處理緊急警報數 (Red Alert Badge Action Button) ──────────────── */}
         {/* Placed prominently in the mobile thumb zone & desktop banner */}
+        {unprocessedReports > 0 ? (
         <div className="sticky bottom-4 sm:relative sm:bottom-0 z-30">
           <div className="w-full bg-gradient-to-r from-rose-950/90 via-bg-card to-rose-950/80 rounded-2xl border-2 border-rose-500/40 hover:border-rose-500 p-4 sm:p-5 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 w-full sm:w-auto">
@@ -561,7 +601,7 @@ export default function AdminDashboardClient() {
                 <div className="w-11 h-11 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform">
                   <ShieldAlert className="w-6 h-6" />
                 </div>
-                {unprocessedDisputes > 0 && (
+                {unprocessedReports > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500" />
@@ -574,12 +614,12 @@ export default function AdminDashboardClient() {
                   <span className="font-sans font-bold text-[15px] sm:text-[16px] text-white flex items-center gap-1.5">
                     🚨 未處理緊急警報：
                     <span className="font-mono text-rose-400 underline underline-offset-2">
-                      {unprocessedDisputes} 件
+                      {unprocessedReports} 件
                     </span>
                   </span>
                 </div>
                 <p className="font-sans text-[12px] text-rose-200/80 mt-0.5">
-                  有 {unprocessedDisputes}{" "}
+                  有 {unprocessedReports}{" "}
                   件高風險買賣爭議、品相申訴與私下交易舉報待人工仲裁處理
                 </p>
               </div>
@@ -598,6 +638,7 @@ export default function AdminDashboardClient() {
             </div>
           </div>
         </div>
+        ) : null}
       </section>
     </div>
   );
