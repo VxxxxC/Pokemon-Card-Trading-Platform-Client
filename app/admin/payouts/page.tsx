@@ -4,9 +4,12 @@ import {
   getAdminFpsBatchSchedule,
   getAdminPayoutsPageData,
   listAdminMerchantTransfers,
+  listAdminPayoutRequests,
 } from "@/app/actions/admin-payouts";
 import {
+  EMPTY_FPS_PAYOUT_STATUS_COUNTS,
   EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS,
+  FPS_PAYOUT_REQUESTS_PAGE_SIZE,
   MERCHANT_TRANSFERS_PAGE_SIZE,
 } from "@/lib/admin-payouts/types";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
@@ -36,14 +39,20 @@ export default async function AdminPayoutsPage() {
     redirect("/");
   }
 
-  const [result, fpsBatchSchedule, merchantPageResult] = await Promise.all([
-    getAdminPayoutsPageData(),
-    getAdminFpsBatchSchedule(),
-    listAdminMerchantTransfers({
-      page: 1,
-      pageSize: MERCHANT_TRANSFERS_PAGE_SIZE,
-    }),
-  ]);
+  const [result, fpsBatchSchedule, merchantPageResult, fpsPageResult] =
+    await Promise.all([
+      getAdminPayoutsPageData(),
+      getAdminFpsBatchSchedule(),
+      listAdminMerchantTransfers({
+        page: 1,
+        pageSize: MERCHANT_TRANSFERS_PAGE_SIZE,
+      }),
+      listAdminPayoutRequests({
+        page: 1,
+        pageSize: FPS_PAYOUT_REQUESTS_PAGE_SIZE,
+        statusFilter: "incomplete",
+      }),
+    ]);
 
   const emptyMerchantPage = {
     rows: [],
@@ -52,6 +61,15 @@ export default async function AdminPayoutsPage() {
     pageSize: MERCHANT_TRANSFERS_PAGE_SIZE,
     totalPages: 0,
     statusCounts: { ...EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS },
+  };
+
+  const emptyFpsPage = {
+    rows: [],
+    total: 0,
+    page: 1,
+    pageSize: FPS_PAYOUT_REQUESTS_PAGE_SIZE,
+    totalPages: 0,
+    statusCounts: { ...EMPTY_FPS_PAYOUT_STATUS_COUNTS },
   };
 
   return (
@@ -65,6 +83,10 @@ export default async function AdminPayoutsPage() {
       merchantLoadError={
         merchantPageResult.success ? null : merchantPageResult.error
       }
+      initialFpsPage={
+        fpsPageResult.success ? fpsPageResult.data : emptyFpsPage
+      }
+      fpsLoadError={fpsPageResult.success ? null : fpsPageResult.error}
     />
   );
 }

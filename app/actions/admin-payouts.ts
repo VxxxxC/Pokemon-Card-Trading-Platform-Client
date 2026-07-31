@@ -5,8 +5,16 @@ import { formatAdminDateTime } from "@/lib/admin-payouts/format";
 import type {
   AdminPayoutsPageData,
   AdminPayoutsPageResult,
+  FpsPayoutPage,
+  FpsPayoutRequestStatus,
+  FpsPayoutRow,
+  FpsPayoutSort,
+  FpsPayoutStatusCounts,
+  FpsPayoutStatusFilter,
   ListAdminMerchantTransfersInput,
   ListAdminMerchantTransfersResult,
+  ListAdminPayoutRequestsInput,
+  ListAdminPayoutRequestsResult,
   MerchantTransferPage,
   MerchantTransferPayoutStatus,
   MerchantTransferRow,
@@ -15,7 +23,13 @@ import type {
   MerchantTransferStatusFilter,
 } from "@/lib/admin-payouts/types";
 import {
+  EMPTY_FPS_PAYOUT_STATUS_COUNTS,
   EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS,
+  FPS_EXPORT_CAP,
+  FPS_INCOMPLETE_STATUSES,
+  FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE,
+  FPS_PAYOUT_REQUESTS_PAGE_SIZE,
+  FPS_SELLER_NAME_SORT_FETCH_CAP,
   MERCHANT_NAME_SORT_FETCH_CAP,
   MERCHANT_TRANSFERS_EXPORT_CAP,
   MERCHANT_TRANSFERS_MAX_PAGE_SIZE,
@@ -28,7 +42,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getPlatformStripeBalance } from "@/lib/stripe/platform-balance";
 import { getPlatformStripeTodayInflow } from "@/lib/stripe/platform-today-inflow";
-import type { Tables } from "@/types/supabase";
+import type { Tables, TablesUpdate } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 
 type MerchantOrderRow = Pick<
@@ -608,4 +622,584 @@ export async function refreshAdminStripeBalance(): Promise<
 
 export async function getAdminFpsBatchSchedule() {
   return getNextBatchSchedule();
+}
+
+type PayoutRequestRow = Pick<
+  Tables<"payout_requests">,
+  | "id"
+  | "order_id"
+  | "seller_id"
+  | "amount"
+  | "fps_id_snapshot"
+  | "status"
+  | "ready_at"
+  | "created_at"
+  | "admin_fps_reference"
+  | "paid_at"
+>;
+
+const PAYOUT_REQUEST_SELECT =
+  "id, order_id, seller_id, amount, fps_id_snapshot, status, ready_at, created_at, admin_fps_reference, paid_at";
+
+function normalizeFpsPayoutStatus(
+  status: string | null,
+): FpsPayoutRequestStatus {
+  if (
+    status === "pending" ||
+    status === "ready" ||
+    status === "processing" ||
+    status === "completed" ||
+    status === "failed"
+  ) {
+    return status;
+  }
+  return "pending";
+}
+
+function resolveFpsPageSize(pageSize?: number): number {
+  const size = Math.floor(pageSize ?? FPS_PAYOUT_REQUESTS_PAGE_SIZE);
+  return Math.min(FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE, Math.max(1, size));
+}
+
+function isFpsSellerNameSort(
+  sort: FpsPayoutSort | undefined,
+): sort is "userName-asc" | "userName-desc" {
+  return sort === "userName-asc" || sort === "userName-desc";
+}
+
+function escapeFpsSearchTerm(search: string): string {
+  return search.trim().replace(/[%_,]/g, "");
+}
+
+function normalizeFpsRequestIdSearchTerm(search: string): string {
+  return escapeFpsSearchTerm(search).replace(/^#+/, "");
+}
+
+function formatPostgrestInFilter(column: string, ids: string[]): string | null {
+  if (ids.length === 0) {
+    return null;
+  }
+  const quoted = ids.map((id) => `"${id}"`).join(",");
+  return `${column}.in.(${quoted})`;
+}
+
+class FpsPayoutQueryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FpsPayoutQueryError";
+  }
+}
+
+async function resolveSearchRequestIds(
+  admin: ReturnType<typeof createAdminClient>,
+  search: string,
+): Promise<string[]> {
+  const term = normalizeFpsRequestIdSearchTerm(search);
+  if (!term) {
+    return [];
+  }
+
+  const { data, error } = await admin
+    .from("payout_requests")
+    .select("id")
+    .limit(FPS_SELLER_NAME_SORT_FETCH_CAP);
+
+  if (error) {
+    console.error("[resolveSearchRequestIds]", error);
+    throw new FpsPayoutQueryError("無法搜尋提現單號");
+  }
+
+  const needle = term.toLowerCase();
+  return (data ?? [])
+    .map((row) => row.id)
+    .filter((id) => id.toLowerCase().includes(needle));
+}
+
+async function resolveSearchOrderIds(
+  admin: ReturnType<typeof createAdminClient>,
+  search: string,
+): Promise<string[]> {
+  const term = escapeFpsSearchTerm(search);
+  if (!term) {
+    return [];
+  }
+
+  const { data } = await admin
+    .from("member_orders")
+    .select("id")
+    .ilike("order_number", `%${term}%`);
+
+  return (data ?? []).map((row) => row.id).filter((id): id is string => Boolean(id));
+}
+
+async function resolveSearchSellerIds(
+  admin: ReturnType<typeof createAdminClient>,
+  search: string,
+): Promise<string[]> {
+  const term = escapeFpsSearchTerm(search);
+  if (!term) {
+    return [];
+  }
+
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .or(`display_name.ilike.%${term}%,username.ilike.%${term}%`);
+
+  return (data ?? []).map((row) => row.id).filter((id): id is string => Boolean(id));
+}
+
+function applyFpsPayoutFilters<T extends {
+  eq: (column: string, value: string) => T;
+  gte: (column: string, value: string) => T;
+  lte: (column: string, value: string) => T;
+  in: (column: string, values: string[]) => T;
+  or: (filters: string) => T;
+}>(
+  query: T,
+  input: ListAdminPayoutRequestsInput,
+  searchOrderIds: string[],
+  searchSellerIds: string[],
+  searchRequestIds: string[],
+): T {
+  let filtered = query;
+
+  if (input.statusFilter && input.statusFilter !== "all") {
+    if (input.statusFilter === "incomplete") {
+      filtered = filtered.in("status", [...FPS_INCOMPLETE_STATUSES]);
+    } else {
+      filtered = filtered.eq("status", input.statusFilter);
+    }
+  }
+
+  if (input.dateFrom) {
+    filtered = filtered.gte("created_at", input.dateFrom);
+  }
+
+  if (input.dateTo) {
+    filtered = filtered.lte("created_at", input.dateTo);
+  }
+
+  const search = input.search?.trim();
+  if (search) {
+    const escaped = escapeFpsSearchTerm(search);
+    const orParts = [
+      `fps_id_snapshot.ilike.%${escaped}%`,
+      `admin_fps_reference.ilike.%${escaped}%`,
+    ];
+
+    const requestIdIn = formatPostgrestInFilter("id", searchRequestIds);
+    if (requestIdIn) {
+      orParts.push(requestIdIn);
+    }
+    const orderIdIn = formatPostgrestInFilter("order_id", searchOrderIds);
+    if (orderIdIn) {
+      orParts.push(orderIdIn);
+    }
+    const sellerIdIn = formatPostgrestInFilter("seller_id", searchSellerIds);
+    if (sellerIdIn) {
+      orParts.push(sellerIdIn);
+    }
+
+    filtered = filtered.or(orParts.join(","));
+  }
+
+  return filtered;
+}
+
+async function enrichFpsPayoutRows(
+  requests: PayoutRequestRow[],
+): Promise<FpsPayoutRow[]> {
+  if (requests.length === 0) {
+    return [];
+  }
+
+  const admin = createAdminClient();
+  const orderIds = [...new Set(requests.map((row) => row.order_id))];
+  const sellerIds = [...new Set(requests.map((row) => row.seller_id))];
+
+  const [{ data: orders }, { data: profiles }] = await Promise.all([
+    admin.from("member_orders").select("id, order_number").in("id", orderIds),
+    admin
+      .from("profiles")
+      .select("id, display_name, username")
+      .in("id", sellerIds),
+  ]);
+
+  const orderNumberById = new Map<string, string>();
+  for (const order of orders ?? []) {
+    orderNumberById.set(order.id, order.order_number ?? order.id.slice(0, 8));
+  }
+
+  const sellerNameById = new Map<string, string>();
+  for (const profile of profiles ?? []) {
+    sellerNameById.set(
+      profile.id,
+      profile.display_name || profile.username || "未知用戶",
+    );
+  }
+
+  return requests.map((request) => {
+    const submittedAtIso = request.ready_at ?? request.created_at;
+    return {
+      requestId: request.id,
+      orderId: request.order_id,
+      orderNumber:
+        orderNumberById.get(request.order_id) ??
+        request.order_id.slice(0, 8),
+      sellerId: request.seller_id,
+      sellerName: sellerNameById.get(request.seller_id) ?? "未知用戶",
+      amount: Number(request.amount ?? 0),
+      fpsId: request.fps_id_snapshot,
+      status: normalizeFpsPayoutStatus(request.status),
+      submittedAt: formatAdminDateTime(submittedAtIso),
+      submittedAtIso,
+      adminFpsReference: request.admin_fps_reference,
+      paidAt: request.paid_at ? formatAdminDateTime(request.paid_at) : null,
+    };
+  });
+}
+
+function sortFpsPayoutRows(
+  rows: FpsPayoutRow[],
+  sort: FpsPayoutSort | undefined,
+): FpsPayoutRow[] {
+  const effectiveSort = sort ?? "submittedAt-desc";
+
+  if (effectiveSort === "submittedAt-desc") {
+    return [...rows].sort((a, b) => {
+      const aMs = a.submittedAtIso ? new Date(a.submittedAtIso).getTime() : 0;
+      const bMs = b.submittedAtIso ? new Date(b.submittedAtIso).getTime() : 0;
+      return bMs - aMs;
+    });
+  }
+
+  if (effectiveSort === "submittedAt-asc") {
+    return [...rows].sort((a, b) => {
+      const aMs = a.submittedAtIso ? new Date(a.submittedAtIso).getTime() : 0;
+      const bMs = b.submittedAtIso ? new Date(b.submittedAtIso).getTime() : 0;
+      return aMs - bMs;
+    });
+  }
+
+  if (effectiveSort === "userName-asc") {
+    return [...rows].sort((a, b) =>
+      a.sellerName.localeCompare(b.sellerName, "zh-HK"),
+    );
+  }
+
+  return [...rows].sort((a, b) =>
+    b.sellerName.localeCompare(a.sellerName, "zh-HK"),
+  );
+}
+
+async function fetchFpsPayoutStatusCounts(
+  input: ListAdminPayoutRequestsInput,
+  searchOrderIds: string[],
+  searchSellerIds: string[],
+  searchRequestIds: string[],
+): Promise<FpsPayoutStatusCounts> {
+  const admin = createAdminClient();
+  const baseInput = { ...input, statusFilter: undefined };
+
+  const countWithFilter = async (
+    statusFilter: FpsPayoutStatusFilter,
+  ): Promise<number> => {
+    const query = applyFpsPayoutFilters(
+      admin.from("payout_requests").select("*", { count: "exact", head: true }),
+      { ...baseInput, statusFilter },
+      searchOrderIds,
+      searchSellerIds,
+      searchRequestIds,
+    );
+
+    const { count, error } = await query;
+    if (error) {
+      console.error("[fetchFpsPayoutStatusCounts]", statusFilter, error);
+      throw new FpsPayoutQueryError("無法載入 FPS 狀態統計");
+    }
+    return count ?? 0;
+  };
+
+  const [all, incomplete, completed, failed] = await Promise.all([
+    countWithFilter("all"),
+    countWithFilter("incomplete"),
+    countWithFilter("completed"),
+    countWithFilter("failed"),
+  ]);
+
+  return { all, incomplete, completed, failed };
+}
+
+function emptyFpsPayoutPage(page: number, pageSize: number): FpsPayoutPage {
+  return {
+    rows: [],
+    total: 0,
+    page,
+    pageSize,
+    totalPages: 0,
+    statusCounts: { ...EMPTY_FPS_PAYOUT_STATUS_COUNTS },
+  };
+}
+
+async function fetchFpsPayoutPage(
+  input: ListAdminPayoutRequestsInput,
+): Promise<FpsPayoutPage> {
+  const admin = createAdminClient();
+  const page = resolvePage(input.page);
+  const pageSize = resolveFpsPageSize(input.pageSize);
+  const sort = input.sort ?? "submittedAt-desc";
+  const search = input.search?.trim();
+
+  const [searchOrderIds, searchSellerIds, searchRequestIds] = search
+    ? await Promise.all([
+        resolveSearchOrderIds(admin, search),
+        resolveSearchSellerIds(admin, search),
+        resolveSearchRequestIds(admin, search),
+      ])
+    : [[], [], []];
+
+  const statusCountsPromise = fetchFpsPayoutStatusCounts(
+    input,
+    searchOrderIds,
+    searchSellerIds,
+    searchRequestIds,
+  );
+
+  if (isFpsSellerNameSort(sort)) {
+    const baseQuery = applyFpsPayoutFilters(
+      admin.from("payout_requests").select(PAYOUT_REQUEST_SELECT),
+      input,
+      searchOrderIds,
+      searchSellerIds,
+      searchRequestIds,
+    );
+
+    const { data: requests, error } = await baseQuery.limit(
+      FPS_SELLER_NAME_SORT_FETCH_CAP,
+    );
+
+    if (error) {
+      console.error("[listAdminPayoutRequests] seller name sort", error);
+      throw new FpsPayoutQueryError("無法搜尋或載入 FPS 提現單");
+    }
+
+    if (!requests) {
+      throw new FpsPayoutQueryError("無法搜尋或載入 FPS 提現單");
+    }
+
+    const [enriched, statusCounts] = await Promise.all([
+      enrichFpsPayoutRows(requests as PayoutRequestRow[]),
+      statusCountsPromise,
+    ]);
+    const sorted = sortFpsPayoutRows(enriched, sort);
+    const total = sorted.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
+    const offset = (safePage - 1) * pageSize;
+
+    return {
+      rows: sorted.slice(offset, offset + pageSize),
+      total,
+      page: safePage,
+      pageSize,
+      totalPages,
+      statusCounts,
+    };
+  }
+
+  const offset = (page - 1) * pageSize;
+  const ascending = sort === "submittedAt-asc";
+
+  const listQuery = applyFpsPayoutFilters(
+    admin.from("payout_requests").select(PAYOUT_REQUEST_SELECT, {
+      count: "exact",
+    }),
+    input,
+    searchOrderIds,
+    searchSellerIds,
+    searchRequestIds,
+  )
+    .order("ready_at", { ascending, nullsFirst: false })
+    .order("created_at", { ascending, nullsFirst: false })
+    .range(offset, offset + pageSize - 1);
+
+  const [{ data: requests, count, error }, statusCounts] = await Promise.all([
+    listQuery,
+    statusCountsPromise,
+  ]);
+
+  if (error) {
+    console.error("[listAdminPayoutRequests] payout_requests", error);
+    throw new FpsPayoutQueryError("無法搜尋或載入 FPS 提現單");
+  }
+
+  if (!requests) {
+    throw new FpsPayoutQueryError("無法搜尋或載入 FPS 提現單");
+  }
+
+  const total = count ?? 0;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+  const rows = await enrichFpsPayoutRows(requests as PayoutRequestRow[]);
+
+  return {
+    rows,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    statusCounts,
+  };
+}
+
+export async function listAdminPayoutRequests(
+  input: ListAdminPayoutRequestsInput = {},
+): Promise<ListAdminPayoutRequestsResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  try {
+    const data = await fetchFpsPayoutPage({
+      ...input,
+      page: resolvePage(input.page),
+      pageSize: resolveFpsPageSize(input.pageSize),
+      sort: input.sort ?? "submittedAt-desc",
+    });
+    return { success: true, data };
+  } catch (error) {
+    if (error instanceof FpsPayoutQueryError) {
+      return { success: false, error: error.message };
+    }
+    console.error("[listAdminPayoutRequests]", error);
+    return { success: false, error: "無法載入 FPS 提現單" };
+  }
+}
+
+export async function listAdminPayoutRequestsForExport(
+  input: Omit<ListAdminPayoutRequestsInput, "page" | "pageSize">,
+): Promise<ListAdminPayoutRequestsResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  try {
+    const firstPage = await fetchFpsPayoutPage({
+      ...input,
+      page: 1,
+      pageSize: 1,
+    });
+
+    const exportSize = Math.min(firstPage.total, FPS_EXPORT_CAP);
+
+    if (exportSize === 0) {
+      return {
+        success: true,
+        data: emptyFpsPayoutPage(1, FPS_PAYOUT_REQUESTS_PAGE_SIZE),
+      };
+    }
+
+    const data = await fetchFpsPayoutPage({
+      ...input,
+      page: 1,
+      pageSize: exportSize,
+    });
+
+    return { success: true, data };
+  } catch (error) {
+    if (error instanceof FpsPayoutQueryError) {
+      return { success: false, error: error.message };
+    }
+    console.error("[listAdminPayoutRequestsForExport]", error);
+    return { success: false, error: "無法導出 FPS 提現單" };
+  }
+}
+
+export async function updateAdminPayoutRequestStatus(input: {
+  requestId: string;
+  status: "processing" | "completed" | "failed";
+  adminFpsReference?: string;
+}): Promise<{ success: true } | { success: false; error: string }> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+
+  const updatePayload: TablesUpdate<"payout_requests"> = {
+    status: input.status,
+    updated_at: now,
+  };
+
+  if (input.status === "completed") {
+    updatePayload.paid_at = now;
+    updatePayload.paid_by = guard.adminId;
+    if (input.adminFpsReference?.trim()) {
+      updatePayload.admin_fps_reference = input.adminFpsReference.trim();
+    }
+  }
+
+  const { data, error } = await admin
+    .from("payout_requests")
+    .update(updatePayload)
+    .eq("id", input.requestId)
+    .in("status", [...FPS_INCOMPLETE_STATUSES])
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("[updateAdminPayoutRequestStatus]", error);
+    return { success: false, error: "無法更新提現單狀態" };
+  }
+
+  if (!data) {
+    return { success: false, error: "提現單不存在或已結案" };
+  }
+
+  revalidatePath("/admin/payouts");
+  return { success: true };
+}
+
+export async function batchCompleteAdminPayoutRequests(input: {
+  requestIds: string[];
+}): Promise<
+  | { success: true; completedCount: number }
+  | { success: false; error: string }
+> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const requestIds = [...new Set(input.requestIds.filter(Boolean))];
+  if (requestIds.length === 0) {
+    return { success: false, error: "請選擇至少一筆提現單" };
+  }
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await admin
+    .from("payout_requests")
+    .update({
+      status: "completed",
+      paid_at: now,
+      paid_by: guard.adminId,
+      updated_at: now,
+    })
+    .in("id", requestIds)
+    .in("status", [...FPS_INCOMPLETE_STATUSES])
+    .select("id");
+
+  if (error) {
+    console.error("[batchCompleteAdminPayoutRequests]", error);
+    return { success: false, error: "批量銷帳失敗" };
+  }
+
+  revalidatePath("/admin/payouts");
+  return { success: true, completedCount: data?.length ?? 0 };
 }

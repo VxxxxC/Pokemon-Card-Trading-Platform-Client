@@ -110,3 +110,85 @@ export const MERCHANT_TRANSFERS_PAGE_SIZE = 10;
 export const MERCHANT_TRANSFERS_MAX_PAGE_SIZE = 50;
 export const MERCHANT_TRANSFERS_EXPORT_CAP = 2000;
 export const MERCHANT_NAME_SORT_FETCH_CAP = 5000;
+
+export type FpsPayoutRequestStatus =
+  | "pending"
+  | "ready"
+  | "processing"
+  | "completed"
+  | "failed";
+
+export type FpsPayoutStatusFilter =
+  | "all"
+  | "incomplete"
+  | "completed"
+  | "failed";
+
+export type FpsPayoutSort =
+  | "submittedAt-desc"
+  | "submittedAt-asc"
+  | "userName-asc"
+  | "userName-desc";
+
+export type FpsPayoutStatusCounts = {
+  all: number;
+  incomplete: number;
+  completed: number;
+  failed: number;
+};
+
+export const EMPTY_FPS_PAYOUT_STATUS_COUNTS: FpsPayoutStatusCounts = {
+  all: 0,
+  incomplete: 0,
+  completed: 0,
+  failed: 0,
+};
+
+export type FpsPayoutRow = {
+  requestId: string;
+  orderId: string;
+  orderNumber: string;
+  sellerId: string;
+  sellerName: string;
+  amount: number;
+  fpsId: string;
+  status: FpsPayoutRequestStatus;
+  submittedAt: string;
+  submittedAtIso: string | null;
+  adminFpsReference: string | null;
+  paidAt: string | null;
+};
+
+export type FpsPayoutPage = {
+  rows: FpsPayoutRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  statusCounts: FpsPayoutStatusCounts;
+};
+
+export type ListAdminPayoutRequestsInput = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  statusFilter?: FpsPayoutStatusFilter;
+  sort?: FpsPayoutSort;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type ListAdminPayoutRequestsResult =
+  | { success: true; data: FpsPayoutPage }
+  | { success: false; error: string };
+
+export const FPS_PAYOUT_REQUESTS_PAGE_SIZE = 10;
+export const FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE = 50;
+export const FPS_EXPORT_CAP = 2000;
+export const FPS_SELLER_NAME_SORT_FETCH_CAP = 5000;
+
+export const FPS_INCOMPLETE_STATUSES: FpsPayoutRequestStatus[] = [
+  "pending",
+  "ready",
+  "processing",
+];

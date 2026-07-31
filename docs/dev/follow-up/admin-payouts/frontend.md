@@ -1,6 +1,6 @@
 # Admin Payouts — Frontend
 
-> **Status:** Phase A 🟡 Partial (Merchant live + server pagination, FPS mock)  
+> **Status:** Phase A ✅ Merchant live · Phase C 🟡 FPS ledger live  
 > **Route:** `/admin/payouts`
 
 ## File layout
@@ -9,12 +9,11 @@
 app/admin/payouts/
   page.tsx                          # SSR + admin guard
   AdminPayoutsClient.tsx            # tabs shell
-  mock-data.ts                      # Phase A FPS mock + Stripe log mock
   components/
     PlatformBalanceSection.tsx      # Stripe balance + refresh
     MerchantConnectLedgerTab.tsx    # Merchant main table (server pagination)
+    FpsLedgerTab.tsx                # FPS payout_requests table (server pagination)
     BlockingLoadingOverlay.tsx      # Full-screen blocking spinner for CSV export
-    StripeLogPanel.tsx              # FPS payout mock only
     payouts-shared.tsx              # SortSelect, FilterChips
 ```
 
@@ -27,14 +26,23 @@ app/admin/payouts/
 | `fpsBatchSchedule` | `getAdminFpsBatchSchedule()` |
 | `initialMerchantPage` | `listAdminMerchantTransfers({ page: 1, pageSize: 10 })` |
 | `merchantLoadError` | merchant list action error |
+| `initialFpsPage` | `listAdminPayoutRequests({ page: 1, pageSize: 10, statusFilter: 'incomplete' })` |
+| `fpsLoadError` | FPS list action error |
 
 ## Tab behaviour
 
-### FPS 批次處理 (mock until Phase C)
+### FPS 批次處理 — live ledger
 
-- Withdrawal table: `mock-data.ts` `initialWithdrawals`
-- Stripe Log: `MOCK_PAYOUT_LOGS` (38 rows)
+- Main table: `FpsLedgerTab` → `listAdminPayoutRequests` (SSR + client refetch)
+- **10 rows/page** server pagination; default filter **未完成** (`pending` + `ready` + `processing`)
+- Status chips: 全部 / 未完成 / 已完成 / 已駁回 — `statusCounts[key]`
+- Search: 提現單號（UUID / `#` 前綴）、訂單號、用戶名稱、FPS ID、管理員 FPS 參考
+- Sort: submitted time, seller name
+- Row actions: 銷帳 / 駁回 (`updateAdminPayoutRequestStatus`); batch 銷帳 (`batchCompleteAdminPayoutRequests`)
+- CSV: `listAdminPayoutRequestsForExport` + `BlockingLoadingOverlay`
+- Links (new tab): 訂單號 / 查看訂單 → `/profile/user/orderDetail/{orderNumber}`; 用戶名稱 → `/profile/{sellerId}`
 - Banner: next Wednesday batch + cutoff from `fpsBatchSchedule`
+- **No Stripe Log** on FPS tab (member FPS is manual bank transfer, not Stripe)
 
 ### 商戶流水 (Stripe) — live
 
@@ -55,7 +63,7 @@ app/admin/payouts/
 
 ### FPS 批次處理 — CSV export
 
-- `handleExportFpsCSV` shows `BlockingLoadingOverlay` while generating download
+- `FpsLedgerTab` export uses `BlockingLoadingOverlay` during server fetch + download
 
 ## Acceptance checklist
 
@@ -64,10 +72,11 @@ app/admin/payouts/
 - [x] Refresh shows toast「已重新整理 Stripe 帳戶餘額」
 - [x] Merchant tab count badge uses server `total`
 - [x] Merchant table server pagination 10/page
-- [x] FPS tab mock search/filter/export unchanged
+- [x] FPS tab live `payout_requests` table with server pagination 10/page
+- [x] FPS status chips + 銷帳/駁回/batch complete wired to server actions
 - [x] FPS batch banner shows Wednesday schedule
-- [ ] Phase C: wire FPS tab to `payout_requests`
+- [ ] Phase C pipeline: auto-insert `payout_requests` on buyer confirm + cron
 
 ## E2E
 
-- `e2e/admin-stripe-finance.spec.ts` Route 2 — FPS mock Stripe Log retained; Merchant tab asserts main table headers (no duplicate Stripe Log)
+- `e2e/admin-stripe-finance.spec.ts` Route 2 — FPS ledger structural asserts; no Stripe Log on FPS tab; Merchant tab asserts main table headers

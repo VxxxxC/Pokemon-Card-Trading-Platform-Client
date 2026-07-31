@@ -1,4 +1,7 @@
-import type { MerchantTransferPayoutStatus } from "@/lib/admin-payouts/types";
+import type {
+  FpsPayoutRequestStatus,
+  MerchantTransferPayoutStatus,
+} from "@/lib/admin-payouts/types";
 
 const HKT_TIME_ZONE = "Asia/Hong_Kong";
 
@@ -85,4 +88,42 @@ export function getPayoutStatusBadgeClass(
   status: MerchantTransferPayoutStatus,
 ): string {
   return PAYOUT_STATUS_BADGE_CLASSES[status] ?? PAYOUT_STATUS_BADGE_CLASSES.pending;
+}
+
+const FPS_PAYOUT_STATUS_LABELS: Record<FpsPayoutRequestStatus, string> = {
+  pending: "待處理",
+  ready: "待撥款",
+  processing: "處理中",
+  completed: "已完成",
+  failed: "已駁回",
+};
+
+const FPS_PAYOUT_STATUS_BADGE_CLASSES: Record<FpsPayoutRequestStatus, string> =
+  {
+    pending: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
+    ready: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
+    processing: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
+    completed: "text-success bg-[rgba(16,185,129,0.12)] border-success/20",
+    failed: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
+  };
+
+export function formatFpsPayoutStatusLabel(
+  status: FpsPayoutRequestStatus,
+): string {
+  return FPS_PAYOUT_STATUS_LABELS[status] ?? status;
+}
+
+export function getFpsPayoutStatusBadgeClass(
+  status: FpsPayoutRequestStatus,
+): string {
+  return (
+    FPS_PAYOUT_STATUS_BADGE_CLASSES[status] ??
+    FPS_PAYOUT_STATUS_BADGE_CLASSES.pending
+  );
+}
+
+export function isFpsPayoutIncomplete(
+  status: FpsPayoutRequestStatus,
+): boolean {
+  return status === "pending" || status === "ready" || status === "processing";
 }
