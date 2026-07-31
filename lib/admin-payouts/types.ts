@@ -152,6 +152,7 @@ export type FpsPayoutRow = {
   sellerName: string;
   amount: number;
   fpsId: string;
+  fpsName: string | null;
   status: FpsPayoutRequestStatus;
   submittedAt: string;
   submittedAtIso: string | null;

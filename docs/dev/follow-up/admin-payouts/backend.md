@@ -1,6 +1,6 @@
 # Admin Payouts — Backend
 
-> **Status:** Phase A ✅ · Phase B ✅ · Merchant ledger ✅ · Phase C MVP ✅ (FPS list/mutations) · Pipeline ⏳  
+> **Status:** Phase A ✅ · Phase B ✅ · Merchant ledger ✅ · Phase C MVP ✅ (FPS list/mutations) · Pipeline ✅ (1A–1C)  
 > **Route:** `/admin/payouts`
 
 ## Phase A — Server actions
@@ -128,12 +128,25 @@ type ListAdminPayoutRequestsInput = {
 
 - Bulk mark `completed` with `paid_at` / `paid_by`
 
-## Phase C — Still deferred
+## Phase C — Pipeline ✅ (1A / 1B / 1C)
 
-1. **`confirmBuyerReceived`** — T+3 hold + auto `payout_requests` insert
-2. **Cron** — auto-insert ready rows when `payout_hold_until` elapses
-3. **Member order detail** — seller payout UI
-4. **`profiles.fps_id`** persist on profile update
+Migration **`20260802120000_member_fps_payout_pipeline.sql`**:
+
+| Piece | Status |
+|-------|--------|
+| **1A** `rpc_confirm_buyer_received` | Sets `buyer_confirmed_at`, `payout_hold_until = now() + 3 days`, `seller_payout_status = 'held'` (auth orders only) |
+| **1B** Cron + RPCs | `rpc_list_member_fps_payout_ready_candidates`, `rpc_finalize_member_fps_payout_ready` → insert `payout_requests` (`amount = final_price`, `fps_id_snapshot`, `ready`/`pending`) |
+| **1C** `profiles.fps_id` | `getUserSettings` / `updateUserProfile` / `updateUserFpsId`; seller dialog + banner on auth order detail |
+
+### Cron route
+
+`GET /api/cron/member-fps-payout-ready` — hourly (`vercel.json`). See [server.md](../../server.md) §9.
+
+### Still deferred
+
+1. `seller_payable` ledger / fee deduction from payout amount
+2. Dispute → `seller_payout_status = frozen` automation
+3. Admin `admin_fps_reference` input on 銷帳 UI
 
 ## Migration verify (ops)
 

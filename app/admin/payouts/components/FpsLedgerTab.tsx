@@ -213,7 +213,7 @@ export default function FpsLedgerTab({
       }
 
       const headers =
-        "提現單號,訂單號,用戶名稱,提現金額(HK$),FPS ID,提交時間,狀態,管理員FPS參考,銷帳時間\n";
+        "提現單號,訂單號,用戶名稱,提現金額(HK$),FPS收款人,FPS ID,提交時間,狀態,管理員FPS參考,銷帳時間\n";
       const rows = targetRows
         .map((row) =>
           [
@@ -221,6 +221,7 @@ export default function FpsLedgerTab({
             `"${row.orderNumber}"`,
             `"${row.sellerName}"`,
             row.amount,
+            `"${row.fpsName ?? ""}"`,
             `"${row.fpsId}"`,
             `"${row.submittedAt}"`,
             formatFpsPayoutStatusLabel(row.status),
@@ -442,6 +443,9 @@ export default function FpsLedgerTab({
                 提現金額
               </TableHead>
               <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                FPS 收款人
+              </TableHead>
+              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
                 FPS ID
               </TableHead>
               <TableHead className="font-mono text-[11px] text-text-secondary h-10">
@@ -502,6 +506,9 @@ export default function FpsLedgerTab({
                   </TableCell>
                   <TableCell className="font-mono font-bold text-[13px] text-text-primary text-right py-3 whitespace-nowrap">
                     {formatAdminHkd(row.amount)}
+                  </TableCell>
+                  <TableCell className="font-sans text-[12px] text-text-primary py-3 whitespace-nowrap">
+                    {row.fpsName ?? "—"}
                   </TableCell>
                   <TableCell className="font-mono text-[12px] text-brand font-bold py-3 whitespace-nowrap">
                     {row.fpsId}

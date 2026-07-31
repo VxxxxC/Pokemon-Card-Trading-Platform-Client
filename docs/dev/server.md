@@ -210,3 +210,27 @@ Merchant B2C 的 `completeMerchantOrder` 執行可重試 saga：
 - [ ] 部署 `middleware.ts` 角色守衛（`/admin` 僅 ADMIN）。
 - [ ] 部署簽到 RPC、身家估值 Edge Function、圖片 WebP 轉檔 Edge Function。
 - [ ] 串接交易關鍵節點的 Email / Push 通知管線。
+
+---
+
+## 9. Scheduled cron routes
+
+All cron handlers use `handleCronRoute` (`lib/cron/request.ts`): require `CRON_SECRET` env + `Authorization: Bearer $CRON_SECRET`. Vercel Cron invokes these paths per `vercel.json`.
+
+| Path | Schedule (UTC) | Purpose |
+|------|----------------|---------|
+| `/api/cron/ingest-platform-trades` | `30 18 * * *` | Ingest external trade data |
+| `/api/cron/aggregate-prices` | `0 19 * * *` | Aggregate market prices |
+| `/api/cron/expire-merchant-pending-payment` | `0 * * * *` | Expire unpaid merchant orders + cancel Stripe PI |
+| `/api/cron/member-fps-payout-ready` | `0 * * * *` | Promote T+3 held member auth orders → `payout_requests` |
+
+### Manual verify — Member FPS payout cron
+
+```bash
+curl -sS -H "Authorization: Bearer $CRON_SECRET" \
+  "http://localhost:3000/api/cron/member-fps-payout-ready" | jq
+```
+
+Expected JSON: `{ success: true, scanned, inserted, errors: [] }`.
+
+**Precondition:** `member_orders` row with `use_authentication=true`, `seller_payout_status='held'`, `payout_hold_until <= now()`, `buyer_confirmed_at` set, order `completed` + `escrow_status='released'`, no existing `payout_requests` row.

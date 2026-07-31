@@ -148,11 +148,13 @@ type UserRole = Enums<"user_role">;
 | `rpc_finalize_auth_grading_fail` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
 | `rpc_finalize_auth_refund` | `{ p_order_id: string p_order_kind: string p_refund_amount_cents: number p_refund_id: string }` | `Json` |
 | `rpc_finalize_goods_capture` | `{ p_admin_id?: string p_captured_amount_cents: number p_notes?: string p_order_id: string p_order_k…` | `Json` |
+| `rpc_finalize_member_fps_payout_ready` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_merchant_order_payout` | `{ p_destination_account_id: string p_order_id: string p_transfer_amount_cents: number p_transfer_id…` | `Json` |
 | `rpc_finalize_merchant_pending_payment_expiry` | `{ p_order_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
+| `rpc_list_member_fps_payout_ready_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_pending_payment_expiry_candidates` | `{ p_limit?: number }` | `{ listing_id: string order_id: string stripe_payment_intent_id: string }[]` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_mark_auth_grading_fail_failed` | `{ p_error: string; p_order_id: string; p_order_kind: string }` | `Json` |
@@ -616,6 +618,7 @@ type UserRole = Enums<"user_role">;
 | `batch_id` | `string | null` | Yes |
 | `created_at` | `string` | No |
 | `fps_id_snapshot` | `string` | No |
+| `fps_name_snapshot` | `string | null` | Yes |
 | `id` | `string` | No |
 | `order_id` | `string` | No |
 | `paid_at` | `string | null` | Yes |
@@ -763,6 +766,7 @@ type UserRole = Enums<"user_role">;
 | `created_at` | `string` | No |
 | `display_name` | `string` | No |
 | `fps_id` | `string | null` | Yes |
+| `fps_name` | `string | null` | Yes |
 | `id` | `string` | No |
 | `rating_score` | `number | null` | Yes |
 | `reputation_tag` | `Json | null` | Yes |

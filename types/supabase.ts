@@ -1160,6 +1160,156 @@ export type Database = {
           },
         ]
       }
+      payout_batches: {
+        Row: {
+          created_at: string
+          cutoff_at: string
+          id: string
+          notes: string | null
+          processed_by: string | null
+          scheduled_date: string
+          status: Database["public"]["Enums"]["payout_batch_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cutoff_at: string
+          id?: string
+          notes?: string | null
+          processed_by?: string | null
+          scheduled_date: string
+          status?: Database["public"]["Enums"]["payout_batch_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cutoff_at?: string
+          id?: string
+          notes?: string | null
+          processed_by?: string | null
+          scheduled_date?: string
+          status?: Database["public"]["Enums"]["payout_batch_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_batches_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_requests: {
+        Row: {
+          admin_fps_reference: string | null
+          amount: number
+          batch_id: string | null
+          created_at: string
+          fps_id_snapshot: string
+          fps_name_snapshot: string | null
+          id: string
+          order_id: string
+          paid_at: string | null
+          paid_by: string | null
+          ready_at: string | null
+          seller_id: string
+          status: Database["public"]["Enums"]["payout_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          admin_fps_reference?: string | null
+          amount: number
+          batch_id?: string | null
+          created_at?: string
+          fps_id_snapshot: string
+          fps_name_snapshot?: string | null
+          id?: string
+          order_id: string
+          paid_at?: string | null
+          paid_by?: string | null
+          ready_at?: string | null
+          seller_id: string
+          status?: Database["public"]["Enums"]["payout_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          admin_fps_reference?: string | null
+          amount?: number
+          batch_id?: string | null
+          created_at?: string
+          fps_id_snapshot?: string
+          fps_name_snapshot?: string | null
+          id?: string
+          order_id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          ready_at?: string | null
+          seller_id?: string
+          status?: Database["public"]["Enums"]["payout_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_requests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "payout_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "member_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_requests_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_requests_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       point_ledger: {
         Row: {
           amount: number
@@ -1431,153 +1581,6 @@ export type Database = {
           },
         ]
       }
-      payout_batches: {
-        Row: {
-          created_at: string
-          cutoff_at: string
-          id: string
-          notes: string | null
-          processed_by: string | null
-          scheduled_date: string
-          status: Database["public"]["Enums"]["payout_batch_status"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          cutoff_at: string
-          id?: string
-          notes?: string | null
-          processed_by?: string | null
-          scheduled_date: string
-          status?: Database["public"]["Enums"]["payout_batch_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          cutoff_at?: string
-          id?: string
-          notes?: string | null
-          processed_by?: string | null
-          scheduled_date?: string
-          status?: Database["public"]["Enums"]["payout_batch_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payout_batches_processed_by_fkey"
-            columns: ["processed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payout_requests: {
-        Row: {
-          admin_fps_reference: string | null
-          amount: number
-          batch_id: string | null
-          created_at: string
-          fps_id_snapshot: string
-          id: string
-          order_id: string
-          paid_at: string | null
-          paid_by: string | null
-          ready_at: string | null
-          seller_id: string
-          status: Database["public"]["Enums"]["payout_request_status"]
-          updated_at: string
-        }
-        Insert: {
-          admin_fps_reference?: string | null
-          amount: number
-          batch_id?: string | null
-          created_at?: string
-          fps_id_snapshot: string
-          id?: string
-          order_id: string
-          paid_at?: string | null
-          paid_by?: string | null
-          ready_at?: string | null
-          seller_id: string
-          status?: Database["public"]["Enums"]["payout_request_status"]
-          updated_at?: string
-        }
-        Update: {
-          admin_fps_reference?: string | null
-          amount?: number
-          batch_id?: string | null
-          created_at?: string
-          fps_id_snapshot?: string
-          id?: string
-          order_id?: string
-          paid_at?: string | null
-          paid_by?: string | null
-          ready_at?: string | null
-          seller_id?: string
-          status?: Database["public"]["Enums"]["payout_request_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payout_requests_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "payout_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "member_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_paid_by_fkey"
-            columns: ["paid_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      platform_settings: {
-        Row: {
-          key: string
-          updated_at: string
-          updated_by: string | null
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          updated_by?: string | null
-          value: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          updated_by?: string | null
-          value?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "platform_settings_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           avatar_path: string | null
@@ -1586,6 +1589,7 @@ export type Database = {
           created_at: string
           display_name: string
           fps_id: string | null
+          fps_name: string | null
           id: string
           rating_score: number | null
           reputation_tag: Json | null
@@ -1602,6 +1606,7 @@ export type Database = {
           created_at?: string
           display_name: string
           fps_id?: string | null
+          fps_name?: string | null
           id: string
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -1618,6 +1623,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           fps_id?: string | null
+          fps_name?: string | null
           id?: string
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -2376,6 +2382,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_finalize_member_fps_payout_ready: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       rpc_finalize_merchant_order_payout: {
         Args: {
           p_destination_account_id: string
@@ -2400,6 +2410,12 @@ export type Database = {
       rpc_increment_listing_view: {
         Args: { p_listing_id: string }
         Returns: undefined
+      }
+      rpc_list_member_fps_payout_ready_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          order_id: string
+        }[]
       }
       rpc_list_merchant_pending_payment_expiry_candidates: {
         Args: { p_limit?: number }
@@ -2896,6 +2912,11 @@ export type Database = {
         | "shipped"
         | "released"
         | "cancelled"
+      member_order_state:
+        | "pending"
+        | "meetup_arranged"
+        | "completed"
+        | "cancelled"
       member_seller_payout_status:
         | "none"
         | "held"
@@ -2904,19 +2925,7 @@ export type Database = {
         | "paid"
         | "frozen"
         | "failed"
-      member_order_state:
-        | "pending"
-        | "meetup_arranged"
-        | "completed"
-        | "cancelled"
       offer_status: "pending" | "accepted" | "rejected" | "cancelled"
-      payout_batch_status: "draft" | "processing" | "completed"
-      payout_request_status:
-        | "pending"
-        | "ready"
-        | "processing"
-        | "completed"
-        | "failed"
       payment_capture_status:
         | "none"
         | "authorized"
@@ -2925,6 +2934,13 @@ export type Database = {
         | "voided"
         | "refunded"
         | "partially_refunded"
+      payout_batch_status: "draft" | "processing" | "completed"
+      payout_request_status:
+        | "pending"
+        | "ready"
+        | "processing"
+        | "completed"
+        | "failed"
       report_state: "pending" | "reviewing" | "resolved" | "dismissed"
       review_persona: "member" | "merchant"
       reward_type:
@@ -3106,6 +3122,12 @@ export const Constants = {
         "released",
         "cancelled",
       ],
+      member_order_state: [
+        "pending",
+        "meetup_arranged",
+        "completed",
+        "cancelled",
+      ],
       member_seller_payout_status: [
         "none",
         "held",
@@ -3115,21 +3137,7 @@ export const Constants = {
         "frozen",
         "failed",
       ],
-      member_order_state: [
-        "pending",
-        "meetup_arranged",
-        "completed",
-        "cancelled",
-      ],
       offer_status: ["pending", "accepted", "rejected", "cancelled"],
-      payout_batch_status: ["draft", "processing", "completed"],
-      payout_request_status: [
-        "pending",
-        "ready",
-        "processing",
-        "completed",
-        "failed",
-      ],
       payment_capture_status: [
         "none",
         "authorized",
@@ -3138,6 +3146,14 @@ export const Constants = {
         "voided",
         "refunded",
         "partially_refunded",
+      ],
+      payout_batch_status: ["draft", "processing", "completed"],
+      payout_request_status: [
+        "pending",
+        "ready",
+        "processing",
+        "completed",
+        "failed",
       ],
       report_state: ["pending", "reviewing", "resolved", "dismissed"],
       review_persona: ["member", "merchant"],

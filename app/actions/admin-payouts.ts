@@ -631,6 +631,7 @@ type PayoutRequestRow = Pick<
   | "seller_id"
   | "amount"
   | "fps_id_snapshot"
+  | "fps_name_snapshot"
   | "status"
   | "ready_at"
   | "created_at"
@@ -639,7 +640,7 @@ type PayoutRequestRow = Pick<
 >;
 
 const PAYOUT_REQUEST_SELECT =
-  "id, order_id, seller_id, amount, fps_id_snapshot, status, ready_at, created_at, admin_fps_reference, paid_at";
+  "id, order_id, seller_id, amount, fps_id_snapshot, fps_name_snapshot, status, ready_at, created_at, admin_fps_reference, paid_at";
 
 function normalizeFpsPayoutStatus(
   status: string | null,
@@ -785,6 +786,7 @@ function applyFpsPayoutFilters<T extends {
     const escaped = escapeFpsSearchTerm(search);
     const orParts = [
       `fps_id_snapshot.ilike.%${escaped}%`,
+      `fps_name_snapshot.ilike.%${escaped}%`,
       `admin_fps_reference.ilike.%${escaped}%`,
     ];
 
@@ -851,6 +853,7 @@ async function enrichFpsPayoutRows(
       sellerName: sellerNameById.get(request.seller_id) ?? "未知用戶",
       amount: Number(request.amount ?? 0),
       fpsId: request.fps_id_snapshot,
+      fpsName: request.fps_name_snapshot,
       status: normalizeFpsPayoutStatus(request.status),
       submittedAt: formatAdminDateTime(submittedAtIso),
       submittedAtIso,
