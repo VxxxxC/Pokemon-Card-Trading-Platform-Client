@@ -168,13 +168,42 @@ interface Message {
 
 ## 5. 託管結帳與金流 (Escrow Checkout & Settlement)
 
+### 5.1 B2C 商戶託管結帳與 Connect 撥款（✅ 已落地，Payment Milestone 1–2）
+
+`app/actions/merchant-checkout.ts` / `app/actions/buy-now.ts` — 詳細契約見 [merchant-checkout/backend.md](./follow-up/merchant-checkout/backend.md) · [buy-now-chat/backend.md](./follow-up/buy-now-chat/backend.md)。
+
 | 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
 |------|------|--------------|----------|------|
-| `POST` | `/api/checkout/quote` | `QuoteInput` | `QuoteResult` | USER+ |
-| `POST` | `/api/checkout/create-payment-intent` | `{ listingId, ...QuoteInput }` | `{ clientSecret, ledgerCode }` | USER+ |
-| `GET` | `/api/orders/[id]` | — | `Order` | 買賣雙方 |
-| `GET` | `/api/orders?role=buyer\|seller&scope=active\|completed` | query | `Order[]` | 本人 |
-| `PATCH` | `[Server Action] shipOrder` | `{ orderId, trackingNo }` | `Order` | 賣家 |
+| `POST` | `[Server Action] buyNowListing` | `(listingId, useAuth?)` | `{ orderId, orderNumber, orderKind, roomId, offerId, paymentHref, … }` | 買家（非自售） |
+| `POST` | `[Server Action] buyNowMerchantListing` | `(listingId, useAuth?)` | 同上（`buyNowListing` 別名） | 買家（非自售） |
+| `GET` | `[Server Action] loadMerchantCheckoutOrder` | `(orderIdOrNumber)` | `MerchantCheckoutOrder` | 訂單買家 |
+| `POST` | `[Server Action] createMerchantOrderPaymentIntent` | `(orderIdOrNumber, { shippingMethod, useAuth })` | `{ clientSecret, publishableKey, itemSubtotal, shippingFee, authFee, totalAmount }` | 訂單買家 |
+| `GET` | `[Server Action] getMerchantCheckoutPaymentStatus` | `(orderIdOrNumber)` | `{ escrowStatus, totalAmount, paidAt }` | 訂單買家 |
+| `POST` | `[Server Action] completeMerchantOrder` | `(orderId)` | `{ success }` | 訂單買家 |
+
+金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`final_price + 運費(SF 30 / 面交 0) + 鑑定費(150 / 0)`；優惠券未接後端，暫不折扣。資金先 100% 收入平台帳戶託管，**無** `application_fee_amount` / `transfer_data`。買家確認收貨後，`rpc_prepare_merchant_order_payout` snapshot 固定 8% 卡價佣金；`transfers.create` 將 `卡價 − 佣金 + 運費` 撥至 Merchant Connect，鑑定費留平台，再由 `rpc_finalize_merchant_order_payout` 冪等完成訂單。
+
+### 5.2 Member 鑑定託管結帳（✅ 已落地，Payment Milestone 1.5）
+
+`app/actions/member-auth-checkout.ts` — 僅 `member_orders.use_authentication=true`；P2P 無鑑定不接 Stripe。詳見 [member-auth-checkout/backend.md](./follow-up/member-auth-checkout/backend.md)。
+
+| 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
+|------|------|--------------|----------|------|
+| `GET` | `[Server Action] loadMemberAuthCheckoutOrder` | `(orderIdOrNumber)` | `MemberAuthCheckoutOrder` | 訂單買賣雙方 |
+| `POST` | `[Server Action] createMemberAuthPaymentIntent` | `(orderIdOrNumber)` | `{ clientSecret, publishableKey, itemSubtotal, authFee, totalAmount }` | 訂單買家 |
+| `GET` | `[Server Action] getMemberAuthPaymentStatus` | `(orderIdOrNumber)` | `{ escrowStatus, paymentConfirmedAt, paymentCaptureStatus, totalAmount }` | 訂單參與方 |
+
+金額：`final_price + HK$150` 鑑定費（`rpc_prepare_member_auth_order_payment`）。PI `capture_method: manual`；webhook `payment_intent.amount_capturable_updated`（`order_kind=member_auth`）→ `authorized` + `custody`；Admin 入庫 partial capture 鑑定費 → `auth_fee_captured` + `grading`。
+
+### 5.3 規劃中 / 未落地的 REST 介面
+
+| 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
+|------|------|--------------|----------|------|
+| `POST` | `/api/checkout/quote` | `QuoteInput` | `QuoteResult` | USER+ ⏳ |
+| `POST` | `/api/checkout/create-payment-intent` | `{ listingId, ...QuoteInput }` | `{ clientSecret, ledgerCode }` | USER+ ⏳（已由 5.1 server action 取代） |
+| `GET` | `/api/orders/[id]` | — | `Order` | 買賣雙方 ⏳ |
+| `GET` | `/api/orders?role=buyer\|seller&scope=active\|completed` | query | `Order[]` | 本人 ⏳ |
+| `PATCH` | `[Server Action] shipOrder` | `{ orderId, trackingNo }` | `Order` | 賣家 ⏳ |
 
 ```ts
 // 對齊 checkout/[id]/page.tsx 計算引擎
@@ -377,6 +406,12 @@ type MemberDashboardTradingStats = {
 | `PATCH` | `[Server Action] toggleBan` | `{ userId, isBanned }` | `Profile` | ADMIN |
 | `POST` | `[Server Action] upsertPlatformSetting` | `{ key, value }` | `{ ok: true }` | ADMIN |
 | `POST` | `[Server Action] triggerScraperJob` | `{ jobType: 'mercari'\|'skunk' }` | `{ jobId }` | ADMIN |
+| `GET` | `[Server Action] searchAdminGradingOrders` | `{ tab, orderKind?, keyword?, page?, pageSize? }` | `{ rows, total, page, pageSize }` | ADMIN |
+| `POST` | `[Server Action] adminConfirmGradingIntake` | `{ orderKind, orderId }` | `{ applied: true }` | ADMIN |
+| `POST` | `[Server Action] adminPassGrading` | `{ orderKind, orderId, notes? }` | `{ applied: true }` — triggers goods capture saga → `fully_captured` | ADMIN |
+| `POST` | `[Server Action] adminSubmitGradingOutbound` | `{ orderKind, orderId, trackingNo }` | `{ applied: true }` | ADMIN |
+| `POST` | `[Server Action] adminFailGradingAndRefund` | `{ orderKind, orderId, faultParty, reason? }` | `{ applied: true }` — void uncaptured balance (auth fee retained) | ADMIN |
+| `GET` | `[Server Action] getAdminGradingAuditHistory` | `{ orderKind, orderId }` | `AuditRow[]` | ADMIN |
 
 ---
 

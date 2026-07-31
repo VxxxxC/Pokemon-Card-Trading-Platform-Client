@@ -3,9 +3,8 @@ import type { Tables } from "@/types/supabase";
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
-export type RpcCompleteMerchantOrderArgs = {
+export type RpcPrepareMerchantOrderPayoutArgs = {
   p_order_id: string;
-  p_user_id: string;
 };
 
 type RpcResult = {
@@ -15,8 +14,8 @@ type RpcResult = {
 
 type TypedRpcClient = {
   rpc(
-    fn: "rpc_complete_merchant_order",
-    args: RpcCompleteMerchantOrderArgs,
+    fn: "rpc_prepare_merchant_order_payout",
+    args: RpcPrepareMerchantOrderPayoutArgs,
   ): Promise<RpcResult>;
 };
 
@@ -24,11 +23,14 @@ function asTypedRpcClient(supabase: ServerSupabaseClient): TypedRpcClient {
   return supabase as unknown as TypedRpcClient;
 }
 
-export async function rpcCompleteMerchantOrder(
+export async function rpcPrepareMerchantOrderPayout(
   supabase: ServerSupabaseClient,
-  args: RpcCompleteMerchantOrderArgs,
+  args: RpcPrepareMerchantOrderPayoutArgs,
 ): Promise<RpcResult> {
-  return asTypedRpcClient(supabase).rpc("rpc_complete_merchant_order", args);
+  return asTypedRpcClient(supabase).rpc(
+    "rpc_prepare_merchant_order_payout",
+    args,
+  );
 }
 
 export function mapMerchantEscrowToMemberStatus(
@@ -48,6 +50,7 @@ export function isOpenMerchantBuyerOrder(
   escrowStatus: Tables<"merchant_orders">["escrow_status"],
 ): boolean {
   return (
+    escrowStatus === "pending_payment" ||
     escrowStatus === "payment_held" ||
     escrowStatus === "authenticating" ||
     escrowStatus === "authenticated"

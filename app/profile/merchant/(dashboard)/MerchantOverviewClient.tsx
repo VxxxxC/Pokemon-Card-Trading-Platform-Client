@@ -128,6 +128,14 @@ export function MerchantOverviewClient({
         </div>
       ) : null}
 
+      {shop && !shop.kycVerified ? (
+        <div className="mb-4 px-4 py-3 bg-[rgba(212,165,116,0.08)] border border-brand/25 rounded-xl">
+          <p className="font-sans text-[13px] text-brand">
+            商戶入駐審核中 — 審批通過後可上架商品及收款
+          </p>
+        </div>
+      ) : null}
+
       {/* ── 🟢 1. MERCHANT HERO HEADER (升級版商戶自豪看板) ───────────────── */}
       <section
         className="relative mb-5 rounded-2xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)] animate-fadeIn"
@@ -214,11 +222,21 @@ export function MerchantOverviewClient({
               <span className="inline-flex items-center gap-1 font-mono text-[10px] text-success bg-[rgba(16,185,129,0.12)] px-2 py-0.5 rounded-md border border-success/20 font-bold">
                 ✓ KYC 已驗證
               </span>
+            ) : shop ? (
+              <span className="inline-flex items-center gap-1 font-mono text-[10px] text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20 font-bold">
+                審核中
+              </span>
             ) : null}
             {shop?.stripeConnected ? (
               <span className="inline-flex items-center gap-1 font-mono text-[10px] text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20 font-bold">
                 ● Stripe 已連結
               </span>
+            ) : null}
+            {shop?.kycVerified && !shop.stripeConnected ? (
+              // 後端接駁 stub：Stripe Connect onboarding 入口（完成後 webhook 更新狀態，樣式留待 frontend 精修）
+              <a href="/api/stripe/connect/onboard">
+                完成 Stripe 收款設定 →
+              </a>
             ) : null}
           </div>
           <p className="font-mono text-[12px] text-text-secondary mt-0.5">

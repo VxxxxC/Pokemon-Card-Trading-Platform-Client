@@ -38,28 +38,42 @@ type MerchantOrderDetailViewProps = {
   onOpenReview?: (orderId: string, revieweeId: string) => void;
 };
 
-async function runMerchantLogisticsStub(
+async function runSubmitInboundTracking(
   orderId: string,
   trackingNo: string,
+  onSuccess?: () => void,
 ): Promise<void> {
   const result = await submitMerchantLogistics(orderId, trackingNo);
   if (!result.success) {
     toast.error(result.error);
+    return;
   }
+  toast.success("物流單號已提交");
+  onSuccess?.();
 }
 
 export function MerchantOrderDetailView({
   order: merchantOrder,
   onOpenReview,
+  onRefresh,
 }: MerchantOrderDetailViewProps) {
   const router = useRouter();
   const order = mapMerchantOrderDetailToSaleOrder(merchantOrder);
+
+  const refreshAfterLogistics = () => {
+    if (onRefresh) {
+      onRefresh();
+      return;
+    }
+    router.refresh();
+  };
 
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [inboundTrackingInput, setInboundTrackingInput] = useState("");
 
   useEffect(() => {
     if (!api) return;
@@ -210,130 +224,103 @@ export function MerchantOrderDetailView({
             </div>
           )}
 
-          {order.status === "payment" && (
+          {merchantOrder.escrowStatus === "pending_payment" && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                買家已完成此交易的全額付款{" "}
-                <span className="text-[#10b981] font-mono font-bold">
+                訂單已成立，正在等待買家完成託管付款{" "}
+                <span className="text-brand font-mono font-bold">
                   HK$ {order.amount.toLocaleString("zh-TW")}
                 </span>
-                ， 此資金已安全存入 HKCardVault
-                官方擔保帳戶託管。請您確認此交易並準備安排發貨。
+                。 收款確認後方可安排出貨。
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  void runMerchantLogisticsStub(order.id, "");
-                }}
-                className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
-              >
-                確認訂單並移交保管 ➔
-              </button>
             </div>
           )}
 
-          {order.status === "custody" && (
+          {merchantOrder.canSubmitLogistics &&
+            !merchantOrder.inboundTrackingNo && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                資金正處於平台安全託管中。請將卡牌實物寄出，並在下方登錄物流號碼完成出貨手續。
+                買家已完成付款，資金已託管。請將卡牌寄往平台倉庫，並填寫順豐物流單號以供入庫鑑定。
               </p>
-              <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
-                <input
-                  id={"page-tracking-" + order.id}
-                  type="text"
-                  placeholder="填寫順豐、郵便或宅急便物流追蹤號"
-                  defaultValue={order.trackingNo || ""}
-                  className="flex-1 h-full bg-transparent px-3 font-mono text-[12px] text-text-primary placeholder-text-disabled focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById(
-                      "page-tracking-" + order.id,
-                    ) as HTMLInputElement;
-                    const val = input?.value ?? "";
-                    if (!val.trim()) {
-                      toast.error("請先填寫物流追蹤號碼");
-                      return;
-                    }
-                    void runMerchantLogisticsStub(order.id, val);
-                  }}
-                  className="px-4 h-full bg-brand/10 font-sans text-[11px] text-brand border-l border-white/5 hover:bg-brand/15 transition-colors cursor-pointer"
-                >
-                  確認發貨
-                </button>
-              </div>
-            </div>
-          )}
-
-          {order.status === "shipped" && (
-            <div className="space-y-3">
-              <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                包裹已由快遞承運發送。物流單號：
-                <span className="font-mono text-brand font-bold">
-                  {order.trackingNo || "—"}
-                </span>
-                。 您可以修改物流追蹤號，或確認包裹已送達鑑定所。
-              </p>
-
-              <div className="flex items-center h-10 bg-[#1A1612] border border-white/10 rounded-xl overflow-hidden focus-within:border-brand/30">
-                <input
-                  id={"page-tracking-update-" + order.id}
-                  type="text"
-                  placeholder="修改物流號碼"
-                  defaultValue={order.trackingNo || ""}
-                  className="flex-1 h-full bg-transparent px-3 font-mono text-[12px] text-text-primary placeholder-text-disabled focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById(
-                      "page-tracking-update-" + order.id,
-                    ) as HTMLInputElement;
-                    const val = input?.value ?? "";
-                    if (!val.trim()) {
-                      toast.error("物流號碼不能為空");
-                      return;
-                    }
-                    void runMerchantLogisticsStub(order.id, val);
-                  }}
-                  className="px-4 h-full bg-white/5 font-sans text-[11px] text-text-primary border-l border-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                >
-                  修改單號
-                </button>
-              </div>
-
+              <input
+                type="text"
+                value={inboundTrackingInput}
+                onChange={(event) => setInboundTrackingInput(event.target.value)}
+                placeholder="寄往平台的順豐單號"
+                className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+              />
               <button
                 type="button"
+                disabled={!inboundTrackingInput.trim()}
                 onClick={() => {
-                  void runMerchantLogisticsStub(
+                  void runSubmitInboundTracking(
                     order.id,
-                    order.trackingNo ?? "",
+                    inboundTrackingInput.trim(),
+                    refreshAfterLogistics,
                   );
                 }}
-                className="w-full h-10 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all cursor-pointer"
+                className="w-full h-10 rounded-xl bg-brand text-[#17130f] font-sans font-semibold text-[13px] disabled:opacity-50"
               >
-                確認抵達專家鑑定所 🔍
+                提交入庫物流單號
               </button>
             </div>
           )}
 
-          {order.status === "grading" && (
+          {merchantOrder.requiresAuthentication &&
+            merchantOrder.escrowStatus === "payment_held" &&
+            merchantOrder.inboundTrackingNo && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                卡牌實物正在由 HKCardVault
-                專業鑑定機構進行表面、四角、邊緣與對中度檢驗（PSA/BGS
-                標準驗證）。
+                已提交入庫物流單號，等待平台確認入庫後開始鑑定。
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  void runMerchantLogisticsStub(order.id, "");
-                }}
-                className="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.2)]"
-              >
-                模擬鑑定通過並放款給賣家 🪙
-              </button>
+              <p className="font-mono text-[12px] text-brand">
+                已提交單號：{merchantOrder.inboundTrackingNo}
+              </p>
+            </div>
+          )}
+
+          {merchantOrder.escrowStatus === "payment_held" &&
+            !merchantOrder.requiresAuthentication && (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                買家已完成託管付款（HK${" "}
+                <span className="text-[#10b981] font-mono font-bold">
+                  {merchantOrder.totalAmount.toLocaleString("zh-TW")}
+                </span>
+                ），資金已由平台託管。請安排發貨，待買家確認收貨後將自動撥款至您的 Connect 帳戶。
+              </p>
+            </div>
+          )}
+
+          {merchantOrder.escrowStatus === "authenticating" &&
+            merchantOrder.requiresAuthentication && (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                平台已確認入庫，卡牌正在鑑定中。此階段無需商戶操作。
+              </p>
+              {merchantOrder.inboundTrackingNo ? (
+                <p className="font-mono text-[12px] text-brand">
+                  入庫單號：{merchantOrder.inboundTrackingNo}
+                </p>
+              ) : null}
+            </div>
+          )}
+
+          {merchantOrder.escrowStatus === "authenticated" &&
+            merchantOrder.requiresAuthentication && (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                鑑定已通過，平台將安排寄出給買家。待買家確認收貨後撥款。
+              </p>
+              {merchantOrder.outboundTrackingNo ? (
+                <p className="font-mono text-[12px] text-brand">
+                  平台代發物流：{merchantOrder.outboundTrackingNo}
+                </p>
+              ) : (
+                <p className="text-[12px] text-text-disabled">
+                  待平台上載寄出物流單號。
+                </p>
+              )}
             </div>
           )}
 
@@ -425,17 +412,14 @@ export function MerchantOrderDetailView({
             <div className="flex justify-between">
               <span>商品最終成交價</span>
               <span className="text-text-primary">
-                HK$ {order.amount.toLocaleString("zh-TW")}
+                HK$ {merchantOrder.itemSubtotal.toLocaleString("zh-TW")}
               </span>
             </div>
             <div className="flex justify-between">
               <span>速遞本港運費</span>
-              <span className="text-text-primary">HK$ 30</span>
-            </div>
-            <div className="flex justify-between text-[#ef4444]">
-              {/* TODO: depends on coupon redeem */}
-              <span>免郵補貼</span>
-              <span>-HK$ 30</span>
+              <span className="text-text-primary">
+                HK$ {merchantOrder.shippingFee.toLocaleString("zh-TW")}
+              </span>
             </div>
 
             {order.hasAuthenticationToggle && (
@@ -449,7 +433,7 @@ export function MerchantOrderDetailView({
             <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
               <span>最終實收總額</span>
               <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                HK$ {order.amount.toLocaleString("zh-TW")}
+                HK$ {merchantOrder.totalAmount.toLocaleString("zh-TW")}
               </span>
             </div>
 

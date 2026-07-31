@@ -43,12 +43,19 @@ interface UserOrderRowProps {
     useAuthentication?: boolean;
     escrowStatus?: MemberEscrowStatus | null;
     canPay?: boolean;
+    pendingPayment?: boolean;
     canCancel: boolean;
     onRefresh: () => void;
   };
 }
 
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
+function OrderStatusBadge({
+  status,
+  labelOverride,
+}: {
+  status: OrderStatus;
+  labelOverride?: string;
+}) {
   const stepIdx =
     STATUS_STEP_INDEX[status as Exclude<OrderStatus, "cancelled">];
   const step = stepIdx !== undefined ? ESCROW_STEPS[stepIdx] : null;
@@ -68,7 +75,7 @@ function OrderStatusBadge({ status }: { status: OrderStatus }) {
         colorMap[status] ?? "text-text-disabled bg-bg-elevated",
       )}
     >
-      {status === "cancelled" ? "已取消" : (step?.label ?? status)}
+      {status === "cancelled" ? "已取消" : (labelOverride ?? step?.label ?? status)}
     </span>
   );
 }
@@ -94,13 +101,20 @@ export function UserOrderRow({
   const isMerchantBuyerOrder =
     dbOrderContext?.orderKind === "merchant" && isBuyer;
   const isPendingDbOrder = dbOrderContext?.dbStatus === "pending";
+  // B2C 訂單未完成 Stripe 託管付款前，唔可以確認收貨。
+  const isPendingEscrowPayment = Boolean(dbOrderContext?.pendingPayment);
   const canCompleteOrder =
-    isPendingDbOrder && isBuyer && (!isAuthOrder || isMerchantBuyerOrder);
+    isPendingDbOrder &&
+    isBuyer &&
+    !isPendingEscrowPayment &&
+    (!isAuthOrder || isMerchantBuyerOrder);
   const canPayAuthOrder = Boolean(dbOrderContext?.canPay);
+  const canCheckoutMerchantOrder = isPendingEscrowPayment && isBuyer;
   const showPendingActions =
     isPendingDbOrder &&
     (canCompleteOrder ||
       canPayAuthOrder ||
+      canCheckoutMerchantOrder ||
       Boolean(dbOrderContext?.canCancel));
   const showReviewCta =
     dbOrderContext?.dbStatus === "completed" &&
@@ -180,7 +194,16 @@ export function UserOrderRow({
               賣出
             </span>
           )}
-          {statusBadge ?? <OrderStatusBadge status={order.status} />}
+          {statusBadge ?? (
+            <OrderStatusBadge
+              status={order.status}
+              labelOverride={
+                dbOrderContext?.canPay || dbOrderContext?.pendingPayment
+                  ? "待付款"
+                  : order.statusLabelOverride
+              }
+            />
+          )}
 
           <h3 className="text-[14.5px] font-mono font-black text-brand truncate max-w-[160px] sm:max-w-xs md:max-w-md">
             {"#" + displayOrderNumber}
@@ -220,6 +243,16 @@ export function UserOrderRow({
           >
             {showPendingActions && (
               <>
+                {canCheckoutMerchantOrder && (
+                  <button
+                    type="button"
+                    disabled={isActionLoading}
+                    onClick={() => router.push("/checkout/" + navigateOrderId)}
+                    className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  >
+                    前往付款
+                  </button>
+                )}
                 {canPayAuthOrder && (
                   <button
                     type="button"

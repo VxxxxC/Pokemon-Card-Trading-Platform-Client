@@ -18,6 +18,7 @@ export type OfferLedgerEntry = {
   orderKind?: "member" | "merchant";
   offerPrice?: number;
   modifiedCount?: number;
+  paymentHref?: string | null;
 };
 
 export interface SpecialTransactionData {
@@ -267,6 +268,7 @@ interface HkCardVaultStore {
     offerId: string,
     orderId?: string,
     orderKind?: "member" | "merchant",
+    paymentHref?: string | null,
   ) => void;
 
   applyOfferRejected: (offerId: string) => void;
@@ -739,7 +741,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
-  applyOfferAccepted: (offerId, orderId, orderKind = "member") =>
+  applyOfferAccepted: (offerId, orderId, orderKind = "member", paymentHref) =>
     set((state) => {
       if (isOfferAlreadyInStatus(state.offers, state.chats, offerId, "accepted")) {
         return state;
@@ -752,6 +754,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           ...state.offers[offerId],
           status: "accepted",
           orderKind,
+          ...(paymentHref !== undefined ? { paymentHref } : {}),
           ...(orderKind === "merchant"
             ? { merchantOrderId: orderId }
             : { memberOrderId: orderId }),

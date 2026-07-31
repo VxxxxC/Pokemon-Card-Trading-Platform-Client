@@ -4,7 +4,7 @@
 
 - **Backend:** ✅ Ready (mock payment + escrow RPCs + AML guards)
 - **Frontend:** 🟡 Partial — detail/list/chat/listing wired per [frontend.md](./frontend.md)
-- **Stripe:** ⏳ Deferred — replace `lib/payments/member-auth-payment.ts` stub later
+- **Stripe:** ✅ Milestone 1.5 — `app/actions/member-auth-checkout.ts` + webhook `order_kind=member_auth`（見 [member-auth-checkout/backend.md](./follow-up/member-auth-checkout/backend.md)）
 
 ## Overview
 

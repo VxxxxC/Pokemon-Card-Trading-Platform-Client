@@ -15,10 +15,12 @@ import {
 } from "@/app/actions/orders";
 import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDevPanel";
 import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
+import { MemberAuthStripePaymentPanel } from "@/app/components/transactions/MemberAuthStripePaymentPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
+import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
@@ -62,6 +64,10 @@ function dispatchPortfolioRefresh(): void {
   window.dispatchEvent(new CustomEvent("collection-should-refresh"));
 }
 
+const stripePaymentAvailable =
+  typeof process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.trim().length > 0;
+
 export function MemberOrderDetailView({
   order,
   onRefresh,
@@ -88,7 +94,10 @@ export function MemberOrderDetailView({
     gradeLabel;
   const displayOrderNumber = order.orderNumber ?? order.id;
   const createdAtLabel = formatMemberOrderDateTime(order.createdAt);
-  const useMeetupUi = isMeetupOnlyMemberOrder(order.useAuthentication);
+  const useMerchantB2cEscrowUi =
+    order.orderKind === "merchant" && !order.useAuthentication;
+  const useMeetupUi =
+    isMeetupOnlyMemberOrder(order.useAuthentication) && !useMerchantB2cEscrowUi;
   const [inboundTrackingInput, setInboundTrackingInput] = useState("");
 
   const galleryImages =
@@ -99,6 +108,8 @@ export function MemberOrderDetailView({
         : [];
 
   const isPending = isPendingMemberOrderStatus(order.status);
+  // B2C 託管訂單未完成 Stripe 付款前，唔可以確認收貨 / 進入交割流程。
+  const isPendingEscrowPayment = order.pendingPayment;
   const showReviewCta =
     order.status === "completed" &&
     !order.hasReviewedByMe &&
@@ -278,11 +289,51 @@ export function MemberOrderDetailView({
         </div>
       </div>
 
-      {useMeetupUi ? (
+      {isPendingEscrowPayment && (
+        <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
+          <p className="text-[12.5px] text-text-secondary leading-relaxed">
+            {isBuyer
+              ? "此訂單尚未完成託管付款，請先完成 Stripe 全額支付，資金將由平台鎖定託管。"
+              : "等待買家完成託管付款，收款後方可安排出貨。"}
+          </p>
+          {isBuyer && (
+            <button
+              type="button"
+              disabled={isActionLoading}
+              onClick={() => router.push("/checkout/" + order.id)}
+              className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-sans font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              前往付款
+            </button>
+          )}
+        </div>
+      )}
+
+      {useMerchantB2cEscrowUi ? (
+        <div className="space-y-4">
+          {isPending && !isPendingEscrowPayment && (
+            <div className="space-y-3">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                {isBuyer
+                  ? "款項已由平台 Stripe 託管。收到商戶寄出的卡牌並驗貨後，請確認完成交易以釋放撥款。"
+                  : "買家已完成託管付款，請安排發貨。待買家確認收貨後，平台將撥款至您的 Connect 帳戶。"}
+              </p>
+              {isBuyer && (
+                <MemberOrderCompleteConfirmDialog
+                  disabled={isActionLoading}
+                  isActionLoading={isActionLoading}
+                  onConfirm={handleComplete}
+                  triggerClassName="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      ) : useMeetupUi ? (
         <div className="space-y-4">
           <MemberP2pOrderTimeline status={order.status} />
 
-          {isPending && (
+          {isPending && !isPendingEscrowPayment && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 請與{isBuyer ? "賣家" : "買家"}
@@ -361,16 +412,27 @@ export function MemberOrderDetailView({
           <MemberAuthOrderTimeline
             status={order.status}
             escrowStatus={order.escrowStatus}
+            paymentConfirmedAt={order.paymentConfirmedAt}
           />
 
           {order.escrowStatus === "payment" && order.canPay ? (
-            <MemberAuthMockPaymentPanel
-              orderId={order.id}
-              finalPrice={order.finalPrice}
-              paymentAmount={order.paymentAmount}
-              disabled={isActionLoading}
-              onSuccess={onRefresh}
-            />
+            stripePaymentAvailable ? (
+              <MemberAuthStripePaymentPanel
+                orderId={order.id}
+                finalPrice={order.finalPrice}
+                paymentAmount={order.paymentAmount}
+                disabled={isActionLoading}
+                onSuccess={onRefresh}
+              />
+            ) : (
+              <MemberAuthMockPaymentPanel
+                orderId={order.id}
+                finalPrice={order.finalPrice}
+                paymentAmount={order.paymentAmount}
+                disabled={isActionLoading}
+                onSuccess={onRefresh}
+              />
+            )
           ) : null}
 
           {order.escrowStatus === "custody" && isSeller ? (
@@ -494,7 +556,15 @@ export function MemberOrderDetailView({
       )}
 
       <div className="grid grid-cols-1 gap-6 items-start">
-        {useMeetupUi ? (
+        {useMerchantB2cEscrowUi ? (
+          <MemberMerchantB2cOrderInvoice
+            itemSubtotal={order.itemSubtotal ?? order.finalPrice}
+            shippingFee={order.shippingFee ?? 0}
+            shippingMethod={order.shippingMethod ?? null}
+            totalAmount={order.totalAmount ?? order.finalPrice}
+            isSeller={isSeller}
+          />
+        ) : useMeetupUi ? (
           <MemberP2pOrderInvoice
             finalPrice={order.finalPrice}
             isSeller={isSeller}

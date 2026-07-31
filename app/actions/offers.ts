@@ -112,6 +112,12 @@ export type OfferCardContext = {
   imageUrl?: string;
   buyerName: string;
   sellerId: string;
+  orderId?: string | null;
+  orderKind?: "merchant" | "member";
+  pendingPayment?: boolean;
+  canPayAuth?: boolean;
+  paymentHref?: string | null;
+  orderDetailHref?: string | null;
 };
 
 export type GetOfferCardContextResult =
@@ -151,6 +157,98 @@ function readModifiedCount(offer: {
 }): number {
   const value = offer.modified_count;
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+async function resolveAcceptedOfferOrderContext(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  offerId: string,
+  offerStatus: Tables<"offers">["status"],
+): Promise<
+  Pick<
+    OfferCardContext,
+    | "orderId"
+    | "orderKind"
+    | "pendingPayment"
+    | "canPayAuth"
+    | "paymentHref"
+    | "orderDetailHref"
+  >
+> {
+  if (offerStatus !== "accepted") {
+    return {};
+  }
+
+  const { data: acceptedMessage } = await supabase
+    .from("chat_messages")
+    .select("merchant_order_id, member_order_id")
+    .eq("offer_id", offerId)
+    .eq("content", "SYSTEM_OFFER_ACCEPTED")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{
+      merchant_order_id: string | null;
+      member_order_id: string | null;
+    }>();
+
+  const merchantOrderId = acceptedMessage?.merchant_order_id?.trim();
+  const memberOrderId = acceptedMessage?.member_order_id?.trim();
+
+  if (merchantOrderId) {
+    const { data: order } = await supabase
+      .from("merchant_orders")
+      .select("escrow_status")
+      .eq("id", merchantOrderId)
+      .maybeSingle<Pick<Tables<"merchant_orders">, "escrow_status">>();
+
+    const pendingPayment = order?.escrow_status === "pending_payment";
+    const paymentHref = pendingPayment
+      ? `/checkout/${merchantOrderId}`
+      : null;
+
+    return {
+      orderId: merchantOrderId,
+      orderKind: "merchant",
+      pendingPayment,
+      paymentHref,
+      orderDetailHref: `/profile/user/orderDetail/${merchantOrderId}`,
+    };
+  }
+
+  if (memberOrderId) {
+    const { data: order } = await supabase
+      .from("member_orders")
+      .select(
+        "escrow_status, use_authentication, status, payment_confirmed_at",
+      )
+      .eq("id", memberOrderId)
+      .maybeSingle<
+        Pick<
+          Tables<"member_orders">,
+          | "escrow_status"
+          | "use_authentication"
+          | "status"
+          | "payment_confirmed_at"
+        >
+      >();
+
+    const canPayAuth =
+      Boolean(order?.use_authentication) &&
+      order?.escrow_status === "payment" &&
+      order?.payment_confirmed_at == null;
+    const paymentHref = canPayAuth
+      ? `/profile/user/orderDetail/${memberOrderId}`
+      : null;
+
+    return {
+      orderId: memberOrderId,
+      orderKind: "member",
+      canPayAuth,
+      paymentHref,
+      orderDetailHref: `/profile/user/orderDetail/${memberOrderId}`,
+    };
+  }
+
+  return {};
 }
 
 import {
@@ -338,6 +436,12 @@ export async function getOfferCardContext(
       catalog.name_ja?.trim() ||
       "未命名卡牌";
 
+    const orderContext = await resolveAcceptedOfferOrderContext(
+      supabase,
+      data.id,
+      data.status,
+    );
+
     return {
       success: true,
       data: {
@@ -362,6 +466,7 @@ export async function getOfferCardContext(
         ),
         buyerName: buyerProfile?.display_name?.trim() || "買家",
         sellerId: room.seller_id,
+        ...orderContext,
       },
     };
   } catch (error) {

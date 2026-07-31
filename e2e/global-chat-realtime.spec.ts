@@ -258,6 +258,9 @@ test.describe("Global Chat realtime — dual browser journey", () => {
             timeout: 15_000,
           });
           await buyerPage.getByRole("button", { name: /立即購買/ }).click();
+          await buyerPage
+            .getByRole("button", { name: "改為議價出價" })
+            .click();
           await expect(buyerPage.locator("#exe-negotiation-price")).toBeVisible({
             timeout: 15_000,
           });

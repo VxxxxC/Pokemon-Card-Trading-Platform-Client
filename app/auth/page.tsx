@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getOptionalAuthUser, resolveCurrentAuthRole } from "@/lib/auth/session";
 import { AuthForm } from "./AuthForm";
 
 export const metadata: Metadata = {
@@ -111,7 +113,26 @@ function RelicCard({
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
-export default function AuthPage() {
+export default async function AuthPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>;
+}) {
+  // 商戶入駐入口（marketplace / footer → /auth?role=merchant）：
+  // 已登入用戶直接帶去 KYC 申請頁，唔使重複註冊
+  const { role: roleParam } = await searchParams;
+  if (roleParam === "merchant") {
+    const user = await getOptionalAuthUser();
+    if (user) {
+      const authRole = await resolveCurrentAuthRole();
+      redirect(
+        authRole === "MERCHANT"
+          ? "/profile/merchant"
+          : "/profile/user/merchant-apply",
+      );
+    }
+  }
+
   return (
     <div className="min-h-dvh bg-bg-page flex">
       {/* ── Left panel — Brand + floating relics (desktop only) ── */}

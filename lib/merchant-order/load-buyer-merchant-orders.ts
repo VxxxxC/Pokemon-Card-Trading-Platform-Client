@@ -135,6 +135,7 @@ export async function loadBuyerMerchantTradingOrders(
       hasReviewedByMe: reviewedOrderIds.has(row.id),
       useAuthentication: Boolean(row.requires_authentication),
       escrowStatus: null,
+      pendingPayment: row.escrow_status === "pending_payment",
       counterparty: {
         id: row.merchant_id,
         displayName:

@@ -13,6 +13,7 @@ import {
   getGradingOption,
   gradingOptionToFields,
 } from "@/lib/grading/options";
+import { isMerchantListingAllowed } from "@/lib/kyc/merchant-gates";
 import { mapListingInsertError } from "@/lib/listings/errors";
 import {
   parseImageUploadsFromFormData,
@@ -572,14 +573,31 @@ export async function createCardListing(
     }
 
     if (sellerPersona === "merchant" && profile.role !== "admin") {
-      const { data: shopRow, error: shopError } = await supabase
-        .from("merchant_shops")
-        .select("merchant_id")
-        .eq("merchant_id", user.id)
-        .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>();
+      const [{ data: shopRow, error: shopError }, { data: kycRow, error: kycError }] =
+        await Promise.all([
+          supabase
+            .from("merchant_shops")
+            .select("merchant_id")
+            .eq("merchant_id", user.id)
+            .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>(),
+          supabase
+            .from("kyc_records")
+            .select("kyc_status")
+            .eq("merchant_id", user.id)
+            .maybeSingle<Pick<Tables<"kyc_records">, "kyc_status">>(),
+        ]);
 
       if (shopError || !shopRow) {
         return fail("商戶店舖資料尚未就緒，無法建立商戶商品");
+      }
+
+      if (kycError) {
+        console.error("[createListing] kyc_records", kycError.message);
+        return fail("無法驗證商戶認證狀態，請稍後再試");
+      }
+
+      if (!isMerchantListingAllowed(kycRow?.kyc_status)) {
+        return fail("商戶認證審核中，暫不可上架商品");
       }
     }
 
@@ -847,14 +865,31 @@ export async function createSealedListing(
     }
 
     if (sellerPersona === "merchant" && profile.role !== "admin") {
-      const { data: shopRow, error: shopError } = await supabase
-        .from("merchant_shops")
-        .select("merchant_id")
-        .eq("merchant_id", user.id)
-        .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>();
+      const [{ data: shopRow, error: shopError }, { data: kycRow, error: kycError }] =
+        await Promise.all([
+          supabase
+            .from("merchant_shops")
+            .select("merchant_id")
+            .eq("merchant_id", user.id)
+            .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>(),
+          supabase
+            .from("kyc_records")
+            .select("kyc_status")
+            .eq("merchant_id", user.id)
+            .maybeSingle<Pick<Tables<"kyc_records">, "kyc_status">>(),
+        ]);
 
       if (shopError || !shopRow) {
         return fail("商戶店舖資料尚未就緒，無法建立商戶商品");
+      }
+
+      if (kycError) {
+        console.error("[createListing] kyc_records", kycError.message);
+        return fail("無法驗證商戶認證狀態，請稍後再試");
+      }
+
+      if (!isMerchantListingAllowed(kycRow?.kyc_status)) {
+        return fail("商戶認證審核中，暫不可上架商品");
       }
     }
 

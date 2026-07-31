@@ -1,9 +1,13 @@
 "use client";
 
-import { useSyncExternalStore, use } from "react";
+import { useEffect, useState, useSyncExternalStore, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
+import {
+  loadMerchantCheckoutOrder,
+  type MerchantCheckoutOrder,
+} from "@/app/actions/merchant-checkout";
 
 interface CheckoutItem {
   id: string;
@@ -16,38 +20,9 @@ interface CheckoutItem {
   seller: string;
 }
 
-const MOCK_INVENTORY_DATABASE: Record<string, CheckoutItem> = {
-  "sv4a-box": {
-    id: "sv4a-box",
-    name: "Shiny Treasure ex Box (高級擴充包)",
-    set: "High Class Pack",
-    rarity: "BOX",
-    grade: "【全新未拆封】附官方防偽縮膜",
-    price: 3500,
-    image: "https://picsum.photos/seed/sv4a/400/280",
-    seller: "東京秋葉原直送店",
-  },
-  "sv2a-182": {
-    id: "sv2a-182",
-    name: "Charizard ex SAR (噴火龍 ex)",
-    set: "Pokémon Card 151",
-    rarity: "SAR",
-    grade: "【美品 S】裸卡直送",
-    price: 2150,
-    image: "https://picsum.photos/seed/user-zard/400/280",
-    seller: "旺角卡店 · 專業認證商戶",
-  },
-  "sv2a-215": {
-    id: "sv2a-215",
-    name: "Pikachu AR (經典肥皮卡丘)",
-    set: "Pokémon Card 151",
-    rarity: "AR",
-    grade: "【微傷 A】卡盒割愛",
-    price: 620,
-    image: "https://picsum.photos/seed/user-pika/400/280",
-    seller: "卡牌珍藏家阿木",
-  },
-};
+/** Stripe webhook 為非同步，付款回跳後需短暫輪詢確認託管已鎖定。 */
+const ESCROW_POLL_INTERVAL_MS = 2000;
+const ESCROW_POLL_MAX_ATTEMPTS = 8;
 
 interface SuccessPageProps {
   params: Promise<{ id: string }>;
@@ -63,7 +38,50 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
     () => false,
   );
 
-  if (!isMounted) {
+  const [order, setOrder] = useState<MerchantCheckoutOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async () => {
+      const result = await loadMerchantCheckoutOrder(paramsId);
+      if (cancelled) {
+        return;
+      }
+
+      if (!result.success) {
+        setLoadError(result.error);
+        setIsLoading(false);
+        return;
+      }
+
+      setOrder(result.data);
+      setIsLoading(false);
+      attempts += 1;
+
+      const stillWaitingForWebhook =
+        result.data.escrowStatus === "pending_payment";
+
+      if (stillWaitingForWebhook && attempts < ESCROW_POLL_MAX_ATTEMPTS) {
+        timer = setTimeout(poll, ESCROW_POLL_INTERVAL_MS);
+      }
+    };
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [paramsId]);
+
+  if (!isMounted || isLoading) {
     return (
       <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
@@ -71,15 +89,35 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
     );
   }
 
-  const currentItem =
-    MOCK_INVENTORY_DATABASE[paramsId] || MOCK_INVENTORY_DATABASE["sv2a-182"];
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-[#17130f] text-[#eae1da] flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="font-sans text-[14px] text-[#d4c4b7]">
+          {loadError ?? "找不到此訂單"}
+        </p>
+        <Link
+          href="/profile/user/trading"
+          className="h-11 px-5 rounded-xl bg-brand text-[#1A1612] font-sans font-bold text-[13.5px] flex items-center focus:outline-none"
+        >
+          前往交易管理
+        </Link>
+      </div>
+    );
+  }
 
-  // Generate a mock cryptographic transaction ledger code purely and deterministically from paramsId
-  const idHash = paramsId
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const stableSuffix = 1000 + (idHash % 9000);
-  const mockTxnCode = `TXN-HKCV-${paramsId.toUpperCase().replace(/[^A-Z0-9]/g, "") || "99824"}-${stableSuffix}`;
+  const currentItem: CheckoutItem = {
+    id: order.orderNumber ?? order.orderId,
+    name: order.product.cardName,
+    set: order.product.setCode,
+    rarity: order.product.displayId ?? order.product.cardNumber ?? "—",
+    grade: order.product.gradeLabel,
+    price: order.totalAmount,
+    image: order.product.imageUrl,
+    seller: order.merchant.shopName,
+  };
+
+  const isEscrowLocked = order.escrowStatus !== "pending_payment";
+  const orderReference = order.orderNumber ?? order.orderId;
 
   return (
     <div className="min-h-screen bg-[#17130f] text-[#eae1da] p-4 lg:p-8 flex flex-col justify-center items-center">
@@ -96,10 +134,12 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
 
           <div className="space-y-2">
             <h1 className="font-sans font-black text-[22px] sm:text-[26px] text-[#eae1da] leading-tight tracking-tight">
-              🎉 交易成功設立
+              {isEscrowLocked ? "🎉 交易成功設立" : "⏳ 付款處理中"}
             </h1>
             <p className="font-sans text-[13px] text-text-secondary">
-              此筆 B2C 專業商戶交易已建立
+              {isEscrowLocked
+                ? "此筆 B2C 專業商戶交易已建立，資金已由平台託管鎖定"
+                : "已收到付款指令，正在等待金流確認並鎖定託管，稍後可於交易管理查看"}
             </p>
           </div>
 
@@ -109,7 +149,7 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
               交易結單號碼 (Order ID):
             </span>
             <code className="font-mono font-bold text-[11px] text-brand tracking-tight text-center sm:text-left">
-              {mockTxnCode}
+              {orderReference}
             </code>
           </div>
         </section>
@@ -161,7 +201,9 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
             <div className="flex justify-between items-center py-1.5 border-b border-white/[0.03]">
               <span className="text-[#d4c4b7]">平台防偽鑑定</span>
               <span className="text-success font-medium">
-                已啟用鑑定驗證服務
+                {order.requiresAuthentication
+                  ? "已啟用鑑定驗證服務"
+                  : "未加購鑑定服務"}
               </span>
             </div>
             <div className="flex justify-between items-center py-1.5">

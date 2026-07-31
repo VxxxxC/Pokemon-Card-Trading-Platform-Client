@@ -1,11 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import { useUIStore } from "@/app/store/useUIStore";
 import { mapMarketplaceListingToExecutionPayload } from "@/lib/marketplace/map-listing-to-execution";
 import { prefetchMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
+import { buildSellerListingDetailHref } from "@/lib/marketplace/listing-detail-href";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
+import {
+  BuyNowConfirmDialog,
+  BuyNowGuestLockDialog,
+} from "./BuyNowConfirmDialog";
 
 interface GlobalButtonProps {
   listing: MarketplaceListing;
@@ -67,9 +73,21 @@ function BuyButtonView({
   label,
   currentUserId,
 }: GlobalButtonProps & { currentUserId: string | null }) {
+  const userAuthRole = useUIStore((state) => state.userAuthRole);
+  const isGuest = userAuthRole === "GUEST";
   const openExecutionSlideOver = useUIStore(
     (state) => state.openExecutionSlideOver,
   );
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [guestLockOpen, setGuestLockOpen] = useState(false);
+
+  const listingId = listing.id?.trim() ?? "";
+  const sellerId = listing.sellerId?.trim() ?? "";
+  const guestRedirectPath =
+    sellerId && listingId
+      ? buildSellerListingDetailHref(sellerId, listingId)
+      : "/marketplace";
 
   const handleBuy = () => {
     if (
@@ -80,28 +98,50 @@ function BuyButtonView({
       return;
     }
 
+    if (isGuest) {
+      setGuestLockOpen(true);
+      return;
+    }
+
+    setConfirmOpen(true);
+  };
+
+  const handleNegotiate = () => {
     const payload = mapMarketplaceListingToExecutionPayload(listing);
     if (!payload) {
       return;
     }
-
     openExecutionSlideOver(payload);
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleBuy}
-      onMouseEnter={() => {
-        const listingId = listing.id?.trim();
-        if (listingId) {
-          prefetchMarketplaceListingDetail(listingId);
-        }
-      }}
-      className={`h-9 px-2 sm:px-4 bg-[#d4a574] text-[#1A1612] font-sans font-bold text-[11px] sm:text-[12px] tracking-wide whitespace-nowrap truncate rounded-xl hover:bg-[#e8b896] active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${className}`}
-    >
-      {label || "⚡ 立即購買"}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleBuy}
+        onMouseEnter={() => {
+          if (listingId) {
+            prefetchMarketplaceListingDetail(listingId);
+          }
+        }}
+        className={`h-9 px-2 sm:px-4 bg-[#d4a574] text-[#1A1612] font-sans font-bold text-[11px] sm:text-[12px] tracking-wide whitespace-nowrap truncate rounded-xl hover:bg-[#e8b896] active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${className}`}
+      >
+        {label || "⚡ 立即購買"}
+      </button>
+
+      <BuyNowConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        listing={listing}
+        onNegotiate={handleNegotiate}
+      />
+
+      <BuyNowGuestLockDialog
+        open={guestLockOpen}
+        onOpenChange={setGuestLockOpen}
+        redirectPath={guestRedirectPath}
+      />
+    </>
   );
 }
 

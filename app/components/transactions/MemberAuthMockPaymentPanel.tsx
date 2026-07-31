@@ -43,7 +43,8 @@ export function MemberAuthMockPaymentPanel({
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-[12px] leading-relaxed text-amber-200">
-        測試模式 — Stripe 尚未接入。點擊下方按鈕可模擬買家完成付款（卡價 + HK$150 鑑定費）。
+        開發模式 — Stripe 未配置時使用模擬付款。正式環境請設定
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 以啟用真實託管收款。
       </div>
 
       <MemberAuthOrderInvoice finalPrice={finalPrice} isSeller={false} />

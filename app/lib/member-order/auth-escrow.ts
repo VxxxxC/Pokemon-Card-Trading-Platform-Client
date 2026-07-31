@@ -41,8 +41,17 @@ export function getMemberAuthOrderActions(input: {
   useAuthentication: boolean;
   escrowStatus: MemberEscrowStatus | null | undefined;
   status: MemberOrderDbStatus | null | undefined;
+  platformReceivedAt?: string | null;
+  paymentCaptureStatus?: string | null;
 }): MemberAuthOrderActions {
-  const { persona, useAuthentication, escrowStatus, status } = input;
+  const {
+    persona,
+    useAuthentication,
+    escrowStatus,
+    status,
+    platformReceivedAt,
+    paymentCaptureStatus,
+  } = input;
 
   if (!useAuthentication || status !== "pending") {
     return {
@@ -53,12 +62,23 @@ export function getMemberAuthOrderActions(input: {
     };
   }
 
+  const gradingLocked =
+    Boolean(platformReceivedAt) ||
+    escrowStatus === "grading" ||
+    escrowStatus === "shipped" ||
+    paymentCaptureStatus === "auth_fee_captured" ||
+    paymentCaptureStatus === "fully_captured";
+
   return {
     canPay: persona === "buy" && escrowStatus === "payment",
     canSubmitInbound: persona === "sell" && escrowStatus === "custody",
-    canConfirmReceipt: persona === "buy" && escrowStatus === "shipped",
+    canConfirmReceipt:
+      persona === "buy" &&
+      escrowStatus === "shipped" &&
+      paymentCaptureStatus === "fully_captured",
     canCancel:
       persona === "sell" &&
+      !gradingLocked &&
       (escrowStatus === "payment" || escrowStatus === "custody"),
   };
 }
