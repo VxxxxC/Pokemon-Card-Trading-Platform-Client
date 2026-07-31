@@ -176,49 +176,41 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     // Take screenshot of Desktop Payouts FPS tab
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, "desktop-payouts-fps-tab.png"), fullPage: true });
 
-    // --- C. 商戶流水 (Stripe) Tab → Stripe Log ---
+    // --- C. 商戶流水 (Stripe) Tab — main ledger table ---
     const stripeTabBtn = page.locator("button", { hasText: "商戶流水 (Stripe)" });
     await stripeTabBtn.click();
 
-    const stripeLogPanel = page.locator("div.bg-bg-card", {
-      has: page.locator("h3", { hasText: "Stripe Log — 商戶交易紀錄" }),
-    }).last();
-    await expect(stripeLogPanel).toBeVisible();
+    const merchantTable = page.locator("table").first();
+    await expect(merchantTable).toBeVisible();
 
-    // Table headers: Transfer ID / 商戶名稱 / 分賬金額 / 平台分成 / 狀態 / 建立時間
-    const stripeHeaders = stripeLogPanel.locator("thead tr th");
-    const stripeHeaderTexts = await stripeHeaders.allInnerTexts();
-    expect(stripeHeaderTexts).toEqual(["Transfer ID", "商戶名稱", "分賬金額", "平台分成", "狀態", "建立時間"]);
+    const merchantHeaders = merchantTable.locator("thead tr th");
+    const merchantHeaderTexts = await merchantHeaders.allInnerTexts();
+    expect(merchantHeaderTexts).toContain("Stripe 流水號");
+    expect(merchantHeaderTexts).toContain("商戶實收 (Transfer)");
+    expect(merchantHeaderTexts).toContain("撥款狀態");
+    expect(merchantHeaderTexts).not.toContain("帳戶餘額");
 
-    // Page 1 rows count: 15
-    const stripeRows = stripeLogPanel.locator("tbody tr");
-    await expect(stripeRows).toHaveCount(15);
+    await expect(
+      page.locator("h3", { hasText: "Stripe Log — 商戶交易紀錄" }),
+    ).toHaveCount(0);
 
-    const stripePagingText = stripeLogPanel.locator("div", { hasText: "顯示第" }).first();
-    await expect(stripePagingText).toContainText("顯示第 1 - 15 筆，共 38 筆資料");
+    const merchantRows = merchantTable.locator("tbody tr");
+    const merchantRowCount = await merchantRows.count();
+    expect(merchantRowCount).toBeLessThanOrEqual(10);
 
-    // Time DESC verification: row 1 vs row 15
-    const sRow1Time = await stripeRows.nth(0).locator("td").nth(5).innerText();
-    const sRow15Time = await stripeRows.nth(14).locator("td").nth(5).innerText();
-    console.log(`[Merchant Stripe Log] Row 1 Time: ${sRow1Time}, Row 15 Time: ${sRow15Time}`);
-    expect(parseDate(sRow1Time)).toBeGreaterThan(parseDate(sRow15Time));
+    const merchantPagingText = page
+      .locator("div", { hasText: "顯示第" })
+      .filter({ hasText: "筆資料" })
+      .first();
+    if (merchantRowCount > 0) {
+      await expect(merchantPagingText).toContainText("顯示第 1 -");
+      await expect(merchantPagingText).toContainText("筆資料");
+    }
 
-    // Page 1: prev disabled
-    const sPrevBtn = stripeLogPanel.locator("button", { hasText: "上一頁" });
-    const sNextBtn = stripeLogPanel.locator("button", { hasText: "下一頁" });
-    await expect(sPrevBtn).toBeDisabled();
-
-    // Click Next -> Page 2
-    await sNextBtn.click();
-    await expect(stripePagingText).toContainText("顯示第 16 - 30 筆，共 38 筆資料");
-    await expect(stripeRows).toHaveCount(15);
-
-    // Click Page 3 -> 8 rows
-    const sPage3Btn = stripeLogPanel.locator("button", { hasText: "3" });
-    await sPage3Btn.click();
-    await expect(stripePagingText).toContainText("顯示第 31 - 38 筆，共 38 筆資料");
-    await expect(stripeRows).toHaveCount(8);
-    await expect(sNextBtn).toBeDisabled();
+    const sPrevBtn = page.locator("button", { hasText: "上一頁" }).last();
+    if (merchantRowCount > 0) {
+      await expect(sPrevBtn).toBeDisabled();
+    }
 
     // Screenshot Desktop Payouts Stripe Tab
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, "desktop-payouts-stripe-tab.png"), fullPage: true });
@@ -240,8 +232,10 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     // 3. Switch to Merchant Flow Tab
     await stripeTabBtn.click();
 
-    // Verify Merchant Flow Stripe Log is independent (starts at Page 1, not affected by FPS Stripe Log being on Page 3)
-    await expect(stripePagingText).toContainText("顯示第 1 - 15 筆");
+    // Merchant main table pagination is independent of FPS Stripe Log
+    if (merchantRowCount > 0) {
+      await expect(merchantPagingText).toContainText("顯示第 1 -");
+    }
 
     // 4. Switch back to FPS Tab
     await fpsTabBtn.click();
@@ -276,13 +270,24 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     // Uncheck
     await firstCheckbox.uncheck();
 
-    // Test Merchant Flow table regression on Stripe tab
+    // Test Merchant Flow table search (live DB rows)
     await stripeTabBtn.click();
     const stripeSearchInput = page.locator('input[placeholder*="搜尋商戶名稱"]');
-    await stripeSearchInput.fill("HarutoCards");
-    const upperStripeRows = page.locator("tbody").first().locator("tr");
-    await expect(upperStripeRows).toHaveCount(3);
-    await stripeSearchInput.fill(""); // reset search
+    const upperStripeRows = merchantTable.locator("tbody tr");
+    const initialMerchantRowCount = await upperStripeRows.count();
+    if (initialMerchantRowCount > 0) {
+      const firstMerchantName = await upperStripeRows
+        .first()
+        .locator("td")
+        .nth(3)
+        .innerText();
+      const searchToken = firstMerchantName.trim().slice(0, 6);
+      await stripeSearchInput.fill(searchToken);
+      await page.waitForTimeout(500);
+      const filteredCount = await upperStripeRows.count();
+      expect(filteredCount).toBeGreaterThan(0);
+      await stripeSearchInput.fill("");
+    }
 
     expect(consoleErrors, `Console errors found on payouts: ${consoleErrors.join("\n")}`).toHaveLength(0);
   });

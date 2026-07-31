@@ -45,8 +45,11 @@ type UserRole = Enums<"user_role">;
 | `listing_status` | `active`, `sold`, `inactive` |
 | `member_escrow_status` | `payment`, `custody`, `grading`, `shipped`, `released`, `cancelled` |
 | `member_order_state` | `pending`, `meetup_arranged`, `completed`, `cancelled` |
+| `member_seller_payout_status` | `none`, `held`, `ready`, `processing`, `paid`, `frozen`, `failed` |
 | `offer_status` | `pending`, `accepted`, `rejected`, `cancelled` |
 | `payment_capture_status` | `none`, `authorized`, `auth_fee_captured`, `fully_captured`, `voided`, `refunded`, `partially_refunded` |
+| `payout_batch_status` | `draft`, `processing`, `completed` |
+| `payout_request_status` | `pending`, `ready`, `processing`, `completed`, `failed` |
 | `report_state` | `pending`, `reviewing`, `resolved`, `dismissed` |
 | `review_persona` | `member`, `merchant` |
 | `reward_type` | `discount_coupon`, `free_shipping`, `lucky_draw_ticket`, `points` |
@@ -428,6 +431,7 @@ type UserRole = Enums<"user_role">;
 | `auth_graded_by` | `string | null` | Yes |
 | `auth_notes` | `string | null` | Yes |
 | `auth_result` | `string | null` | Yes |
+| `buyer_confirmed_at` | `string | null` | Yes |
 | `buyer_id` | `string` | No |
 | `created_at` | `string | null` | Yes |
 | `escrow_status` | `| member_escrow_status` | No |
@@ -446,6 +450,7 @@ type UserRole = Enums<"user_role">;
 | `outbound_tracking_no` | `string | null` | Yes |
 | `payment_capture_status` | `payment_capture_status` | No |
 | `payment_confirmed_at` | `string | null` | Yes |
+| `payout_hold_until` | `string | null` | Yes |
 | `platform_received_at` | `string | null` | Yes |
 | `refund_amount` | `number | null` | Yes |
 | `refund_attempted_at` | `string | null` | Yes |
@@ -453,6 +458,7 @@ type UserRole = Enums<"user_role">;
 | `refund_status` | `string` | No |
 | `refunded_at` | `string | null` | Yes |
 | `seller_id` | `string` | No |
+| `seller_payout_status` | `member_seller_payout_status` | No |
 | `status` | `member_order_state | null` | Yes |
 | `stripe_payment_intent_id` | `string | null` | Yes |
 | `stripe_refund_id` | `string | null` | Yes |
@@ -584,6 +590,58 @@ type UserRole = Enums<"user_role">;
 
 ---
 
+### `payout_batches`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `created_at` | `string` | No |
+| `cutoff_at` | `string` | No |
+| `id` | `string` | No |
+| `notes` | `string | null` | Yes |
+| `processed_by` | `string | null` | Yes |
+| `scheduled_date` | `string` | No |
+| `status` | `payout_batch_status` | No |
+| `updated_at` | `string` | No |
+
+**Foreign keys:** `processed_by` → `profiles`
+
+---
+
+### `payout_requests`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `admin_fps_reference` | `string | null` | Yes |
+| `amount` | `number` | No |
+| `batch_id` | `string | null` | Yes |
+| `created_at` | `string` | No |
+| `fps_id_snapshot` | `string` | No |
+| `id` | `string` | No |
+| `order_id` | `string` | No |
+| `paid_at` | `string | null` | Yes |
+| `paid_by` | `string | null` | Yes |
+| `ready_at` | `string | null` | Yes |
+| `seller_id` | `string` | No |
+| `status` | `payout_request_status` | No |
+| `updated_at` | `string` | No |
+
+**Foreign keys:** `batch_id` → `payout_batches`
+
+---
+
+### `platform_settings`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `key` | `string` | No |
+| `updated_at` | `string` | No |
+| `updated_by` | `string | null` | Yes |
+| `value` | `Json` | No |
+
+**Foreign keys:** `updated_by` → `profiles`
+
+---
+
 ### `point_ledger`
 
 | Column | Type | Nullable |
@@ -704,6 +762,7 @@ type UserRole = Enums<"user_role">;
 | `completed_trades_count` | `number` | No |
 | `created_at` | `string` | No |
 | `display_name` | `string` | No |
+| `fps_id` | `string | null` | Yes |
 | `id` | `string` | No |
 | `rating_score` | `number | null` | Yes |
 | `reputation_tag` | `Json | null` | Yes |
@@ -822,7 +881,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**28 tables**
+**31 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -843,6 +902,9 @@ type UserRole = Enums<"user_role">;
 | `merchant_orders` | Escrow orders |
 | `merchant_shops` | Merchant storefront |
 | `offers` | Negotiation |
+| `payout_batches` | — |
+| `payout_requests` | — |
+| `platform_settings` | — |
 | `point_ledger` | — |
 | `product_catalog` | Catalog |
 | `product_grading_market_prices` | — |
