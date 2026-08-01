@@ -196,6 +196,32 @@ export default async function OrdersGatewayPage() {
    - 每次提交前，必須確保當前修改無語法錯誤，且不破壞整體 Compile (`bunx tsc --noEmit`)，確保每一個 Commit 都是「可建置、可運行 (Buildable)」的獨立節點。
    - 嚴禁將工作總結 Markdown、熔斷報錯檔等暫存檔混入代碼 Commit 中。
 
+### 8. 👑 前端模組化與檔案行數硬性防線 (Frontend Modularity & Clean Code Mandate)
+
+**核心目標**：杜絕超過 300 行的「上帝組件（God Component）」，嚴禁將 Data Fetching、State、Utils、Modal、Sub-views 全部塞在單一 `.tsx` 檔案中。維持極高可讀性與 Component-Level 可維護性。
+
+1. **硬性檔案行數上限 (Strict File Line Limit)**：
+   - **黃金標準**：單一 `.tsx` 檔案行數應控制在 **150 ~ 200 行** 內。
+   - **硬性紅線 (Hard Cap)**：單一 `.tsx` 檔案**嚴禁超過 300 行**！
+   - **重構觸發點**：當開發或修改過程中發現檔案接近 250 行時，Agent **必須主動暫停新功能寫入，先執行「模組拆分重構（Decomposition Refactoring）」**！
+
+2. **巨型頁面拆分四部曲 (4-Step Refactoring Pipeline)**：
+   當一個頁面/組件變大時，必須按照以下架構解耦拆分，禁止在單一檔案內用 `renderHeader()`, `renderTabA()` 等巨型 inline 函式：
+
+   - **① 視圖拆分 (Sub-components Excision)**：
+     - 將 Tab 內容、Data Table、Toolbar、Card 項目、Modal 彈窗等獨立 UI 區塊，抽離成獨立的子組件檔案（例：`app/admin/orders/components/PlatformOrdersTab.tsx`）。
+   - **② 業務邏輯與狀態 Hook 化 (Custom Hooks Extraction)**：
+     - 當組件內包含超過 5 個 `useState` / `useEffect` 或複雜的搜尋、過濾、Sorting、Fetching 邏輯時，必須將邏輯完全抽離至專屬 Custom Hook（例：`hooks/useOrderFilters.ts` 或 `hooks/useOrderActions.ts`）。
+     - `.tsx` 視圖組件只留純 UI 渲染與宣告式資料綁定。
+   - **③ 靜態選單/資料格式化離心 (Utils & Constants Extraction)**：
+     - 所有的選單陣列 (`STATUS_OPTIONS`)、枚舉對照表、日期/貨幣格式化 Helper、計算邏輯，一律抽離至同目錄下的 `constants.ts` 或 `utils.ts`。
+   - **④ 型別獨立 (Types Colocation)**：
+     - 組件所需的 `interface` / `type` 一律放入 `types.ts`。
+
+3. **Feature Colocation 檔案結構規範**：
+   - **頁面專屬子組件**：若某個子組件（如 `GradingTable.tsx`）只為 `/admin/orders` 頁面服務，必須放在該頁面的 `components/` 子目錄內（例如：`app/admin/orders/components/GradingTable.tsx`）。
+   - **跨頁面共用組件**：只有被 2 個以上獨立頁面使用的組件，才可放入全域 `@/app/components/` 或 `@/components/ui/`。
+
 ## 核心指令
 
 1. **設計系統絕對服從**：所有前端程式碼必須嚴格從 `.stitch/designs/DESIGN.md` 中提取顏色、字體 and 間距。嚴禁發明隨意的 Tailwind 數值。
