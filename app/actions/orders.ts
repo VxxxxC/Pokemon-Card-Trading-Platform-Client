@@ -44,6 +44,10 @@ import {
   merchantBuyerOrderMatchesTab,
 } from "@/lib/merchant-order/load-buyer-merchant-orders";
 import {
+  getMerchantBuyerActionFlags,
+  mapMerchantEscrowToMemberEscrowStatus,
+} from "@/lib/merchant-order/buyer-actions";
+import {
   mapMerchantEscrowToMemberStatus,
   rpcPrepareMerchantOrderPayout,
 } from "@/lib/merchant-order/merchant-order-rpc";
@@ -295,8 +299,13 @@ export type UserTradingOrder = {
   escrowStatus: MemberEscrowStatus | null;
   /** B2C 商戶訂單尚未完成 Stripe 託管付款（escrow_status = pending_payment）。 */
   pendingPayment: boolean;
+  /** B2C 買家可確認收貨並觸發撥款（merchant orders only）。 */
+  canCompleteMerchantPurchase?: boolean;
   /** 鑑定託管訂單買家完成 mock / 正式付款時間 */
   paymentConfirmedAt?: string | null;
+  /** Raw merchant escrow for buyer badge mapping. */
+  merchantEscrowStatus?: Tables<"merchant_orders">["escrow_status"];
+  shippingMethod?: string | null;
   counterparty: UserTradingOrderCounterparty;
   listing: {
     gradingCompany: string;
@@ -371,6 +380,9 @@ export type MemberOrderDetail = UserTradingOrder & {
   shippingFee?: number;
   shippingMethod?: string | null;
   totalAmount?: number;
+  paymentCaptureStatus?: Tables<"merchant_orders">["payment_capture_status"];
+  /** Raw merchant escrow for buyer badge mapping. */
+  merchantEscrowStatus?: Tables<"merchant_orders">["escrow_status"];
 };
 
 export type GetMemberOrderDetailResult =
@@ -442,6 +454,10 @@ type BuyerMerchantOrderDetailQueryRow = {
   shipping_fee: number | null;
   shipping_method: string | null;
   total_amount: number | null;
+  inbound_tracking_no: string | null;
+  outbound_tracking_no: string | null;
+  payment_capture_status: Tables<"merchant_orders">["payment_capture_status"];
+  auth_result: string | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1072,8 +1088,16 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   shippingFee: number;
   shippingMethod: string | null;
   totalAmount: number;
+  authFee: number;
   canSubmitLogistics: boolean;
+  canSubmitDirectFulfillment: boolean;
   canReviewBuyer: boolean;
+  stripePaymentIntentId: string | null;
+  stripeTransferId: string | null;
+  commissionAmount: number | null;
+  commissionRateApplied: number | null;
+  merchantPayoutAmount: number | null;
+  payoutStatus: string;
 };
 
 export type GetMerchantOrderDetailResult =
@@ -1097,6 +1121,13 @@ type MerchantOrderDetailQueryRow = {
   shipping_fee: number | null;
   shipping_method: string | null;
   total_amount: number | null;
+  auth_fee: number | null;
+  stripe_payment_intent_id: string | null;
+  stripe_transfer_id: string | null;
+  commission_amount: number | null;
+  commission_rate_applied: number | null;
+  merchant_payout_amount: number | null;
+  payout_status: string;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1171,8 +1202,23 @@ function mapMerchantOrderDetailRow(
     shippingFee: Number(row.shipping_fee ?? 0),
     shippingMethod: row.shipping_method,
     totalAmount: Number(row.total_amount ?? row.final_price),
+    authFee: Number(row.auth_fee ?? 0),
     canSubmitLogistics: sellerFlags.canSubmitLogistics,
+    canSubmitDirectFulfillment: sellerFlags.canSubmitDirectFulfillment,
     canReviewBuyer: sellerFlags.canReviewBuyer,
+    stripePaymentIntentId: row.stripe_payment_intent_id,
+    stripeTransferId: row.stripe_transfer_id,
+    commissionAmount:
+      row.commission_amount != null ? Number(row.commission_amount) : null,
+    commissionRateApplied:
+      row.commission_rate_applied != null
+        ? Number(row.commission_rate_applied)
+        : null,
+    merchantPayoutAmount:
+      row.merchant_payout_amount != null
+        ? Number(row.merchant_payout_amount)
+        : null,
+    payoutStatus: row.payout_status,
   };
 }
 
@@ -1240,6 +1286,13 @@ export async function getMerchantOrderDetail(
           shipping_fee,
           shipping_method,
           total_amount,
+          auth_fee,
+          stripe_payment_intent_id,
+          stripe_transfer_id,
+          commission_amount,
+          commission_rate_applied,
+          merchant_payout_amount,
+          payout_status,
           listings!inner (
             grading_company,
             grading_score,
@@ -1393,16 +1446,21 @@ function mapBuyerMerchantOrderDetailRow(
   const useAuthentication = Boolean(row.requires_authentication);
   const status = mapMerchantEscrowToMemberStatus(row.escrow_status);
   const pendingPayment = row.escrow_status === "pending_payment";
+  const memberEscrowStatus = mapMerchantEscrowToMemberEscrowStatus(
+    row.escrow_status,
+    useAuthentication,
+  );
+  const buyerFlags = getMerchantBuyerActionFlags({
+    escrowStatus: row.escrow_status,
+    requiresAuthentication: useAuthentication,
+    outboundTrackingNo: row.outbound_tracking_no,
+    authResult: row.auth_result,
+    paymentCaptureStatus: row.payment_capture_status,
+  });
   const createdAt = row.created_at ?? new Date().toISOString();
   const expiresAt = new Date(
     new Date(createdAt).getTime() + 14 * 24 * 60 * 60 * 1000,
   ).toISOString();
-  const authActions = getMemberAuthOrderActions({
-    persona: "buy",
-    useAuthentication,
-    escrowStatus: null,
-    status,
-  });
 
   return {
     id: row.id,
@@ -1417,8 +1475,9 @@ function mapBuyerMerchantOrderDetailRow(
     persona: "buy",
     hasReviewedByMe,
     useAuthentication,
-    escrowStatus: null,
+    escrowStatus: memberEscrowStatus,
     pendingPayment,
+    canCompleteMerchantPurchase: buyerFlags.canCompleteMerchantPurchase,
     counterparty: {
       id: row.merchant_id,
       displayName: shop?.shop_name?.trim() || "認證商戶",
@@ -1442,18 +1501,20 @@ function mapBuyerMerchantOrderDetailRow(
     },
     listingId: row.listing_id,
     listingImageUrls,
-    inboundTrackingNo: null,
-    outboundTrackingNo: null,
+    inboundTrackingNo: row.inbound_tracking_no,
+    outboundTrackingNo: row.outbound_tracking_no,
     paymentAmount: Number(row.total_amount ?? row.final_price),
     listingAcceptsBuyerAuth: useAuthentication,
     canPay: pendingPayment,
     canSubmitInbound: false,
-    canConfirmReceipt: !pendingPayment && authActions.canConfirmReceipt,
+    canConfirmReceipt: buyerFlags.canCompleteMerchantPurchase,
     canCancel: false,
     itemSubtotal: Number(row.item_subtotal ?? row.final_price),
     shippingFee: Number(row.shipping_fee ?? 0),
     shippingMethod: row.shipping_method,
     totalAmount: Number(row.total_amount ?? row.final_price),
+    paymentCaptureStatus: row.payment_capture_status,
+    merchantEscrowStatus: row.escrow_status,
   };
 }
 
@@ -1513,6 +1574,10 @@ async function getBuyerMerchantOrderDetail(
           shipping_fee,
           shipping_method,
           total_amount,
+          inbound_tracking_no,
+          outbound_tracking_no,
+          payment_capture_status,
+          auth_result,
           listings!inner (
             grading_company,
             grading_score,
@@ -1905,6 +1970,70 @@ export async function submitMerchantLogistics(
   } catch (error) {
     console.error("[submitMerchantLogistics]", error);
     return { success: false, error: "物流提交失敗，請稍後再試" };
+  }
+}
+
+export async function submitMerchantDirectFulfillment(
+  orderId: string,
+  trackingNo?: string,
+): Promise<MemberOrderActionResult> {
+  const invalidId = rejectNonUuidMutationOrderId(orderId);
+  if (invalidId) {
+    return invalidId;
+  }
+
+  const trimmedOrderId = orderId.trim();
+  const trimmedTracking = trackingNo?.trim() ?? "";
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再操作" };
+    }
+
+    const identityError = rejectInvalidRpcIdentity(trimmedOrderId, user.id);
+    if (identityError) {
+      return identityError;
+    }
+
+    const { error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_submit_merchant_direct_fulfillment",
+          args: {
+            p_order_id: string;
+            p_merchant_id: string;
+            p_tracking_no?: string;
+          },
+        ) => Promise<{ error: { message: string } | null }>;
+      }
+    ).rpc("rpc_submit_merchant_direct_fulfillment", {
+      p_order_id: trimmedOrderId,
+      p_merchant_id: user.id,
+      ...(trimmedTracking ? { p_tracking_no: trimmedTracking } : {}),
+    });
+
+    if (error) {
+      console.error("[submitMerchantDirectFulfillment]", error.message);
+      return { success: false, error: mapOrderRpcError(error.message) };
+    }
+
+    revalidatePath("/profile/merchant/trading");
+    revalidateMerchantOrderPaths(trimmedOrderId);
+    revalidateMemberOrderPaths(trimmedOrderId);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[submitMerchantDirectFulfillment]", error);
+    return { success: false, error: "發貨確認失敗，請稍後再試" };
   }
 }
 

@@ -1,6 +1,10 @@
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import type { UserTradingOrder } from "@/app/actions/orders";
 import {
+  getMerchantBuyerActionFlags,
+  mapMerchantEscrowToMemberEscrowStatus,
+} from "@/lib/merchant-order/buyer-actions";
+import {
   isOpenMerchantBuyerOrder,
   mapMerchantEscrowToMemberStatus,
 } from "@/lib/merchant-order/merchant-order-rpc";
@@ -20,6 +24,10 @@ type MerchantBuyerOrderRow = Pick<
   | "escrow_status"
   | "requires_authentication"
   | "created_at"
+  | "outbound_tracking_no"
+  | "payment_capture_status"
+  | "auth_result"
+  | "shipping_method"
 > & {
   listings: {
     grading_company: string;
@@ -67,6 +75,10 @@ export async function loadBuyerMerchantTradingOrders(
       escrow_status,
       requires_authentication,
       created_at,
+      outbound_tracking_no,
+      payment_capture_status,
+      auth_result,
+      shipping_method,
       listings (
         grading_company,
         grading_score,
@@ -120,6 +132,14 @@ export async function loadBuyerMerchantTradingOrders(
     const expiresAt = new Date(
       new Date(createdAt).getTime() + 14 * 24 * 60 * 60 * 1000,
     ).toISOString();
+    const useAuthentication = Boolean(row.requires_authentication);
+    const buyerFlags = getMerchantBuyerActionFlags({
+      escrowStatus: row.escrow_status,
+      requiresAuthentication: useAuthentication,
+      outboundTrackingNo: row.outbound_tracking_no,
+      authResult: row.auth_result,
+      paymentCaptureStatus: row.payment_capture_status,
+    });
 
     return {
       id: row.id,
@@ -133,9 +153,15 @@ export async function loadBuyerMerchantTradingOrders(
       expiresAt,
       persona: "buy",
       hasReviewedByMe: reviewedOrderIds.has(row.id),
-      useAuthentication: Boolean(row.requires_authentication),
-      escrowStatus: null,
+      useAuthentication,
+      escrowStatus: mapMerchantEscrowToMemberEscrowStatus(
+        row.escrow_status,
+        useAuthentication,
+      ),
       pendingPayment: row.escrow_status === "pending_payment",
+      canCompleteMerchantPurchase: buyerFlags.canCompleteMerchantPurchase,
+      shippingMethod: row.shipping_method,
+      merchantEscrowStatus: row.escrow_status,
       counterparty: {
         id: row.merchant_id,
         displayName:

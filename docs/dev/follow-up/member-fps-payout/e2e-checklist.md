@@ -13,7 +13,7 @@
 - [ ] `bunx supabase db push` 已套用：
   - `20260801120000_member_fps_payout.sql`
   - `20260802120000_member_fps_payout_pipeline.sql`
-  - `20260803120000_profiles_fps_name.sql`
+  - `20260803120200_profiles_fps_name.sql`
 - [ ] `.env.local` 已設定：
   - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
   - `STRIPE_SECRET_KEY`

@@ -52,6 +52,7 @@ export function isOpenMerchantBuyerOrder(
   return (
     escrowStatus === "pending_payment" ||
     escrowStatus === "payment_held" ||
+    escrowStatus === "shipped" ||
     escrowStatus === "authenticating" ||
     escrowStatus === "authenticated"
   );

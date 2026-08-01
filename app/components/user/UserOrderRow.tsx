@@ -44,6 +44,7 @@ interface UserOrderRowProps {
     escrowStatus?: MemberEscrowStatus | null;
     canPay?: boolean;
     pendingPayment?: boolean;
+    canCompleteMerchantPurchase?: boolean;
     canCancel: boolean;
     onRefresh: () => void;
   };
@@ -107,7 +108,9 @@ export function UserOrderRow({
     isPendingDbOrder &&
     isBuyer &&
     !isPendingEscrowPayment &&
-    (!isAuthOrder || isMerchantBuyerOrder);
+    (isMerchantBuyerOrder
+      ? Boolean(dbOrderContext?.canCompleteMerchantPurchase)
+      : !isAuthOrder);
   const canPayAuthOrder = Boolean(dbOrderContext?.canPay);
   const canCheckoutMerchantOrder = isPendingEscrowPayment && isBuyer;
   const showPendingActions =

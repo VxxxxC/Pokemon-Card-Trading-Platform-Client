@@ -3,18 +3,26 @@
 > B2C 商戶訂單真實收款：買家全額付款 → 資金 100% 入**平台** Stripe 帳戶託管 → webhook 確認後 `payment_held`。
 > 買家確認收貨後，以 separate charge + transfer 將卡價扣固定 8% 佣金及買家支付運費撥至 Merchant Connect；鑑定費全數留平台。
 
-## 1. 託管狀態機（本階段新增前置狀態）
+## 1. 託管狀態機
+
+**鑑定單（`requires_authentication = true`）：**
 
 ```
 pending_payment ──▶ payment_held ──▶ authenticating ──▶ authenticated ──▶ completed_and_transferred
-   （訂單成立         （Stripe 收款              …                              （Connect transfer
-    未付款）           確認、資金託管）                                            已建立並入帳）
+```
+
+**非鑑定直寄（`requires_authentication = false`）：**
+
+```
+pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and_transferred
+                      （Stripe 收款）  （商戶發貨/面交）  （買家確認 + Connect transfer）
 ```
 
 - 訂單成立（接受出價 / 立即購買）→ `pending_payment`
 - `payment_intent.succeeded` webhook → `payment_held`（非鑑定 automatic）；鑑定單 `capture_mode=manual` 時改由 `amount_capturable_updated` → `authorized`
-- `rpc_prepare_merchant_order_payout` 的 allowed-from **不含** `pending_payment`，未付款無法確認收貨
-- `getMerchantSellerActionFlags().canSubmitLogistics` 仍只認 `payment_held`，未收款不可出貨
+- 非鑑定：`rpc_submit_merchant_direct_fulfillment`（SF 單號 / 面交確認）→ `shipped`；買家確認收貨需 `escrow_status = shipped`
+- `rpc_prepare_merchant_order_payout` 的 allowed-from **不含** `pending_payment`；非鑑定分支需 `shipped`（鑑定分支仍為 `authenticated`）
+- `getMerchantSellerActionFlags().canSubmitLogistics` = auth inbound at `payment_held`；`canSubmitDirectFulfillment` = non-auth at `payment_held`
 
 ## 2. Migrations
 
@@ -27,6 +35,8 @@ pending_payment ──▶ payment_held ──▶ authenticating ──▶ authen
 | `20260729180000_merchant_connect_payout.sql` | payout snapshot 欄位與唯一索引；prepare/finalize/failed RPC；撤銷舊 completion bypass |
 | `20260730100000_escrow_p0_manual_capture.sql` | `payment_capture_status`；鑑定單 `capture_method: manual` + partial auth_fee capture |
 | `20260731120000_merchant_pending_payment_expiry.sql` | 48h `pending_payment` 逾時 RPC + `fn_merchant_order_needs_seller_action` auth inbound only |
+| `20260803120000_escrow_state_shipped.sql` | `escrow_state` 新增 `shipped` |
+| `20260803120100_merchant_direct_shipped.sql` | `rpc_submit_merchant_direct_fulfillment`；非鑑定 payout gate 改 `shipped`；重建 trading search facets |
 
 ### `merchant_orders` 新欄位
 
@@ -184,10 +194,13 @@ bun run stripe:webhook:listen   # 本機；見 lib/stripe/webhook-events.ts
 | 1 | Buy now（**不勾鑑定**） | `pending_payment`，listing `inactive` |
 | 2 | `/checkout/[orderId]` → SF/meetup → `4242…` | PI `capture_method=automatic` |
 | 3 | Webhook `payment_intent.succeeded` | `payment_held`，`paid_at`，ledger `escrow_payment` ×1 |
-| 4 | 買家 `/profile/user/trading` → 確認完成 | `completeMerchantOrder` |
-| 5 | Stripe Dashboard | Transfer 至 Connect；金額 = 卡價 − 8% + 運費 |
-| 6 | DB | `completed_and_transferred`；`commission_deduction` + `payout` ledger 各一筆 |
-| 7 | Webhook replay | `already_applied`，無重複 ledger |
+| 4 | 商戶 `/profile/merchant/orderDetail/[id]` → SF 填單號或面交確認 | `escrow_status = shipped` |
+| 5 | 買家 `/profile/user/trading` → 確認完成 | `completeMerchantOrder`（gate: `shipped`） |
+| 6 | Stripe Dashboard | Transfer 至 Connect；金額 = 卡價 − 8% + 運費 |
+| 7 | DB | `completed_and_transferred`；`commission_deduction` + `payout` ledger 各一筆 |
+| 8 | Webhook replay | `already_applied`，無重複 ledger |
+
+> 既有 `payment_held` 非鑑定訂單（migration 前建立）需商戶手動發貨一次才可測買家確認。
 
 > 鑑定單（`useAuth=true`）需 Stripe account 開通 online multicapture 後再測。
 

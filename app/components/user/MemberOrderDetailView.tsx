@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import Image from "next/image";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IoChevronBack } from "react-icons/io5";
@@ -22,9 +21,11 @@ import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
+import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2cDirectTimeline";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
+import { OrderListingPhotoGrid } from "@/app/components/shared/OrderListingPhotoGrid";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,14 +36,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  type CarouselApi,
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
 import {
   formatListingGrade,
   formatMemberOrderDateTime,
@@ -92,11 +85,6 @@ export function MemberOrderDetailView({
 }: MemberOrderDetailViewProps) {
   const router = useRouter();
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
-
-  // ImageViewer integration states
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
 
@@ -154,30 +142,15 @@ export function MemberOrderDetailView({
   const isPending = isPendingMemberOrderStatus(order.status);
   // B2C 託管訂單未完成 Stripe 付款前，唔可以確認收貨 / 進入交割流程。
   const isPendingEscrowPayment = order.pendingPayment;
+  const isMerchantBuyerOrder =
+    order.orderKind === "merchant" && order.persona === "buy";
+  const canCompletePurchase = isMerchantBuyerOrder
+    ? Boolean(order.canCompleteMerchantPurchase)
+    : isPending && !isPendingEscrowPayment;
   const showReviewCta =
     order.status === "completed" &&
     !order.hasReviewedByMe &&
     Boolean(onOpenReview);
-
-  useEffect(() => {
-    if (!api) {
-      return;
-    }
-
-    const updateCarouselState = () => {
-      setCount(api.scrollSnapList().length);
-      setCurrent(api.selectedScrollSnap());
-    };
-
-    queueMicrotask(updateCarouselState);
-    api.on("select", updateCarouselState);
-    api.on("reInit", updateCarouselState);
-
-    return () => {
-      api.off("select", updateCarouselState);
-      api.off("reInit", updateCarouselState);
-    };
-  }, [api]);
 
   const handleComplete = async (): Promise<boolean> => {
     if (isActionLoading) {
@@ -407,21 +380,29 @@ export function MemberOrderDetailView({
 
       {useMerchantB2cEscrowUi ? (
         <div className="space-y-4">
-          {isPending && !isPendingEscrowPayment && (
+          <MerchantB2cDirectTimeline
+            escrowStatus={order.merchantEscrowStatus ?? null}
+            perspective="buyer"
+          />
+
+          {isPendingEscrowPayment ? null : isBuyer &&
+            order.merchantEscrowStatus === "payment_held" ? (
+            <p className="text-[12.5px] text-text-secondary leading-relaxed">
+              款項已由平台託管，等待商戶安排發貨或面交。
+            </p>
+          ) : null}
+
+          {isBuyer && canCompletePurchase && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                {isBuyer
-                  ? "款項已由平台 Stripe 託管。收到商戶寄出的卡牌並驗貨後，請確認完成交易以釋放撥款。"
-                  : "買家已完成託管付款，請安排發貨。待買家確認收貨後，平台將撥款至您的 Connect 帳戶。"}
+                商戶已發貨／已完成面交。收到卡牌並驗貨後，請確認完成交易以釋放撥款。
               </p>
-              {isBuyer && (
-                <MemberOrderCompleteConfirmDialog
-                  disabled={isActionLoading}
-                  isActionLoading={isActionLoading}
-                  onConfirm={handleComplete}
-                  triggerClassName="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-              )}
+              <MemberOrderCompleteConfirmDialog
+                disabled={isActionLoading}
+                isActionLoading={isActionLoading}
+                onConfirm={handleComplete}
+                triggerClassName="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              />
             </div>
           )}
         </div>
@@ -581,11 +562,19 @@ export function MemberOrderDetailView({
                   平台鑑定通過，待上載寄出物流單號。
                 </p>
               )}
-              {order.canConfirmReceipt ? (
+              {(isMerchantBuyerOrder
+                ? order.canCompleteMerchantPurchase
+                : order.canConfirmReceipt) ? (
                 <button
                   type="button"
                   disabled={isActionLoading}
-                  onClick={() => void handleConfirmReceipt()}
+                  onClick={() =>
+                    void (
+                      isMerchantBuyerOrder
+                        ? handleComplete()
+                        : handleConfirmReceipt()
+                    )
+                  }
                   className="w-full h-10 rounded-xl bg-success text-white font-semibold text-[13px] disabled:opacity-50"
                 >
                   確認收貨
@@ -676,65 +665,14 @@ export function MemberOrderDetailView({
           />
         )}
 
-        {galleryImages.length > 0 && (
-          <div className="flex flex-col items-center select-none group w-full overflow-hidden">
-            <div className="relative w-full aspect-[3/4] max-h-[65dvh] rounded-2xl overflow-hidden bg-[#120f0c] border border-white/5 shrink-0 shadow-inner">
-              <Carousel
-                setApi={setApi}
-                className="w-full h-full [&>div]:h-full"
-                opts={{ loop: galleryImages.length > 1 }}
-              >
-                <CarouselContent className="-ml-0 h-full">
-                  {galleryImages.map((imageUrl, photoIdx) => (
-                    <CarouselItem
-                      key={imageUrl + "-" + photoIdx}
-                      onClick={() => {
-                        setViewerIndex(photoIdx);
-                        setIsViewerOpen(true);
-                      }}
-                      className="pl-0 relative w-full h-full overflow-hidden rounded-2xl cursor-zoom-in"
-                    >
-                      <Image
-                        src={imageUrl}
-                        alt={
-                          order.product.cardName + " 實物照 " + (photoIdx + 1)
-                        }
-                        fill
-                        sizes="(max-width: 768px) 100vw, 400px"
-                        className="scale-100 object-cover transition-transform duration-500 ease-in-out hover:scale-105"
-                        unoptimized
-                      />
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                {galleryImages.length > 1 && (
-                  <>
-                    <CarouselPrevious className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 left-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-                    <CarouselNext className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 right-2 bg-black/60 hover:bg-black/80 border-0 hidden md:flex" />
-                  </>
-                )}
-              </Carousel>
-            </div>
-
-            {count > 1 && (
-              <div className="flex justify-center gap-1.5 py-2.5">
-                {Array.from({ length: count }, (_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    aria-label={"前往第 " + (index + 1) + " 張照片"}
-                    onClick={() => api?.scrollTo(index)}
-                    className={
-                      index === current
-                        ? "bg-brand w-3.5 h-1.5 opacity-100 rounded-full transition-all duration-300"
-                        : "bg-text-disabled w-1.5 h-1.5 opacity-30 hover:opacity-50 rounded-full transition-all duration-300"
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        <OrderListingPhotoGrid
+          images={galleryImages}
+          altPrefix={order.product.cardName + " 實物照"}
+          onImageClick={(photoIdx) => {
+            setViewerIndex(photoIdx);
+            setIsViewerOpen(true);
+          }}
+        />
       </div>
 
       <div className="pt-2">

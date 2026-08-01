@@ -2571,6 +2571,14 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_submit_merchant_direct_fulfillment: {
+        Args: {
+          p_merchant_id: string
+          p_order_id: string
+          p_tracking_no?: string
+        }
+        Returns: Json
+      }
       rpc_submit_merchant_kyc_application: {
         Args: { p_application: Json; p_documents: Json; p_user_id: string }
         Returns: Json
@@ -2891,6 +2899,7 @@ export type Database = {
       escrow_state:
         | "pending_payment"
         | "payment_held"
+        | "shipped"
         | "authenticating"
         | "authenticated"
         | "completed_and_transferred"
@@ -3098,6 +3107,7 @@ export const Constants = {
       escrow_state: [
         "pending_payment",
         "payment_held",
+        "shipped",
         "authenticating",
         "authenticated",
         "completed_and_transferred",
