@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/expire-merchant-pending-payment",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/member-fps-payout-ready",
+      "schedule": "0 * * * *"
     }
   ]
 }

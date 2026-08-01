@@ -473,6 +473,12 @@ export type MemberOrderDetail = UserTradingOrder & {
   canSubmitInbound: boolean;
   canConfirmReceipt: boolean;
   canCancel: boolean;
+  /** Seller FPS ID (auth orders, sell persona only). */
+  sellerFpsId?: string | null;
+  sellerFpsName?: string | null;
+  sellerPayoutStatus?: Tables<"member_orders">["seller_payout_status"];
+  payoutHoldUntil?: string | null;
+  buyerConfirmedAt?: string | null;
   /** Merchant B2C checkout breakdown (non-auth). */
   itemSubtotal?: number;
   shippingFee?: number;
@@ -501,6 +507,9 @@ type MemberOrderDetailQueryRow = {
   payment_capture_status: string | null;
   inbound_tracking_no: string | null;
   outbound_tracking_no: string | null;
+  buyer_confirmed_at: string | null;
+  payout_hold_until: string | null;
+  seller_payout_status: Tables<"member_orders">["seller_payout_status"];
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -527,6 +536,8 @@ type MemberOrderDetailQueryRow = {
     display_name: string | null;
     username: string | null;
     avatar_path: string | null;
+    fps_id: string | null;
+    fps_name: string | null;
   };
 };
 
@@ -1760,6 +1771,15 @@ function mapMemberOrderDetailRow(
     canCancel: row.use_authentication
       ? authActions.canCancel
       : row.seller_id === viewerId && row.status === "pending",
+    ...(persona === "sell" && row.use_authentication
+      ? {
+          sellerFpsId: row.seller.fps_id?.trim() || null,
+          sellerFpsName: row.seller.fps_name?.trim() || null,
+          sellerPayoutStatus: row.seller_payout_status,
+          payoutHoldUntil: row.payout_hold_until,
+          buyerConfirmedAt: row.buyer_confirmed_at,
+        }
+      : {}),
   };
 }
 
@@ -2041,6 +2061,9 @@ export async function getMemberOrderDetail(
           payment_capture_status,
           inbound_tracking_no,
           outbound_tracking_no,
+          buyer_confirmed_at,
+          payout_hold_until,
+          seller_payout_status,
           listings!inner (
             grading_company,
             grading_score,
@@ -2066,7 +2089,9 @@ export async function getMemberOrderDetail(
             id,
             display_name,
             username,
-            avatar_path
+            avatar_path,
+            fps_id,
+            fps_name
           )
         `,
       )

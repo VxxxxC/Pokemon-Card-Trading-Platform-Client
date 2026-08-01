@@ -17,6 +17,7 @@ import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDe
 import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
 import { MemberAuthStripePaymentPanel } from "@/app/components/transactions/MemberAuthStripePaymentPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
+import { FpsIdCollectDialog } from "@/app/components/user/FpsIdCollectDialog";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
@@ -48,6 +49,10 @@ import {
   isMeetupOnlyMemberOrder,
   isPendingMemberOrderStatus,
 } from "@/app/lib/member-order/p2p";
+import {
+  formatSellerPayoutHoldUntilLabel,
+  formatSellerPayoutStatusLabel,
+} from "@/lib/member-order/seller-payout";
 import { cn } from "@/lib/utils";
 
 type MemberOrderDetailViewProps = {
@@ -67,6 +72,18 @@ function dispatchPortfolioRefresh(): void {
 const stripePaymentAvailable =
   typeof process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.trim().length > 0;
+
+function fpsCollectDismissStorageKey(sellerId: string): string {
+  return `hkcv-fps-collect-dismissed-${sellerId}`;
+}
+
+function sellerNeedsFpsDetails(order: MemberOrderDetail): boolean {
+  return (
+    order.persona === "sell" &&
+    order.useAuthentication &&
+    (!order.sellerFpsId?.trim() || !order.sellerFpsName?.trim())
+  );
+}
 
 export function MemberOrderDetailView({
   order,
@@ -99,6 +116,33 @@ export function MemberOrderDetailView({
   const useMeetupUi =
     isMeetupOnlyMemberOrder(order.useAuthentication) && !useMerchantB2cEscrowUi;
   const [inboundTrackingInput, setInboundTrackingInput] = useState("");
+  const [fpsDialogOpen, setFpsDialogOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    if (!sellerNeedsFpsDetails(order)) {
+      return false;
+    }
+    return !sessionStorage.getItem(fpsCollectDismissStorageKey(order.sellerId));
+  });
+
+  const needsSellerFps = isSeller && sellerNeedsFpsDetails(order);
+  const payoutHoldUntilLabel = formatSellerPayoutHoldUntilLabel(
+    order.payoutHoldUntil,
+  );
+  const buyerConfirmedLabel = order.buyerConfirmedAt
+    ? formatMemberOrderDateTime(order.buyerConfirmedAt)
+    : null;
+
+  const handleFpsDialogOpenChange = (open: boolean) => {
+    setFpsDialogOpen(open);
+    if (!open && needsSellerFps && typeof window !== "undefined") {
+      sessionStorage.setItem(
+        fpsCollectDismissStorageKey(order.sellerId),
+        "1",
+      );
+    }
+  };
 
   const galleryImages =
     order.listingImageUrls.length > 0
@@ -233,6 +277,14 @@ export function MemberOrderDetailView({
 
   return (
     <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-6 space-y-5 animate-fadeIn lg:mx-[20%]">
+      <FpsIdCollectDialog
+        open={fpsDialogOpen}
+        onOpenChange={handleFpsDialogOpenChange}
+        initialFpsId={order.sellerFpsId}
+        initialFpsName={order.sellerFpsName}
+        onSaved={onRefresh}
+      />
+
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -288,6 +340,50 @@ export function MemberOrderDetailView({
           </div>
         </div>
       </div>
+
+      {needsSellerFps ? (
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-2">
+          <p className="text-[12.5px] text-text-secondary leading-relaxed">
+            請補充轉數快收款人姓名及 ID／電話／電郵，以便平台於買家確認收貨後撥款。
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setFpsDialogOpen(true)}
+              className="text-[12px] font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              立即填寫
+            </button>
+            <Link
+              href="/profile/user/settings"
+              className="text-[12px] font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              前往個人設定
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {isSeller && order.useAuthentication && order.sellerPayoutStatus ? (
+        <div className="rounded-xl border border-white/5 bg-[#17130f] p-4 space-y-1">
+          <p className="text-[12px] text-text-secondary">賣家撥款狀態</p>
+          <p className="text-[13px] font-semibold text-brand">
+            {formatSellerPayoutStatusLabel(order.sellerPayoutStatus)}
+          </p>
+          {buyerConfirmedLabel ? (
+            <p className="text-[11px] font-mono text-text-disabled">
+              買家確認收貨：{buyerConfirmedLabel}
+            </p>
+          ) : null}
+          {payoutHoldUntilLabel &&
+          (order.sellerPayoutStatus === "held" ||
+            order.sellerPayoutStatus === "ready") ? (
+            <p className="text-[11px] font-mono text-text-disabled">
+              撥款解凍時間：{payoutHoldUntilLabel}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {isPendingEscrowPayment && (
         <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">

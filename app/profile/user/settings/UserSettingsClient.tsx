@@ -49,6 +49,8 @@ export function UserSettingsClient({ initialData }: Props) {
         toast.error(errors.bankAccount);
       } else if (errors.fpsId) {
         toast.error(errors.fpsId);
+      } else if (errors.fpsName) {
+        toast.error(errors.fpsName);
       } else if (errors.form) {
         toast.error(errors.form);
       }
@@ -216,6 +218,29 @@ export function UserSettingsClient({ initialData }: Props) {
                   {errors?.fpsId && (
                     <p className="mt-1 font-sans text-[12px] text-warning">
                       {errors.fpsId}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="fps-name"
+                    className="font-mono text-[12px] text-text-secondary block mb-1.5"
+                  >
+                    轉數快收款人姓名
+                  </label>
+                  <input
+                    id="fps-name"
+                    name="fpsName"
+                    type="text"
+                    defaultValue={initialData.fpsName ?? ""}
+                    key={`fpsName-${initialData.fpsName ?? ""}`}
+                    placeholder="例：陳大文（須與銀行登記一致）"
+                    className={`${fieldClass(!!errors?.fpsName)} h-11 px-4`}
+                  />
+                  {errors?.fpsName && (
+                    <p className="mt-1 font-sans text-[12px] text-warning">
+                      {errors.fpsName}
                     </p>
                   )}
                 </div>

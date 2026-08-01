@@ -1,5 +1,8 @@
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { getStripeConnectDashboardUrl } from "@/lib/stripe/dashboard-urls";
+
+export { getStripeConnectDashboardUrl } from "@/lib/stripe/dashboard-urls";
 
 export type StripePayoutBankAccount = {
   id: string;
@@ -17,19 +20,6 @@ export type StripeAccountPayoutSummary = {
   dashboardUrl: string;
   bankAccounts: StripePayoutBankAccount[];
 };
-
-function isTestMode(): boolean {
-  const key = process.env.STRIPE_SECRET_KEY ?? "";
-  return key.startsWith("sk_test_");
-}
-
-/** Stripe Connect Dashboard deep link for the given Express account. */
-export function getStripeConnectDashboardUrl(accountId: string): string {
-  const base = isTestMode()
-    ? "https://dashboard.stripe.com/test/connect/accounts"
-    : "https://dashboard.stripe.com/connect/accounts";
-  return `${base}/${accountId}`;
-}
 
 function mapBankAccount(account: Stripe.BankAccount): StripePayoutBankAccount {
   return {

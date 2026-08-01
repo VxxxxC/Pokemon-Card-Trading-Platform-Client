@@ -45,8 +45,11 @@ type UserRole = Enums<"user_role">;
 | `listing_status` | `active`, `sold`, `inactive` |
 | `member_escrow_status` | `payment`, `custody`, `grading`, `shipped`, `released`, `cancelled` |
 | `member_order_state` | `pending`, `meetup_arranged`, `completed`, `cancelled` |
+| `member_seller_payout_status` | `none`, `held`, `ready`, `processing`, `paid`, `frozen`, `failed` |
 | `offer_status` | `pending`, `accepted`, `rejected`, `cancelled` |
 | `payment_capture_status` | `none`, `authorized`, `auth_fee_captured`, `fully_captured`, `voided`, `refunded`, `partially_refunded` |
+| `payout_batch_status` | `draft`, `processing`, `completed` |
+| `payout_request_status` | `pending`, `ready`, `processing`, `completed`, `failed` |
 | `report_state` | `pending`, `reviewing`, `resolved`, `dismissed` |
 | `review_persona` | `member`, `merchant` |
 | `reward_type` | `discount_coupon`, `free_shipping`, `lucky_draw_ticket`, `points` |
@@ -145,11 +148,13 @@ type UserRole = Enums<"user_role">;
 | `rpc_finalize_auth_grading_fail` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
 | `rpc_finalize_auth_refund` | `{ p_order_id: string p_order_kind: string p_refund_amount_cents: number p_refund_id: string }` | `Json` |
 | `rpc_finalize_goods_capture` | `{ p_admin_id?: string p_captured_amount_cents: number p_notes?: string p_order_id: string p_order_k…` | `Json` |
+| `rpc_finalize_member_fps_payout_ready` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_merchant_order_payout` | `{ p_destination_account_id: string p_order_id: string p_transfer_amount_cents: number p_transfer_id…` | `Json` |
 | `rpc_finalize_merchant_pending_payment_expiry` | `{ p_order_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
+| `rpc_list_member_fps_payout_ready_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_pending_payment_expiry_candidates` | `{ p_limit?: number }` | `{ listing_id: string order_id: string stripe_payment_intent_id: string }[]` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_mark_auth_grading_fail_failed` | `{ p_error: string; p_order_id: string; p_order_kind: string }` | `Json` |
@@ -428,6 +433,7 @@ type UserRole = Enums<"user_role">;
 | `auth_graded_by` | `string | null` | Yes |
 | `auth_notes` | `string | null` | Yes |
 | `auth_result` | `string | null` | Yes |
+| `buyer_confirmed_at` | `string | null` | Yes |
 | `buyer_id` | `string` | No |
 | `created_at` | `string | null` | Yes |
 | `escrow_status` | `| member_escrow_status` | No |
@@ -446,6 +452,7 @@ type UserRole = Enums<"user_role">;
 | `outbound_tracking_no` | `string | null` | Yes |
 | `payment_capture_status` | `payment_capture_status` | No |
 | `payment_confirmed_at` | `string | null` | Yes |
+| `payout_hold_until` | `string | null` | Yes |
 | `platform_received_at` | `string | null` | Yes |
 | `refund_amount` | `number | null` | Yes |
 | `refund_attempted_at` | `string | null` | Yes |
@@ -453,6 +460,7 @@ type UserRole = Enums<"user_role">;
 | `refund_status` | `string` | No |
 | `refunded_at` | `string | null` | Yes |
 | `seller_id` | `string` | No |
+| `seller_payout_status` | `member_seller_payout_status` | No |
 | `status` | `member_order_state | null` | Yes |
 | `stripe_payment_intent_id` | `string | null` | Yes |
 | `stripe_refund_id` | `string | null` | Yes |
@@ -584,6 +592,59 @@ type UserRole = Enums<"user_role">;
 
 ---
 
+### `payout_batches`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `created_at` | `string` | No |
+| `cutoff_at` | `string` | No |
+| `id` | `string` | No |
+| `notes` | `string | null` | Yes |
+| `processed_by` | `string | null` | Yes |
+| `scheduled_date` | `string` | No |
+| `status` | `payout_batch_status` | No |
+| `updated_at` | `string` | No |
+
+**Foreign keys:** `processed_by` → `profiles`
+
+---
+
+### `payout_requests`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `admin_fps_reference` | `string | null` | Yes |
+| `amount` | `number` | No |
+| `batch_id` | `string | null` | Yes |
+| `created_at` | `string` | No |
+| `fps_id_snapshot` | `string` | No |
+| `fps_name_snapshot` | `string | null` | Yes |
+| `id` | `string` | No |
+| `order_id` | `string` | No |
+| `paid_at` | `string | null` | Yes |
+| `paid_by` | `string | null` | Yes |
+| `ready_at` | `string | null` | Yes |
+| `seller_id` | `string` | No |
+| `status` | `payout_request_status` | No |
+| `updated_at` | `string` | No |
+
+**Foreign keys:** `batch_id` → `payout_batches`
+
+---
+
+### `platform_settings`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `key` | `string` | No |
+| `updated_at` | `string` | No |
+| `updated_by` | `string | null` | Yes |
+| `value` | `Json` | No |
+
+**Foreign keys:** `updated_by` → `profiles`
+
+---
+
 ### `point_ledger`
 
 | Column | Type | Nullable |
@@ -704,6 +765,8 @@ type UserRole = Enums<"user_role">;
 | `completed_trades_count` | `number` | No |
 | `created_at` | `string` | No |
 | `display_name` | `string` | No |
+| `fps_id` | `string | null` | Yes |
+| `fps_name` | `string | null` | Yes |
 | `id` | `string` | No |
 | `rating_score` | `number | null` | Yes |
 | `reputation_tag` | `Json | null` | Yes |
@@ -822,7 +885,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**28 tables**
+**31 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -843,6 +906,9 @@ type UserRole = Enums<"user_role">;
 | `merchant_orders` | Escrow orders |
 | `merchant_shops` | Merchant storefront |
 | `offers` | Negotiation |
+| `payout_batches` | — |
+| `payout_requests` | — |
+| `platform_settings` | — |
 | `point_ledger` | — |
 | `product_catalog` | Catalog |
 | `product_grading_market_prices` | — |
