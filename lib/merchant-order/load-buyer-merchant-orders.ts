@@ -137,6 +137,7 @@ export async function loadBuyerMerchantTradingOrders(
     const buyerFlags = getMerchantBuyerActionFlags({
       escrowStatus: row.escrow_status,
       requiresAuthentication: useAuthentication,
+      shippingMethod: row.shipping_method,
       outboundTrackingNo: row.outbound_tracking_no,
       authResult: row.auth_result,
       paymentCaptureStatus: row.payment_capture_status,

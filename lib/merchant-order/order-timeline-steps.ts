@@ -118,3 +118,21 @@ export function getMerchantDirectBuyerTimelineStepIndex(
   }
   return 0;
 }
+
+export function getMerchantDirectTimelineSteps(
+  shippingMethod?: string | null,
+): OrderTimelineStep[] {
+  if (shippingMethod !== "meetup") {
+    return MERCHANT_DIRECT_TIMELINE_STEPS;
+  }
+
+  return MERCHANT_DIRECT_TIMELINE_STEPS.map((step) =>
+    step.id === "fulfillment"
+      ? {
+          ...step,
+          label: "待面交",
+          description: "待面交／自取，買家確認後撥款",
+        }
+      : step,
+  );
+}

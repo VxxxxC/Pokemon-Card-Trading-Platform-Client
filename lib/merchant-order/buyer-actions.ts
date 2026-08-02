@@ -50,6 +50,7 @@ export function mapMerchantEscrowToMemberEscrowStatus(
 export function getMerchantBuyerActionFlags(input: {
   escrowStatus: MerchantEscrowStatus;
   requiresAuthentication: boolean;
+  shippingMethod?: string | null;
   outboundTrackingNo?: string | null;
   authResult?: string | null;
   paymentCaptureStatus?: string | null;
@@ -57,6 +58,7 @@ export function getMerchantBuyerActionFlags(input: {
   const {
     escrowStatus,
     requiresAuthentication,
+    shippingMethod,
     outboundTrackingNo,
     authResult,
     paymentCaptureStatus,
@@ -76,7 +78,11 @@ export function getMerchantBuyerActionFlags(input: {
     };
   }
 
+  const isMeetup = shippingMethod === "meetup";
+
   return {
-    canCompleteMerchantPurchase: escrowStatus === "shipped",
+    canCompleteMerchantPurchase:
+      (isMeetup && escrowStatus === "payment_held") ||
+      escrowStatus === "shipped",
   };
 }

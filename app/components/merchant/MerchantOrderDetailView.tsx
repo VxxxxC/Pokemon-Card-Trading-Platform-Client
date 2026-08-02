@@ -90,7 +90,6 @@ export function MerchantOrderDetailView({
   const [outboundTrackingInput, setOutboundTrackingInput] = useState("");
   const [outboundCourierInput, setOutboundCourierInput] = useState("");
   const isAuthOrder = Boolean(merchantOrder.requiresAuthentication);
-  const isSfShipping = merchantOrder.shippingMethod !== "meetup";
 
   const merchantImages = useMemo(() => {
     if (merchantOrder.listingImageUrls.length > 0) {
@@ -178,6 +177,7 @@ export function MerchantOrderDetailView({
             <MerchantB2cDirectTimeline
               escrowStatus={merchantOrder.escrowStatus}
               perspective="seller"
+              shippingMethod={merchantOrder.shippingMethod}
             />
           )}
 
@@ -316,66 +316,53 @@ export function MerchantOrderDetailView({
           {merchantOrder.canSubmitDirectFulfillment && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                {isSfShipping
-                  ? "買家已完成託管付款，請安排快遞發貨並填寫快遞公司與物流單號。"
-                  : "買家已完成託管付款，請與買家面交後確認完成。"}
+                買家已完成託管付款，請安排快遞發貨並填寫快遞公司與物流單號。
               </p>
-              {isSfShipping ? (
-                <>
-                  <input
-                    type="text"
-                    value={outboundCourierInput}
-                    onChange={(event) =>
-                      setOutboundCourierInput(event.target.value)
-                    }
-                    placeholder="快遞公司（例如：順豐、DHL）"
-                    className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
-                  />
-                  <input
-                    type="text"
-                    value={outboundTrackingInput}
-                    onChange={(event) =>
-                      setOutboundTrackingInput(event.target.value)
-                    }
-                    placeholder="物流單號"
-                    className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
-                  />
-                  <button
-                    type="button"
-                    disabled={
-                      !outboundTrackingInput.trim() ||
-                      !outboundCourierInput.trim()
-                    }
-                    onClick={() => {
-                      void runSubmitDirectFulfillment(
-                        order.id,
-                        outboundTrackingInput.trim(),
-                        outboundCourierInput.trim(),
-                        refreshAfterLogistics,
-                      );
-                    }}
-                    className="w-full h-10 rounded-xl bg-brand text-[#17130f] font-sans font-semibold text-[13px] disabled:opacity-50"
-                  >
-                    提交物流單號
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void runSubmitDirectFulfillment(
-                      order.id,
-                      undefined,
-                      undefined,
-                      refreshAfterLogistics,
-                    );
-                  }}
-                  className="w-full h-10 rounded-xl bg-brand text-[#17130f] font-sans font-semibold text-[13px]"
-                >
-                  確認已面交
-                </button>
-              )}
+              <input
+                type="text"
+                value={outboundCourierInput}
+                onChange={(event) =>
+                  setOutboundCourierInput(event.target.value)
+                }
+                placeholder="快遞公司（例如：順豐、DHL）"
+                className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+              />
+              <input
+                type="text"
+                value={outboundTrackingInput}
+                onChange={(event) =>
+                  setOutboundTrackingInput(event.target.value)
+                }
+                placeholder="物流單號"
+                className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+              />
+              <button
+                type="button"
+                disabled={
+                  !outboundTrackingInput.trim() ||
+                  !outboundCourierInput.trim()
+                }
+                onClick={() => {
+                  void runSubmitDirectFulfillment(
+                    order.id,
+                    outboundTrackingInput.trim(),
+                    outboundCourierInput.trim(),
+                    refreshAfterLogistics,
+                  );
+                }}
+                className="w-full h-10 rounded-xl bg-brand text-[#17130f] font-sans font-semibold text-[13px] disabled:opacity-50"
+              >
+                提交物流單號
+              </button>
             </div>
+          )}
+
+          {merchantOrder.escrowStatus === "payment_held" &&
+            !merchantOrder.requiresAuthentication &&
+            merchantOrder.shippingMethod === "meetup" && (
+            <p className="text-[12.5px] text-text-secondary leading-relaxed">
+              款項已託管，待買家面交／自取後確認收貨。
+            </p>
           )}
 
           {merchantOrder.escrowStatus === "shipped" &&

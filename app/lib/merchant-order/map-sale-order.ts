@@ -37,12 +37,13 @@ export function mapMerchantEscrowToOrderStatus(
 export function resolveMerchantStatusLabelOverride(
   escrowStatus: MerchantEscrowStatus | null,
   requiresAuthentication?: boolean | null,
+  shippingMethod?: string | null,
 ): string | undefined {
   if (escrowStatus === "pending_payment") {
     return "待買家付款";
   }
   if (escrowStatus === "payment_held" && !requiresAuthentication) {
-    return "待發貨";
+    return shippingMethod === "meetup" ? "待面交" : "待發貨";
   }
   if (escrowStatus === "shipped") {
     return "運送中";
@@ -117,5 +118,10 @@ export function mapMerchantOrderDetailToSaleOrder(
     productListingId: detail.listingId,
     trackingNo: detail.inboundTrackingNo ?? detail.logisticsProofPath ?? undefined,
     avatarSeed: detail.buyer.id,
+    statusLabelOverride: resolveMerchantStatusLabelOverride(
+      detail.escrowStatus,
+      detail.requiresAuthentication,
+      detail.shippingMethod,
+    ),
   };
 }

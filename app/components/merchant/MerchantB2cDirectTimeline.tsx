@@ -3,9 +3,9 @@
 import type { Tables } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import {
-  MERCHANT_DIRECT_TIMELINE_STEPS,
   getMerchantDirectBuyerTimelineStepIndex,
   getMerchantDirectTimelineStepIndex,
+  getMerchantDirectTimelineSteps,
 } from "@/lib/merchant-order/order-timeline-steps";
 
 type MerchantEscrowStatus = Tables<"merchant_orders">["escrow_status"];
@@ -13,12 +13,15 @@ type MerchantEscrowStatus = Tables<"merchant_orders">["escrow_status"];
 type MerchantB2cDirectTimelineProps = {
   escrowStatus: MerchantEscrowStatus | null;
   perspective?: "seller" | "buyer";
+  shippingMethod?: string | null;
 };
 
 export function MerchantB2cDirectTimeline({
   escrowStatus,
   perspective = "seller",
+  shippingMethod,
 }: MerchantB2cDirectTimelineProps) {
+  const timelineSteps = getMerchantDirectTimelineSteps(shippingMethod);
   const currentStepIdx =
     perspective === "buyer"
       ? getMerchantDirectBuyerTimelineStepIndex(escrowStatus)
@@ -35,7 +38,7 @@ export function MerchantB2cDirectTimeline({
         <p className="text-[12.5px] text-text-disabled">訂單已取消 / 已退款</p>
       ) : (
         <div className="relative pl-6 space-y-5 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
-          {MERCHANT_DIRECT_TIMELINE_STEPS.map((step, idx) => {
+          {timelineSteps.map((step, idx) => {
             const isCompleted = currentStepIdx >= 0 && idx < currentStepIdx;
             const isActive = idx === currentStepIdx;
 

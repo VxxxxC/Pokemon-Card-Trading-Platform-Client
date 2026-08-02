@@ -416,13 +416,30 @@ export function MemberOrderDetailView({
           <MerchantB2cDirectTimeline
             escrowStatus={order.merchantEscrowStatus ?? null}
             perspective="buyer"
+            shippingMethod={order.shippingMethod}
           />
 
           {isPendingEscrowPayment ? null : isBuyer &&
             order.merchantEscrowStatus === "payment_held" ? (
-            <p className="text-[12.5px] text-text-secondary leading-relaxed">
-              款項已由平台託管，等待商戶安排發貨或面交。
-            </p>
+            order.shippingMethod === "meetup" ? (
+              canCompletePurchase ? (
+                <div className="space-y-3">
+                  <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                    請與商戶約定面交／自取時間地點，現場點清後確認完成。
+                  </p>
+                  <MemberOrderCompleteConfirmDialog
+                    disabled={isActionLoading}
+                    isActionLoading={isActionLoading}
+                    onConfirm={handleComplete}
+                    triggerClassName="w-full h-10 bg-success text-white font-sans font-semibold text-[13px] rounded-xl hover:bg-success-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
+              ) : null
+            ) : (
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                款項已由平台託管，等待商戶安排發貨。
+              </p>
+            )
           ) : null}
 
           {(order.sfLockerCode ||
@@ -486,10 +503,10 @@ export function MemberOrderDetailView({
             </p>
           ) : null}
 
-          {isBuyer && canCompletePurchase && (
+          {isBuyer && canCompletePurchase && order.merchantEscrowStatus === "shipped" && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                商戶已發貨／已完成面交。收到卡牌並驗貨後，請確認完成交易以釋放撥款。
+                商戶已發貨。收到卡牌並驗貨後，請確認完成交易以釋放撥款。
               </p>
               <MemberOrderCompleteConfirmDialog
                 disabled={isActionLoading}

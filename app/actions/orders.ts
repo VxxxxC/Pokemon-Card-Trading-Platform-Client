@@ -1193,6 +1193,7 @@ function mapMerchantOrderDetailRow(
     escrowStatus: row.escrow_status,
     hasReviewedByMe,
     requiresAuthentication: row.requires_authentication,
+    shippingMethod: row.shipping_method,
   });
   const createdAt = row.created_at ?? new Date().toISOString();
   const paymentExpiresAt =
@@ -1508,6 +1509,7 @@ function mapBuyerMerchantOrderDetailRow(
   const buyerFlags = getMerchantBuyerActionFlags({
     escrowStatus: row.escrow_status,
     requiresAuthentication: useAuthentication,
+    shippingMethod: row.shipping_method,
     outboundTrackingNo: row.outbound_tracking_no,
     authResult: row.auth_result,
     paymentCaptureStatus: row.payment_capture_status,
@@ -2094,16 +2096,16 @@ export async function submitMerchantDirectFulfillment(
           args: {
             p_order_id: string;
             p_merchant_id: string;
-            p_tracking_no?: string;
-            p_courier_name?: string;
+            p_tracking_no?: string | null;
+            p_courier_name?: string | null;
           },
         ) => Promise<{ error: { message: string } | null }>;
       }
     ).rpc("rpc_submit_merchant_direct_fulfillment", {
       p_order_id: trimmedOrderId,
       p_merchant_id: user.id,
-      ...(trimmedTracking ? { p_tracking_no: trimmedTracking } : {}),
-      ...(trimmedCourier ? { p_courier_name: trimmedCourier } : {}),
+      p_tracking_no: trimmedTracking || null,
+      p_courier_name: trimmedCourier || null,
     });
 
     if (error) {

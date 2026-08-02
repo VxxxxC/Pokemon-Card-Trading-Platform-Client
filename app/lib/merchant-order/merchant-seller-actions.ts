@@ -14,15 +14,19 @@ export function getMerchantSellerActionFlags(input: {
   escrowStatus: MerchantEscrowStatus;
   hasReviewedByMe: boolean;
   requiresAuthentication?: boolean | null;
+  shippingMethod?: string | null;
 }): MerchantSellerActionFlags {
-  const { escrowStatus, hasReviewedByMe, requiresAuthentication } = input;
+  const { escrowStatus, hasReviewedByMe, requiresAuthentication, shippingMethod } =
+    input;
   const isAuth = Boolean(requiresAuthentication);
 
   return {
     canSubmitLogistics:
       isAuth && escrowStatus === "payment_held",
     canSubmitDirectFulfillment:
-      !isAuth && escrowStatus === "payment_held",
+      !isAuth &&
+      escrowStatus === "payment_held" &&
+      shippingMethod !== "meetup",
     canReviewBuyer:
       escrowStatus === "completed_and_transferred" && !hasReviewedByMe,
   };
