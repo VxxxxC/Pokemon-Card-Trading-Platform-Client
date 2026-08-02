@@ -92,9 +92,11 @@ async function requireAdmin(): Promise<
 function normalizePayoutStatus(status: string | null): MerchantTransferPayoutStatus {
   if (
     status === "pending" ||
+    status === "held" ||
     status === "processing" ||
     status === "paid" ||
-    status === "failed"
+    status === "failed" ||
+    status === "frozen"
   ) {
     return status;
   }
@@ -377,15 +379,17 @@ async function fetchMerchantTransferStatusCounts(
     return count ?? 0;
   };
 
-  const [all, paid, processing, pending, failed] = await Promise.all([
+  const [all, paid, processing, pending, failed, held, frozen] = await Promise.all([
     countWithStatus("all"),
     countWithStatus("paid"),
     countWithStatus("processing"),
     countWithStatus("pending"),
     countWithStatus("failed"),
+    countWithStatus("held"),
+    countWithStatus("frozen"),
   ]);
 
-  return { all, paid, processing, pending, failed };
+  return { all, paid, processing, pending, failed, held, frozen };
 }
 
 function emptyMerchantTransferPage(

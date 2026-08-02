@@ -17,6 +17,7 @@ export type MerchantFinanceSettlement = {
   commissionAmount: number | null;
   paidAt: string | null;
   payoutStatus: string;
+  payoutHoldUntil: string | null;
   stripeTransferId: string | null;
   stripePaymentIntentId: string | null;
   payoutError: string | null;
@@ -37,6 +38,7 @@ type MerchantFinanceOrderRow = Pick<
   | "paid_at"
   | "payout_attempted_at"
   | "payout_status"
+  | "payout_hold_until"
   | "payout_error"
   | "stripe_transfer_id"
   | "stripe_payment_intent_id"
@@ -120,6 +122,7 @@ export async function getMerchantFinanceSummary(): Promise<
         paid_at,
         payout_attempted_at,
         payout_status,
+        payout_hold_until,
         payout_error,
         stripe_transfer_id,
         stripe_payment_intent_id,
@@ -134,7 +137,7 @@ export async function getMerchantFinanceSummary(): Promise<
       `,
       )
       .eq("merchant_id", user.id)
-      .in("payout_status", ["paid", "processing", "failed"])
+      .in("payout_status", ["paid", "processing", "failed", "held"])
       .order("transferred_at", { ascending: false, nullsFirst: false })
       .limit(20);
 
@@ -163,7 +166,9 @@ export async function getMerchantFinanceSummary(): Promise<
     const recentSettlements: MerchantFinanceSettlement[] = orderRows
       .filter(
         (row) =>
-          row.merchant_payout_amount != null || row.payout_status === "failed",
+          row.merchant_payout_amount != null ||
+          row.payout_status === "failed" ||
+          row.payout_status === "held",
       )
       .map((row) => ({
         orderId: row.id,
@@ -175,8 +180,9 @@ export async function getMerchantFinanceSummary(): Promise<
             : 0,
         commissionAmount:
           row.commission_amount != null ? Number(row.commission_amount) : null,
-        paidAt: resolveSettlementTimestamp(row),
+        paidAt: resolveSettlementTimestamp(row) ?? row.payout_hold_until,
         payoutStatus: row.payout_status,
+        payoutHoldUntil: row.payout_hold_until,
         stripeTransferId: row.stripe_transfer_id,
         stripePaymentIntentId: row.stripe_payment_intent_id,
         payoutError: row.payout_error,

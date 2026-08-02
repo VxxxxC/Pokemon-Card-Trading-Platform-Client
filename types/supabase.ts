@@ -889,6 +889,7 @@ export type Database = {
           payment_capture_status: Database["public"]["Enums"]["payment_capture_status"]
           payout_attempted_at: string | null
           payout_error: string | null
+          payout_hold_until: string | null
           payout_status: string
           platform_received_at: string | null
           refund_amount: number | null
@@ -944,6 +945,7 @@ export type Database = {
           payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
           payout_attempted_at?: string | null
           payout_error?: string | null
+          payout_hold_until?: string | null
           payout_status?: string
           platform_received_at?: string | null
           refund_amount?: number | null
@@ -999,6 +1001,7 @@ export type Database = {
           payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
           payout_attempted_at?: string | null
           payout_error?: string | null
+          payout_hold_until?: string | null
           payout_status?: string
           platform_received_at?: string | null
           refund_amount?: number | null
@@ -2366,6 +2369,10 @@ export type Database = {
         Args: { p_buyer_id: string; p_order_id: string }
         Returns: Json
       }
+      rpc_confirm_merchant_buyer_receipt: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       rpc_confirm_platform_received: {
         Args: { p_order_id: string }
         Returns: Json
@@ -2446,6 +2453,12 @@ export type Database = {
         Returns: undefined
       }
       rpc_list_member_fps_payout_ready_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          order_id: string
+        }[]
+      }
+      rpc_list_merchant_connect_payout_candidates: {
         Args: { p_limit?: number }
         Returns: {
           order_id: string
@@ -2643,24 +2656,15 @@ export type Database = {
             }
             Returns: Json
           }
-      rpc_submit_merchant_direct_fulfillment:
-        | {
-            Args: {
-              p_merchant_id: string
-              p_order_id: string
-              p_tracking_no?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_courier_name?: string
-              p_merchant_id: string
-              p_order_id: string
-              p_tracking_no?: string
-            }
-            Returns: Json
-          }
+      rpc_submit_merchant_direct_fulfillment: {
+        Args: {
+          p_courier_name?: string
+          p_merchant_id: string
+          p_order_id: string
+          p_tracking_no?: string
+        }
+        Returns: Json
+      }
       rpc_submit_merchant_kyc_application: {
         Args: { p_application: Json; p_documents: Json; p_user_id: string }
         Returns: Json

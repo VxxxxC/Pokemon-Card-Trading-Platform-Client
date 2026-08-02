@@ -4,3 +4,6 @@ import type Stripe from "stripe";
 export const AUTH_ESCROW_PAYMENT_METHOD_OPTIONS = {
   card: { request_multicapture: "if_available" },
 } as const satisfies Stripe.PaymentIntentCreateParams["payment_method_options"];
+
+/** Merchant B2C checkout: card only (hide wallets / WeChat / Alipay). */
+export const MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES = ["card"] as const;

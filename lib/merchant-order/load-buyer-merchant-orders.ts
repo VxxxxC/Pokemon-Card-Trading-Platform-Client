@@ -29,6 +29,7 @@ type MerchantBuyerOrderRow = Pick<
   | "payment_capture_status"
   | "auth_result"
   | "shipping_method"
+  | "buyer_confirmed_at"
 > & {
   listings: {
     grading_company: string;
@@ -80,6 +81,7 @@ export async function loadBuyerMerchantTradingOrders(
       payment_capture_status,
       auth_result,
       shipping_method,
+      buyer_confirmed_at,
       listings (
         grading_company,
         grading_score,
@@ -138,6 +140,7 @@ export async function loadBuyerMerchantTradingOrders(
       escrowStatus: row.escrow_status,
       requiresAuthentication: useAuthentication,
       shippingMethod: row.shipping_method,
+      buyerConfirmedAt: row.buyer_confirmed_at,
       outboundTrackingNo: row.outbound_tracking_no,
       authResult: row.auth_result,
       paymentCaptureStatus: row.payment_capture_status,

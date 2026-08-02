@@ -50,7 +50,7 @@ import {
 } from "@/lib/merchant-order/buyer-actions";
 import {
   mapMerchantEscrowToMemberStatus,
-  rpcPrepareMerchantOrderPayout,
+  rpcConfirmMerchantBuyerReceipt,
 } from "@/lib/merchant-order/merchant-order-rpc";
 import { ensureMemberOrderListingUuid } from "@/lib/member-order/repair-listing-id";
 import { resolveAvatarUrl } from "@/lib/profile/avatar";
@@ -388,6 +388,7 @@ export type MemberOrderDetail = UserTradingOrder & {
   paymentCaptureStatus?: Tables<"merchant_orders">["payment_capture_status"];
   /** Raw merchant escrow for buyer badge mapping. */
   merchantEscrowStatus?: Tables<"merchant_orders">["escrow_status"];
+  merchantPayoutStatus?: string | null;
   sfLockerCode?: string | null;
   sfAddress?: string | null;
   buyerPhone?: string | null;
@@ -471,11 +472,14 @@ type BuyerMerchantOrderDetailQueryRow = {
   outbound_courier_name: string | null;
   payment_capture_status: Tables<"merchant_orders">["payment_capture_status"];
   auth_result: string | null;
+  payout_status: string;
   sf_locker_code: string | null;
   sf_address: string | null;
   buyer_phone: string | null;
   meetup_detail: string | null;
   buyer_remark: string | null;
+  buyer_confirmed_at: string | null;
+  payout_hold_until: string | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1124,6 +1128,8 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   buyerPhone: string | null;
   meetupDetail: string | null;
   buyerRemark: string | null;
+  buyerConfirmedAt: string | null;
+  payoutHoldUntil: string | null;
 };
 
 export type GetMerchantOrderDetailResult =
@@ -1161,6 +1167,8 @@ type MerchantOrderDetailQueryRow = {
   buyer_phone: string | null;
   meetup_detail: string | null;
   buyer_remark: string | null;
+  buyer_confirmed_at: string | null;
+  payout_hold_until: string | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1194,6 +1202,7 @@ function mapMerchantOrderDetailRow(
     hasReviewedByMe,
     requiresAuthentication: row.requires_authentication,
     shippingMethod: row.shipping_method,
+    buyerConfirmedAt: row.buyer_confirmed_at,
   });
   const createdAt = row.created_at ?? new Date().toISOString();
   const paymentExpiresAt =
@@ -1261,6 +1270,8 @@ function mapMerchantOrderDetailRow(
         ? Number(row.merchant_payout_amount)
         : null,
     payoutStatus: row.payout_status,
+    buyerConfirmedAt: row.buyer_confirmed_at,
+    payoutHoldUntil: row.payout_hold_until,
     sfLockerCode: row.sf_locker_code,
     sfAddress: row.sf_address,
     buyerPhone: row.buyer_phone,
@@ -1342,6 +1353,8 @@ export async function getMerchantOrderDetail(
           commission_rate_applied,
           merchant_payout_amount,
           payout_status,
+          buyer_confirmed_at,
+          payout_hold_until,
           sf_locker_code,
           sf_address,
           buyer_phone,
@@ -1510,6 +1523,7 @@ function mapBuyerMerchantOrderDetailRow(
     escrowStatus: row.escrow_status,
     requiresAuthentication: useAuthentication,
     shippingMethod: row.shipping_method,
+    buyerConfirmedAt: row.buyer_confirmed_at,
     outboundTrackingNo: row.outbound_tracking_no,
     authResult: row.auth_result,
     paymentCaptureStatus: row.payment_capture_status,
@@ -1578,6 +1592,9 @@ function mapBuyerMerchantOrderDetailRow(
     totalAmount: Number(row.total_amount ?? row.final_price),
     paymentCaptureStatus: row.payment_capture_status,
     merchantEscrowStatus: row.escrow_status,
+    merchantPayoutStatus: row.payout_status,
+    buyerConfirmedAt: row.buyer_confirmed_at,
+    payoutHoldUntil: row.payout_hold_until,
     sfLockerCode: row.sf_locker_code,
     sfAddress: row.sf_address,
     buyerPhone: row.buyer_phone,
@@ -1648,6 +1665,9 @@ async function getBuyerMerchantOrderDetail(
           outbound_courier_name,
           payment_capture_status,
           auth_result,
+          payout_status,
+          buyer_confirmed_at,
+          payout_hold_until,
           sf_locker_code,
           sf_address,
           buyer_phone,
@@ -2124,114 +2144,9 @@ export async function submitMerchantDirectFulfillment(
   }
 }
 
-type MerchantPayoutPreparation =
-  | {
-      alreadyApplied: true;
-      orderId: string;
-    }
-  | {
-      alreadyApplied: false;
-      orderId: string;
-      paymentIntentId: string;
-      stripeAccountId: string;
-      totalAmount: number;
-      commissionAmount: number;
-      merchantPayoutAmount: number;
-    };
-
-type MerchantPayoutAdminRpcClient = {
-  rpc(
-    fn: "rpc_finalize_merchant_order_payout",
-    args: {
-      p_order_id: string;
-      p_transfer_id: string;
-      p_transfer_amount_cents: number;
-      p_destination_account_id: string;
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-  rpc(
-    fn: "rpc_mark_merchant_order_payout_failed",
-    args: {
-      p_order_id: string;
-      p_error: string;
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-};
-
-function readMerchantPayoutRpcString(
-  row: Record<string, unknown>,
-  keys: readonly string[],
-): string {
-  for (const key of keys) {
-    const value = row[key];
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (trimmed) {
-        return trimmed;
-      }
-    }
-  }
-  return "";
-}
-
-function parseMerchantPayoutPreparation(
-  value: unknown,
-): MerchantPayoutPreparation | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const row = value as Record<string, unknown>;
-  const orderId = readMerchantPayoutRpcString(row, ["order_id"]);
-  if (!orderId) {
-    return null;
-  }
-
-  if (row.already_applied === true) {
-    return { alreadyApplied: true, orderId };
-  }
-
-  const paymentIntentId = readMerchantPayoutRpcString(row, [
-    "stripe_payment_intent_id",
-    "payment_intent_id",
-  ]);
-  const stripeAccountId = readMerchantPayoutRpcString(row, [
-    "stripe_destination_account_id",
-    "stripe_account_id",
-  ]);
-  const totalAmount = Number(row.total_amount);
-  const commissionAmount = Number(row.commission_amount);
-  const merchantPayoutAmount = Number(row.merchant_payout_amount);
-
-  if (
-    !paymentIntentId ||
-    !stripeAccountId ||
-    !Number.isFinite(totalAmount) ||
-    totalAmount <= 0 ||
-    !Number.isFinite(commissionAmount) ||
-    commissionAmount < 0 ||
-    !Number.isFinite(merchantPayoutAmount) ||
-    merchantPayoutAmount <= 0
-  ) {
-    return null;
-  }
-
-  return {
-    alreadyApplied: false,
-    orderId,
-    paymentIntentId,
-    stripeAccountId,
-    totalAmount,
-    commissionAmount,
-    merchantPayoutAmount,
-  };
-}
-
 export async function completeMerchantOrder(
   orderId: string,
 ): Promise<MemberOrderActionResult> {
-  let prepared: MerchantPayoutPreparation | null = null;
-
   try {
     const invalidId = rejectNonUuidMutationOrderId(orderId);
     if (invalidId) {
@@ -2253,111 +2168,31 @@ export async function completeMerchantOrder(
       return identityError;
     }
 
-    const stripe = await getStripeClient();
-    if (!stripe) {
-      return { success: false, error: "撥款服務尚未設定，請稍後再試" };
-    }
+    const { data: confirmData, error: confirmError } =
+      await rpcConfirmMerchantBuyerReceipt(supabase, {
+        p_order_id: trimmedOrderId,
+      });
 
-    const { data: prepareData, error: prepareError } =
-      await rpcPrepareMerchantOrderPayout(supabase, {
-      p_order_id: trimmedOrderId,
-    });
-
-    if (prepareError) {
+    if (confirmError) {
       console.error(
-        "[completeMerchantOrder] prepare payout",
-        prepareError.message,
+        "[completeMerchantOrder] confirm buyer receipt",
+        confirmError.message,
       );
       return {
         success: false,
-        error: mapOrderRpcError(prepareError.message),
+        error: mapOrderRpcError(confirmError.message),
       };
     }
 
-    prepared = parseMerchantPayoutPreparation(prepareData);
-    if (!prepared) {
-      console.error(
-        "[completeMerchantOrder] invalid payout payload",
-        prepareData,
-      );
-      return { success: false, error: "無法建立商戶撥款資料，請聯絡客服" };
-    }
+    const confirmRow =
+      confirmData &&
+      typeof confirmData === "object" &&
+      !Array.isArray(confirmData)
+        ? (confirmData as Record<string, unknown>)
+        : null;
 
-    if (prepared.alreadyApplied) {
-      revalidatePath("/marketplace");
-      revalidateMerchantOrderPaths(trimmedOrderId);
-      revalidateMemberOrderPaths(trimmedOrderId);
-      return { success: true };
-    }
-
-    const paymentIntent = await stripe.paymentIntents.retrieve(
-      prepared.paymentIntentId,
-      { expand: ["latest_charge"] },
-    );
-    const expectedTotalInCents = Math.round(prepared.totalAmount * 100);
-    const merchantPayoutInCents = Math.round(
-      prepared.merchantPayoutAmount * 100,
-    );
-    const latestCharge =
-      typeof paymentIntent.latest_charge === "string"
-        ? paymentIntent.latest_charge
-        : paymentIntent.latest_charge?.id;
-
-    if (
-      paymentIntent.status !== "succeeded" ||
-      paymentIntent.currency !== "hkd" ||
-      paymentIntent.metadata?.order_id !== prepared.orderId ||
-      paymentIntent.amount_received < expectedTotalInCents ||
-      !latestCharge ||
-      merchantPayoutInCents <= 0
-    ) {
-      throw new Error("payment_not_settled");
-    }
-
-    const transfer = await stripe.transfers.create(
-      {
-        amount: merchantPayoutInCents,
-        currency: "hkd",
-        destination: prepared.stripeAccountId,
-        source_transaction: latestCharge,
-        transfer_group: `merchant_order_${prepared.orderId}`,
-        metadata: {
-          order_kind: "merchant_payout",
-          order_id: prepared.orderId,
-          destination_account_id: prepared.stripeAccountId,
-          transfer_amount_cents: String(merchantPayoutInCents),
-          commission_amount: String(prepared.commissionAmount),
-        },
-      },
-      {
-        idempotencyKey: `merchant-order-payout:${prepared.orderId}`,
-      },
-    );
-
-    const admin = createAdminClient();
-    const { error: finalizeError } = await (
-      admin as unknown as MerchantPayoutAdminRpcClient
-    ).rpc("rpc_finalize_merchant_order_payout", {
-      p_order_id: prepared.orderId,
-      p_transfer_id: transfer.id,
-      p_transfer_amount_cents: transfer.amount,
-      p_destination_account_id:
-        typeof transfer.destination === "string"
-          ? transfer.destination
-          : (transfer.destination?.id ?? prepared.stripeAccountId),
-    });
-
-    if (finalizeError) {
-      console.error(
-        "[completeMerchantOrder] finalize payout",
-        prepared.orderId,
-        transfer.id,
-        finalizeError.message,
-      );
-      return {
-        success: false,
-        error: "已確認收貨，商戶撥款正在核對中，請稍後重新整理",
-      };
+    if (!confirmRow || confirmRow.success !== true) {
+      return { success: false, error: "無法確認收貨，請稍後再試" };
     }
 
     revalidatePath("/marketplace");
@@ -2366,32 +2201,8 @@ export async function completeMerchantOrder(
 
     return { success: true };
   } catch (error) {
-    if (prepared && !prepared.alreadyApplied) {
-      const admin = createAdminClient();
-      const { error: markFailedError } = await (
-        admin as unknown as MerchantPayoutAdminRpcClient
-      ).rpc("rpc_mark_merchant_order_payout_failed", {
-        p_order_id: prepared.orderId,
-        p_error: "stripe_transfer_failed",
-      });
-      if (markFailedError) {
-        console.error(
-          "[completeMerchantOrder] mark payout failed",
-          markFailedError.message,
-        );
-      }
-    }
-
-    const message =
-      error instanceof Error ? error.message : "unknown payout error";
     console.error("[completeMerchantOrder]", error);
-    return {
-      success: false,
-      error:
-        message === "payment_not_settled"
-          ? "付款尚未完成結算，暫時無法撥款"
-          : "商戶撥款失敗，請稍後重試",
-    };
+    return { success: false, error: "確認收貨失敗，請稍後再試" };
   }
 }
 

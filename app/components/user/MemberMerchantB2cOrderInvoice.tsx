@@ -12,7 +12,7 @@ type MemberMerchantB2cOrderInvoiceProps = {
 
 function formatShippingMethodLabel(method: string | null): string {
   if (method === "sf") {
-    return "順豐速運";
+    return "快遞寄貨";
   }
   if (method === "meetup") {
     return "面交自取";

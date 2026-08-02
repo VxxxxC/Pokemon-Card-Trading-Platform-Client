@@ -65,9 +65,11 @@ const STATUS_FILTER_OPTIONS: {
 }[] = [
   { key: "all", label: "全部" },
   { key: "paid", label: "已成功" },
+  { key: "held", label: "保留中（T+7）" },
   { key: "processing", label: "處理中" },
   { key: "pending", label: "待撥款" },
   { key: "failed", label: "已失敗" },
+  { key: "frozen", label: "已凍結" },
 ];
 
 type MerchantConnectLedgerTabProps = {

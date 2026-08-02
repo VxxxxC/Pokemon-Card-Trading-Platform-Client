@@ -47,6 +47,10 @@ import {
   formatSellerPayoutHoldUntilLabel,
   formatSellerPayoutStatusLabel,
 } from "@/lib/member-order/seller-payout";
+import {
+  formatMerchantPayoutHoldUntilLabel,
+  formatMerchantPayoutStatusLabel,
+} from "@/lib/merchant-order/merchant-payout-hold";
 import { cn } from "@/lib/utils";
 
 type MemberOrderDetailViewProps = {
@@ -123,6 +127,9 @@ export function MemberOrderDetailView({
   const buyerConfirmedLabel = order.buyerConfirmedAt
     ? formatMemberOrderDateTime(order.buyerConfirmedAt)
     : null;
+  const merchantPayoutHoldUntilLabel = formatMerchantPayoutHoldUntilLabel(
+    order.payoutHoldUntil,
+  );
 
   const handleFpsDialogOpenChange = (open: boolean) => {
     setFpsDialogOpen(open);
@@ -349,6 +356,26 @@ export function MemberOrderDetailView({
         </div>
       ) : null}
 
+      {useMerchantB2cEscrowUi && isBuyer && order.merchantPayoutStatus ? (
+        <div className="rounded-xl border border-white/5 bg-[#17130f] p-4 space-y-1">
+          <p className="text-[12px] text-text-secondary">撥款狀態</p>
+          <p className="text-[13px] font-semibold text-brand">
+            {formatMerchantPayoutStatusLabel(order.merchantPayoutStatus)}
+          </p>
+          {buyerConfirmedLabel ? (
+            <p className="text-[11px] font-mono text-text-disabled">
+              買家確認收貨：{buyerConfirmedLabel}
+            </p>
+          ) : null}
+          {order.merchantPayoutStatus === "held" &&
+          merchantPayoutHoldUntilLabel ? (
+            <p className="text-[11px] font-mono text-text-disabled">
+              款項保留於平台，預計於 {merchantPayoutHoldUntilLabel} 撥至商戶
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {isSeller && order.useAuthentication && order.sellerPayoutStatus ? (
         <div className="rounded-xl border border-white/5 bg-[#17130f] p-4 space-y-1">
           <p className="text-[12px] text-text-secondary">賣家撥款狀態</p>
@@ -417,6 +444,7 @@ export function MemberOrderDetailView({
             escrowStatus={order.merchantEscrowStatus ?? null}
             perspective="buyer"
             shippingMethod={order.shippingMethod}
+            payoutStatus={order.merchantPayoutStatus}
           />
 
           {isPendingEscrowPayment ? null : isBuyer &&
@@ -453,12 +481,20 @@ export function MemberOrderDetailView({
               </h3>
               <div className="font-mono text-[12px] space-y-1.5 text-text-secondary">
                 {order.shippingMethod === "meetup" ? (
-                  order.meetupDetail ? (
-                    <p>
-                      <span className="text-text-disabled">面交備註：</span>
-                      {order.meetupDetail}
-                    </p>
-                  ) : null
+                  <>
+                    {order.buyerPhone ? (
+                      <p>
+                        <span className="text-text-disabled">聯絡電話：</span>
+                        {order.buyerPhone}
+                      </p>
+                    ) : null}
+                    {order.meetupDetail ? (
+                      <p>
+                        <span className="text-text-disabled">面交備註：</span>
+                        {order.meetupDetail}
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <>
                     {order.buyerPhone ? (
@@ -469,13 +505,13 @@ export function MemberOrderDetailView({
                     ) : null}
                     {order.sfLockerCode ? (
                       <p>
-                        <span className="text-text-disabled">自提櫃代碼：</span>
+                        <span className="text-text-disabled">自提點代碼：</span>
                         {order.sfLockerCode}
                       </p>
                     ) : null}
                     {order.sfAddress ? (
                       <p>
-                        <span className="text-text-disabled">網點地址：</span>
+                        <span className="text-text-disabled">收件地址／自提點：</span>
                         {order.sfAddress}
                       </p>
                     ) : null}
@@ -506,7 +542,7 @@ export function MemberOrderDetailView({
           {isBuyer && canCompletePurchase && order.merchantEscrowStatus === "shipped" && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                商戶已發貨。收到卡牌並驗貨後，請確認完成交易以釋放撥款。
+                商戶已發貨。收到卡牌並驗貨後，請確認完成交易；款項將保留於平台 7 日後撥至商戶。
               </p>
               <MemberOrderCompleteConfirmDialog
                 disabled={isActionLoading}

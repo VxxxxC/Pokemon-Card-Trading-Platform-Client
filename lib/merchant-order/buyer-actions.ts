@@ -51,6 +51,7 @@ export function getMerchantBuyerActionFlags(input: {
   escrowStatus: MerchantEscrowStatus;
   requiresAuthentication: boolean;
   shippingMethod?: string | null;
+  buyerConfirmedAt?: string | null;
   outboundTrackingNo?: string | null;
   authResult?: string | null;
   paymentCaptureStatus?: string | null;
@@ -59,10 +60,15 @@ export function getMerchantBuyerActionFlags(input: {
     escrowStatus,
     requiresAuthentication,
     shippingMethod,
+    buyerConfirmedAt,
     outboundTrackingNo,
     authResult,
     paymentCaptureStatus,
   } = input;
+
+  if (buyerConfirmedAt) {
+    return { canCompleteMerchantPurchase: false };
+  }
 
   if (requiresAuthentication) {
     const hasOutbound =

@@ -141,6 +141,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_complete_member_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_complete_merchant_order` | `{ p_order_id: string; p_user_id: string }` | `Json` |
 | `rpc_confirm_buyer_received` | `{ p_buyer_id: string; p_order_id: string }` | `Json` |
+| `rpc_confirm_merchant_buyer_receipt` | `{ p_order_id: string }` | `Json` |
 | `rpc_confirm_platform_received` | `{ p_order_id: string }` | `Json` |
 | `rpc_e2e_reset_listing_trading_fixture` | `{ p_buyer_id: string; p_listing_id: string; p_seller_id: string }` | `Json` |
 | `rpc_fail_member_auth_order` | `{ p_order_id: string }` | `Json` |
@@ -155,6 +156,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
 | `rpc_list_member_fps_payout_ready_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
+| `rpc_list_merchant_connect_payout_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_pending_payment_expiry_candidates` | `{ p_limit?: number }` | `{ listing_id: string order_id: string stripe_payment_intent_id: string }[]` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_mark_auth_grading_fail_failed` | `{ p_error: string; p_order_id: string; p_order_kind: string }` | `Json` |
@@ -178,7 +180,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_send_chat_message` | `{ p_content: string; p_room_id: string; p_sender_id: string }` | `Json` |
 | `rpc_submit_inbound_tracking` | `{ p_order_id: string p_seller_id: string p_tracking_no: string }` | `Json } | { Args: { p_courier_name?: string p_order_id: string p_seller_id: string p_tracking_no: st…` |
 | `rpc_submit_merchant_auth_inbound_tracking` | `{ p_merchant_id: string p_order_id: string p_tracking_no: string }` | `Json } | { Args: { p_courier_name?: string p_merchant_id: string p_order_id: string p_tracking_no: …` |
-| `rpc_submit_merchant_direct_fulfillment` | `{ p_merchant_id: string p_order_id: string p_tracking_no?: string }` | `Json } | { Args: { p_courier_name?: string p_merchant_id: string p_order_id: string p_tracking_no?:…` |
+| `rpc_submit_merchant_direct_fulfillment` | `{ p_courier_name?: string p_merchant_id: string p_order_id: string p_tracking_no?: string }` | `Json` |
 | `rpc_submit_merchant_kyc_application` | `{ p_application: Json; p_documents: Json; p_user_id: string }` | `Json` |
 | `rpc_submit_outbound_tracking` | `{ p_order_id: string; p_tracking_no: string }` | `Json` |
 | `rpc_submit_transaction_review` | `{ p_comment?: string p_order_id: string p_rating: number p_reviewee_id: string p_user_id?: string }` | `Json` |
@@ -531,6 +533,7 @@ type UserRole = Enums<"user_role">;
 | `payment_capture_status` | `payment_capture_status` | No |
 | `payout_attempted_at` | `string | null` | Yes |
 | `payout_error` | `string | null` | Yes |
+| `payout_hold_until` | `string | null` | Yes |
 | `payout_status` | `string` | No |
 | `platform_received_at` | `string | null` | Yes |
 | `refund_amount` | `number | null` | Yes |

@@ -61,9 +61,55 @@ export const MERCHANT_AUTH_SELLER_TIMELINE_STEPS: OrderTimelineStep[] = [
   },
 ];
 
+export function getMerchantDirectTimelineSteps(
+  shippingMethod?: string | null,
+  payoutStatus?: string | null,
+): OrderTimelineStep[] {
+  const base =
+    shippingMethod === "meetup"
+      ? MERCHANT_DIRECT_TIMELINE_STEPS.map((step) =>
+          step.id === "fulfillment"
+            ? {
+                ...step,
+                label: "待面交",
+                description: "待面交／自取，買家確認後進入保留期",
+              }
+            : step,
+        )
+      : [...MERCHANT_DIRECT_TIMELINE_STEPS];
+
+  if (payoutStatus === "held" || payoutStatus === "processing") {
+    return [
+      base[0],
+      base[1],
+      {
+        id: "buyer_confirmed",
+        label: "買家已確認",
+        description: "款項保留於平台",
+      },
+      {
+        id: "hold",
+        label: "款項保留中",
+        description: "T+7 售後期滿後撥至 Connect",
+      },
+      base[3],
+    ];
+  }
+
+  return base;
+}
+
 export function getMerchantDirectTimelineStepIndex(
   escrowStatus: MerchantAuthSellerEscrowStatus | null,
+  payoutStatus?: string | null,
 ): number {
+  if (escrowStatus === "completed_and_transferred") {
+    return payoutStatus === "held" || payoutStatus === "processing" ? 4 : 3;
+  }
+  if (payoutStatus === "held" || payoutStatus === "processing") {
+    return 3;
+  }
+
   switch (escrowStatus) {
     case "pending_payment":
       return 0;
@@ -71,13 +117,36 @@ export function getMerchantDirectTimelineStepIndex(
       return 1;
     case "shipped":
       return 2;
-    case "completed_and_transferred":
-      return 3;
     case "refunded":
       return -1;
     default:
       return 0;
   }
+}
+
+export function getMerchantDirectBuyerTimelineStepIndex(
+  escrowStatus: MerchantAuthSellerEscrowStatus | null,
+  payoutStatus?: string | null,
+): number {
+  if (escrowStatus === "refunded") {
+    return -1;
+  }
+  if (escrowStatus === "completed_and_transferred") {
+    return payoutStatus === "held" || payoutStatus === "processing" ? 4 : 3;
+  }
+  if (payoutStatus === "held" || payoutStatus === "processing") {
+    return 3;
+  }
+  if (escrowStatus === "shipped") {
+    return 2;
+  }
+  if (escrowStatus === "payment_held") {
+    return 1;
+  }
+  if (escrowStatus === "authenticated") {
+    return 2;
+  }
+  return 0;
 }
 
 export function getMerchantAuthSellerTimelineStepIndex(
@@ -99,40 +168,4 @@ export function getMerchantAuthSellerTimelineStepIndex(
     default:
       return 0;
   }
-}
-
-export function getMerchantDirectBuyerTimelineStepIndex(
-  escrowStatus: MerchantAuthSellerEscrowStatus | null,
-): number {
-  if (escrowStatus === "refunded") {
-    return -1;
-  }
-  if (escrowStatus === "completed_and_transferred") {
-    return 3;
-  }
-  if (escrowStatus === "shipped") {
-    return 2;
-  }
-  if (escrowStatus === "payment_held") {
-    return 1;
-  }
-  return 0;
-}
-
-export function getMerchantDirectTimelineSteps(
-  shippingMethod?: string | null,
-): OrderTimelineStep[] {
-  if (shippingMethod !== "meetup") {
-    return MERCHANT_DIRECT_TIMELINE_STEPS;
-  }
-
-  return MERCHANT_DIRECT_TIMELINE_STEPS.map((step) =>
-    step.id === "fulfillment"
-      ? {
-          ...step,
-          label: "待面交",
-          description: "待面交／自取，買家確認後撥款",
-        }
-      : step,
-  );
 }

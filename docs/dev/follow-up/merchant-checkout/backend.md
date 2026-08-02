@@ -14,9 +14,11 @@ pending_payment ──▶ payment_held ──▶ authenticating ──▶ authen
 **非鑑定直寄（`requires_authentication = false`）：**
 
 ```
-pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and_transferred
-                      （Stripe 收款）  （商戶發貨/面交）  （買家確認 + Connect transfer）
+pending_payment ──▶ payment_held ──▶ shipped ──▶ buyer confirm ──▶ held (T+7) ──▶ completed_and_transferred
+                      （Stripe 收款）  （商戶發貨）   （無 Stripe）      （cron transfer）
 ```
+
+面交：`payment_held` 即可買家確認（P2P-aligned），其後同 T+7 hold → cron transfer。
 
 - 訂單成立（接受出價 / 立即購買）→ `pending_payment`
 - `payment_intent.succeeded` webhook → `payment_held`（非鑑定 automatic）；鑑定單 `capture_mode=manual` 時改由 `amount_capturable_updated` → `authorized`
@@ -38,7 +40,8 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and
 | `20260803120000_escrow_state_shipped.sql` | `escrow_state` 新增 `shipped` |
 | `20260803120100_merchant_direct_shipped.sql` | `rpc_submit_merchant_direct_fulfillment`；非鑑定 payout gate 改 `shipped`；重建 trading search facets |
 | `20260803120500_merchant_shipping_fees.sql` | `merchant_shops.base_courier_shipping_fee`；`listings.extra_shipping_fee`；`fn_merchant_checkout_shipping_fee(method, merchant_id, listing_id)` |
-| `20260803120600_merchant_order_delivery_details.sql` | `merchant_orders` 買家交收欄位；`rpc_prepare_merchant_order_payment` 擴充 delivery 參數與驗證 |
+| `20260803120800_merchant_meetup_buyer_confirm.sql` | Meetup buyer confirm at `payment_held` |
+| `20260804120000_merchant_connect_payout_t7_hold.sql` | `payout_hold_until`；`rpc_confirm_merchant_buyer_receipt`；prepare 改 service_role + held gate；cron list RPC |
 
 ### 運費模型（商戶自定）
 
@@ -63,7 +66,8 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and
 | `commission_rate_applied` / `commission_amount` | 本單固定佣金 snapshot（第一版 8%） |
 | `merchant_payout_amount` | `item_subtotal - commission + shipping_fee` |
 | `stripe_transfer_id` / `stripe_destination_account_id` | Connect transfer 對帳資料 |
-| `buyer_confirmed_at` / `payout_status` | 買家確認及 `pending/processing/paid/failed` saga 狀態 |
+| `buyer_confirmed_at` / `payout_status` | 買家確認及 `pending/held/processing/paid/failed/frozen` saga 狀態 |
+| `payout_hold_until` | T+7 售後保留期滿時間（cron transfer gate） |
 | `payout_attempted_at` / `transferred_at` / `payout_error` | 撥款稽核及安全化錯誤 |
 | `sf_locker_code` / `sf_address` / `buyer_phone` | 快遞交收資料（`shipping_method = 'sf'` 時由 prepare RPC 寫入） |
 | `meetup_detail` | 面交備註（`shipping_method = 'meetup'`） |
@@ -98,10 +102,19 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 
 ### Merchant payout RPCs
 
-- `rpc_prepare_merchant_order_payout(p_order_id)`：authenticated buyer only；鎖單、重驗 KYC/Connect、snapshot 8% 佣金及 payout，支援重試。
-- `rpc_finalize_merchant_order_payout(...)`：service-role only；核對 transfer 金額／destination，冪等寫 `commission_deduction` + `payout` ledger，再進入 `completed_and_transferred`。
+- `rpc_confirm_merchant_buyer_receipt(p_order_id)`：**authenticated buyer only**；snapshot 佣金／payout；設 `buyer_confirmed_at`、`payout_hold_until = now() + 7 days`、`payout_status = held`；**不 transfer**；冪等。
+- `rpc_prepare_merchant_order_payout(p_order_id)`：**service_role / cron only**；需 `held` + hold 到期 + snapshot；設 `processing`；REVOKE `authenticated` execute。
+- `rpc_list_merchant_connect_payout_candidates(p_limit)`：cron 揀單。
+- `rpc_finalize_merchant_order_payout(...)`：service-role only；核對 transfer 金額／destination，冪等寫 ledger → `completed_and_transferred`。
 - `rpc_mark_merchant_order_payout_failed(p_order_id, p_error)`：service-role only；保留 snapshot，記錄可重試失敗。
-- 舊 `rpc_complete_merchant_order(UUID, UUID)` 已撤銷 authenticated execute，不能繞過真實 transfer。
+
+### Server actions / cron
+
+| Action / route | 行為 |
+|----------------|------|
+| `completeMerchantOrder(orderId)` | 買家確認 → `rpc_confirm_merchant_buyer_receipt` only（無 Stripe） |
+| `lib/merchant-order/execute-connect-payout.ts` | prepare → `transfers.create`（idempotency `merchant-order-payout:{orderId}`）→ finalize |
+| `GET /api/cron/merchant-connect-payout-ready` | batch 50 held 到期訂單 → `executeMerchantConnectPayout` |
 
 > `merchant_orders` 對 `authenticated` 只開放 `SELECT`（`merchant_orders_participant_read`），所以結帳期間所有寫入都經上述 RPC，唔用 service-role client。
 
@@ -113,7 +126,7 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 | `loadMerchantCheckoutOrder(orderIdOrNumber)` | 結帳頁快照：金額、`isPayable`、`shippingMethod`、`listingAcceptsAuthentication`、商戶與商品資料 |
 | `createMerchantOrderPaymentIntent(orderIdOrNumber, { shippingMethod, useAuth })` | `{ clientSecret, publishableKey, itemSubtotal, shippingFee, authFee, totalAmount }` |
 | `getMerchantCheckoutPaymentStatus(orderIdOrNumber)` | `{ escrowStatus, totalAmount, paidAt }`，成功頁輪詢用 |
-| `completeMerchantOrder(orderId)` | 買家確認收貨 → prepare payout → `transfers.create` → finalize；回傳既有 `{ success }` contract |
+| `completeMerchantOrder(orderId)` | 買家確認收貨 → `rpc_confirm_merchant_buyer_receipt`；回傳 `{ success }`（**確認後不會即時出現 transfer ID**） |
 
 `createMerchantOrderPaymentIntent` 流程：
 

@@ -14,18 +14,23 @@ type MerchantB2cDirectTimelineProps = {
   escrowStatus: MerchantEscrowStatus | null;
   perspective?: "seller" | "buyer";
   shippingMethod?: string | null;
+  payoutStatus?: string | null;
 };
 
 export function MerchantB2cDirectTimeline({
   escrowStatus,
   perspective = "seller",
   shippingMethod,
+  payoutStatus,
 }: MerchantB2cDirectTimelineProps) {
-  const timelineSteps = getMerchantDirectTimelineSteps(shippingMethod);
+  const timelineSteps = getMerchantDirectTimelineSteps(
+    shippingMethod,
+    payoutStatus,
+  );
   const currentStepIdx =
     perspective === "buyer"
-      ? getMerchantDirectBuyerTimelineStepIndex(escrowStatus)
-      : getMerchantDirectTimelineStepIndex(escrowStatus);
+      ? getMerchantDirectBuyerTimelineStepIndex(escrowStatus, payoutStatus)
+      : getMerchantDirectTimelineStepIndex(escrowStatus, payoutStatus);
   const isCancelled = escrowStatus === "refunded";
 
   return (

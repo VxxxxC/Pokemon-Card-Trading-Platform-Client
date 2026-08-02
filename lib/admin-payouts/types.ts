@@ -8,16 +8,20 @@ export type AdminPayoutsStripeBalance = {
 
 export type MerchantTransferPayoutStatus =
   | "pending"
+  | "held"
   | "processing"
   | "paid"
-  | "failed";
+  | "failed"
+  | "frozen";
 
 export type MerchantTransferStatusFilter =
   | "all"
   | "paid"
   | "failed"
   | "processing"
-  | "pending";
+  | "pending"
+  | "held"
+  | "frozen";
 
 export type MerchantTransferSort =
   | "transferred_at-desc"
@@ -31,6 +35,8 @@ export type MerchantTransferStatusCounts = {
   processing: number;
   pending: number;
   failed: number;
+  held: number;
+  frozen: number;
 };
 
 export const EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS: MerchantTransferStatusCounts =
@@ -40,6 +46,8 @@ export const EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS: MerchantTransferStatusCounts
     processing: 0,
     pending: 0,
     failed: 0,
+    held: 0,
+    frozen: 0,
   };
 
 export type MerchantTransferRow = {

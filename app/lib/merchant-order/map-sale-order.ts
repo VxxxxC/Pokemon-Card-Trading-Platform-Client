@@ -38,7 +38,11 @@ export function resolveMerchantStatusLabelOverride(
   escrowStatus: MerchantEscrowStatus | null,
   requiresAuthentication?: boolean | null,
   shippingMethod?: string | null,
+  payoutStatus?: string | null,
 ): string | undefined {
+  if (payoutStatus === "held" || payoutStatus === "processing") {
+    return "款項保留中";
+  }
   if (escrowStatus === "pending_payment") {
     return "待買家付款";
   }
@@ -122,6 +126,7 @@ export function mapMerchantOrderDetailToSaleOrder(
       detail.escrowStatus,
       detail.requiresAuthentication,
       detail.shippingMethod,
+      detail.payoutStatus,
     ),
   };
 }

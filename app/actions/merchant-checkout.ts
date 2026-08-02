@@ -12,7 +12,7 @@ import {
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
 import { resolveMerchantOrderIdForBuyer } from "@/lib/merchant-order/resolve-order-id";
-import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS } from "@/lib/payments/escrow-payment-intent";
+import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS, MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES } from "@/lib/payments/escrow-payment-intent";
 import { getStripeClient, getStripePublishableKey } from "@/lib/stripe/env";
 import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -219,7 +219,12 @@ function normalizeDeliveryField(value: string | undefined): string | null {
 function validateMerchantCheckoutDeliveryDetails(
   shippingMethod: MerchantShippingMethod,
   deliveryDetails?: MerchantCheckoutDeliveryDetails,
+  options?: { skipForAuth?: boolean },
 ): { ok: true; data: MerchantCheckoutDeliveryDetails } | { ok: false; error: string } {
+  if (options?.skipForAuth) {
+    return { ok: true, data: {} };
+  }
+
   const sfLockerCode = normalizeDeliveryField(deliveryDetails?.sfLockerCode);
   const sfAddress = normalizeDeliveryField(deliveryDetails?.sfAddress);
   const buyerPhone = normalizeDeliveryField(deliveryDetails?.buyerPhone);
@@ -227,18 +232,18 @@ function validateMerchantCheckoutDeliveryDetails(
   const buyerRemark = normalizeDeliveryField(deliveryDetails?.buyerRemark);
 
   if (shippingMethod === "sf") {
-    if (!sfLockerCode || !buyerPhone) {
+    if (!buyerPhone || !sfAddress) {
       return {
         ok: false,
-        error: "請填寫順豐自提櫃代碼及聯絡電話。",
+        error: "請填寫聯絡電話及收件地址／自提點。",
       };
     }
   }
 
-  if (shippingMethod === "meetup" && !meetupDetail) {
+  if (shippingMethod === "meetup" && !buyerPhone) {
     return {
       ok: false,
-      error: "請填寫面交地點與時間備註。",
+      error: "請填寫聯絡電話。",
     };
   }
 
@@ -492,13 +497,18 @@ export async function createMerchantOrderPaymentIntent(
     return { success: false, error: "未登入" };
   }
 
-  if (!isMerchantShippingMethod(options.shippingMethod)) {
-    return { success: false, error: "請選擇有效的配送方式" };
+  if (!isMerchantShippingMethod(options.shippingMethod) && !options.useAuth) {
+    return { success: false, error: "請選擇有效的交收方式" };
   }
 
+  const effectiveShippingMethod: MerchantShippingMethod = options.useAuth
+    ? "meetup"
+    : (options.shippingMethod as MerchantShippingMethod);
+
   const deliveryValidation = validateMerchantCheckoutDeliveryDetails(
-    options.shippingMethod,
+    effectiveShippingMethod,
     options.deliveryDetails,
+    { skipForAuth: options.useAuth },
   );
   if (!deliveryValidation.ok) {
     return { success: false, error: deliveryValidation.error };
@@ -564,22 +574,20 @@ export async function createMerchantOrderPaymentIntent(
       supabase,
     ).rpc("rpc_prepare_merchant_order_payment", {
       p_order_id: row.id,
-      p_shipping_method: options.shippingMethod,
+      p_shipping_method: effectiveShippingMethod,
       p_use_auth: options.useAuth,
       p_sf_locker_code:
-        options.shippingMethod === "sf"
+        !options.useAuth && effectiveShippingMethod === "sf"
           ? deliveryDetails.sfLockerCode ?? null
           : null,
       p_sf_address:
-        options.shippingMethod === "sf"
+        !options.useAuth && effectiveShippingMethod === "sf"
           ? deliveryDetails.sfAddress ?? null
           : null,
       p_buyer_phone:
-        options.shippingMethod === "sf"
-          ? deliveryDetails.buyerPhone ?? null
-          : null,
+        !options.useAuth ? deliveryDetails.buyerPhone ?? null : null,
       p_meetup_detail:
-        options.shippingMethod === "meetup"
+        !options.useAuth && effectiveShippingMethod === "meetup"
           ? deliveryDetails.meetupDetail ?? null
           : null,
       p_buyer_remark: deliveryDetails.buyerRemark ?? null,
@@ -645,6 +653,7 @@ export async function createMerchantOrderPaymentIntent(
           amount: amountInCents,
           metadata,
           capture_method: captureMethod,
+          payment_method_types: [...MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES],
           ...(options.useAuth
             ? { payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS }
             : {}),
@@ -657,7 +666,7 @@ export async function createMerchantOrderPaymentIntent(
         amount: amountInCents,
         currency: "hkd",
         capture_method: captureMethod,
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: [...MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES],
         metadata,
         ...(options.useAuth
           ? { payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS }

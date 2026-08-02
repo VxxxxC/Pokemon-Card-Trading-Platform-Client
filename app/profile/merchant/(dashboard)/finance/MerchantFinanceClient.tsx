@@ -6,6 +6,10 @@ import {
   getPayoutStatusBadgeClass,
 } from "@/lib/admin-payouts/format";
 import type { MerchantTransferPayoutStatus } from "@/lib/admin-payouts/types";
+import {
+  formatMerchantPayoutHoldUntilLabel,
+  formatMerchantPayoutStatusLabel,
+} from "@/lib/merchant-order/merchant-payout-hold";
 import { truncateStripeId } from "@/lib/stripe/display";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -32,9 +36,11 @@ function formatSettlementDate(iso: string | null): string {
 function normalizePayoutStatus(status: string): MerchantTransferPayoutStatus {
   if (
     status === "pending" ||
+    status === "held" ||
     status === "processing" ||
     status === "paid" ||
-    status === "failed"
+    status === "failed" ||
+    status === "frozen"
   ) {
     return status;
   }
@@ -54,10 +60,20 @@ function formatTransferLabel(tx: MerchantFinanceSettlement): string {
   if (tx.stripeTransferId) {
     return truncateStripeId(tx.stripeTransferId);
   }
+  if (tx.payoutStatus === "held") {
+    return "待 T+7 後撥款";
+  }
   if (tx.payoutStatus === "processing") {
     return "處理中";
   }
   return "—";
+}
+
+function formatSettlementStatusLabel(tx: MerchantFinanceSettlement): string {
+  if (tx.payoutStatus === "held" || tx.payoutStatus === "frozen") {
+    return formatMerchantPayoutStatusLabel(tx.payoutStatus);
+  }
+  return formatPayoutStatusLabel(normalizePayoutStatus(tx.payoutStatus));
 }
 
 function SettlementRow({ tx, showTopBorder }: { tx: MerchantFinanceSettlement; showTopBorder: boolean }) {
@@ -84,9 +100,14 @@ function SettlementRow({ tx, showTopBorder }: { tx: MerchantFinanceSettlement; s
           <span
             className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${getPayoutStatusBadgeClass(payoutStatus)}`}
           >
-            {formatPayoutStatusLabel(payoutStatus)}
+            {formatSettlementStatusLabel(tx)}
           </span>
         </div>
+        {tx.payoutStatus === "held" && tx.payoutHoldUntil ? (
+          <p className="font-mono text-[10px] text-text-disabled mt-1">
+            預計撥款：{formatMerchantPayoutHoldUntilLabel(tx.payoutHoldUntil)}
+          </p>
+        ) : null}
         <p className="font-mono text-[10px] text-text-secondary mt-1.5">
           Transfer{" "}
           <span className="text-brand">{formatTransferLabel(tx)}</span>

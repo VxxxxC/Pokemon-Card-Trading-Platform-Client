@@ -15,10 +15,18 @@ export function getMerchantSellerActionFlags(input: {
   hasReviewedByMe: boolean;
   requiresAuthentication?: boolean | null;
   shippingMethod?: string | null;
+  buyerConfirmedAt?: string | null;
 }): MerchantSellerActionFlags {
-  const { escrowStatus, hasReviewedByMe, requiresAuthentication, shippingMethod } =
-    input;
+  const {
+    escrowStatus,
+    hasReviewedByMe,
+    requiresAuthentication,
+    shippingMethod,
+    buyerConfirmedAt,
+  } = input;
   const isAuth = Boolean(requiresAuthentication);
+  const canReview =
+    Boolean(buyerConfirmedAt) || escrowStatus === "completed_and_transferred";
 
   return {
     canSubmitLogistics:
@@ -27,7 +35,6 @@ export function getMerchantSellerActionFlags(input: {
       !isAuth &&
       escrowStatus === "payment_held" &&
       shippingMethod !== "meetup",
-    canReviewBuyer:
-      escrowStatus === "completed_and_transferred" && !hasReviewedByMe,
+    canReviewBuyer: canReview && !hasReviewedByMe,
   };
 }

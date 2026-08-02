@@ -12,6 +12,10 @@ import {
   type MerchantOrderDetail,
 } from "@/app/actions/orders";
 import { mapMerchantOrderDetailToSaleOrder } from "@/app/lib/merchant-order/map-sale-order";
+import {
+  formatMerchantPayoutHoldUntilLabel,
+  formatMerchantPayoutStatusLabel,
+} from "@/lib/merchant-order/merchant-payout-hold";
 import { MerchantAuthSellerTimeline } from "@/app/components/merchant/MerchantAuthSellerTimeline";
 import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2cDirectTimeline";
 import { toast } from "sonner";
@@ -178,6 +182,7 @@ export function MerchantOrderDetailView({
               escrowStatus={merchantOrder.escrowStatus}
               perspective="seller"
               shippingMethod={merchantOrder.shippingMethod}
+              payoutStatus={merchantOrder.payoutStatus}
             />
           )}
 
@@ -192,12 +197,20 @@ export function MerchantOrderDetailView({
               </h3>
               <div className="font-mono text-[12px] space-y-1.5 text-text-secondary">
                 {merchantOrder.shippingMethod === "meetup" ? (
-                  merchantOrder.meetupDetail ? (
-                    <p>
-                      <span className="text-text-disabled">面交備註：</span>
-                      {merchantOrder.meetupDetail}
-                    </p>
-                  ) : null
+                  <>
+                    {merchantOrder.buyerPhone ? (
+                      <p>
+                        <span className="text-text-disabled">聯絡電話：</span>
+                        {merchantOrder.buyerPhone}
+                      </p>
+                    ) : null}
+                    {merchantOrder.meetupDetail ? (
+                      <p>
+                        <span className="text-text-disabled">面交備註：</span>
+                        {merchantOrder.meetupDetail}
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <>
                     {merchantOrder.buyerPhone ? (
@@ -208,13 +221,13 @@ export function MerchantOrderDetailView({
                     ) : null}
                     {merchantOrder.sfLockerCode ? (
                       <p>
-                        <span className="text-text-disabled">自提櫃代碼：</span>
+                        <span className="text-text-disabled">自提點代碼：</span>
                         {merchantOrder.sfLockerCode}
                       </p>
                     ) : null}
                     {merchantOrder.sfAddress ? (
                       <p>
-                        <span className="text-text-disabled">網點地址：</span>
+                        <span className="text-text-disabled">收件地址／自提點：</span>
                         {merchantOrder.sfAddress}
                       </p>
                     ) : null}
@@ -552,9 +565,12 @@ export function MerchantOrderDetailView({
                 <span className="text-text-secondary shrink-0">Transfer ID</span>
                 <span className="font-mono text-brand font-medium text-right break-all">
                   {stripeDisplay.transferId ??
-                    (merchantOrder.escrowStatus === "completed_and_transferred"
-                      ? "—"
-                      : "待買家確認後撥款")}
+                    (merchantOrder.payoutStatus === "held" ||
+                    merchantOrder.payoutStatus === "processing"
+                      ? "待 T+7 後撥款"
+                      : merchantOrder.escrowStatus === "completed_and_transferred"
+                        ? "—"
+                        : "待買家確認後撥款")}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[11.5px]">
@@ -575,9 +591,20 @@ export function MerchantOrderDetailView({
               <div className="flex justify-between items-center text-[11.5px]">
                 <span className="text-text-secondary">撥款狀態</span>
                 <span className="font-mono text-text-primary">
-                  {stripeDisplay.payoutStatus}
+                  {formatMerchantPayoutStatusLabel(stripeDisplay.payoutStatus)}
                 </span>
               </div>
+              {merchantOrder.payoutStatus === "held" &&
+              merchantOrder.payoutHoldUntil ? (
+                <div className="flex justify-between items-center text-[11.5px]">
+                  <span className="text-text-secondary">預計撥款時間</span>
+                  <span className="font-mono text-text-primary">
+                    {formatMerchantPayoutHoldUntilLabel(
+                      merchantOrder.payoutHoldUntil,
+                    )}
+                  </span>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
