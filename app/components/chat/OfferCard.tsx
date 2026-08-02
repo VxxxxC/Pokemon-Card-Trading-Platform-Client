@@ -845,7 +845,9 @@ export function OfferCardComponent({
                 setIsChatOpen(false);
               }}
             >
-              前往付款
+              {resolvedOrderKind === "merchant" && context.pendingPayment
+                ? "前往託管結帳"
+                : "前往付款"}
             </Button>
           ) : null}
           {resolvedOrderDetailHref && !resolvedPaymentHref ? (

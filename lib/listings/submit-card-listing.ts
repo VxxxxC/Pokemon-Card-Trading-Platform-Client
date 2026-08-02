@@ -174,6 +174,13 @@ export async function submitCardListingWithProgress(
           }
           formData.append("listingId", input.listingId);
           formData.append("isActive", String(input.isActive ?? true));
+          if (input.sellerPersona === "merchant") {
+            formData.append("sellerPersona", "merchant");
+            formData.append(
+              "extraShippingFee",
+              String(input.extraShippingFee ?? 0),
+            );
+          }
           return updateCardListing(formData);
         })()
       : await (() => {

@@ -325,8 +325,11 @@ function parseUpdateCardListingForm(formData: FormData): {
     price: number;
     sellerDescription?: string;
     isActive: boolean;
+    sellerPersona?: ListingSellerPersona;
+    extraShippingFee: number;
   };
   preUploaded: PreUploadedListingImage[] | null;
+  extraShippingFeeError: string | null;
 } {
   const listingId = String(formData.get("listingId") ?? "").trim();
   const gradingOptionId = String(formData.get("gradingOptionId") ?? "").trim();
@@ -341,6 +344,15 @@ function parseUpdateCardListingForm(formData: FormData): {
     isActiveRaw === null
       ? true
       : isActiveRaw === "true" || isActiveRaw === "on";
+  const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
+  const sellerPersona =
+    sellerPersonaRaw === "merchant" || sellerPersonaRaw === "member"
+      ? sellerPersonaRaw
+      : undefined;
+  const extraShippingParsed = resolveExtraShippingFeeForListing(
+    sellerPersona,
+    formData.get("extraShippingFee"),
+  );
   const uploadedImagesRaw = String(formData.get("uploadedImages") ?? "").trim();
   const preUploaded = uploadedImagesRaw
     ? parsePreUploadedImages(uploadedImagesRaw)
@@ -353,8 +365,13 @@ function parseUpdateCardListingForm(formData: FormData): {
       price,
       sellerDescription: sellerDescription || undefined,
       isActive,
+      sellerPersona,
+      extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
     preUploaded,
+    extraShippingFeeError: extraShippingParsed.ok
+      ? null
+      : extraShippingParsed.error,
   };
 }
 
@@ -389,7 +406,12 @@ export type UpdateCardListingResult = CreateCardListingResult;
 export async function updateCardListing(
   formData: FormData,
 ): Promise<UpdateCardListingResult> {
-  const { fields, preUploaded } = parseUpdateCardListingForm(formData);
+  const { fields, preUploaded, extraShippingFeeError } =
+    parseUpdateCardListingForm(formData);
+
+  if (extraShippingFeeError) {
+    return { success: false, error: extraShippingFeeError };
+  }
 
   const fieldError = validateUpdateCardListingFields({
     listingId: fields.listingId,
@@ -434,7 +456,7 @@ export async function updateCardListing(
     const { data: existingListing, error: fetchError } = await supabase
       .from("listings")
       .select(
-        "id, seller_id, status, images, grading_company, grading_score, use_authentication",
+        "id, seller_id, status, images, grading_company, grading_score, use_authentication, seller_persona",
       )
       .eq("id", fields.listingId)
       .maybeSingle<
@@ -447,6 +469,7 @@ export async function updateCardListing(
           | "grading_company"
           | "grading_score"
           | "use_authentication"
+          | "seller_persona"
         >
       >();
 
@@ -488,6 +511,10 @@ export async function updateCardListing(
     );
     const replacedKeys = previousKeys.filter((key) => !nextKeys.has(key));
 
+    const sellerPersona = existingListing.seller_persona;
+    const extraShippingFee =
+      sellerPersona === "merchant" ? fields.extraShippingFee : 0;
+
     const admin = createAdminClient();
     const { data: listing, error: updateError } = await admin
       .from("listings")
@@ -503,6 +530,7 @@ export async function updateCardListing(
           grading.grader === "RAW"
             ? existingListing.use_authentication
             : false,
+        extra_shipping_fee: extraShippingFee,
       })
       .eq("id", fields.listingId)
       .eq("seller_id", user.id)

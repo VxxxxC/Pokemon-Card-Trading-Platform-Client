@@ -115,6 +115,7 @@ export function BuyNowConfirmDialog({
 
   const deliverySummary =
     detail?.deliverySummary ?? listing.deliverySummary ?? null;
+  const isMerchantListing = listing.sellerPersona === "merchant";
 
   return (
     <AlertDialog open={open} onOpenChange={handleDialogOpenChange}>
@@ -145,7 +146,9 @@ export function BuyNowConfirmDialog({
             </p>
           ) : null}
           <p className="text-[12px] text-text-disabled">
-            確認後將自動成交並開啟與賣家的聊天視窗，無需等待賣家接受出價。
+            {isMerchantListing
+              ? "確認後將自動成交並前往託管結帳頁完成付款（同時保留賣家對話紀錄），無需等待賣家接受出價。"
+              : "確認後將自動成交並開啟與賣家的聊天視窗，無需等待賣家接受出價。"}
           </p>
 
           {showAuthToggle ? (

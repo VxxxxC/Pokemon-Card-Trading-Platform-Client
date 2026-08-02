@@ -68,6 +68,7 @@ type ListingEditDialogProps = {
   onOpenChange: (open: boolean) => void;
   sku: Pick<SKUGroup, "cardName" | "cardNo">;
   item: CardInstance;
+  inventoryContext?: "merchant" | "member";
   onSaved?: () => void;
 };
 
@@ -76,9 +77,15 @@ export function ListingEditDialog({
   onOpenChange,
   sku,
   item,
+  inventoryContext = "member",
   onSaved,
 }: ListingEditDialogProps) {
   const [price, setPrice] = useState(String(item.askPrice));
+  const [extraShippingFee, setExtraShippingFee] = useState(
+    item.extraShippingFee != null && item.extraShippingFee > 0
+      ? String(item.extraShippingFee)
+      : "",
+  );
   const [gradingOptionId, setGradingOptionId] = useState(
     item.gradingOptionId || DEFAULT_GRADING_OPTION_ID,
   );
@@ -204,6 +211,13 @@ export function ListingEditDialog({
       price: parsedPrice,
       sellerDescription: sellerDescription.trim() || undefined,
       isActive,
+      sellerPersona: inventoryContext === "merchant" ? "merchant" : undefined,
+      extraShippingFee:
+        inventoryContext === "merchant" && extraShippingFee.trim()
+          ? Number(extraShippingFee)
+          : inventoryContext === "merchant"
+            ? 0
+            : undefined,
       imageSlots: photoSlots.map((slot) => ({
         file: slot.file,
         existingUrl: slot.existingUrl ?? slot.previewUrl ?? undefined,
@@ -293,6 +307,36 @@ export function ListingEditDialog({
                 </Select>
               </div>
             </div>
+
+            {inventoryContext === "merchant" ? (
+              <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
+                <label
+                  htmlFor={`edit-extra-shipping-${item.id}`}
+                  className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1"
+                >
+                  附加運費 (HK$)
+                </label>
+                <div className="flex items-center mt-1">
+                  <span className="font-mono text-[13px] text-text-disabled mr-1.5 shrink-0">
+                    HK$
+                  </span>
+                  <input
+                    id={`edit-extra-shipping-${item.id}`}
+                    name="extraShippingFee"
+                    type="number"
+                    min={0}
+                    max={200}
+                    step={1}
+                    placeholder="0"
+                    value={extraShippingFee}
+                    onChange={(e) => setExtraShippingFee(e.target.value)}
+                  />
+                </div>
+                <p className="mt-1 font-mono text-[10px] text-text-disabled">
+                  選填，疊加店舖基本運費
+                </p>
+              </div>
+            ) : null}
 
             <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col">
               <div className="flex items-center justify-between">
