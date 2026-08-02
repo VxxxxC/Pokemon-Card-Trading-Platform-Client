@@ -24,6 +24,7 @@ import {
   loadMerchantCheckoutOrder,
   type MerchantCheckoutOrder,
 } from "@/app/actions/merchant-checkout";
+import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import {
   AUTHENTICATION_FEE,
   computeCourierShippingFee,
@@ -244,6 +245,10 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
     [publishableKey],
   );
 
+  const { countdownLabel, isExpired, isExpiringSoon } = usePaymentCountdown(
+    order?.escrowStatus === "pending_payment" ? order.paymentExpiresAt : null,
+  );
+
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
@@ -330,6 +335,13 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   );
 
   const handleProceedToPayment = async () => {
+    if (isExpired) {
+      toast.error("付款期限已過", {
+        description: "此訂單已逾期，請返回市集重新下單。",
+      });
+      return;
+    }
+
     if (shippingType === "sf" && (!sfLockerCode || !buyerPhone)) {
       toast.error("⚠️ 資料未補全", {
         description: "請填寫順豐自提櫃代碼及聯絡電話。",
@@ -402,10 +414,29 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
         {!order.isPayable && (
           <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4">
             <p className="font-sans text-[12.5px] text-brand">
-              此訂單已完成付款或已進入下一階段，無法重複支付。
+              {order.escrowStatus === "refunded"
+                ? "此訂單付款期限已過或已取消，請返回市集重新下單。"
+                : "此訂單已完成付款或已進入下一階段，無法重複支付。"}
             </p>
           </div>
         )}
+
+        {order.isPayable && order.paymentExpiresAt ? (
+          <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4 space-y-1">
+            <p className="font-sans text-[12.5px] text-text-secondary">
+              請於 48 小時內完成託管付款，逾期訂單將自動取消。
+            </p>
+            <p
+              className={
+                isExpired || isExpiringSoon
+                  ? "font-mono text-[11px] text-warning"
+                  : "font-mono text-[11px] text-brand"
+              }
+            >
+              {isExpired ? "付款期限已過" : countdownLabel}
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Form Entries Column */}
@@ -572,7 +603,8 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               )}
             </section>
 
-            {/* Section 4: Coupon Multi-Select (NEW) */}
+            {/* Section 4: Coupon Multi-Select */}
+            {AVAILABLE_COUPONS.length > 0 ? (
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
               <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
                 🎟️ 4. 使用優惠券
@@ -645,6 +677,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                 )}
               </div>
             </section>
+            ) : null}
 
             {/* Section 5: Buyer Remarks (Renumbered) */}
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
@@ -730,7 +763,17 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                   stripe={stripeInstance}
                   options={{
                     clientSecret,
-                    appearance: { theme: "night", labels: "floating" },
+                    appearance: {
+                      theme: "night",
+                      labels: "floating",
+                      variables: {
+                        colorPrimary: "#D4A574",
+                        colorBackground: "#1A1612",
+                        colorText: "#eae1da",
+                        colorDanger: "#ef4444",
+                        borderRadius: "12px",
+                      },
+                    },
                   }}
                 >
                   <EscrowPaymentForm
@@ -741,7 +784,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               ) : (
                 <button
                   type="button"
-                  disabled={isPaying || !order.isPayable}
+                  disabled={isPaying || !order.isPayable || isExpired}
                   onClick={handleProceedToPayment}
                   className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer focus:outline-none"
                 >

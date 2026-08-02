@@ -43,6 +43,7 @@ import {
   loadBuyerMerchantTradingOrders,
   merchantBuyerOrderMatchesTab,
 } from "@/lib/merchant-order/load-buyer-merchant-orders";
+import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
 import {
   getMerchantBuyerActionFlags,
   mapMerchantEscrowToMemberEscrowStatus,
@@ -299,6 +300,8 @@ export type UserTradingOrder = {
   escrowStatus: MemberEscrowStatus | null;
   /** B2C 商戶訂單尚未完成 Stripe 託管付款（escrow_status = pending_payment）。 */
   pendingPayment: boolean;
+  /** B2C 待付款截止時間（created_at + 48h），僅 pending_payment 時有值。 */
+  paymentExpiresAt?: string | null;
   /** B2C 買家可確認收貨並觸發撥款（merchant orders only）。 */
   canCompleteMerchantPurchase?: boolean;
   /** 鑑定託管訂單買家完成 mock / 正式付款時間 */
@@ -875,6 +878,7 @@ export type MerchantTradingOrder = {
   escrowStatus: Tables<"merchant_orders">["escrow_status"];
   requiresAuthentication: boolean | null;
   createdAt: string | null;
+  paymentExpiresAt?: string | null;
   hasReviewedByMe: boolean;
   buyer: MerchantTradingBuyer;
   listing: {
@@ -1190,6 +1194,11 @@ function mapMerchantOrderDetailRow(
     hasReviewedByMe,
     requiresAuthentication: row.requires_authentication,
   });
+  const createdAt = row.created_at ?? new Date().toISOString();
+  const paymentExpiresAt =
+    row.escrow_status === "pending_payment"
+      ? computeMerchantPaymentExpiresAt(createdAt)
+      : null;
 
   return {
     id: row.id,
@@ -1201,6 +1210,7 @@ function mapMerchantOrderDetailRow(
     escrowStatus: row.escrow_status,
     requiresAuthentication: row.requires_authentication,
     createdAt: row.created_at,
+    paymentExpiresAt,
     hasReviewedByMe,
     buyer: {
       id: row.buyer.id,
@@ -1506,6 +1516,9 @@ function mapBuyerMerchantOrderDetailRow(
   const expiresAt = new Date(
     new Date(createdAt).getTime() + 14 * 24 * 60 * 60 * 1000,
   ).toISOString();
+  const paymentExpiresAt = pendingPayment
+    ? computeMerchantPaymentExpiresAt(createdAt)
+    : null;
 
   return {
     id: row.id,
@@ -1522,6 +1535,7 @@ function mapBuyerMerchantOrderDetailRow(
     useAuthentication,
     escrowStatus: memberEscrowStatus,
     pendingPayment,
+    paymentExpiresAt,
     canCompleteMerchantPurchase: buyerFlags.canCompleteMerchantPurchase,
     counterparty: {
       id: row.merchant_id,

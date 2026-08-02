@@ -1,5 +1,6 @@
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import type { UserTradingOrder } from "@/app/actions/orders";
+import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
 import {
   getMerchantBuyerActionFlags,
   mapMerchantEscrowToMemberEscrowStatus,
@@ -141,6 +142,11 @@ export async function loadBuyerMerchantTradingOrders(
       paymentCaptureStatus: row.payment_capture_status,
     });
 
+    const pendingPayment = row.escrow_status === "pending_payment";
+    const paymentExpiresAt = pendingPayment
+      ? computeMerchantPaymentExpiresAt(createdAt)
+      : null;
+
     return {
       id: row.id,
       orderKind: "merchant",
@@ -158,7 +164,8 @@ export async function loadBuyerMerchantTradingOrders(
         row.escrow_status,
         useAuthentication,
       ),
-      pendingPayment: row.escrow_status === "pending_payment",
+      pendingPayment,
+      paymentExpiresAt,
       canCompleteMerchantPurchase: buyerFlags.canCompleteMerchantPurchase,
       shippingMethod: row.shipping_method,
       merchantEscrowStatus: row.escrow_status,

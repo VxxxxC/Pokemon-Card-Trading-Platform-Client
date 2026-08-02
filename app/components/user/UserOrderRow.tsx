@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/orders";
 import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
+import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ interface UserOrderRowProps {
     escrowStatus?: MemberEscrowStatus | null;
     canPay?: boolean;
     pendingPayment?: boolean;
+    paymentExpiresAt?: string | null;
     canCompleteMerchantPurchase?: boolean;
     canCancel: boolean;
     onRefresh: () => void;
@@ -113,6 +115,9 @@ export function UserOrderRow({
       : !isAuthOrder);
   const canPayAuthOrder = Boolean(dbOrderContext?.canPay);
   const canCheckoutMerchantOrder = isPendingEscrowPayment && isBuyer;
+  const { countdownLabel, isExpired, isExpiringSoon } = usePaymentCountdown(
+    isPendingEscrowPayment ? dbOrderContext?.paymentExpiresAt : null,
+  );
   const showPendingActions =
     isPendingDbOrder &&
     (canCompleteOrder ||
@@ -234,6 +239,23 @@ export function UserOrderRow({
               </span>
             </>
           ) : null}
+          {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
+            <>
+              <span className="hidden sm:inline text-white/5">|</span>
+              <span
+                className={cn(
+                  "text-[11px] font-mono tracking-tight",
+                  isExpired
+                    ? "text-warning"
+                    : isExpiringSoon
+                      ? "text-warning"
+                      : "text-text-disabled",
+                )}
+              >
+                {isExpired ? "付款已過期" : countdownLabel}
+              </span>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -246,7 +268,7 @@ export function UserOrderRow({
           >
             {showPendingActions && (
               <>
-                {canCheckoutMerchantOrder && (
+                {canCheckoutMerchantOrder && !isExpired && (
                   <button
                     type="button"
                     disabled={isActionLoading}

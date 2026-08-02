@@ -22,6 +22,7 @@ import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInv
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
 import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2cDirectTimeline";
+import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
@@ -143,6 +144,12 @@ export function MemberOrderDetailView({
   const isPending = isPendingMemberOrderStatus(order.status);
   // B2C 託管訂單未完成 Stripe 付款前，唔可以確認收貨 / 進入交割流程。
   const isPendingEscrowPayment = order.pendingPayment;
+  const { countdownLabel, isExpired, isExpiringSoon } = usePaymentCountdown(
+    isPendingEscrowPayment ? order.paymentExpiresAt : null,
+  );
+  const isMerchantPaymentExpired =
+    order.merchantEscrowStatus === "refunded" ||
+    (isPendingEscrowPayment && isExpired);
   const isMerchantBuyerOrder =
     order.orderKind === "merchant" && order.persona === "buy";
   const canCompletePurchase = isMerchantBuyerOrder
@@ -366,11 +373,24 @@ export function MemberOrderDetailView({
       {isPendingEscrowPayment && (
         <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
           <p className="text-[12.5px] text-text-secondary leading-relaxed">
-            {isBuyer
-              ? "此訂單尚未完成託管付款，請先完成 Stripe 全額支付，資金將由平台鎖定託管。"
-              : "等待買家完成託管付款，收款後方可安排出貨。"}
+            {isMerchantPaymentExpired
+              ? "此訂單付款期限已過，掛單已釋放。請返回市集重新下單。"
+              : isBuyer
+                ? "此訂單尚未完成託管付款，請於 48 小時內完成 Stripe 全額支付，資金將由平台鎖定託管。"
+                : "等待買家完成託管付款，收款後方可安排出貨。"}
           </p>
-          {isBuyer && (
+          {order.paymentExpiresAt && !isMerchantPaymentExpired ? (
+            <p
+              className={
+                isExpiringSoon
+                  ? "font-mono text-[11px] text-warning"
+                  : "font-mono text-[11px] text-text-disabled"
+              }
+            >
+              {countdownLabel}
+            </p>
+          ) : null}
+          {isBuyer && !isMerchantPaymentExpired && (
             <button
               type="button"
               disabled={isActionLoading}
@@ -380,6 +400,14 @@ export function MemberOrderDetailView({
               前往付款
             </button>
           )}
+          {isBuyer && isMerchantPaymentExpired ? (
+            <Link
+              href="/marketplace"
+              className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-brand/25 bg-brand/10 font-sans text-[13px] font-semibold text-brand"
+            >
+              返回市集重新下單
+            </Link>
+          ) : null}
         </div>
       )}
 

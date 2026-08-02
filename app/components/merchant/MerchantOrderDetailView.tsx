@@ -1,5 +1,7 @@
 "use client";
 
+import { formatPaymentDeadline } from "@/lib/merchant-checkout/pending-payment-expiry";
+
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -245,6 +247,12 @@ export function MerchantOrderDetailView({
                 </span>
                 。 收款確認後方可安排出貨。
               </p>
+              {merchantOrder.paymentExpiresAt ? (
+                <p className="font-mono text-[11px] text-text-disabled">
+                  買家須於 {formatPaymentDeadline(merchantOrder.paymentExpiresAt)}{" "}
+                  前完成付款
+                </p>
+              ) : null}
             </div>
           )}
 

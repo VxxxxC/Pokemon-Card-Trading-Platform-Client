@@ -437,6 +437,7 @@ export function UserTradingClient({
                       escrowStatus: order.escrowStatus,
                       canPay: authActions?.canPay ?? false,
                       pendingPayment: order.pendingPayment,
+                      paymentExpiresAt: order.paymentExpiresAt,
                       canCompleteMerchantPurchase: order.canCompleteMerchantPurchase,
                       canCancel:
                         authActions?.canCancel ??

@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { PLATFORM_DEFAULT_COURIER_SHIPPING_FEE } from "@/lib/merchant/shipping-fee";
+import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
 import {
   computeCourierShippingFee,
   isMerchantShippingMethod,
@@ -29,6 +30,8 @@ export type MerchantCheckoutOrder = {
   orderNumber: string | null;
   escrowStatus: MerchantEscrowStatus;
   isPayable: boolean;
+  createdAt: string | null;
+  paymentExpiresAt: string | null;
   itemSubtotal: number;
   shippingFee: number;
   authFee: number;
@@ -99,6 +102,7 @@ type CheckoutOrderQueryRow = Pick<
   | "requires_authentication"
   | "stripe_payment_intent_id"
   | "payment_capture_status"
+  | "created_at"
 > & {
   listings: {
     grading_company: string;
@@ -135,6 +139,7 @@ const CHECKOUT_ORDER_SELECT = `
   requires_authentication,
   stripe_payment_intent_id,
   payment_capture_status,
+  created_at,
   listings (
     grading_company,
     grading_score,
@@ -415,6 +420,11 @@ export async function loadMerchantCheckoutOrder(
       shippingMethod === "sf" && lockedShippingFee > 0
         ? lockedShippingFee
         : courierShippingFeeQuote;
+    const createdAt = row.created_at ?? null;
+    const paymentExpiresAt =
+      row.escrow_status === "pending_payment" && createdAt
+        ? computeMerchantPaymentExpiresAt(createdAt)
+        : null;
 
     return {
       success: true,
@@ -423,6 +433,8 @@ export async function loadMerchantCheckoutOrder(
         orderNumber: row.order_number,
         escrowStatus: row.escrow_status,
         isPayable: row.escrow_status === "pending_payment",
+        createdAt,
+        paymentExpiresAt,
         itemSubtotal,
         shippingFee,
         authFee: Number(row.auth_fee ?? 0),
