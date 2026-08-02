@@ -68,6 +68,8 @@ export type MerchantTransferRow = {
   reconciliationWarning?: string;
   buyerConfirmedAt: string | null;
   buyerConfirmedAtIso: string | null;
+  payoutHoldUntil: string | null;
+  payoutHoldUntilIso: string | null;
   stripePaymentIntentId: string | null;
   transferredAt: string;
   transferredAtIso: string | null;

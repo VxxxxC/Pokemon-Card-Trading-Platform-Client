@@ -679,7 +679,15 @@ export default function MerchantConnectLedgerTab({
                     {truncateStripeId(row.stripePaymentIntentId)}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                    {row.transferredAt}
+                    {row.payoutStatus === "held" &&
+                    (!row.transferredAtIso || row.transferredAt === "—") &&
+                    row.payoutHoldUntil ? (
+                      <span title={`保留至 ${row.payoutHoldUntil}`}>
+                        保留至 {row.payoutHoldUntil}
+                      </span>
+                    ) : (
+                      row.transferredAt
+                    )}
                   </TableCell>
                   <TableCell className="text-right py-3 whitespace-nowrap">
                     <a

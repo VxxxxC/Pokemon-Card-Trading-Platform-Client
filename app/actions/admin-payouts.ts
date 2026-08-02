@@ -58,6 +58,7 @@ type MerchantOrderRow = Pick<
   | "item_subtotal"
   | "auth_fee"
   | "buyer_confirmed_at"
+  | "payout_hold_until"
   | "stripe_payment_intent_id"
   | "requires_authentication"
   | "transferred_at"
@@ -66,7 +67,7 @@ type MerchantOrderRow = Pick<
 >;
 
 const MERCHANT_ORDER_SELECT =
-  "id, order_number, merchant_id, stripe_transfer_id, stripe_destination_account_id, merchant_payout_amount, commission_amount, commission_rate_applied, item_subtotal, auth_fee, buyer_confirmed_at, stripe_payment_intent_id, requires_authentication, transferred_at, payout_status, payout_error";
+  "id, order_number, merchant_id, stripe_transfer_id, stripe_destination_account_id, merchant_payout_amount, commission_amount, commission_rate_applied, item_subtotal, auth_fee, buyer_confirmed_at, payout_hold_until, stripe_payment_intent_id, requires_authentication, transferred_at, payout_status, payout_error";
 
 async function requireAdmin(): Promise<
   { ok: true; adminId: string } | { ok: false; error: string }
@@ -141,7 +142,6 @@ async function resolveSearchMerchantIds(
 }
 
 function applyMerchantTransferFilters<T extends {
-  not: (column: string, operator: string, value: null) => T;
   eq: (column: string, value: string) => T;
   gte: (column: string, value: string) => T;
   lte: (column: string, value: string) => T;
@@ -151,18 +151,24 @@ function applyMerchantTransferFilters<T extends {
   input: ListAdminMerchantTransfersInput,
   searchMerchantIds: string[],
 ): T {
-  let filtered = query.not("stripe_transfer_id", "is", null);
+  let filtered = query.or(
+    "stripe_transfer_id.not.is.null,buyer_confirmed_at.not.is.null",
+  );
 
   if (input.statusFilter && input.statusFilter !== "all") {
     filtered = filtered.eq("payout_status", input.statusFilter);
   }
 
   if (input.dateFrom) {
-    filtered = filtered.gte("transferred_at", input.dateFrom);
+    filtered = filtered.or(
+      `and(transferred_at.gte.${input.dateFrom},transferred_at.not.is.null),and(buyer_confirmed_at.gte.${input.dateFrom},transferred_at.is.null)`,
+    );
   }
 
   if (input.dateTo) {
-    filtered = filtered.lte("transferred_at", input.dateTo);
+    filtered = filtered.or(
+      `and(transferred_at.lte.${input.dateTo},transferred_at.not.is.null),and(buyer_confirmed_at.lte.${input.dateTo},transferred_at.is.null)`,
+    );
   }
 
   const search = input.search?.trim();
@@ -281,6 +287,8 @@ async function enrichMerchantTransferRows(
 
     const transferredAtIso = order.transferred_at;
     const transferredAtLabel = formatAdminDateTime(transferredAtIso);
+    const payoutHoldUntilIso = order.payout_hold_until;
+    const payoutHoldUntilLabel = formatAdminDateTime(payoutHoldUntilIso);
 
     return {
       orderId: order.id,
@@ -304,6 +312,8 @@ async function enrichMerchantTransferRows(
       reconciliationWarning,
       buyerConfirmedAt: formatAdminDateTime(order.buyer_confirmed_at),
       buyerConfirmedAtIso: order.buyer_confirmed_at,
+      payoutHoldUntil: payoutHoldUntilLabel,
+      payoutHoldUntilIso: payoutHoldUntilIso,
       stripePaymentIntentId: order.stripe_payment_intent_id,
       transferredAt: transferredAtLabel,
       transferredAtIso,
@@ -312,32 +322,36 @@ async function enrichMerchantTransferRows(
   });
 }
 
+function getMerchantTransferSortMs(row: MerchantTransferRow): number {
+  if (row.transferredAtIso) {
+    return new Date(row.transferredAtIso).getTime();
+  }
+
+  if (row.payoutHoldUntilIso) {
+    return new Date(row.payoutHoldUntilIso).getTime();
+  }
+
+  if (row.buyerConfirmedAtIso) {
+    return new Date(row.buyerConfirmedAtIso).getTime();
+  }
+
+  return 0;
+}
+
 function sortMerchantTransferRows(
   rows: MerchantTransferRow[],
   sort: MerchantTransferSort | undefined,
 ): MerchantTransferRow[] {
   if (!sort || sort === "transferred_at-desc") {
-    return [...rows].sort((a, b) => {
-      const aMs = a.transferredAtIso
-        ? new Date(a.transferredAtIso).getTime()
-        : 0;
-      const bMs = b.transferredAtIso
-        ? new Date(b.transferredAtIso).getTime()
-        : 0;
-      return bMs - aMs;
-    });
+    return [...rows].sort(
+      (a, b) => getMerchantTransferSortMs(b) - getMerchantTransferSortMs(a),
+    );
   }
 
   if (sort === "transferred_at-asc") {
-    return [...rows].sort((a, b) => {
-      const aMs = a.transferredAtIso
-        ? new Date(a.transferredAtIso).getTime()
-        : 0;
-      const bMs = b.transferredAtIso
-        ? new Date(b.transferredAtIso).getTime()
-        : 0;
-      return aMs - bMs;
-    });
+    return [...rows].sort(
+      (a, b) => getMerchantTransferSortMs(a) - getMerchantTransferSortMs(b),
+    );
   }
 
   if (sort === "merchantName-asc") {
@@ -461,15 +475,23 @@ async function fetchMerchantTransferPage(
   const offset = (page - 1) * pageSize;
   const ascending = sort === "transferred_at-asc";
 
-  const listQuery = applyMerchantTransferFilters(
+  let listQuery = applyMerchantTransferFilters(
     admin.from("merchant_orders").select(MERCHANT_ORDER_SELECT, {
       count: "exact",
     }),
     input,
     searchMerchantIds,
-  )
-    .order("transferred_at", { ascending, nullsFirst: false })
-    .range(offset, offset + pageSize - 1);
+  );
+
+  if (input.statusFilter === "held") {
+    listQuery = listQuery.order("payout_hold_until", { ascending });
+  } else {
+    listQuery = listQuery
+      .order("transferred_at", { ascending, nullsFirst: ascending })
+      .order("buyer_confirmed_at", { ascending: !ascending });
+  }
+
+  listQuery = listQuery.range(offset, offset + pageSize - 1);
 
   const [{ data: orders, count, error }, statusCounts] = await Promise.all([
     listQuery,

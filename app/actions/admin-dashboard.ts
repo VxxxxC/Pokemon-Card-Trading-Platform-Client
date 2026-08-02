@@ -12,8 +12,10 @@ import {
   getHktMonthRange,
   getHktRollingWindowStartIso,
 } from "@/lib/admin-dashboard/hkt-month-bounds";
+import { runAdminDashboardHealthProbes } from "@/lib/admin-dashboard/health-probes";
 import type {
   AdminDashboardEcologySegment,
+  AdminDashboardHealthResult,
   AdminDashboardMetrics,
   AdminDashboardMetricsResult,
 } from "@/lib/admin-dashboard/types";
@@ -376,5 +378,20 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
   } catch (error) {
     console.error("[getAdminDashboardMetrics]", error);
     return { success: false, error: "無法載入後台數據總覽" };
+  }
+}
+
+export async function getAdminSystemHealthStatus(): Promise<AdminDashboardHealthResult> {
+  const auth = await requireAdmin();
+  if (!auth.ok) {
+    return { success: false, error: auth.error };
+  }
+
+  try {
+    const services = await runAdminDashboardHealthProbes();
+    return { success: true, data: { services } };
+  } catch (error) {
+    console.error("[getAdminSystemHealthStatus]", error);
+    return { success: false, error: "無法檢測系統服務狀態" };
   }
 }

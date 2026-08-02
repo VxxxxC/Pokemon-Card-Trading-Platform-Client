@@ -16,12 +16,18 @@ import {
   DollarSign,
   Briefcase,
 } from "lucide-react";
+import { getAdminSystemHealthStatus } from "@/app/actions/admin-dashboard";
 import { Button } from "@/components/ui/button";
-import type { AdminDashboardMetrics } from "@/lib/admin-dashboard/types";
+import type {
+  AdminDashboardMetrics,
+  AdminDashboardSystemService,
+} from "@/lib/admin-dashboard/types";
 
 type AdminDashboardClientProps = {
   metrics: AdminDashboardMetrics | null;
   loadError: string | null;
+  initialServices: AdminDashboardSystemService[];
+  healthLoadError: string | null;
 };
 
 const EMPTY_METRICS: AdminDashboardMetrics = {
@@ -87,43 +93,29 @@ function formatOptionalMetric(value: string | null): string {
   return value ?? "—";
 }
 
-interface SystemService {
-  id: string;
-  name: string;
-  subName: string;
-  status: "online" | "degraded" | "offline";
-  latency: number;
-}
+function formatHealthToastDescription(
+  services: AdminDashboardSystemService[],
+): string {
+  const offline = services.filter((service) => service.status === "offline");
+  const degraded = services.filter((service) => service.status === "degraded");
 
-// TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-// Target Table: platform_settings | View / RPC: get_system_services_status
-const initialServices: SystemService[] = [
-  {
-    id: "supabase",
-    name: "後台服務器",
-    subName: "Database & Auth Engine",
-    status: "online",
-    latency: 28,
-  },
-  {
-    id: "crawler",
-    name: "爬蟲引擎",
-    subName: "Market Real-time Aggregator",
-    status: "online",
-    latency: 142,
-  },
-  {
-    id: "stripe",
-    name: "Stripe API",
-    subName: "Escrow & Payout Gateway",
-    status: "online",
-    latency: 85,
-  },
-];
+  if (offline.length > 0) {
+    return `離線：${offline.map((service) => service.name).join("、")}`;
+  }
+
+  if (degraded.length > 0) {
+    return `降級：${degraded.map((service) => service.name).join("、")}`;
+  }
+
+  const maxLatency = Math.max(...services.map((service) => service.latency), 0);
+  return `後台 Supabase、Stripe 及爬蟲引擎已檢測 (最高延遲 ${maxLatency}ms)`;
+}
 
 export default function AdminDashboardClient({
   metrics,
   loadError,
+  initialServices,
+  healthLoadError,
 }: AdminDashboardClientProps) {
   const router = useRouter();
   const [isRefreshingMetrics, startMetricsRefresh] = useTransition();
@@ -142,8 +134,10 @@ export default function AdminDashboardClient({
     .join(" | ");
 
   // State for system services latency check
-  const [services, setServices] = useState<SystemService[]>(initialServices);
-  const [isRefreshingServices, setIsRefreshingServices] = useState(false);
+  const [services, setServices] = useState<AdminDashboardSystemService[]>(
+    initialServices,
+  );
+  const [isRefreshingServices, startServicesRefresh] = useTransition();
 
   const handleRefreshMetrics = () => {
     startMetricsRefresh(() => {
@@ -152,21 +146,41 @@ export default function AdminDashboardClient({
   };
 
   const handleRefreshServices = () => {
-    setIsRefreshingServices(true);
-    setTimeout(() => {
-      setServices((prev) =>
-        prev.map((s) => ({
-          ...s,
-          latency:
-            Math.floor(Math.random() * 40) + (s.id === "crawler" ? 120 : 20),
-        })),
+    startServicesRefresh(async () => {
+      const result = await getAdminSystemHealthStatus();
+      if (!result.success) {
+        toast.error("系統服務狀態檢測失敗", {
+          description: result.error,
+        });
+        return;
+      }
+
+      setServices(result.data.services);
+      const hasOffline = result.data.services.some(
+        (service) => service.status === "offline",
       );
-      setIsRefreshingServices(false);
+      const hasDegraded = result.data.services.some(
+        (service) => service.status === "degraded",
+      );
+
+      if (hasOffline) {
+        toast.error("部分系統服務離線", {
+          description: formatHealthToastDescription(result.data.services),
+        });
+        return;
+      }
+
+      if (hasDegraded) {
+        toast.warning("部分系統服務降級", {
+          description: formatHealthToastDescription(result.data.services),
+        });
+        return;
+      }
+
       toast.success("系統服務狀態已更新", {
-        description:
-          "後台 Supabase, 爬蟲引擎及 Stripe 金流連線正常 (Latency < 200ms)",
+        description: formatHealthToastDescription(result.data.services),
       });
-    }, 600);
+    });
   };
 
   const handleAlertClick = () => {
@@ -212,6 +226,10 @@ export default function AdminDashboardClient({
 
       {loadError ? (
         <p>{loadError}</p>
+      ) : null}
+
+      {healthLoadError ? (
+        <p>{healthLoadError}</p>
       ) : null}
 
       {/* ────────────────────────────────────────────────────────────── */}
