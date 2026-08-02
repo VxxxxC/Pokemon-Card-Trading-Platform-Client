@@ -38,6 +38,7 @@
         "@next/swc-linux-x64-gnu": "16.2.9",
         "@playwright/test": "^1.61.1",
         "@serwist/turbopack": "^9.5.7",
+        "@stripe/cli": "^1.45.0",
         "@tailwindcss/postcss": "^4",
         "@types/bun": "^1.3.14",
         "@types/crypto-js": "^4.2.2",
@@ -367,6 +368,18 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@standard-schema/utils": ["@standard-schema/utils@0.3.0", "", {}, "sha512-e7Mew686owMaPJVNNLs55PUvgz371nKgwsc4vxE49zsODpJEnxgxRo2y/OKrqueavXgZNMDVj3DdHFlaSAeU8g=="],
+
+    "@stripe/cli": ["@stripe/cli@1.45.0", "", { "optionalDependencies": { "@stripe/cli-darwin-arm64": "1.45.0", "@stripe/cli-darwin-x64": "1.45.0", "@stripe/cli-linux-arm64": "1.45.0", "@stripe/cli-linux-x64": "1.45.0", "@stripe/cli-win32-x64": "1.45.0" }, "bin": { "stripe": "bin/shim.js" } }, "sha512-MZygbnnGEyTFplMJfHAJDhCDqLs/KDbPcgCtuq1zJX5MhACZqAnQrnNUf+O6DmXSZNpkmMpWGH58hsZkUaCzAQ=="],
+
+    "@stripe/cli-darwin-arm64": ["@stripe/cli-darwin-arm64@1.45.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-83inKpScQ535PrNJNjMcwmQvxewqDBbV5dXa1/KuXtxq31/vKfw0o/Y8vh7w+3Xj4QLbM0BMPQsa3cOjnVxcCw=="],
+
+    "@stripe/cli-darwin-x64": ["@stripe/cli-darwin-x64@1.45.0", "", { "os": "darwin", "cpu": "x64" }, "sha512-v65Iu9FWlQeBE3FYU1a7AIFmi+/wH5eponeSVx4glUp5XtCN4BJJtlGn0KUgLPQcf6GjhTsxot4zZ+NoNfGr5A=="],
+
+    "@stripe/cli-linux-arm64": ["@stripe/cli-linux-arm64@1.45.0", "", { "os": "linux", "cpu": "arm64" }, "sha512-68qb5jSDtyAVgxl2MwQarmr6A/YvXRy5MHvzCPiQeb7vNgz63EibJVGvz8/m06fGzaghkyuYrbRDFyeJaElnzQ=="],
+
+    "@stripe/cli-linux-x64": ["@stripe/cli-linux-x64@1.45.0", "", { "os": "linux", "cpu": "x64" }, "sha512-1ZhoPpoweYfynqsvhCLlTjZ7lPz5IKtxqAMT5MBy6zrwLRTP9x0T6r8h/jLYL8lRH1c7zC/6X6/XUu2V+r9Bog=="],
+
+    "@stripe/cli-win32-x64": ["@stripe/cli-win32-x64@1.45.0", "", { "os": "win32", "cpu": "x64" }, "sha512-oJ03sktkEnG/HxuOg6i+f9+23tE+YS3ItaniHnnBidAnU204vqz9/Z8mqJA+DtEpBA8fjOp+Jr+8y78QbREJHA=="],
 
     "@stripe/react-stripe-js": ["@stripe/react-stripe-js@6.8.0", "", { "dependencies": { "prop-types": "^15.7.2" }, "peerDependencies": { "@stripe/stripe-js": ">=9.5.0 <10.0.0", "react": ">=16.8.0 <20.0.0", "react-dom": ">=16.8.0 <20.0.0" } }, "sha512-nRrPkos00CmUeqXHxtJkXmSbl9/6ybGI4jVebzsiA6QaE5A4iw9dn1C4hUx2tBmQQV2e6pm2aLkPYov4hdta2w=="],
 
