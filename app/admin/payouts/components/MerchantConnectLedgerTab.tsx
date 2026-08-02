@@ -41,6 +41,7 @@ import {
   getStripeConnectDashboardUrl,
   getStripeTransferDashboardUrl,
 } from "@/lib/stripe/dashboard-urls";
+import { truncateStripeId } from "@/lib/stripe/display";
 import { endOfDay, format, startOfDay, subDays } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import Link from "next/link";
@@ -87,12 +88,6 @@ function toIsoDateRange(range: DateRange | undefined): {
     dateFrom: range.from ? startOfDay(range.from).toISOString() : undefined,
     dateTo: range.to ? endOfDay(range.to).toISOString() : undefined,
   };
-}
-
-function truncatePaymentIntent(id: string | null): string {
-  if (!id) return "—";
-  if (id.length <= 16) return id;
-  return `${id.slice(0, 10)}…${id.slice(-6)}`;
 }
 
 export default function MerchantConnectLedgerTab({
@@ -679,7 +674,7 @@ export default function MerchantConnectLedgerTab({
                     className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap"
                     title={row.stripePaymentIntentId ?? undefined}
                   >
-                    {truncatePaymentIntent(row.stripePaymentIntentId)}
+                    {truncateStripeId(row.stripePaymentIntentId)}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
                     {row.transferredAt}

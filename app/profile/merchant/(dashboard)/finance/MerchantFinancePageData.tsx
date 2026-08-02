@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Tables } from "@/types/supabase";
+import { getMerchantFinanceSummary } from "@/app/actions/merchant-finance";
 import { MerchantFinanceClient } from "./MerchantFinanceClient";
 
 type ProfileRoleRow = Pick<Tables<"profiles">, "role">;
@@ -53,6 +54,14 @@ export async function MerchantFinancePageData() {
     ? kycRecord.stripe_account_id
     : null;
 
+  const financeSummary = await getMerchantFinanceSummary();
+  const monthEarned = financeSummary.success
+    ? financeSummary.data.monthEarned
+    : 0;
+  const recentSettlements = financeSummary.success
+    ? financeSummary.data.recentSettlements
+    : [];
+
   return (
     <MerchantFinanceClient
       stripeConnected={isMerchantPayoutReady(kycRecord)}
@@ -60,6 +69,8 @@ export async function MerchantFinancePageData() {
       stripeAccountLabel={
         stripeAccountId ? maskStripeAccountId(stripeAccountId) : null
       }
+      monthEarned={monthEarned}
+      recentSettlements={recentSettlements}
     />
   );
 }

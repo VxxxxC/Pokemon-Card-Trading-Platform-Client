@@ -1,53 +1,147 @@
 "use client";
 
+import type { MerchantFinanceSettlement } from "@/app/actions/merchant-finance";
+import {
+  formatPayoutStatusLabel,
+  getPayoutStatusBadgeClass,
+} from "@/lib/admin-payouts/format";
+import type { MerchantTransferPayoutStatus } from "@/lib/admin-payouts/types";
+import { truncateStripeId } from "@/lib/stripe/display";
+import Link from "next/link";
+import { toast } from "sonner";
+
 type MerchantFinanceClientProps = {
   stripeConnected: boolean;
   stripeAccountId: string | null;
   stripeAccountLabel: string | null;
+  monthEarned: number;
+  recentSettlements: MerchantFinanceSettlement[];
 };
 
-// TODO: [server] Replace with Supabase query — fetch merchant's Stripe Connect payout summary via Stripe API (stripe.balance.retrieve for connected account)
-const financeSummary = {
-  totalEarned: 384_600,
-};
+function formatSettlementDate(iso: string | null): string {
+  if (!iso) {
+    return "—";
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+}
 
-// TODO: [database] Replace with Supabase query — fetch merchant's transaction history from `payout_transactions` table, ordered by date DESC
-const transactions = [
-  { id: "TXN-001", type: "payout" as const, desc: "Stripe 提款結算", amount: 45_000, date: "2025/5/15", status: "completed" as const },
-  { id: "TXN-002", type: "sale" as const, desc: "Charizard ex SAR 成交", amount: 49_800, date: "2025/5/14", status: "completed" as const },
-  { id: "TXN-003", type: "commission" as const, desc: "佣金扣減 (5%) — sv2a-182", amount: 2_490, date: "2025/5/14", status: "deducted" as const },
-  { id: "TXN-004", type: "subsidy" as const, desc: "運費補貼 x3", amount: 600, date: "2025/5/13", status: "credited" as const },
-  { id: "TXN-005", type: "sale" as const, desc: "Umbreon ex SAR 成交", amount: 38_200, date: "2025/5/13", status: "completed" as const },
-  { id: "TXN-006", type: "commission" as const, desc: "佣金扣減 (5%) — sv6a-109", amount: 1_910, date: "2025/5/13", status: "deducted" as const },
-  { id: "TXN-007", type: "payout" as const, desc: "Stripe 提款結算", amount: 32_000, date: "2025/5/10", status: "completed" as const },
-];
+function normalizePayoutStatus(status: string): MerchantTransferPayoutStatus {
+  if (
+    status === "pending" ||
+    status === "processing" ||
+    status === "paid" ||
+    status === "failed"
+  ) {
+    return status;
+  }
+  return "pending";
+}
 
-type TxType = "payout" | "sale" | "commission" | "subsidy";
-type TxStatus = "completed" | "deducted" | "credited";
+async function copyStripeId(label: string, id: string) {
+  try {
+    await navigator.clipboard.writeText(id);
+    toast.success(`已複製 ${label}`);
+  } catch {
+    toast.error("複製失敗");
+  }
+}
 
-const TX_ICON: Record<TxType, string> = {
-  payout: "💳",
-  sale: "🟢",
-  commission: "🔴",
-  subsidy: "🎁",
-};
+function formatTransferLabel(tx: MerchantFinanceSettlement): string {
+  if (tx.stripeTransferId) {
+    return truncateStripeId(tx.stripeTransferId);
+  }
+  if (tx.payoutStatus === "processing") {
+    return "處理中";
+  }
+  return "—";
+}
 
-const TX_COLOR: Record<TxStatus, string> = {
-  completed: "text-text-primary",
-  deducted: "text-warning",
-  credited: "text-success",
-};
+function SettlementRow({ tx, showTopBorder }: { tx: MerchantFinanceSettlement; showTopBorder: boolean }) {
+  const payoutStatus = normalizePayoutStatus(tx.payoutStatus);
 
-const TX_PREFIX: Record<TxStatus, string> = {
-  completed: "+",
-  deducted: "-",
-  credited: "+",
-};
+  return (
+    <div
+      className={`flex items-start gap-3 px-4 py-3.5 hover:bg-bg-elevated transition-colors ${showTopBorder ? "border-t border-[rgba(237,232,224,0.08)]" : ""}`}
+    >
+      <span className="text-[16px] w-6 text-center shrink-0 mt-0.5" aria-hidden="true">
+        💳
+      </span>
+      <div className="flex-1 min-w-0">
+        <Link href={`/profile/merchant/orderDetail/${tx.orderId}`}>
+          <p className="font-sans text-[13px] font-medium text-text-primary truncate">
+            {tx.orderNumber ? `#${tx.orderNumber}` : "商戶訂單撥款"}
+            {tx.cardName ? ` · ${tx.cardName}` : ""}
+          </p>
+        </Link>
+        <div className="flex flex-wrap items-center gap-2 mt-1">
+          <p className="font-mono text-[11px] text-text-secondary">
+            {formatSettlementDate(tx.paidAt)}
+          </p>
+          <span
+            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${getPayoutStatusBadgeClass(payoutStatus)}`}
+          >
+            {formatPayoutStatusLabel(payoutStatus)}
+          </span>
+        </div>
+        <p className="font-mono text-[10px] text-text-secondary mt-1.5">
+          Transfer{" "}
+          <span className="text-brand">{formatTransferLabel(tx)}</span>
+          {tx.stripeTransferId ? (
+            <button
+              type="button"
+              onClick={() => copyStripeId("Transfer ID", tx.stripeTransferId!)}
+            >
+              複製
+            </button>
+          ) : null}
+        </p>
+        <p className="font-mono text-[10px] text-text-secondary mt-0.5">
+          Payment Intent{" "}
+          <span className="text-brand">
+            {truncateStripeId(tx.stripePaymentIntentId)}
+          </span>
+          {tx.stripePaymentIntentId ? (
+            <button
+              type="button"
+              onClick={() =>
+                copyStripeId("Payment Intent", tx.stripePaymentIntentId!)
+              }
+            >
+              複製
+            </button>
+          ) : null}
+        </p>
+        <p className="font-mono text-[10px] text-text-disabled mt-1">
+          {tx.commissionAmount != null
+            ? `平台費 HK$ ${tx.commissionAmount.toLocaleString("zh-TW")} · 實收 HK$ ${tx.amount.toLocaleString("zh-TW")}`
+            : `實收 HK$ ${tx.amount.toLocaleString("zh-TW")}`}
+        </p>
+        {tx.payoutStatus === "failed" && tx.payoutError ? (
+          <p
+            className="font-mono text-[10px] text-warning mt-1 truncate"
+            title={tx.payoutError}
+          >
+            {tx.payoutError}
+          </p>
+        ) : null}
+      </div>
+      <p className="font-mono font-semibold text-[14px] shrink-0 text-text-primary">
+        +HK$ {tx.amount.toLocaleString("zh-TW")}
+      </p>
+    </div>
+  );
+}
 
 export function MerchantFinanceClient({
   stripeConnected,
   stripeAccountId,
   stripeAccountLabel,
+  monthEarned,
+  recentSettlements,
 }: MerchantFinanceClientProps) {
   return (
     <>
@@ -57,39 +151,31 @@ export function MerchantFinanceClient({
         </h2>
         <div className="bg-bg-card rounded-2xl border border-[rgba(212,165,116,0.20)] p-5">
           <p className="font-mono text-[11px] text-text-secondary uppercase tracking-wider mb-2">
-            本月總收入
+            本月撥款收入（已結算）
           </p>
           <p className="font-mono font-bold text-[32px] lg:text-[38px] leading-none text-brand mb-2">
-            ¥{financeSummary.totalEarned.toLocaleString("zh-TW")}
+            HK$ {monthEarned.toLocaleString("zh-TW")}
           </p>
-          <p className="font-mono text-[11px] text-success">▲ +24% vs 上月</p>
+          <p className="font-mono text-[11px] text-text-disabled">
+            以平台訂單撥款記錄為準
+          </p>
         </div>
       </section>
 
       <section aria-labelledby="tx-heading" className="mb-6">
         <h2 id="tx-heading" className="font-sans font-semibold text-[16px] text-text-primary mb-4">
-          資金流水記錄
+          近期撥款記錄
         </h2>
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {transactions.map((tx, i) => (
-            <div
-              key={tx.id}
-              className={`flex items-center gap-3 px-4 py-3.5 hover:bg-bg-elevated transition-colors ${i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""}`}
-            >
-              <span className="text-[16px] w-6 text-center shrink-0" aria-hidden="true">
-                {TX_ICON[tx.type]}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="font-sans text-[13px] font-medium text-text-primary truncate">
-                  {tx.desc}
-                </p>
-                <p className="font-mono text-[11px] text-text-secondary">{tx.date}</p>
-              </div>
-              <p className={`font-mono font-semibold text-[14px] shrink-0 ${TX_COLOR[tx.status]}`}>
-                {TX_PREFIX[tx.status]}¥{tx.amount.toLocaleString("zh-TW")}
-              </p>
-            </div>
-          ))}
+          {recentSettlements.length === 0 ? (
+            <p className="px-4 py-8 text-center font-mono text-[12px] text-text-secondary">
+              尚無撥款記錄
+            </p>
+          ) : (
+            recentSettlements.map((tx, i) => (
+              <SettlementRow key={tx.orderId} tx={tx} showTopBorder={i > 0} />
+            ))
+          )}
         </div>
       </section>
 
@@ -131,16 +217,16 @@ export function MerchantFinanceClient({
           {stripeConnected ? (
             <a
               href="/api/stripe/connect/dashboard"
-              className="flex items-center gap-1.5 px-3 py-2 font-mono text-[12px] text-[#635bff] border border-[rgba(99,91,255,0.30)] rounded-xl hover:bg-[rgba(99,91,255,0.08)] transition-colors shrink-0"
+              className="inline-flex items-center gap-1 font-mono text-[10px] text-[#635bff] bg-[rgba(99,91,255,0.10)] px-2.5 py-1.5 rounded-md border border-[rgba(99,91,255,0.25)] font-bold hover:bg-[rgba(99,91,255,0.16)] transition-colors shrink-0"
             >
-              前往 Stripe 管理收款
+              管理 Stripe 收款 →
             </a>
           ) : (
             <a
               href="/api/stripe/connect/onboard"
-              className="flex items-center gap-1.5 px-3 py-2 font-mono text-[12px] text-brand border border-brand/30 rounded-xl hover:bg-brand/10 transition-colors shrink-0"
+              className="inline-flex items-center gap-1 font-mono text-[10px] text-brand bg-brand/10 px-2.5 py-1.5 rounded-md border border-brand/20 font-bold hover:bg-brand/15 transition-colors shrink-0"
             >
-              完成 Stripe 收款設定
+              完成 Stripe 收款設定 →
             </a>
           )}
         </div>
