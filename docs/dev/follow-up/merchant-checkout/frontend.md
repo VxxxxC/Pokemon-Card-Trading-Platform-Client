@@ -23,7 +23,11 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 | `app/components/chat/OfferCard.tsx` | accepted 買家「前往付款」/「查看訂單」CTA |
 | `app/components/user/UserOrderRow.tsx` | `dbOrderContext.pendingPayment` → 顯示「前往付款」CTA（去 `/checkout/[orderId]`）；同時**隱藏**「確認完成」CTA |
 | `app/components/user/MemberOrderDetailView.tsx` | `order.pendingPayment` → 頂部待付款提示區塊 + 買家「前往付款」；未付款不顯示 P2P 完成流程 |
-| `app/components/merchant/MerchantOrderDetailView.tsx` | `escrowStatus === "pending_payment"` → 「等待買家完成託管付款」提示；原「買家已完成全額付款 + 確認訂單並移交保管」改為只在真正 `payment_held` 且**非鑑定單**顯示；鑑定單 `canSubmitLogistics` 顯示入庫物流 input |
+| `app/components/merchant/MerchantOrderDetailView.tsx` | `escrowStatus === "pending_payment"` → 「等待買家完成託管付款」提示；原「買家已完成全額付款 + 確認訂單並移交保管」改為只在真正 `payment_held` 且**非鑑定單**顯示；鑑定單 `canSubmitLogistics` 顯示入庫物流 input；**買家交收資料** read-only 區塊 |
+| `app/components/marketplace/MarketplaceCard.tsx` | 商戶掛單顯示 `deliverySummary`（`快遞 HK$X 起 · 面交免運`） |
+| `app/components/marketplace/AskOrderBookRow.tsx` | order book 列顯示 `deliverySummary` |
+| `app/components/transactions/BuyNowConfirmDialog.tsx` | 確認框顯示運費配送摘要 |
+| `app/components/shared/AddAssetModal.tsx` | merchant 上架路徑附加運費 input（單卡 + 密封） |
 | `app/components/merchant/MerchantOrderRow.tsx` | `OrderStatusBadge` 新增 `labelOverride`，pending_payment 顯示「待買家付款」 |
 | `app/profile/user/(dashboard)/trading/UserTradingClient.tsx` | `order.pendingPayment` → 「待付款」badge；傳 `pendingPayment` 落 `dbOrderContext` |
 
@@ -50,7 +54,9 @@ statusLabelOverride?: string; // 託管步進器以外的細分狀態文案（�
 - [ ] 點「立即購買」→ 確認框 → chat 開啟 + Offer 卡已接受（非直跳 checkout）
 - [ ] Offer 卡「前往付款」→ `/checkout/[orderId]`，商品資料 / 賣家 / 價格為真實訂單值
 - [ ] slide-over 內「立即購買」同樣開 chat（可從確認框「改為議價出價」進入 slide-over 後測）
-- [ ] 切換順豐 / 面交、開關鑑定服務，總額同步（30 / 0、150 / 0）
+- [ ] 切換順豐 / 面交、開關鑑定服務，總額同步（運費由 shop base + listing extra 計算；面交 `0`、鑑定 `150 / 0`）
+- [ ] 填寫 SF 櫃代碼 / 電話或面交備註後付款，`merchant_orders` 持久化交收欄位；商戶／買家訂單詳情可讀
+- [ ] 商戶掛單在大盤卡 / order book / BuyNow 見 `快遞 HK$X 起 · 面交免運`
 - [ ] 按「鎖定資產並進入安全託管支付」後出現 Payment Element；`4242…` 測試卡付款成功（含鑑定 manual capture：`requires_capture` 後輪詢至 `payment_held`）
 - [ ] 成功頁先顯示「付款處理中」，webhook 到達後自動轉「交易成功設立」
 - [ ] `/profile/user/trading` 未付款訂單顯示「待付款」badge + 「前往付款」，**無**「確認完成」
@@ -66,5 +72,5 @@ statusLabelOverride?: string; // 託管步進器以外的細分狀態文案（�
 - 「立即購買」CTA 目前用 outline 佔位樣式，與「發送叫價至聊天室」主鍵的視覺層級待調整
 - `<PaymentElement>` 用 Stripe `appearance: { theme: "night", labels: "floating" }` 預設，未對齊 brand token
 - 優惠券選單已 disabled（後端未接），placeholder 文案「優惠券功能即將開放（本次結帳暫不折扣）」待設計確認是否改為隱藏
-- 收件電話 / 順豐櫃代碼 / 面交備註 / 買家備註仍只有前端 state，未持久化；如需入庫請與後端確認欄位
+- 收件電話 / 順豐櫃代碼 / 面交備註 / 買家備註已於付款前寫入 `merchant_orders`（`rpc_prepare_merchant_order_payment`）；訂單詳情 read-only 顯示
 - 待付款訂單暫無過期倒數 UI（後端亦未有過期機制，後續 backlog）

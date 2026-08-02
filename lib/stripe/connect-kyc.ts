@@ -57,6 +57,9 @@ function toStripeDob(dob: string): { day: number; month: number; year: number } 
 /** MCC 5947 — Gift, Card, Novelty & Souvenir Shops（trading cards 零售） */
 const TRADING_CARDS_MCC = "5947";
 
+/** 平台 KYC 收集單一代表人；Stripe HK company 要求申報 UBO 股權。 */
+const REPRESENTATIVE_PERCENT_OWNERSHIP = 100;
+
 export async function createExpressAccountForKycApplication(
   application: KycApplicationRow,
 ): Promise<Stripe.Account> {
@@ -105,8 +108,19 @@ export async function createRepresentativePersonForKycApplication(
       representative: true,
       director: true,
       executive: true,
+      owner: true,
+      percent_ownership: REPRESENTATIVE_PERCENT_OWNERSHIP,
       title: application.rep_title,
     },
+  });
+}
+
+/** 單一 100% UBO 代表人建立後，告知 Stripe 所有 owner 已提供。 */
+export async function markCompanyOwnersProvided(
+  stripeAccountId: string,
+): Promise<void> {
+  await stripe.accounts.update(stripeAccountId, {
+    company: { owners_provided: true },
   });
 }
 

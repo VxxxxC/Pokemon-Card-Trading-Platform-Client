@@ -9,6 +9,7 @@ import {
   isGoodsCapturePaymentIntent,
 } from "@/lib/payments/goods-capture-saga";
 import { stripe } from "@/lib/stripe";
+import { syncKycConnectFlagsFromStripeAccount } from "@/lib/stripe/sync-kyc-connect-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -147,20 +148,7 @@ async function handleAccountUpdated(
   admin: AdminSupabaseClient,
   account: Stripe.Account,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await admin
-    .from("kyc_records")
-    .update({
-      stripe_charges_enabled: account.charges_enabled === true,
-      stripe_payouts_enabled: account.payouts_enabled === true,
-    })
-    .eq("stripe_account_id", account.id);
-
-  if (error) {
-    console.error("[stripe/webhook] kyc_records update", error.message);
-    return { ok: false, error: "db update failed" };
-  }
-
-  return { ok: true };
+  return syncKycConnectFlagsFromStripeAccount(admin, account);
 }
 
 async function handleMerchantPaymentSucceeded(

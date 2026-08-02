@@ -104,6 +104,7 @@ export function MemberOrderDetailView({
   const useMeetupUi =
     isMeetupOnlyMemberOrder(order.useAuthentication) && !useMerchantB2cEscrowUi;
   const [inboundTrackingInput, setInboundTrackingInput] = useState("");
+  const [inboundCourierInput, setInboundCourierInput] = useState("");
   const [fpsDialogOpen, setFpsDialogOpen] = useState(() => {
     if (typeof window === "undefined") {
       return false;
@@ -205,7 +206,11 @@ export function MemberOrderDetailView({
     }
 
     setIsActionLoading(true);
-    const result = await submitInboundTracking(order.id, inboundTrackingInput);
+    const result = await submitInboundTracking(
+      order.id,
+      inboundTrackingInput,
+      inboundCourierInput,
+    );
     setIsActionLoading(false);
 
     if (!result.success) {
@@ -392,6 +397,67 @@ export function MemberOrderDetailView({
             </p>
           ) : null}
 
+          {(order.sfLockerCode ||
+            order.buyerPhone ||
+            order.meetupDetail ||
+            order.buyerRemark ||
+            order.sfAddress) ? (
+            <div className="p-4 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-2">
+              <h3 className="font-sans font-bold text-[14px] text-[#eae1da]">
+                交收資料
+              </h3>
+              <div className="font-mono text-[12px] space-y-1.5 text-text-secondary">
+                {order.shippingMethod === "meetup" ? (
+                  order.meetupDetail ? (
+                    <p>
+                      <span className="text-text-disabled">面交備註：</span>
+                      {order.meetupDetail}
+                    </p>
+                  ) : null
+                ) : (
+                  <>
+                    {order.buyerPhone ? (
+                      <p>
+                        <span className="text-text-disabled">聯絡電話：</span>
+                        {order.buyerPhone}
+                      </p>
+                    ) : null}
+                    {order.sfLockerCode ? (
+                      <p>
+                        <span className="text-text-disabled">自提櫃代碼：</span>
+                        {order.sfLockerCode}
+                      </p>
+                    ) : null}
+                    {order.sfAddress ? (
+                      <p>
+                        <span className="text-text-disabled">網點地址：</span>
+                        {order.sfAddress}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+                {order.buyerRemark ? (
+                  <p>
+                    <span className="text-text-disabled">備註：</span>
+                    {order.buyerRemark}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {isBuyer &&
+          order.merchantEscrowStatus === "shipped" &&
+          order.outboundTrackingNo ? (
+            <p className="font-mono text-[12px] text-brand">
+              物流：
+              {order.outboundCourierName
+                ? `${order.outboundCourierName} · `
+                : ""}
+              {order.outboundTrackingNo}
+            </p>
+          ) : null}
+
           {isBuyer && canCompletePurchase && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
@@ -515,26 +581,43 @@ export function MemberOrderDetailView({
           {order.escrowStatus === "custody" && isSeller ? (
             <div className="space-y-3 rounded-xl border border-white/5 bg-[#17130f] p-4">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                請將卡牌寄往平台倉庫，並填寫順豐物流單號。
+                請將卡牌寄往平台倉庫，並填寫快遞公司與物流單號。
               </p>
               {order.inboundTrackingNo ? (
                 <p className="font-mono text-[12px] text-brand">
-                  已提交單號：{order.inboundTrackingNo}
+                  已提交：
+                  {order.inboundCourierName
+                    ? `${order.inboundCourierName} · `
+                    : ""}
+                  {order.inboundTrackingNo}
                 </p>
               ) : (
                 <>
+                  <input
+                    type="text"
+                    value={inboundCourierInput}
+                    onChange={(event) =>
+                      setInboundCourierInput(event.target.value)
+                    }
+                    placeholder="快遞公司（例如：順豐、DHL）"
+                    className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+                  />
                   <input
                     type="text"
                     value={inboundTrackingInput}
                     onChange={(event) =>
                       setInboundTrackingInput(event.target.value)
                     }
-                    placeholder="寄往平台的順豐單號"
+                    placeholder="物流單號"
                     className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
                   />
                   <button
                     type="button"
-                    disabled={isActionLoading || !inboundTrackingInput.trim()}
+                    disabled={
+                      isActionLoading ||
+                      !inboundTrackingInput.trim() ||
+                      !inboundCourierInput.trim()
+                    }
                     onClick={() => void handleSubmitInbound()}
                     className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-semibold text-[13px] disabled:opacity-50"
                   >
@@ -555,7 +638,11 @@ export function MemberOrderDetailView({
             <div className="space-y-2 rounded-xl border border-white/5 bg-[#17130f] p-4">
               {order.outboundTrackingNo ? (
                 <p className="font-mono text-[12px] text-brand">
-                  平台代發物流：{order.outboundTrackingNo}
+                  平台代發物流：
+                  {order.outboundCourierName
+                    ? `${order.outboundCourierName} · `
+                    : ""}
+                  {order.outboundTrackingNo}
                 </p>
               ) : (
                 <p className="text-[12px] text-text-secondary">

@@ -5,8 +5,10 @@ import type { KycDocumentType } from "@/lib/kyc/documents";
 import {
   createExpressAccountForKycApplication,
   createRepresentativePersonForKycApplication,
+  markCompanyOwnersProvided,
   syncKycDocumentsToStripe,
 } from "@/lib/stripe/connect-kyc";
+import { isStripeConnectAccountId } from "@/lib/stripe/sync-kyc-connect-flags";
 import {
   getStripeAccountPayoutSummary,
   type StripeAccountPayoutSummary,
@@ -326,6 +328,8 @@ async function runStripeProvisioning(
       application,
     );
 
+    await markCompanyOwnersProvided(stripeAccountId);
+
     const { data: documents } = await admin
       .from("kyc_documents")
       .select("*")
@@ -441,7 +445,7 @@ export async function retryKycProvisioning(
       .eq("merchant_id", application.user_id)
       .maybeSingle();
 
-    if (kycRecord?.stripe_account_id?.trim()) {
+    if (isStripeConnectAccountId(kycRecord?.stripe_account_id)) {
       return {
         success: false,
         error: "該商戶已有 Stripe 帳戶，無需重試",

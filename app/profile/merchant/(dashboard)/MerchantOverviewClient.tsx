@@ -228,9 +228,12 @@ export function MerchantOverviewClient({
               </span>
             ) : null}
             {shop?.stripeConnected ? (
-              <span className="inline-flex items-center gap-1 font-mono text-[10px] text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20 font-bold">
-                ● Stripe 已連結
-              </span>
+              <a
+                href="/api/stripe/connect/dashboard"
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-[#635bff] bg-[rgba(99,91,255,0.10)] px-2 py-0.5 rounded-md border border-[rgba(99,91,255,0.25)] font-bold hover:bg-[rgba(99,91,255,0.16)] transition-colors"
+              >
+                管理 Stripe 收款 →
+              </a>
             ) : null}
             {shop?.kycVerified && !shop.stripeConnected ? (
               // 後端接駁 stub：Stripe Connect onboarding 入口（完成後 webhook 更新狀態，樣式留待 frontend 精修）

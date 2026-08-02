@@ -34,9 +34,10 @@ type MerchantOrderDetailViewProps = {
 async function runSubmitInboundTracking(
   orderId: string,
   trackingNo: string,
+  courierName: string,
   onSuccess?: () => void,
 ): Promise<void> {
-  const result = await submitMerchantLogistics(orderId, trackingNo);
+  const result = await submitMerchantLogistics(orderId, trackingNo, courierName);
   if (!result.success) {
     toast.error(result.error);
     return;
@@ -48,9 +49,14 @@ async function runSubmitInboundTracking(
 async function runSubmitDirectFulfillment(
   orderId: string,
   trackingNo: string | undefined,
+  courierName: string | undefined,
   onSuccess?: () => void,
 ): Promise<void> {
-  const result = await submitMerchantDirectFulfillment(orderId, trackingNo);
+  const result = await submitMerchantDirectFulfillment(
+    orderId,
+    trackingNo,
+    courierName,
+  );
   if (!result.success) {
     toast.error(result.error);
     return;
@@ -78,7 +84,9 @@ export function MerchantOrderDetailView({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
   const [inboundTrackingInput, setInboundTrackingInput] = useState("");
+  const [inboundCourierInput, setInboundCourierInput] = useState("");
   const [outboundTrackingInput, setOutboundTrackingInput] = useState("");
+  const [outboundCourierInput, setOutboundCourierInput] = useState("");
   const isAuthOrder = Boolean(merchantOrder.requiresAuthentication);
   const isSfShipping = merchantOrder.shippingMethod !== "meetup";
 
@@ -171,6 +179,55 @@ export function MerchantOrderDetailView({
             />
           )}
 
+          {(merchantOrder.sfLockerCode ||
+            merchantOrder.buyerPhone ||
+            merchantOrder.meetupDetail ||
+            merchantOrder.buyerRemark ||
+            merchantOrder.sfAddress) ? (
+            <div className="p-4 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-2">
+              <h3 className="font-sans font-bold text-[14px] text-[#eae1da]">
+                買家交收資料
+              </h3>
+              <div className="font-mono text-[12px] space-y-1.5 text-text-secondary">
+                {merchantOrder.shippingMethod === "meetup" ? (
+                  merchantOrder.meetupDetail ? (
+                    <p>
+                      <span className="text-text-disabled">面交備註：</span>
+                      {merchantOrder.meetupDetail}
+                    </p>
+                  ) : null
+                ) : (
+                  <>
+                    {merchantOrder.buyerPhone ? (
+                      <p>
+                        <span className="text-text-disabled">聯絡電話：</span>
+                        {merchantOrder.buyerPhone}
+                      </p>
+                    ) : null}
+                    {merchantOrder.sfLockerCode ? (
+                      <p>
+                        <span className="text-text-disabled">自提櫃代碼：</span>
+                        {merchantOrder.sfLockerCode}
+                      </p>
+                    ) : null}
+                    {merchantOrder.sfAddress ? (
+                      <p>
+                        <span className="text-text-disabled">網點地址：</span>
+                        {merchantOrder.sfAddress}
+                      </p>
+                    ) : null}
+                  </>
+                )}
+                {merchantOrder.buyerRemark ? (
+                  <p>
+                    <span className="text-text-disabled">買家備註：</span>
+                    {merchantOrder.buyerRemark}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           {order.status === "cancelled" && (
             <div className="p-3.5 bg-[rgba(239,68,68,0.06)] border border-warning/20 rounded-xl flex items-start gap-3 animate-fadeIn">
               <p className="font-sans font-bold text-[13.5px] text-warning">
@@ -195,22 +252,32 @@ export function MerchantOrderDetailView({
             !merchantOrder.inboundTrackingNo && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                買家已完成付款，資金已託管。請將卡牌寄往平台倉庫，並填寫順豐物流單號以供入庫鑑定。
+                買家已完成付款，資金已託管。請將卡牌寄往平台倉庫，並填寫快遞公司與物流單號以供入庫鑑定。
               </p>
+              <input
+                type="text"
+                value={inboundCourierInput}
+                onChange={(event) => setInboundCourierInput(event.target.value)}
+                placeholder="快遞公司（例如：順豐、DHL）"
+                className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+              />
               <input
                 type="text"
                 value={inboundTrackingInput}
                 onChange={(event) => setInboundTrackingInput(event.target.value)}
-                placeholder="寄往平台的順豐單號"
+                placeholder="物流單號"
                 className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
               />
               <button
                 type="button"
-                disabled={!inboundTrackingInput.trim()}
+                disabled={
+                  !inboundTrackingInput.trim() || !inboundCourierInput.trim()
+                }
                 onClick={() => {
                   void runSubmitInboundTracking(
                     order.id,
                     inboundTrackingInput.trim(),
+                    inboundCourierInput.trim(),
                     refreshAfterLogistics,
                   );
                 }}
@@ -229,7 +296,11 @@ export function MerchantOrderDetailView({
                 已提交入庫物流單號，等待平台確認入庫後開始鑑定。
               </p>
               <p className="font-mono text-[12px] text-brand">
-                已提交單號：{merchantOrder.inboundTrackingNo}
+                已提交：
+                {merchantOrder.inboundCourierName
+                  ? `${merchantOrder.inboundCourierName} · `
+                  : ""}
+                {merchantOrder.inboundTrackingNo}
               </p>
             </div>
           )}
@@ -238,27 +309,40 @@ export function MerchantOrderDetailView({
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 {isSfShipping
-                  ? "買家已完成託管付款，請安排順豐發貨並填寫物流單號。"
+                  ? "買家已完成託管付款，請安排快遞發貨並填寫快遞公司與物流單號。"
                   : "買家已完成託管付款，請與買家面交後確認完成。"}
               </p>
               {isSfShipping ? (
                 <>
                   <input
                     type="text"
+                    value={outboundCourierInput}
+                    onChange={(event) =>
+                      setOutboundCourierInput(event.target.value)
+                    }
+                    placeholder="快遞公司（例如：順豐、DHL）"
+                    className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
+                  />
+                  <input
+                    type="text"
                     value={outboundTrackingInput}
                     onChange={(event) =>
                       setOutboundTrackingInput(event.target.value)
                     }
-                    placeholder="順豐物流單號"
+                    placeholder="物流單號"
                     className="w-full h-10 rounded-lg border border-white/10 bg-[#120f0c] px-3 text-[12px] text-brand"
                   />
                   <button
                     type="button"
-                    disabled={!outboundTrackingInput.trim()}
+                    disabled={
+                      !outboundTrackingInput.trim() ||
+                      !outboundCourierInput.trim()
+                    }
                     onClick={() => {
                       void runSubmitDirectFulfillment(
                         order.id,
                         outboundTrackingInput.trim(),
+                        outboundCourierInput.trim(),
                         refreshAfterLogistics,
                       );
                     }}
@@ -273,6 +357,7 @@ export function MerchantOrderDetailView({
                   onClick={() => {
                     void runSubmitDirectFulfillment(
                       order.id,
+                      undefined,
                       undefined,
                       refreshAfterLogistics,
                     );
@@ -295,7 +380,11 @@ export function MerchantOrderDetailView({
               </p>
               {merchantOrder.outboundTrackingNo ? (
                 <p className="font-mono text-[12px] text-brand">
-                  物流單號：{merchantOrder.outboundTrackingNo}
+                  物流：
+                  {merchantOrder.outboundCourierName
+                    ? `${merchantOrder.outboundCourierName} · `
+                    : ""}
+                  {merchantOrder.outboundTrackingNo}
                 </p>
               ) : null}
             </div>
@@ -309,7 +398,11 @@ export function MerchantOrderDetailView({
               </p>
               {merchantOrder.inboundTrackingNo ? (
                 <p className="font-mono text-[12px] text-brand">
-                  入庫單號：{merchantOrder.inboundTrackingNo}
+                  入庫：
+                  {merchantOrder.inboundCourierName
+                    ? `${merchantOrder.inboundCourierName} · `
+                    : ""}
+                  {merchantOrder.inboundTrackingNo}
                 </p>
               ) : null}
             </div>

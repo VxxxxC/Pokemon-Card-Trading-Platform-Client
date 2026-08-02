@@ -362,7 +362,9 @@ export type MemberOrderDetail = UserTradingOrder & {
   listingId: string;
   listingImageUrls: string[];
   inboundTrackingNo: string | null;
+  inboundCourierName: string | null;
   outboundTrackingNo: string | null;
+  outboundCourierName: string | null;
   paymentAmount: number;
   listingAcceptsBuyerAuth: boolean;
   canPay: boolean;
@@ -383,6 +385,11 @@ export type MemberOrderDetail = UserTradingOrder & {
   paymentCaptureStatus?: Tables<"merchant_orders">["payment_capture_status"];
   /** Raw merchant escrow for buyer badge mapping. */
   merchantEscrowStatus?: Tables<"merchant_orders">["escrow_status"];
+  sfLockerCode?: string | null;
+  sfAddress?: string | null;
+  buyerPhone?: string | null;
+  meetupDetail?: string | null;
+  buyerRemark?: string | null;
 };
 
 export type GetMemberOrderDetailResult =
@@ -405,6 +412,7 @@ type MemberOrderDetailQueryRow = {
   platform_received_at: string | null;
   payment_capture_status: string | null;
   inbound_tracking_no: string | null;
+  inbound_courier_name: string | null;
   outbound_tracking_no: string | null;
   buyer_confirmed_at: string | null;
   payout_hold_until: string | null;
@@ -455,9 +463,16 @@ type BuyerMerchantOrderDetailQueryRow = {
   shipping_method: string | null;
   total_amount: number | null;
   inbound_tracking_no: string | null;
+  inbound_courier_name: string | null;
   outbound_tracking_no: string | null;
+  outbound_courier_name: string | null;
   payment_capture_status: Tables<"merchant_orders">["payment_capture_status"];
   auth_result: string | null;
+  sf_locker_code: string | null;
+  sf_address: string | null;
+  buyer_phone: string | null;
+  meetup_detail: string | null;
+  buyer_remark: string | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1083,7 +1098,9 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   listingImageUrls: string[];
   logisticsProofPath: string | null;
   inboundTrackingNo: string | null;
+  inboundCourierName: string | null;
   outboundTrackingNo: string | null;
+  outboundCourierName: string | null;
   itemSubtotal: number;
   shippingFee: number;
   shippingMethod: string | null;
@@ -1098,6 +1115,11 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   commissionRateApplied: number | null;
   merchantPayoutAmount: number | null;
   payoutStatus: string;
+  sfLockerCode: string | null;
+  sfAddress: string | null;
+  buyerPhone: string | null;
+  meetupDetail: string | null;
+  buyerRemark: string | null;
 };
 
 export type GetMerchantOrderDetailResult =
@@ -1116,7 +1138,9 @@ type MerchantOrderDetailQueryRow = {
   listing_id: string;
   logistics_proof_path: string | null;
   inbound_tracking_no: string | null;
+  inbound_courier_name: string | null;
   outbound_tracking_no: string | null;
+  outbound_courier_name: string | null;
   item_subtotal: number | null;
   shipping_fee: number | null;
   shipping_method: string | null;
@@ -1128,6 +1152,11 @@ type MerchantOrderDetailQueryRow = {
   commission_rate_applied: number | null;
   merchant_payout_amount: number | null;
   payout_status: string;
+  sf_locker_code: string | null;
+  sf_address: string | null;
+  buyer_phone: string | null;
+  meetup_detail: string | null;
+  buyer_remark: string | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1197,7 +1226,9 @@ function mapMerchantOrderDetailRow(
     listingImageUrls,
     logisticsProofPath: row.logistics_proof_path,
     inboundTrackingNo: row.inbound_tracking_no,
+    inboundCourierName: row.inbound_courier_name,
     outboundTrackingNo: row.outbound_tracking_no,
+    outboundCourierName: row.outbound_courier_name,
     itemSubtotal: Number(row.item_subtotal ?? row.final_price),
     shippingFee: Number(row.shipping_fee ?? 0),
     shippingMethod: row.shipping_method,
@@ -1219,6 +1250,11 @@ function mapMerchantOrderDetailRow(
         ? Number(row.merchant_payout_amount)
         : null,
     payoutStatus: row.payout_status,
+    sfLockerCode: row.sf_locker_code,
+    sfAddress: row.sf_address,
+    buyerPhone: row.buyer_phone,
+    meetupDetail: row.meetup_detail,
+    buyerRemark: row.buyer_remark,
   };
 }
 
@@ -1281,7 +1317,9 @@ export async function getMerchantOrderDetail(
           listing_id,
           logistics_proof_path,
           inbound_tracking_no,
+          inbound_courier_name,
           outbound_tracking_no,
+          outbound_courier_name,
           item_subtotal,
           shipping_fee,
           shipping_method,
@@ -1293,6 +1331,11 @@ export async function getMerchantOrderDetail(
           commission_rate_applied,
           merchant_payout_amount,
           payout_status,
+          sf_locker_code,
+          sf_address,
+          buyer_phone,
+          meetup_detail,
+          buyer_remark,
           listings!inner (
             grading_company,
             grading_score,
@@ -1415,7 +1458,9 @@ function mapMemberOrderDetailRow(
     listingId: row.listing_id,
     listingImageUrls,
     inboundTrackingNo: row.inbound_tracking_no,
+    inboundCourierName: row.inbound_courier_name,
     outboundTrackingNo: row.outbound_tracking_no,
+    outboundCourierName: null,
     paymentAmount: calculateMemberAuthPaymentTotal(Number(row.final_price)),
     listingAcceptsBuyerAuth: row.listings.use_authentication,
     canPay: authActions.canPay,
@@ -1502,7 +1547,9 @@ function mapBuyerMerchantOrderDetailRow(
     listingId: row.listing_id,
     listingImageUrls,
     inboundTrackingNo: row.inbound_tracking_no,
+    inboundCourierName: row.inbound_courier_name,
     outboundTrackingNo: row.outbound_tracking_no,
+    outboundCourierName: row.outbound_courier_name,
     paymentAmount: Number(row.total_amount ?? row.final_price),
     listingAcceptsBuyerAuth: useAuthentication,
     canPay: pendingPayment,
@@ -1515,6 +1562,11 @@ function mapBuyerMerchantOrderDetailRow(
     totalAmount: Number(row.total_amount ?? row.final_price),
     paymentCaptureStatus: row.payment_capture_status,
     merchantEscrowStatus: row.escrow_status,
+    sfLockerCode: row.sf_locker_code,
+    sfAddress: row.sf_address,
+    buyerPhone: row.buyer_phone,
+    meetupDetail: row.meetup_detail,
+    buyerRemark: row.buyer_remark,
   };
 }
 
@@ -1575,9 +1627,16 @@ async function getBuyerMerchantOrderDetail(
           shipping_method,
           total_amount,
           inbound_tracking_no,
+          inbound_courier_name,
           outbound_tracking_no,
+          outbound_courier_name,
           payment_capture_status,
           auth_result,
+          sf_locker_code,
+          sf_address,
+          buyer_phone,
+          meetup_detail,
+          buyer_remark,
           listings!inner (
             grading_company,
             grading_score,
@@ -1725,6 +1784,7 @@ export async function getMemberOrderDetail(
           platform_received_at,
           payment_capture_status,
           inbound_tracking_no,
+          inbound_courier_name,
           outbound_tracking_no,
           buyer_confirmed_at,
           payout_hold_until,
@@ -1907,6 +1967,7 @@ export async function cancelMemberOrder(
 export async function submitMerchantLogistics(
   orderId: string,
   trackingNo: string,
+  courierName: string,
 ): Promise<MemberOrderActionResult> {
   const invalidId = rejectNonUuidMutationOrderId(orderId);
   if (invalidId) {
@@ -1915,8 +1976,12 @@ export async function submitMerchantLogistics(
 
   const trimmedOrderId = orderId.trim();
   const trimmedTracking = trackingNo.trim();
+  const trimmedCourier = courierName.trim();
   if (!trimmedTracking) {
-    return { success: false, error: "請輸入有效的順豐物流單號" };
+    return { success: false, error: "請輸入有效的物流單號" };
+  }
+  if (!trimmedCourier) {
+    return { success: false, error: "請輸入快遞公司名稱" };
   }
 
   if (!isSupabaseConfigured()) {
@@ -1946,6 +2011,7 @@ export async function submitMerchantLogistics(
             p_order_id: string;
             p_merchant_id: string;
             p_tracking_no: string;
+            p_courier_name: string;
           },
         ) => Promise<{ error: { message: string } | null }>;
       }
@@ -1955,6 +2021,7 @@ export async function submitMerchantLogistics(
         p_order_id: trimmedOrderId,
         p_merchant_id: user.id,
         p_tracking_no: trimmedTracking,
+        p_courier_name: trimmedCourier,
       },
     );
 
@@ -1976,6 +2043,7 @@ export async function submitMerchantLogistics(
 export async function submitMerchantDirectFulfillment(
   orderId: string,
   trackingNo?: string,
+  courierName?: string,
 ): Promise<MemberOrderActionResult> {
   const invalidId = rejectNonUuidMutationOrderId(orderId);
   if (invalidId) {
@@ -1984,6 +2052,7 @@ export async function submitMerchantDirectFulfillment(
 
   const trimmedOrderId = orderId.trim();
   const trimmedTracking = trackingNo?.trim() ?? "";
+  const trimmedCourier = courierName?.trim() ?? "";
 
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
@@ -2012,6 +2081,7 @@ export async function submitMerchantDirectFulfillment(
             p_order_id: string;
             p_merchant_id: string;
             p_tracking_no?: string;
+            p_courier_name?: string;
           },
         ) => Promise<{ error: { message: string } | null }>;
       }
@@ -2019,6 +2089,7 @@ export async function submitMerchantDirectFulfillment(
       p_order_id: trimmedOrderId,
       p_merchant_id: user.id,
       ...(trimmedTracking ? { p_tracking_no: trimmedTracking } : {}),
+      ...(trimmedCourier ? { p_courier_name: trimmedCourier } : {}),
     });
 
     if (error) {
@@ -2541,10 +2612,15 @@ export async function mockPayMemberAuthOrder(
 export async function submitInboundTracking(
   orderId: string,
   trackingNo: string,
+  courierName: string,
 ): Promise<MemberOrderActionResult> {
   const trimmedTracking = trackingNo.trim();
+  const trimmedCourier = courierName.trim();
   if (!trimmedTracking) {
-    return { success: false, error: "請輸入有效的順豐物流單號" };
+    return { success: false, error: "請輸入有效的物流單號" };
+  }
+  if (!trimmedCourier) {
+    return { success: false, error: "請輸入快遞公司名稱" };
   }
 
   if (!isSupabaseConfigured()) {
@@ -2579,6 +2655,7 @@ export async function submitInboundTracking(
             p_order_id: string;
             p_seller_id: string;
             p_tracking_no: string;
+            p_courier_name: string;
           },
         ) => Promise<{ error: { message: string } | null }>;
       }
@@ -2586,6 +2663,7 @@ export async function submitInboundTracking(
       p_order_id: trimmedOrderId,
       p_seller_id: user.id,
       p_tracking_no: trimmedTracking,
+      p_courier_name: trimmedCourier,
     });
 
     if (error) {

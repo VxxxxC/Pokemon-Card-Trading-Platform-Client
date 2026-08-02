@@ -53,7 +53,8 @@
 | File | Content |
 |------|---------|
 | `20260803120000_escrow_state_shipped.sql` | `ALTER TYPE escrow_state ADD VALUE 'shipped'` |
-| `20260803120100_merchant_direct_shipped.sql` | `rpc_submit_merchant_direct_fulfillment`; patch payout + `fn_merchant_order_is_open` / `fn_merchant_order_needs_seller_action`; rebuild `search_merchant_trading_orders` |
+| `20260803120100_merchant_direct_shipped.sql` | `rpc_submit_merchant_direct_fulfillment`; patch payout prepare + `fn_merchant_order_is_open` / `fn_merchant_order_needs_seller_action`; rebuild `search_merchant_trading_orders` |
+| `20260803120300_merchant_finalize_shipped.sql` | `rpc_finalize_merchant_order_payout` accepts `shipped` (non-auth buyer confirm) |
 
 ## Server action: `getMerchantOrderDetail`
 

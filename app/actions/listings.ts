@@ -14,6 +14,10 @@ import {
   gradingOptionToFields,
 } from "@/lib/grading/options";
 import { isMerchantListingAllowed } from "@/lib/kyc/merchant-gates";
+import {
+  parseShippingFeeInput,
+  validateListingExtraShippingFee,
+} from "@/lib/merchant/shipping-fee";
 import { mapListingInsertError } from "@/lib/listings/errors";
 import {
   parseImageUploadsFromFormData,
@@ -128,6 +132,27 @@ function resolveListingSellerPersona(input: {
   return { persona };
 }
 
+function resolveExtraShippingFeeForListing(
+  sellerPersona: ListingSellerPersona | undefined,
+  rawValue: unknown,
+): { ok: true; amount: number } | { ok: false; error: string } {
+  if (sellerPersona !== "merchant") {
+    return { ok: true, amount: 0 };
+  }
+
+  const parsed = parseShippingFeeInput(rawValue);
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const feeError = validateListingExtraShippingFee(parsed.amount);
+  if (feeError) {
+    return { ok: false, error: feeError };
+  }
+
+  return { ok: true, amount: parsed.amount };
+}
+
 function parseCreateCardListingForm(formData: FormData): {
   fields: {
     productId: string;
@@ -137,10 +162,12 @@ function parseCreateCardListingForm(formData: FormData): {
     useAuthentication: boolean;
     sourceCollectionId?: string;
     sellerPersona?: ListingSellerPersona;
+    extraShippingFee: number;
   };
   uploads: ParsedImageUpload[];
   preUploaded: PreUploadedListingImage[] | null;
   rawImageEntryCount: number;
+  extraShippingFeeError: string | null;
 } {
   const productId = String(formData.get("productId") ?? "").trim();
   const gradingOptionId = String(formData.get("gradingOptionId") ?? "").trim();
@@ -161,6 +188,10 @@ function parseCreateCardListingForm(formData: FormData): {
   const sourceCollectionId = sourceCollectionIdRaw || undefined;
   const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
   const sellerPersona = parseSellerPersonaField(sellerPersonaRaw);
+  const extraShippingParsed = resolveExtraShippingFeeForListing(
+    sellerPersona,
+    formData.get("extraShippingFee"),
+  );
 
   const rawImageEntries = formData.getAll("images");
   const uploads = parseImageUploadsFromFormData(formData);
@@ -178,10 +209,14 @@ function parseCreateCardListingForm(formData: FormData): {
       useAuthentication,
       sourceCollectionId,
       sellerPersona,
+      extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
     uploads,
     preUploaded,
     rawImageEntryCount: rawImageEntries.length,
+    extraShippingFeeError: extraShippingParsed.ok
+      ? null
+      : extraShippingParsed.error,
   };
 }
 
@@ -190,7 +225,12 @@ function validateServerListingSubmit(
   uploads: ParsedImageUpload[],
   preUploaded: PreUploadedListingImage[] | null,
   rawImageEntryCount: number,
+  extraShippingFeeError?: string | null,
 ): string | null {
+  if (extraShippingFeeError) {
+    return extraShippingFeeError;
+  }
+
   const fieldError = validateCreateCardListingFields(fields);
   if (fieldError) return fieldError;
 
@@ -509,7 +549,7 @@ export async function updateCardListing(
 export async function createCardListing(
   formData: FormData,
 ): Promise<CreateCardListingResult> {
-  const { fields, uploads, preUploaded, rawImageEntryCount } =
+  const { fields, uploads, preUploaded, rawImageEntryCount, extraShippingFeeError } =
     parseCreateCardListingForm(formData);
 
   const uploadedObjectKeys: string[] = preUploaded
@@ -530,6 +570,7 @@ export async function createCardListing(
     uploads,
     preUploaded,
     rawImageEntryCount,
+    extraShippingFeeError,
   );
 
   if (validationError) {
@@ -650,6 +691,8 @@ export async function createCardListing(
       status: "active",
       seller_persona: sellerPersona,
       use_authentication: fields.useAuthentication,
+      extra_shipping_fee:
+        sellerPersona === "merchant" ? fields.extraShippingFee : 0,
     };
 
     if (fields.sourceCollectionId) {
@@ -716,10 +759,12 @@ function parseCreateSealedListingForm(formData: FormData): {
     sellerDescription?: string;
     sourceCollectionId?: string;
     sellerPersona?: ListingSellerPersona;
+    extraShippingFee: number;
   };
   uploads: ParsedImageUpload[];
   preUploaded: PreUploadedListingImage[] | null;
   rawImageEntryCount: number;
+  extraShippingFeeError: string | null;
 } {
   const productId = String(formData.get("productId") ?? "").trim();
   const price = Number(formData.get("price"));
@@ -737,6 +782,10 @@ function parseCreateSealedListingForm(formData: FormData): {
   const sourceCollectionId = sourceCollectionIdRaw || undefined;
   const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
   const sellerPersona = parseSellerPersonaField(sellerPersonaRaw);
+  const extraShippingParsed = resolveExtraShippingFeeForListing(
+    sellerPersona,
+    formData.get("extraShippingFee"),
+  );
 
   const rawImageEntries = formData.getAll("images");
   const uploads = parseImageUploadsFromFormData(formData);
@@ -753,10 +802,14 @@ function parseCreateSealedListingForm(formData: FormData): {
       sellerDescription: sellerDescription || undefined,
       sourceCollectionId,
       sellerPersona,
+      extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
     uploads,
     preUploaded,
     rawImageEntryCount: rawImageEntries.length,
+    extraShippingFeeError: extraShippingParsed.ok
+      ? null
+      : extraShippingParsed.error,
   };
 }
 
@@ -765,7 +818,12 @@ function validateServerSealedListingSubmit(
   uploads: ParsedImageUpload[],
   preUploaded: PreUploadedListingImage[] | null,
   rawImageEntryCount: number,
+  extraShippingFeeError?: string | null,
 ): string | null {
+  if (extraShippingFeeError) {
+    return extraShippingFeeError;
+  }
+
   const fieldError = validateCreateSealedListingFields(fields);
   if (fieldError) return fieldError;
 
@@ -801,7 +859,7 @@ function validateServerSealedListingSubmit(
 export async function createSealedListing(
   formData: FormData,
 ): Promise<CreateCardListingResult> {
-  const { fields, uploads, preUploaded, rawImageEntryCount } =
+  const { fields, uploads, preUploaded, rawImageEntryCount, extraShippingFeeError } =
     parseCreateSealedListingForm(formData);
 
   const uploadedObjectKeys: string[] = preUploaded
@@ -822,6 +880,7 @@ export async function createSealedListing(
     uploads,
     preUploaded,
     rawImageEntryCount,
+    extraShippingFeeError,
   );
 
   if (validationError) {
@@ -938,6 +997,8 @@ export async function createSealedListing(
       status: "active",
       seller_persona: sellerPersona,
       use_authentication: false,
+      extra_shipping_fee:
+        sellerPersona === "merchant" ? fields.extraShippingFee : 0,
     };
 
     if (fields.sourceCollectionId) {

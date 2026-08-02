@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createExpressAccountForKycApplication } from "@/lib/stripe/connect-kyc";
+import { isStripeConnectAccountId } from "@/lib/stripe/sync-kyc-connect-flags";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -46,7 +47,9 @@ export async function GET() {
       .eq("merchant_id", user.id)
       .maybeSingle();
 
-    let stripeAccountId = kycRecord?.stripe_account_id ?? null;
+    let stripeAccountId = isStripeConnectAccountId(kycRecord?.stripe_account_id)
+      ? kycRecord.stripe_account_id
+      : null;
 
     // Approve pipeline 的 Stripe 步驟失敗時的重試路徑
     if (!stripeAccountId) {
@@ -73,7 +76,7 @@ export async function GET() {
     const link = await stripe.accountLinks.create({
       account: stripeAccountId,
       refresh_url: `${siteUrl}/api/stripe/connect/onboard`,
-      return_url: `${siteUrl}/profile/merchant?stripe=return`,
+      return_url: `${siteUrl}/api/stripe/connect/return`,
       type: "account_onboarding",
     });
 

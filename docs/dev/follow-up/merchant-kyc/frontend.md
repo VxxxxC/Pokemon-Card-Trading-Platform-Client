@@ -32,10 +32,16 @@
 
 | File | 現況 |
 |------|------|
-| `MerchantOverviewClient.tsx` | Stripe CTA 仍為無樣式 stub |
+| `MerchantOverviewClient.tsx` | `stripeConnected` 時「管理 Stripe 收款」→ `/api/stripe/connect/dashboard`；未完成時 onboard CTA |
+| `finance/page.tsx` + `MerchantFinancePageData.tsx` | Server 載入 `kyc_records`；`MerchantFinanceClient` Stripe 區塊：已連結 → dashboard link；未連結 → onboard |
+
+### Stripe Connect 入口（merchant）
+
+- **未完成 onboarding / payout 未就緒**：`/api/stripe/connect/onboard`（hosted onboarding）
+- **已連結且 payout-ready**：`/api/stripe/connect/dashboard`（平台 `createLoginLink`，唔暴露 platform-admin `getStripeConnectDashboardUrl`）
 
 ## Acceptance checklist
 
 - [x] 3 步 wizard + stepper
 - [x] `/admin/merchants` 表格 UI + 審批/文件/重試
-- [ ] Merchant dashboard Stripe CTA 樣式
+- [x] Merchant overview + finance Stripe CTA（onboard / dashboard login link）

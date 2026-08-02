@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import type Stripe from "stripe";
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
+import { PLATFORM_DEFAULT_COURIER_SHIPPING_FEE } from "@/lib/merchant/shipping-fee";
 import {
+  computeCourierShippingFee,
   isMerchantShippingMethod,
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
@@ -31,6 +33,9 @@ export type MerchantCheckoutOrder = {
   shippingFee: number;
   authFee: number;
   totalAmount: number;
+  baseCourierShippingFee: number;
+  listingExtraShippingFee: number;
+  courierShippingFeeQuote: number;
   shippingMethod: MerchantShippingMethod | null;
   requiresAuthentication: boolean;
   listingAcceptsAuthentication: boolean;
@@ -68,6 +73,14 @@ export type MerchantCheckoutPaymentStatus = {
   paymentCaptureStatus: string | null;
 };
 
+export type MerchantCheckoutDeliveryDetails = {
+  sfLockerCode?: string;
+  sfAddress?: string;
+  buyerPhone?: string;
+  meetupDetail?: string;
+  buyerRemark?: string;
+};
+
 type CheckoutOrderQueryRow = Pick<
   Tables<"merchant_orders">,
   | "id"
@@ -92,6 +105,7 @@ type CheckoutOrderQueryRow = Pick<
     grading_score: string | null;
     images: unknown;
     use_authentication: boolean;
+    extra_shipping_fee: number | null;
     product_catalog: {
       name_ja: string;
       name_zh: string | null;
@@ -126,6 +140,7 @@ const CHECKOUT_ORDER_SELECT = `
     grading_score,
     images,
     use_authentication,
+    extra_shipping_fee,
     product_catalog (
       name_ja,
       name_zh,
@@ -172,6 +187,11 @@ type CheckoutRpcClient = {
       p_order_id: string;
       p_shipping_method: string;
       p_use_auth: boolean;
+      p_sf_locker_code?: string | null;
+      p_sf_address?: string | null;
+      p_buyer_phone?: string | null;
+      p_meetup_detail?: string | null;
+      p_buyer_remark?: string | null;
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
@@ -184,6 +204,49 @@ function asCheckoutRpcClient(
   supabase: ServerSupabaseClient,
 ): CheckoutRpcClient {
   return supabase as unknown as CheckoutRpcClient;
+}
+
+function normalizeDeliveryField(value: string | undefined): string | null {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function validateMerchantCheckoutDeliveryDetails(
+  shippingMethod: MerchantShippingMethod,
+  deliveryDetails?: MerchantCheckoutDeliveryDetails,
+): { ok: true; data: MerchantCheckoutDeliveryDetails } | { ok: false; error: string } {
+  const sfLockerCode = normalizeDeliveryField(deliveryDetails?.sfLockerCode);
+  const sfAddress = normalizeDeliveryField(deliveryDetails?.sfAddress);
+  const buyerPhone = normalizeDeliveryField(deliveryDetails?.buyerPhone);
+  const meetupDetail = normalizeDeliveryField(deliveryDetails?.meetupDetail);
+  const buyerRemark = normalizeDeliveryField(deliveryDetails?.buyerRemark);
+
+  if (shippingMethod === "sf") {
+    if (!sfLockerCode || !buyerPhone) {
+      return {
+        ok: false,
+        error: "請填寫順豐自提櫃代碼及聯絡電話。",
+      };
+    }
+  }
+
+  if (shippingMethod === "meetup" && !meetupDetail) {
+    return {
+      ok: false,
+      error: "請填寫面交地點與時間備註。",
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      sfLockerCode: sfLockerCode ?? undefined,
+      sfAddress: sfAddress ?? undefined,
+      buyerPhone: buyerPhone ?? undefined,
+      meetupDetail: meetupDetail ?? undefined,
+      buyerRemark: buyerRemark ?? undefined,
+    },
+  };
 }
 
 function displayCardName(catalog: {
@@ -325,11 +388,33 @@ export async function loadMerchantCheckoutOrder(
 
     const { data: shop } = await supabase
       .from("merchant_shops")
-      .select("shop_name, shop_handle")
+      .select("shop_name, shop_handle, base_courier_shipping_fee")
       .eq("merchant_id", row.merchant_id)
-      .maybeSingle<Pick<Tables<"merchant_shops">, "shop_name" | "shop_handle">>();
+      .maybeSingle<
+        Pick<
+          Tables<"merchant_shops">,
+          "shop_name" | "shop_handle" | "base_courier_shipping_fee"
+        >
+      >();
 
     const itemSubtotal = Number(row.item_subtotal ?? row.final_price);
+    const baseCourierShippingFee = Number(
+      shop?.base_courier_shipping_fee ?? PLATFORM_DEFAULT_COURIER_SHIPPING_FEE,
+    );
+    const listingExtraShippingFee = Number(
+      row.listings?.extra_shipping_fee ?? 0,
+    );
+    const courierShippingFeeQuote = computeCourierShippingFee({
+      shippingMethod: "sf",
+      baseFee: baseCourierShippingFee,
+      extraFee: listingExtraShippingFee,
+    });
+    const shippingMethod = toShippingMethod(row.shipping_method);
+    const lockedShippingFee = Number(row.shipping_fee ?? 0);
+    const shippingFee =
+      shippingMethod === "sf" && lockedShippingFee > 0
+        ? lockedShippingFee
+        : courierShippingFeeQuote;
 
     return {
       success: true,
@@ -339,10 +424,13 @@ export async function loadMerchantCheckoutOrder(
         escrowStatus: row.escrow_status,
         isPayable: row.escrow_status === "pending_payment",
         itemSubtotal,
-        shippingFee: Number(row.shipping_fee ?? 0),
+        shippingFee,
         authFee: Number(row.auth_fee ?? 0),
         totalAmount: Number(row.total_amount ?? itemSubtotal),
-        shippingMethod: toShippingMethod(row.shipping_method),
+        baseCourierShippingFee,
+        listingExtraShippingFee,
+        courierShippingFeeQuote,
+        shippingMethod,
         requiresAuthentication: Boolean(row.requires_authentication),
         listingAcceptsAuthentication: Boolean(
           row.listings?.use_authentication,
@@ -382,7 +470,11 @@ export async function loadMerchantCheckoutOrder(
  */
 export async function createMerchantOrderPaymentIntent(
   orderIdOrNumber: string,
-  options: { shippingMethod: string; useAuth: boolean },
+  options: {
+    shippingMethod: string;
+    useAuth: boolean;
+    deliveryDetails?: MerchantCheckoutDeliveryDetails;
+  },
 ): Promise<ActionResult<MerchantCheckoutPaymentIntent>> {
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
@@ -391,6 +483,15 @@ export async function createMerchantOrderPaymentIntent(
   if (!isMerchantShippingMethod(options.shippingMethod)) {
     return { success: false, error: "請選擇有效的配送方式" };
   }
+
+  const deliveryValidation = validateMerchantCheckoutDeliveryDetails(
+    options.shippingMethod,
+    options.deliveryDetails,
+  );
+  if (!deliveryValidation.ok) {
+    return { success: false, error: deliveryValidation.error };
+  }
+  const deliveryDetails = deliveryValidation.data;
 
   const publishableKey = getStripePublishableKey();
   const stripe = await getStripeClient();
@@ -453,6 +554,23 @@ export async function createMerchantOrderPaymentIntent(
       p_order_id: row.id,
       p_shipping_method: options.shippingMethod,
       p_use_auth: options.useAuth,
+      p_sf_locker_code:
+        options.shippingMethod === "sf"
+          ? deliveryDetails.sfLockerCode ?? null
+          : null,
+      p_sf_address:
+        options.shippingMethod === "sf"
+          ? deliveryDetails.sfAddress ?? null
+          : null,
+      p_buyer_phone:
+        options.shippingMethod === "sf"
+          ? deliveryDetails.buyerPhone ?? null
+          : null,
+      p_meetup_detail:
+        options.shippingMethod === "meetup"
+          ? deliveryDetails.meetupDetail ?? null
+          : null,
+      p_buyer_remark: deliveryDetails.buyerRemark ?? null,
     });
 
     if (prepareError) {

@@ -26,7 +26,7 @@ import {
 } from "@/app/actions/merchant-checkout";
 import {
   AUTHENTICATION_FEE,
-  SF_SHIPPING_FEE,
+  computeCourierShippingFee,
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
 
@@ -185,10 +185,10 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
   // Delivery configuration states
   const [shippingType, setShippingType] = useState<MerchantShippingMethod>("sf");
-  const [sfLockerCode, setSfLockerCode] = useState("H852UA14P");
-  const [sfAddress, setSfAddress] = useState("旺角中心地下順豐智能櫃");
-  const [buyerPhone, setBuyerPhone] = useState("91234567");
-  const [meetupDetail, setMeetupDetail] = useState("旺角站 A 出口閘邊");
+  const [sfLockerCode, setSfLockerCode] = useState("");
+  const [sfAddress, setSfAddress] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [meetupDetail, setMeetupDetail] = useState("");
 
   // NEW: Authentication service toggle
   const [authServiceEnabled, setAuthServiceEnabled] = useState(false);
@@ -311,7 +311,14 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
   // Financial calculations
   const itemSubtotal = currentItem.price;
-  const shippingFee = shippingType === "sf" ? SF_SHIPPING_FEE : 0;
+  const shippingFee =
+    shippingType === "sf"
+      ? computeCourierShippingFee({
+          shippingMethod: "sf",
+          baseFee: order.baseCourierShippingFee,
+          extraFee: order.listingExtraShippingFee,
+        })
+      : 0;
   const authFee = authServiceEnabled ? AUTHENTICATION_FEE : 0;
   const totalDiscount = selectedCoupons.reduce((sum, code) => {
     const coupon = AVAILABLE_COUPONS.find((c) => c.code === code);
@@ -330,6 +337,13 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
       return;
     }
 
+    if (shippingType === "meetup" && !meetupDetail.trim()) {
+      toast.error("⚠️ 資料未補全", {
+        description: "請填寫面交地點與時間備註。",
+      });
+      return;
+    }
+
     // 🚀 Lock state and trigger inline visual spinner directly
     setIsPaying(true);
 
@@ -341,6 +355,13 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
     const result = await createMerchantOrderPaymentIntent(order.orderId, {
       shippingMethod: shippingType,
       useAuth: authServiceEnabled,
+      deliveryDetails: {
+        sfLockerCode,
+        sfAddress,
+        buyerPhone,
+        meetupDetail,
+        buyerRemark,
+      },
     });
 
     setIsPaying(false);
@@ -663,6 +684,12 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                     HK$ {shippingFee}
                   </span>
                 </div>
+                {shippingType === "sf" && order.listingExtraShippingFee > 0 ? (
+                  <p className="font-mono text-[10.5px] text-text-disabled">
+                    基本運費 HK$ {order.baseCourierShippingFee} + 附加運費 HK${" "}
+                    {order.listingExtraShippingFee}
+                  </p>
+                ) : null}
                 {/* NEW: Authentication Fee Row */}
                 <div className="flex justify-between">
                   <span>官方第三方鑑定費</span>

@@ -113,6 +113,9 @@ export function BuyNowConfirmDialog({
     listing.nameJa?.trim() ||
     "未知商品";
 
+  const deliverySummary =
+    detail?.deliverySummary ?? listing.deliverySummary ?? null;
+
   return (
     <AlertDialog open={open} onOpenChange={handleDialogOpenChange}>
       <AlertDialogContent className="max-w-sm rounded-2xl border border-brand/25 bg-[#26211C] p-6 text-[#eae1da]">
@@ -136,6 +139,11 @@ export function BuyNowConfirmDialog({
             一口價購買：
           </p>
           <p className="font-bold text-[#eae1da]">{displayName}</p>
+          {deliverySummary ? (
+            <p className="font-mono text-[11px] text-[#8A8680]">
+              {deliverySummary}
+            </p>
+          ) : null}
           <p className="text-[12px] text-text-disabled">
             確認後將自動成交並開啟與賣家的聊天視窗，無需等待賣家接受出價。
           </p>

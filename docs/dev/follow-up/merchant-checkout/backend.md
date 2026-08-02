@@ -37,13 +37,24 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and
 | `20260731120000_merchant_pending_payment_expiry.sql` | 48h `pending_payment` 逾時 RPC + `fn_merchant_order_needs_seller_action` auth inbound only |
 | `20260803120000_escrow_state_shipped.sql` | `escrow_state` 新增 `shipped` |
 | `20260803120100_merchant_direct_shipped.sql` | `rpc_submit_merchant_direct_fulfillment`；非鑑定 payout gate 改 `shipped`；重建 trading search facets |
+| `20260803120500_merchant_shipping_fees.sql` | `merchant_shops.base_courier_shipping_fee`；`listings.extra_shipping_fee`；`fn_merchant_checkout_shipping_fee(method, merchant_id, listing_id)` |
+| `20260803120600_merchant_order_delivery_details.sql` | `merchant_orders` 買家交收欄位；`rpc_prepare_merchant_order_payment` 擴充 delivery 參數與驗證 |
+
+### 運費模型（商戶自定）
+
+| 欄位 | 表 | 說明 |
+|------|-----|------|
+| `base_courier_shipping_fee` | `merchant_shops` | 店舖統一快遞運費，預設 `30`，範圍 `0..500` |
+| `extra_shipping_fee` | `listings` | 單件商品附加運費（merchant persona），預設 `0`，範圍 `0..200` |
+
+結帳快遞運費：`fn_merchant_checkout_shipping_fee('sf', merchant_id, listing_id)` → base + extra（總額 ≤ 999）；面交為 `0`。金額由 `rpc_prepare_merchant_order_payment` 寫入 `merchant_orders.shipping_fee`，client 不可傳入。
 
 ### `merchant_orders` 新欄位
 
 | 欄位 | 說明 |
 |------|------|
 | `item_subtotal` | 商品成交價（= `final_price`） |
-| `shipping_fee` | 運費（SF `30` / 面交 `0`），`NOT NULL DEFAULT 0` |
+| `shipping_fee` | 快遞運費（`base_courier_shipping_fee` + `extra_shipping_fee`；面交 `0`），`NOT NULL DEFAULT 0` |
 | `auth_fee` | 鑑定費（`150` / `0`），`NOT NULL DEFAULT 0` |
 | `shipping_method` | `'sf'` \| `'meetup'` |
 | `total_amount` | 託管總額 = 三者之和 |
@@ -54,6 +65,9 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and
 | `stripe_transfer_id` / `stripe_destination_account_id` | Connect transfer 對帳資料 |
 | `buyer_confirmed_at` / `payout_status` | 買家確認及 `pending/processing/paid/failed` saga 狀態 |
 | `payout_attempted_at` / `transferred_at` / `payout_error` | 撥款稽核及安全化錯誤 |
+| `sf_locker_code` / `sf_address` / `buyer_phone` | 快遞交收資料（`shipping_method = 'sf'` 時由 prepare RPC 寫入） |
+| `meetup_detail` | 面交備註（`shipping_method = 'meetup'`） |
+| `buyer_remark` | 買家給賣家的交割備註（可選） |
 
 舊有 `payment_held` 訂單已回填 `item_subtotal` / `total_amount` = `final_price`。
 
@@ -64,9 +78,12 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ completed_and
 Fail-closed：`auth.uid() = p_buyer_id`、listing 必須 `active` + `seller_persona='merchant'`、非自售、鑑定加購需賣家開放。
 回傳 `{ order, order_kind: 'merchant', offer_id, message_id }`。
 
-### `rpc_prepare_merchant_order_payment(p_order_id, p_shipping_method, p_use_auth)`
+### `rpc_prepare_merchant_order_payment(p_order_id, p_shipping_method, p_use_auth, p_sf_locker_code?, p_sf_address?, p_buyer_phone?, p_meetup_detail?, p_buyer_remark?)`
 `SECURITY DEFINER` · `authenticated`。**DB 為金額真理源**：由 SQL 常數算運費 / 鑑定費並寫入訂單，避免 client 或 action 傳入被篡改的總額。
 Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_method ∈ ('sf','meetup')`、鑑定加購需 listing 開放。
+- `sf`：`p_sf_locker_code` + `p_buyer_phone` 必填；`p_sf_address` 可選
+- `meetup`：`p_meetup_detail` 必填
+- `p_buyer_remark` 可選（兩種配送方式皆可）
 回傳 `{ order_id, merchant_id, item_subtotal, shipping_fee, auth_fee, total_amount, shipping_method, stripe_payment_intent_id }`。
 
 ### `rpc_attach_merchant_order_payment_intent(p_order_id, p_payment_intent_id)`

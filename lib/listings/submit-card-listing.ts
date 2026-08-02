@@ -36,6 +36,7 @@ export type SubmitCardListingInput = {
   imageFiles?: File[];
   imageSlots?: ListingImageSlotInput[];
   photosRemark?: string[];
+  extraShippingFee?: number;
 };
 
 async function rollbackClientUploadedImages(
@@ -192,6 +193,13 @@ export async function submitCardListingWithProgress(
           }
           if (input.sellerPersona) {
             formData.append("sellerPersona", input.sellerPersona);
+          }
+          if (
+            input.sellerPersona === "merchant" &&
+            input.extraShippingFee != null &&
+            input.extraShippingFee > 0
+          ) {
+            formData.append("extraShippingFee", String(input.extraShippingFee));
           }
           return createCardListing(formData);
         })();

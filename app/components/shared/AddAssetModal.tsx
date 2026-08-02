@@ -174,6 +174,7 @@ export function AddAssetModal() {
 
   // 新增商品專屬欄位
   const [sellingPrice, setSellingPrice] = useState("");
+  const [extraShippingFee, setExtraShippingFee] = useState("");
   const [collectionAddPrompt, setCollectionAddPrompt] =
     useState<CollectionAddAfterListingPayload | null>(null);
 
@@ -276,6 +277,7 @@ export function AddAssetModal() {
         setSealState(defaultSealedProductScore());
         setPurchasePrice("");
         setSellingPrice("");
+        setExtraShippingFee("");
         setAcceptsBuyerAuth(false);
         setHobbyImages([]);
         resetPhotoSlots();
@@ -544,6 +546,10 @@ export function AddAssetModal() {
         imageFiles,
         photosRemark,
         sealState,
+        extraShippingFee:
+          addAssetSellerPersona === "merchant" && extraShippingFee.trim()
+            ? Number(extraShippingFee)
+            : undefined,
       });
 
       if (!result.success) {
@@ -621,6 +627,10 @@ export function AddAssetModal() {
         sellerPersona: addAssetSellerPersona,
         imageFiles,
         photosRemark,
+        extraShippingFee:
+          addAssetSellerPersona === "merchant" && extraShippingFee.trim()
+            ? Number(extraShippingFee)
+            : undefined,
       });
 
       if (!result.success) {
@@ -1164,6 +1174,23 @@ export function AddAssetModal() {
                   />
                 </div>
               </div>
+              {addAssetSellerPersona === "merchant" ? (
+                <div className="space-y-1.5">
+                  <label className="font-sans font-bold text-[#d4c4b7]">
+                    附加運費 (HK$)
+                  </label>
+                  <input
+                    name="extraShippingFee"
+                    type="number"
+                    min={0}
+                    max={200}
+                    step={1}
+                    placeholder="0"
+                    value={extraShippingFee}
+                    onChange={(e) => setExtraShippingFee(e.target.value)}
+                  />
+                </div>
+              ) : null}
             </div>
           )}
 
