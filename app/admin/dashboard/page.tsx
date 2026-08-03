@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getAdminDashboardMetrics } from "@/app/actions/admin-dashboard";
+import { getAdminDashboardMetrics, getAdminSystemHealthStatus } from "@/app/actions/admin-dashboard";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -28,12 +28,17 @@ export default async function AdminDashboardPage() {
     redirect("/");
   }
 
-  const result = await getAdminDashboardMetrics();
+  const [metricsResult, healthResult] = await Promise.all([
+    getAdminDashboardMetrics(),
+    getAdminSystemHealthStatus(),
+  ]);
 
   return (
     <AdminDashboardClient
-      metrics={result.success ? result.data : null}
-      loadError={result.success ? null : result.error}
+      metrics={metricsResult.success ? metricsResult.data : null}
+      loadError={metricsResult.success ? null : metricsResult.error}
+      initialServices={healthResult.success ? healthResult.data.services : []}
+      healthLoadError={healthResult.success ? null : healthResult.error}
     />
   );
 }

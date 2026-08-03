@@ -7,6 +7,10 @@ export type RpcPrepareMerchantOrderPayoutArgs = {
   p_order_id: string;
 };
 
+export type RpcConfirmMerchantBuyerReceiptArgs = {
+  p_order_id: string;
+};
+
 type RpcResult = {
   data: unknown;
   error: { message: string } | null;
@@ -16,6 +20,10 @@ type TypedRpcClient = {
   rpc(
     fn: "rpc_prepare_merchant_order_payout",
     args: RpcPrepareMerchantOrderPayoutArgs,
+  ): Promise<RpcResult>;
+  rpc(
+    fn: "rpc_confirm_merchant_buyer_receipt",
+    args: RpcConfirmMerchantBuyerReceiptArgs,
   ): Promise<RpcResult>;
 };
 
@@ -29,6 +37,16 @@ export async function rpcPrepareMerchantOrderPayout(
 ): Promise<RpcResult> {
   return asTypedRpcClient(supabase).rpc(
     "rpc_prepare_merchant_order_payout",
+    args,
+  );
+}
+
+export async function rpcConfirmMerchantBuyerReceipt(
+  supabase: ServerSupabaseClient,
+  args: RpcConfirmMerchantBuyerReceiptArgs,
+): Promise<RpcResult> {
+  return asTypedRpcClient(supabase).rpc(
+    "rpc_confirm_merchant_buyer_receipt",
     args,
   );
 }
@@ -52,6 +70,7 @@ export function isOpenMerchantBuyerOrder(
   return (
     escrowStatus === "pending_payment" ||
     escrowStatus === "payment_held" ||
+    escrowStatus === "shipped" ||
     escrowStatus === "authenticating" ||
     escrowStatus === "authenticated"
   );

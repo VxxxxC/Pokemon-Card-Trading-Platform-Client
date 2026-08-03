@@ -51,7 +51,7 @@ app/admin/payouts/
 - **10 rows/page** server pagination
 - Status filter chips: 全部 / 已成功 / 處理中 / 待撥款 / 已失敗 — each shows `statusCounts[key]` for current search/date scope
 - Date range on `transferred_at`
-- Columns include 訂單類型、卡價小計、佣金率、鑑定費、商戶實收 (Transfer)、撥款狀態（failed → tooltip `payout_error`）、對賬 ⚠、買家確認時間、PaymentIntent
+- Columns include 訂單類型、卡價小計、佣金率、鑑定費、商戶實收 (Transfer)、撥款狀態（failed → tooltip `payout_error`）、對賬 ⚠、買家確認時間、PaymentIntent、撥款時間（held → `保留至 {payoutHoldUntil}`）
 - **Removed:** 帳戶餘額 column; Merchant tab Stripe Log panel
 - CSV export: `listAdminMerchantTransfersForExport` with current filters (cap 2000); **blocking overlay** during export (`BlockingLoadingOverlay`)
 - **Clickable cells** (all open in **new tab**):
@@ -75,6 +75,7 @@ app/admin/payouts/
 - [x] FPS tab live `payout_requests` table with server pagination 10/page
 - [x] FPS status chips + 銷帳/駁回/batch complete wired to server actions
 - [x] FPS batch banner shows Wednesday schedule
+- [x] Merchant table shows T+7 held rows (no `stripe_transfer_id` yet) with hold-until date
 - [ ] Phase C pipeline: auto-insert `payout_requests` on buyer confirm + cron
 
 ## E2E

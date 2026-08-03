@@ -223,6 +223,7 @@ All cron handlers use `handleCronRoute` (`lib/cron/request.ts`): require `CRON_S
 | `/api/cron/aggregate-prices` | `0 19 * * *` | Aggregate market prices |
 | `/api/cron/expire-merchant-pending-payment` | `0 * * * *` | Expire unpaid merchant orders + cancel Stripe PI |
 | `/api/cron/member-fps-payout-ready` | `0 * * * *` | Promote T+3 held member auth orders → `payout_requests` |
+| `/api/cron/merchant-connect-payout-ready` | `0 * * * *` | Execute T+7 held merchant orders → Stripe Connect `transfers.create` |
 
 ### Manual verify — Member FPS payout cron
 
@@ -234,3 +235,14 @@ curl -sS -H "Authorization: Bearer $CRON_SECRET" \
 Expected JSON: `{ success: true, scanned, inserted, errors: [] }`.
 
 **Precondition:** `member_orders` row with `use_authentication=true`, `seller_payout_status='held'`, `payout_hold_until <= now()`, `buyer_confirmed_at` set, order `completed` + `escrow_status='released'`, no existing `payout_requests` row.
+
+### Manual verify — Merchant Connect payout cron
+
+```bash
+curl -sS -H "Authorization: Bearer $CRON_SECRET" \
+  "http://localhost:3000/api/cron/merchant-connect-payout-ready" | jq
+```
+
+Expected JSON: `{ success: true, scanned, processed, errors: [] }` (field names per route handler).
+
+**Precondition:** `merchant_orders` row with `payout_status='held'`, `payout_hold_until <= now()`, `buyer_confirmed_at` set, commission snapshot populated, `stripe_transfer_id IS NULL`, escrow still open, no active refund.

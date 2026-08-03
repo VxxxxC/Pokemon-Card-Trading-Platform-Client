@@ -566,6 +566,7 @@ export type Database = {
       listings: {
         Row: {
           created_at: string
+          extra_shipping_fee: number
           grading_company: string
           grading_score: string | null
           id: string
@@ -582,6 +583,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          extra_shipping_fee?: number
           grading_company?: string
           grading_score?: string | null
           id?: string
@@ -598,6 +600,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          extra_shipping_fee?: number
           grading_company?: string
           grading_score?: string | null
           id?: string
@@ -655,6 +658,7 @@ export type Database = {
           fault_party: Database["public"]["Enums"]["grading_fault_party"] | null
           final_price: number
           id: string
+          inbound_courier_name: string | null
           inbound_tracking_no: string | null
           item_subtotal: number | null
           listing_id: string
@@ -701,6 +705,7 @@ export type Database = {
             | null
           final_price: number
           id?: string
+          inbound_courier_name?: string | null
           inbound_tracking_no?: string | null
           item_subtotal?: number | null
           listing_id: string
@@ -747,6 +752,7 @@ export type Database = {
             | null
           final_price?: number
           id?: string
+          inbound_courier_name?: string | null
           inbound_tracking_no?: string | null
           item_subtotal?: number | null
           listing_id?: string
@@ -859,6 +865,8 @@ export type Database = {
           auth_result: string | null
           buyer_confirmed_at: string | null
           buyer_id: string
+          buyer_phone: string | null
+          buyer_remark: string | null
           commission_amount: number | null
           commission_rate_applied: number | null
           created_at: string | null
@@ -866,18 +874,22 @@ export type Database = {
           fault_party: Database["public"]["Enums"]["grading_fault_party"] | null
           final_price: number
           id: string
+          inbound_courier_name: string | null
           inbound_tracking_no: string | null
           item_subtotal: number | null
           listing_id: string
           logistics_proof_path: string | null
+          meetup_detail: string | null
           merchant_id: string
           merchant_payout_amount: number | null
           order_number: string | null
+          outbound_courier_name: string | null
           outbound_tracking_no: string | null
           paid_at: string | null
           payment_capture_status: Database["public"]["Enums"]["payment_capture_status"]
           payout_attempted_at: string | null
           payout_error: string | null
+          payout_hold_until: string | null
           payout_status: string
           platform_received_at: string | null
           refund_amount: number | null
@@ -886,6 +898,8 @@ export type Database = {
           refund_status: string
           refunded_at: string | null
           requires_authentication: boolean | null
+          sf_address: string | null
+          sf_locker_code: string | null
           shipping_fee: number
           shipping_method: string | null
           stripe_destination_account_id: string | null
@@ -905,6 +919,8 @@ export type Database = {
           auth_result?: string | null
           buyer_confirmed_at?: string | null
           buyer_id: string
+          buyer_phone?: string | null
+          buyer_remark?: string | null
           commission_amount?: number | null
           commission_rate_applied?: number | null
           created_at?: string | null
@@ -914,18 +930,22 @@ export type Database = {
             | null
           final_price: number
           id?: string
+          inbound_courier_name?: string | null
           inbound_tracking_no?: string | null
           item_subtotal?: number | null
           listing_id: string
           logistics_proof_path?: string | null
+          meetup_detail?: string | null
           merchant_id: string
           merchant_payout_amount?: number | null
           order_number?: string | null
+          outbound_courier_name?: string | null
           outbound_tracking_no?: string | null
           paid_at?: string | null
           payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
           payout_attempted_at?: string | null
           payout_error?: string | null
+          payout_hold_until?: string | null
           payout_status?: string
           platform_received_at?: string | null
           refund_amount?: number | null
@@ -934,6 +954,8 @@ export type Database = {
           refund_status?: string
           refunded_at?: string | null
           requires_authentication?: boolean | null
+          sf_address?: string | null
+          sf_locker_code?: string | null
           shipping_fee?: number
           shipping_method?: string | null
           stripe_destination_account_id?: string | null
@@ -953,6 +975,8 @@ export type Database = {
           auth_result?: string | null
           buyer_confirmed_at?: string | null
           buyer_id?: string
+          buyer_phone?: string | null
+          buyer_remark?: string | null
           commission_amount?: number | null
           commission_rate_applied?: number | null
           created_at?: string | null
@@ -962,18 +986,22 @@ export type Database = {
             | null
           final_price?: number
           id?: string
+          inbound_courier_name?: string | null
           inbound_tracking_no?: string | null
           item_subtotal?: number | null
           listing_id?: string
           logistics_proof_path?: string | null
+          meetup_detail?: string | null
           merchant_id?: string
           merchant_payout_amount?: number | null
           order_number?: string | null
+          outbound_courier_name?: string | null
           outbound_tracking_no?: string | null
           paid_at?: string | null
           payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
           payout_attempted_at?: string | null
           payout_error?: string | null
+          payout_hold_until?: string | null
           payout_status?: string
           platform_received_at?: string | null
           refund_amount?: number | null
@@ -982,6 +1010,8 @@ export type Database = {
           refund_status?: string
           refunded_at?: string | null
           requires_authentication?: boolean | null
+          sf_address?: string | null
+          sf_locker_code?: string | null
           shipping_fee?: number
           shipping_method?: string | null
           stripe_destination_account_id?: string | null
@@ -1032,6 +1062,7 @@ export type Database = {
       }
       merchant_shops: {
         Row: {
+          base_courier_shipping_fee: number
           business_details: Json | null
           cancelled_trades_count: number
           completed_trades_count: number
@@ -1049,6 +1080,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          base_courier_shipping_fee?: number
           business_details?: Json | null
           cancelled_trades_count?: number
           completed_trades_count?: number
@@ -1066,6 +1098,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          base_courier_shipping_fee?: number
           business_details?: Json | null
           cancelled_trades_count?: number
           completed_trades_count?: number
@@ -2084,7 +2117,11 @@ export type Database = {
         Returns: number
       }
       fn_merchant_checkout_shipping_fee: {
-        Args: { p_shipping_method: string }
+        Args: {
+          p_listing_id: string
+          p_merchant_id: string
+          p_shipping_method: string
+        }
         Returns: number
       }
       fn_merchant_order_is_auth_in_progress: {
@@ -2332,6 +2369,10 @@ export type Database = {
         Args: { p_buyer_id: string; p_order_id: string }
         Returns: Json
       }
+      rpc_confirm_merchant_buyer_receipt: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       rpc_confirm_platform_received: {
         Args: { p_order_id: string }
         Returns: Json
@@ -2412,6 +2453,12 @@ export type Database = {
         Returns: undefined
       }
       rpc_list_member_fps_payout_ready_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          order_id: string
+        }[]
+      }
+      rpc_list_merchant_connect_payout_candidates: {
         Args: { p_limit?: number }
         Returns: {
           order_id: string
@@ -2539,14 +2586,28 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
-      rpc_prepare_merchant_order_payment: {
-        Args: {
-          p_order_id: string
-          p_shipping_method: string
-          p_use_auth?: boolean
-        }
-        Returns: Json
-      }
+      rpc_prepare_merchant_order_payment:
+        | {
+            Args: {
+              p_order_id: string
+              p_shipping_method: string
+              p_use_auth?: boolean
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_buyer_phone?: string
+              p_buyer_remark?: string
+              p_meetup_detail?: string
+              p_order_id: string
+              p_sf_address?: string
+              p_sf_locker_code?: string
+              p_shipping_method: string
+              p_use_auth?: boolean
+            }
+            Returns: Json
+          }
       rpc_prepare_merchant_order_payout: {
         Args: { p_order_id: string }
         Returns: Json
@@ -2559,15 +2620,48 @@ export type Database = {
         Args: { p_content: string; p_room_id: string; p_sender_id: string }
         Returns: Json
       }
-      rpc_submit_inbound_tracking: {
-        Args: { p_order_id: string; p_seller_id: string; p_tracking_no: string }
-        Returns: Json
-      }
-      rpc_submit_merchant_auth_inbound_tracking: {
+      rpc_submit_inbound_tracking:
+        | {
+            Args: {
+              p_order_id: string
+              p_seller_id: string
+              p_tracking_no: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_courier_name?: string
+              p_order_id: string
+              p_seller_id: string
+              p_tracking_no: string
+            }
+            Returns: Json
+          }
+      rpc_submit_merchant_auth_inbound_tracking:
+        | {
+            Args: {
+              p_merchant_id: string
+              p_order_id: string
+              p_tracking_no: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_courier_name?: string
+              p_merchant_id: string
+              p_order_id: string
+              p_tracking_no: string
+            }
+            Returns: Json
+          }
+      rpc_submit_merchant_direct_fulfillment: {
         Args: {
+          p_courier_name?: string
           p_merchant_id: string
           p_order_id: string
-          p_tracking_no: string
+          p_tracking_no?: string
         }
         Returns: Json
       }
@@ -2891,6 +2985,7 @@ export type Database = {
       escrow_state:
         | "pending_payment"
         | "payment_held"
+        | "shipped"
         | "authenticating"
         | "authenticated"
         | "completed_and_transferred"
@@ -3098,6 +3193,7 @@ export const Constants = {
       escrow_state: [
         "pending_payment",
         "payment_held",
+        "shipped",
         "authenticating",
         "authenticated",
         "completed_and_transferred",

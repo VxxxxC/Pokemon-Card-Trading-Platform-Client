@@ -129,10 +129,16 @@ export function MerchantOverviewClient({
       ) : null}
 
       {shop && !shop.kycVerified ? (
-        <div className="mb-4 px-4 py-3 bg-[rgba(212,165,116,0.08)] border border-brand/25 rounded-xl">
+        <div className="mb-4 px-4 py-3 bg-[rgba(212,165,116,0.08)] border border-brand/25 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <p className="font-sans text-[13px] text-brand">
-            商戶入駐審核中 — 審批通過後可上架商品及收款
+            完成商戶驗證後方可收款與上架商品
           </p>
+          <Link
+            href="/profile/user/merchant-apply"
+            className="inline-flex items-center justify-center font-mono text-[11px] font-bold text-[#1A1612] bg-brand px-3 py-1.5 rounded-md hover:bg-[#e8b896] transition-colors shrink-0"
+          >
+            前往入駐申請 →
+          </Link>
         </div>
       ) : null}
 
@@ -228,13 +234,18 @@ export function MerchantOverviewClient({
               </span>
             ) : null}
             {shop?.stripeConnected ? (
-              <span className="inline-flex items-center gap-1 font-mono text-[10px] text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20 font-bold">
-                ● Stripe 已連結
-              </span>
+              <a
+                href="/api/stripe/connect/dashboard"
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-[#635bff] bg-[rgba(99,91,255,0.10)] px-2 py-0.5 rounded-md border border-[rgba(99,91,255,0.25)] font-bold hover:bg-[rgba(99,91,255,0.16)] transition-colors"
+              >
+                管理 Stripe 收款 →
+              </a>
             ) : null}
             {shop?.kycVerified && !shop.stripeConnected ? (
-              // 後端接駁 stub：Stripe Connect onboarding 入口（完成後 webhook 更新狀態，樣式留待 frontend 精修）
-              <a href="/api/stripe/connect/onboard">
+              <a
+                href="/api/stripe/connect/onboard"
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20 font-bold hover:bg-brand/15 transition-colors"
+              >
                 完成 Stripe 收款設定 →
               </a>
             ) : null}

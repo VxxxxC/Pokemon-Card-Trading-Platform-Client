@@ -41,6 +41,7 @@ import {
   getStripeConnectDashboardUrl,
   getStripeTransferDashboardUrl,
 } from "@/lib/stripe/dashboard-urls";
+import { truncateStripeId } from "@/lib/stripe/display";
 import { endOfDay, format, startOfDay, subDays } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import Link from "next/link";
@@ -64,9 +65,11 @@ const STATUS_FILTER_OPTIONS: {
 }[] = [
   { key: "all", label: "全部" },
   { key: "paid", label: "已成功" },
+  { key: "held", label: "保留中（T+7）" },
   { key: "processing", label: "處理中" },
   { key: "pending", label: "待撥款" },
   { key: "failed", label: "已失敗" },
+  { key: "frozen", label: "已凍結" },
 ];
 
 type MerchantConnectLedgerTabProps = {
@@ -87,12 +90,6 @@ function toIsoDateRange(range: DateRange | undefined): {
     dateFrom: range.from ? startOfDay(range.from).toISOString() : undefined,
     dateTo: range.to ? endOfDay(range.to).toISOString() : undefined,
   };
-}
-
-function truncatePaymentIntent(id: string | null): string {
-  if (!id) return "—";
-  if (id.length <= 16) return id;
-  return `${id.slice(0, 10)}…${id.slice(-6)}`;
 }
 
 export default function MerchantConnectLedgerTab({
@@ -679,10 +676,18 @@ export default function MerchantConnectLedgerTab({
                     className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap"
                     title={row.stripePaymentIntentId ?? undefined}
                   >
-                    {truncatePaymentIntent(row.stripePaymentIntentId)}
+                    {truncateStripeId(row.stripePaymentIntentId)}
                   </TableCell>
                   <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                    {row.transferredAt}
+                    {row.payoutStatus === "held" &&
+                    (!row.transferredAtIso || row.transferredAt === "—") &&
+                    row.payoutHoldUntil ? (
+                      <span title={`保留至 ${row.payoutHoldUntil}`}>
+                        保留至 {row.payoutHoldUntil}
+                      </span>
+                    ) : (
+                      row.transferredAt
+                    )}
                   </TableCell>
                   <TableCell className="text-right py-3 whitespace-nowrap">
                     <a

@@ -65,17 +65,21 @@ export function formatOrderAuthType(requiresAuthentication: boolean): string {
 
 const PAYOUT_STATUS_LABELS: Record<MerchantTransferPayoutStatus, string> = {
   pending: "待撥款",
+  held: "款項保留中（T+7）",
   processing: "處理中",
   paid: "已成功",
   failed: "已失敗",
+  frozen: "撥款凍結",
 };
 
 const PAYOUT_STATUS_BADGE_CLASSES: Record<MerchantTransferPayoutStatus, string> =
   {
     pending: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
+    held: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
     processing: "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20",
     paid: "text-success bg-[rgba(16,185,129,0.12)] border-success/20",
     failed: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
+    frozen: "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20",
   };
 
 export function formatPayoutStatusLabel(

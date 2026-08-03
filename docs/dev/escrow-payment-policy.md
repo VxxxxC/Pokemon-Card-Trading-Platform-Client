@@ -152,13 +152,15 @@
 
 ### 8.2 Merchant（#3、#4）
 
-**條件**：#4 另需鑑定通過 + 出庫；#3 為 `payment_held` 且已 capture
+**條件**：#4 另需鑑定通過 + 出庫；#3 非面交需 `shipped`，面交可於 `payment_held` 確認（見 merchant-trading）
 
-1. 買家 `completeMerchantOrder`
-2. `stripe.transfers.create`（8% 卡價佣金；運費規則見 merchant-checkout）
-3. `completed_and_transferred`
+1. 買家 `completeMerchantOrder` → `rpc_confirm_merchant_buyer_receipt`（**不呼叫 Stripe**）
+2. 記 `buyer_confirmed_at`；`payout_hold_until = buyer_confirmed_at + 7 個曆日`（**T+7**）；`payout_status = held`
+3. 售後窗口內可 dispute → `payout_status = frozen`（MVP：cron guard；Admin freeze UI 留 P3）
+4. T+7 到期後 hourly cron → `rpc_prepare_merchant_order_payout` → `stripe.transfers.create` → `rpc_finalize_merchant_order_payout`
+5. `completed_and_transferred`；`payout_status = paid`
 
-> 第二階段可選：transfer 延遲 T+N 日。第一版維持確認收貨即 transfer。
+> 與 Member T+3 FPS hold 對齊：買家確認只啟動保留期，實際 Connect transfer 在 hold 到期後由 cron 執行。既有已 transfer 舊單不 backfill。
 
 ---
 
@@ -167,7 +169,7 @@
 | 類型 | 窗口 | 可申訴範圍 | 平台動作 |
 |------|------|------------|----------|
 | **#2 Member 鑑定** | 確認收貨後 **3 日內**（與 T+3 FPS hold 重疊） | 物流損毀、與鑑定報告明顯不符（不開放無限真偽爭議） | Stripe refund；`seller_payable`；freeze FPS |
-| **#3 / #4 Merchant** | 確認收貨後 **7 日內** | 物流、嚴重與 listing 不符 | `refund` + `transfer.reversal` 或 merchant ledger |
+| **#3 / #4 Merchant** | 確認收貨後 **7 日內**（與 T+7 Connect hold 重疊） | 物流、嚴重與 listing 不符 | `refund` + `transfer.reversal` 或 merchant ledger；hold 期內可 `frozen` 阻擋 cron transfer |
 | **#1 P2P** | 無金流售後 | 僅舉報／封號 | 無 refund RPC |
 
 | 時點（Member） | 處理 |

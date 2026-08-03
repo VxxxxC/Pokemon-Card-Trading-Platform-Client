@@ -40,10 +40,10 @@ type ListAdminMerchantTransfersInput = {
 }}
 ```
 
-- Base query: `merchant_orders` where `stripe_transfer_id IS NOT NULL`
+- Base query: `merchant_orders` where `stripe_transfer_id IS NOT NULL` **OR** `buyer_confirmed_at IS NOT NULL` (includes T+7 `held` before Connect transfer)
 - Server pagination: `.select(..., { count: "exact" }).range(offset, offset + pageSize - 1)`
 - **`statusCounts`**: 5 parallel head-count queries with same search/date filters (ignores active `statusFilter`)
-- Extended fields: `item_subtotal`, `commission_rate_applied`, `auth_fee`, `buyer_confirmed_at`, `stripe_payment_intent_id`, `requires_authentication`
+- Extended fields: `item_subtotal`, `commission_rate_applied`, `auth_fee`, `buyer_confirmed_at`, `payout_hold_until`, `stripe_payment_intent_id`, `requires_authentication`
 - Join enrichment: `merchant_shops`, `kyc_records`, `profiles`, `merchant_ledgers` reconciliation
 - `merchantName` sort: in-memory sort up to `MERCHANT_NAME_SORT_FETCH_CAP` (5000), then slice
 
@@ -147,6 +147,12 @@ Migration **`20260802120000_member_fps_payout_pipeline.sql`**:
 1. `seller_payable` ledger / fee deduction from payout amount
 2. Dispute → `seller_payout_status = frozen` automation
 3. Admin `admin_fps_reference` input on 銷帳 UI
+
+### Merchant T+7 held ledger ✅
+
+- `listAdminMerchantTransfers` includes buyer-confirmed orders before `stripe_transfer_id` exists
+- Date filter falls back to `buyer_confirmed_at` when `transferred_at` is null
+- `MerchantConnectLedgerTab` shows `payout_hold_until` for `held` rows
 
 ## Migration verify (ops)
 

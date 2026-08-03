@@ -5,7 +5,10 @@
  * 優惠券未接後端，暫不計入（Milestone 2）。
  */
 
-export const SF_SHIPPING_FEE = 30;
+import { PLATFORM_DEFAULT_COURIER_SHIPPING_FEE } from "@/lib/merchant/shipping-fee";
+
+/** @deprecated Use shop `base_courier_shipping_fee`; kept for legacy references. */
+export const SF_SHIPPING_FEE = PLATFORM_DEFAULT_COURIER_SHIPPING_FEE;
 export const MEETUP_SHIPPING_FEE = 0;
 export const AUTHENTICATION_FEE = 150;
 
@@ -21,8 +24,30 @@ export function isMerchantShippingMethod(
   );
 }
 
-export function resolveShippingFee(method: MerchantShippingMethod): number {
-  return method === "sf" ? SF_SHIPPING_FEE : MEETUP_SHIPPING_FEE;
+export function computeCourierShippingFee(input: {
+  shippingMethod: MerchantShippingMethod;
+  baseFee: number;
+  extraFee: number;
+}): number {
+  if (input.shippingMethod !== "sf") {
+    return 0;
+  }
+
+  const base = Math.max(Math.round(input.baseFee), 0);
+  const extra = Math.max(Math.round(input.extraFee), 0);
+  return base + extra;
+}
+
+export function resolveShippingFee(
+  method: MerchantShippingMethod,
+  baseFee: number = PLATFORM_DEFAULT_COURIER_SHIPPING_FEE,
+  extraFee = 0,
+): number {
+  return computeCourierShippingFee({
+    shippingMethod: method,
+    baseFee,
+    extraFee,
+  });
 }
 
 export type MerchantCheckoutAmounts = {
@@ -36,9 +61,15 @@ export function computeMerchantCheckoutAmounts(input: {
   itemSubtotal: number;
   shippingMethod: MerchantShippingMethod;
   useAuth: boolean;
+  baseCourierShippingFee?: number;
+  listingExtraShippingFee?: number;
 }): MerchantCheckoutAmounts {
   const itemSubtotal = Math.max(Math.round(input.itemSubtotal), 0);
-  const shippingFee = resolveShippingFee(input.shippingMethod);
+  const shippingFee = computeCourierShippingFee({
+    shippingMethod: input.shippingMethod,
+    baseFee: input.baseCourierShippingFee ?? PLATFORM_DEFAULT_COURIER_SHIPPING_FEE,
+    extraFee: input.listingExtraShippingFee ?? 0,
+  });
   const authFee = input.useAuth ? AUTHENTICATION_FEE : 0;
 
   return {

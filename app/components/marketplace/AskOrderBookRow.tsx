@@ -104,6 +104,11 @@ export function AskOrderBookRow({
           >
             HK$ {order.price.toLocaleString("en-HK")}
           </span>
+          {order.deliverySummary ? (
+            <p className="font-mono text-[10px] text-[#8A8680] mt-0.5">
+              {order.deliverySummary}
+            </p>
+          ) : null}
         </div>
       </div>
       {isOwnListing ? (

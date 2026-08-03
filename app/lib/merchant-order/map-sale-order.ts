@@ -22,6 +22,8 @@ export function mapMerchantEscrowToOrderStatus(
       return "grading";
     case "authenticated":
       return "shipped";
+    case "shipped":
+      return "shipped";
     case "payment_held":
       return "payment";
     case "pending_payment":
@@ -31,11 +33,32 @@ export function mapMerchantEscrowToOrderStatus(
   }
 }
 
-/** pending_payment 訂單雖仍在 payment 階段，但商戶未收到款項，不可出貨。 */
+/** Status badge / list label overrides by escrow + order kind. */
 export function resolveMerchantStatusLabelOverride(
   escrowStatus: MerchantEscrowStatus | null,
+  requiresAuthentication?: boolean | null,
+  shippingMethod?: string | null,
+  payoutStatus?: string | null,
 ): string | undefined {
-  return escrowStatus === "pending_payment" ? "待買家付款" : undefined;
+  if (payoutStatus === "held" || payoutStatus === "processing") {
+    return "款項保留中";
+  }
+  if (escrowStatus === "pending_payment") {
+    return "待買家付款";
+  }
+  if (escrowStatus === "payment_held" && !requiresAuthentication) {
+    return shippingMethod === "meetup" ? "待面交" : "待發貨";
+  }
+  if (escrowStatus === "shipped") {
+    return "運送中";
+  }
+  if (escrowStatus === "authenticating") {
+    return "鑑定中";
+  }
+  if (escrowStatus === "authenticated") {
+    return "待買家收貨";
+  }
+  return undefined;
 }
 
 function formatListingGrade(order: MerchantTradingOrder): string {
@@ -76,7 +99,10 @@ export function mapMerchantTradingOrderToSaleOrder(
     grade: formatListingGrade(order),
     amount: order.finalPrice,
     status: mapMerchantEscrowToOrderStatus(order.escrowStatus),
-    statusLabelOverride: resolveMerchantStatusLabelOverride(order.escrowStatus),
+    statusLabelOverride: resolveMerchantStatusLabelOverride(
+      order.escrowStatus,
+      order.requiresAuthentication,
+    ),
     createdAt: formatOrderDateTime(order.createdAt),
     orderType: "B2C",
     userContext: "SELLER",
@@ -96,5 +122,11 @@ export function mapMerchantOrderDetailToSaleOrder(
     productListingId: detail.listingId,
     trackingNo: detail.inboundTrackingNo ?? detail.logisticsProofPath ?? undefined,
     avatarSeed: detail.buyer.id,
+    statusLabelOverride: resolveMerchantStatusLabelOverride(
+      detail.escrowStatus,
+      detail.requiresAuthentication,
+      detail.shippingMethod,
+      detail.payoutStatus,
+    ),
   };
 }

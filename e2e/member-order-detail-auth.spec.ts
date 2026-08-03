@@ -157,11 +157,12 @@ test.describe("Member order detail — auth escrow", () => {
       await sellerPage.reload({ waitUntil: "domcontentloaded" });
       await gotoOrderDetail(sellerPage, memberOrderId);
       await expect(
-        sellerPage.getByText("請將卡牌寄往平台倉庫，並填寫順豐物流單號。"),
+        sellerPage.getByText("請將卡牌寄往平台倉庫，並填寫快遞公司與物流單號。"),
       ).toBeVisible({ timeout: 20_000 });
       await expect(
-        sellerPage.getByPlaceholder("寄往平台的順豐單號"),
+        sellerPage.getByPlaceholder("快遞公司（例如：順豐、DHL）"),
       ).toBeVisible();
+      await expect(sellerPage.getByPlaceholder("物流單號")).toBeVisible();
     } finally {
       await buyerContext.close();
       await sellerContext.close();

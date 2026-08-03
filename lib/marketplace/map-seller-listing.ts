@@ -1,5 +1,6 @@
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
 import { resolveListingCoverImageUrl } from "@/lib/listings/images";
+import type { MarketplaceMerchantShippingFields } from "@/app/lib/marketplace/types";
 import type { MarketplaceTrendSource } from "@/app/lib/marketplace/types";
 import type { Database } from "@/types/supabase";
 
@@ -75,7 +76,7 @@ export type MarketplaceSellerListingRow = {
   marketAvgPrice: number | null;
   marketReferenceSource: MarketplaceTrendSource | null;
   priceVsMarketPct: number | null;
-};
+} & MarketplaceMerchantShippingFields;
 
 export function mapSellerListingRpcRow(
   row: SellerListingRpcRow,
@@ -149,6 +150,10 @@ export function toMarketplaceCardListing(
     sellerId: row.sellerId,
     sellerPersona: row.sellerPersona,
     detailHref: `/marketplace/${row.sellerId}/product/${row.listingId}`,
+    baseCourierShippingFee: row.baseCourierShippingFee,
+    listingExtraShippingFee: row.listingExtraShippingFee,
+    courierShippingTotal: row.courierShippingTotal,
+    deliverySummary: row.deliverySummary,
   };
 }
 

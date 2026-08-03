@@ -10,6 +10,14 @@ export type GradeFilter = {
 
 export type MarketplaceTrendSource = "snkrdunk" | "platform";
 
+/** Merchant B2C shipping quote surfaced on marketplace surfaces. */
+export type MarketplaceMerchantShippingFields = {
+  baseCourierShippingFee?: number;
+  listingExtraShippingFee?: number;
+  courierShippingTotal?: number;
+  deliverySummary?: string;
+};
+
 export type MarketplaceProductRow = {
   productId: string;
   productName: string;
@@ -37,7 +45,7 @@ export type MarketplaceProductRow = {
   marketAvgPrice: number | null;
   marketReferenceSource: MarketplaceTrendSource | null;
   priceVsMarketPct: number | null;
-};
+} & MarketplaceMerchantShippingFields;
 
 export type MarketplacePaginationMeta = {
   total: number;
@@ -127,7 +135,7 @@ export type MarketplaceProductListingRow = {
   sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
   useAuthentication: boolean;
   createdAt: string;
-};
+} & MarketplaceMerchantShippingFields;
 
 /** Full listing payload for slide-over / detail views (fetched on demand). */
 export type MarketplaceListingDetail = {
@@ -143,7 +151,7 @@ export type MarketplaceListingDetail = {
   images: string[];
   imagesDetail?: ListingImage[];
   useAuthentication: boolean;
-};
+} & MarketplaceMerchantShippingFields;
 
 export type MarketplaceListingDetailResult =
   | { success: true; data: MarketplaceListingDetail }
@@ -258,7 +266,7 @@ export type MarketplaceSellerListingRow = {
   marketAvgPrice: number | null;
   marketReferenceSource: MarketplaceTrendSource | null;
   priceVsMarketPct: number | null;
-};
+} & MarketplaceMerchantShippingFields;
 
 export type MarketplaceSellerListingsInput = {
   sellerId: string;

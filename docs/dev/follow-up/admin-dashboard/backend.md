@@ -8,6 +8,7 @@
 | `lib/admin-dashboard/types.ts` | `AdminDashboardMetrics` contract |
 | `lib/admin-dashboard/format.ts` | HK$ / growth / range sum helpers |
 | `lib/admin-dashboard/hkt-month-bounds.ts` | HKT calendar month boundaries |
+| `lib/admin-dashboard/health-probes.ts` | Supabase / Stripe / crawler health probes |
 | `lib/stripe/platform-balance.ts` | `getPlatformStripeBalance()` — `stripe.balance.retrieve()` (platform account, HKD) |
 | `supabase/migrations/20260731130000_merchant_orders_service_role_select.sql` | `GRANT SELECT ON merchant_orders TO service_role` |
 
@@ -16,6 +17,11 @@
 ```typescript
 getAdminDashboardMetrics(): Promise<
   { success: true; data: AdminDashboardMetrics } | { success: false; error: string }
+>
+
+getAdminSystemHealthStatus(): Promise<
+  { success: true; data: { services: AdminDashboardSystemService[] } }
+  | { success: false; error: string }
 >
 ```
 
@@ -83,7 +89,13 @@ SELECT count(*) FROM reports WHERE status IN ('pending', 'reviewing');
 9. `bunx tsc --noEmit`, `bun run lint`, `bun run build:ci`.
 10. Optional: `bunx playwright test e2e/admin-stripe-finance.spec.ts` (dashboard Stripe labels).
 
-## Phase 3 (not yet)
+## Phase 3 (health probes) ✅
 
-- System health probes (replace random latency).
-- Optional RPC `get_admin_dashboard_snapshot()` if row volume grows.
+- `getAdminSystemHealthStatus()` — Supabase head count, Stripe balance probe, crawler static `degraded`
+- `lib/admin-dashboard/health-probes.ts` — round-trip latency (ms) per service
+- SSR: `page.tsx` passes `initialServices`; client refresh calls server action (no `Math.random`)
+
+## Deferred
+
+- Optional RPC `get_admin_dashboard_snapshot()` if row volume grows
+- `bannedUsers` / `activeRatio` (needs schema)

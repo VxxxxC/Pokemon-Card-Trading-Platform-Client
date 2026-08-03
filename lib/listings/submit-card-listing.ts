@@ -36,6 +36,7 @@ export type SubmitCardListingInput = {
   imageFiles?: File[];
   imageSlots?: ListingImageSlotInput[];
   photosRemark?: string[];
+  extraShippingFee?: number;
 };
 
 async function rollbackClientUploadedImages(
@@ -173,10 +174,13 @@ export async function submitCardListingWithProgress(
           }
           formData.append("listingId", input.listingId);
           formData.append("isActive", String(input.isActive ?? true));
-          formData.append(
-            "useAuthentication",
-            String(input.useAuthentication ?? true),
-          );
+          if (input.sellerPersona === "merchant") {
+            formData.append("sellerPersona", "merchant");
+            formData.append(
+              "extraShippingFee",
+              String(input.extraShippingFee ?? 0),
+            );
+          }
           return updateCardListing(formData);
         })()
       : await (() => {
@@ -196,6 +200,13 @@ export async function submitCardListingWithProgress(
           }
           if (input.sellerPersona) {
             formData.append("sellerPersona", input.sellerPersona);
+          }
+          if (
+            input.sellerPersona === "merchant" &&
+            input.extraShippingFee != null &&
+            input.extraShippingFee > 0
+          ) {
+            formData.append("extraShippingFee", String(input.extraShippingFee));
           }
           return createCardListing(formData);
         })();

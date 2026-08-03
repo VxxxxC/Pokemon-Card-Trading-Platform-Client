@@ -489,7 +489,7 @@ supabase/
     ├── 20260731100000_escrow_p1_goods_capture_fail_void.sql
     ├── 20260801120000_member_fps_payout.sql          # payout_requests, profiles.fps_id
     ├── 20260802120000_member_fps_payout_pipeline.sql # T+3 hold + cron RPCs
-    └── 20260803120000_profiles_fps_name.sql           # profiles.fps_name + fps_name_snapshot
+    └── 20260803120200_profiles_fps_name.sql           # profiles.fps_name + fps_name_snapshot
 ```
 
 **Regenerate types:** `bun run supabase:types` → `types/supabase.ts` + `types/supabase.md`

@@ -24,9 +24,10 @@ import {
   loadMerchantCheckoutOrder,
   type MerchantCheckoutOrder,
 } from "@/app/actions/merchant-checkout";
+import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import {
   AUTHENTICATION_FEE,
-  SF_SHIPPING_FEE,
+  computeCourierShippingFee,
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
 
@@ -148,7 +149,12 @@ function EscrowPaymentForm({
 
   return (
     <div className="space-y-3">
-      <PaymentElement options={{ layout: "tabs" }} />
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          wallets: { applePay: "never", googlePay: "never" },
+        }}
+      />
       <button
         type="button"
         disabled={isConfirming || !stripe || !elements}
@@ -185,10 +191,9 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
   // Delivery configuration states
   const [shippingType, setShippingType] = useState<MerchantShippingMethod>("sf");
-  const [sfLockerCode, setSfLockerCode] = useState("H852UA14P");
-  const [sfAddress, setSfAddress] = useState("旺角中心地下順豐智能櫃");
-  const [buyerPhone, setBuyerPhone] = useState("91234567");
-  const [meetupDetail, setMeetupDetail] = useState("旺角站 A 出口閘邊");
+  const [courierDeliveryAddress, setCourierDeliveryAddress] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [meetupNote, setMeetupNote] = useState("");
 
   // NEW: Authentication service toggle
   const [authServiceEnabled, setAuthServiceEnabled] = useState(false);
@@ -242,6 +247,10 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   const stripeInstance = useMemo(
     () => (publishableKey ? getStripePromise(publishableKey) : null),
     [publishableKey],
+  );
+
+  const { countdownLabel, isExpired, isExpiringSoon } = usePaymentCountdown(
+    order?.escrowStatus === "pending_payment" ? order.paymentExpiresAt : null,
   );
 
   if (!isMounted) {
@@ -311,7 +320,15 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
 
   // Financial calculations
   const itemSubtotal = currentItem.price;
-  const shippingFee = shippingType === "sf" ? SF_SHIPPING_FEE : 0;
+  const showDirectDeliverySection = !authServiceEnabled;
+  const shippingFee =
+    !showDirectDeliverySection || shippingType !== "sf"
+      ? 0
+      : computeCourierShippingFee({
+          shippingMethod: "sf",
+          baseFee: order.baseCourierShippingFee,
+          extraFee: order.listingExtraShippingFee,
+        });
   const authFee = authServiceEnabled ? AUTHENTICATION_FEE : 0;
   const totalDiscount = selectedCoupons.reduce((sum, code) => {
     const coupon = AVAILABLE_COUPONS.find((c) => c.code === code);
@@ -323,11 +340,27 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
   );
 
   const handleProceedToPayment = async () => {
-    if (shippingType === "sf" && (!sfLockerCode || !buyerPhone)) {
-      toast.error("⚠️ 資料未補全", {
-        description: "請填寫順豐自提櫃代碼及聯絡電話。",
+    if (isExpired) {
+      toast.error("付款期限已過", {
+        description: "此訂單已逾期，請返回市集重新下單。",
       });
       return;
+    }
+
+    if (showDirectDeliverySection) {
+      if (shippingType === "sf" && (!buyerPhone.trim() || !courierDeliveryAddress.trim())) {
+        toast.error("⚠️ 資料未補全", {
+          description: "請填寫聯絡電話及收件地址／自提點。",
+        });
+        return;
+      }
+
+      if (shippingType === "meetup" && !buyerPhone.trim()) {
+        toast.error("⚠️ 資料未補全", {
+          description: "請填寫聯絡電話。",
+        });
+        return;
+      }
     }
 
     // 🚀 Lock state and trigger inline visual spinner directly
@@ -341,6 +374,12 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
     const result = await createMerchantOrderPaymentIntent(order.orderId, {
       shippingMethod: shippingType,
       useAuth: authServiceEnabled,
+      deliveryDetails: {
+        sfAddress: courierDeliveryAddress,
+        buyerPhone,
+        meetupDetail: meetupNote,
+        buyerRemark,
+      },
     });
 
     setIsPaying(false);
@@ -381,10 +420,29 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
         {!order.isPayable && (
           <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4">
             <p className="font-sans text-[12.5px] text-brand">
-              此訂單已完成付款或已進入下一階段，無法重複支付。
+              {order.escrowStatus === "refunded"
+                ? "此訂單付款期限已過或已取消，請返回市集重新下單。"
+                : "此訂單已完成付款或已進入下一階段，無法重複支付。"}
             </p>
           </div>
         )}
+
+        {order.isPayable && order.paymentExpiresAt ? (
+          <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4 space-y-1">
+            <p className="font-sans text-[12.5px] text-text-secondary">
+              請於 48 小時內完成託管付款，逾期訂單將自動取消。
+            </p>
+            <p
+              className={
+                isExpired || isExpiringSoon
+                  ? "font-mono text-[11px] text-warning"
+                  : "font-mono text-[11px] text-brand"
+              }
+            >
+              {isExpired ? "付款期限已過" : countdownLabel}
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Form Entries Column */}
@@ -421,98 +479,106 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               </div>
             </section>
 
-            {/* Section 2: Delivery Channel */}
+            {showDirectDeliverySection ? (
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
               <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-                📦 2. 選擇配送 / 交收渠道
+                📦 2. 選擇交收方式
               </h2>
+              <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
+                快遞公司由商戶出貨時安排；面交／自取地點可於訂單內與商戶協調。
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setShippingType("sf")}
                   className={`h-11 rounded-xl border font-sans text-[13px] font-bold transition-all ${shippingType === "sf" ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/10 text-[#d4c4b7]"}`}
                 >
-                  🚚 順豐速運 (智能櫃/自提)
+                  🚚 快遞寄貨
                 </button>
                 <button
                   type="button"
                   onClick={() => setShippingType("meetup")}
                   className={`h-11 rounded-xl border font-sans text-[13px] font-bold transition-all ${shippingType === "meetup" ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/10 text-[#d4c4b7]"}`}
                 >
-                  🤝 MTR 當面安全面交
+                  🤝 面交／自取
                 </button>
               </div>
 
               {shippingType === "sf" ? (
                 <div className="space-y-3 pt-2 font-sans text-[13px]">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label
-                        htmlFor="p-tel"
-                        className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
-                      >
-                        收件人香港手提電話 *
-                      </label>
-                      <input
-                        id="p-tel"
-                        type="tel"
-                        maxLength={8}
-                        value={buyerPhone}
-                        onChange={(e) => setBuyerPhone(e.target.value)}
-                        placeholder="91234567"
-                        className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da] font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="p-code"
-                        className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
-                      >
-                        順豐自提點/網點代碼 *
-                      </label>
-                      <input
-                        id="p-code"
-                        type="text"
-                        value={sfLockerCode}
-                        onChange={(e) => setSfLockerCode(e.target.value)}
-                        className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da] font-mono uppercase"
-                      />
-                    </div>
+                  <div>
+                    <label
+                      htmlFor="p-tel"
+                      className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
+                    >
+                      聯絡電話 *
+                    </label>
+                    <input
+                      id="p-tel"
+                      type="tel"
+                      maxLength={8}
+                      value={buyerPhone}
+                      onChange={(e) => setBuyerPhone(e.target.value)}
+                      placeholder="91234567"
+                      className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da] font-mono"
+                    />
                   </div>
                   <div>
                     <label
                       htmlFor="p-addr"
                       className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
                     >
-                      詳細網點描述與地址描述
+                      收件地址／自提點 *
                     </label>
-                    <input
+                    <textarea
                       id="p-addr"
-                      type="text"
-                      value={sfAddress}
-                      onChange={(e) => setSfAddress(e.target.value)}
-                      className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da]"
+                      rows={2}
+                      value={courierDeliveryAddress}
+                      onChange={(e) => setCourierDeliveryAddress(e.target.value)}
+                      placeholder="例：九龍塘站順豐智能櫃、或完整收件地址"
+                      className="w-full bg-[#17130f] border border-white/10 rounded-xl p-3 text-[#eae1da] resize-none"
                     />
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2 pt-2 font-sans text-[13px]">
-                  <label
-                    htmlFor="p-meet"
-                    className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
-                  >
-                    協定面交車站及時間備註 *
-                  </label>
-                  <input
-                    id="p-meet"
-                    type="text"
-                    value={meetupDetail}
-                    onChange={(e) => setMeetupDetail(e.target.value)}
-                    className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da]"
-                  />
+                <div className="space-y-3 pt-2 font-sans text-[13px]">
+                  <div>
+                    <label
+                      htmlFor="p-tel-meet"
+                      className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
+                    >
+                      聯絡電話 *
+                    </label>
+                    <input
+                      id="p-tel-meet"
+                      type="tel"
+                      maxLength={8}
+                      value={buyerPhone}
+                      onChange={(e) => setBuyerPhone(e.target.value)}
+                      placeholder="91234567"
+                      className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da] font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="p-meet"
+                      className="font-mono text-[11px] text-[#d4c4b7] block mb-1"
+                    >
+                      面交備註（選填）
+                    </label>
+                    <input
+                      id="p-meet"
+                      type="text"
+                      value={meetupNote}
+                      onChange={(e) => setMeetupNote(e.target.value)}
+                      placeholder="可於訂單內與商戶約定時間地點"
+                      className="w-full h-10 bg-[#17130f] border border-white/10 rounded-xl px-3 text-[#eae1da]"
+                    />
+                  </div>
                 </div>
               )}
             </section>
+            ) : null}
 
             {/* Section 3: Authentication Service (NEW) */}
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4">
@@ -551,7 +617,8 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               )}
             </section>
 
-            {/* Section 4: Coupon Multi-Select (NEW) */}
+            {/* Section 4: Coupon Multi-Select */}
+            {AVAILABLE_COUPONS.length > 0 ? (
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
               <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
                 🎟️ 4. 使用優惠券
@@ -624,6 +691,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                 )}
               </div>
             </section>
+            ) : null}
 
             {/* Section 5: Buyer Remarks (Renumbered) */}
             <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
@@ -658,11 +726,17 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>配送服務資產</span>
+                  <span>運費（{shippingType === "sf" ? "快遞寄貨" : "面交／自取"}）</span>
                   <span className="font-mono text-[#eae1da]">
                     HK$ {shippingFee}
                   </span>
                 </div>
+                {shippingType === "sf" && order.listingExtraShippingFee > 0 ? (
+                  <p className="font-mono text-[10.5px] text-text-disabled">
+                    基本運費 HK$ {order.baseCourierShippingFee} + 附加運費 HK${" "}
+                    {order.listingExtraShippingFee}
+                  </p>
+                ) : null}
                 {/* NEW: Authentication Fee Row */}
                 <div className="flex justify-between">
                   <span>官方第三方鑑定費</span>
@@ -703,7 +777,17 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
                   stripe={stripeInstance}
                   options={{
                     clientSecret,
-                    appearance: { theme: "night", labels: "floating" },
+                    appearance: {
+                      theme: "night",
+                      labels: "floating",
+                      variables: {
+                        colorPrimary: "#D4A574",
+                        colorBackground: "#1A1612",
+                        colorText: "#eae1da",
+                        colorDanger: "#ef4444",
+                        borderRadius: "12px",
+                      },
+                    },
                   }}
                 >
                   <EscrowPaymentForm
@@ -714,7 +798,7 @@ export default function GlobalCheckoutPage({ params }: PageProps) {
               ) : (
                 <button
                   type="button"
-                  disabled={isPaying || !order.isPayable}
+                  disabled={isPaying || !order.isPayable || isExpired}
                   onClick={handleProceedToPayment}
                   className="w-full h-12 bg-brand text-[#1A1612] font-sans font-bold text-[14px] rounded-xl hover:bg-[#e8b896] active:scale-[0.99] disabled:opacity-60 disabled:pointer-events-none transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer focus:outline-none"
                 >

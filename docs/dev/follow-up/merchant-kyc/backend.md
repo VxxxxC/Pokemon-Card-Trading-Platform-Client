@@ -24,7 +24,9 @@ member 註冊/登入
       4. persons.create 代表人 + files.create 推 4 份文件
   → reject：profiles.role → member、kyc_records → rejected（shop 保留 audit）
   → merchant dashboard CTA → /api/stripe/connect/onboard → hosted onboarding
+  → return /api/stripe/connect/return → sync kyc_records flags（webhook 備援）
   → webhook account.updated → stripe_charges_enabled / stripe_payouts_enabled
+  → 完成 onboarding 後：/api/stripe/connect/dashboard → Stripe Express login link（平台代開，唔使 merchant 自行註冊 stripe.com）
 ```
 
 ### 功能 gate（三層）
@@ -77,6 +79,10 @@ Stripe 步驟失敗 **唔會 rollback** 平台審批；onboard route 有重試�
 | `app/actions/admin-kyc.ts` | `listKycApplications`, `getKycDocumentSignedUrl`, `reviewKycApplication` |
 | `app/actions/auth.ts` | `registerMemberForMerchantApply`（註冊後直入申請頁） |
 | `app/api/stripe/connect/onboard/route.ts` | onboarding link（含重試補建） |
+| `app/api/stripe/connect/dashboard/route.ts` | Express login link（`accounts.createLoginLink`；未 payout-ready 則 redirect onboard） |
+| `lib/stripe/connect-dashboard.ts` | `createMerchantExpressLoginLink` + `maskStripeAccountId` |
+| `app/api/stripe/connect/return/route.ts` | onboarding return → `accounts.retrieve` sync flags |
+| `lib/stripe/sync-kyc-connect-flags.ts` | webhook / return 共用 `kyc_records` flags 寫入 |
 | `app/api/stripe/webhook/route.ts` | `account.updated` → connect flags |
 
 ## Action contracts
@@ -161,8 +167,9 @@ retryKycProvisioning(applicationId)         // 已批准但 kyc_records/Stripe �
    Stripe dashboard 見 Express account（**無** prefilled external_account）。
 6. Merchant dashboard CTA → hosted onboarding → merchant 填出款銀行。
 7. 完成 onboarding → webhook 後 `stripe_charges_enabled` / `stripe_payouts_enabled` 變 true。
-8. 拒絕（填原因）→ 申請人重訪申請頁見原因 + 可重交。
-9. Admin 已批准且有 `acct_...` →「Stripe 出款」popover lazy-load → 顯示 bank last4 或「尚未綁定」+ Dashboard 連結。
+8. Payout-ready merchant → `GET /api/stripe/connect/dashboard` → redirect Stripe Express Dashboard（login link，非 stripe.com 自行登入）。
+9. 拒絕（填原因）→ 申請人重訪申請頁見原因 + 可重交。
+10. Admin 已批准且有 `acct_...` →「Stripe 出款」popover lazy-load → 顯示 bank last4 或「尚未綁定」+ Dashboard 連結。
 
 ```sql
 SELECT a.status, a.company_name_en, p.role, k.kyc_status, k.stripe_account_id,

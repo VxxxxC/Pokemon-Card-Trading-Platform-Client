@@ -13,10 +13,12 @@
 type AdminDashboardClientProps = {
   metrics: AdminDashboardMetrics | null;
   loadError: string | null;
+  initialServices: AdminDashboardSystemService[];
+  healthLoadError: string | null;
 };
 ```
 
-Import type from `@/lib/admin-dashboard/types`.
+Import types from `@/lib/admin-dashboard/types`.
 
 ## Wired
 
@@ -35,12 +37,18 @@ Import type from `@/lib/admin-dashboard/types`.
 - Alert banner **hidden when count === 0**
 - Stripe unavailable: amounts `"—"`, subtitle shows `unavailableReason`
 
-## Deferred (Phase 3)
+### Phase 3
 
-| UI | Phase |
+- `initialServices` — SSR health probe results (Supabase / Stripe / crawler)
+- 「實時檢測」→ `getAdminSystemHealthStatus()` via `useTransition` (real latency, no mock)
+- Toast reflects online / degraded / offline per service
+- `healthLoadError` plain text when probe action fails on SSR
+
+## Deferred
+
+| UI | Notes |
 |----|-------|
-| 系統運作狀態 latency (random) | 3 |
-| 活躍用戶比率 / 已封鎖 (`—`) | 3 |
+| 活躍用戶比率 / 已封鎖 (`—`) | Needs schema + product definition |
 
 ## Acceptance checklist
 

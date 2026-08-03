@@ -69,6 +69,29 @@ function renderStatusBadge(order: UserTradingOrder) {
     );
   }
 
+  if (
+    order.orderKind === "merchant" &&
+    !order.useAuthentication &&
+    order.status === "pending"
+  ) {
+    switch (order.merchantEscrowStatus) {
+      case "payment_held":
+        return (
+          <Badge variant="secondary" className="bg-blue-950 text-blue-400">
+            待發貨
+          </Badge>
+        );
+      case "shipped":
+        return (
+          <Badge variant="secondary" className="bg-cyan-950 text-cyan-400">
+            運送中
+          </Badge>
+        );
+      default:
+        break;
+    }
+  }
+
   if (order.useAuthentication && order.status === "pending" && order.escrowStatus) {
     switch (order.escrowStatus) {
       case "payment":
@@ -395,6 +418,8 @@ export function UserTradingClient({
                       escrowStatus: order.escrowStatus,
                       canPay: authActions?.canPay ?? false,
                       pendingPayment: order.pendingPayment,
+                      paymentExpiresAt: order.paymentExpiresAt,
+                      canCompleteMerchantPurchase: order.canCompleteMerchantPurchase,
                       canCancel:
                         authActions?.canCancel ??
                         (order.persona === "sell" &&

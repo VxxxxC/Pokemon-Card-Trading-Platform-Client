@@ -50,3 +50,15 @@ export type AdminDashboardMetrics = {
 export type AdminDashboardMetricsResult =
   | { success: true; data: AdminDashboardMetrics }
   | { success: false; error: string };
+
+export type AdminDashboardSystemService = {
+  id: "supabase" | "stripe" | "crawler";
+  name: string;
+  subName: string;
+  status: "online" | "degraded" | "offline";
+  latency: number;
+};
+
+export type AdminDashboardHealthResult =
+  | { success: true; data: { services: AdminDashboardSystemService[] } }
+  | { success: false; error: string };

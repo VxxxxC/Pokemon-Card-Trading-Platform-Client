@@ -120,6 +120,7 @@ type EditListingFormModalProps = {
   onClose: () => void;
   sku: Pick<SKUGroup, "cardName" | "cardNo">;
   item: CardInstance;
+  inventoryContext?: "merchant" | "member";
   onSaved?: () => void;
 };
 
@@ -215,6 +216,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
 
   const isOpen = isEdit ? editProps!.isOpen : createIsOpen;
   const onClose = isEdit ? editProps!.onClose : closeCreateModal;
+  const inventoryContext = isEdit ? editProps?.inventoryContext ?? "member" : undefined;
 
   const isMemberPersonaActive = useIsMemberPersonaActive();
   const listingSubmitPhase = useListingSubmitStore((state) => state.phase);
@@ -238,6 +240,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
 
   // ── Shared state ────────────────────────────────────────────────────────────
   const [price, setPrice] = useState("");
+  const [extraShippingFee, setExtraShippingFee] = useState("");
   const [gradingId, setGradingId] = useState(DEFAULT_GRADING_OPTION_ID);
   const [conditionDesc, setConditionDesc] = useState("");
   const [useAuthentication, setUseAuthentication] = useState(false);
@@ -304,6 +307,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
         setPrice("");
         setUseAuthentication(false);
       }
+      setExtraShippingFee("");
       setConditionDesc("");
       setPhotoSlots(createEmptyPhotoSlots());
       setActiveSlotIndex(null);
@@ -311,6 +315,11 @@ export function ListingFormModal(props: ListingFormModalProps) {
     } else if (isEdit && editProps) {
       const { item } = editProps;
       setPrice(String(item.askPrice));
+      setExtraShippingFee(
+        item.extraShippingFee != null && item.extraShippingFee > 0
+          ? String(item.extraShippingFee)
+          : "",
+      );
       setGradingId(item.gradingOptionId || DEFAULT_GRADING_OPTION_ID);
       setConditionDesc(item.conditionDesc);
       setIsActive(item.status === "active");
@@ -532,6 +541,10 @@ export function ListingFormModal(props: ListingFormModalProps) {
         imageFiles,
         photosRemark,
         sealState,
+        extraShippingFee:
+          sellerPersona === "merchant" && extraShippingFee.trim()
+            ? Number(extraShippingFee)
+            : undefined,
       });
 
       if (!result.success) return;
@@ -604,6 +617,10 @@ export function ListingFormModal(props: ListingFormModalProps) {
         sellerPersona,
         imageFiles,
         photosRemark,
+        extraShippingFee:
+          sellerPersona === "merchant" && extraShippingFee.trim()
+            ? Number(extraShippingFee)
+            : undefined,
       });
 
       if (!result.success) return;
@@ -690,6 +707,13 @@ export function ListingFormModal(props: ListingFormModalProps) {
         sellerDescription: conditionDesc.trim() || undefined,
         isActive,
         useAuthentication: isRawSelected ? useAuthentication : false,
+        sellerPersona: inventoryContext === "merchant" ? "merchant" : undefined,
+        extraShippingFee:
+          inventoryContext === "merchant" && extraShippingFee.trim()
+            ? Number(extraShippingFee)
+            : inventoryContext === "merchant"
+              ? 0
+              : undefined,
         imageSlots: photoSlots.map((slot) => ({
           file: slot.file,
           existingUrl: slot.existingUrl ?? slot.previewUrl ?? undefined,
@@ -1212,6 +1236,38 @@ export function ListingFormModal(props: ListingFormModalProps) {
     );
   };
 
+  const renderExtraShippingFee = () => {
+    const showExtraShippingFee = isEdit
+      ? inventoryContext === "merchant"
+      : isMerch && sellerPersona === "merchant";
+    if (!showExtraShippingFee) return null;
+    return (
+      <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
+        <label className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
+          附加運費 (HK$)
+        </label>
+        <div className="flex items-center mt-1">
+          <span className="font-mono text-[13px] text-text-disabled mr-1.5 shrink-0">
+            HK$
+          </span>
+          <input
+            type="number"
+            min={0}
+            max={200}
+            step={1}
+            placeholder="0"
+            value={extraShippingFee}
+            onChange={(evt) => setExtraShippingFee(evt.target.value)}
+            className="w-full bg-transparent text-text-primary text-[14px] font-black focus:outline-none"
+          />
+        </div>
+        <p className="mt-1 font-mono text-[10px] text-text-disabled">
+          選填，疊加店舖基本運費
+        </p>
+      </div>
+    );
+  };
+
   const renderConditionDesc = () => {
     if (!isMerch) return null;
     return (
@@ -1299,6 +1355,7 @@ export function ListingFormModal(props: ListingFormModalProps) {
             </div>
 
             {renderAuthToggle()}
+            {renderExtraShippingFee()}
             {renderConditionDesc()}
             {renderPhotoGrid()}
             {renderStatusToggle()}
