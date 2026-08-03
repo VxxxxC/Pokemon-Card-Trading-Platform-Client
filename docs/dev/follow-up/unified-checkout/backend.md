@@ -22,7 +22,7 @@ Checkout 只負責**入款**；出款見下方 § Payout。
 | Route | Variants | PI | Status |
 |-------|----------|-----|--------|
 | **A — Normal automatic** | `merchant_direct`（`useAuth=false`） | `capture_method: automatic` | ✅ **Ready to test** — 付款即 capture 入平台 |
-| **B — Auth manual + multicapture** | `merchant_auth`, `merchant_direct` + 鑑定 toggle, `member_auth` | `capture_method: manual` + `request_multicapture: if_available` | ⏸ **On hold** — 等 Stripe account 開通 **online multicapture** 後再跑 admin grading E2E |
+| **B — Auth manual + multicapture** | `merchant_auth`, `merchant_direct` + 鑑定 toggle, `member_auth` | `capture_method: manual` + `request_multicapture: if_available` | 🟡 **Partner QA** — Stripe online multicapture 已開通；見 [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md) |
 
 Branch in `createMerchantOrderPaymentIntent`:
 
@@ -37,7 +37,7 @@ Webhook:
 - Route A → `payment_intent.succeeded` → merchant `payment_held` / member custody flow
 - Route B → `amount_capturable_updated` → `authorized`; staged partial capture via admin grading sagas
 
-**Do not E2E Route B** until Stripe multicapture approved. Route A (non-auth merchant) is the current production validation path.
+**Route B E2E:** Stripe multicapture enabled — partner QA via [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md). Use **new auth orders** only. Route A (non-auth merchant) remains independently validated.
 
 ---
 

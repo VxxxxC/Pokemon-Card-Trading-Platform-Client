@@ -199,7 +199,7 @@ interface Message {
 
 `app/actions/checkout.ts` + `lib/checkout/*` — 商戶 B2C + Member 鑑定託管共用 `/checkout/[orderId]` 兩步精靈。詳見 [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md)。
 
-**入款兩 route：** 非鑑定 merchant → PI `automatic` ✅；鑑定單 → manual multicapture ⏸（待 Stripe 開通）。**出款（非 checkout）：** Member 鑑定 → FPS + T+3 `payout_requests`；Merchant → Connect + T+7 cron。
+**入款兩 route：** 非鑑定 merchant → PI `automatic` ✅；鑑定單 → manual multicapture 🟡 Partner QA（[PARTNER_HANDOFF](./follow-up/admin-grading/PARTNER_HANDOFF.md)）。**出款（非 checkout）：** Member 鑑定 → FPS + T+3 `payout_requests`；Merchant → Connect + T+7 cron。
 
 | 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
 |------|------|--------------|----------|------|

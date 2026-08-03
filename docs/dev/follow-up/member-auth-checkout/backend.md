@@ -1,5 +1,8 @@
 # Member Auth Checkout — Backend
 
+> **Status:** ✅ P0 Ready · 🟡 Partner QA（multicapture E2E）  
+> **Partner handoff:** [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)
+
 ## Scope
 
 Member C2C orders with `use_authentication=true` only. P2P without auth has no Stripe flow.

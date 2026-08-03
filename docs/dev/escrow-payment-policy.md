@@ -59,7 +59,7 @@
 
 | 階段 | Member 鑑定 (#2) | Merchant (#3 / #4) |
 |------|------------------|---------------------|
-| 收款 | Stripe manual PI + multicapture（⏸ 待 Stripe 開通） | 非鑑定：automatic ✅；鑑定：manual ⏸ |
+| 收款 | Stripe manual PI + multicapture 🟡 Partner QA | 非鑑定：automatic ✅；鑑定：manual 🟡 Partner QA |
 | 出款觸發 | 買家確認收貨 | 買家確認收貨 |
 | Hold | **T+3** | **T+7** |
 | 出款方式 | **FPS** + `payout_requests`（平台外轉數） | **Stripe Connect** `transfers.create` |
@@ -310,6 +310,7 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 
 ## 19. 相關文件
 
+- [admin-grading/PARTNER_HANDOFF.md](./follow-up/admin-grading/PARTNER_HANDOFF.md) — 🟡 Partner QA（multicapture E2E 主流程）
 - [admin-grading/backend.md](./follow-up/admin-grading/backend.md) — 鑑定工作台（須對齊本文件 capture 時序）
 - [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md) — 統一結帳 wizard + 入款兩 route / 出款 T+3 FPS vs T+7 Connect
 - [member-fps-payout/backend.md](./follow-up/member-fps-payout/backend.md) — Member 鑑定 T+3 FPS 提現單

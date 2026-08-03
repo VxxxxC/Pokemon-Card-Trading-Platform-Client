@@ -1,7 +1,8 @@
 # Member FPS Payout Pipeline — Backend
 
-> **Status:** ✅ Ready (Phase 1A / 1B / 1C)  
-> **Migration:** `supabase/migrations/20260802120000_member_fps_payout_pipeline.sql`
+> **Status:** ✅ Ready (Phase 1A / 1B / 1C) · 🟡 Partner QA（multicapture 後段）  
+> **Migration:** `supabase/migrations/20260802120000_member_fps_payout_pipeline.sql`  
+> **P0 capture QA:** [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)
 
 ## Overview
 
