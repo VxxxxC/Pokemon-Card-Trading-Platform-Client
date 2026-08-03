@@ -3,6 +3,7 @@ import {
   buildPublicProfilePath,
   getMerchantProductDetailFixtures,
   hasBuyerAuthFixtures,
+  hasBunnyStorageFixtures,
   hasPublicProfileFixtures,
 } from "./fixtures/test-data";
 import {
@@ -11,7 +12,9 @@ import {
   getBuyerProfileIdFromEnv,
   getLatestReport,
   getProfileDisplayName,
+  getReportAttachmentsForReport,
 } from "./fixtures/supabase-admin";
+import { LISTING_PHOTO_FIXTURE } from "./helpers/collection-asset";
 import {
   chatConsoleRoot,
   dismissBlockingOverlays,
@@ -19,6 +22,7 @@ import {
 } from "./helpers/member-trading";
 
 const REPORT_CATEGORY = "惡意欺詐 / 虛假交易";
+const REPORT_CATEGORY_SLUG = "fraud";
 const CHAT_REPORT_DETAILS = "E2E chat report details";
 const PROFILE_REPORT_DETAILS = "E2E profile report details";
 
@@ -30,14 +34,13 @@ test.setTimeout(120_000);
 async function fillAndSubmitReportDialog(
   page: Page,
   details: string,
+  categoryLabel: RegExp = /惡意欺詐 \/ 虛假交易/,
 ): Promise<void> {
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toBeVisible({ timeout: 10_000 });
 
   await dialog.getByRole("combobox").click();
-  await page
-    .getByRole("option", { name: /惡意欺詐 \/ 虛假交易/ })
-    .click();
+  await page.getByRole("option", { name: categoryLabel }).click();
 
   await dialog.locator("textarea").fill(details);
 
@@ -46,8 +49,9 @@ async function fillAndSubmitReportDialog(
     .click();
 
   await expect(page.getByText("舉報信號已受理")).toBeVisible({
-    timeout: 20_000,
+    timeout: 45_000,
   });
+  await expect(dialog).toBeHidden({ timeout: 5_000 });
 }
 
 test.describe("User report submission", () => {
@@ -72,7 +76,7 @@ test.describe("User report submission", () => {
 
     await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
 
-    await openChatRoom(page, roomId, partnerName);
+    await openChatRoom(page, roomId, partnerName, sellerId);
     await expect(
       chatConsoleRoot(page).getByRole("button", { name: "舉報" }),
     ).toBeVisible({ timeout: 20_000 });
@@ -101,6 +105,9 @@ test.describe("User report submission", () => {
     expect(report?.reason).toContain(`[ROOM_ID] ${roomId}`);
     expect(report?.reason).toContain(`[CATEGORY] ${REPORT_CATEGORY}`);
     expect(report?.reason).toContain(CHAT_REPORT_DETAILS);
+    expect(report?.category).toBe(REPORT_CATEGORY_SLUG);
+    expect(report?.case_id).toBeTruthy();
+    expect(report?.contribution_score).toBe(44);
 
     await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
   });
@@ -147,6 +154,104 @@ test.describe("User report submission", () => {
     expect(report?.reason).not.toContain("[ROOM_ID]");
     expect(report?.reason).toContain(`[CATEGORY] ${REPORT_CATEGORY}`);
     expect(report?.reason).toContain(PROFILE_REPORT_DETAILS);
+    expect(report?.category).toBe(REPORT_CATEGORY_SLUG);
+    expect(report?.case_id).toBeTruthy();
+    expect(report?.contribution_score).toBe(40);
+
+    await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
+  });
+
+  test("profile report blocks chat-required offline trade category", async ({
+    page,
+  }) => {
+    const { sellerId } = getMerchantProductDetailFixtures();
+    const buyerId = await getBuyerProfileIdFromEnv();
+
+    if (!sellerId || !buyerId) {
+      test.skip(true, "Missing buyer or seller profile id");
+      return;
+    }
+
+    await page.goto(buildPublicProfilePath(sellerId), {
+      waitUntil: "domcontentloaded",
+    });
+    await dismissBlockingOverlays(page);
+    await expect(page.getByText("總完成交易")).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole("button", { name: /舉報用戶/ }).click();
+
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await dialog.getByRole("combobox").click();
+    await page.getByRole("option", { name: /誘導私下交易/ }).click();
+
+    await expect(
+      dialog.getByText("此類別需在對話視窗內舉報，請返回聊天後再提交。"),
+    ).toBeVisible();
+
+    const submitButton = dialog.getByRole("button", {
+      name: /確認提交安全審查/,
+    });
+    await expect(submitButton).toBeDisabled();
+  });
+
+  test("buyer submits chat report with evidence image", async ({ page }) => {
+    if (!hasBunnyStorageFixtures()) {
+      test.skip(true, "Missing Bunny storage env for report evidence upload");
+      return;
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
+    const buyerId = await getBuyerProfileIdFromEnv();
+
+    if (!sellerId || !buyerId) {
+      test.skip(true, "Missing buyer or seller profile id");
+      return;
+    }
+
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const partnerName = await getProfileDisplayName(sellerId);
+
+    await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
+
+    await openChatRoom(page, roomId, partnerName, sellerId);
+    await chatConsoleRoot(page).getByRole("button", { name: "舉報" }).click();
+
+    const dialog = page.getByRole("alertdialog");
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await dialog.getByRole("combobox").click();
+    await page
+      .getByRole("option", { name: /惡意欺詐 \/ 虛假交易/ })
+      .click();
+    await dialog.locator("textarea").fill("E2E chat report with evidence");
+    await dialog.locator('input[type="file"]').setInputFiles(LISTING_PHOTO_FIXTURE);
+    await dialog
+      .getByRole("button", { name: /確認提交安全審查/ })
+      .click();
+
+    await expect(page.getByText("舉報信號已受理")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const report = await getLatestReport({
+      reporterId: buyerId,
+      targetId: sellerId,
+    });
+
+    expect(report?.id).toBeTruthy();
+
+    await expect.poll(
+      async () => {
+        const attachments = await getReportAttachmentsForReport(report!.id);
+        return attachments.length;
+      },
+      { timeout: 15_000 },
+    ).toBe(1);
+
+    const attachments = await getReportAttachmentsForReport(report!.id);
+    expect(attachments[0]?.report_id).toBe(report?.id);
+    expect(attachments[0]?.reporter_id).toBe(buyerId);
+    expect(attachments[0]?.storage_path).toContain("reports/pending/");
 
     await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
   });

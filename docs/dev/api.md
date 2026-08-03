@@ -424,6 +424,16 @@ type MemberDashboardTradingStats = {
 | `POST` | `[Server Action] adminSubmitGradingOutbound` | `{ orderKind, orderId, trackingNo }` | `{ applied: true }` | ADMIN |
 | `POST` | `[Server Action] adminFailGradingAndRefund` | `{ orderKind, orderId, faultParty, reason? }` | `{ applied: true }` — void uncaptured balance (auth fee retained) | ADMIN |
 | `GET` | `[Server Action] getAdminGradingAuditHistory` | `{ orderKind, orderId }` | `AuditRow[]` | ADMIN |
+| `POST` | `[Server Action] submitUserReport` | `{ reportedUserId, category, details?, chatRoomId?, attachmentIds? }` | `{ success, reportId? }` | USER+ |
+| `POST` | `/api/reports/upload-evidence` | multipart image (≤5MB, max 3) | `{ attachmentId, publicUrl }` | USER+ |
+| `GET` | `[Server Action] searchAdminModerationCases` ✅ Phase C | `{ page?, status?, category?, minScore?, search? }` | `{ rows, total, pendingCount }` | ADMIN |
+| `GET` | `[Server Action] getAdminModerationCase` ✅ Phase C | `caseId` | case bundle (reports, attachments, chatAccess, auditLog, activeSanctions, **relatedOrders**; read-only order summaries) | ADMIN |
+| `GET` | `[Server Action] getAdminModerationChatThread` ✅ Phase D | `{ caseId, roomId, before? }` | paginated messages + audit `view_chat` on first page | ADMIN |
+| `POST` | `[Server Action] adjustAdminModerationCaseScore` ✅ Phase E | `{ caseId, adjustment, reason? }` | `{ caseId }` | ADMIN |
+| `POST` | `[Server Action] resolveAdminModerationCase` ✅ Phase E/E+ | `{ caseId, resolution, violationPersona?, sanction?, evidenceOverrideReason? }` | `{ caseId, status, resolution, authBanWarning? }` — permanent `ban` triggers `auth.admin` ban + global signOut | ADMIN |
+| `GET` | `[RPC] moderation_get_account_access_restriction` ✅ Phase E+ | `{ p_user_id }` (self or admin) | `{ blocked, type?, endsAt?, reason? }` — used by `proxy.ts` |
+
+> 完整契約見 [follow-up/admin-moderation/backend.md](./follow-up/admin-moderation/backend.md)。
 
 ---
 
