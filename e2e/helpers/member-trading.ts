@@ -452,18 +452,32 @@ export async function gotoOrderDetail(page: Page, orderId: string): Promise<void
   await dismissBlockingOverlays(page);
 }
 
-export async function mockPayAuthOrderOnDetail(page: Page): Promise<void> {
+export async function gotoCheckout(page: Page, orderId: string): Promise<void> {
+  await page.goto(`/checkout/${orderId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await dismissBlockingOverlays(page);
+}
+
+export async function mockPayAuthOrderOnCheckout(page: Page): Promise<void> {
   await expect(
-    page.getByText("測試模式 — Stripe 尚未接入"),
+    page.getByText("開發模式 — Stripe 未配置時使用模擬付款"),
   ).toBeVisible({ timeout: 15_000 });
 
   const payButton = page.getByRole("button", { name: /確認模擬付款（HK\$/ });
   await expect(payButton).toBeVisible({ timeout: 15_000 });
   await payButton.click();
 
-  await expect(page.getByText("測試模式 — Stripe 尚未接入")).toHaveCount(0, {
+  await expect(
+    page.getByText("開發模式 — Stripe 未配置時使用模擬付款"),
+  ).toHaveCount(0, {
     timeout: 20_000,
   });
+}
+
+/** @deprecated Use mockPayAuthOrderOnCheckout — payment moved to unified checkout wizard */
+export async function mockPayAuthOrderOnDetail(page: Page): Promise<void> {
+  await mockPayAuthOrderOnCheckout(page);
 }
 
 export async function resolveP2pMemberOrderIdFromTradingList(

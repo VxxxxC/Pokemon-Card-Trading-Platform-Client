@@ -186,6 +186,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_submit_transaction_review` | `{ p_comment?: string p_order_id: string p_rating: number p_reviewee_id: string p_user_id?: string }` | `Json` |
 | `run_auto_grant_rewards_for_me` | `never;` | `Json` |
 | `search_admin_grading_orders` | `{ p_keyword?: string p_order_kind?: string p_page?: number p_page_size?: number p_tab: string }` | `Json` |
+| `search_admin_platform_users` | `{ p_keyword?: string p_kyc_filter?: string p_page?: number p_page_size?: number p_user_types?: stri…` | `Json` |
 | `search_marketplace_products` | `{ p_card_number?: string p_catalog_types?: Database["public"]["Enums"]["catalog_type"][] p_grade_fi…` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_products_browse` | `{ p_page?: number; p_page_size?: number; p_sort?: string }` | `{ card_number: string catalog_type: Database["public"]["Enums"]["catalog_type"] display_id: string …` |
 | `search_marketplace_seller_listings` | `{ p_grade_filters?: Json p_name_query?: string p_page?: number p_page_size?: number p_price_max?: n…` | `{ card_number: string created_at: string display_id: string grading_company: string grading_score: …` |
@@ -193,6 +194,8 @@ type UserRole = Enums<"user_role">;
 | `search_product_catalog` | `{ p_item_type?: string; p_query: string }` | `{ card_number: string display_id: string id: string image_url: string jan_code: string name_en: str…` |
 | `search_public_profile_reviews` | `{ p_page?: number p_page_size?: number p_persona: Database["public"]["Enums"]["review_persona"] p_p…` | `{ aggregate_rating: number comment: string created_at: string is_merchant_tx: boolean page: number …` |
 | `search_user_trading_orders` | `{ p_page?: number p_page_size?: number p_persona?: string p_search_query?: string p_tab_status?: st…` | `{ buyer_id: string card_number: string catalog_image_url: string count_needs_action: number count_p…` |
+| `show_limit` | `never;` | `number` |
+| `show_trgm` | `{ "": string };` | `string[]` |
 
 ---
 

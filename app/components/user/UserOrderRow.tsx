@@ -283,9 +283,7 @@ export function UserOrderRow({
                     type="button"
                     disabled={isActionLoading}
                     onClick={() =>
-                      router.push(
-                        "/profile/user/orderDetail/" + navigateOrderId,
-                      )
+                      router.push("/checkout/" + navigateOrderId)
                     }
                     className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   >

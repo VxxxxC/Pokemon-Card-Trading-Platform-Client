@@ -195,6 +195,18 @@ interface Message {
 
 金額：`final_price + HK$150` 鑑定費（`rpc_prepare_member_auth_order_payment`）。PI `capture_method: manual`；webhook `payment_intent.amount_capturable_updated`（`order_kind=member_auth`）→ `authorized` + `custody`；Admin 入庫 partial capture 鑑定費 → `auth_fee_captured` + `grading`。
 
+### 5.2.1 統一結帳 Wizard（✅ 已落地）
+
+`app/actions/checkout.ts` + `lib/checkout/*` — 商戶 B2C + Member 鑑定託管共用 `/checkout/[orderId]` 兩步精靈。詳見 [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md)。
+
+**入款兩 route：** 非鑑定 merchant → PI `automatic` ✅；鑑定單 → manual multicapture ⏸（待 Stripe 開通）。**出款（非 checkout）：** Member 鑑定 → FPS + T+3 `payout_requests`；Merchant → Connect + T+7 cron。
+
+| 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
+|------|------|--------------|----------|------|
+| `GET` | `[Server Action] loadCheckoutSession` | `(orderIdOrNumber)` | `CheckoutSession`（`merchant_direct` \| `merchant_auth` \| `member_auth`） | 訂單買家 |
+| `GET` | `[Server Action] getCheckoutPaymentStatus` | `(orderIdOrNumber)` | `{ orderKind, isPaid, isProcessing, totalAmount }` | 訂單買家 / 參與方 |
+| `POST` | `lib/checkout/prepare-payment` | `(session, merchantDirectForm?)` | `{ clientSecret, publishableKey, totalAmount }` | client 呼叫（包裝既有 PI actions） |
+
 ### 5.3 規劃中 / 未落地的 REST 介面
 
 | 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |

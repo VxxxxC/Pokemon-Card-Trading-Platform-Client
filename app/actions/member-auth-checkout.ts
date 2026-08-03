@@ -1,7 +1,9 @@
 "use server";
 
 import type Stripe from "stripe";
+import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import { getMemberAuthOrderActions } from "@/app/lib/member-order/auth-escrow";
+import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS } from "@/lib/payments/escrow-payment-intent";
 import { calculateMemberAuthPaymentTotal } from "@/lib/payments/member-auth-payment";
 import { resolveMemberOrderIdForUser } from "@/lib/member-order/resolve-order-id";
@@ -26,6 +28,19 @@ export type MemberAuthCheckoutOrder = {
   totalAmount: number;
   paymentAmount: number;
   useAuthentication: boolean;
+  seller: {
+    id: string;
+    displayName: string;
+    username: string | null;
+  };
+  product: {
+    cardName: string;
+    cardNumber: string | null;
+    setCode: string;
+    displayId: string | null;
+    gradeLabel: string;
+    imageUrl: string;
+  };
 };
 
 export type MemberAuthCheckoutPaymentIntent = {
@@ -63,7 +78,35 @@ type MemberAuthCheckoutRow = Pick<
   | "payment_confirmed_at"
   | "stripe_payment_intent_id"
   | "payment_capture_status"
->;
+> & {
+  listings: {
+    grading_company: string;
+    grading_score: string | null;
+    images: unknown;
+    product_catalog: {
+      name_ja: string;
+      name_zh: string | null;
+      name_en: string | null;
+      card_number: string | null;
+      set_code: string;
+      display_id: string | null;
+      image_url: string;
+    } | null;
+  } | null;
+};
+
+function displayCardName(catalog: {
+  name_ja: string;
+  name_zh: string | null;
+  name_en: string | null;
+}): string {
+  return (
+    catalog.name_zh?.trim() ||
+    catalog.name_en?.trim() ||
+    catalog.name_ja?.trim() ||
+    "未知商品"
+  );
+}
 
 type PrepareMemberAuthPaymentPayload = {
   order_id: string;
@@ -104,7 +147,21 @@ const MEMBER_AUTH_CHECKOUT_SELECT = `
   status,
   payment_confirmed_at,
   stripe_payment_intent_id,
-  payment_capture_status
+  payment_capture_status,
+  listings (
+    grading_company,
+    grading_score,
+    images,
+    product_catalog (
+      name_ja,
+      name_zh,
+      name_en,
+      card_number,
+      set_code,
+      display_id,
+      image_url
+    )
+  )
 `;
 
 function asMemberAuthCheckoutRpcClient(
@@ -183,6 +240,7 @@ async function loadMemberAuthCheckoutRow(
 function mapCheckoutSnapshot(
   row: MemberAuthCheckoutRow,
   viewerId: string,
+  seller: { display_name: string; username: string | null },
 ): MemberAuthCheckoutOrder {
   const isBuyer = row.buyer_id === viewerId;
   const itemSubtotal = Number(row.item_subtotal ?? row.final_price);
@@ -203,6 +261,8 @@ function mapCheckoutSnapshot(
     row.payment_confirmed_at == null &&
     row.status === "pending";
 
+  const catalog = row.listings?.product_catalog;
+
   return {
     orderId: row.id,
     orderNumber: row.order_number,
@@ -214,6 +274,28 @@ function mapCheckoutSnapshot(
     totalAmount,
     paymentAmount: totalAmount,
     useAuthentication: row.use_authentication,
+    seller: {
+      id: row.seller_id,
+      displayName:
+        seller.display_name?.trim() ||
+        seller.username?.trim() ||
+        "賣家",
+      username: seller.username,
+    },
+    product: {
+      cardName: catalog ? displayCardName(catalog) : "未知商品",
+      cardNumber: catalog?.card_number ?? null,
+      setCode: catalog?.set_code ?? "",
+      displayId: catalog?.display_id ?? null,
+      gradeLabel: formatTradeGradeLabel(
+        row.listings?.grading_company ?? "",
+        row.listings?.grading_score ?? null,
+      ),
+      imageUrl: resolveOfferCardDisplayImage(
+        row.listings?.images,
+        catalog?.image_url,
+      ),
+    },
   };
 }
 
@@ -244,9 +326,19 @@ export async function loadMemberAuthCheckoutOrder(
       return rowResult;
     }
 
+    const { data: sellerProfile } = await supabase
+      .from("profiles")
+      .select("display_name, username")
+      .eq("id", rowResult.data.seller_id)
+      .maybeSingle<Pick<Tables<"profiles">, "display_name" | "username">>();
+
     return {
       success: true,
-      data: mapCheckoutSnapshot(rowResult.data, user.id),
+      data: mapCheckoutSnapshot(
+        rowResult.data,
+        user.id,
+        sellerProfile ?? { display_name: "賣家", username: null },
+      ),
     };
   } catch (error) {
     console.error("[loadMemberAuthCheckoutOrder]", error);

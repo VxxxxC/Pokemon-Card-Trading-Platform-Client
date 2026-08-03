@@ -2694,6 +2694,16 @@ export type Database = {
         }
         Returns: Json
       }
+      search_admin_platform_users: {
+        Args: {
+          p_keyword?: string
+          p_kyc_filter?: string
+          p_page?: number
+          p_page_size?: number
+          p_user_types?: string[]
+        }
+        Returns: Json
+      }
       search_marketplace_products: {
         Args: {
           p_card_number?: string
@@ -2973,6 +2983,8 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       catalog_type:

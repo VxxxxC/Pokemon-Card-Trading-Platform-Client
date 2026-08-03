@@ -112,7 +112,7 @@ function resolvePaymentHref(
     memberOrder.escrow_status === "payment" &&
     memberOrder.payment_confirmed_at == null
   ) {
-    return `/profile/user/orderDetail/${orderId}`;
+    return `/checkout/${orderId}`;
   }
   return null;
 }

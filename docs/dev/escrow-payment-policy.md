@@ -53,6 +53,19 @@
 4. **鑑定失敗（入庫後）**：釋放未 capture 餘額；已 capture 之 auth_fee **保留**
 5. **入庫前取消**：`payment_intent.cancel`；全額未 capture → 無 processing fee
 
+### 2.3 Unified checkout 與兩條出款路（2026-07 sync）
+
+**Checkout（入款）** — 全部非 P2P 走 `/checkout/{orderId}` 兩步 wizard；見 [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md)。
+
+| 階段 | Member 鑑定 (#2) | Merchant (#3 / #4) |
+|------|------------------|---------------------|
+| 收款 | Stripe manual PI + multicapture（⏸ 待 Stripe 開通） | 非鑑定：automatic ✅；鑑定：manual ⏸ |
+| 出款觸發 | 買家確認收貨 | 買家確認收貨 |
+| Hold | **T+3** | **T+7** |
+| 出款方式 | **FPS** + `payout_requests`（平台外轉數） | **Stripe Connect** `transfers.create` |
+
+Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
+
 ---
 
 ## 3. 付款子狀態 `payment_capture_status`
@@ -146,7 +159,7 @@
 1. 買家 `confirmBuyerReceived` → `released` / `completed`
 2. 記 `buyer_confirmed_at`；**不立即 FPS**
 3. `payout_hold_until = buyer_confirmed_at + 3 個曆日`（**T+3**）
-4. `seller_payout_status`：`held` →（無爭議）`ready` → Admin 標記 FPS `paid`
+4. Cron（hold 到期 + `fully_captured`）→ insert **`payout_requests`**；`seller_payout_status` → `ready` → Admin 標記 FPS `paid`（**唔經 Connect**）
 
 **FPS 金額（第一版）**：`item_subtotal - seller_payable_fees`（Member 不收平台佣金，只扣應付 stripe fee 等）
 
@@ -298,6 +311,7 @@
 ## 19. 相關文件
 
 - [admin-grading/backend.md](./follow-up/admin-grading/backend.md) — 鑑定工作台（須對齊本文件 capture 時序）
-- [merchant-checkout/backend.md](./follow-up/merchant-checkout/backend.md) — Connect payout
-- [member-auth-checkout/backend.md](./follow-up/member-auth-checkout/backend.md) — Member 鑑定 PI（待改 manual capture）
+- [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md) — 統一結帳 wizard + 入款兩 route / 出款 T+3 FPS vs T+7 Connect
+- [member-fps-payout/backend.md](./follow-up/member-fps-payout/backend.md) — Member 鑑定 T+3 FPS 提現單
+- [merchant-connect-payout-hold/backend.md](./follow-up/merchant-connect-payout-hold/backend.md) — Merchant T+7 Connect cron
 - [server.md](./server.md) — 伺服器 TODO（付款章節以本文件為準）

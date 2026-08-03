@@ -13,8 +13,6 @@ import {
   type MemberOrderDetail,
 } from "@/app/actions/orders";
 import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDevPanel";
-import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
-import { MemberAuthStripePaymentPanel } from "@/app/components/transactions/MemberAuthStripePaymentPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { FpsIdCollectDialog } from "@/app/components/user/FpsIdCollectDialog";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
@@ -66,10 +64,6 @@ function dispatchPortfolioRefresh(): void {
   window.dispatchEvent(new CustomEvent("inventory-should-refresh"));
   window.dispatchEvent(new CustomEvent("collection-should-refresh"));
 }
-
-const stripePaymentAvailable =
-  typeof process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.trim().length > 0;
 
 function fpsCollectDismissStorageKey(sellerId: string): string {
   return `hkcv-fps-collect-dismissed-${sellerId}`;
@@ -639,24 +633,20 @@ export function MemberOrderDetailView({
             paymentConfirmedAt={order.paymentConfirmedAt}
           />
 
-          {order.escrowStatus === "payment" && order.canPay ? (
-            stripePaymentAvailable ? (
-              <MemberAuthStripePaymentPanel
-                orderId={order.id}
-                finalPrice={order.finalPrice}
-                paymentAmount={order.paymentAmount}
+          {order.escrowStatus === "payment" && order.canPay && isBuyer ? (
+            <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                此訂單尚未完成託管付款，請前往結帳頁完成卡價與鑑定服務費支付。
+              </p>
+              <button
+                type="button"
                 disabled={isActionLoading}
-                onSuccess={onRefresh}
-              />
-            ) : (
-              <MemberAuthMockPaymentPanel
-                orderId={order.id}
-                finalPrice={order.finalPrice}
-                paymentAmount={order.paymentAmount}
-                disabled={isActionLoading}
-                onSuccess={onRefresh}
-              />
-            )
+                onClick={() => router.push("/checkout/" + order.id)}
+                className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-sans font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                前往付款
+              </button>
+            </div>
           ) : null}
 
           {order.escrowStatus === "custody" && isSeller ? (
