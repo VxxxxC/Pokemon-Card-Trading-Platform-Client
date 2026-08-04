@@ -8,6 +8,7 @@ type MemberMerchantB2cOrderInvoiceProps = {
   shippingMethod: string | null;
   totalAmount: number;
   isSeller: boolean;
+  authFee?: number;
 };
 
 function formatShippingMethodLabel(method: string | null): string {
@@ -26,6 +27,7 @@ export function MemberMerchantB2cOrderInvoice({
   shippingMethod,
   totalAmount,
   isSeller,
+  authFee = 0,
 }: MemberMerchantB2cOrderInvoiceProps) {
   return (
     <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
@@ -58,6 +60,14 @@ export function MemberMerchantB2cOrderInvoice({
             {"HK$ " + shippingFee.toLocaleString("zh-TW")}
           </span>
         </div>
+        {authFee > 0 ? (
+          <div className="flex justify-between">
+            <span>官方第三方鑑定費</span>
+            <span className="text-text-primary">
+              {"HK$ " + authFee.toLocaleString("zh-TW")}
+            </span>
+          </div>
+        ) : null}
 
         <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
           <span>{isSeller ? "買家託管總額" : "託管付款總額"}</span>

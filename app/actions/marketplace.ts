@@ -189,6 +189,36 @@ function applyShippingQuote<T extends MarketplaceMerchantShippingFields>(
   };
 }
 
+async function enrichProductRowsWithSellerSnippets(
+  supabase: ShippingQuoteSupabase,
+  rows: MarketplaceProductRow[],
+): Promise<MarketplaceProductRow[]> {
+  if (rows.length === 0) {
+    return rows;
+  }
+
+  const sellerSnippets = await loadListingSellerSnippets(
+    supabase,
+    rows.map((row) => ({
+      sellerId: row.sellerId,
+      sellerPersona: row.sellerPersona,
+    })),
+  );
+
+  return rows.map((row) => {
+    const sellerSnippet = sellerSnippets.get(
+      listingSellerSnippetKey(row.sellerId, row.sellerPersona),
+    );
+    if (!sellerSnippet) {
+      return row;
+    }
+    return {
+      ...row,
+      sellerName: sellerSnippet.displayName,
+    };
+  });
+}
+
 async function enrichProductRowsWithShipping(
   supabase: ShippingQuoteSupabase,
   rows: MarketplaceProductRow[],
@@ -469,9 +499,13 @@ async function runBrowseMarketplaceSearch(
   }
 
   const rows = (data ?? []) as BrowseRpcRow[];
-  const products = await enrichProductRowsWithShipping(
+  const productsWithSellers = await enrichProductRowsWithSellerSnippets(
     supabase,
     rows.map(toProductRow),
+  );
+  const products = await enrichProductRowsWithShipping(
+    supabase,
+    productsWithSellers,
   );
 
   return {
@@ -589,9 +623,13 @@ export async function searchMarketplaceProducts(
     }
 
     const rows = (data ?? []) as SearchRpcRow[];
-    const products = await enrichProductRowsWithShipping(
+    const productsWithSellers = await enrichProductRowsWithSellerSnippets(
       supabase,
       rows.map(toProductRow),
+    );
+    const products = await enrichProductRowsWithShipping(
+      supabase,
+      productsWithSellers,
     );
 
     return {

@@ -296,8 +296,7 @@ export async function buyNowListing(
         offerPrice: Number(parsed.offer.offer_price),
         useAuthentication: Boolean(parsed.offer.use_authentication),
         paymentHref,
-        checkoutHref:
-          orderKind === "merchant" && paymentHref ? paymentHref : null,
+        checkoutHref: paymentHref ?? null,
         orderDetailHref,
       },
     };

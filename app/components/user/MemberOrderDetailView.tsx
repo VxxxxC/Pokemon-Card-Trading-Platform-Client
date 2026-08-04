@@ -99,8 +99,7 @@ export function MemberOrderDetailView({
     gradeLabel;
   const displayOrderNumber = order.orderNumber ?? order.id;
   const createdAtLabel = formatMemberOrderDateTime(order.createdAt);
-  const useMerchantB2cEscrowUi =
-    order.orderKind === "merchant" && !order.useAuthentication;
+  const useMerchantB2cEscrowUi = order.orderKind === "merchant";
   const useMeetupUi =
     isMeetupOnlyMemberOrder(order.useAuthentication) && !useMerchantB2cEscrowUi;
   const [inboundTrackingInput, setInboundTrackingInput] = useState("");
@@ -811,6 +810,7 @@ export function MemberOrderDetailView({
             shippingFee={order.shippingFee ?? 0}
             shippingMethod={order.shippingMethod ?? null}
             totalAmount={order.totalAmount ?? order.finalPrice}
+            authFee={order.authFee ?? 0}
             isSeller={isSeller}
           />
         ) : useMeetupUi ? (
