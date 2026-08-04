@@ -41,6 +41,7 @@ export type AdminModerationCaseRow = {
   subject: AdminModerationSubjectPreview;
   reporterPreview: AdminModerationReporterPreview;
   previewDetails: string | null;
+  subjectPriorUpheldCount: number;
 };
 
 export type AdminModerationSearchResult = {
@@ -204,6 +205,45 @@ export type AdminModerationCaseBundle = {
   relatedOrders: AdminModerationOrderSummary[];
   activeSanctions: AdminAccountSanctionRow[];
   auditLog: AdminModerationAuditRow[];
+};
+
+export type AdminSubjectModerationHistoryStats = {
+  priorCaseCount: number;
+  upheldCount: number;
+  dismissedCount: number;
+  reportsLast90Days: number;
+  distinctSanctionTypes: string[];
+};
+
+export type AdminSubjectModerationPriorCase = {
+  id: string;
+  caseNumber: string;
+  status: ModerationCaseStatus;
+  primaryCategory: ReportCategorySlug | null;
+  finalScore: number | null;
+  resolution: ModerationResolution | null;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+export type AdminSubjectSanctionHistoryRow = {
+  id: string;
+  scope: SanctionScope;
+  type: SanctionType;
+  caseId: string | null;
+  caseNumber: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  revokedAt: string | null;
+  reason: string | null;
+  status: "active" | "expired" | "revoked";
+};
+
+export type AdminSubjectModerationHistory = {
+  subjectUserId: string;
+  stats: AdminSubjectModerationHistoryStats;
+  priorCases: AdminSubjectModerationPriorCase[];
+  sanctionHistory: AdminSubjectSanctionHistoryRow[];
 };
 
 export type SearchAdminModerationCasesInput = {

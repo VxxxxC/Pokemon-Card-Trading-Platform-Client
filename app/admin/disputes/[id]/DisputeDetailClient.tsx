@@ -41,13 +41,17 @@ import {
 } from "@/lib/moderation/resolution-config";
 import type {
   AdminModerationCaseBundle,
+  AdminSubjectModerationHistory,
   ViolationPersona,
 } from "@/lib/moderation/types";
 import ModerationChatThreadPanel from "./ModerationChatThreadPanel";
 import ModerationOrderContextPanel from "./ModerationOrderContextPanel";
+import ModerationSubjectHistoryPanel from "./ModerationSubjectHistoryPanel";
 
 interface DisputeDetailClientProps {
   bundle: AdminModerationCaseBundle;
+  subjectHistory: AdminSubjectModerationHistory | null;
+  subjectHistoryError?: string | null;
 }
 
 function isCaseOpen(status: AdminModerationCaseBundle["case"]["status"]): boolean {
@@ -56,6 +60,8 @@ function isCaseOpen(status: AdminModerationCaseBundle["case"]["status"]): boolea
 
 export default function DisputeDetailClient({
   bundle,
+  subjectHistory,
+  subjectHistoryError,
 }: DisputeDetailClientProps) {
   const router = useRouter();
   const [isAdjustPending, startAdjustTransition] = useTransition();
@@ -63,7 +69,12 @@ export default function DisputeDetailClient({
   const { case: caseDetail, reports, attachments, chatAccess, auditLog, activeSanctions, relatedOrders } =
     bundle;
   const severity = deriveSeverityBand(caseDetail.finalScore);
-  const primaryReporter = bundle.reporterSummaries[0];
+  // Primary reporter = earliest report (matches list first_reporter). Do not use reporterSummaries[0].
+  const earliestReport = reports[0];
+  const primaryReporterLabel =
+    earliestReport?.reporterDisplayName ??
+    earliestReport?.reporterUsername ??
+    null;
   const caseOpen = isCaseOpen(caseDetail.status);
   const chatRoomIds =
     chatAccess.roomIds.length > 0
@@ -235,7 +246,7 @@ export default function DisputeDetailClient({
             <span>
               主要舉報方：
               <span className="text-[#d4c4b7]">
-                {primaryReporter?.displayName ?? "—"}
+                {primaryReporterLabel ?? "—"}
               </span>
             </span>
             <span>
@@ -265,6 +276,12 @@ export default function DisputeDetailClient({
             </div>
           ) : null}
         </div>
+
+        <ModerationSubjectHistoryPanel
+          subjectHistory={subjectHistory}
+          subjectHistoryError={subjectHistoryError}
+          currentFinalScore={caseDetail.finalScore}
+        />
       </div>
 
       {!chatAccess.evidenceSufficient ? (

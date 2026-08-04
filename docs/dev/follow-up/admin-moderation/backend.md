@@ -1,6 +1,6 @@
 # Admin moderation & disputes — backend
 
-> **Status:** ✅ Phase A–E+ Ready（resolve/sanctions + proxy suspend/ban + order context panel）；Phase F deferred · **Phase G planned** → [subject-history-plan.md](./subject-history-plan.md)  
+> **Status:** ✅ Phase A–E+ Ready（resolve/sanctions + proxy suspend/ban + order context panel）；**Phase G1–G2** ✅ subject history panel · Phase F deferred  
 > **Policy SSOT:** [escrow-payment-policy.md](../../escrow-payment-policy.md) §8–9, §14  
 > **Frontend handoff:** [frontend.md](./frontend.md)  
 > **Replaces:** mock data in `app/admin/disputes/*`
@@ -14,7 +14,7 @@
 | Report image attachments (Bunny) | Reporter appeal portal |
 | Admin read-only chat thread (room-scoped) | Site-wide chat search |
 | Account sanctions (`suspend` / `ban` / persona restrict) | Chargeback dispute UI |
-| Subject history panel（重犯／歷史案件） | → [subject-history-plan.md](./subject-history-plan.md) Phase G |
+| Subject history panel（重犯／歷史案件） | ✅ G1–G2 — `admin_get_subject_moderation_history`, `ModerationSubjectHistoryPanel` |
 | P2P + chat-only cases (account action only) | Merge with `/admin/grading` |
 
 **Sanction subject:** `profiles.id` (= one auth account per email).  
@@ -36,6 +36,8 @@
 | `app/actions/admin-moderation.ts` | Admin queue, case detail, chat thread |
 | `app/api/reports/upload-evidence/route.ts` | Pre-submit or post-create image upload |
 | `supabase/migrations/20260812120000_report_context_dedup.sql` | Context-aware pending dedup + bundle `roomIds` |
+| `supabase/migrations/20260814120000_admin_moderation_one_open_case_and_subject_history.sql` | One open case per subject + subject history RPC |
+| `supabase/migrations/20260814130000_admin_moderation_list_prior_violation_badge.sql` | G3 list `subjectPriorUpheldCount` in search RPC |
 | `lib/storage/bunny.ts` | Add `uploadReportEvidenceToBunny` (separate prefix) |
 
 ---
@@ -97,7 +99,7 @@ RLS: reporter INSERT/SELECT own; admin SELECT via `is_admin()`; no access for ac
 | `resolved_at` | `timestamptz` | |
 | `resolved_by` | `uuid` | |
 
-One open case per `subject_user_id` per rolling window (e.g. 7d) — merge new reports into existing case via RPC.
+One open/reviewing case per `subject_user_id` — merge new reports into existing case via RPC until admin resolves/dismisses. Enforced by unique partial index `idx_moderation_cases_subject_open_unique` (migration `20260814120000`).
 
 ### `moderation_audit_logs`
 
@@ -464,4 +466,4 @@ bun run test:e2e e2e/admin-moderation.spec.ts --project=buyer -g "suspended user
 | **E** | ✅ `account_sanctions` + `rpc_adjust/resolve` + chat DB block + listing action guard + detail resolve UI |
 | **E+** | ✅ `moderation_get_account_access_restriction` + `proxy.ts` + `/auth/suspended` + `auth.ban` on resolve + `admin_get_moderation_order_context` |
 | **F** | Auto-escalation cron (optional) + dashboard pending count |
-| **G** | 📋 [Subject history panel](./subject-history-plan.md) — 被舉報人歷史案件／制裁／重犯統計（只讀，唔改計分） |
+| **G** | ✅ [Subject history panel](./subject-history-plan.md) — 被舉報人歷史案件／制裁／重犯統計（只讀，唔改計分） |

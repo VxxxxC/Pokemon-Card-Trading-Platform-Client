@@ -1720,3 +1720,159 @@ export async function deleteAccountSanctionsForUser(userId: string): Promise<voi
     throw new Error(`[deleteAccountSanctionsForUser] ${error.message}`);
   }
 }
+
+export async function deleteAllModerationDataForSubject(
+  subjectId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { data: cases, error: casesListError } = await admin
+    .from("moderation_cases")
+    .select("id")
+    .eq("subject_user_id", subjectId);
+
+  if (casesListError) {
+    throw new Error(
+      `[deleteAllModerationDataForSubject] list cases: ${casesListError.message}`,
+    );
+  }
+
+  const caseIds = (cases ?? []).map((row) => row.id);
+
+  const { error: reportsError, status: reportsStatus } = await admin
+    .from("reports")
+    .delete()
+    .eq("target_type", "user")
+    .eq("target_id", subjectId);
+
+  if (reportsError && !isSupabaseAccessDenied(reportsError, reportsStatus)) {
+    throw new Error(
+      `[deleteAllModerationDataForSubject] reports: ${reportsError.message}`,
+    );
+  }
+
+  if (caseIds.length > 0) {
+    const { error: reportsByCaseError, status: reportsByCaseStatus } =
+      await admin.from("reports").delete().in("case_id", caseIds);
+
+    if (
+      reportsByCaseError &&
+      !isSupabaseAccessDenied(reportsByCaseError, reportsByCaseStatus)
+    ) {
+      throw new Error(
+        `[deleteAllModerationDataForSubject] reports by case: ${reportsByCaseError.message}`,
+      );
+    }
+  }
+
+  const { error, status } = await admin
+    .from("moderation_cases")
+    .delete()
+    .eq("subject_user_id", subjectId);
+
+  if (error && !isSupabaseAccessDenied(error, status)) {
+    throw new Error(`[deleteAllModerationDataForSubject] ${error.message}`);
+  }
+}
+
+export type SubjectHistoryE2eSeed = {
+  priorCase: ModerationCaseAuditRow & { resolution: string };
+  currentCase: ModerationCaseAuditRow;
+};
+
+export async function seedSubjectHistoryE2ePair(params: {
+  subjectUserId: string;
+  reporterId: string;
+}): Promise<SubjectHistoryE2eSeed> {
+  const admin = createE2eAdminClient();
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const priorCaseNumber = `MOD-E2E-PRIOR-${suffix}`;
+  const currentCaseNumber = `MOD-E2E-CURR-${suffix}`;
+  const priorCreatedAt = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: priorCase, error: priorError } = await admin
+    .from("moderation_cases")
+    .insert({
+      case_number: priorCaseNumber,
+      subject_user_id: params.subjectUserId,
+      status: "resolved",
+      resolution: "upheld",
+      primary_category: "fraud",
+      auto_score: 40,
+      violation_persona: "merchant",
+      resolved_at: priorCreatedAt,
+      created_at: priorCreatedAt,
+      updated_at: priorCreatedAt,
+    })
+    .select("id, case_number, subject_user_id, status, final_score, resolution")
+    .single();
+
+  if (priorError || !priorCase) {
+    throw new Error(
+      `[seedSubjectHistoryE2ePair] prior case: ${priorError?.message ?? "missing row"}`,
+    );
+  }
+
+  const { data: currentCase, error: currentError } = await admin
+    .from("moderation_cases")
+    .insert({
+      case_number: currentCaseNumber,
+      subject_user_id: params.subjectUserId,
+      status: "open",
+      primary_category: "fraud",
+      auto_score: 40,
+    })
+    .select("id, case_number, subject_user_id, status, final_score")
+    .single();
+
+  if (currentError || !currentCase) {
+    throw new Error(
+      `[seedSubjectHistoryE2ePair] current case: ${currentError?.message ?? "missing row"}`,
+    );
+  }
+
+  const { error: priorReportError } = await admin.from("reports").insert({
+    reporter_id: params.reporterId,
+    target_type: "user",
+    target_id: params.subjectUserId,
+    reason: "E2E prior upheld report",
+    status: "resolved",
+    category: "fraud",
+    source: "profile",
+    case_id: priorCase.id,
+    details: "E2E prior upheld report details",
+    contribution_score: 40,
+    category_weight_snapshot: 40,
+  });
+
+  if (priorReportError) {
+    throw new Error(
+      `[seedSubjectHistoryE2ePair] prior report: ${priorReportError.message}`,
+    );
+  }
+
+  const { error: currentReportError } = await admin.from("reports").insert({
+    reporter_id: params.reporterId,
+    target_type: "user",
+    target_id: params.subjectUserId,
+    reason: "E2E current open report",
+    status: "pending",
+    category: "harassment",
+    source: "profile",
+    case_id: currentCase.id,
+    details: "E2E current open report details",
+    contribution_score: 15,
+    category_weight_snapshot: 15,
+  });
+
+  if (currentReportError) {
+    throw new Error(
+      `[seedSubjectHistoryE2ePair] current report: ${currentReportError.message}`,
+    );
+  }
+
+  return {
+    priorCase: priorCase as SubjectHistoryE2eSeed["priorCase"],
+    currentCase: currentCase as ModerationCaseAuditRow,
+  };
+}
