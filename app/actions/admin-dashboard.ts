@@ -1,5 +1,6 @@
 "use server";
 
+import { countAdminPendingGradingOrders } from "@/app/actions/admin-grading";
 import {
   formatCountWithUnit,
   formatGrowthPct,
@@ -193,6 +194,7 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       totalUsers,
       listingCount,
       unprocessedReportsCount,
+      pendingGradingResult,
       completedOrdersResult,
       capturedAuthFeesResult,
       stripeBalance,
@@ -203,6 +205,7 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       fetchProfileCount(),
       fetchActiveListingCount(),
       fetchUnprocessedReportsCount(),
+      countAdminPendingGradingOrders(),
       admin
         .from("merchant_orders")
         .select(
@@ -215,6 +218,10 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
         .not("auth_fee_captured_at", "is", null),
       resolveStripeBalanceMetrics(),
     ]);
+
+    if (!pendingGradingResult.success) {
+      return { success: false, error: pendingGradingResult.error };
+    }
 
     if (completedOrdersResult.error) {
       console.error(
@@ -370,6 +377,8 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       stripeBalance,
       alerts: {
         unprocessedReports: unprocessedReportsCount,
+        pendingKyc: pendingKycCount,
+        pendingGrading: pendingGradingResult.data,
       },
       syncedAt: new Date().toISOString(),
     };

@@ -64,6 +64,8 @@ const EMPTY_METRICS: AdminDashboardMetrics = {
   },
   alerts: {
     unprocessedReports: 0,
+    pendingKyc: 0,
+    pendingGrading: 0,
   },
   syncedAt: new Date(0).toISOString(),
 };
@@ -126,9 +128,8 @@ export default function AdminDashboardClient({
   const revenues = dashboardMetrics.revenues;
   const stripeBalance = dashboardMetrics.stripeBalance;
   const unprocessedReports = dashboardMetrics.alerts.unprocessedReports;
-  const pendingKycCount =
-    userEcology.distribution.find((segment) => segment.key === "pending")
-      ?.count ?? 0;
+  const pendingKyc = dashboardMetrics.alerts.pendingKyc;
+  const pendingGrading = dashboardMetrics.alerts.pendingGrading;
   const ecologySummary = userEcology.distribution
     .map((segment) => `${segment.role.split(" ")[0]} (${segment.pctStr})`)
     .join(" | ");
@@ -181,6 +182,14 @@ export default function AdminDashboardClient({
         description: formatHealthToastDescription(result.data.services),
       });
     });
+  };
+
+  const handleGradingAlertClick = () => {
+    router.push("/admin/grading");
+  };
+
+  const handleKycAlertClick = () => {
+    router.push("/admin/merchants");
   };
 
   const handleAlertClick = () => {
@@ -533,7 +542,7 @@ export default function AdminDashboardClient({
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
               商戶審核隊列：
               <span className="text-text-primary font-medium">
-                {pendingKycCount} 件待審核
+                {pendingKyc} 件待審核
               </span>
             </span>
             <Button
@@ -607,6 +616,88 @@ export default function AdminDashboardClient({
             ))}
           </div>
         </div>
+
+        {pendingKyc > 0 ? (
+          <div className="w-full bg-gradient-to-r from-amber-950/90 via-bg-card to-amber-950/80 rounded-2xl border-2 border-amber-500/40 hover:border-amber-500 p-4 sm:p-5 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 w-full sm:w-auto">
+              <div className="relative shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Briefcase className="w-6 h-6" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500" />
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-sans font-bold text-[15px] sm:text-[16px] text-white flex items-center gap-1.5">
+                    KYC 待處理：
+                    <span className="font-mono text-amber-400 underline underline-offset-2">
+                      {pendingKyc} 件
+                    </span>
+                  </span>
+                </div>
+                <p className="font-sans text-[12px] text-amber-200/80 mt-0.5">
+                  有 {pendingKyc} 件商戶入駐申請待人工資質審核
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full sm:w-auto shrink-0 flex items-center justify-end">
+              <Button
+                onClick={handleKycAlertClick}
+                type="button"
+                className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-sans font-semibold text-[13px] px-5 py-2.5 h-10 rounded-xl shadow-lg gap-2 transition-transform"
+              >
+                前往審核商戶
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {pendingGrading > 0 ? (
+          <div className="w-full bg-gradient-to-r from-sky-950/90 via-bg-card to-sky-950/80 rounded-2xl border-2 border-sky-500/40 hover:border-sky-500 p-4 sm:p-5 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 w-full sm:w-auto">
+              <div className="relative shrink-0">
+                <div className="w-11 h-11 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-sky-500" />
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-sans font-bold text-[15px] sm:text-[16px] text-white flex items-center gap-1.5">
+                    待處理鑑定訂單：
+                    <span className="font-mono text-sky-400 underline underline-offset-2">
+                      {pendingGrading} 件
+                    </span>
+                  </span>
+                </div>
+                <p className="font-sans text-[12px] text-sky-200/80 mt-0.5">
+                  有 {pendingGrading} 件鑑定訂單待處理（待入庫／鑑定中／待出庫）
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full sm:w-auto shrink-0 flex items-center justify-end">
+              <Button
+                onClick={handleGradingAlertClick}
+                type="button"
+                className="w-full sm:w-auto bg-sky-600 hover:bg-sky-500 text-white font-sans font-semibold text-[13px] px-5 py-2.5 h-10 rounded-xl shadow-lg gap-2 transition-transform"
+              >
+                前往鑑定工作台
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {/* ── 未處理緊急警報數 (Red Alert Badge Action Button) ──────────────── */}
         {/* Placed prominently in the mobile thumb zone & desktop banner */}
