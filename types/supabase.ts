@@ -2357,6 +2357,15 @@ export type Database = {
         Args: { p_case_id: string }
         Returns: Json
       }
+      admin_get_subject_moderation_history: {
+        Args: {
+          p_case_limit?: number
+          p_exclude_case_id?: string
+          p_sanction_limit?: number
+          p_subject_user_id: string
+        }
+        Returns: Json
+      }
       canonical_card_search_key: { Args: { input: string }; Returns: string }
       card_identifier_flexible_match: {
         Args: { p_query: string; p_target: string }

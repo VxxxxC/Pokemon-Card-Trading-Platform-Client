@@ -1,7 +1,7 @@
 # Admin moderation & disputes — frontend
 
 > **Status:** ✅ Phase C+D+E+E+ wired（list + detail + chat + audit + resolve + orders panel + suspended redirect）  
-> **Planned:** Phase G — [subject-history-plan.md](./subject-history-plan.md)（被舉報人歷史檔案 panel）  
+> **Planned:** Phase F auto-escalation（deferred）  
 > **Backend contract:** [backend.md](./backend.md)  
 > **Routes:** `/admin/disputes`, `/admin/disputes/[id]`  
 > **Policy:** [escrow-payment-policy.md](../../escrow-payment-policy.md)
@@ -112,7 +112,7 @@ interface UserReportModalProps {
 | 類別 | `primaryCategory` label |
 | 嚴重程度 | Derive from `finalScore` bands (critical ≥60, medium ≥30, low &lt;30) |
 | 舉報人 | First reporter display name (+N) |
-| 被舉報人 | `subject.displayName` |
+| 被舉報人 | `subject.displayName`；待處理列若 `subjectPriorUpheldCount >= 1` 顯示「曾有違規」badge（tooltip：成立裁定次數） |
 | 分數 | `finalScore` (show `autoScore` + adjustment tooltip) |
 | 狀態 | `open` / `reviewing` / `resolved` / `dismissed` |
 | 提交時間 | `createdAt` |

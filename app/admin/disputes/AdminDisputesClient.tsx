@@ -287,6 +287,9 @@ function AdminDisputesContent({
                     c.reporterPreview.extraCount > 0
                       ? `${c.reporterPreview.displayName} (+${c.reporterPreview.extraCount})`
                       : c.reporterPreview.displayName;
+                  const showPriorViolationBadge =
+                    (c.status === "open" || c.status === "reviewing") &&
+                    c.subjectPriorUpheldCount >= 1;
 
                   return (
                     <TableRow
@@ -300,10 +303,33 @@ function AdminDisputesContent({
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-sans text-[13px] text-[#eae1da]">
-                            {c.subject.displayName ?? "未知用戶"}
-                          </span>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-sans text-[13px] text-[#eae1da]">
+                              {c.subject.displayName ?? "未知用戶"}
+                            </span>
+                            {showPriorViolationBadge ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Badge
+                                      variant="outline"
+                                      className="border-[#d4a574]/40 bg-[#d4a574]/10 text-[10px] text-[#d4a574]"
+                                      onClick={(event) => event.stopPropagation()}
+                                    >
+                                      曾有違規
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="border border-white/10 bg-[#2e2925] text-[#eae1da]">
+                                    <p className="font-sans text-[12px]">
+                                      此用戶曾有 {c.subjectPriorUpheldCount}{" "}
+                                      宗成立裁定
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : null}
+                          </div>
                           <span className="font-sans text-[11px] text-[#8A8680]">
                             @{c.subject.username ?? "—"}
                           </span>

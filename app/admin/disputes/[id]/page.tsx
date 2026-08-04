@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getAdminModerationCase } from "@/app/actions/admin-moderation";
+import {
+  getAdminModerationCase,
+  getAdminSubjectModerationHistory,
+} from "@/app/actions/admin-moderation";
 import DisputeDetailClient from "@/app/admin/disputes/[id]/DisputeDetailClient";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
@@ -32,11 +35,22 @@ export default async function DisputeDetailPage({ params }: PageProps) {
   }
 
   const { id } = await params;
-  const result = await getAdminModerationCase(id);
+  const caseResult = await getAdminModerationCase(id);
 
-  if (!result.success) {
+  if (!caseResult.success) {
     notFound();
   }
 
-  return <DisputeDetailClient bundle={result.data} />;
+  const historyResult = await getAdminSubjectModerationHistory({
+    subjectUserId: caseResult.data.case.subject.id,
+    excludeCaseId: caseResult.data.case.id,
+  });
+
+  return (
+    <DisputeDetailClient
+      bundle={caseResult.data}
+      subjectHistory={historyResult.success ? historyResult.data : null}
+      subjectHistoryError={historyResult.success ? null : historyResult.error}
+    />
+  );
 }

@@ -19,6 +19,10 @@ import type {
   AdminModerationSearchResult,
   AdminModerationSearchStatus,
   AdminReportAttachmentRow,
+  AdminSubjectModerationHistory,
+  AdminSubjectModerationPriorCase,
+  AdminSubjectSanctionHistoryRow,
+  ModerationCaseStatus,
   ModerationResolution,
   ReportCategorySlug,
   ResolveAdminModerationCaseInput,
@@ -59,6 +63,15 @@ type AdminModerationRpcClient = {
   rpc(
     fn: "rpc_resolve_moderation_case",
     args: Database["public"]["Functions"]["rpc_resolve_moderation_case"]["Args"],
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "admin_get_subject_moderation_history",
+    args: {
+      p_subject_user_id: string;
+      p_exclude_case_id?: string | null;
+      p_case_limit?: number;
+      p_sanction_limit?: number;
+    },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
@@ -173,6 +186,7 @@ function parseSearchRow(value: unknown): AdminModerationCaseRow | null {
     reporterPreview: parseReporterPreview(row.reporterPreview),
     previewDetails:
       typeof row.previewDetails === "string" ? row.previewDetails : null,
+    subjectPriorUpheldCount: Number(row.subjectPriorUpheldCount ?? 0),
   };
 }
 
@@ -537,6 +551,182 @@ function parseBundlePayload(data: unknown): AdminModerationCaseBundle | null {
     activeSanctions,
     auditLog,
   };
+}
+
+function parseModerationCaseStatus(value: unknown): ModerationCaseStatus | null {
+  if (
+    value === "open" ||
+    value === "reviewing" ||
+    value === "resolved" ||
+    value === "dismissed"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseModerationResolution(value: unknown): ModerationResolution | null {
+  if (
+    value === "upheld" ||
+    value === "dismissed" ||
+    value === "insufficient_evidence"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseSanctionHistoryStatus(
+  value: unknown,
+): AdminSubjectSanctionHistoryRow["status"] | null {
+  if (value === "active" || value === "expired" || value === "revoked") {
+    return value;
+  }
+  return null;
+}
+
+function parseSubjectHistoryPayload(data: unknown): AdminSubjectModerationHistory | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+  const subjectUserId =
+    typeof payload.subjectUserId === "string" ? payload.subjectUserId : null;
+  if (!subjectUserId) {
+    return null;
+  }
+
+  const statsRaw = (payload.stats ?? {}) as Record<string, unknown>;
+  const distinctSanctionTypes = Array.isArray(statsRaw.distinctSanctionTypes)
+    ? statsRaw.distinctSanctionTypes.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+
+  const priorCases = (Array.isArray(payload.priorCases) ? payload.priorCases : [])
+    .map((value): AdminSubjectModerationPriorCase | null => {
+      const row = value as Record<string, unknown>;
+      const id = typeof row.id === "string" ? row.id : null;
+      const caseNumber = typeof row.caseNumber === "string" ? row.caseNumber : null;
+      const status = parseModerationCaseStatus(row.status);
+      const createdAt = typeof row.createdAt === "string" ? row.createdAt : null;
+      if (!id || !caseNumber || !status || !createdAt) {
+        return null;
+      }
+
+      return {
+        id,
+        caseNumber,
+        status,
+        primaryCategory: toCategorySlug(row.primaryCategory),
+        finalScore:
+          row.finalScore === null || row.finalScore === undefined
+            ? null
+            : Number(row.finalScore),
+        resolution: parseModerationResolution(row.resolution),
+        createdAt,
+        resolvedAt:
+          typeof row.resolvedAt === "string" ? row.resolvedAt : null,
+      };
+    })
+    .filter((row): row is AdminSubjectModerationPriorCase => row !== null);
+
+  const sanctionHistory = (
+    Array.isArray(payload.sanctionHistory) ? payload.sanctionHistory : []
+  )
+    .map((value): AdminSubjectSanctionHistoryRow | null => {
+      const row = value as Record<string, unknown>;
+      const id = typeof row.id === "string" ? row.id : null;
+      const scope = row.scope;
+      const type = row.type;
+      const startsAt = typeof row.startsAt === "string" ? row.startsAt : null;
+      const status = parseSanctionHistoryStatus(row.status);
+      if (
+        !id ||
+        (scope !== "account" &&
+          scope !== "member_persona" &&
+          scope !== "merchant_persona") ||
+        (type !== "warn" &&
+          type !== "restrict_listing" &&
+          type !== "restrict_chat" &&
+          type !== "freeze_payout" &&
+          type !== "suspend" &&
+          type !== "ban") ||
+        !startsAt ||
+        !status
+      ) {
+        return null;
+      }
+
+      return {
+        id,
+        scope,
+        type,
+        caseId: typeof row.caseId === "string" ? row.caseId : null,
+        caseNumber: typeof row.caseNumber === "string" ? row.caseNumber : null,
+        startsAt,
+        endsAt: typeof row.endsAt === "string" ? row.endsAt : null,
+        revokedAt: typeof row.revokedAt === "string" ? row.revokedAt : null,
+        reason: typeof row.reason === "string" ? row.reason : null,
+        status,
+      };
+    })
+    .filter((row): row is AdminSubjectSanctionHistoryRow => row !== null);
+
+  return {
+    subjectUserId,
+    stats: {
+      priorCaseCount: Number(statsRaw.priorCaseCount ?? 0),
+      upheldCount: Number(statsRaw.upheldCount ?? 0),
+      dismissedCount: Number(statsRaw.dismissedCount ?? 0),
+      reportsLast90Days: Number(statsRaw.reportsLast90Days ?? 0),
+      distinctSanctionTypes,
+    },
+    priorCases,
+    sanctionHistory,
+  };
+}
+
+export async function getAdminSubjectModerationHistory(input: {
+  subjectUserId: string;
+  excludeCaseId?: string;
+}): Promise<ActionResult<AdminSubjectModerationHistory>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const subjectUserId = input.subjectUserId.trim();
+  if (!subjectUserId) {
+    return { success: false, error: "找不到被舉報用戶" };
+  }
+
+  try {
+    const supabase = asAdminModerationRpcClient(await createClient());
+    const { data, error } = await supabase.rpc(
+      "admin_get_subject_moderation_history",
+      {
+        p_subject_user_id: subjectUserId,
+        p_exclude_case_id: input.excludeCaseId?.trim() || null,
+      },
+    );
+
+    if (error) {
+      console.error("[getAdminSubjectModerationHistory]", error.message);
+      return { success: false, error: mapRpcError(error.message) };
+    }
+
+    const parsed = parseSubjectHistoryPayload(data);
+    if (!parsed) {
+      return { success: false, error: "無法載入歷史檔案" };
+    }
+
+    return { success: true, data: parsed };
+  } catch (error) {
+    console.error("[getAdminSubjectModerationHistory]", error);
+    return { success: false, error: "無法載入歷史檔案" };
+  }
 }
 
 function normalizeSearchStatus(

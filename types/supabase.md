@@ -88,6 +88,7 @@ type UserRole = Enums<"user_role">;
 | `admin_get_moderation_case_bundle` | `{ p_case_id: string }` | `Json` |
 | `admin_get_moderation_chat_thread` | `{ p_before?: string p_case_id: string p_limit?: number p_room_id: string }` | `Json` |
 | `admin_get_moderation_order_context` | `{ p_case_id: string }` | `Json` |
+| `admin_get_subject_moderation_history` | `{ p_subject_user_id: string; p_exclude_case_id?: string; p_case_limit?: number; p_sanction_limit?: number }` | `Json` |
 | `canonical_card_search_key` | `{ input: string };` | `string` |
 | `card_identifier_flexible_match` | `{ p_query: string; p_target: string }` | `boolean` |
 | `card_search_tokens_array` | `{ input: string };` | `string[]` |

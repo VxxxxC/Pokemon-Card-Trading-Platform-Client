@@ -1,6 +1,6 @@
 # Admin Moderation — Subject History Panel (Phase G)
 
-> **Status:** 📋 Planned（優化時再做）  
+> **Status:** ✅ G1–G5 shipped（詳情頁歷史 panel + 列表重犯 badge + E2E）  
 > **Depends on:** Phase A–E+ ✅（`/admin/disputes` live）  
 > **Blocked by:** Nothing  
 > **Policy:** 永久 `ban` 仍 **Admin only, never auto** — 本 phase 只提供**只讀上下文**，不改計分／自動制裁  
@@ -19,7 +19,7 @@ Admin 處理舉報時，詳情頁只顯示**本案**資料：
 | **有效** `activeSanctions` | **已過期** suspend、歷史 `restrict_listing` / `freeze_payout` |
 | 關聯訂單（本案 context） | 生涯統計（upheld 次數、近 90 日舉報次數） |
 
-**分數模型限制：** `moderation_cases.final_score` 係 **per case**；舊案 resolved 後新舉報會開新 case（`_find_or_create_moderation_case` 只合併 7 日內 open/reviewing）。Admin 難以判斷**重犯**而加重罰則。
+**分數模型限制：** `moderation_cases.final_score` 係 **per case**；舊案 resolved 後新舉報會開新 case。Admin 可透過 **被舉報人歷史檔案** panel（G1–G2）睇重犯；一人一未結案由 migration `20260814120000` unique index 保證。
 
 **現有 workaround：** 列表搜 username + 已完成 tab + SQL 手查 — 效率低。
 
@@ -238,9 +238,9 @@ Index note：已有 `moderation_cases (subject_user_id, created_at DESC)`、`acc
 |-----------|-------------|----------|
 | **G1** | Migration + RPC + action + types | P0 |
 | **G2** | `ModerationSubjectHistoryPanel` + detail page wire | P0 |
-| **G3** | List page badge「曾有違規」when subject has `upheldCount >= 1` on any open case | P1 |
+| **G3** | ✅ List page badge「曾有違規」when open/reviewing case and subject `subjectPriorUpheldCount >= 1` | P1 |
 | **G4** | Hint banner（§4.5） | P1 |
-| **G5** | E2E: seed 2 cases same subject → detail shows prior case | P1 |
+| **G5** | ✅ E2E: seed 2 cases same subject → detail shows prior case + list badge | P1 |
 
 **Phase F**（auto-escalation cron / dashboard pending）維持獨立 deferred，唔與 G 合併。
 
