@@ -7,6 +7,7 @@ import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { PLATFORM_DEFAULT_COURIER_SHIPPING_FEE } from "@/lib/merchant/shipping-fee";
 import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
 import {
+  AUTHENTICATION_FEE,
   computeCourierShippingFee,
   isMerchantShippingMethod,
   type MerchantShippingMethod,
@@ -431,6 +432,18 @@ export async function loadMerchantCheckoutOrder(
         ? computeMerchantPaymentExpiresAt(createdAt)
         : null;
 
+    const requiresAuthentication = Boolean(row.requires_authentication);
+    const authFeeFromRow = Number(row.auth_fee ?? 0);
+    const authFee =
+      requiresAuthentication && authFeeFromRow <= 0
+        ? AUTHENTICATION_FEE
+        : authFeeFromRow;
+    const totalFromRow = Number(row.total_amount ?? 0);
+    const totalAmount =
+      requiresAuthentication && totalFromRow <= itemSubtotal
+        ? itemSubtotal + shippingFee + authFee
+        : Number(row.total_amount ?? itemSubtotal);
+
     return {
       success: true,
       data: {
@@ -442,13 +455,13 @@ export async function loadMerchantCheckoutOrder(
         paymentExpiresAt,
         itemSubtotal,
         shippingFee,
-        authFee: Number(row.auth_fee ?? 0),
-        totalAmount: Number(row.total_amount ?? itemSubtotal),
+        authFee,
+        totalAmount,
         baseCourierShippingFee,
         listingExtraShippingFee,
         courierShippingFeeQuote,
         shippingMethod,
-        requiresAuthentication: Boolean(row.requires_authentication),
+        requiresAuthentication,
         listingAcceptsAuthentication: Boolean(
           row.listings?.use_authentication,
         ),

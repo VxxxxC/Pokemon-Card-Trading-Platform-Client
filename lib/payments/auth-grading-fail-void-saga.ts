@@ -121,17 +121,17 @@ export async function runAuthGradingFailVoidSaga(input: {
     return { ok: false, error: "鑑定失敗處理準備失敗" };
   }
 
-  const idempotencyKey = `auth-grading-fail-void:${input.orderKind}:${input.orderId}`;
+  const idempotencyKey = `auth-grading-fail-capture-zero:${input.orderKind}:${input.orderId}`;
 
   try {
-    await stripe.paymentIntents.cancel(
+    await stripe.paymentIntents.capture(
       prepared.payment_intent_id,
-      { cancellation_reason: "requested_by_customer" },
+      { amount_to_capture: 0, final_capture: true },
       { idempotencyKey },
     );
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Stripe cancel 失敗";
+      error instanceof Error ? error.message : "Stripe capture 失敗";
 
     await serviceRole.rpc("rpc_mark_auth_grading_fail_failed", {
       p_order_kind: input.orderKind,

@@ -63,7 +63,7 @@ export async function loadProfileSnippetsByIds(
 }
 
 export async function loadListingSellerSnippets(
-  supabase: SupabaseClient<Database>,
+  supabase: Pick<SupabaseClient<Database>, "from">,
   rows: ReadonlyArray<{ sellerId: string; sellerPersona: SellerPersona }>,
 ): Promise<Map<string, ListingSellerSnippet>> {
   const uniqueSellerIds = [
@@ -125,7 +125,12 @@ export async function loadListingSellerSnippets(
 
     if (row.sellerPersona === "merchant") {
       snippets.set(key, {
-        displayName: shop?.shop_name?.trim() || memberDisplayName,
+        displayName:
+          shop?.shop_name?.trim() ||
+          profile?.display_name?.trim() ||
+          shop?.shop_handle?.trim() ||
+          profile?.username?.trim() ||
+          "平台用戶",
         username: shop?.shop_handle?.trim() || profile?.username?.trim() || null,
         avatarUrl: resolveAvatarUrl(shop?.shop_avatar_path),
       });

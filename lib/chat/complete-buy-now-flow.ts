@@ -10,7 +10,7 @@ export function completeBuyNowFlow(
   openBuyNowChatSession(payload);
 
   const checkoutHref = payload.checkoutHref ?? payload.paymentHref ?? null;
-  if (payload.orderKind === "merchant" && checkoutHref) {
+  if (checkoutHref) {
     router.push(checkoutHref);
     return "checkout";
   }

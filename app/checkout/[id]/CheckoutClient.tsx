@@ -199,6 +199,17 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     setPublishableKey(result.data.publishableKey);
     setClientSecret(result.data.clientSecret);
     setUseMockPayment(false);
+    setSession((current) =>
+      current
+        ? {
+            ...current,
+            pricing: {
+              ...current.pricing,
+              totalAmount: result.data.totalAmount,
+            },
+          }
+        : current,
+    );
     setStep(2);
     toast.success("✅ 託管付款已建立", {
       description: `請輸入付款資料以完成 HK$ ${result.data.totalAmount.toLocaleString()} 支付。`,
@@ -327,7 +338,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
               shippingLabel={shippingLabel}
               showShippingRow={Boolean(showShippingRow)}
               showAuthFeeRow={
-                session.variant !== "member_auth" || pricing.authFee > 0
+                session.variant === "merchant_auth" ||
+                session.variant === "member_auth"
               }
               extraShippingNote={extraShippingNote}
             >

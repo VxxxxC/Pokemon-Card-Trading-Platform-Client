@@ -35,7 +35,7 @@ All exports return `{ success: true, data } | { success: false, error }`.
 | `adminConfirmGradingIntake` | `rpc_prepare_auth_fee_capture` → `stripe.paymentIntents.capture(auth_fee, final_capture: false)` → `rpc_finalize_auth_fee_capture` | `auth_fee_captured`; Member `custody→grading`; Merchant `payment_held→authenticating` |
 | `adminPassGrading` | `rpc_prepare_goods_capture` → `stripe.paymentIntents.capture(goods, final_capture: true)` → `rpc_finalize_goods_capture` | `fully_captured`; Member `grading→shipped`; Merchant `authenticating→authenticated` |
 | `adminSubmitGradingOutbound` | `rpc_admin_submit_grading_outbound` | Requires `auth_result=passed` |
-| `adminFailGradingAndRefund` | `rpc_prepare_auth_grading_fail` → `stripe.paymentIntents.cancel` → `rpc_finalize_auth_grading_fail` | **Void** uncaptured card+shipping; auth fee retained; `faultParty` required |
+| `adminFailGradingAndRefund` | `rpc_prepare_auth_grading_fail` → `stripe.paymentIntents.capture(amount_to_capture: 0, final_capture: true)` → `rpc_finalize_auth_grading_fail` | **Void** uncaptured card+shipping on partially captured PI; auth fee retained; `faultParty` required |
 | `getAdminGradingAuditHistory` | `get_admin_grading_audit_history` | Admin read via session client |
 
 Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/finalize RPCs (`_grading_require_admin()` needs `auth.uid()`). Webhook `finalize*FromWebhook` and `rpc_mark_auth_grading_fail_failed` use service-role `createAdminClient()`.
@@ -44,10 +44,10 @@ Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/fina
 
 ## Fail / void policy (P1)
 
-- After intake (`auth_fee_captured`): fail releases **uncaptured** authorize via `paymentIntents.cancel`
+- After intake (`auth_fee_captured`): fail releases **uncaptured** authorize via `paymentIntents.capture({ amount_to_capture: 0, final_capture: true })` (multicapture PI cannot use `cancel` after partial capture)
 - Buyer pays only HK$150 auth fee; no Stripe refund RPC on happy path
 - `fault_party` enum: `buyer | seller | platform | carrier | inconclusive` (required on fail)
-- Idempotency key: `auth-grading-fail-void:<orderKind>:<orderId>`
+- Idempotency key: `auth-grading-fail-capture-zero:<orderKind>:<orderId>` (must differ from legacy `auth-grading-fail-void:*` used with `cancel`)
 - Legacy `rpc_finalize_auth_refund` + `refund.created` webhook kept for manual recovery only
 
 ## Guards added

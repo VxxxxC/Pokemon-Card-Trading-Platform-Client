@@ -44,6 +44,7 @@ import {
   merchantBuyerOrderMatchesTab,
 } from "@/lib/merchant-order/load-buyer-merchant-orders";
 import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
+import { AUTHENTICATION_FEE } from "@/lib/merchant-checkout/pricing";
 import {
   getMerchantBuyerActionFlags,
   mapMerchantEscrowToMemberEscrowStatus,
@@ -501,6 +502,7 @@ export type MemberOrderDetail = UserTradingOrder & {
   shippingFee?: number;
   shippingMethod?: string | null;
   totalAmount?: number;
+  authFee?: number;
   paymentCaptureStatus?: Tables<"merchant_orders">["payment_capture_status"];
   /** Raw merchant escrow for buyer badge mapping. */
   merchantEscrowStatus?: Tables<"merchant_orders">["escrow_status"];
@@ -582,6 +584,7 @@ type BuyerMerchantOrderDetailQueryRow = {
   shipping_fee: number | null;
   shipping_method: string | null;
   total_amount: number | null;
+  auth_fee: number | null;
   inbound_tracking_no: string | null;
   inbound_courier_name: string | null;
   outbound_tracking_no: string | null;
@@ -1999,6 +2002,18 @@ function mapBuyerMerchantOrderDetailRow(
   const paymentExpiresAt = pendingPayment
     ? computeMerchantPaymentExpiresAt(createdAt)
     : null;
+  const itemSubtotal = Number(row.item_subtotal ?? row.final_price);
+  const shippingFee = Number(row.shipping_fee ?? 0);
+  const authFeeFromRow = Number(row.auth_fee ?? 0);
+  const authFee =
+    useAuthentication && authFeeFromRow <= 0
+      ? AUTHENTICATION_FEE
+      : authFeeFromRow;
+  const totalFromRow = Number(row.total_amount ?? 0);
+  const totalAmount =
+    useAuthentication && totalFromRow <= itemSubtotal
+      ? itemSubtotal + shippingFee + authFee
+      : Number(row.total_amount ?? row.final_price);
 
   return {
     id: row.id,
@@ -2050,10 +2065,11 @@ function mapBuyerMerchantOrderDetailRow(
     canSubmitInbound: false,
     canConfirmReceipt: buyerFlags.canCompleteMerchantPurchase,
     canCancel: false,
-    itemSubtotal: Number(row.item_subtotal ?? row.final_price),
-    shippingFee: Number(row.shipping_fee ?? 0),
+    itemSubtotal,
+    shippingFee,
     shippingMethod: row.shipping_method,
-    totalAmount: Number(row.total_amount ?? row.final_price),
+    totalAmount,
+    authFee,
     paymentCaptureStatus: row.payment_capture_status,
     merchantEscrowStatus: row.escrow_status,
     merchantPayoutStatus: row.payout_status,
@@ -2123,6 +2139,7 @@ async function getBuyerMerchantOrderDetail(
           shipping_fee,
           shipping_method,
           total_amount,
+          auth_fee,
           inbound_tracking_no,
           inbound_courier_name,
           outbound_tracking_no,
