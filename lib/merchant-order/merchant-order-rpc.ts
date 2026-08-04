@@ -1,3 +1,4 @@
+import { isMerchantOrderBuyerConfirmed } from "@/lib/merchant-order/display-status";
 import type { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
 
@@ -53,7 +54,12 @@ export async function rpcConfirmMerchantBuyerReceipt(
 
 export function mapMerchantEscrowToMemberStatus(
   escrowStatus: Tables<"merchant_orders">["escrow_status"],
+  buyerConfirmedAt?: string | null,
 ): Tables<"member_orders">["status"] {
+  if (isMerchantOrderBuyerConfirmed({ buyerConfirmedAt })) {
+    return "completed";
+  }
+
   switch (escrowStatus) {
     case "completed_and_transferred":
       return "completed";

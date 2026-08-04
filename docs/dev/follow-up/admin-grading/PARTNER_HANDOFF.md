@@ -129,6 +129,19 @@ WHERE id = '<order_id>';
 | [member-fps-payout/e2e-checklist.md](../member-fps-payout/e2e-checklist.md) | 完整 FPS + multicapture 手動清單 |
 | [escrow-payment-policy.md](../../escrow-payment-policy.md) §8 | 政策 SSOT |
 
+### Merchant B2C 買家確認後 UI（方案 A）
+
+買家確認收貨後典型 DB：`escrow_status` 仍 `authenticated`，`buyer_confirmed_at` 有值，`payout_status = held`，`payout_hold_until` = T+7。
+
+| 視角 | 預期 UI |
+|------|---------|
+| 買家 trading | 「已完成」tab 可見該單 |
+| 買家詳情 | timeline 完成態；可評價（若未評）；撥款區塊「款項保留中」+ T+7 說明 |
+| 商戶賣家 trading | 「待處理」tab 仍見該單，badge「款項保留中」 |
+| 商戶賣家詳情 | timeline 至保留步驟；文案「買家已確認收貨；款項 T+7 保留中」 |
+
+T+7 cron 後：`completed_and_transferred` + Connect transfer（DB／撥款行為不變）。
+
 ---
 
 ## Sign-off（回覆時請貼）

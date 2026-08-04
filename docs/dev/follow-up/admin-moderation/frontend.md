@@ -1,6 +1,7 @@
 # Admin moderation & disputes — frontend
 
 > **Status:** ✅ Phase C+D+E+E+ wired（list + detail + chat + audit + resolve + orders panel + suspended redirect）  
+> **Planned:** Phase G — [subject-history-plan.md](./subject-history-plan.md)（被舉報人歷史檔案 panel）  
 > **Backend contract:** [backend.md](./backend.md)  
 > **Routes:** `/admin/disputes`, `/admin/disputes/[id]`  
 > **Policy:** [escrow-payment-policy.md](../../escrow-payment-policy.md)

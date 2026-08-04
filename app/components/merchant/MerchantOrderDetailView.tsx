@@ -176,7 +176,10 @@ export function MerchantOrderDetailView({
       <div>
         <div className="space-y-4">
           {isAuthOrder ? (
-            <MerchantAuthSellerTimeline escrowStatus={merchantOrder.escrowStatus} />
+            <MerchantAuthSellerTimeline
+              escrowStatus={merchantOrder.escrowStatus}
+              payoutStatus={merchantOrder.payoutStatus}
+            />
           ) : (
             <MerchantB2cDirectTimeline
               escrowStatus={merchantOrder.escrowStatus}
@@ -420,7 +423,13 @@ export function MerchantOrderDetailView({
             merchantOrder.requiresAuthentication && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
-                鑑定已通過，平台將安排寄出給買家。待買家確認收貨後撥款。
+                {merchantOrder.buyerConfirmedAt
+                  ? merchantOrder.payoutHoldUntil
+                    ? `買家已確認收貨；款項 T+7 保留中（至 ${formatMerchantPayoutHoldUntilLabel(
+                        merchantOrder.payoutHoldUntil,
+                      )}）`
+                    : "買家已確認收貨；款項 T+7 保留中"
+                  : "鑑定已通過，平台將安排寄出給買家。待買家確認收貨後撥款。"}
               </p>
               {merchantOrder.outboundTrackingNo ? (
                 <p className="font-mono text-[12px] text-brand">
@@ -434,7 +443,8 @@ export function MerchantOrderDetailView({
             </div>
           )}
 
-          {order.status === "released" && (
+          {(merchantOrder.escrowStatus === "completed_and_transferred" ||
+            merchantOrder.payoutStatus === "paid") && (
             <div className="space-y-3">
               <div className="p-3.5 bg-[rgba(16,185,129,0.06)] border border-success/20 rounded-xl flex items-start gap-3 animate-fadeIn">
                 <svg

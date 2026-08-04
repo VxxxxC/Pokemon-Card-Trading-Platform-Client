@@ -308,6 +308,9 @@ export type UserTradingOrder = {
   paymentConfirmedAt?: string | null;
   /** Raw merchant escrow for buyer badge mapping. */
   merchantEscrowStatus?: Tables<"merchant_orders">["escrow_status"];
+  merchantPayoutStatus?: string | null;
+  buyerConfirmedAt?: string | null;
+  payoutHoldUntil?: string | null;
   shippingMethod?: string | null;
   counterparty: UserTradingOrderCounterparty;
   listing: {
@@ -884,6 +887,9 @@ export type MerchantTradingOrder = {
   createdAt: string | null;
   paymentExpiresAt?: string | null;
   hasReviewedByMe: boolean;
+  shippingMethod?: string | null;
+  payoutStatus?: string | null;
+  buyerConfirmedAt?: string | null;
   buyer: MerchantTradingBuyer;
   listing: {
     gradingCompany: string;
@@ -982,8 +988,52 @@ function toMerchantFilterCounts(
   };
 }
 
+type MerchantOrderPayoutListFields = {
+  payout_status: string | null;
+  buyer_confirmed_at: string | null;
+  shipping_method: string | null;
+};
+
+type MerchantOrderPayoutListRow = Pick<
+  Tables<"merchant_orders">,
+  "id" | "payout_status" | "buyer_confirmed_at" | "shipping_method"
+>;
+
+async function loadMerchantOrderPayoutListFields(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orderIds: string[],
+): Promise<Map<string, MerchantOrderPayoutListFields>> {
+  if (orderIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("merchant_orders")
+    .select("id, payout_status, buyer_confirmed_at, shipping_method")
+    .in("id", orderIds);
+
+  if (error) {
+    console.error("[loadMerchantOrderPayoutListFields]", error.message);
+    return new Map();
+  }
+
+  const rows = (data ?? []) as MerchantOrderPayoutListRow[];
+
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        payout_status: row.payout_status,
+        buyer_confirmed_at: row.buyer_confirmed_at,
+        shipping_method: row.shipping_method,
+      },
+    ]),
+  );
+}
+
 function mapMerchantRpcRow(
   row: SearchMerchantTradingOrdersRpcRow,
+  payoutFields?: MerchantOrderPayoutListFields,
 ): MerchantTradingOrder {
   return {
     id: row.order_id,
@@ -996,6 +1046,9 @@ function mapMerchantRpcRow(
     requiresAuthentication: row.requires_authentication,
     createdAt: row.created_at,
     hasReviewedByMe: row.has_reviewed_by_me,
+    shippingMethod: payoutFields?.shipping_method,
+    payoutStatus: payoutFields?.payout_status,
+    buyerConfirmedAt: payoutFields?.buyer_confirmed_at,
     buyer: {
       id: row.buyer_id,
       displayName: row.buyer_display_name ?? "未知用戶",
@@ -1089,9 +1142,16 @@ export async function searchMerchantTradingOrders(
       );
     }
 
+    const payoutFieldsByOrderId = await loadMerchantOrderPayoutListFields(
+      supabase,
+      rows.map((row) => row.order_id),
+    );
+
     return {
       success: true,
-      data: rows.map(mapMerchantRpcRow),
+      data: rows.map((row) =>
+        mapMerchantRpcRow(row, payoutFieldsByOrderId.get(row.order_id)),
+      ),
       meta,
       filters,
     };
@@ -1513,11 +1573,15 @@ function mapBuyerMerchantOrderDetailRow(
   const catalog = row.listings.product_catalog;
   const listingImageUrls = parseListingImageUrls(row.listings.images);
   const useAuthentication = Boolean(row.requires_authentication);
-  const status = mapMerchantEscrowToMemberStatus(row.escrow_status);
+  const status = mapMerchantEscrowToMemberStatus(
+    row.escrow_status,
+    row.buyer_confirmed_at,
+  );
   const pendingPayment = row.escrow_status === "pending_payment";
   const memberEscrowStatus = mapMerchantEscrowToMemberEscrowStatus(
     row.escrow_status,
     useAuthentication,
+    row.buyer_confirmed_at,
   );
   const buyerFlags = getMerchantBuyerActionFlags({
     escrowStatus: row.escrow_status,

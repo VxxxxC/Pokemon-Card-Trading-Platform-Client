@@ -281,9 +281,20 @@ function parseReporterSummary(
 
 function parseChatAccess(value: unknown): AdminModerationChatAccess {
   const row = (value ?? {}) as Record<string, unknown>;
+  const roomIds = Array.isArray(row.roomIds)
+    ? row.roomIds.filter((id): id is string => typeof id === "string")
+    : [];
+  const roomId =
+    typeof row.roomId === "string"
+      ? row.roomId
+      : roomIds.length > 0
+        ? roomIds[0]
+        : null;
+
   return {
-    available: row.available === true,
-    roomId: typeof row.roomId === "string" ? row.roomId : null,
+    available: row.available === true || roomIds.length > 0,
+    roomId,
+    roomIds,
     requiredForCategory: row.requiredForCategory === true,
     evidenceSufficient: row.evidenceSufficient !== false,
   };

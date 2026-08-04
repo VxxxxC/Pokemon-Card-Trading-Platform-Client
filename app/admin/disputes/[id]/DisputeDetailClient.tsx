@@ -65,6 +65,15 @@ export default function DisputeDetailClient({
   const severity = deriveSeverityBand(caseDetail.finalScore);
   const primaryReporter = bundle.reporterSummaries[0];
   const caseOpen = isCaseOpen(caseDetail.status);
+  const chatRoomIds =
+    chatAccess.roomIds.length > 0
+      ? chatAccess.roomIds
+      : chatAccess.roomId
+        ? [chatAccess.roomId]
+        : [];
+  const [selectedChatRoomId, setSelectedChatRoomId] = useState<string | null>(
+    chatRoomIds[0] ?? null,
+  );
 
   const [scoreAdjustment, setScoreAdjustment] = useState("0");
   const [adjustmentReason, setAdjustmentReason] = useState(
@@ -287,6 +296,13 @@ export default function DisputeDetailClient({
                       >
                         {formatCategoryLabel(report.category)}
                       </Badge>
+                      <span>
+                        {report.source === "profile"
+                          ? "公開資料"
+                          : report.source === "chat_room"
+                            ? `對話${report.contextId ? ` · ${report.contextId.slice(0, 8)}` : ""}`
+                            : "未知來源"}
+                      </span>
                       <span className="font-sans text-[12px] text-[#8A8680]">
                         {report.reporterDisplayName ?? report.reporterUsername ?? "未知"}
                         · {formatModerationDateTime(report.createdAt)}
@@ -351,10 +367,24 @@ export default function DisputeDetailClient({
                 唯讀聊天室歷史
               </h2>
             </div>
-            {chatAccess.available && chatAccess.roomId ? (
+            {chatRoomIds.length > 1 ? (
+              <select
+                value={selectedChatRoomId ?? ""}
+                onChange={(event) =>
+                  setSelectedChatRoomId(event.target.value || null)
+                }
+              >
+                {chatRoomIds.map((roomId) => (
+                  <option key={roomId} value={roomId}>
+                    聊天室 {roomId.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {selectedChatRoomId ? (
               <ModerationChatThreadPanel
                 caseId={caseDetail.id}
-                roomId={chatAccess.roomId}
+                roomId={selectedChatRoomId}
                 subjectUserId={caseDetail.subject.id}
               />
             ) : (

@@ -1,6 +1,6 @@
 # Admin moderation & disputes — backend
 
-> **Status:** ✅ Phase A–E+ Ready（resolve/sanctions + proxy suspend/ban + order context panel）；Phase F deferred  
+> **Status:** ✅ Phase A–E+ Ready（resolve/sanctions + proxy suspend/ban + order context panel）；Phase F deferred · **Phase G planned** → [subject-history-plan.md](./subject-history-plan.md)  
 > **Policy SSOT:** [escrow-payment-policy.md](../../escrow-payment-policy.md) §8–9, §14  
 > **Frontend handoff:** [frontend.md](./frontend.md)  
 > **Replaces:** mock data in `app/admin/disputes/*`
@@ -14,6 +14,7 @@
 | Report image attachments (Bunny) | Reporter appeal portal |
 | Admin read-only chat thread (room-scoped) | Site-wide chat search |
 | Account sanctions (`suspend` / `ban` / persona restrict) | Chargeback dispute UI |
+| Subject history panel（重犯／歷史案件） | → [subject-history-plan.md](./subject-history-plan.md) Phase G |
 | P2P + chat-only cases (account action only) | Merge with `/admin/grading` |
 
 **Sanction subject:** `profiles.id` (= one auth account per email).  
@@ -34,6 +35,7 @@
 | `supabase/migrations/20260808120000_admin_moderation_phase_d.sql` | Phase D audit logs + chat thread RPC + bundle chat fallback |
 | `app/actions/admin-moderation.ts` | Admin queue, case detail, chat thread |
 | `app/api/reports/upload-evidence/route.ts` | Pre-submit or post-create image upload |
+| `supabase/migrations/20260812120000_report_context_dedup.sql` | Context-aware pending dedup + bundle `roomIds` |
 | `lib/storage/bunny.ts` | Add `uploadReportEvidenceToBunny` (separate prefix) |
 
 ---
@@ -152,6 +154,12 @@ contribution =
 
 - **Dismissed** reports: contribution `0`; decrement reporter trust counter.
 - **Same case, same reporter, duplicate category within 24h:** second report contribution × 0.3.
+- **Pending dedupe (migration `20260812120000`):** one open case per subject, but multiple pending reports allowed when context differs:
+  - **Block:** same reporter + target + **same chat room** (any category)
+  - **Block:** same reporter + target + **profile** + same `category`
+  - **Allow:** different chat rooms (member vs merchant persona), chat + profile, profile fraud + chat harassment
+  - Indexes: `idx_reports_pending_reporter_target_chat_room`, `idx_reports_pending_reporter_target_profile_category`
+  - RPC errors: `您已在此對話提交過待審核的舉報…` · `您已在此用戶公開資料提交過同類別的待審核舉報…`
 - **Do not** sum raw report count — sum contributions into `moderation_cases.auto_score`.
 
 ### Auto-escalation thresholds (suggested)
@@ -456,3 +464,4 @@ bun run test:e2e e2e/admin-moderation.spec.ts --project=buyer -g "suspended user
 | **E** | ✅ `account_sanctions` + `rpc_adjust/resolve` + chat DB block + listing action guard + detail resolve UI |
 | **E+** | ✅ `moderation_get_account_access_restriction` + `proxy.ts` + `/auth/suspended` + `auth.ban` on resolve + `admin_get_moderation_order_context` |
 | **F** | Auto-escalation cron (optional) + dashboard pending count |
+| **G** | 📋 [Subject history panel](./subject-history-plan.md) — 被舉報人歷史案件／制裁／重犯統計（只讀，唔改計分） |

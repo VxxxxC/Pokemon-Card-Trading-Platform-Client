@@ -102,7 +102,8 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 
 ### Merchant payout RPCs
 
-- `rpc_confirm_merchant_buyer_receipt(p_order_id)`：**authenticated buyer only**；snapshot 佣金／payout；設 `buyer_confirmed_at`、`payout_hold_until = now() + 7 days`、`payout_status = held`；**不 transfer**；冪等。
+- `rpc_confirm_merchant_buyer_receipt(p_order_id)`：**authenticated buyer only**；snapshot 佣金／payout；設 `buyer_confirmed_at`、`payout_hold_until = now() + 7 days`、`payout_status = held`；**不 transfer**、**不更新 `escrow_status`**；冪等。
+- **UI（方案 A）：** 買家確認後 trading／詳情 **視為交易完成**（`buyer_confirmed_at` 有值 → buyer tab `completed`、timeline `released`）；`escrow_status` 仍 `authenticated` 直至 T+7 cron `rpc_finalize_merchant_order_payout` → `completed_and_transferred`。商戶賣家列表仍留「待處理」tab，badge「款項保留中」。
 - `rpc_prepare_merchant_order_payout(p_order_id)`：**service_role / cron only**；需 `held` + hold 到期 + snapshot；設 `processing`；REVOKE `authenticated` execute。
 - `rpc_list_merchant_connect_payout_candidates(p_limit)`：cron 揀單。
 - `rpc_finalize_merchant_order_payout(...)`：service-role only；核對 transfer 金額／destination，冪等寫 ledger → `completed_and_transferred`。
