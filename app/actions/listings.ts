@@ -67,6 +67,40 @@ export type PreUploadedListingImage = ListingImage & {
   objectKey: string;
 };
 
+async function assertListingModerationAllowed(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  persona: Tables<"listings">["seller_persona"],
+): Promise<string | null> {
+  type ListingModerationRpcClient = {
+    rpc(
+      fn: "moderation_check_listing_allowed",
+      args: {
+        p_user_id: string;
+        p_persona: Tables<"listings">["seller_persona"];
+      },
+    ): Promise<{ data: boolean | null; error: { message: string } | null }>;
+  };
+
+  const { data, error } = await (
+    supabase as unknown as ListingModerationRpcClient
+  ).rpc("moderation_check_listing_allowed", {
+    p_user_id: userId,
+    p_persona: persona,
+  });
+
+  if (error) {
+    console.error("[assertListingModerationAllowed]", error.message);
+    return "無法驗證帳戶狀態，請稍後再試";
+  }
+
+  if (data === false) {
+    return "帳戶已被限制上架";
+  }
+
+  return null;
+}
+
 function parsePreUploadedImages(raw: string): PreUploadedListingImage[] | null {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -481,6 +515,15 @@ export async function updateCardListing(
       return fail("沒有權限更新此商品");
     }
 
+    const moderationError = await assertListingModerationAllowed(
+      supabase,
+      user.id,
+      existingListing.seller_persona,
+    );
+    if (moderationError) {
+      return fail(moderationError);
+    }
+
     if (existingListing.status === "sold") {
       return fail("已售出的商品無法編輯");
     }
@@ -634,6 +677,15 @@ export async function createCardListing(
 
     if (personaError) {
       return fail(personaError);
+    }
+
+    const moderationError = await assertListingModerationAllowed(
+      supabase,
+      user.id,
+      sellerPersona,
+    );
+    if (moderationError) {
+      return fail(moderationError);
     }
 
     if (sellerPersona === "merchant" && profile.role !== "admin") {
@@ -944,6 +996,15 @@ export async function createSealedListing(
 
     if (personaError) {
       return fail(personaError);
+    }
+
+    const moderationError = await assertListingModerationAllowed(
+      supabase,
+      user.id,
+      sellerPersona,
+    );
+    if (moderationError) {
+      return fail(moderationError);
     }
 
     if (sellerPersona === "merchant" && profile.role !== "admin") {

@@ -1,7 +1,7 @@
 # Member FPS Payout Pipeline — Frontend
 
-> **Status:** ✅ Wired (Phase 1C)  
-> **Depends on:** [backend.md](./backend.md) · **Stripe E2E:** [e2e-checklist.md](./e2e-checklist.md)
+> **Status:** ✅ Wired (Phase 1C) · 🟡 Partner QA（multicapture 後段）  
+> **Depends on:** [backend.md](./backend.md) · **E2E:** [e2e-checklist.md](./e2e-checklist.md) · **P0 capture:** [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)
 
 ## Touchpoints
 

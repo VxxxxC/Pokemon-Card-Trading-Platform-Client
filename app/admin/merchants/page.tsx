@@ -12,7 +12,13 @@ export const metadata: Metadata = {
   description: "審核商戶入駐申請、查閱 KYC 文件、批准後自動開通 Stripe Connect",
 };
 
-export default async function AdminMerchantsPage() {
+type AdminMerchantsPageProps = {
+  searchParams: Promise<{ applicationId?: string }>;
+};
+
+export default async function AdminMerchantsPage({
+  searchParams,
+}: AdminMerchantsPageProps) {
   if (!isSupabaseConfigured()) {
     redirect("/auth");
   }
@@ -28,6 +34,7 @@ export default async function AdminMerchantsPage() {
     redirect("/");
   }
 
+  const params = await searchParams;
   const result = await listKycApplications({});
   const applications = result.success ? result.data : [];
 
@@ -35,6 +42,7 @@ export default async function AdminMerchantsPage() {
     <AdminMerchantsClient
       initialApplications={applications}
       loadError={result.success ? null : result.error}
+      highlightApplicationId={params.applicationId ?? null}
     />
   );
 }

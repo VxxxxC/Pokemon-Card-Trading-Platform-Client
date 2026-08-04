@@ -1,5 +1,8 @@
 # Admin grading workbench — frontend
 
+> **Status:** 🟡 Partner QA  
+> **Partner QA：** [PARTNER_HANDOFF.md](./PARTNER_HANDOFF.md)（multicapture E2E 主流程 + 短訊版）
+
 ## UI touchpoints
 
 | File | Work |

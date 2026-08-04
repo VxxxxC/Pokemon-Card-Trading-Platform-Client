@@ -78,18 +78,19 @@ export function TopNav() {
         roomId?: string;
       }>;
       const detail = customEvent.detail;
+      if (detail?.roomId) {
+        activateRoomById(
+          detail.roomId,
+          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
+          detail.partnerId,
+        );
+        return;
+      }
       if (detail?.partnerId) {
         openChatWithPartner(
           detail.partnerId,
           detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
           detail.partnerPersona ?? "member",
-        );
-        return;
-      }
-      if (detail?.roomId) {
-        activateRoomById(
-          detail.roomId,
-          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
         );
       }
     };

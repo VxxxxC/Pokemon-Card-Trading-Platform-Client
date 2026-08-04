@@ -213,7 +213,11 @@ interface HkCardVaultStore {
    * Activates an existing room by its raw ID, or creates a minimal stub if not found.
    * Prefer openGlobalChat for new call sites where buyer/seller IDs are known.
    */
-  activateRoomById: (roomId: string, partnerName: string) => void;
+  activateRoomById: (
+    roomId: string,
+    partnerName: string,
+    partnerId?: string,
+  ) => void;
 
   /** Resolve an existing room by counterparty profile id + persona, or open a pending stub. */
   openChatWithPartner: (
@@ -328,8 +332,9 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
-  activateRoomById: (roomId, partnerName) =>
+  activateRoomById: (roomId, partnerName, partnerId) =>
     set((state) => {
+      const resolvedPartnerId = partnerId?.trim() || "";
       const exists = state.chats.some((c) => c.id === roomId);
       if (exists) {
         return {
@@ -337,13 +342,19 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           isChatOpen: true,
           mobileView: "CHAT" as const,
           chats: state.chats.map((c) =>
-            c.id === roomId ? { ...c, unreadCount: 0 } : c,
+            c.id === roomId
+              ? {
+                  ...c,
+                  unreadCount: 0,
+                  ...(resolvedPartnerId ? { partnerId: resolvedPartnerId } : {}),
+                }
+              : c,
           ),
         };
       }
       const stub: ChatRoom = {
         id: roomId,
-        partnerId: roomId,
+        partnerId: resolvedPartnerId || roomId,
         partnerPersona: "member",
         viewerPersona: readActiveViewerPersona(),
         partnerName,

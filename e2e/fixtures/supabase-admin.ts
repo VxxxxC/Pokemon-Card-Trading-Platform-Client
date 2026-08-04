@@ -1362,13 +1362,54 @@ export type ReportAuditRow = {
   target_type: string;
   reason: string;
   status: string | null;
+  category: string | null;
+  case_id: string | null;
+  contribution_score: number | null;
 };
+
+export async function deletePendingReportAttachments(
+  reporterId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("report_attachments")
+    .delete()
+    .eq("reporter_id", reporterId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[deletePendingReportAttachments] ${error.message}`);
+  }
+}
+
+export async function deleteModerationCasesForSubject(
+  subjectId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("moderation_cases")
+    .delete()
+    .eq("subject_user_id", subjectId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[deleteModerationCasesForSubject] ${error.message}`);
+  }
+}
 
 export async function deletePendingReports(params: {
   reporterId: string;
   targetId: string;
 }): Promise<void> {
   const admin = createE2eAdminClient();
+
+  await deletePendingReportAttachments(params.reporterId);
 
   const { error, status } = await admin
     .from("reports")
@@ -1383,6 +1424,8 @@ export async function deletePendingReports(params: {
     }
     throw new Error(`[deletePendingReports] ${error.message}`);
   }
+
+  await deleteModerationCasesForSubject(params.targetId);
 }
 
 export async function getLatestReport(params: {
@@ -1393,7 +1436,9 @@ export async function getLatestReport(params: {
 
   const { data, error } = await admin
     .from("reports")
-    .select("id, reporter_id, target_id, target_type, reason, status")
+    .select(
+      "id, reporter_id, target_id, target_type, reason, status, category, case_id, contribution_score",
+    )
     .eq("reporter_id", params.reporterId)
     .eq("target_id", params.targetId)
     .order("created_at", { ascending: false })
@@ -1405,4 +1450,253 @@ export async function getLatestReport(params: {
   }
 
   return (data as ReportAuditRow | null) ?? null;
+}
+
+export type ReportAttachmentAuditRow = {
+  id: string;
+  report_id: string | null;
+  reporter_id: string;
+  storage_path: string;
+};
+
+export async function getReportAttachmentsForReport(
+  reportId: string,
+): Promise<ReportAttachmentAuditRow[]> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("report_attachments")
+    .select("id, report_id, reporter_id, storage_path")
+    .eq("report_id", reportId);
+
+  if (error) {
+    throw new Error(`[getReportAttachmentsForReport] ${error.message}`);
+  }
+
+  return (data as ReportAttachmentAuditRow[] | null) ?? [];
+}
+
+export type ModerationCaseAuditRow = {
+  id: string;
+  case_number: string;
+  subject_user_id: string;
+  status: string;
+  final_score: number | null;
+};
+
+export async function getLatestModerationCaseForSubject(
+  subjectId: string,
+): Promise<ModerationCaseAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("moderation_cases")
+    .select("id, case_number, subject_user_id, status, final_score")
+    .eq("subject_user_id", subjectId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getLatestModerationCaseForSubject] ${error.message}`);
+  }
+
+  return (data as ModerationCaseAuditRow | null) ?? null;
+}
+
+export type ModerationCaseWithChatRoom = ModerationCaseAuditRow & {
+  chatRoomId: string;
+};
+
+export async function getLatestModerationCaseWithChatRoom(
+  subjectId: string,
+): Promise<ModerationCaseWithChatRoom | null> {
+  const admin = createE2eAdminClient();
+
+  const { data: cases, error: casesError } = await admin
+    .from("moderation_cases")
+    .select("id, case_number, subject_user_id, status, final_score, created_at")
+    .eq("subject_user_id", subjectId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (casesError) {
+    throw new Error(`[getLatestModerationCaseWithChatRoom] ${casesError.message}`);
+  }
+
+  for (const moderationCase of cases ?? []) {
+    const { data: report, error: reportError } = await admin
+      .from("reports")
+      .select("context_type, context_id")
+      .eq("case_id", moderationCase.id)
+      .eq("context_type", "chat_room")
+      .not("context_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (reportError) {
+      throw new Error(`[getLatestModerationCaseWithChatRoom] ${reportError.message}`);
+    }
+
+    if (report?.context_id) {
+      return {
+        ...(moderationCase as ModerationCaseAuditRow),
+        chatRoomId: report.context_id,
+      };
+    }
+  }
+
+  return null;
+}
+
+export async function getLatestOpenModerationCaseForSubject(
+  subjectId: string,
+): Promise<ModerationCaseAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("moderation_cases")
+    .select("id, case_number, subject_user_id, status, final_score")
+    .eq("subject_user_id", subjectId)
+    .in("status", ["open", "reviewing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getLatestOpenModerationCaseForSubject] ${error.message}`);
+  }
+
+  return (data as ModerationCaseAuditRow | null) ?? null;
+}
+
+export async function getModerationCaseStatus(
+  caseId: string,
+): Promise<{ status: string; resolution: string | null } | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("moderation_cases")
+    .select("status, resolution")
+    .eq("id", caseId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getModerationCaseStatus] ${error.message}`);
+  }
+
+  return (data as { status: string; resolution: string | null } | null) ?? null;
+}
+
+export async function countModerationAuditLogsForCase(
+  caseId: string,
+  action?: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+
+  let query = admin
+    .from("moderation_audit_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("case_id", caseId);
+
+  if (action) {
+    query = query.eq("action", action);
+  }
+
+  const { count, error } = await query;
+
+  if (error) {
+    throw new Error(`[countModerationAuditLogsForCase] ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+export async function insertChatMessageForE2e(params: {
+  roomId: string;
+  senderId: string;
+  content: string;
+}): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin.from("chat_messages").insert({
+    room_id: params.roomId,
+    sender_id: params.senderId,
+    content: params.content,
+    is_system_warning: false,
+  });
+
+  if (error) {
+    throw new Error(`[insertChatMessageForE2e] ${error.message}`);
+  }
+}
+
+export type ModerationCaseDetailAuditRow = ModerationCaseAuditRow & {
+  primary_category: string | null;
+};
+
+export async function getLatestModerationCaseDetailForSubject(
+  subjectId: string,
+): Promise<ModerationCaseDetailAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("moderation_cases")
+    .select("id, case_number, subject_user_id, status, final_score, primary_category")
+    .eq("subject_user_id", subjectId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getLatestModerationCaseDetailForSubject] ${error.message}`);
+  }
+
+  return (data as ModerationCaseDetailAuditRow | null) ?? null;
+}
+
+export async function insertAccountSanctionForE2e(params: {
+  userId: string;
+  type: "suspend" | "ban";
+  endsAt?: string | null;
+  caseId?: string | null;
+}): Promise<string> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("account_sanctions")
+    .insert({
+      user_id: params.userId,
+      scope: "account",
+      type: params.type,
+      ends_at: params.endsAt ?? null,
+      source: "admin",
+      reason: "E2E test sanction",
+      case_id: params.caseId ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`[insertAccountSanctionForE2e] ${error.message}`);
+  }
+
+  return data.id as string;
+}
+
+export async function deleteAccountSanctionsForUser(userId: string): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("account_sanctions")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[deleteAccountSanctionsForUser] ${error.message}`);
+  }
 }

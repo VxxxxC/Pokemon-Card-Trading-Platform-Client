@@ -16,8 +16,9 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 
 | 檔案 | 改動 |
 |------|------|
-| `app/checkout/[id]/page.tsx` | `[id]` 現為**訂單 id / `ORD-*` 單號**（原本係商品 id）。移除 `MOCK_INVENTORY_DATABASE`，改 `loadMerchantCheckoutOrder()`；按鈕由 `setTimeout` 改為 `createMerchantOrderPaymentIntent()` → `<Elements>` + `<PaymentElement>` → `stripe.confirmPayment({ redirect: "if_required" })`。鑑定單 manual capture：`requires_capture` 視為授權成功，輪詢 `getMerchantCheckoutPaymentStatus`（8×2s）至 `escrowStatus !== pending_payment` 後跳 success |
-| `app/checkout/[id]/success/page.tsx` | 改讀真訂單；webhook 為非同步，最多輪詢 8 次 × 2s，`pending_payment` 顯示「⏳ 付款處理中」，轉 `payment_held` 後顯示「🎉 交易成功設立」 |
+| `app/checkout/[id]/page.tsx` | Thin entry → `CheckoutClient`（2-step wizard：訂單確認 → 付款）。`loadCheckoutSession()` 支援 merchant + member auth；Step 2 經 `prepareCheckoutPayment()` → `<Elements>` + poll `getCheckoutPaymentStatus` |
+| `app/checkout/[id]/CheckoutClient.tsx` | Wizard state、`CheckoutReviewStep` / `CheckoutPaymentStep` / `CheckoutOrderSummary` |
+| `app/checkout/[id]/success/page.tsx` | `loadCheckoutSession` + `getCheckoutPaymentStatus` 輪詢；merchant / member auth 分支文案 |
 | `app/components/transactions/ExecutionSlideOver.tsx` | 所有 listing「⚡ 立即購買」→ `buyNowListing()` → **開 chat**（付款由 Offer 卡 CTA 去 checkout） |
 | `app/components/transactions/BuyNowConfirmDialog.tsx` | `BuyButton` 預設開確認框；「改為議價出價」才開 slide-over |
 | `app/components/chat/OfferCard.tsx` | accepted 買家「前往付款」/「查看訂單」CTA |

@@ -37,6 +37,8 @@ Add these to **`.env`** (`playwright.config.ts` loads `.env` / `.env.local` for 
 | `E2E_BUYER_PASSWORD` | Buyer auth setup | Member account password |
 | `E2E_SELLER_EMAIL` | Seller auth setup (chat-realtime) | Same seller account as `E2E_SELLER_ID` |
 | `E2E_SELLER_PASSWORD` | Seller auth setup (chat-realtime) | Seller login password |
+| `E2E_ADMIN_EMAIL` | `admin-moderation.spec.ts` admin flows | Admin account email (`profiles.role = admin`) |
+| `E2E_ADMIN_PASSWORD` | `admin-moderation.spec.ts` admin flows | Admin login password |
 | `SUPABASE_SERVICE_ROLE_KEY` | DB asserts + cleanup | Service role key for `e2e/fixtures/supabase-admin.ts` |
 | `BUNNY_STORAGE_ZONE_NAME` | Merch listing E2E | `AddAssetModal` card photo upload |
 | `BUNNY_STORAGE_ACCESS_KEY` | Merch listing E2E | Bunny storage API key |
@@ -407,12 +409,36 @@ bun run test:e2e -- e2e/member-offer-negotiation.spec.ts --project=member-tradin
 
 Uses `E2E_SELLER_ID` / `E2E_SELLER_USERNAME` / `E2E_LISTING_ID` (same fixtures as merchant detail).
 
+### Admin moderation (`guest` / `buyer` / `seller`)
+
+`e2e/admin-moderation.spec.ts`:
+
+| Project | Test |
+|---------|------|
+| `guest` | Unauthenticated `/admin/disputes` → `/auth`; admin login + disputes list/detail; chat thread + `view_chat` audit |
+| `buyer` | Member cannot access `/admin/disputes` (redirect to `/profile/user`) |
+| `seller` | Merchant cannot access `/admin/disputes` (redirect to `/profile/merchant` or `/profile/user`) |
+
+Requires `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` for admin flow tests (skipped if unset). Chat thread test also needs a chat-linked moderation case — seed via user-report E2E first.
+
+```bash
+# Optional: create chat-linked moderation case
+bun run test:e2e e2e/user-report.spec.ts --project=buyer -g "buyer submits report from chat console"
+
+# Guest project only (access control + admin flows)
+bun run test:e2e e2e/admin-moderation.spec.ts --project=guest
+
+# Full suite (guest + buyer + seller access control)
+bun run test:e2e e2e/admin-moderation.spec.ts
+```
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
 |---------|----------------|
 | All tests skipped | `E2E_SELLER_ID` / `E2E_LISTING_ID` not set in `.env` |
 | Setup skipped, buyer tests fail auth | `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` missing or wrong |
+| Admin moderation admin tests skipped | `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` missing or account not `admin` |
 | Chat-realtime skipped | Missing seller creds, `SUPABASE_SERVICE_ROLE_KEY`, or core listing fixtures |
 | Login timeout in setup | Supabase env unset or invalid credentials |
 | 404 on happy path | Listing inactive, wrong seller, or ID mismatch |

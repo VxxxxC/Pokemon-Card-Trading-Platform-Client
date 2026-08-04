@@ -1,5 +1,8 @@
 # Admin grading workbench — backend
 
+> **Status:** ✅ P1 Ready · 🟡 Partner QA  
+> **Partner handoff:** [PARTNER_HANDOFF.md](./PARTNER_HANDOFF.md)
+
 ## Files
 
 | Path | Purpose |

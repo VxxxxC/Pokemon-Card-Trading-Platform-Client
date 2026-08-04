@@ -39,6 +39,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_sanctions: {
+        Row: {
+          case_id: string | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          reason: string | null
+          revoked_at: string | null
+          scope: Database["public"]["Enums"]["sanction_scope"]
+          source: string
+          starts_at: string
+          type: Database["public"]["Enums"]["sanction_type"]
+          user_id: string
+        }
+        Insert: {
+          case_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          scope: Database["public"]["Enums"]["sanction_scope"]
+          source?: string
+          starts_at?: string
+          type: Database["public"]["Enums"]["sanction_type"]
+          user_id: string
+        }
+        Update: {
+          case_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          scope?: Database["public"]["Enums"]["sanction_scope"]
+          source?: string
+          starts_at?: string
+          type?: Database["public"]["Enums"]["sanction_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_sanctions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_sanctions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
@@ -1125,6 +1182,135 @@ export type Database = {
           },
         ]
       }
+      moderation_audit_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          case_id: string
+          created_at: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          case_id: string
+          created_at?: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          case_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_audit_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_audit_logs_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_cases: {
+        Row: {
+          adjustment_reason: string | null
+          admin_adjustment: number
+          auto_score: number
+          case_number: string
+          created_at: string
+          final_score: number | null
+          id: string
+          primary_category:
+            | Database["public"]["Enums"]["report_category"]
+            | null
+          resolution:
+            | Database["public"]["Enums"]["moderation_resolution"]
+            | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: Database["public"]["Enums"]["moderation_case_status"]
+          subject_user_id: string
+          updated_at: string
+          violation_persona:
+            | Database["public"]["Enums"]["violation_persona"]
+            | null
+        }
+        Insert: {
+          adjustment_reason?: string | null
+          admin_adjustment?: number
+          auto_score?: number
+          case_number: string
+          created_at?: string
+          final_score?: number | null
+          id?: string
+          primary_category?:
+            | Database["public"]["Enums"]["report_category"]
+            | null
+          resolution?:
+            | Database["public"]["Enums"]["moderation_resolution"]
+            | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["moderation_case_status"]
+          subject_user_id: string
+          updated_at?: string
+          violation_persona?:
+            | Database["public"]["Enums"]["violation_persona"]
+            | null
+        }
+        Update: {
+          adjustment_reason?: string | null
+          admin_adjustment?: number
+          auto_score?: number
+          case_number?: string
+          created_at?: string
+          final_score?: number | null
+          id?: string
+          primary_category?:
+            | Database["public"]["Enums"]["report_category"]
+            | null
+          resolution?:
+            | Database["public"]["Enums"]["moderation_resolution"]
+            | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: Database["public"]["Enums"]["moderation_case_status"]
+          subject_user_id?: string
+          updated_at?: string
+          violation_persona?:
+            | Database["public"]["Enums"]["violation_persona"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_cases_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "moderation_cases_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           buyer_id: string
@@ -1668,32 +1854,101 @@ export type Database = {
         }
         Relationships: []
       }
+      report_attachments: {
+        Row: {
+          byte_size: number
+          created_at: string
+          id: string
+          mime_type: string
+          report_id: string | null
+          reporter_id: string
+          storage_path: string
+        }
+        Insert: {
+          byte_size: number
+          created_at?: string
+          id?: string
+          mime_type: string
+          report_id?: string | null
+          reporter_id: string
+          storage_path: string
+        }
+        Update: {
+          byte_size?: number
+          created_at?: string
+          id?: string
+          mime_type?: string
+          report_id?: string | null
+          reporter_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_attachments_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_attachments_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
+          case_id: string | null
+          category: Database["public"]["Enums"]["report_category"] | null
+          category_weight_snapshot: number | null
+          context_id: string | null
+          context_type: string | null
+          contribution_score: number | null
           created_at: string | null
+          details: string | null
           id: string
           reason: string
           reporter_id: string
+          source: Database["public"]["Enums"]["report_source"] | null
           status: Database["public"]["Enums"]["report_state"] | null
           target_id: string
           target_type: string
           updated_at: string | null
         }
         Insert: {
+          case_id?: string | null
+          category?: Database["public"]["Enums"]["report_category"] | null
+          category_weight_snapshot?: number | null
+          context_id?: string | null
+          context_type?: string | null
+          contribution_score?: number | null
           created_at?: string | null
+          details?: string | null
           id?: string
           reason: string
           reporter_id: string
+          source?: Database["public"]["Enums"]["report_source"] | null
           status?: Database["public"]["Enums"]["report_state"] | null
           target_id: string
           target_type: string
           updated_at?: string | null
         }
         Update: {
+          case_id?: string | null
+          category?: Database["public"]["Enums"]["report_category"] | null
+          category_weight_snapshot?: number | null
+          context_id?: string | null
+          context_type?: string | null
+          contribution_score?: number | null
           created_at?: string | null
+          details?: string | null
           id?: string
           reason?: string
           reporter_id?: string
+          source?: Database["public"]["Enums"]["report_source"] | null
           status?: Database["public"]["Enums"]["report_state"] | null
           target_id?: string
           target_type?: string
@@ -1705,6 +1960,13 @@ export type Database = {
             columns: ["reporter_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "moderation_cases"
             referencedColumns: ["id"]
           },
         ]
@@ -1999,6 +2261,10 @@ export type Database = {
       }
     }
     Functions: {
+      _find_or_create_moderation_case: {
+        Args: { p_subject_user_id: string }
+        Returns: string
+      }
       _grading_require_admin: { Args: never; Returns: string }
       _grading_write_audit_log: {
         Args: {
@@ -2012,8 +2278,83 @@ export type Database = {
         }
         Returns: undefined
       }
+      _moderation_apply_sanction_side_effects: {
+        Args: {
+          p_scope: Database["public"]["Enums"]["sanction_scope"]
+          p_type: Database["public"]["Enums"]["sanction_type"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      _moderation_category_label: {
+        Args: { p_category: Database["public"]["Enums"]["report_category"] }
+        Returns: string
+      }
+      _moderation_category_weight: {
+        Args: { p_category: Database["public"]["Enums"]["report_category"] }
+        Returns: number
+      }
+      _moderation_format_report_reason: {
+        Args: {
+          p_category: Database["public"]["Enums"]["report_category"]
+          p_chat_room_id: string
+          p_details: string
+          p_source: Database["public"]["Enums"]["report_source"]
+        }
+        Returns: string
+      }
+      _moderation_has_active_sanction: {
+        Args: {
+          p_scope?: Database["public"]["Enums"]["sanction_scope"]
+          p_type?: Database["public"]["Enums"]["sanction_type"]
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      _moderation_insert_account_sanction: {
+        Args: {
+          p_admin_id: string
+          p_case_id: string
+          p_ends_at: string
+          p_reason: string
+          p_scope: Database["public"]["Enums"]["sanction_scope"]
+          p_type: Database["public"]["Enums"]["sanction_type"]
+          p_user_id: string
+        }
+        Returns: string
+      }
+      _moderation_next_case_number: { Args: never; Returns: string }
+      _moderation_resolve_chat_room_for_case: {
+        Args: { p_case_id: string }
+        Returns: string
+      }
+      _moderation_write_audit_log: {
+        Args: { p_action: string; p_case_id: string; p_payload?: Json }
+        Returns: undefined
+      }
+      _recompute_moderation_case_scores: {
+        Args: { p_case_id: string }
+        Returns: undefined
+      }
       acknowledge_reward_grants: {
         Args: { p_user_reward_ids: string[] }
+        Returns: Json
+      }
+      admin_get_moderation_case_bundle: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      admin_get_moderation_chat_thread: {
+        Args: {
+          p_before?: string
+          p_case_id: string
+          p_limit?: number
+          p_room_id: string
+        }
+        Returns: Json
+      }
+      admin_get_moderation_order_context: {
+        Args: { p_case_id: string }
         Returns: Json
       }
       canonical_card_search_key: { Args: { input: string }; Returns: string }
@@ -2300,6 +2641,17 @@ export type Database = {
         Args: { grading_company: string; grading_score: string }
         Returns: number
       }
+      moderation_check_listing_allowed: {
+        Args: {
+          p_persona: Database["public"]["Enums"]["seller_persona_type"]
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      moderation_get_account_access_restriction: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       refresh_marketplace_product_summaries: { Args: never; Returns: undefined }
       resolve_listing_market_price_company: {
         Args: { p_grading_company: string }
@@ -2311,6 +2663,10 @@ export type Database = {
       }
       rpc_accept_offer: {
         Args: { p_offer_id: string; p_seller_id: string }
+        Returns: Json
+      }
+      rpc_adjust_moderation_case_score: {
+        Args: { p_adjustment: number; p_case_id: string; p_reason?: string }
         Returns: Json
       }
       rpc_admin_confirm_grading_intake: {
@@ -2330,6 +2686,17 @@ export type Database = {
           p_order_id: string
           p_order_kind: string
           p_tracking_no: string
+        }
+        Returns: Json
+      }
+      rpc_apply_account_sanction: {
+        Args: {
+          p_case_id: string
+          p_ends_at?: string
+          p_reason?: string
+          p_scope: Database["public"]["Enums"]["sanction_scope"]
+          p_type: Database["public"]["Enums"]["sanction_type"]
+          p_user_id: string
         }
         Returns: Json
       }
@@ -2616,6 +2983,10 @@ export type Database = {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
       }
+      rpc_resolve_moderation_case: {
+        Args: { p_case_id: string; p_payload: Json }
+        Returns: Json
+      }
       rpc_send_chat_message: {
         Args: { p_content: string; p_room_id: string; p_sender_id: string }
         Returns: Json
@@ -2683,6 +3054,16 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_submit_user_report_v2: {
+        Args: {
+          p_attachment_ids?: string[]
+          p_category: Database["public"]["Enums"]["report_category"]
+          p_chat_room_id?: string
+          p_details?: string
+          p_target_id: string
+        }
+        Returns: Json
+      }
       run_auto_grant_rewards_for_me: { Args: never; Returns: Json }
       search_admin_grading_orders: {
         Args: {
@@ -2691,6 +3072,27 @@ export type Database = {
           p_page?: number
           p_page_size?: number
           p_tab: string
+        }
+        Returns: Json
+      }
+      search_admin_moderation_cases: {
+        Args: {
+          p_category?: Database["public"]["Enums"]["report_category"]
+          p_min_score?: number
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      search_admin_platform_users: {
+        Args: {
+          p_keyword?: string
+          p_kyc_filter?: string
+          p_page?: number
+          p_page_size?: number
+          p_user_types?: string[]
         }
         Returns: Json
       }
@@ -2973,6 +3375,8 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       catalog_type:
@@ -3020,6 +3424,8 @@ export type Database = {
         | "paid"
         | "frozen"
         | "failed"
+      moderation_case_status: "open" | "reviewing" | "resolved" | "dismissed"
+      moderation_resolution: "upheld" | "dismissed" | "insufficient_evidence"
       offer_status: "pending" | "accepted" | "rejected" | "cancelled"
       payment_capture_status:
         | "none"
@@ -3036,6 +3442,8 @@ export type Database = {
         | "processing"
         | "completed"
         | "failed"
+      report_category: "fraud" | "offline_trade" | "harassment" | "other"
+      report_source: "chat_room" | "profile"
       report_state: "pending" | "reviewing" | "resolved" | "dismissed"
       review_persona: "member" | "merchant"
       reward_type:
@@ -3043,6 +3451,14 @@ export type Database = {
         | "free_shipping"
         | "lucky_draw_ticket"
         | "points"
+      sanction_scope: "account" | "member_persona" | "merchant_persona"
+      sanction_type:
+        | "warn"
+        | "restrict_listing"
+        | "restrict_chat"
+        | "freeze_payout"
+        | "suspend"
+        | "ban"
       seller_persona_type: "member" | "merchant"
       sync_state: "synced" | "partial" | "needs_review"
       transaction_type:
@@ -3052,6 +3468,7 @@ export type Database = {
         | "refund"
         | "payout"
       user_role: "admin" | "merchant" | "member"
+      violation_persona: "member" | "merchant" | "both" | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3233,6 +3650,8 @@ export const Constants = {
         "frozen",
         "failed",
       ],
+      moderation_case_status: ["open", "reviewing", "resolved", "dismissed"],
+      moderation_resolution: ["upheld", "dismissed", "insufficient_evidence"],
       offer_status: ["pending", "accepted", "rejected", "cancelled"],
       payment_capture_status: [
         "none",
@@ -3251,6 +3670,8 @@ export const Constants = {
         "completed",
         "failed",
       ],
+      report_category: ["fraud", "offline_trade", "harassment", "other"],
+      report_source: ["chat_room", "profile"],
       report_state: ["pending", "reviewing", "resolved", "dismissed"],
       review_persona: ["member", "merchant"],
       reward_type: [
@@ -3258,6 +3679,15 @@ export const Constants = {
         "free_shipping",
         "lucky_draw_ticket",
         "points",
+      ],
+      sanction_scope: ["account", "member_persona", "merchant_persona"],
+      sanction_type: [
+        "warn",
+        "restrict_listing",
+        "restrict_chat",
+        "freeze_payout",
+        "suspend",
+        "ban",
       ],
       seller_persona_type: ["member", "merchant"],
       sync_state: ["synced", "partial", "needs_review"],
@@ -3269,6 +3699,7 @@ export const Constants = {
         "payout",
       ],
       user_role: ["admin", "merchant", "member"],
+      violation_persona: ["member", "merchant", "both", "unknown"],
     },
   },
 } as const

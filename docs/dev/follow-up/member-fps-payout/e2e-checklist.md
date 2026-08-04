@@ -1,6 +1,7 @@
-# Member FPS Pipeline — Stripe 開通後 E2E Checklist
+# Member FPS Pipeline — E2E Checklist
 
-> **適用時機：** Stripe test mode（或 production sandbox）已開通，Member 鑑定單可走 **manual capture + multicapture** 全流程。  
+> **適用時機：** Stripe test mode 已開通 **online multicapture**；Member 鑑定單可走 **manual capture + multicapture** 全流程。  
+> **主流程入口：** [admin-grading PARTNER_HANDOFF.md](../admin-grading/PARTNER_HANDOFF.md)（P0 鑑定 capture）· 本文件涵蓋 FPS T+3 後段。  
 > **涵蓋範圍：** Phase 1A（T+3 hold）· 1B（cron → `payout_requests`）· 1C（FPS 姓名 + ID）· Admin FPS 表。  
 > **相關文件：** [backend.md](./backend.md) · [frontend.md](./frontend.md) · [member-auth-checkout/backend.md](../member-auth-checkout/backend.md) · [admin-grading/backend.md](../admin-grading/backend.md) · [escrow-payment-policy.md](../../escrow-payment-policy.md) §8.1
 

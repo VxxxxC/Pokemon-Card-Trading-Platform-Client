@@ -1,9 +1,13 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import {
+  adjustAdminModerationCaseScore,
+  resolveAdminModerationCase,
+} from "@/app/actions/admin-moderation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,208 +18,153 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  statusLabelMap,
-  type DisputeCase,
-  type DisputeStatus,
-  arbitrationActionLabelMap,
-} from "../mockDisputes";
+  categoryBadgeClasses,
+  deriveSeverityBand,
+  formatCategoryLabel,
+  formatModerationDateTime,
+  moderationAuditActionLabel,
+  moderationResolutionLabel,
+  moderationStatusBadgeClasses,
+  moderationStatusLabel,
+  sanctionScopeLabel,
+  sanctionTypeLabel,
+  severityBadgeClasses,
+  severityLabel,
+} from "@/lib/moderation/admin-case-presenters";
+import { highlightSensitiveKeywords } from "@/lib/moderation/highlight-chat-keywords";
+import {
+  isUpheldResolutionOption,
+  mapResolutionOptionToInput,
+  MODERATION_RESOLUTION_OPTIONS,
+  VIOLATION_PERSONA_OPTIONS,
+  type ModerationResolutionOptionValue,
+} from "@/lib/moderation/resolution-config";
+import type {
+  AdminModerationCaseBundle,
+  ViolationPersona,
+} from "@/lib/moderation/types";
+import ModerationChatThreadPanel from "./ModerationChatThreadPanel";
+import ModerationOrderContextPanel from "./ModerationOrderContextPanel";
 
 interface DisputeDetailClientProps {
-  dispute: DisputeCase;
+  bundle: AdminModerationCaseBundle;
 }
 
-const ESCROW_STEPS: Array<{ key: DisputeCase["escrowStep"]; label: string }> = [
-  { key: "payment", label: "付款" },
-  { key: "custody", label: "保管中" },
-  { key: "grading", label: "鑑定中" },
-  { key: "shipped", label: "已發貨" },
-  { key: "released", label: "已釋放" },
-];
-
-const STATUS_SELECT_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "buyer_refunded", label: "全額退款給買家 (Refund Full)" },
-  { value: "buyer_refunded_partial", label: "部分退款給買家 (Partial Refund)" },
-  { value: "seller_released", label: "強制釋放款項給賣家 (Release to Seller)" },
-  { value: "frozen", label: "標記完成並結案 (Mark Complete)" },
-  {
-    value: "freeze_account",
-    label: "凍結涉事帳戶 (Freeze Account)",
-  },
-];
-
-const FREEZE_ACTION_VALUE = "freeze_account";
-
-function formatCurrency(n: number): string {
-  return `HK$ ${n.toLocaleString("zh-HK")}`;
-}
-
-function cn(...classes: Array<string | false | undefined>): string {
-  return classes.filter(Boolean).join(" ");
-}
-
-function statusBadgeClasses(status: DisputeStatus): string {
-  switch (status) {
-    case "pending":
-      return "bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border-[#f59e0b]/20";
-    case "completed":
-      return "bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]/20";
-    default:
-      return "bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]/20";
-  }
-}
-
-function categoryBadgeClasses(category: DisputeCase["category"]): string {
-  switch (category) {
-    case "惡意欺詐":
-      return "bg-[rgba(239,68,68,0.12)] text-[#ef4444] border-[#ef4444]/20";
-    case "卡牌品相不符":
-      return "bg-[rgba(212,165,116,0.15)] text-[#d4a574] border-[#d4a574]/20";
-    case "誘導私下交易":
-      return "bg-[rgba(16,185,129,0.10)] text-[#10b981] border-[#10b981]/20";
-    case "物流爭議":
-      return "bg-[#2e2925] text-[#d4c4b7] border-white/10";
-    default:
-      return "bg-[#2e2925] text-[#d4c4b7] border-white/10";
-  }
-}
-
-function highlightSensitiveKeywords(text: string): React.ReactNode {
-  const regex = /(PayMe|FPS|轉數快|WhatsApp|https?:\/\/\S+|[569]\d{3}[\s-]?\d{4})/gi;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-
-  text.replace(regex, (match, _group, offset) => {
-    if (offset > lastIndex) {
-      parts.push(text.slice(lastIndex, offset));
-    }
-    parts.push(
-      <span
-        key={`${offset}-${match}`}
-        className="rounded bg-[#ef4444]/10 px-1 text-[#ef4444]"
-      >
-        {match}
-      </span>,
-    );
-    lastIndex = offset + match.length;
-    return match;
-  });
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
-}
-
-function isValidFreezeDays(value: string | undefined): value is string {
-  if (value === undefined) return false;
-  const n = Number(value);
-  return value !== "" && Number.isFinite(n) && n >= 1 && n <= 365;
-}
-
-function getCurrentTimestamp(): string {
-  return new Date().toISOString().replace("T", " ").slice(0, 16);
+function isCaseOpen(status: AdminModerationCaseBundle["case"]["status"]): boolean {
+  return status === "open" || status === "reviewing";
 }
 
 export default function DisputeDetailClient({
-  dispute,
+  bundle,
 }: DisputeDetailClientProps) {
   const router = useRouter();
-  const [caseState, setCaseState] = useState<DisputeCase>(() => dispute);
-  const [action, setAction] = useState<string>("");
-  const [reason, setReason] = useState<string>("");
-  const [freezeDays, setFreezeDays] = useState<string>("7");
-  const [auditLog, setAuditLog] = useState<DisputeCase["auditLog"]>(
-    dispute.auditLog,
+  const [isAdjustPending, startAdjustTransition] = useTransition();
+  const [isResolvePending, startResolveTransition] = useTransition();
+  const { case: caseDetail, reports, attachments, chatAccess, auditLog, activeSanctions, relatedOrders } =
+    bundle;
+  const severity = deriveSeverityBand(caseDetail.finalScore);
+  const primaryReporter = bundle.reporterSummaries[0];
+  const caseOpen = isCaseOpen(caseDetail.status);
+
+  const [scoreAdjustment, setScoreAdjustment] = useState("0");
+  const [adjustmentReason, setAdjustmentReason] = useState(
+    caseDetail.adjustmentReason ?? "",
   );
+  const [resolutionOption, setResolutionOption] = useState<
+    ModerationResolutionOptionValue | ""
+  >("");
+  const [violationPersona, setViolationPersona] = useState<
+    ViolationPersona | ""
+  >("");
+  const [evidenceOverride, setEvidenceOverride] = useState(false);
+  const [evidenceOverrideReason, setEvidenceOverrideReason] = useState("");
 
-  const activeStepIndex = useMemo(
-    () => ESCROW_STEPS.findIndex((s) => s.key === caseState.escrowStep),
-    [caseState.escrowStep],
-  );
+  const handleSaveScoreAdjustment = () => {
+    const adjustment = Number(scoreAdjustment);
+    if (!Number.isFinite(adjustment)) {
+      toast.error("請輸入有效的分數調整值");
+      return;
+    }
 
-  // Keep form frozen-days default when action switches back to freeze.
-  // Leave explicit for deterministic UI state.
+    if (adjustment !== 0 && !adjustmentReason.trim()) {
+      toast.error("調整分數時必須填寫原因");
+      return;
+    }
 
-  const appendSystemMessage = useCallback(
-    (message: string, timestamp: string) => {
-      setCaseState((prev) => ({
-        ...prev,
-        chatHistory: [
-          ...prev.chatHistory,
-          { sender: "system", name: "系統 Escrow 通知", message, timestamp },
-        ],
-      }));
-    },
-    [],
-  );
+    startAdjustTransition(async () => {
+      const result = await adjustAdminModerationCaseScore({
+        caseId: caseDetail.id,
+        adjustment,
+        reason: adjustmentReason.trim() || undefined,
+      });
 
-  const clearForm = useCallback(() => {
-    setAction("");
-    setReason("");
-    setFreezeDays("7");
-  }, []);
-
-  const buildAuditReason = useCallback(
-    (baseReason: string, selectedAction: string): string => {
-      if (selectedAction === FREEZE_ACTION_VALUE && isValidFreezeDays(freezeDays)) {
-        return `${baseReason}（凍結 ${Number(freezeDays)} 日）`;
+      if (!result.success) {
+        toast.error(result.error);
+        return;
       }
-      return baseReason;
-    },
-    [freezeDays],
-  );
 
-  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-  // Target Table: user_reports, orders, escrow_accounts | View / RPC: resolve_arbitration_case
-  const handleSubmit = () => {
-    if (!action) {
-      toast.error("請先選擇仲裁判定動作。", {
-        description: "你必須選擇一項最終裁定後才能執行。",
+      toast.success("風控分數已更新");
+      router.refresh();
+    });
+  };
+
+  const handleResolve = () => {
+    if (!resolutionOption) {
+      toast.error("請選擇仲裁結果");
+      return;
+    }
+
+    const requiresUpheld = isUpheldResolutionOption(resolutionOption);
+    if (requiresUpheld && !violationPersona) {
+      toast.error("裁定成立時必須指定違規身分");
+      return;
+    }
+
+    if (
+      requiresUpheld &&
+      !chatAccess.evidenceSufficient &&
+      !evidenceOverride
+    ) {
+      toast.error("證據不足時無法裁定成立，請勾選管理員覆寫或改選其他結果");
+      return;
+    }
+
+    if (evidenceOverride && !evidenceOverrideReason.trim()) {
+      toast.error("請填寫證據覆寫原因");
+      return;
+    }
+
+    const resolveInput = mapResolutionOptionToInput(
+      resolutionOption,
+      violationPersona || undefined,
+    );
+
+    if (evidenceOverride && evidenceOverrideReason.trim()) {
+      resolveInput.evidenceOverrideReason = evidenceOverrideReason.trim();
+    }
+
+    startResolveTransition(async () => {
+      const result = await resolveAdminModerationCase({
+        caseId: caseDetail.id,
+        ...resolveInput,
       });
-      return;
-    }
-    if (!reason.trim()) {
-      toast.error("請輸入仲裁裁決理由。", {
-        description: "理由為必填項目，將寫入 Audit Log 存檔。",
-      });
-      return;
-    }
-    if (action === FREEZE_ACTION_VALUE && !isValidFreezeDays(freezeDays)) {
-      toast.error("請輸入 1 至 365 之間嘅凍結天數");
-      return;
-    }
 
-    const selectedLabel = arbitrationActionLabelMap[action] ?? action;
-    const auditReason = buildAuditReason(reason.trim(), action);
-    const timestamp = getCurrentTimestamp();
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
 
-    setCaseState((prev) => ({ ...prev, status: "completed" }));
-    setAuditLog((prev) => [
-      ...prev,
-      {
-        action: selectedLabel,
-        reason: auditReason,
-        timestamp,
-        ...(action === FREEZE_ACTION_VALUE
-          ? { freezeDays: Number(freezeDays) }
-          : {}),
-      },
-    ]);
+      if (result.data.authBanWarning) {
+        toast.warning(result.data.authBanWarning);
+      }
 
-    const systemMessage =
-      `[系統仲裁通知] 管理員已完成本案仲裁：${selectedLabel}。` +
-      `已向舉報方 ${caseState.reporter} 發送裁決回覆，案件狀態更新為「已完成」。`;
-    appendSystemMessage(systemMessage, timestamp);
-
-    toast.success(`已向舉報方 ${caseState.reporter} 發送裁決通知，案件狀態更新為已完成`);
-
-    clearForm();
+      toast.success("案件已裁定結案");
+      router.push("/admin/disputes?status=completed");
+    });
   };
 
   return (
     <div className="space-y-6">
-      {/* ── Back Button ─────────────────────────────────────────────── */}
       <Button
         variant="ghost"
         size="sm"
@@ -226,366 +175,424 @@ export default function DisputeDetailClient({
         返回舉報與爭議列表
       </Button>
 
-      {/* ── Case Header ─────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
+      <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
         <div className="flex flex-col flex-wrap gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono text-[18px] font-bold text-[#eae1da]">
-              {caseState.id}
+              {caseDetail.caseNumber}
             </span>
             <Badge
               variant="outline"
-              className={categoryBadgeClasses(caseState.category)}
+              className={categoryBadgeClasses(caseDetail.primaryCategory)}
             >
-              {caseState.category}
+              {formatCategoryLabel(caseDetail.primaryCategory)}
             </Badge>
-            <span
-              className={cn(
-                "rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium",
-                caseState.severity === "critical"
-                  ? "border-[#ef4444]/20 bg-[#ef4444]/10 text-[#ef4444]"
-                  : "border-white/10 bg-[#2e2925] text-[#d4c4b7]",
-              )}
+            <Badge
+              variant="outline"
+              className={severityBadgeClasses(severity)}
             >
-              {caseState.severity === "critical" ? "緊急" : "一般"}
-            </span>
+              {severityLabel(severity)}
+            </Badge>
+            {caseDetail.resolution ? (
+              <Badge variant="outline" className="bg-[#2e2925] text-[#d4c4b7] border-white/10">
+                {moderationResolutionLabel(caseDetail.resolution)}
+              </Badge>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Badge
               variant="outline"
-              className={statusBadgeClasses(caseState.status)}
+              className={moderationStatusBadgeClasses(caseDetail.status)}
             >
-              {statusLabelMap[caseState.status]}
+              {moderationStatusLabel(caseDetail.status)}
             </Badge>
+            <span className="font-mono text-[13px] font-semibold text-[#d4a574]">
+              最終分數 {caseDetail.finalScore ?? 0}
+            </span>
             <span className="font-sans text-[12px] text-[#8A8680]">
-              提交於 {caseState.submittedAt}
+              建立於 {formatModerationDateTime(caseDetail.createdAt)}
             </span>
           </div>
         </div>
 
         <div className="border-t border-white/[0.06] pt-4">
           <h1 className="font-sans text-[20px] font-bold text-[#eae1da]">
-            {caseState.cardName}
+            被舉報用戶：{caseDetail.subject.displayName ?? "未知用戶"}
           </h1>
           <p className="mt-1 font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
-            {caseState.description}
+            @{caseDetail.subject.username ?? "—"} · 角色 {caseDetail.subject.role ?? "—"}
           </p>
           <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-sans text-[12px] text-[#8A8680]">
             <span>
-              舉報方：<span className="text-[#d4c4b7]">{caseState.reporter}</span>
+              主要舉報方：
+              <span className="text-[#d4c4b7]">
+                {primaryReporter?.displayName ?? "—"}
+              </span>
             </span>
             <span>
-              被控方：
+              獨立舉報人數：
               <span className="text-[#d4c4b7]">
-                {caseState.accused.name} {caseState.accused.handle}
+                {bundle.reporterSummaries.length}
               </span>
             </span>
           </div>
+          {activeSanctions.length > 0 ? (
+            <div className="mt-3 space-y-1">
+              <p className="font-sans text-[12px] font-medium text-[#d4c4b7]">
+                有效制裁：
+              </p>
+              {activeSanctions.map((sanction) => (
+                <p
+                  key={sanction.id}
+                  className="font-sans text-[12px] text-[#8A8680]"
+                >
+                  {sanctionScopeLabel(sanction.scope)} ·{" "}
+                  {sanctionTypeLabel(sanction.type)}
+                  {sanction.endsAt
+                    ? ` · 至 ${formatModerationDateTime(sanction.endsAt)}`
+                    : " · 永久"}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* ── Main Grid ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[55fr_45fr]">
-        {/* Left: Chat History */}
-        <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
-              唯讀聊天室歷史
-            </h2>
-            <span className="font-mono text-[10px] text-[#8A8680]">
-              {caseState.chatHistory.length} 則訊息
-            </span>
-          </div>
-          <div className="space-y-4">
-            {caseState.chatHistory.map((chat, index) => {
-              if (chat.sender === "system") {
-                return (
-                  <div key={index} className="flex justify-center py-1">
-                    <span className="max-w-[85%] rounded-full border border-white/[0.04] bg-[#1A1612] px-3 py-1 text-center font-sans text-[11px] italic text-[#8A8680]">
-                      [系統 Escrow 通知] {chat.message} · {chat.timestamp}
-                    </span>
-                  </div>
-                );
-              }
+      {!chatAccess.evidenceSufficient ? (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-sans text-[13px] text-[#ef4444]">
+          證據不足 — 此類別需調閱對話紀錄。若下方無聊天紀錄，可先標記
+          insufficient_evidence 或駁回。
+        </div>
+      ) : null}
 
-              const isBuyer = chat.sender === "buyer";
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    "flex max-w-[85%] flex-col",
-                    isBuyer ? "mr-auto items-start" : "ml-auto items-end",
-                  )}
-                >
-                  <span className="mb-0.5 px-1 font-mono text-[10px] text-[#8A8680]">
-                    [{isBuyer ? "買家" : "賣家"}] {chat.name} · {chat.timestamp}
-                  </span>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[55fr_45fr]">
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
+            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
+              舉報摘要
+            </h2>
+            <div className="mt-4 space-y-4">
+              {reports.length === 0 ? (
+                <p className="font-sans text-[12px] text-[#8A8680]">暫無舉報紀錄。</p>
+              ) : (
+                reports.map((report) => (
                   <div
-                    className={cn(
-                      "rounded-xl px-3.5 py-2.5 font-sans text-[13px] leading-relaxed",
-                      isBuyer
-                        ? "rounded-tl-none border border-white/10 bg-[#2e2925] text-[#eae1da]"
-                        : "rounded-tr-none border border-[#d4a574]/10 bg-[rgba(212,165,116,0.15)] text-[#eae1da]",
-                    )}
+                    key={report.id}
+                    className="rounded-xl border border-white/[0.06] bg-[#17130f] p-4"
                   >
-                    {highlightSensitiveKeywords(chat.message)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className={categoryBadgeClasses(report.category)}
+                      >
+                        {formatCategoryLabel(report.category)}
+                      </Badge>
+                      <span className="font-sans text-[12px] text-[#8A8680]">
+                        {report.reporterDisplayName ?? report.reporterUsername ?? "未知"}
+                        · {formatModerationDateTime(report.createdAt)}
+                      </span>
+                      <span className="font-mono text-[12px] text-[#d4a574]">
+                        +{report.contributionScore ?? 0}
+                      </span>
+                    </div>
+                    <p className="mt-2 font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
+                      {highlightSensitiveKeywords(
+                        report.details?.trim() || report.reason,
+                      )}
+                    </p>
                   </div>
-                </div>
-              );
-            })}
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
+            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
+              用戶上傳證據
+            </h2>
+            {attachments.length === 0 ? (
+              <p className="mt-3 font-sans text-[12px] text-[#8A8680]">
+                暫無證據圖片。
+              </p>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="overflow-hidden rounded-xl border border-white/10 bg-[#17130f]"
+                  >
+                    {attachment.publicUrl ? (
+                      <a
+                        href={attachment.publicUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={attachment.publicUrl}
+                          alt="舉報證據"
+                          className="h-32 w-full object-cover"
+                        />
+                      </a>
+                    ) : (
+                      <div className="flex h-32 items-center justify-center px-3 text-center font-sans text-[11px] text-[#8A8680]">
+                        圖片不可用
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
+                唯讀聊天室歷史
+              </h2>
+            </div>
+            {chatAccess.available && chatAccess.roomId ? (
+              <ModerationChatThreadPanel
+                caseId={caseDetail.id}
+                roomId={chatAccess.roomId}
+                subjectUserId={caseDetail.subject.id}
+              />
+            ) : (
+              <p className="font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
+                此案件尚未綁定可調閱的聊天室紀錄。
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Right Column */}
         <div className="space-y-6">
-          {/* Right Upper: Order & Escrow */}
           <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
             <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
-              訂單與財務流水
+              風控分數明細
             </h2>
-
-            {/* Escrow Timeline */}
-            <div className="my-5">
-              <div className="relative flex items-start justify-between">
-                {ESCROW_STEPS.map((step, index) => {
-                  const isCompleted = index < activeStepIndex;
-                  const isActive = index === activeStepIndex;
-                  const isLast = index === ESCROW_STEPS.length - 1;
-
-                  return (
-                    <div
-                      key={step.key}
-                      className="relative flex flex-1 flex-col items-center"
-                    >
-                      {!isLast && (
-                        <div
-                          className={cn(
-                            "absolute top-[10px] left-[50%] h-px w-full",
-                            index < activeStepIndex
-                              ? "bg-[#10b981]"
-                              : "bg-white/10",
-                          )}
-                        />
-                      )}
-                      <div
-                        className={cn(
-                          "relative z-10 flex size-5 items-center justify-center rounded-full border text-[10px] font-bold",
-                          isCompleted
-                            ? "border-[#10b981] bg-[#10b981] text-[#111]"
-                            : isActive
-                              ? "border-[#d4a574] bg-[#d4a574] text-[#111]"
-                              : "border-white/10 bg-[#26211C] text-[#8A8680]",
-                        )}
-                      >
-                        {isCompleted ? "✓" : index + 1}
-                      </div>
-                      <span
-                        className={cn(
-                          "mt-2 text-center font-sans text-[11px]",
-                          isCompleted || isActive
-                            ? "text-[#eae1da]"
-                            : "text-[#8A8680]",
-                          isActive && "font-semibold text-[#d4a574]",
-                        )}
-                      >
-                        {step.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="mt-4 space-y-2 font-sans text-[13px] text-[#d4c4b7]">
+              <p>自動分數 (autoScore)：{caseDetail.autoScore}</p>
+              {reports.map((report) => (
+                <p key={report.id} className="pl-3 text-[12px] text-[#8A8680]">
+                  - {formatCategoryLabel(report.category)} ·{" "}
+                  {report.reporterDisplayName ?? "未知"} · +
+                  {report.contributionScore ?? 0}
+                </p>
+              ))}
+              <p>管理員調整：{caseDetail.adminAdjustment}</p>
+              {caseDetail.adjustmentReason ? (
+                <p className="text-[12px] text-[#8A8680]">
+                  調整原因：{caseDetail.adjustmentReason}
+                </p>
+              ) : null}
+              <p className="border-t border-white/[0.06] pt-2 font-mono text-[#d4a574]">
+                最終分數：{caseDetail.finalScore ?? 0}
+              </p>
             </div>
-
-            {/* Metadata Grid */}
-            <div className="grid grid-cols-1 gap-4 border-t border-white/[0.06] pt-4 sm:grid-cols-2">
-              <div>
-                <span className="block font-sans text-[11px] uppercase text-[#8A8680]">
-                  卡牌名稱及評級
-                </span>
-                <span className="block font-sans text-[13px] font-medium text-[#eae1da]">
-                  {caseState.cardName}
-                </span>
-              </div>
-              <div>
-                <span className="block font-sans text-[11px] uppercase text-[#8A8680]">
-                  關聯訂單
-                </span>
-                <span className="block font-mono text-[13px] text-[#d4a574]">
-                  {caseState.orderId}
-                </span>
-              </div>
-              <div>
-                <span className="block font-sans text-[11px] uppercase text-[#8A8680]">
-                  Stripe Charge ID
-                </span>
-                <span
-                  className="block truncate font-mono text-[13px] text-[#eae1da]"
-                  title={caseState.stripeChargeId}
-                >
-                  {caseState.stripeChargeId}
-                </span>
-              </div>
-              <div>
-                <span className="block font-sans text-[11px] uppercase text-[#8A8680]">
-                  託管金額
-                </span>
-                <span className="block font-mono text-[18px] font-semibold text-[#eae1da]">
-                  {formatCurrency(caseState.escrowAmount)}
-                </span>
-              </div>
-            </div>
-
-            {/* Evidence */}
-            <div className="mt-5 border-t border-white/[0.06] pt-4">
-              <h3 className="font-sans text-[13px] font-bold text-[#eae1da]">
-                佐證材料
-              </h3>
-              <ul className="mt-2 space-y-1.5">
-                {caseState.evidence.photos.map((photo, index) => (
-                  <li
-                    key={index}
-                    className="font-sans text-[12px] text-[#d4c4b7]"
+            {caseOpen ? (
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label
+                    htmlFor="admin-score-adjustment"
+                    className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]"
                   >
-                    <span className="mr-1 text-[#8A8680]">•</span>
-                    {photo}
-                  </li>
-                ))}
-                {caseState.evidence.videoUrl && (
-                  <li className="font-sans text-[12px]">
-                    <span className="mr-1 text-[#8A8680]">•</span>
-                    影片證據：
-                    <a
-                      href={caseState.evidence.videoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ml-1 font-mono text-[#d4a574] underline underline-offset-2 hover:text-[#e8b896]"
-                    >
-                      {caseState.evidence.videoUrl}
-                    </a>
-                  </li>
-                )}
-              </ul>
-            </div>
+                    分數調整 (+/−)
+                  </label>
+                  <input
+                    id="admin-score-adjustment"
+                    name="adjustment"
+                    type="number"
+                    value={scoreAdjustment}
+                    onChange={(event) => setScoreAdjustment(event.target.value)}
+                    disabled={isAdjustPending}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-adjustment-reason"
+                    className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]"
+                  >
+                    調整原因
+                  </label>
+                  <textarea
+                    id="admin-adjustment-reason"
+                    name="adjustmentReason"
+                    rows={3}
+                    value={adjustmentReason}
+                    onChange={(event) => setAdjustmentReason(event.target.value)}
+                    disabled={isAdjustPending}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  disabled={isAdjustPending}
+                  onClick={handleSaveScoreAdjustment}
+                  className="h-10 w-full bg-[#d4a574] text-[#111] hover:bg-[#e0b585]"
+                >
+                  {isAdjustPending ? "儲存中…" : "儲存調整"}
+                </Button>
+              </div>
+            ) : null}
           </div>
 
-          {/* Right Lower: Arbitration Actions */}
-          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
+          <ModerationOrderContextPanel
+            relatedOrders={relatedOrders}
+            primaryCategory={caseDetail.primaryCategory}
+          />
+
+          <div
+            className={`rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]${caseOpen ? "" : " opacity-70"}`}
+          >
             <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
               仲裁判定動作
             </h2>
-            <p className="mt-1 font-sans text-[12px] text-[#8A8680]">
-              一旦做出最終裁定，款項將由 Stripe 釋放或全額返還，本操作無法撤銷。
-            </p>
-
-            <div className="mt-4 space-y-4">
-              <div>
-                <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                  選擇仲裁結果
-                </label>
-                <Select
-                  value={action}
-                  onValueChange={(value) => setAction(value ?? "")}
-                >
-                  <SelectTrigger className="h-10 w-full border-white/10 bg-[#17130f] text-[#eae1da] data-placeholder:text-[#50453b]">
-                    <SelectValue placeholder="請選擇一項仲裁判定動作" />
-                  </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#26211C]">
-                    {STATUS_SELECT_OPTIONS.map((option) => (
-                      <SelectItem
-                        key={option.value}
-                        value={option.value}
-                        className="text-[#d4c4b7]"
-                      >
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Backend hard threshold notice (always visible) */}
-              <div className="bg-bg-elevated/50 rounded-r-lg border-l-2 border-brand/40 py-2 pl-3">
-                <p className="text-[11px] text-text-secondary leading-relaxed">
-                  系統已設定不可修改嘅自動封禁閾值，被舉報方累計檢報數超標將由系統自動封禁帳戶，管理員無法覆寫此規則。
-                </p>
-              </div>
-
-              {action === FREEZE_ACTION_VALUE && (
-                <div>
-                  <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                    凍結天數
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min={1}
-                      max={365}
-                      required
-                      value={freezeDays}
-                      onChange={(e) => setFreezeDays(e.target.value)}
-                      placeholder="請輸入 1 至 365"
-                      className="w-full h-10 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card px-3 pr-12 font-mono text-[13px] text-text-primary placeholder:text-text-disabled outline-none transition-all focus-visible:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/40"
-                    />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] text-text-secondary">
-                      日
-                    </span>
+            {caseOpen ? (
+              <>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
+                      選擇仲裁結果
+                    </label>
+                    <Select
+                      value={resolutionOption}
+                      onValueChange={(value) =>
+                        setResolutionOption(value as ModerationResolutionOptionValue)
+                      }
+                      disabled={isResolvePending}
+                    >
+                      <SelectTrigger className="h-10 w-full border-white/10 bg-[#17130f] text-[#eae1da]">
+                        <SelectValue placeholder="請選擇一項仲裁判定動作" />
+                      </SelectTrigger>
+                      <SelectContent className="border-white/10 bg-[#26211C]">
+                        {MODERATION_RESOLUTION_OPTIONS.map((option) => {
+                          const disabled =
+                            !chatAccess.evidenceSufficient &&
+                            option.disabledWhenEvidenceInsufficient;
+                          return (
+                            <SelectItem
+                              key={option.value}
+                              value={option.value}
+                              disabled={disabled}
+                              className="text-[#d4c4b7]"
+                            >
+                              {option.label}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
+                    <div>
+                      <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
+                        違規身分
+                      </label>
+                      <Select
+                        value={violationPersona}
+                        onValueChange={(value) =>
+                          setViolationPersona(value as ViolationPersona)
+                        }
+                        disabled={isResolvePending}
+                      >
+                        <SelectTrigger className="h-10 w-full border-white/10 bg-[#17130f] text-[#eae1da]">
+                          <SelectValue placeholder="請選擇違規身分" />
+                        </SelectTrigger>
+                        <SelectContent className="border-white/10 bg-[#26211C]">
+                          {VIOLATION_PERSONA_OPTIONS.map((option) => (
+                            <SelectItem
+                              key={option.value}
+                              value={option.value}
+                              className="text-[#d4c4b7]"
+                            >
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
+
+                  {!chatAccess.evidenceSufficient ? (
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
+                        <input
+                          type="checkbox"
+                          name="evidenceOverride"
+                          checked={evidenceOverride}
+                          onChange={(event) => setEvidenceOverride(event.target.checked)}
+                          disabled={isResolvePending}
+                        />
+                        管理員強制裁定（證據不足覆寫）
+                      </label>
+                      {evidenceOverride ? (
+                        <textarea
+                          name="evidenceOverrideReason"
+                          rows={2}
+                          placeholder="覆寫原因"
+                          value={evidenceOverrideReason}
+                          onChange={(event) =>
+                            setEvidenceOverrideReason(event.target.value)
+                          }
+                          disabled={isResolvePending}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
-              )}
 
-              <div>
-                <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                  仲裁裁決理由（必填 Audit Log 存檔）
-                </label>
-                <textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="請詳細說明仲裁理由，包括依據的證據與判斷..."
-                  rows={4}
-                  className="w-full resize-none rounded-lg border border-white/10 bg-[#17130f] p-3 font-sans text-[13px] text-[#eae1da] placeholder:text-[#50453b] outline-none transition-all focus-visible:border-[#d4a574]/40 focus-visible:ring-2 focus-visible:ring-[#d4a574]/40"
-                />
-              </div>
-
-              <Button
-                onClick={handleSubmit}
-                className="h-11 w-full bg-[#d4a574] text-[#111] hover:bg-[#e8b896] active:scale-[0.98]"
-              >
-                <span className="mr-2">⚖️</span>
-                執行最終仲裁裁決
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  disabled={isResolvePending || !resolutionOption}
+                  onClick={handleResolve}
+                  className="mt-4 h-11 w-full bg-[#d4a574] text-[#111] hover:bg-[#e0b585] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="mr-2">⚖️</span>
+                  {isResolvePending ? "提交中…" : "執行最終仲裁裁決"}
+                </Button>
+              </>
+            ) : (
+              <p className="mt-2 font-sans text-[12px] text-[#8A8680]">
+                案件已結案
+                {caseDetail.resolvedAt
+                  ? ` · ${formatModerationDateTime(caseDetail.resolvedAt)}`
+                  : ""}
+                {caseDetail.resolution
+                  ? ` · ${moderationResolutionLabel(caseDetail.resolution)}`
+                  : ""}
+              </p>
+            )}
           </div>
 
-          {/* Audit Log */}
           <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
             <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
               審計紀錄
             </h2>
             {auditLog.length === 0 ? (
               <p className="mt-3 font-sans text-[12px] text-[#8A8680]">
-                暫無審計紀錄。
+                尚無審計紀錄。
               </p>
             ) : (
-              <ul className="mt-3 space-y-3">
-                {auditLog.map((entry, index) => (
-                  <li
-                    key={index}
-                    className="border-l-2 border-[#d4a574] bg-[#17130f] py-2 pl-3 pr-2"
+              <div className="mt-4 space-y-3">
+                {auditLog.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="rounded-xl border border-white/[0.06] bg-[#17130f] px-3 py-2"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-sans text-[13px] font-medium text-[#eae1da]">
-                        {entry.action}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-sans text-[12px] font-medium text-[#eae1da]">
+                        {moderationAuditActionLabel(entry.action)}
                       </span>
-                      <span className="font-mono text-[10px] text-[#8A8680]">
-                        {entry.timestamp}
+                      <span className="font-sans text-[11px] text-[#8A8680]">
+                        {entry.adminDisplayName ?? entry.adminId}
+                      </span>
+                      <span className="font-sans text-[11px] text-[#8A8680]">
+                        {formatModerationDateTime(entry.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-1 font-sans text-[12px] text-[#d4c4b7]">
-                      {entry.reason}
-                    </p>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         </div>

@@ -1,10 +1,15 @@
 "use server";
 
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
-import { formatReportReason } from "@/app/lib/reports/formatReportReason";
+import {
+  isChatEvidenceRequiredForCategory,
+  resolveReportCategoryInput,
+} from "@/lib/moderation/category-config";
+import { REPORT_EVIDENCE_MAX_COUNT } from "@/lib/moderation/report-evidence-files";
+import type { SubmitUserReportRpcResult } from "@/lib/moderation/types";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
-import type { Tables, TablesInsert } from "@/types/supabase";
+import type { Database, Tables } from "@/types/supabase";
 
 const MAX_REPORT_DETAILS_LENGTH = 2000;
 
@@ -16,11 +21,31 @@ export type SubmitUserReportInput = {
   category: string;
   details?: string;
   chatRoomId?: string;
+  attachmentIds?: string[];
 };
 
 export type SubmitUserReportResult =
-  | { success: true; data: { reportId: string } }
+  | {
+      success: true;
+      data: { reportId: string; caseId: string; caseNumber: string };
+    }
   | { success: false; error: string };
+
+type SubmitReportRpcArgs =
+  Database["public"]["Functions"]["rpc_submit_user_report_v2"]["Args"];
+
+type SubmitReportRpcClient = {
+  rpc(
+    fn: "rpc_submit_user_report_v2",
+    args: SubmitReportRpcArgs,
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+function asSubmitReportRpcClient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): SubmitReportRpcClient {
+  return supabase as unknown as SubmitReportRpcClient;
+}
 
 type ChatRoomPartyRow = Pick<Tables<"chat_rooms">, "buyer_id" | "seller_id">;
 
@@ -28,9 +53,46 @@ function isValidProfileId(value: string): boolean {
   return PROFILE_ID_UUID_RE.test(value.trim());
 }
 
-function mapReportInsertError(message: string): string {
+function mapReportRpcError(message: string): string {
   if (message.includes("idx_reports_pending_reporter_target")) {
     return "您已對該用戶提交過待審核的舉報，請等待處理結果";
+  }
+
+  if (message.includes("請在對話內使用舉報功能")) {
+    return "請在對話內使用舉報功能";
+  }
+
+  if (message.includes("請先登入")) {
+    return "請先登入";
+  }
+
+  if (message.includes("無效的舉報對象")) {
+    return "無效的舉報對象";
+  }
+
+  if (message.includes("無法舉報此對話中的用戶")) {
+    return "無法舉報此對話中的用戶";
+  }
+
+  if (message.includes("無法驗證聊天室")) {
+    return "無法驗證聊天室，請稍後再試";
+  }
+
+  if (message.includes("找不到被舉報的用戶")) {
+    return "找不到被舉報的用戶";
+  }
+
+  if (message.includes("您已對該用戶提交過待審核的舉報")) {
+    return "您已對該用戶提交過待審核的舉報，請等待處理結果";
+  }
+
+  if (
+    message.includes("無效的證據附件") ||
+    message.includes("證據圖片不可超過")
+  ) {
+    return message.includes("證據圖片不可超過")
+      ? "證據圖片不可超過 3 張"
+      : "無效的證據附件";
   }
 
   if (message.includes("violates row-level security")) {
@@ -44,12 +106,18 @@ export async function submitUserReport(
   input: SubmitUserReportInput,
 ): Promise<SubmitUserReportResult> {
   const reportedUserId = input.reportedUserId.trim();
-  const category = input.category.trim();
+  const categoryInput = input.category.trim();
   const details = input.details?.trim() ?? "";
   const chatRoomId = input.chatRoomId?.trim() ?? "";
+  const attachmentIds = input.attachmentIds ?? [];
 
-  if (!category) {
+  if (!categoryInput) {
     return { success: false, error: "請選擇舉報事項類別" };
+  }
+
+  const categorySlug = resolveReportCategoryInput(categoryInput);
+  if (!categorySlug) {
+    return { success: false, error: "無效的舉報類別" };
   }
 
   if (!isValidProfileId(reportedUserId)) {
@@ -61,6 +129,28 @@ export async function submitUserReport(
       success: false,
       error: `詳細說明不可超過 ${MAX_REPORT_DETAILS_LENGTH} 字`,
     };
+  }
+
+  if (attachmentIds.length > REPORT_EVIDENCE_MAX_COUNT) {
+    return {
+      success: false,
+      error: `證據圖片不可超過 ${REPORT_EVIDENCE_MAX_COUNT} 張`,
+    };
+  }
+
+  const uniqueAttachmentIds = [...new Set(attachmentIds.map((id) => id.trim()))];
+  if (uniqueAttachmentIds.length !== attachmentIds.length) {
+    return { success: false, error: "無效的證據附件" };
+  }
+
+  for (const attachmentId of uniqueAttachmentIds) {
+    if (!isValidProfileId(attachmentId)) {
+      return { success: false, error: "無效的證據附件" };
+    }
+  }
+
+  if (isChatEvidenceRequiredForCategory(categorySlug) && !chatRoomId) {
+    return { success: false, error: "請在對話內使用舉報功能" };
   }
 
   if (!isSupabaseConfigured()) {
@@ -116,37 +206,47 @@ export async function submitUserReport(
       }
     }
 
-    const reason = formatReportReason({
-      category,
-      details,
-      source: chatRoomId ? "chat_room" : "profile",
-      chatRoomId: chatRoomId || undefined,
-    });
-
-    const insertRow: TablesInsert<"reports"> = {
-      reporter_id: user.id,
-      target_type: "user",
-      target_id: reportedUserId,
-      reason,
-      status: "pending",
+    const rpcArgs: SubmitReportRpcArgs = {
+      p_target_id: reportedUserId,
+      p_category: categorySlug,
+      p_details: details,
     };
 
-    const { data, error } = await supabase
-      .from("reports")
-      .insert([insertRow] as never)
-      .select("id")
-      .single<{ id: string }>();
+    if (chatRoomId) {
+      rpcArgs.p_chat_room_id = chatRoomId;
+    }
+
+    if (uniqueAttachmentIds.length > 0) {
+      rpcArgs.p_attachment_ids = uniqueAttachmentIds;
+    }
+
+    const { data, error } = await asSubmitReportRpcClient(supabase).rpc(
+      "rpc_submit_user_report_v2",
+      rpcArgs,
+    );
 
     if (error) {
       console.error("[submitUserReport]", error.message);
-      return { success: false, error: mapReportInsertError(error.message) };
+      return { success: false, error: mapReportRpcError(error.message) };
     }
 
-    if (!data?.id) {
+    const payload = data as SubmitUserReportRpcResult | null;
+    if (
+      !payload?.report_id ||
+      !payload.case_id ||
+      !payload.case_number
+    ) {
       return { success: false, error: "提交舉報回傳資料格式異常" };
     }
 
-    return { success: true, data: { reportId: data.id } };
+    return {
+      success: true,
+      data: {
+        reportId: payload.report_id,
+        caseId: payload.case_id,
+        caseNumber: payload.case_number,
+      },
+    };
   } catch (error) {
     console.error("[submitUserReport]", error);
     return { success: false, error: "提交舉報時發生錯誤" };

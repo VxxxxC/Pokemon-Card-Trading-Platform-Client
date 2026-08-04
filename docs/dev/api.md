@@ -195,6 +195,18 @@ interface Message {
 
 金額：`final_price + HK$150` 鑑定費（`rpc_prepare_member_auth_order_payment`）。PI `capture_method: manual`；webhook `payment_intent.amount_capturable_updated`（`order_kind=member_auth`）→ `authorized` + `custody`；Admin 入庫 partial capture 鑑定費 → `auth_fee_captured` + `grading`。
 
+### 5.2.1 統一結帳 Wizard（✅ 已落地）
+
+`app/actions/checkout.ts` + `lib/checkout/*` — 商戶 B2C + Member 鑑定託管共用 `/checkout/[orderId]` 兩步精靈。詳見 [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md)。
+
+**入款兩 route：** 非鑑定 merchant → PI `automatic` ✅；鑑定單 → manual multicapture 🟡 Partner QA（[PARTNER_HANDOFF](./follow-up/admin-grading/PARTNER_HANDOFF.md)）。**出款（非 checkout）：** Member 鑑定 → FPS + T+3 `payout_requests`；Merchant → Connect + T+7 cron。
+
+| 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
+|------|------|--------------|----------|------|
+| `GET` | `[Server Action] loadCheckoutSession` | `(orderIdOrNumber)` | `CheckoutSession`（`merchant_direct` \| `merchant_auth` \| `member_auth`） | 訂單買家 |
+| `GET` | `[Server Action] getCheckoutPaymentStatus` | `(orderIdOrNumber)` | `{ orderKind, isPaid, isProcessing, totalAmount }` | 訂單買家 / 參與方 |
+| `POST` | `lib/checkout/prepare-payment` | `(session, merchantDirectForm?)` | `{ clientSecret, publishableKey, totalAmount }` | client 呼叫（包裝既有 PI actions） |
+
 ### 5.3 規劃中 / 未落地的 REST 介面
 
 | 方法 | 路徑 | 請求 Payload | 回應圖譜 | 權限 |
@@ -412,6 +424,16 @@ type MemberDashboardTradingStats = {
 | `POST` | `[Server Action] adminSubmitGradingOutbound` | `{ orderKind, orderId, trackingNo }` | `{ applied: true }` | ADMIN |
 | `POST` | `[Server Action] adminFailGradingAndRefund` | `{ orderKind, orderId, faultParty, reason? }` | `{ applied: true }` — void uncaptured balance (auth fee retained) | ADMIN |
 | `GET` | `[Server Action] getAdminGradingAuditHistory` | `{ orderKind, orderId }` | `AuditRow[]` | ADMIN |
+| `POST` | `[Server Action] submitUserReport` | `{ reportedUserId, category, details?, chatRoomId?, attachmentIds? }` | `{ success, reportId? }` | USER+ |
+| `POST` | `/api/reports/upload-evidence` | multipart image (≤5MB, max 3) | `{ attachmentId, publicUrl }` | USER+ |
+| `GET` | `[Server Action] searchAdminModerationCases` ✅ Phase C | `{ page?, status?, category?, minScore?, search? }` | `{ rows, total, pendingCount }` | ADMIN |
+| `GET` | `[Server Action] getAdminModerationCase` ✅ Phase C | `caseId` | case bundle (reports, attachments, chatAccess, auditLog, activeSanctions, **relatedOrders**; read-only order summaries) | ADMIN |
+| `GET` | `[Server Action] getAdminModerationChatThread` ✅ Phase D | `{ caseId, roomId, before? }` | paginated messages + audit `view_chat` on first page | ADMIN |
+| `POST` | `[Server Action] adjustAdminModerationCaseScore` ✅ Phase E | `{ caseId, adjustment, reason? }` | `{ caseId }` | ADMIN |
+| `POST` | `[Server Action] resolveAdminModerationCase` ✅ Phase E/E+ | `{ caseId, resolution, violationPersona?, sanction?, evidenceOverrideReason? }` | `{ caseId, status, resolution, authBanWarning? }` — permanent `ban` triggers `auth.admin` ban + global signOut | ADMIN |
+| `GET` | `[RPC] moderation_get_account_access_restriction` ✅ Phase E+ | `{ p_user_id }` (self or admin) | `{ blocked, type?, endsAt?, reason? }` — used by `proxy.ts` |
+
+> 完整契約見 [follow-up/admin-moderation/backend.md](./follow-up/admin-moderation/backend.md)。
 
 ---
 

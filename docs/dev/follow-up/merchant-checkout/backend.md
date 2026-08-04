@@ -232,7 +232,7 @@ bun run stripe:webhook:listen   # 本機；見 lib/stripe/webhook-events.ts
 
 > 既有 `payment_held` 非鑑定訂單（migration 前建立）需商戶手動發貨一次才可測買家確認。
 
-> 鑑定單（`useAuth=true`）需 Stripe account 開通 online multicapture 後再測。
+> 鑑定單（`useAuth=true`）：Stripe online multicapture 已開通 → partner QA 見 [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)。
 
 ## 10. `pending_payment` 48h 逾時 — 手動驗證（cron）
 

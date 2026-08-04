@@ -17,7 +17,7 @@ import {
   ensurePendingAuthOffer,
   gotoOrderDetail,
   gotoTradingPageWithFilter,
-  mockPayAuthOrderOnDetail,
+  mockPayAuthOrderOnCheckout,
   offerAmountFromListingPrice,
   offerAmountLabelFromListingPrice,
   pollMemberOrderIdForOffer,
@@ -164,7 +164,7 @@ test.describe("Member auth escrow closure", () => {
         }
       });
 
-      await test.step("Step 5 — buyer order detail shows mock payment panel", async () => {
+      await test.step("Step 5 — buyer pays on unified checkout wizard", async () => {
         if (!memberOrderId) {
           memberOrderId = await resolveAuthMemberOrderIdFromTradingList(buyerPage);
         }
@@ -172,8 +172,11 @@ test.describe("Member auth escrow closure", () => {
           throw new Error("Could not resolve auth member order id");
         }
 
-        await gotoOrderDetail(buyerPage, memberOrderId);
-        await mockPayAuthOrderOnDetail(buyerPage);
+        await buyerPage.goto(`/checkout/${memberOrderId}`, {
+          waitUntil: "domcontentloaded",
+        });
+        await buyerPage.getByRole("button", { name: "繼續付款" }).click();
+        await mockPayAuthOrderOnCheckout(buyerPage);
       });
 
       await test.step("Step 6 — dev mock panel completes auth escrow", async () => {

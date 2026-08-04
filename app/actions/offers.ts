@@ -236,7 +236,7 @@ async function resolveAcceptedOfferOrderContext(
       order?.escrow_status === "payment" &&
       order?.payment_confirmed_at == null;
     const paymentHref = canPayAuth
-      ? `/profile/user/orderDetail/${memberOrderId}`
+      ? `/checkout/${memberOrderId}`
       : null;
 
     return {

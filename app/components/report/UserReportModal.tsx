@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -19,6 +19,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { submitUserReport } from "@/app/actions/reports";
+import {
+  isChatEvidenceRequiredForCategory,
+  REPORT_CATEGORY_CONFIG,
+  resolveReportCategoryInput,
+} from "@/lib/moderation/category-config";
+import { uploadReportEvidence } from "@/lib/moderation/client-upload";
+import {
+  REPORT_EVIDENCE_MAX_BYTES,
+  REPORT_EVIDENCE_MAX_COUNT,
+  validateReportEvidenceUpload,
+} from "@/lib/moderation/report-evidence-files";
 
 interface UserReportModalProps {
   isOpen: boolean;
@@ -51,6 +62,18 @@ const REPORT_CATEGORIES = [
 
 type ReportCategoryValue = (typeof REPORT_CATEGORIES)[number]["value"];
 
+type PendingEvidenceFile = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
+function revokeEvidencePreviewUrls(files: PendingEvidenceFile[]): void {
+  for (const item of files) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+}
+
 export function UserReportModal({
   isOpen,
   onOpenChange,
@@ -60,9 +83,30 @@ export function UserReportModal({
   chatRoomId,
   onSuccess,
 }: UserReportModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [reportCategory, setReportCategory] = useState<ReportCategoryValue | "">("");
   const [reportDetails, setReportDetails] = useState("");
+  const [pendingEvidenceFiles, setPendingEvidenceFiles] = useState<
+    PendingEvidenceFile[]
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedCategorySlug = reportCategory
+    ? resolveReportCategoryInput(reportCategory)
+    : null;
+  const requiresChatEvidence =
+    selectedCategorySlug !== null &&
+    isChatEvidenceRequiredForCategory(selectedCategorySlug) &&
+    !chatRoomId?.trim();
+  const categoryUserHint = selectedCategorySlug
+    ? REPORT_CATEGORY_CONFIG[selectedCategorySlug].userHint
+    : null;
+  const uploadRecommended =
+    selectedCategorySlug !== null &&
+    (REPORT_CATEGORY_CONFIG[selectedCategorySlug].evidence.upload ===
+      "recommended" ||
+      REPORT_CATEGORY_CONFIG[selectedCategorySlug].evidence.upload ===
+        "required");
 
   const titleText =
     targetType === "chat_message"
@@ -76,25 +120,102 @@ export function UserReportModal({
       ? "Secure Risk Mediation Protocol"
       : "Merchant Compliance Audit Protocol";
 
+  const clearEvidenceFiles = useCallback(() => {
+    setPendingEvidenceFiles((current) => {
+      revokeEvidencePreviewUrls(current);
+      return [];
+    });
+  }, []);
+
   const handleOpenChange = useCallback(
     (open: boolean) => {
       onOpenChange(open);
       if (!open) {
         setReportCategory("");
         setReportDetails("");
+        clearEvidenceFiles();
       }
     },
-    [onOpenChange],
+    [clearEvidenceFiles, onOpenChange],
   );
 
-  // TODO: [Supabase Wiring] Replace mock data with real Supabase query / Server Action
-  // Target Table: user_reports | View / RPC: submit_user_report
+  useEffect(() => {
+    return () => {
+      revokeEvidencePreviewUrls(pendingEvidenceFiles);
+    };
+  }, [pendingEvidenceFiles]);
+
+  const handleEvidenceFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(event.target.files ?? []);
+      event.target.value = "";
+
+      if (selectedFiles.length === 0) {
+        return;
+      }
+
+      const availableSlots = REPORT_EVIDENCE_MAX_COUNT - pendingEvidenceFiles.length;
+      if (availableSlots <= 0) {
+        toast.error(`證據圖片不可超過 ${REPORT_EVIDENCE_MAX_COUNT} 張`);
+        return;
+      }
+
+      const filesToAdd = selectedFiles.slice(0, availableSlots);
+      if (filesToAdd.length < selectedFiles.length) {
+        toast.error(`證據圖片不可超過 ${REPORT_EVIDENCE_MAX_COUNT} 張`);
+      }
+
+      const nextFiles: PendingEvidenceFile[] = [];
+
+      for (const file of filesToAdd) {
+        const validationError = validateReportEvidenceUpload({
+          size: file.size,
+          type: file.type,
+          name: file.name,
+        });
+
+        if (validationError) {
+          toast.error(validationError);
+          continue;
+        }
+
+        nextFiles.push({
+          id: `${file.name}-${file.size}-${file.lastModified}`,
+          file,
+          previewUrl: URL.createObjectURL(file),
+        });
+      }
+
+      if (nextFiles.length === 0) {
+        return;
+      }
+
+      setPendingEvidenceFiles((current) => [...current, ...nextFiles]);
+    },
+    [pendingEvidenceFiles.length],
+  );
+
+  const handleRemoveEvidenceFile = useCallback((fileId: string) => {
+    setPendingEvidenceFiles((current) => {
+      const target = current.find((item) => item.id === fileId);
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return current.filter((item) => item.id !== fileId);
+    });
+  }, []);
+
   const handleConfirm = useCallback(
     async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
 
       if (!reportCategory) {
         toast.error("❌ 請選擇舉報事項類別");
+        return;
+      }
+
+      if (requiresChatEvidence) {
+        toast.error("請在對話內使用舉報功能");
         return;
       }
 
@@ -105,11 +226,19 @@ export function UserReportModal({
       setIsSubmitting(true);
 
       try {
+        const attachmentIds: string[] = [];
+
+        for (const item of pendingEvidenceFiles) {
+          const uploaded = await uploadReportEvidence(item.file);
+          attachmentIds.push(uploaded.attachmentId);
+        }
+
         const payload: {
           reportedUserId: string;
           category: string;
           details: string;
           chatRoomId?: string;
+          attachmentIds?: string[];
         } = {
           reportedUserId: targetUserId,
           category: reportCategory,
@@ -118,6 +247,10 @@ export function UserReportModal({
 
         if (chatRoomId?.trim()) {
           payload.chatRoomId = chatRoomId.trim();
+        }
+
+        if (attachmentIds.length > 0) {
+          payload.attachmentIds = attachmentIds;
         }
 
         const result = await submitUserReport(payload);
@@ -140,6 +273,7 @@ export function UserReportModal({
 
         setReportCategory("");
         setReportDetails("");
+        clearEvidenceFiles();
         onOpenChange(false);
         onSuccess?.();
       } catch (error) {
@@ -154,9 +288,12 @@ export function UserReportModal({
       reportCategory,
       reportDetails,
       isSubmitting,
+      requiresChatEvidence,
+      pendingEvidenceFiles,
       targetUserId,
       targetType,
       chatRoomId,
+      clearEvidenceFiles,
       onOpenChange,
       onSuccess,
     ],
@@ -200,6 +337,13 @@ export function UserReportModal({
                 ))}
               </SelectContent>
             </Select>
+            {categoryUserHint ? (
+              <p>{categoryUserHint}</p>
+            ) : null}
+            {uploadRecommended ? <p>建議上傳截圖作為證據。</p> : null}
+            {requiresChatEvidence ? (
+              <p>此類別需在對話視窗內舉報，請返回聊天後再提交。</p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
@@ -219,6 +363,51 @@ export function UserReportModal({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
+              證據圖片（選填，最多 {REPORT_EVIDENCE_MAX_COUNT} 張）
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleEvidenceFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={
+                isSubmitting ||
+                pendingEvidenceFiles.length >= REPORT_EVIDENCE_MAX_COUNT
+              }
+            >
+              選擇證據圖片
+            </button>
+            <p>
+              單張不可超過 {Math.round(REPORT_EVIDENCE_MAX_BYTES / (1024 * 1024))}
+              MB，支援 JPG / PNG / WEBP / HEIC。
+            </p>
+            {pendingEvidenceFiles.length > 0 ? (
+              <div>
+                {pendingEvidenceFiles.map((item) => (
+                  <div key={item.id}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.previewUrl} alt="證據預覽" />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveEvidenceFile(item.id)}
+                      disabled={isSubmitting}
+                    >
+                      移除
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
           <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
             ⚠️
             聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨賬戶風控扣分限制。
@@ -229,7 +418,7 @@ export function UserReportModal({
           <AlertDialogAction
             type="button"
             onClick={handleConfirm}
-            disabled={isSubmitting}
+            disabled={isSubmitting || requiresChatEvidence}
             className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
           >
             {isSubmitting ? "提交中…" : "🚀 確認提交安全審查"}
@@ -238,6 +427,7 @@ export function UserReportModal({
             onClick={() => {
               setReportCategory("");
               setReportDetails("");
+              clearEvidenceFiles();
             }}
             className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
           >

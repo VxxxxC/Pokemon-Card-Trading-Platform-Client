@@ -36,12 +36,31 @@ export function modifiedOfferAmountLabelFromListingPrice(price: number): string 
 }
 
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    let dismissed = false;
+
+    const announcementClose = page.getByRole("button", { name: "關閉視窗" });
+    if (await announcementClose.isVisible().catch(() => false)) {
+      await announcementClose.click({ force: true });
+      dismissed = true;
+    }
+
+    const dialogClose = page.getByRole("button", { name: "Close" });
+    if (await dialogClose.isVisible().catch(() => false)) {
+      await dialogClose.click({ force: true });
+      dismissed = true;
+    }
+
     const pwaClose = page.getByRole("button", { name: "✕" }).first();
-    if (!(await pwaClose.isVisible().catch(() => false))) {
+    if (await pwaClose.isVisible().catch(() => false)) {
+      await pwaClose.click({ force: true });
+      dismissed = true;
+    }
+
+    if (!dismissed) {
       break;
     }
-    await pwaClose.click({ force: true });
+
     await page.waitForTimeout(300);
   }
 }
@@ -61,6 +80,7 @@ async function openChatViaInbox(
   page: Page,
   roomId: string,
   partnerName: string,
+  partnerId?: string,
 ): Promise<void> {
   const header = page.getByRole("banner");
   await expect(header).toBeVisible({ timeout: 20_000 });
@@ -83,17 +103,22 @@ async function openChatViaInbox(
   } else {
     await expandChatConsole(page);
     await page.evaluate(
-      ({ targetRoomId, targetPartnerName }) => {
+      ({ targetRoomId, targetPartnerName, targetPartnerId }) => {
         window.dispatchEvent(
           new CustomEvent("open-global-chat", {
             detail: {
               roomId: targetRoomId,
               partnerName: targetPartnerName,
+              ...(targetPartnerId ? { partnerId: targetPartnerId } : {}),
             },
           }),
         );
       },
-      { targetRoomId: roomId, targetPartnerName: partnerName },
+      {
+        targetRoomId: roomId,
+        targetPartnerName: partnerName,
+        targetPartnerId: partnerId,
+      },
     );
   }
 }
@@ -119,25 +144,33 @@ export async function openChatRoom(
   page: Page,
   roomId: string,
   partnerName: string,
+  partnerId?: string,
 ): Promise<void> {
-  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await dismissBlockingOverlays(page);
+  await page.waitForTimeout(500);
   await dismissBlockingOverlays(page);
 
   await expect
     .poll(
       async () => {
         await page.evaluate(
-          ({ targetRoomId, targetPartnerName }) => {
+          ({ targetRoomId, targetPartnerName, targetPartnerId }) => {
             window.dispatchEvent(
               new CustomEvent("open-global-chat", {
                 detail: {
                   roomId: targetRoomId,
                   partnerName: targetPartnerName,
+                  ...(targetPartnerId ? { partnerId: targetPartnerId } : {}),
                 },
               }),
             );
           },
-          { targetRoomId: roomId, targetPartnerName: partnerName },
+          {
+            targetRoomId: roomId,
+            targetPartnerName: partnerName,
+            targetPartnerId: partnerId,
+          },
         );
         await selectChatRoomInConsole(page, partnerName);
         return chatConsoleRoot(page)
@@ -154,17 +187,19 @@ export async function ensureChatRoomActive(
   page: Page,
   roomId: string,
   partnerName: string,
+  partnerId?: string,
 ): Promise<void> {
   await dismissBlockingOverlays(page);
 
   const consoleReady = await page
     .waitForFunction(
-      ({ targetRoomId, targetPartnerName }) => {
+      ({ targetRoomId, targetPartnerName, targetPartnerId }) => {
         window.dispatchEvent(
           new CustomEvent("open-global-chat", {
             detail: {
               roomId: targetRoomId,
               partnerName: targetPartnerName,
+              ...(targetPartnerId ? { partnerId: targetPartnerId } : {}),
             },
           }),
         );
@@ -178,7 +213,11 @@ export async function ensureChatRoomActive(
           input.placeholder.includes(targetPartnerName)
         );
       },
-      { targetRoomId: roomId, targetPartnerName: partnerName },
+      {
+        targetRoomId: roomId,
+        targetPartnerName: partnerName,
+        targetPartnerId: partnerId,
+      },
       { timeout: 20_000 },
     )
     .then(() => true)
@@ -452,18 +491,32 @@ export async function gotoOrderDetail(page: Page, orderId: string): Promise<void
   await dismissBlockingOverlays(page);
 }
 
-export async function mockPayAuthOrderOnDetail(page: Page): Promise<void> {
+export async function gotoCheckout(page: Page, orderId: string): Promise<void> {
+  await page.goto(`/checkout/${orderId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await dismissBlockingOverlays(page);
+}
+
+export async function mockPayAuthOrderOnCheckout(page: Page): Promise<void> {
   await expect(
-    page.getByText("測試模式 — Stripe 尚未接入"),
+    page.getByText("開發模式 — Stripe 未配置時使用模擬付款"),
   ).toBeVisible({ timeout: 15_000 });
 
   const payButton = page.getByRole("button", { name: /確認模擬付款（HK\$/ });
   await expect(payButton).toBeVisible({ timeout: 15_000 });
   await payButton.click();
 
-  await expect(page.getByText("測試模式 — Stripe 尚未接入")).toHaveCount(0, {
+  await expect(
+    page.getByText("開發模式 — Stripe 未配置時使用模擬付款"),
+  ).toHaveCount(0, {
     timeout: 20_000,
   });
+}
+
+/** @deprecated Use mockPayAuthOrderOnCheckout — payment moved to unified checkout wizard */
+export async function mockPayAuthOrderOnDetail(page: Page): Promise<void> {
+  await mockPayAuthOrderOnCheckout(page);
 }
 
 export async function resolveP2pMemberOrderIdFromTradingList(

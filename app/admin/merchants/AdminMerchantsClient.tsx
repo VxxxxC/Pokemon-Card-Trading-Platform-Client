@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -37,6 +37,26 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
 };
 
 const PAGE_SIZE = 10;
+
+function resolveHighlightState(
+  applications: AdminKycApplicationListItem[],
+  highlightApplicationId: string | null | undefined,
+): { statusFilter: StatusFilter; page: number } {
+  if (!highlightApplicationId) {
+    return { statusFilter: "pending", page: 1 };
+  }
+
+  const target = applications.find((app) => app.id === highlightApplicationId);
+  if (!target) {
+    return { statusFilter: "pending", page: 1 };
+  }
+
+  const filtered = applications.filter((app) => app.status === target.status);
+  const index = filtered.findIndex((app) => app.id === highlightApplicationId);
+  const page = index >= 0 ? Math.floor(index / PAGE_SIZE) + 1 : 1;
+
+  return { statusFilter: target.status, page };
+}
 
 function formatHandle(
   shopHandle: string | null,
@@ -344,14 +364,23 @@ function ApplicationActions({
 export function AdminMerchantsClient({
   initialApplications,
   loadError,
+  highlightApplicationId = null,
 }: {
   initialApplications: AdminKycApplicationListItem[];
   loadError: string | null;
+  highlightApplicationId?: string | null;
 }) {
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const highlightState = resolveHighlightState(
+    initialApplications,
+    highlightApplicationId,
+  );
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    highlightState.statusFilter,
+  );
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(highlightState.page);
+  const hasScrolledToHighlight = useRef(false);
 
   const counts = useMemo(() => {
     return {
@@ -391,6 +420,20 @@ export function AdminMerchantsClient({
     const start = (page - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
+
+  useEffect(() => {
+    if (!highlightApplicationId || hasScrolledToHighlight.current) {
+      return;
+    }
+
+    const row = document.querySelector(
+      `[data-testid="kyc-row-${highlightApplicationId}"]`,
+    );
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      hasScrolledToHighlight.current = true;
+    }
+  }, [highlightApplicationId, paginated]);
 
   function handleFilterChange(next: StatusFilter) {
     setStatusFilter(next);
@@ -513,7 +556,12 @@ export function AdminMerchantsClient({
                   paginated.map((app) => (
                     <TableRow
                       key={app.id}
-                      className="border-b border-[rgba(237,232,224,0.06)] transition-colors"
+                      data-testid={`kyc-row-${app.id}`}
+                      className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
+                        highlightApplicationId === app.id
+                          ? "bg-brand/5 ring-1 ring-brand/30"
+                          : ""
+                      }`}
                     >
                       <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
                         {app.companyNameEn}
