@@ -54,6 +54,24 @@ function isValidProfileId(value: string): boolean {
 }
 
 function mapReportRpcError(message: string): string {
+  if (message.includes("您已在此對話提交過待審核的舉報")) {
+    return "您已在此對話提交過待審核的舉報，請等待處理結果";
+  }
+
+  if (message.includes("您已在此用戶公開資料提交過同類別的待審核舉報")) {
+    return "您已在此用戶公開資料提交過同類別的待審核舉報，請等待處理結果";
+  }
+
+  if (
+    message.includes("idx_reports_pending_reporter_target_profile_category")
+  ) {
+    return "您已在此用戶公開資料提交過同類別的待審核舉報，請等待處理結果";
+  }
+
+  if (message.includes("idx_reports_pending_reporter_target_chat_room")) {
+    return "您已在此對話提交過待審核的舉報，請等待處理結果";
+  }
+
   if (message.includes("idx_reports_pending_reporter_target")) {
     return "您已對該用戶提交過待審核的舉報，請等待處理結果";
   }
@@ -80,10 +98,6 @@ function mapReportRpcError(message: string): string {
 
   if (message.includes("找不到被舉報的用戶")) {
     return "找不到被舉報的用戶";
-  }
-
-  if (message.includes("您已對該用戶提交過待審核的舉報")) {
-    return "您已對該用戶提交過待審核的舉報，請等待處理結果";
   }
 
   if (

@@ -149,9 +149,47 @@ export function getMerchantDirectBuyerTimelineStepIndex(
   return 0;
 }
 
+export function getMerchantAuthSellerTimelineSteps(
+  payoutStatus?: string | null,
+): OrderTimelineStep[] {
+  const base = [...MERCHANT_AUTH_SELLER_TIMELINE_STEPS];
+
+  if (payoutStatus === "held" || payoutStatus === "processing") {
+    return [
+      base[0],
+      base[1],
+      base[2],
+      base[3],
+      {
+        id: "buyer_confirmed",
+        label: "買家已確認",
+        description: "款項保留於平台",
+      },
+      {
+        id: "hold",
+        label: "款項保留中",
+        description: "T+7 售後期滿後撥至 Connect",
+      },
+      base[4],
+    ];
+  }
+
+  return base;
+}
+
 export function getMerchantAuthSellerTimelineStepIndex(
   escrowStatus: MerchantAuthSellerEscrowStatus | null,
+  payoutStatus?: string | null,
 ): number {
+  const held = payoutStatus === "held" || payoutStatus === "processing";
+
+  if (escrowStatus === "completed_and_transferred") {
+    return held ? 6 : 4;
+  }
+  if (held) {
+    return 5;
+  }
+
   switch (escrowStatus) {
     case "pending_payment":
       return 0;
@@ -161,8 +199,6 @@ export function getMerchantAuthSellerTimelineStepIndex(
       return 2;
     case "authenticated":
       return 3;
-    case "completed_and_transferred":
-      return 4;
     case "refunded":
       return -1;
     default:

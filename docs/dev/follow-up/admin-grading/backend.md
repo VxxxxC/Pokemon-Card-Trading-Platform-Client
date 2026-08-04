@@ -10,6 +10,7 @@
 | `supabase/migrations/20260729190000_admin_grading_workbench.sql` | Schema, audit logs, admin RPCs, legacy refund saga, payout/receipt guards |
 | `supabase/migrations/20260730100000_escrow_p0_manual_capture.sql` | P0 manual capture: `payment_capture_status`, authorize/auth-fee capture RPCs, grading cancel lock |
 | `supabase/migrations/20260731100000_escrow_p1_goods_capture_fail_void.sql` | P1: `grading_fault_party`, goods capture + fail void RPCs, `fully_captured` guards |
+| `supabase/migrations/20260811120000_member_order_admin_grading_fail_trigger.sql` | Member auth trigger: admin grading fail prepare/finalize whitelist |
 | `lib/payments/auth-capture-saga.ts` | Admin intake auth-fee capture saga |
 | `lib/payments/goods-capture-saga.ts` | Admin pass goods capture saga |
 | `lib/payments/auth-grading-fail-void-saga.ts` | Admin fail void uncaptured balance saga |
@@ -51,6 +52,7 @@ Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/fina
 
 ## Guards added
 
+- `fn_enforce_member_order_transitions`: admin (`is_admin()`) may update member auth orders during grading fail prepare (`pending/grading` metadata only) and finalize (`pending+grading` → `cancelled`, `auth_result=failed`); required because fail void saga uses session client, not `service_role`
 - `rpc_confirm_buyer_received`: `auth_result=passed` + `outbound_tracking_no` + `payment_capture_status=fully_captured`
 - `rpc_prepare_merchant_order_payout`: auth orders require `fully_captured` + `authenticated` + outbound tracking
 - `rpc_mark_auth_order_payment_voided`: only sets `voided` when `authorized` (not after partial capture)
@@ -60,6 +62,6 @@ Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/fina
 1. Non-admin session → all admin RPCs reject
 2. Member: custody → intake → pass (`fully_captured`) → outbound → buyer confirm
 3. Merchant auth: intake → pass → outbound → buyer confirm → payout
-4. Fail on 100+30+150: captured 150 only; listing `active`; `fault_party` stored
+4. Fail on 100+30+150: captured 150 only; listing `active`; `fault_party` stored; no「保安攔截：您不屬於此筆訂單的交易關係人」on member orders (migration `20260811120000`)
 5. Webhook replay `payment_intent.succeeded` (goods) idempotent
 6. `bunx tsc --noEmit`, `bun run lint`, `bun run build:ci`

@@ -30,6 +30,8 @@ type MerchantBuyerOrderRow = Pick<
   | "auth_result"
   | "shipping_method"
   | "buyer_confirmed_at"
+  | "payout_status"
+  | "payout_hold_until"
 > & {
   listings: {
     grading_company: string;
@@ -82,6 +84,8 @@ export async function loadBuyerMerchantTradingOrders(
       auth_result,
       shipping_method,
       buyer_confirmed_at,
+      payout_status,
+      payout_hold_until,
       listings (
         grading_company,
         grading_score,
@@ -158,7 +162,10 @@ export async function loadBuyerMerchantTradingOrders(
       buyerId: row.buyer_id,
       sellerId: row.merchant_id,
       finalPrice: Number(row.final_price),
-      status: mapMerchantEscrowToMemberStatus(row.escrow_status),
+      status: mapMerchantEscrowToMemberStatus(
+        row.escrow_status,
+        row.buyer_confirmed_at,
+      ),
       createdAt: row.created_at,
       expiresAt,
       persona: "buy",
@@ -167,12 +174,16 @@ export async function loadBuyerMerchantTradingOrders(
       escrowStatus: mapMerchantEscrowToMemberEscrowStatus(
         row.escrow_status,
         useAuthentication,
+        row.buyer_confirmed_at,
       ),
       pendingPayment,
       paymentExpiresAt,
       canCompleteMerchantPurchase: buyerFlags.canCompleteMerchantPurchase,
       shippingMethod: row.shipping_method,
       merchantEscrowStatus: row.escrow_status,
+      merchantPayoutStatus: row.payout_status,
+      buyerConfirmedAt: row.buyer_confirmed_at,
+      payoutHoldUntil: row.payout_hold_until,
       counterparty: {
         id: row.merchant_id,
         displayName:

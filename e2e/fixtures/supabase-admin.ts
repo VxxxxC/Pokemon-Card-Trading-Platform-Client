@@ -1428,6 +1428,26 @@ export async function deletePendingReports(params: {
   await deleteModerationCasesForSubject(params.targetId);
 }
 
+export async function countPendingReports(params: {
+  reporterId: string;
+  targetId: string;
+}): Promise<number> {
+  const admin = createE2eAdminClient();
+
+  const { count, error } = await admin
+    .from("reports")
+    .select("id", { count: "exact", head: true })
+    .eq("reporter_id", params.reporterId)
+    .eq("target_id", params.targetId)
+    .eq("status", "pending");
+
+  if (error) {
+    throw new Error(`[countPendingReports] ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
 export async function getLatestReport(params: {
   reporterId: string;
   targetId: string;

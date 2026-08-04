@@ -3,6 +3,7 @@ import type {
   MerchantTradingOrder,
 } from "@/app/actions/orders";
 import type { OrderStatus, SaleOrder } from "@/app/lib/types/trading";
+import { isMerchantOrderBuyerConfirmed } from "@/lib/merchant-order/display-status";
 import type { Tables } from "@/types/supabase";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 
@@ -12,7 +13,12 @@ type MerchantEscrowStatus = NonNullable<
 
 export function mapMerchantEscrowToOrderStatus(
   escrowStatus: MerchantEscrowStatus | null,
+  buyerConfirmedAt?: string | null,
 ): OrderStatus {
+  if (isMerchantOrderBuyerConfirmed({ buyerConfirmedAt })) {
+    return "released";
+  }
+
   switch (escrowStatus) {
     case "refunded":
       return "cancelled";
@@ -98,10 +104,15 @@ export function mapMerchantTradingOrderToSaleOrder(
     cardNo: order.product.cardNumber ?? order.product.displayId ?? "",
     grade: formatListingGrade(order),
     amount: order.finalPrice,
-    status: mapMerchantEscrowToOrderStatus(order.escrowStatus),
+    status: mapMerchantEscrowToOrderStatus(
+      order.escrowStatus,
+      order.buyerConfirmedAt,
+    ),
     statusLabelOverride: resolveMerchantStatusLabelOverride(
       order.escrowStatus,
       order.requiresAuthentication,
+      order.shippingMethod,
+      order.payoutStatus,
     ),
     createdAt: formatOrderDateTime(order.createdAt),
     orderType: "B2C",

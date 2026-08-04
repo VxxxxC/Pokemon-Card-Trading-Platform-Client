@@ -137,6 +137,7 @@ export type AdminModerationReporterSummary = {
 export type AdminModerationChatAccess = {
   available: boolean;
   roomId: string | null;
+  roomIds: string[];
   requiredForCategory: boolean;
   evidenceSufficient: boolean;
 };

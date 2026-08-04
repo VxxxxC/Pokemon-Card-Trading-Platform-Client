@@ -1,4 +1,5 @@
 import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
+import { isMerchantOrderBuyerConfirmed } from "@/lib/merchant-order/display-status";
 import type { Tables } from "@/types/supabase";
 
 type MerchantEscrowStatus = Tables<"merchant_orders">["escrow_status"];
@@ -11,7 +12,12 @@ export type MerchantBuyerActionFlags = {
 export function mapMerchantEscrowToMemberEscrowStatus(
   escrowStatus: MerchantEscrowStatus,
   requiresAuthentication: boolean,
+  buyerConfirmedAt?: string | null,
 ): MemberEscrowStatus | null {
+  if (isMerchantOrderBuyerConfirmed({ buyerConfirmedAt })) {
+    return "released";
+  }
+
   if (!requiresAuthentication) {
     switch (escrowStatus) {
       case "pending_payment":

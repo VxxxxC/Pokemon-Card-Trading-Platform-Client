@@ -49,6 +49,7 @@ import {
   formatMerchantPayoutHoldUntilLabel,
   formatMerchantPayoutStatusLabel,
 } from "@/lib/merchant-order/merchant-payout-hold";
+import { shouldShowMerchantBuyerPayoutStatus } from "@/lib/merchant-order/display-status";
 import { cn } from "@/lib/utils";
 
 type MemberOrderDetailViewProps = {
@@ -350,7 +351,12 @@ export function MemberOrderDetailView({
         </div>
       ) : null}
 
-      {useMerchantB2cEscrowUi && isBuyer && order.merchantPayoutStatus ? (
+      {isBuyer &&
+        order.orderKind === "merchant" &&
+        shouldShowMerchantBuyerPayoutStatus(
+          order.merchantPayoutStatus,
+          order.pendingPayment,
+        ) ? (
         <div className="rounded-xl border border-white/5 bg-[#17130f] p-4 space-y-1">
           <p className="text-[12px] text-text-secondary">撥款狀態</p>
           <p className="text-[13px] font-semibold text-brand">
