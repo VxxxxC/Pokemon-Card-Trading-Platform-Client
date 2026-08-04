@@ -77,6 +77,14 @@ function logMemberOrderMutation(
   console.error(`[${action}]`, payload);
 }
 
+function merchantBuyerPaidAmount(row: {
+  buyer_total_amount?: number | null;
+  total_amount?: number | null;
+  final_price: number;
+}): number {
+  return Number(row.buyer_total_amount ?? row.total_amount ?? row.final_price);
+}
+
 function rejectNonUuidMutationOrderId(
   orderId: string,
 ): MemberOrderActionResult | null {
@@ -471,6 +479,7 @@ type BuyerMerchantOrderDetailQueryRow = {
   shipping_fee: number | null;
   shipping_method: string | null;
   total_amount: number | null;
+  buyer_total_amount: number | null;
   auth_fee: number | null;
   inbound_tracking_no: string | null;
   inbound_courier_name: string | null;
@@ -1218,6 +1227,7 @@ type MerchantOrderDetailQueryRow = {
   shipping_fee: number | null;
   shipping_method: string | null;
   total_amount: number | null;
+  buyer_total_amount: number | null;
   auth_fee: number | null;
   stripe_payment_intent_id: string | null;
   stripe_transfer_id: string | null;
@@ -1315,7 +1325,7 @@ function mapMerchantOrderDetailRow(
     itemSubtotal: Number(row.item_subtotal ?? row.final_price),
     shippingFee: Number(row.shipping_fee ?? 0),
     shippingMethod: row.shipping_method,
-    totalAmount: Number(row.total_amount ?? row.final_price),
+    totalAmount: merchantBuyerPaidAmount(row),
     authFee: Number(row.auth_fee ?? 0),
     canSubmitLogistics: sellerFlags.canSubmitLogistics,
     canSubmitDirectFulfillment: sellerFlags.canSubmitDirectFulfillment,
@@ -1409,6 +1419,7 @@ export async function getMerchantOrderDetail(
           shipping_fee,
           shipping_method,
           total_amount,
+          buyer_total_amount,
           auth_fee,
           stripe_payment_intent_id,
           stripe_transfer_id,
@@ -1613,7 +1624,7 @@ function mapBuyerMerchantOrderDetailRow(
   const totalAmount =
     useAuthentication && totalFromRow <= itemSubtotal
       ? itemSubtotal + shippingFee + authFee
-      : Number(row.total_amount ?? row.final_price);
+      : merchantBuyerPaidAmount(row);
 
   return {
     id: row.id,
@@ -1659,7 +1670,7 @@ function mapBuyerMerchantOrderDetailRow(
     inboundCourierName: row.inbound_courier_name,
     outboundTrackingNo: row.outbound_tracking_no,
     outboundCourierName: row.outbound_courier_name,
-    paymentAmount: Number(row.total_amount ?? row.final_price),
+    paymentAmount: merchantBuyerPaidAmount(row),
     listingAcceptsBuyerAuth: useAuthentication,
     canPay: pendingPayment,
     canSubmitInbound: false,
@@ -1739,6 +1750,7 @@ async function getBuyerMerchantOrderDetail(
           shipping_fee,
           shipping_method,
           total_amount,
+          buyer_total_amount,
           auth_fee,
           inbound_tracking_no,
           inbound_courier_name,

@@ -39,6 +39,13 @@ type MarkPaidRpcClient = {
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
+type MerchantCouponRpcClient = {
+  rpc(
+    fn: "fn_release_merchant_order_coupon",
+    args: { p_order_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
 type AuthOrderRpcClient = {
   rpc(
     fn: "rpc_mark_member_auth_order_authorized",
@@ -109,6 +116,8 @@ function readMerchantOrderMetadata(
     "shipping_fee",
     "auth_fee",
     "total_amount",
+    "buyer_total_amount",
+    "platform_subsidy_amount",
     "shipping_method",
   ] as const) {
     const value = metadata[key];
@@ -436,6 +445,24 @@ async function handlePaymentIntentCanceled(
         error.message,
       );
       return { ok: false, error: "merchant auth void sync failed" };
+    }
+
+    return { ok: true };
+  }
+
+  if (orderKind === "merchant" && metadata.capture_mode !== "manual") {
+    const { error } = await (admin as unknown as MerchantCouponRpcClient).rpc(
+      "fn_release_merchant_order_coupon",
+      { p_order_id: orderId },
+    );
+
+    if (error) {
+      console.error(
+        "[stripe/webhook] fn_release_merchant_order_coupon",
+        orderId,
+        error.message,
+      );
+      return { ok: false, error: "merchant coupon release failed" };
     }
   }
 

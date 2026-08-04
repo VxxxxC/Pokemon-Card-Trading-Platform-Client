@@ -9,6 +9,7 @@ export type MerchantPayoutPreparation =
       paymentIntentId: string;
       stripeAccountId: string;
       totalAmount: number;
+      buyerTotalAmount: number;
       commissionAmount: number;
       merchantPayoutAmount: number;
     };
@@ -55,6 +56,9 @@ export function parseMerchantPayoutPreparation(
     "stripe_account_id",
   ]);
   const totalAmount = Number(row.total_amount);
+  const buyerTotalAmount = Number(
+    row.buyer_total_amount ?? row.total_amount,
+  );
   const commissionAmount = Number(row.commission_amount);
   const merchantPayoutAmount = Number(row.merchant_payout_amount);
 
@@ -63,6 +67,8 @@ export function parseMerchantPayoutPreparation(
     !stripeAccountId ||
     !Number.isFinite(totalAmount) ||
     totalAmount <= 0 ||
+    !Number.isFinite(buyerTotalAmount) ||
+    buyerTotalAmount <= 0 ||
     !Number.isFinite(commissionAmount) ||
     commissionAmount < 0 ||
     !Number.isFinite(merchantPayoutAmount) ||
@@ -77,6 +83,7 @@ export function parseMerchantPayoutPreparation(
     paymentIntentId,
     stripeAccountId,
     totalAmount,
+    buyerTotalAmount,
     commissionAmount,
     merchantPayoutAmount,
   };

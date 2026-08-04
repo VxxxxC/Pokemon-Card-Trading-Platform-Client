@@ -13,11 +13,13 @@ export type CheckoutPaymentIntentResult = {
   clientSecret: string;
   publishableKey: string;
   totalAmount: number;
+  platformSubsidyAmount?: number;
 };
 
 export async function prepareCheckoutPayment(
   session: CheckoutSession,
   form?: MerchantDirectFormState,
+  options?: { userRewardId?: string | null },
 ): Promise<ActionResult<CheckoutPaymentIntentResult>> {
   if (session.variant === "member_auth") {
     const result = await createMemberAuthPaymentIntent(session.orderId);
@@ -46,6 +48,7 @@ export async function prepareCheckoutPayment(
   const result = await createMerchantOrderPaymentIntent(session.orderId, {
     shippingMethod,
     useAuth,
+    userRewardId: options?.userRewardId,
     deliveryDetails: {
       sfAddress: form?.courierDeliveryAddress,
       buyerPhone: form?.buyerPhone,
@@ -63,7 +66,8 @@ export async function prepareCheckoutPayment(
     data: {
       clientSecret: result.data.clientSecret,
       publishableKey: result.data.publishableKey,
-      totalAmount: result.data.totalAmount,
+      totalAmount: result.data.buyerTotalAmount,
+      platformSubsidyAmount: result.data.platformSubsidyAmount,
     },
   };
 }

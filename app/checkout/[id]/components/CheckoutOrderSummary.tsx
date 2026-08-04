@@ -11,6 +11,7 @@ type CheckoutOrderSummaryProps = {
   shippingLabel?: string;
   showShippingRow?: boolean;
   showAuthFeeRow?: boolean;
+  platformSubsidyAmount?: number;
   extraShippingNote?: string | null;
   children?: React.ReactNode;
 };
@@ -23,6 +24,7 @@ export function CheckoutOrderSummary({
   shippingLabel = "運費",
   showShippingRow = true,
   showAuthFeeRow = true,
+  platformSubsidyAmount = 0,
   extraShippingNote,
   children,
 }: CheckoutOrderSummaryProps) {
@@ -90,6 +92,14 @@ export function CheckoutOrderSummary({
               }
             >
               HK$ {authFee}
+            </span>
+          </div>
+        ) : null}
+        {platformSubsidyAmount > 0 ? (
+          <div className="flex justify-between text-brand">
+            <span>平台優惠</span>
+            <span className="font-mono font-semibold">
+              - HK$ {platformSubsidyAmount.toLocaleString()}
             </span>
           </div>
         ) : null}
