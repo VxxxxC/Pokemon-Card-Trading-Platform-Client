@@ -12,6 +12,7 @@ import {
   getRewardTemplateIdByTitle,
   getUserRewardRow,
   grantUserRewardForE2e,
+  openRewardTemplateWizard,
   reactivateListingForE2e,
   setListingAuthenticationForE2e,
 } from "./helpers/platform-rewards";
@@ -51,14 +52,8 @@ async function publishFreeShippingTemplate(
   page: Page,
   title: string,
 ): Promise<void> {
-  await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "新增模板" })).toBeVisible({
-    timeout: 20_000,
-  });
-  await page.getByRole("button", { name: "新增模板" }).click();
-
-  const wizard = page.locator('[data-slot="dialog-content"]');
-  await expect(wizard).toBeVisible({ timeout: 15_000 });
+  const wizard = await openRewardTemplateWizard(page);
+  await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
   await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
 
   await wizard.locator("#template-title").fill(title);
@@ -149,7 +144,8 @@ test.describe("Platform rewards Phase 2 E2E", () => {
 
   test("A1–A3 admin publishes free-shipping template via wizard", async ({
     browser,
-  }) => {
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Admin-only setup");
     test.skip(!hasAdminAuthFixtures(), "Missing admin credentials");
 
     templateId = await findActiveFreeShippingTemplateId();

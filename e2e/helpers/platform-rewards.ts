@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
 
@@ -177,6 +178,25 @@ export async function getUserRewardRow(rewardId: string) {
 export async function findActiveMerchantListingForE2e(params?: {
   excludeSellerId?: string;
 }): Promise<{ listingId: string; sellerId: string; price: number }> {
+  const envListingId = process.env.E2E_LISTING_ID?.trim();
+  const envSellerId = process.env.E2E_SELLER_ID?.trim();
+
+  if (envListingId && envSellerId) {
+    if (!params?.excludeSellerId || envSellerId !== params.excludeSellerId) {
+      try {
+        await reactivateListingForE2e(envListingId);
+        const listing = await assertListingIsActiveMerchant(envListingId);
+        return {
+          listingId: envListingId,
+          sellerId: envSellerId,
+          price: listing.price,
+        };
+      } catch {
+        // Fall through to dynamic merchant listing discovery.
+      }
+    }
+  }
+
   const admin = createE2eAdminClient();
 
   const { data: kycRows, error: kycError } = await admin
@@ -236,6 +256,39 @@ export async function findActiveMerchantListingForE2e(params?: {
     }
     return null;
   })();
+
+  if (!row) {
+    const { data: fallbackRows, error: fallbackError } = await admin
+      .from("listings")
+      .select("id, seller_id, price, status, seller_persona")
+      .eq("seller_persona", "merchant")
+      .in("status", ["active", "inactive"])
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (fallbackError) {
+      throw new Error(`[findActiveMerchantListingForE2e] ${fallbackError.message}`);
+    }
+
+    for (const entry of fallbackRows ?? []) {
+      if (
+        !entry.seller_id ||
+        (params?.excludeSellerId && entry.seller_id === params.excludeSellerId)
+      ) {
+        continue;
+      }
+
+      if (entry.status !== "active") {
+        await reactivateListingForE2e(entry.id);
+      }
+
+      return {
+        listingId: entry.id,
+        sellerId: entry.seller_id,
+        price: Number(entry.price),
+      };
+    }
+  }
 
   if (!row) {
     throw new Error(
@@ -310,20 +363,121 @@ export async function fillStripePaymentElement(page: Page): Promise<void> {
 }
 
 export async function findActiveDiscountCouponTemplateId(): Promise<string | null> {
-  const admin = createE2eAdminClient();
-  const { data, error } = await admin
-    .from("reward_templates")
-    .select("id")
-    .eq("type", "discount_coupon")
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
+  const seen = new Set<string>();
+  for (const row of await listRecentTemplateAudits()) {
+    if (seen.has(row.template_id)) {
+      continue;
+    }
+    seen.add(row.template_id);
+    const snapshot = row.snapshot as RewardTemplateAuditSnapshot;
+    if (
+      snapshot?.type === "discount_coupon" &&
+      snapshot?.status === "active"
+    ) {
+      return row.template_id;
+    }
+  }
+  return null;
+}
 
-  if (error) {
-    throw new Error(`[findActiveDiscountCouponTemplateId] ${error.message}`);
+async function createE2eAdminAuthedClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const email = process.env.E2E_ADMIN_EMAIL?.trim();
+  const password = process.env.E2E_ADMIN_PASSWORD?.trim();
+
+  if (!url || !anonKey || !email || !password) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, E2E_ADMIN_EMAIL, or E2E_ADMIN_PASSWORD",
+    );
   }
 
-  return data?.id ?? null;
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error } = await client.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw new Error(`[createE2eAdminAuthedClient] ${error.message}`);
+  }
+
+  return client;
+}
+
+type AdminCampaignListRow = {
+  id?: string;
+  name?: string;
+  claimed_count?: number;
+};
+
+export async function listActiveFlashCampaignRowsForE2e(): Promise<
+  AdminCampaignListRow[]
+> {
+  const client = await createE2eAdminAuthedClient();
+  const { data, error } = await client.rpc("rpc_list_active_flash_campaigns");
+
+  if (error) {
+    throw new Error(`[listActiveFlashCampaignRowsForE2e] ${error.message}`);
+  }
+
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data as AdminCampaignListRow[];
+}
+
+export async function listActiveFlashCampaignRowsForUser(params: {
+  email: string;
+  password: string;
+}): Promise<AdminCampaignListRow[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase public env for flash list RPC");
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email: params.email,
+    password: params.password,
+  });
+  if (signInError) {
+    throw new Error(`[listActiveFlashCampaignRowsForUser] ${signInError.message}`);
+  }
+
+  const { data, error } = await client.rpc("rpc_list_active_flash_campaigns");
+  if (error) {
+    throw new Error(`[listActiveFlashCampaignRowsForUser] ${error.message}`);
+  }
+
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data as AdminCampaignListRow[];
+}
+
+export async function waitForFlashCampaignSectionReady(page: Page): Promise<void> {
+  const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
+  const hasFlashSection = await section
+    .isVisible({ timeout: 5_000 })
+    .catch(() => false);
+
+  if (!hasFlashSection) {
+    return;
+  }
+
+  await expect(section.getByText("載入限時搶券活動中")).toBeHidden({
+    timeout: 20_000,
+  });
 }
 
 export async function completeMerchantAuthCheckout(
@@ -421,9 +575,45 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
   return orderId;
 }
 
+export async function openRewardTemplateWizard(page: Page) {
+  await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "新增模板" })).toBeVisible({
+    timeout: 20_000,
+  });
+
+  const wizard = page.locator('[data-slot="dialog-content"]');
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.getByRole("button", { name: "新增模板" }).click();
+    if (await wizard.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await expect(wizard.getByText(/新增獎勵模板|編輯獎勵模板/)).toBeVisible();
+      return wizard;
+    }
+    await page.waitForTimeout(500);
+  }
+
+  await expect(wizard).toBeVisible({ timeout: 15_000 });
+  return wizard;
+}
+
 function toDatetimeLocalValue(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export async function dismissBlockingOverlays(page: Page): Promise<void> {
+  const pwaClose = page.getByRole("button", { name: "✕" }).first();
+  if (await pwaClose.isVisible().catch(() => false)) {
+    await pwaClose.click();
+  }
+}
+
+export async function gotoMemberRewardsPage(page: Page): Promise<void> {
+  await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
+  await dismissBlockingOverlays(page);
+  await expect(
+    page.getByRole("heading", { name: "會員獎勵與任務中心" }),
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 export function buildFlashCampaignScheduleForE2e(params?: {
@@ -437,10 +627,12 @@ export function buildFlashCampaignScheduleForE2e(params?: {
   maxClaims: number;
   maxClaimsPerUser: number;
 } {
-  const now = new Date();
-  const startsAt = new Date(now.getTime() - 60 * 60 * 1000);
-  const endsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const now = Date.now();
+  const startsAt = new Date(now - 2 * 60 * 60 * 1000);
+  const endsAt = new Date(now + 48 * 60 * 60 * 1000);
 
+  // datetime-local + `new Date(value)` in the admin wizard use the browser's local
+  // timezone — not HKT — so format with local wall-clock values for the same instants.
   return {
     campaignName: params?.campaignName ?? `E2E Flash ${Date.now()}`,
     startsAt: toDatetimeLocalValue(startsAt),
@@ -453,36 +645,17 @@ export function buildFlashCampaignScheduleForE2e(params?: {
 export async function getFlashCampaignIdByName(
   campaignName: string,
 ): Promise<string | null> {
-  const admin = createE2eAdminClient();
-  const { data, error } = await admin
-    .from("reward_campaigns")
-    .select("id")
-    .eq("name", campaignName)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`[getFlashCampaignIdByName] ${error.message}`);
-  }
-
-  return data?.id ?? null;
+  const rows = await listActiveFlashCampaignRowsForE2e();
+  const row = rows.find((entry) => entry.name === campaignName);
+  return row?.id ?? null;
 }
 
 export async function countRewardCampaignClaims(
   campaignId: string,
 ): Promise<number> {
-  const admin = createE2eAdminClient();
-  const { count, error } = await admin
-    .from("reward_campaign_claims")
-    .select("id", { count: "exact", head: true })
-    .eq("campaign_id", campaignId);
-
-  if (error) {
-    throw new Error(`[countRewardCampaignClaims] ${error.message}`);
-  }
-
-  return count ?? 0;
+  const rows = await listActiveFlashCampaignRowsForE2e();
+  const row = rows.find((entry) => entry.id === campaignId);
+  return Number(row?.claimed_count ?? 0);
 }
 
 export async function ensureE2eFlashBuyer(params: {
@@ -560,11 +733,15 @@ export async function claimFlashCampaignViaUI(
   await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
 
   const section = page.locator("section").filter({ hasText: "限時搶券" });
-  await section.waitFor({ state: "visible", timeout: 20_000 });
+  await expect(section).toBeVisible({ timeout: 20_000 });
 
   const card = campaignName
     ? section.locator("div.rounded-2xl").filter({ hasText: campaignName })
     : section.locator("div.rounded-2xl").first();
 
-  await card.getByRole("button", { name: "立即搶券" }).click();
+  await expect(card).toBeVisible({ timeout: 20_000 });
+
+  const claimButton = card.getByRole("button", { name: "立即搶券" });
+  await expect(claimButton).toBeEnabled({ timeout: 20_000 });
+  await claimButton.click();
 }

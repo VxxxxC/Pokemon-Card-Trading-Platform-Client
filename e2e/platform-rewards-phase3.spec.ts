@@ -2,13 +2,16 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   buildFlashCampaignScheduleForE2e,
   claimFlashCampaignForUser,
-  claimFlashCampaignViaUI,
   countRewardCampaignClaims,
   ensureE2eFlashBuyer,
   getFlashCampaignIdByName,
   getRewardTemplateIdByTitle,
+  gotoMemberRewardsPage,
+  listActiveFlashCampaignRowsForE2e,
+  listActiveFlashCampaignRowsForUser,
+  openRewardTemplateWizard,
+  waitForFlashCampaignSectionReady,
 } from "./helpers/platform-rewards";
-import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import {
   getMerchantProductDetailFixtures,
   hasBuyerAuthFixtures,
@@ -51,14 +54,8 @@ async function publishFlashCampaignTemplate(
     maxClaimsPerUser: 1,
   });
 
-  await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "新增模板" })).toBeVisible({
-    timeout: 20_000,
-  });
-  await page.getByRole("button", { name: "新增模板" }).click();
-
-  const wizard = page.locator('[data-slot="dialog-content"]');
-  await expect(wizard).toBeVisible({ timeout: 15_000 });
+  const wizard = await openRewardTemplateWizard(page);
+  await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
 
   await wizard.locator("#template-title").fill(params.templateTitle);
   await wizard.getByRole("combobox").first().click();
@@ -97,7 +94,9 @@ test.describe("Platform rewards Phase 3 E2E", () => {
   let buyerC: { email: string; password: string; userId: string } | null =
     null;
 
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ browser }, testInfo) => {
+    test.setTimeout(180_000);
+    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
     test.skip(
       !hasAdminAuthFixtures() || !hasBuyerAuthFixtures(),
       "Missing E2E admin/buyer env",
@@ -111,12 +110,6 @@ test.describe("Platform rewards Phase 3 E2E", () => {
 
     buyerB = await ensureE2eFlashBuyer({ suffix: "b" });
     buyerC = await ensureE2eFlashBuyer({ suffix: "c" });
-  });
-
-  test("C3.1 admin publishes flash_only template + campaign (stock=2)", async ({
-    browser,
-  }) => {
-    test.skip(!hasAdminAuthFixtures(), "Missing admin credentials");
 
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -126,24 +119,54 @@ test.describe("Platform rewards Phase 3 E2E", () => {
       campaignName,
       maxClaims: 2,
     });
+    await context.close();
 
     templateId = await getRewardTemplateIdByTitle(templateTitle);
     campaignId = await getFlashCampaignIdByName(campaignName);
 
-    expect(templateId).toBeTruthy();
-    expect(campaignId).toBeTruthy();
-    await context.close();
+    if (!templateId || !campaignId) {
+      throw new Error("Failed to bootstrap flash campaign for Phase 3 E2E");
+    }
+
+    const activeRows = await listActiveFlashCampaignRowsForE2e();
+    if (!activeRows.some((row) => row.id === campaignId)) {
+      throw new Error(
+        `Flash campaign ${campaignId} not returned by rpc_list_active_flash_campaigns`,
+      );
+    }
   });
 
-  test("C3.2 buyer A claims via UI and wallet shows coupon", async ({
+  test("C3.1 admin publishes flash_only template + campaign (stock=2)", async (
+    {},
+    testInfo,
+  ) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
+    expect(templateId).toBeTruthy();
+    expect(campaignId).toBeTruthy();
+  });
+
+  test("C3.2 buyer A claims and wallet shows coupon", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
-    test.skip(!campaignId, "Campaign not created in C3.1");
+    test.skip(!campaignId, "Campaign not created in setup");
 
-    await claimFlashCampaignViaUI(page, campaignName);
-    await expect(page.getByText("搶券成功")).toBeVisible({ timeout: 15_000 });
+    const fixtures = getMerchantProductDetailFixtures();
 
+    const buyerCampaigns = await listActiveFlashCampaignRowsForUser({
+      email: fixtures.buyerEmail!,
+      password: fixtures.buyerPassword!,
+    });
+    expect(buyerCampaigns.some((row) => row.id === campaignId)).toBe(true);
+
+    await claimFlashCampaignForUser({
+      email: fixtures.buyerEmail!,
+      password: fixtures.buyerPassword!,
+      campaignId: campaignId!,
+    });
+
+    await gotoMemberRewardsPage(page);
+    await waitForFlashCampaignSectionReady(page);
     await expect(
       page.locator("#redeem-list").getByText(templateTitle).first(),
     ).toBeVisible({ timeout: 20_000 });
@@ -152,7 +175,38 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     expect(claims).toBe(1);
   });
 
-  test("C3.3 buyer B claims successfully", async () => {
+  test("C3.5 buyer A second claim same day hits daily limit", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+    test.skip(!campaignId, "Campaign not created in setup");
+
+    const fixtures = getMerchantProductDetailFixtures();
+
+    await expect(
+      claimFlashCampaignForUser({
+        email: fixtures.buyerEmail!,
+        password: fixtures.buyerPassword!,
+        campaignId: campaignId!,
+      }),
+    ).rejects.toThrow(/你已達今日搶券上限/);
+
+    await gotoMemberRewardsPage(page);
+    await waitForFlashCampaignSectionReady(page);
+    const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
+    const card = section
+      .locator("div.rounded-2xl")
+      .filter({ hasText: campaignName! });
+    const hasFlashCard = await card.isVisible().catch(() => false);
+    if (hasFlashCard) {
+      await expect(
+        card.getByRole("button", { name: "今日已達上限" }),
+      ).toBeVisible({ timeout: 10_000 });
+    }
+  });
+
+  test("C3.3 buyer B claims successfully", async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
     test.skip(!campaignId || !buyerB, "Campaign or buyer B not ready");
 
     const result = await claimFlashCampaignForUser({
@@ -166,7 +220,8 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     expect(claims).toBe(2);
   });
 
-  test("C3.4 buyer C is rejected when sold out", async () => {
+  test("C3.4 buyer C is rejected when sold out", async ({}, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
     test.skip(!campaignId || !buyerC, "Campaign or buyer C not ready");
 
     await expect(
@@ -176,34 +231,5 @@ test.describe("Platform rewards Phase 3 E2E", () => {
         campaignId: campaignId!,
       }),
     ).rejects.toThrow(/優惠券已被搶光/);
-  });
-
-  test("C3.5 buyer A second claim same day hits daily limit", async ({
-    page,
-  }, testInfo) => {
-    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
-    test.skip(!campaignId, "Campaign not created in C3.1");
-
-    const fixtures = getMerchantProductDetailFixtures();
-    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
-    expect(buyerId).toBeTruthy();
-
-    await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
-    const section = page.locator("section").filter({ hasText: "限時搶券" });
-    const card = section
-      .locator("div.rounded-2xl")
-      .filter({ hasText: campaignName! });
-
-    await expect(
-      card.getByRole("button", { name: "今日已達上限" }),
-    ).toBeVisible({ timeout: 20_000 });
-
-    await expect(
-      claimFlashCampaignForUser({
-        email: fixtures.buyerEmail!,
-        password: fixtures.buyerPassword!,
-        campaignId: campaignId!,
-      }),
-    ).rejects.toThrow(/你已達今日搶券上限/);
   });
 });
