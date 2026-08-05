@@ -57,6 +57,21 @@ export function resolveCheckoutDisplayPricing(
     return computeMerchantDirectPricing(session, form, options);
   }
 
+  if (session.variant === "merchant_auth") {
+    const authFee = session.pricing.authFee;
+    const grossTotalAmount = session.pricing.itemSubtotal + authFee;
+    const platformSubsidy = Math.max(0, Number(options?.platformSubsidy ?? 0));
+    const totalAmount = Math.max(0, grossTotalAmount - platformSubsidy);
+
+    return {
+      shippingFee: 0,
+      authFee,
+      grossTotalAmount,
+      platformSubsidy,
+      totalAmount,
+    };
+  }
+
   return {
     shippingFee: session.pricing.shippingFee,
     authFee: session.pricing.authFee,

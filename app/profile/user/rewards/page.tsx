@@ -15,6 +15,7 @@ import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import { FlashCampaignSection } from "@/app/components/rewards/FlashCampaignSection";
 import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
 // 🟢 核心對接：引入全域統一的奢華黑金分頁組件
@@ -112,6 +113,14 @@ export default function MemberRewardsPage() {
     setCouponPageState({ page, forKey: couponFilterFingerprint });
   };
 
+  const reloadCoupons = async () => {
+    const result = await getUserRewardCoupons();
+    if (result.success) {
+      setWalletCoupons(result.data.wallet);
+      setLockedRewards(result.data.locked);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -198,6 +207,8 @@ export default function MemberRewardsPage() {
 
         {/* 頂部常駐：每日簽到打卡組件 */}
         <CheckInCard />
+
+        <FlashCampaignSection onClaimed={() => void reloadCoupons()} />
 
         {/* ── 智能三態 Coupon 中心 ── */}
         <section id="redeem-list" className="space-y-4 pt-2">

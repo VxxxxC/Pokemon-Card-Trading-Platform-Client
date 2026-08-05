@@ -182,7 +182,7 @@ interface Message {
 | `GET` | `[Server Action] getMerchantCheckoutPaymentStatus` | `(orderIdOrNumber)` | `{ escrowStatus, totalAmount, paidAt }` | 訂單買家 |
 | `POST` | `[Server Action] completeMerchantOrder` | `(orderId)` | `{ success }` | 訂單買家 |
 
-金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`total_amount` = gross；Phase 2 非鑑定直發可選一張券，`buyer_total_amount = gross − platform_subsidy_amount`，PI 用買家實付。鑑定路徑暫拒絕用券。資金先 100% 收入平台帳戶託管，**無** `application_fee_amount` / `transfer_data`。買家確認收貨後撥款；若 `merchant_payout > amount_received` 則 transfer 不綁 `source_transaction`（平台 balance 補差）。詳見 [platform-rewards-v2 QA](./follow-up/platform-rewards-v2/QA_CHECKLIST.md)。
+金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`total_amount` = gross；非鑑定直發及 **鑑定商戶訂單（Phase 2b）** 可選一張券，`buyer_total_amount = gross − platform_subsidy_amount`，PI 用買家實付（鑑定為 manual capture authorize）。鑑定免運以順豐報價作補貼基數。詳見 [platform-rewards-v2 QA](./follow-up/platform-rewards-v2/QA_CHECKLIST.md)。
 
 ### 5.2 Member 鑑定託管結帳（✅ 已落地，Payment Milestone 1.5）
 
@@ -267,6 +267,23 @@ interface Order {
 | 方法 | 路徑 / Action | 請求 | 回應 | 權限 |
 |------|---------------|------|------|------|
 | `POST` | `[Server Action] executeCheckIn` | `{}` | `{ streakDay, pointsAwarded, pointsBalance }` | USER+ |
+
+### 7.1a Platform rewards v2 (admin templates + flash campaigns)
+
+| Action | Input | Output | 權限 |
+|--------|-------|--------|------|
+| `listAdminRewardTemplates` | `{ status?, page?, pageSize? }` | `{ rows, total }` | ADMIN |
+| `upsertAdminRewardTemplate` | `AdminRewardTemplateUpsertInput` | `{ templateId, row }` | ADMIN |
+| `setAdminRewardTemplateStatus` | `(templateId, status)` | `{ ok }` | ADMIN |
+| `listAdminRewardCampaigns` | `{ status?, page?, pageSize? }` | `{ rows, total }` | ADMIN |
+| `upsertAdminRewardCampaign` | campaign payload | `{ campaignId, row }` | ADMIN |
+| `setAdminRewardCampaignStatus` | `(campaignId, status)` | `{ ok }` | ADMIN |
+| `listActiveFlashCampaigns` | — | `FlashCampaignView[]` | USER+ |
+| `claimFlashReward` | `(campaignId)` | `{ userRewardId }` | USER+ |
+| `getUserRewardCoupons` | — | wallet + locked catalog | USER+ |
+| `listCheckoutEligibleCoupons` | `(orderId, opts?)` | eligible coupons | USER+ |
+
+Flash claim RPC：`rpc_claim_flash_reward` — atomic stock + HKT daily cap + `fn_issue_reward_from_template` dedup `flash:{campaign_id}:{date}`。`flash_only` 模板不會出現在 `get_reward_coupon_center` locked 列表。
 
 ### 7.2 願望清單 (`product_watchlists`)
 

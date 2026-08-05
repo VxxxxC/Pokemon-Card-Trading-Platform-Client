@@ -14,6 +14,7 @@ type CheckoutCouponPickerProps = {
   selectedCouponId: string | null;
   onSelectCoupon: (couponId: string | null) => void;
   disabled?: boolean;
+  useAuth?: boolean;
 };
 
 function couponLabel(coupon: CheckoutEligibleCoupon): string {
@@ -32,6 +33,7 @@ export function CheckoutCouponPicker({
   selectedCouponId,
   onSelectCoupon,
   disabled = false,
+  useAuth = false,
 }: CheckoutCouponPickerProps) {
   const [coupons, setCoupons] = useState<CheckoutEligibleCoupon[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +48,7 @@ export function CheckoutCouponPicker({
 
       const result = await listCheckoutEligibleCoupons(orderId, {
         shippingMethod,
+        useAuth,
       });
 
       if (cancelled) {
@@ -68,7 +71,7 @@ export function CheckoutCouponPicker({
     return () => {
       cancelled = true;
     };
-  }, [orderId, shippingMethod]);
+  }, [orderId, shippingMethod, useAuth]);
 
   useEffect(() => {
     if (!selectedCouponId) {

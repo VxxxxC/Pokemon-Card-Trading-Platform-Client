@@ -1990,6 +1990,104 @@ export type Database = {
           },
         ]
       }
+      reward_campaign_claims: {
+        Row: {
+          campaign_id: string
+          claim_day: string
+          claimed_at: string
+          id: string
+          user_id: string
+          user_reward_id: string
+        }
+        Insert: {
+          campaign_id: string
+          claim_day: string
+          claimed_at?: string
+          id?: string
+          user_id: string
+          user_reward_id: string
+        }
+        Update: {
+          campaign_id?: string
+          claim_day?: string
+          claimed_at?: string
+          id?: string
+          user_id?: string
+          user_reward_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_campaign_claims_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "reward_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_campaign_claims_user_reward_id_fkey"
+            columns: ["user_reward_id"]
+            isOneToOne: false
+            referencedRelation: "user_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_campaigns: {
+        Row: {
+          claimed_count: number
+          created_at: string
+          created_by: string | null
+          ends_at: string
+          id: string
+          max_claims: number
+          max_claims_per_user: number
+          name: string
+          override_valid_days: number | null
+          starts_at: string
+          status: Database["public"]["Enums"]["reward_campaign_status"]
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_count?: number
+          created_at?: string
+          created_by?: string | null
+          ends_at: string
+          id?: string
+          max_claims: number
+          max_claims_per_user?: number
+          name: string
+          override_valid_days?: number | null
+          starts_at: string
+          status?: Database["public"]["Enums"]["reward_campaign_status"]
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_count?: number
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string
+          id?: string
+          max_claims?: number
+          max_claims_per_user?: number
+          name?: string
+          override_valid_days?: number | null
+          starts_at?: string
+          status?: Database["public"]["Enums"]["reward_campaign_status"]
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_campaigns_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "reward_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_template_audits: {
         Row: {
           action: Database["public"]["Enums"]["reward_template_audit_action"]
@@ -2358,6 +2456,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      _hk_today: { Args: never; Returns: string }
       _moderation_apply_sanction_side_effects: {
         Args: {
           p_scope: Database["public"]["Enums"]["sanction_scope"]
@@ -2415,6 +2514,10 @@ export type Database = {
       _recompute_moderation_case_scores: {
         Args: { p_case_id: string }
         Returns: undefined
+      }
+      _reward_campaign_row_to_json: {
+        Args: { p_row: Database["public"]["Tables"]["reward_campaigns"]["Row"] }
+        Returns: Json
       }
       _reward_template_row_to_json: {
         Args: { p_row: Database["public"]["Tables"]["reward_templates"]["Row"] }
@@ -2641,6 +2744,10 @@ export type Database = {
         Args: { p_listing_ref: string; p_seller_id: string }
         Returns: string
       }
+      fn_restore_merchant_order_coupon_on_void: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
       fn_reward_template_has_stock: {
         Args: {
           p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
@@ -2798,6 +2905,10 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: Json
       }
+      rpc_admin_list_reward_campaigns: {
+        Args: { p_page?: number; p_page_size?: number; p_status?: string }
+        Returns: Json
+      }
       rpc_admin_list_reward_templates: {
         Args: {
           p_page?: number
@@ -2815,6 +2926,10 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string; p_reason?: string }
         Returns: Json
       }
+      rpc_admin_set_reward_campaign_status: {
+        Args: { p_campaign_id: string; p_status: string }
+        Returns: Json
+      }
       rpc_admin_set_reward_template_status: {
         Args: { p_status: string; p_template_id: string }
         Returns: Json
@@ -2825,6 +2940,10 @@ export type Database = {
           p_order_kind: string
           p_tracking_no: string
         }
+        Returns: Json
+      }
+      rpc_admin_upsert_reward_campaign: {
+        Args: { p_payload: Json }
         Returns: Json
       }
       rpc_admin_upsert_reward_template: {
@@ -2862,6 +2981,7 @@ export type Database = {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
       }
+      rpc_claim_flash_reward: { Args: { p_campaign_id: string }; Returns: Json }
       rpc_complete_member_auth_grading: {
         Args: { p_order_id: string }
         Returns: Json
@@ -2961,8 +3081,13 @@ export type Database = {
         Args: { p_listing_id: string }
         Returns: undefined
       }
+      rpc_list_active_flash_campaigns: { Args: never; Returns: Json }
       rpc_list_checkout_eligible_coupons: {
-        Args: { p_order_id: string; p_shipping_method?: string }
+        Args: {
+          p_order_id: string
+          p_shipping_method?: string
+          p_use_auth?: boolean
+        }
         Returns: Json
       }
       rpc_list_member_fps_payout_ready_candidates: {
@@ -3606,6 +3731,7 @@ export type Database = {
       report_source: "chat_room" | "profile"
       report_state: "pending" | "reviewing" | "resolved" | "dismissed"
       review_persona: "member" | "merchant"
+      reward_campaign_status: "draft" | "active" | "paused" | "ended"
       reward_distribution_mode: "auto_grant" | "flash_only"
       reward_template_audit_action: "create" | "update" | "publish" | "archive"
       reward_template_status: "draft" | "active" | "archived"
@@ -3837,6 +3963,7 @@ export const Constants = {
       report_source: ["chat_room", "profile"],
       report_state: ["pending", "reviewing", "resolved", "dismissed"],
       review_persona: ["member", "merchant"],
+      reward_campaign_status: ["draft", "active", "paused", "ended"],
       reward_distribution_mode: ["auto_grant", "flash_only"],
       reward_template_audit_action: ["create", "update", "publish", "archive"],
       reward_template_status: ["draft", "active", "archived"],

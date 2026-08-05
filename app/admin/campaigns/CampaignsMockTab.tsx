@@ -1037,7 +1037,7 @@ export function CampaignsMockTab() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-        Phase 3 限時搶券活動仍為 Mock 數據；正式搶券檔期將於後續版本接入。
+        ROI 分析仍為展示數據。正式限時搶券檔期請使用上方「搶券檔期」分頁管理。
       </div>
 
       {/* ── Global Overview Metrics ───────────────────────────────────── */}

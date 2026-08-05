@@ -24,6 +24,7 @@ type CheckoutCouponRpcClient = {
     args: {
       p_order_id: string;
       p_shipping_method?: string;
+      p_use_auth?: boolean;
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
@@ -61,10 +62,10 @@ function parseEligibleCoupons(data: unknown): CheckoutEligibleCoupon[] {
   });
 }
 
-/** 結帳頁列出買家可用優惠券（僅非鑑定 merchant_direct；權威金額仍以 prepare RPC 為準）。 */
+/** 結帳頁列出買家可用優惠券（merchant_direct / merchant_auth；權威金額仍以 prepare RPC 為準）。 */
 export async function listCheckoutEligibleCoupons(
   orderId: string,
-  options?: { shippingMethod?: string },
+  options?: { shippingMethod?: string; useAuth?: boolean },
 ): Promise<ActionResult<CheckoutEligibleCoupon[]>> {
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
@@ -90,6 +91,7 @@ export async function listCheckoutEligibleCoupons(
     ).rpc("rpc_list_checkout_eligible_coupons", {
       p_order_id: trimmedOrderId,
       p_shipping_method: options?.shippingMethod,
+      p_use_auth: options?.useAuth ?? false,
     });
 
     if (error) {

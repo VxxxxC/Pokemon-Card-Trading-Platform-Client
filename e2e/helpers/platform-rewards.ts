@@ -309,6 +309,44 @@ export async function fillStripePaymentElement(page: Page): Promise<void> {
   }
 }
 
+export async function findActiveDiscountCouponTemplateId(): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("reward_templates")
+    .select("id")
+    .eq("type", "discount_coupon")
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[findActiveDiscountCouponTemplateId] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+export async function completeMerchantAuthCheckout(
+  page: Page,
+  options?: { couponRewardId?: string | null },
+): Promise<void> {
+  if (options?.couponRewardId) {
+    await page.locator("#checkout-coupon").selectOption(options.couponRewardId);
+    await page.waitForTimeout(1500);
+  }
+
+  await page.getByRole("button", { name: /繼續付款/ }).click();
+  await page.getByRole("button", { name: /確認支付 HK\$/ }).waitFor({
+    state: "visible",
+    timeout: 60_000,
+  });
+
+  await fillStripePaymentElement(page);
+  await page.getByRole("button", { name: /確認支付 HK\$/ }).click();
+
+  await page.waitForURL(/\/checkout\/[^/]+\/success/, { timeout: 120_000 });
+}
+
 export async function completeMerchantDirectCheckout(
   page: Page,
   options?: { couponRewardId?: string | null },
@@ -331,4 +369,202 @@ export async function completeMerchantDirectCheckout(
   await page.getByRole("button", { name: /確認支付 HK\$/ }).click();
 
   await page.waitForURL(/\/checkout\/[^/]+\/success/, { timeout: 120_000 });
+}
+
+export async function buyMerchantListingWithAuthAndReachCheckout(
+  page: Page,
+  sellerId: string,
+  listingId: string,
+): Promise<string> {
+  await page.goto(
+    `/marketplace/${sellerId}/product/${listingId}`,
+    { waitUntil: "domcontentloaded" },
+  );
+
+  const buyButton = page.getByRole("button", { name: /立即購買/ });
+  await buyButton.click();
+
+  const dialog = page.getByRole("alertdialog", { name: "確認立即購買" });
+  await dialog.getByRole("switch").click();
+  await dialog.getByRole("button", { name: "確認立即購買" }).click();
+
+  const navigatedToCheckout = await page
+    .waitForURL(/\/checkout\//, { timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!navigatedToCheckout) {
+    let pendingOrderId: string | null = null;
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      pendingOrderId = await findPendingMerchantOrderForListing(listingId);
+      if (pendingOrderId) {
+        break;
+      }
+      await page.waitForTimeout(500);
+    }
+    if (!pendingOrderId) {
+      throw new Error(
+        "Auth buy now did not navigate to checkout and no pending order was created",
+      );
+    }
+    await page.goto(`/checkout/${pendingOrderId}`, {
+      waitUntil: "domcontentloaded",
+    });
+  }
+
+  await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
+  const orderId =
+    page.url().match(/\/checkout\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  if (orderId.length === 0) {
+    throw new Error("Could not resolve checkout order id after auth buy now");
+  }
+  return orderId;
+}
+
+function toDatetimeLocalValue(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function buildFlashCampaignScheduleForE2e(params?: {
+  campaignName?: string;
+  maxClaims?: number;
+  maxClaimsPerUser?: number;
+}): {
+  campaignName: string;
+  startsAt: string;
+  endsAt: string;
+  maxClaims: number;
+  maxClaimsPerUser: number;
+} {
+  const now = new Date();
+  const startsAt = new Date(now.getTime() - 60 * 60 * 1000);
+  const endsAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  return {
+    campaignName: params?.campaignName ?? `E2E Flash ${Date.now()}`,
+    startsAt: toDatetimeLocalValue(startsAt),
+    endsAt: toDatetimeLocalValue(endsAt),
+    maxClaims: params?.maxClaims ?? 2,
+    maxClaimsPerUser: params?.maxClaimsPerUser ?? 1,
+  };
+}
+
+export async function getFlashCampaignIdByName(
+  campaignName: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("reward_campaigns")
+    .select("id")
+    .eq("name", campaignName)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getFlashCampaignIdByName] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+export async function countRewardCampaignClaims(
+  campaignId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+  const { count, error } = await admin
+    .from("reward_campaign_claims")
+    .select("id", { count: "exact", head: true })
+    .eq("campaign_id", campaignId);
+
+  if (error) {
+    throw new Error(`[countRewardCampaignClaims] ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
+export async function ensureE2eFlashBuyer(params: {
+  suffix: string;
+}): Promise<{ email: string; password: string; userId: string }> {
+  const admin = createE2eAdminClient();
+  const email = `e2e-flash-${params.suffix}-${Date.now()}@hkcardvault.test`;
+  const password = `E2eFlash!${params.suffix}${Date.now()}`;
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (error || !data.user?.id) {
+    throw new Error(
+      `[ensureE2eFlashBuyer] ${error?.message ?? "createUser returned no user"}`,
+    );
+  }
+
+  return {
+    email,
+    password,
+    userId: data.user.id,
+  };
+}
+
+export async function claimFlashCampaignForUser(params: {
+  email: string;
+  password: string;
+  campaignId: string;
+}): Promise<{ userRewardId: string }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase public env for flash claim RPC");
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email: params.email,
+    password: params.password,
+  });
+  if (signInError) {
+    throw new Error(`[claimFlashCampaignForUser] sign-in failed: ${signInError.message}`);
+  }
+
+  const { data, error } = await client.rpc("rpc_claim_flash_reward", {
+    p_campaign_id: params.campaignId,
+  });
+
+  if (error) {
+    throw new Error(`[claimFlashCampaignForUser] ${error.message}`);
+  }
+
+  const payload = data as Record<string, unknown> | null;
+  const userRewardId =
+    typeof payload?.user_reward_id === "string" ? payload.user_reward_id : null;
+
+  if (!userRewardId) {
+    throw new Error("[claimFlashCampaignForUser] missing user_reward_id in RPC response");
+  }
+
+  return { userRewardId };
+}
+
+export async function claimFlashCampaignViaUI(
+  page: Page,
+  campaignName?: string,
+): Promise<void> {
+  await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
+
+  const section = page.locator("section").filter({ hasText: "限時搶券" });
+  await section.waitFor({ state: "visible", timeout: 20_000 });
+
+  const card = campaignName
+    ? section.locator("div.rounded-2xl").filter({ hasText: campaignName })
+    : section.locator("div.rounded-2xl").first();
+
+  await card.getByRole("button", { name: "立即搶券" }).click();
 }
