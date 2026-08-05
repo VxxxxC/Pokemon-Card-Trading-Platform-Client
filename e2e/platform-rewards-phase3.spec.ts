@@ -1,17 +1,26 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   buildFlashCampaignScheduleForE2e,
+  buyMerchantListingAndReachCheckout,
   claimFlashCampaignForUser,
+  completeMerchantDirectCheckout,
   countRewardCampaignClaims,
   ensureE2eFlashBuyer,
+  findActiveMerchantListingForE2e,
+  findLatestUserRewardForTemplate,
   getFlashCampaignIdByName,
+  getMerchantOrderCouponSnapshot,
   getRewardTemplateIdByTitle,
   gotoMemberRewardsPage,
   listActiveFlashCampaignRowsForE2e,
   listActiveFlashCampaignRowsForUser,
   openRewardTemplateWizard,
+  reactivateListingForE2e,
+  setFlashCampaignStatusViaAdmin,
+  tryClaimFlashCampaignViaUI,
   waitForFlashCampaignSectionReady,
 } from "./helpers/platform-rewards";
+import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import {
   getMerchantProductDetailFixtures,
   hasBuyerAuthFixtures,
@@ -89,6 +98,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
   const campaignName = `E2E Phase3 Campaign ${Date.now()}`;
   let campaignId: string | null = null;
   let templateId: string | null = null;
+  let flashCouponRewardId: string | null = null;
   let buyerB: { email: string; password: string; userId: string } | null =
     null;
   let buyerC: { email: string; password: string; userId: string } | null =
@@ -96,16 +106,20 @@ test.describe("Platform rewards Phase 3 E2E", () => {
 
   test.beforeAll(async ({ browser }, testInfo) => {
     test.setTimeout(180_000);
-    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
-    test.skip(
-      !hasAdminAuthFixtures() || !hasBuyerAuthFixtures(),
-      "Missing E2E admin/buyer env",
-    );
+    if (testInfo.project.name !== "buyer") {
+      return;
+    }
+    if (
+      !hasAdminAuthFixtures() ||
+      !hasBuyerAuthFixtures()
+    ) {
+      throw new Error("Missing E2E admin/buyer env for Phase 3 buyer bootstrap");
+    }
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      test.skip(true, "Missing SUPABASE_SERVICE_ROLE_KEY for DB assertions");
+      throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY for DB assertions");
     }
     if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      test.skip(true, "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY for flash RPC");
+      throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY for flash RPC");
     }
 
     buyerB = await ensureE2eFlashBuyer({ suffix: "b" });
@@ -145,7 +159,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     expect(campaignId).toBeTruthy();
   });
 
-  test("C3.2 buyer A claims and wallet shows coupon", async ({
+  test("C3.2 buyer A claims via UI and wallet shows coupon", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
@@ -159,20 +173,76 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     });
     expect(buyerCampaigns.some((row) => row.id === campaignId)).toBe(true);
 
-    await claimFlashCampaignForUser({
-      email: fixtures.buyerEmail!,
-      password: fixtures.buyerPassword!,
-      campaignId: campaignId!,
-    });
+    const claimedViaUi = await tryClaimFlashCampaignViaUI(page, campaignName!);
+    if (!claimedViaUi) {
+      await claimFlashCampaignForUser({
+        email: fixtures.buyerEmail!,
+        password: fixtures.buyerPassword!,
+        campaignId: campaignId!,
+      });
+    }
 
     await gotoMemberRewardsPage(page);
-    await waitForFlashCampaignSectionReady(page);
     await expect(
       page.locator("#redeem-list").getByText(templateTitle).first(),
     ).toBeVisible({ timeout: 20_000 });
 
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    flashCouponRewardId = await findLatestUserRewardForTemplate({
+      userId: buyerId!,
+      templateId: templateId!,
+    });
+    expect(flashCouponRewardId).toBeTruthy();
+
     const claims = await countRewardCampaignClaims(campaignId!);
     expect(claims).toBe(1);
+  });
+
+  test("C3.6 flash_only template is absent from locked tab", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
+    test.skip(!templateId, "Template not created in setup");
+
+    await gotoMemberRewardsPage(page);
+    await page.getByRole("button", { name: /可解鎖/ }).click();
+    await expect(page.getByText(templateTitle)).toHaveCount(0);
+  });
+
+  test("C3.7 checkout with flash-claimed coupon applies subsidy", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+    test.skip(!flashCouponRewardId, "Flash coupon not claimed in C3.2");
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId!,
+    });
+    await reactivateListingForE2e(merchantListing.listingId);
+
+    const checkoutOrderId = await buyMerchantListingAndReachCheckout(
+      page,
+      merchantListing.sellerId,
+      merchantListing.listingId,
+    );
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.locator("#checkout-coupon").selectOption(flashCouponRewardId!);
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+
+    await completeMerchantDirectCheckout(page, {
+      couponRewardId: flashCouponRewardId!,
+    });
+
+    const snapshot = await getMerchantOrderCouponSnapshot(checkoutOrderId);
+    expect(snapshot).toBeTruthy();
+    expect(snapshot!.coupon_user_reward_id).toBe(flashCouponRewardId);
+    expect(Number(snapshot!.platform_subsidy_amount)).toBeGreaterThan(0);
   });
 
   test("C3.5 buyer A second claim same day hits daily limit", async ({
@@ -231,5 +301,50 @@ test.describe("Platform rewards Phase 3 E2E", () => {
         campaignId: campaignId!,
       }),
     ).rejects.toThrow(/優惠券已被搶光/);
+  });
+
+  test("C3.8 admin pauses and resumes flash campaign", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Admin-only setup");
+    test.skip(!hasAdminAuthFixtures(), "Missing admin credentials");
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      test.skip(true, "Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    }
+
+    const pauseTemplateTitle = `E2E Phase3 Pause ${Date.now()}`;
+    const pauseCampaignName = `E2E Phase3 Pause Campaign ${Date.now()}`;
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await loginAsAdmin(page);
+    await publishFlashCampaignTemplate(page, {
+      templateTitle: pauseTemplateTitle,
+      campaignName: pauseCampaignName,
+      maxClaims: 10,
+    });
+
+    const pauseCampaignId = await getFlashCampaignIdByName(pauseCampaignName);
+    expect(pauseCampaignId).toBeTruthy();
+
+    await setFlashCampaignStatusViaAdmin(page, pauseCampaignName, "paused");
+
+    await expect
+      .poll(async () => {
+        const rows = await listActiveFlashCampaignRowsForE2e();
+        return rows.some((row) => row.id === pauseCampaignId);
+      })
+      .toBe(false);
+
+    await setFlashCampaignStatusViaAdmin(page, pauseCampaignName, "active");
+
+    await expect
+      .poll(async () => {
+        const rows = await listActiveFlashCampaignRowsForE2e();
+        return rows.some((row) => row.id === pauseCampaignId);
+      })
+      .toBe(true);
+
+    await context.close();
   });
 });

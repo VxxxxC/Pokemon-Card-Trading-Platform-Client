@@ -475,7 +475,7 @@ export async function waitForFlashCampaignSectionReady(page: Page): Promise<void
     return;
   }
 
-  await expect(section.getByText("載入限時搶券活動中")).toBeHidden({
+  await expect(page.getByText(/載入限時搶券/)).toBeHidden({
     timeout: 20_000,
   });
 }
@@ -534,12 +534,18 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
     `/marketplace/${sellerId}/product/${listingId}`,
     { waitUntil: "domcontentloaded" },
   );
+  await dismissBlockingOverlays(page);
+  await expect(page.locator("main h1")).toBeVisible({ timeout: 15_000 });
 
   const buyButton = page.getByRole("button", { name: /立即購買/ });
+  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
   await buyButton.click();
 
   const dialog = page.getByRole("alertdialog", { name: "確認立即購買" });
-  await dialog.getByRole("switch").click();
+  await expect(dialog).toBeVisible({ timeout: 15_000 });
+  const authSwitch = dialog.getByRole("switch");
+  await expect(authSwitch).toBeVisible({ timeout: 15_000 });
+  await authSwitch.click();
   await dialog.getByRole("button", { name: "確認立即購買" }).click();
 
   const navigatedToCheckout = await page
@@ -609,8 +615,26 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
 }
 
 export async function gotoMemberRewardsPage(page: Page): Promise<void> {
-  await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
-  await dismissBlockingOverlays(page);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
+    await dismissBlockingOverlays(page);
+
+    const crashed = page.getByText("This page couldn't load");
+    if (await crashed.isVisible().catch(() => false)) {
+      const reloadButton = page.getByRole("button", { name: "Reload" });
+      if (await reloadButton.isVisible().catch(() => false)) {
+        await reloadButton.click();
+        await page.waitForTimeout(2000);
+      }
+      continue;
+    }
+
+    const heading = page.getByRole("heading", { name: "會員獎勵與任務中心" });
+    if (await heading.isVisible({ timeout: 30_000 }).catch(() => false)) {
+      return;
+    }
+  }
+
   await expect(
     page.getByRole("heading", { name: "會員獎勵與任務中心" }),
   ).toBeVisible({ timeout: 30_000 });
@@ -726,22 +750,177 @@ export async function claimFlashCampaignForUser(params: {
   return { userRewardId };
 }
 
+export async function findLatestUserRewardForTemplate(params: {
+  userId: string;
+  templateId: string;
+}): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("user_rewards")
+    .select("id")
+    .eq("user_id", params.userId)
+    .eq("template_id", params.templateId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[findLatestUserRewardForTemplate] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+export async function publishDiscountCouponTemplate(
+  page: Page,
+  params: {
+    title: string;
+    amount?: number;
+    minSpend?: number;
+  },
+): Promise<void> {
+  const wizard = await openRewardTemplateWizard(page);
+  await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
+
+  await wizard.locator("#template-title").fill(params.title);
+  await wizard.getByRole("combobox").first().click();
+  await page.getByRole("option", { name: "折扣券" }).click();
+  await wizard.locator("#reward-amount").fill(String(params.amount ?? 10));
+  await wizard
+    .locator("#reward-min-spend")
+    .fill(String(params.minSpend ?? 100));
+
+  await wizard.getByRole("button", { name: "下一步" }).click();
+  await wizard.getByRole("button", { name: "下一步" }).click();
+  await wizard.getByRole("button", { name: "發布" }).click();
+
+  await expect(page.getByText("已發布模板")).toBeVisible({ timeout: 30_000 });
+  await expect(wizard).toBeHidden({ timeout: 15_000 });
+}
+
+export async function openAdminCampaignsActivitiesTab(page: Page): Promise<void> {
+  await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "搶券檔期" }).click();
+  await expect(page.getByRole("button", { name: "新增搶券檔期" })).toBeVisible({
+    timeout: 20_000,
+  });
+}
+
+export async function setFlashCampaignStatusViaAdmin(
+  page: Page,
+  campaignName: string,
+  status: "paused" | "active",
+): Promise<void> {
+  await openAdminCampaignsActivitiesTab(page);
+
+  const row = page.getByRole("row").filter({ hasText: campaignName });
+  await expect(row).toBeVisible({ timeout: 20_000 });
+
+  const buttonName = status === "paused" ? "暫停" : "上線";
+  await row.getByRole("button", { name: buttonName }).click();
+  await expect(page.getByText(/活動狀態已更新/)).toBeVisible({ timeout: 20_000 });
+}
+
+export async function buyMerchantListingAndReachCheckout(
+  page: Page,
+  sellerId: string,
+  listingId: string,
+): Promise<string> {
+  await page.goto(`/marketplace/${sellerId}/product/${listingId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await dismissBlockingOverlays(page);
+  await expect(page.locator("main h1")).toBeVisible({ timeout: 15_000 });
+
+  const buyButton = page.getByRole("button", { name: /立即購買/ });
+  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
+  await buyButton.click();
+
+  const navigatedImmediately = await page
+    .waitForURL(/\/checkout\//, { timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!navigatedImmediately) {
+    const dialog = page.getByRole("alertdialog", { name: "確認立即購買" });
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+    await dialog.getByRole("button", { name: "確認立即購買" }).click();
+  }
+
+  const navigatedToCheckout = await page
+    .waitForURL(/\/checkout\//, { timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!navigatedToCheckout) {
+    let pendingOrderId: string | null = null;
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      pendingOrderId = await findPendingMerchantOrderForListing(listingId);
+      if (pendingOrderId) {
+        break;
+      }
+      await page.waitForTimeout(500);
+    }
+    if (!pendingOrderId) {
+      throw new Error(
+        "Buy now did not navigate to checkout and no pending order was created",
+      );
+    }
+    await page.goto(`/checkout/${pendingOrderId}`, {
+      waitUntil: "domcontentloaded",
+    });
+  }
+
+  await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
+  const orderId =
+    page.url().match(/\/checkout\/([^/?#]+)/)?.[1]?.trim() ?? "";
+  if (orderId.length === 0) {
+    throw new Error("Could not resolve checkout order id after buy now");
+  }
+  return orderId;
+}
+
+export async function tryClaimFlashCampaignViaUI(
+  page: Page,
+  campaignName?: string,
+): Promise<boolean> {
+  try {
+    await gotoMemberRewardsPage(page);
+    await page.waitForTimeout(2000);
+
+    const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
+    const loaded = await section.isVisible({ timeout: 15_000 }).catch(() => false);
+    if (!loaded) {
+      return false;
+    }
+
+    const card = campaignName
+      ? section.locator("div.rounded-2xl").filter({ hasText: campaignName })
+      : section.locator("div.rounded-2xl").first();
+
+    if (!(await card.isVisible({ timeout: 10_000 }).catch(() => false))) {
+      return false;
+    }
+
+    const claimButton = card.getByRole("button", { name: "立即搶券" });
+    if (!(await claimButton.isEnabled({ timeout: 10_000 }).catch(() => false))) {
+      return false;
+    }
+
+    await claimButton.click();
+    await expect(page.getByText("搶券成功")).toBeVisible({ timeout: 15_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function claimFlashCampaignViaUI(
   page: Page,
   campaignName?: string,
 ): Promise<void> {
-  await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
-
-  const section = page.locator("section").filter({ hasText: "限時搶券" });
-  await expect(section).toBeVisible({ timeout: 20_000 });
-
-  const card = campaignName
-    ? section.locator("div.rounded-2xl").filter({ hasText: campaignName })
-    : section.locator("div.rounded-2xl").first();
-
-  await expect(card).toBeVisible({ timeout: 20_000 });
-
-  const claimButton = card.getByRole("button", { name: "立即搶券" });
-  await expect(claimButton).toBeEnabled({ timeout: 20_000 });
-  await claimButton.click();
+  const claimed = await tryClaimFlashCampaignViaUI(page, campaignName);
+  if (!claimed) {
+    throw new Error("Flash campaign UI claim failed");
+  }
 }
