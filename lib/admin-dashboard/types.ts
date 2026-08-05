@@ -43,6 +43,8 @@ export type AdminDashboardMetrics = {
   };
   alerts: {
     unprocessedReports: number;
+    pendingKyc: number;
+    pendingGrading: number;
   };
   syncedAt: string;
 };

@@ -924,8 +924,11 @@ export type Database = {
           buyer_id: string
           buyer_phone: string | null
           buyer_remark: string | null
+          buyer_total_amount: number | null
           commission_amount: number | null
           commission_rate_applied: number | null
+          coupon_type: Database["public"]["Enums"]["reward_type"] | null
+          coupon_user_reward_id: string | null
           created_at: string | null
           escrow_status: Database["public"]["Enums"]["escrow_state"] | null
           fault_party: Database["public"]["Enums"]["grading_fault_party"] | null
@@ -949,6 +952,7 @@ export type Database = {
           payout_hold_until: string | null
           payout_status: string
           platform_received_at: string | null
+          platform_subsidy_amount: number
           refund_amount: number | null
           refund_attempted_at: string | null
           refund_error: string | null
@@ -978,8 +982,11 @@ export type Database = {
           buyer_id: string
           buyer_phone?: string | null
           buyer_remark?: string | null
+          buyer_total_amount?: number | null
           commission_amount?: number | null
           commission_rate_applied?: number | null
+          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
+          coupon_user_reward_id?: string | null
           created_at?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_state"] | null
           fault_party?:
@@ -1005,6 +1012,7 @@ export type Database = {
           payout_hold_until?: string | null
           payout_status?: string
           platform_received_at?: string | null
+          platform_subsidy_amount?: number
           refund_amount?: number | null
           refund_attempted_at?: string | null
           refund_error?: string | null
@@ -1034,8 +1042,11 @@ export type Database = {
           buyer_id?: string
           buyer_phone?: string | null
           buyer_remark?: string | null
+          buyer_total_amount?: number | null
           commission_amount?: number | null
           commission_rate_applied?: number | null
+          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
+          coupon_user_reward_id?: string | null
           created_at?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_state"] | null
           fault_party?:
@@ -1061,6 +1072,7 @@ export type Database = {
           payout_hold_until?: string | null
           payout_status?: string
           platform_received_at?: string | null
+          platform_subsidy_amount?: number
           refund_amount?: number | null
           refund_attempted_at?: string | null
           refund_error?: string | null
@@ -1113,6 +1125,13 @@ export type Database = {
             columns: ["auth_graded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_orders_coupon_user_reward_id_fkey"
+            columns: ["coupon_user_reward_id"]
+            isOneToOne: false
+            referencedRelation: "user_rewards"
             referencedColumns: ["id"]
           },
         ]
@@ -1971,17 +1990,62 @@ export type Database = {
           },
         ]
       }
+      reward_template_audits: {
+        Row: {
+          action: Database["public"]["Enums"]["reward_template_audit_action"]
+          admin_id: string
+          created_at: string
+          id: string
+          snapshot: Json
+          template_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["reward_template_audit_action"]
+          admin_id: string
+          created_at?: string
+          id?: string
+          snapshot: Json
+          template_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["reward_template_audit_action"]
+          admin_id?: string
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_template_audits_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_template_audits_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "reward_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_templates: {
         Row: {
           claimed_count: number
           created_at: string | null
           description: string | null
+          distribution_mode: Database["public"]["Enums"]["reward_distribution_mode"]
           fixed_expiry_date: string | null
           id: string
           is_active: boolean | null
           is_infinite: boolean | null
           max_claims: number | null
+          restrictions: Json
           reward_value: Json
+          status: Database["public"]["Enums"]["reward_template_status"]
           title: string
           trigger_conditions: Json
           type: Database["public"]["Enums"]["reward_type"]
@@ -1992,12 +2056,15 @@ export type Database = {
           claimed_count?: number
           created_at?: string | null
           description?: string | null
+          distribution_mode?: Database["public"]["Enums"]["reward_distribution_mode"]
           fixed_expiry_date?: string | null
           id?: string
           is_active?: boolean | null
           is_infinite?: boolean | null
           max_claims?: number | null
+          restrictions?: Json
           reward_value: Json
+          status?: Database["public"]["Enums"]["reward_template_status"]
           title: string
           trigger_conditions: Json
           type: Database["public"]["Enums"]["reward_type"]
@@ -2008,12 +2075,15 @@ export type Database = {
           claimed_count?: number
           created_at?: string | null
           description?: string | null
+          distribution_mode?: Database["public"]["Enums"]["reward_distribution_mode"]
           fixed_expiry_date?: string | null
           id?: string
           is_active?: boolean | null
           is_infinite?: boolean | null
           max_claims?: number | null
+          restrictions?: Json
           reward_value?: Json
+          status?: Database["public"]["Enums"]["reward_template_status"]
           title?: string
           trigger_conditions?: Json
           type?: Database["public"]["Enums"]["reward_type"]
@@ -2169,6 +2239,7 @@ export type Database = {
           grant_dedup_key: string
           id: string
           is_used: boolean | null
+          reserved_merchant_order_id: string | null
           template_id: string
           used_at: string | null
           user_id: string
@@ -2180,6 +2251,7 @@ export type Database = {
           grant_dedup_key?: string
           id?: string
           is_used?: boolean | null
+          reserved_merchant_order_id?: string | null
           template_id: string
           used_at?: string | null
           user_id: string
@@ -2191,11 +2263,19 @@ export type Database = {
           grant_dedup_key?: string
           id?: string
           is_used?: boolean | null
+          reserved_merchant_order_id?: string | null
           template_id?: string
           used_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_rewards_reserved_merchant_order_id_fkey"
+            columns: ["reserved_merchant_order_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_rewards_template_id_fkey"
             columns: ["template_id"]
@@ -2336,6 +2416,19 @@ export type Database = {
         Args: { p_case_id: string }
         Returns: undefined
       }
+      _reward_template_row_to_json: {
+        Args: { p_row: Database["public"]["Tables"]["reward_templates"]["Row"] }
+        Returns: Json
+      }
+      _reward_template_write_audit: {
+        Args: {
+          p_action: Database["public"]["Enums"]["reward_template_audit_action"]
+          p_admin_id: string
+          p_snapshot: Json
+          p_template_id: string
+        }
+        Returns: undefined
+      }
       acknowledge_reward_grants: {
         Args: { p_user_reward_ids: string[] }
         Returns: Json
@@ -2355,6 +2448,15 @@ export type Database = {
       }
       admin_get_moderation_order_context: {
         Args: { p_case_id: string }
+        Returns: Json
+      }
+      admin_get_subject_moderation_history: {
+        Args: {
+          p_case_limit?: number
+          p_exclude_case_id?: string
+          p_sanction_limit?: number
+          p_subject_user_id: string
+        }
         Returns: Json
       }
       canonical_card_search_key: { Args: { input: string }; Returns: string }
@@ -2424,6 +2526,21 @@ export type Database = {
       fn_claim_mission_points: {
         Args: { p_description?: string; p_mission_id: string; p_points: number }
         Returns: Json
+      }
+      fn_compute_platform_subsidy: {
+        Args: {
+          p_buyer_id: string
+          p_item_subtotal: number
+          p_order_id?: string
+          p_shipping_fee: number
+          p_shipping_method: string
+          p_use_auth: boolean
+          p_user_reward_id: string
+        }
+        Returns: {
+          coupon_type: Database["public"]["Enums"]["reward_type"]
+          subsidy_amount: number
+        }[]
       }
       fn_effective_check_in_streak: {
         Args: { p_user_id: string }
@@ -2516,6 +2633,10 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_release_merchant_order_coupon: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
       fn_resolve_member_listing_id: {
         Args: { p_listing_ref: string; p_seller_id: string }
         Returns: string
@@ -2551,6 +2672,10 @@ export type Database = {
       fn_try_reveal_order_reviews: {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: boolean
+      }
+      fn_validate_reward_template: {
+        Args: { p_payload: Json }
+        Returns: undefined
       }
       generate_merchant_shop_handle: { Args: never; Returns: string }
       generate_profile_username: { Args: never; Returns: string }
@@ -2673,6 +2798,15 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: Json
       }
+      rpc_admin_list_reward_templates: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_status?: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       rpc_admin_pass_grading: {
         Args: { p_notes?: string; p_order_id: string; p_order_kind: string }
         Returns: Json
@@ -2681,12 +2815,20 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string; p_reason?: string }
         Returns: Json
       }
+      rpc_admin_set_reward_template_status: {
+        Args: { p_status: string; p_template_id: string }
+        Returns: Json
+      }
       rpc_admin_submit_grading_outbound: {
         Args: {
           p_order_id: string
           p_order_kind: string
           p_tracking_no: string
         }
+        Returns: Json
+      }
+      rpc_admin_upsert_reward_template: {
+        Args: { p_payload: Json }
         Returns: Json
       }
       rpc_apply_account_sanction: {
@@ -2818,6 +2960,10 @@ export type Database = {
       rpc_increment_listing_view: {
         Args: { p_listing_id: string }
         Returns: undefined
+      }
+      rpc_list_checkout_eligible_coupons: {
+        Args: { p_order_id: string; p_shipping_method?: string }
+        Returns: Json
       }
       rpc_list_member_fps_payout_ready_candidates: {
         Args: { p_limit?: number }
@@ -2972,6 +3118,20 @@ export type Database = {
               p_sf_locker_code?: string
               p_shipping_method: string
               p_use_auth?: boolean
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_buyer_phone?: string
+              p_buyer_remark?: string
+              p_meetup_detail?: string
+              p_order_id: string
+              p_sf_address?: string
+              p_sf_locker_code?: string
+              p_shipping_method: string
+              p_use_auth?: boolean
+              p_user_reward_id?: string
             }
             Returns: Json
           }
@@ -3446,6 +3606,9 @@ export type Database = {
       report_source: "chat_room" | "profile"
       report_state: "pending" | "reviewing" | "resolved" | "dismissed"
       review_persona: "member" | "merchant"
+      reward_distribution_mode: "auto_grant" | "flash_only"
+      reward_template_audit_action: "create" | "update" | "publish" | "archive"
+      reward_template_status: "draft" | "active" | "archived"
       reward_type:
         | "discount_coupon"
         | "free_shipping"
@@ -3674,6 +3837,9 @@ export const Constants = {
       report_source: ["chat_room", "profile"],
       report_state: ["pending", "reviewing", "resolved", "dismissed"],
       review_persona: ["member", "merchant"],
+      reward_distribution_mode: ["auto_grant", "flash_only"],
+      reward_template_audit_action: ["create", "update", "publish", "archive"],
+      reward_template_status: ["draft", "active", "archived"],
       reward_type: [
         "discount_coupon",
         "free_shipping",

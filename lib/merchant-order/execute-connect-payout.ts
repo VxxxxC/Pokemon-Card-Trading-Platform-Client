@@ -83,7 +83,9 @@ export async function executeMerchantConnectPayout(
       prepared.paymentIntentId,
       { expand: ["latest_charge"] },
     );
-    const expectedTotalInCents = Math.round(prepared.totalAmount * 100);
+    const expectedBuyerTotalInCents = Math.round(
+      prepared.buyerTotalAmount * 100,
+    );
     const merchantPayoutInCents = Math.round(
       prepared.merchantPayoutAmount * 100,
     );
@@ -96,32 +98,34 @@ export async function executeMerchantConnectPayout(
       paymentIntent.status !== "succeeded" ||
       paymentIntent.currency !== "hkd" ||
       paymentIntent.metadata?.order_id !== prepared.orderId ||
-      paymentIntent.amount_received < expectedTotalInCents ||
+      paymentIntent.amount_received < expectedBuyerTotalInCents ||
       !latestCharge ||
       merchantPayoutInCents <= 0
     ) {
       throw new Error("payment_not_settled");
     }
 
-    const transfer = await stripe.transfers.create(
-      {
-        amount: merchantPayoutInCents,
-        currency: "hkd",
-        destination: prepared.stripeAccountId,
-        source_transaction: latestCharge,
-        transfer_group: `merchant_order_${prepared.orderId}`,
-        metadata: {
-          order_kind: "merchant_payout",
-          order_id: prepared.orderId,
-          destination_account_id: prepared.stripeAccountId,
-          transfer_amount_cents: String(merchantPayoutInCents),
-          commission_amount: String(prepared.commissionAmount),
-        },
+    const transferPayload: Parameters<typeof stripe.transfers.create>[0] = {
+      amount: merchantPayoutInCents,
+      currency: "hkd",
+      destination: prepared.stripeAccountId,
+      transfer_group: `merchant_order_${prepared.orderId}`,
+      metadata: {
+        order_kind: "merchant_payout",
+        order_id: prepared.orderId,
+        destination_account_id: prepared.stripeAccountId,
+        transfer_amount_cents: String(merchantPayoutInCents),
+        commission_amount: String(prepared.commissionAmount),
       },
-      {
-        idempotencyKey: `merchant-order-payout:${prepared.orderId}`,
-      },
-    );
+    };
+
+    if (merchantPayoutInCents <= expectedBuyerTotalInCents) {
+      transferPayload.source_transaction = latestCharge;
+    }
+
+    const transfer = await stripe.transfers.create(transferPayload, {
+      idempotencyKey: `merchant-order-payout:${prepared.orderId}`,
+    });
 
     const { error: finalizeError } = await admin.rpc(
       "rpc_finalize_merchant_order_payout",

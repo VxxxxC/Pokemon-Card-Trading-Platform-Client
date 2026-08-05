@@ -66,6 +66,8 @@ export type MerchantCheckoutPaymentIntent = {
   shippingFee: number;
   authFee: number;
   totalAmount: number;
+  buyerTotalAmount: number;
+  platformSubsidyAmount: number;
 };
 
 export type MerchantCheckoutPaymentStatus = {
@@ -172,6 +174,9 @@ type PrepareMerchantOrderPaymentPayload = {
   shipping_fee: number;
   auth_fee: number;
   total_amount: number;
+  buyer_total_amount: number;
+  platform_subsidy_amount: number;
+  coupon_user_reward_id: string | null;
   shipping_method: string;
   stripe_payment_intent_id: string | null;
 };
@@ -198,6 +203,7 @@ type CheckoutRpcClient = {
       p_buyer_phone?: string | null;
       p_meetup_detail?: string | null;
       p_buyer_remark?: string | null;
+      p_user_reward_id?: string | null;
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
@@ -296,6 +302,14 @@ function parsePreparePayload(
     shipping_fee: Number(payload.shipping_fee ?? 0),
     auth_fee: Number(payload.auth_fee ?? 0),
     total_amount: Number(payload.total_amount ?? 0),
+    buyer_total_amount: Number(
+      payload.buyer_total_amount ?? payload.total_amount ?? 0,
+    ),
+    platform_subsidy_amount: Number(payload.platform_subsidy_amount ?? 0),
+    coupon_user_reward_id:
+      typeof payload.coupon_user_reward_id === "string"
+        ? payload.coupon_user_reward_id
+        : null,
     shipping_method: payload.shipping_method,
     stripe_payment_intent_id:
       typeof payload.stripe_payment_intent_id === "string"
@@ -503,6 +517,7 @@ export async function createMerchantOrderPaymentIntent(
   options: {
     shippingMethod: string;
     useAuth: boolean;
+    userRewardId?: string | null;
     deliveryDetails?: MerchantCheckoutDeliveryDetails;
   },
 ): Promise<ActionResult<MerchantCheckoutPaymentIntent>> {
@@ -604,6 +619,10 @@ export async function createMerchantOrderPaymentIntent(
           ? deliveryDetails.meetupDetail ?? null
           : null,
       p_buyer_remark: deliveryDetails.buyerRemark ?? null,
+      p_user_reward_id:
+        !options.useAuth && options.userRewardId
+          ? options.userRewardId
+          : null,
     });
 
     if (prepareError) {
@@ -623,7 +642,7 @@ export async function createMerchantOrderPaymentIntent(
       return { success: false, error: "結帳金額計算失敗，請重試" };
     }
 
-    const amountInCents = Math.round(prepared.total_amount * 100);
+    const amountInCents = Math.round(prepared.buyer_total_amount * 100);
     if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
       return { success: false, error: "訂單金額異常，請聯絡客服" };
     }
@@ -642,6 +661,8 @@ export async function createMerchantOrderPaymentIntent(
       shipping_fee: String(prepared.shipping_fee),
       auth_fee: String(prepared.auth_fee),
       total_amount: String(prepared.total_amount),
+      buyer_total_amount: String(prepared.buyer_total_amount),
+      platform_subsidy_amount: String(prepared.platform_subsidy_amount),
       shipping_method: prepared.shipping_method,
     };
 
@@ -717,6 +738,8 @@ export async function createMerchantOrderPaymentIntent(
         shippingFee: prepared.shipping_fee,
         authFee: prepared.auth_fee,
         totalAmount: prepared.total_amount,
+        buyerTotalAmount: prepared.buyer_total_amount,
+        platformSubsidyAmount: prepared.platform_subsidy_amount,
       },
     };
   } catch (error) {

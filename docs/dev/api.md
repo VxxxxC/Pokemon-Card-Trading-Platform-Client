@@ -177,11 +177,12 @@ interface Message {
 | `POST` | `[Server Action] buyNowListing` | `(listingId, useAuth?)` | `{ orderId, orderNumber, orderKind, roomId, offerId, paymentHref, … }` | 買家（非自售） |
 | `POST` | `[Server Action] buyNowMerchantListing` | `(listingId, useAuth?)` | 同上（`buyNowListing` 別名） | 買家（非自售） |
 | `GET` | `[Server Action] loadMerchantCheckoutOrder` | `(orderIdOrNumber)` | `MerchantCheckoutOrder` | 訂單買家 |
-| `POST` | `[Server Action] createMerchantOrderPaymentIntent` | `(orderIdOrNumber, { shippingMethod, useAuth })` | `{ clientSecret, publishableKey, itemSubtotal, shippingFee, authFee, totalAmount }` | 訂單買家 |
+| `POST` | `[Server Action] createMerchantOrderPaymentIntent` | `(orderIdOrNumber, { shippingMethod, useAuth, userRewardId? })` | `{ clientSecret, publishableKey, itemSubtotal, shippingFee, authFee, totalAmount, buyerTotalAmount, platformSubsidyAmount }` | 訂單買家 |
+| `GET` | `[Server Action] listCheckoutEligibleCoupons` | `(orderId, { shippingMethod? })` | `CheckoutEligibleCoupon[]` | 訂單買家（非鑑定 merchant_direct） |
 | `GET` | `[Server Action] getMerchantCheckoutPaymentStatus` | `(orderIdOrNumber)` | `{ escrowStatus, totalAmount, paidAt }` | 訂單買家 |
 | `POST` | `[Server Action] completeMerchantOrder` | `(orderId)` | `{ success }` | 訂單買家 |
 
-金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`final_price + 運費(SF 30 / 面交 0) + 鑑定費(150 / 0)`；優惠券未接後端，暫不折扣。資金先 100% 收入平台帳戶託管，**無** `application_fee_amount` / `transfer_data`。買家確認收貨後，`rpc_prepare_merchant_order_payout` snapshot 固定 8% 卡價佣金；`transfers.create` 將 `卡價 − 佣金 + 運費` 撥至 Merchant Connect，鑑定費留平台，再由 `rpc_finalize_merchant_order_payout` 冪等完成訂單。
+金額由 DB 權威計算（`rpc_prepare_merchant_order_payment`）：`total_amount` = gross；Phase 2 非鑑定直發可選一張券，`buyer_total_amount = gross − platform_subsidy_amount`，PI 用買家實付。鑑定路徑暫拒絕用券。資金先 100% 收入平台帳戶託管，**無** `application_fee_amount` / `transfer_data`。買家確認收貨後撥款；若 `merchant_payout > amount_received` 則 transfer 不綁 `source_transaction`（平台 balance 補差）。詳見 [platform-rewards-v2 QA](./follow-up/platform-rewards-v2/QA_CHECKLIST.md)。
 
 ### 5.2 Member 鑑定託管結帳（✅ 已落地，Payment Milestone 1.5）
 

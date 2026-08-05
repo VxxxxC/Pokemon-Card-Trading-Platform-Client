@@ -46,6 +46,7 @@ getAdminSystemHealthStatus(): Promise<
 | Listings | `listings` where `status = active` |
 | Stripe balance | `stripe.balance.retrieve()` — HKD `available` / `pending` (major units) |
 | Alert count | `reports` where `status IN ('pending', 'reviewing')` |
+| Pending grading | `search_admin_grading_orders` totals for `awaiting_intake` + `grading` + `awaiting_outbound` |
 
 ## Stripe balance (Phase 2)
 

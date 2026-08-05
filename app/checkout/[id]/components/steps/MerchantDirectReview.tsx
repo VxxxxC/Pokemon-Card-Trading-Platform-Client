@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
+import { CheckoutCouponPicker } from "@/app/checkout/[id]/components/CheckoutCouponPicker";
 import type {
   MerchantDirectCheckoutSession,
   MerchantDirectFormState,
@@ -12,6 +13,8 @@ type MerchantDirectReviewProps = {
   form: MerchantDirectFormState;
   onFormChange: (patch: Partial<MerchantDirectFormState>) => void;
   paymentLocked: boolean;
+  selectedCouponId: string | null;
+  onCouponChange: (couponId: string | null) => void;
 };
 
 export function MerchantDirectReview({
@@ -19,6 +22,8 @@ export function MerchantDirectReview({
   form,
   onFormChange,
   paymentLocked,
+  selectedCouponId,
+  onCouponChange,
 }: MerchantDirectReviewProps) {
   const { product, counterparty } = session;
   const rarity = product.displayId ?? product.cardNumber ?? "—";
@@ -178,9 +183,12 @@ export function MerchantDirectReview({
           </div>
           <Switch
             checked={form.authServiceEnabled}
-            onCheckedChange={(checked) =>
-              onFormChange({ authServiceEnabled: checked })
-            }
+            onCheckedChange={(checked) => {
+              onFormChange({ authServiceEnabled: checked });
+              if (checked) {
+                onCouponChange(null);
+              }
+            }}
             disabled={!session.listingAcceptsAuthentication || paymentLocked}
             className="data-checked:bg-brand data-unchecked:bg-[#39342f]"
           />
@@ -200,6 +208,21 @@ export function MerchantDirectReview({
           </div>
         ) : null}
       </section>
+
+      {showDirectDeliverySection ? (
+        <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
+          <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
+            🎟️ 5. 平台優惠券
+          </h2>
+          <CheckoutCouponPicker
+            orderId={session.orderId}
+            shippingMethod={form.shippingType}
+            selectedCouponId={selectedCouponId}
+            onSelectCoupon={onCouponChange}
+            disabled={paymentLocked}
+          />
+        </section>
+      ) : null}
 
       <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
         <label

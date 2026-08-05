@@ -13,6 +13,8 @@ type CheckoutReviewStepProps = {
   merchantDirectForm: MerchantDirectFormState;
   onMerchantDirectFormChange: (patch: Partial<MerchantDirectFormState>) => void;
   paymentLocked: boolean;
+  selectedCouponId: string | null;
+  onCouponChange: (couponId: string | null) => void;
 };
 
 function ProductSummaryCard({ session }: { session: CheckoutSession }) {
@@ -58,6 +60,8 @@ export function CheckoutReviewStep({
   merchantDirectForm,
   onMerchantDirectFormChange,
   paymentLocked,
+  selectedCouponId,
+  onCouponChange,
 }: CheckoutReviewStepProps) {
   if (session.variant === "merchant_direct") {
     return (
@@ -66,6 +70,8 @@ export function CheckoutReviewStep({
         form={merchantDirectForm}
         onFormChange={onMerchantDirectFormChange}
         paymentLocked={paymentLocked}
+        selectedCouponId={selectedCouponId}
+        onCouponChange={onCouponChange}
       />
     );
   }

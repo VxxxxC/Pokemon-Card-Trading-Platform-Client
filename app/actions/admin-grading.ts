@@ -155,6 +155,51 @@ function parseAuditPayload(data: unknown): AdminGradingAuditRow[] {
   return Array.isArray(rows) ? (rows as AdminGradingAuditRow[]) : [];
 }
 
+export async function countAdminPendingGradingOrders(): Promise<ActionResult<number>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const tabs: AdminGradingTab[] = [
+    "awaiting_intake",
+    "grading",
+    "awaiting_outbound",
+  ];
+
+  try {
+    const supabase = asAdminGradingRpcClient(await createClient());
+    const results = await Promise.all(
+      tabs.map((tab) =>
+        supabase.rpc("search_admin_grading_orders", {
+          p_tab: tab,
+          p_order_kind: null,
+          p_keyword: null,
+          p_page: 1,
+          p_page_size: 1,
+        }),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.error) {
+        console.error("[countAdminPendingGradingOrders]", result.error.message);
+        return { success: false, error: mapRpcError(result.error.message) };
+      }
+    }
+
+    const total = results.reduce((sum, result) => {
+      const parsed = parseQueuePayload(result.data);
+      return sum + (parsed?.total ?? 0);
+    }, 0);
+
+    return { success: true, data: total };
+  } catch (error) {
+    console.error("[countAdminPendingGradingOrders]", error);
+    return { success: false, error: "無法載入待處理鑑定訂單數量" };
+  }
+}
+
 type AdminGradingRpcClient = {
   rpc(
     fn: "search_admin_grading_orders",

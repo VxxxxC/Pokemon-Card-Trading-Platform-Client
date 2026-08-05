@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
 import { loadCheckoutSession } from "@/app/actions/checkout";
+import { listCheckoutEligibleCoupons } from "@/app/actions/checkout-coupons";
 import { CheckoutOrderSummary } from "@/app/checkout/[id]/components/CheckoutOrderSummary";
 import { CheckoutPaymentStep } from "@/app/checkout/[id]/components/CheckoutPaymentStep";
 import { CheckoutWizardStepper } from "@/app/checkout/[id]/components/CheckoutWizardStepper";
@@ -64,6 +65,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
   const [isLoadingOrder, setIsLoadingOrder] = useState(true);
   const [merchantDirectForm, setMerchantDirectForm] =
     useState<MerchantDirectFormState | null>(null);
+  const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
+  const [couponPreviewSubsidy, setCouponPreviewSubsidy] = useState(0);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [isPreparingPayment, setIsPreparingPayment] = useState(false);
@@ -115,8 +118,15 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     ? resolveCheckoutDisplayPricing(
         session,
         session.variant === "merchant_direct" ? merchantDirectForm ?? undefined : undefined,
+        { platformSubsidy: couponPreviewSubsidy },
       )
-    : { shippingFee: 0, authFee: 0, totalAmount: 0 };
+    : {
+        shippingFee: 0,
+        authFee: 0,
+        grossTotalAmount: 0,
+        platformSubsidy: 0,
+        totalAmount: 0,
+      };
 
   const shippingLabel =
     session?.variant === "merchant_direct" && merchantDirectForm
@@ -139,7 +149,57 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     patch: Partial<MerchantDirectFormState>,
   ) => {
     setMerchantDirectForm((current) => (current ? { ...current, ...patch } : current));
+    if (patch.shippingType || patch.authServiceEnabled) {
+      setSelectedCouponId(null);
+      setCouponPreviewSubsidy(0);
+    }
   };
+
+  const handleCouponChange = (couponId: string | null) => {
+    setSelectedCouponId(couponId);
+    if (!couponId) {
+      setCouponPreviewSubsidy(0);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      !session ||
+      session.variant !== "merchant_direct" ||
+      !merchantDirectForm ||
+      merchantDirectForm.authServiceEnabled ||
+      !selectedCouponId
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncCouponPreview = async () => {
+      const result = await listCheckoutEligibleCoupons(session.orderId, {
+        shippingMethod: merchantDirectForm.shippingType,
+      });
+
+      if (cancelled || !result.success) {
+        return;
+      }
+
+      const selected = result.data.find((coupon) => coupon.id === selectedCouponId);
+      setCouponPreviewSubsidy(
+        selected?.eligible ? Number(selected.previewSubsidy ?? 0) : 0,
+      );
+    };
+
+    void syncCouponPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    merchantDirectForm,
+    selectedCouponId,
+    session,
+  ]);
 
   const handleProceedToPayment = async () => {
     if (!session) {
@@ -179,6 +239,14 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     const result = await prepareCheckoutPayment(
       session,
       session.variant === "merchant_direct" ? merchantDirectForm ?? undefined : undefined,
+      {
+        userRewardId:
+          session.variant === "merchant_direct" &&
+          merchantDirectForm &&
+          !merchantDirectForm.authServiceEnabled
+            ? selectedCouponId
+            : null,
+      },
     );
 
     setIsPreparingPayment(false);
@@ -199,6 +267,9 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     setPublishableKey(result.data.publishableKey);
     setClientSecret(result.data.clientSecret);
     setUseMockPayment(false);
+    if (result.data.platformSubsidyAmount != null) {
+      setCouponPreviewSubsidy(result.data.platformSubsidyAmount);
+    }
     setSession((current) =>
       current
         ? {
@@ -316,6 +387,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
                 merchantDirectForm={merchantDirectForm}
                 onMerchantDirectFormChange={handleMerchantDirectFormChange}
                 paymentLocked={clientSecret !== null}
+                selectedCouponId={selectedCouponId}
+                onCouponChange={handleCouponChange}
               />
             ) : (
               <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
@@ -335,6 +408,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
               shippingFee={pricing.shippingFee}
               authFee={pricing.authFee}
               totalAmount={pricing.totalAmount}
+              platformSubsidyAmount={pricing.platformSubsidy}
               shippingLabel={shippingLabel}
               showShippingRow={Boolean(showShippingRow)}
               showAuthFeeRow={

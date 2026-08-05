@@ -56,6 +56,9 @@ type UserRole = Enums<"user_role">;
 | `report_source` | `chat_room`, `profile` |
 | `report_state` | `pending`, `reviewing`, `resolved`, `dismissed` |
 | `review_persona` | `member`, `merchant` |
+| `reward_distribution_mode` | `auto_grant`, `flash_only` |
+| `reward_template_audit_action` | `create`, `update`, `publish`, `archive` |
+| `reward_template_status` | `draft`, `active`, `archived` |
 | `reward_type` | `discount_coupon`, `free_shipping`, `lucky_draw_ticket`, `points` |
 | `sanction_scope` | `account`, `member_persona`, `merchant_persona` |
 | `sanction_type` | `warn`, `restrict_listing`, `restrict_chat`, `freeze_payout`, `suspend`, `ban` |
@@ -84,10 +87,13 @@ type UserRole = Enums<"user_role">;
 | `_moderation_resolve_chat_room_for_case` | `{ p_case_id: string }` | `string` |
 | `_moderation_write_audit_log` | `{ p_action: string; p_case_id: string; p_payload?: Json }` | `undefined` |
 | `_recompute_moderation_case_scores` | `{ p_case_id: string }` | `undefined` |
+| `_reward_template_row_to_json` | `{ p_row: Database["public"]["Tables"]["reward_templates"]["Row"] }` | `Json` |
+| `_reward_template_write_audit` | `{ p_action: Database["public"]["Enums"]["reward_template_audit_action"] p_admin_id: string p_snapsh…` | `undefined` |
 | `acknowledge_reward_grants` | `{ p_user_reward_ids: string[] }` | `Json` |
 | `admin_get_moderation_case_bundle` | `{ p_case_id: string }` | `Json` |
 | `admin_get_moderation_chat_thread` | `{ p_before?: string p_case_id: string p_limit?: number p_room_id: string }` | `Json` |
 | `admin_get_moderation_order_context` | `{ p_case_id: string }` | `Json` |
+| `admin_get_subject_moderation_history` | `{ p_case_limit?: number p_exclude_case_id?: string p_sanction_limit?: number p_subject_user_id: str…` | `Json` |
 | `canonical_card_search_key` | `{ input: string };` | `string` |
 | `card_identifier_flexible_match` | `{ p_query: string; p_target: string }` | `boolean` |
 | `card_search_tokens_array` | `{ input: string };` | `string[]` |
@@ -103,6 +109,7 @@ type UserRole = Enums<"user_role">;
 | `fn_bump_listing_offers_count` | `{ p_actor_id?: string; p_listing_id: string }` | `undefined` |
 | `fn_chat_party_profile_snippet` | `{ p_persona: Database["public"]["Enums"]["seller_persona_type"] p_profile_id: string }` | `Json` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
+| `fn_compute_platform_subsidy` | `{ p_buyer_id: string p_item_subtotal: number p_order_id?: string p_shipping_fee: number p_shipping_…` | `{ coupon_type: Database["public"]["Enums"]["reward_type"] subsidy_amount: number }[]` |
 | `fn_effective_check_in_streak` | `{ p_user_id: string }` | `number` |
 | `fn_grant_points_from_template` | `{ p_template_id: string; p_user_id: string }` | `Json` |
 | `fn_issue_reward_from_template` | `{ p_grant_dedup_key?: string p_template_id: string p_user_id: string }` | `string` |
@@ -118,6 +125,7 @@ type UserRole = Enums<"user_role">;
 | `fn_recalculate_merchant_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_redeem_member_points` | `{ p_amount: number p_description?: string p_source_ref?: string }` | `Json` |
+| `fn_release_merchant_order_coupon` | `{ p_order_id: string }` | `undefined` |
 | `fn_resolve_member_listing_id` | `{ p_listing_ref: string; p_seller_id: string }` | `string` |
 | `fn_reward_template_has_stock` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] }` | `boolean` |
 | `fn_reward_template_progress_detail` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `Json` |
@@ -125,6 +133,7 @@ type UserRole = Enums<"user_role">;
 | `fn_template_is_eligible` | `{ p_template: Database["public"]["Tables"]["reward_templates"]["Row"] p_user_id: string }` | `{ eligible: boolean grant_dedup_key: string }[]` |
 | `fn_try_auto_grant_rewards` | `{ p_user_id: string };` | `Json` |
 | `fn_try_reveal_order_reviews` | `{ p_order_id: string; p_order_kind: string }` | `boolean` |
+| `fn_validate_reward_template` | `{ p_payload: Json }` | `undefined` |
 | `generate_merchant_shop_handle` | `never;` | `string` |
 | `generate_profile_username` | `never;` | `string` |
 | `get_admin_grading_audit_history` | `{ p_order_id: string; p_order_kind: string }` | `Json` |
@@ -153,9 +162,12 @@ type UserRole = Enums<"user_role">;
 | `rpc_accept_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_adjust_moderation_case_score` | `{ p_adjustment: number; p_case_id: string; p_reason?: string }` | `Json` |
 | `rpc_admin_confirm_grading_intake` | `{ p_order_id: string; p_order_kind: string }` | `Json` |
+| `rpc_admin_list_reward_templates` | `{ p_page?: number p_page_size?: number p_status?: string p_type?: string }` | `Json` |
 | `rpc_admin_pass_grading` | `{ p_notes?: string; p_order_id: string; p_order_kind: string }` | `Json` |
 | `rpc_admin_prepare_auth_refund` | `{ p_order_id: string; p_order_kind: string; p_reason?: string }` | `Json` |
+| `rpc_admin_set_reward_template_status` | `{ p_status: string; p_template_id: string }` | `Json` |
 | `rpc_admin_submit_grading_outbound` | `{ p_order_id: string p_order_kind: string p_tracking_no: string }` | `Json` |
+| `rpc_admin_upsert_reward_template` | `{ p_payload: Json }` | `Json` |
 | `rpc_apply_account_sanction` | `{ p_case_id: string p_ends_at?: string p_reason?: string p_scope: Database["public"]["Enums"]["sanc…` | `Json` |
 | `rpc_attach_member_auth_order_payment_intent` | `{ p_order_id: string; p_payment_intent_id: string }` | `Json` |
 | `rpc_attach_merchant_order_payment_intent` | `{ p_order_id: string; p_payment_intent_id: string }` | `Json` |
@@ -180,6 +192,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
+| `rpc_list_checkout_eligible_coupons` | `{ p_order_id: string; p_shipping_method?: string }` | `Json` |
 | `rpc_list_member_fps_payout_ready_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_connect_payout_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_pending_payment_expiry_candidates` | `{ p_limit?: number }` | `{ listing_id: string order_id: string stripe_payment_intent_id: string }[]` |
@@ -562,8 +575,11 @@ type UserRole = Enums<"user_role">;
 | `buyer_id` | `string` | No |
 | `buyer_phone` | `string | null` | Yes |
 | `buyer_remark` | `string | null` | Yes |
+| `buyer_total_amount` | `number | null` | Yes |
 | `commission_amount` | `number | null` | Yes |
 | `commission_rate_applied` | `number | null` | Yes |
+| `coupon_type` | `reward_type | null` | Yes |
+| `coupon_user_reward_id` | `string | null` | Yes |
 | `created_at` | `string | null` | Yes |
 | `escrow_status` | `escrow_state | null` | Yes |
 | `fault_party` | `grading_fault_party | null` | Yes |
@@ -587,6 +603,7 @@ type UserRole = Enums<"user_role">;
 | `payout_hold_until` | `string | null` | Yes |
 | `payout_status` | `string` | No |
 | `platform_received_at` | `string | null` | Yes |
+| `platform_subsidy_amount` | `number` | No |
 | `refund_amount` | `number | null` | Yes |
 | `refund_attempted_at` | `string | null` | Yes |
 | `refund_error` | `string | null` | Yes |
@@ -925,6 +942,21 @@ type UserRole = Enums<"user_role">;
 
 ---
 
+### `reward_template_audits`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `action` | `reward_template_audit_action` | No |
+| `admin_id` | `string` | No |
+| `created_at` | `string` | No |
+| `id` | `string` | No |
+| `snapshot` | `Json` | No |
+| `template_id` | `string` | No |
+
+**Foreign keys:** `admin_id` → `profiles`
+
+---
+
 ### `reward_templates`
 
 *Domain:* Rewards
@@ -934,12 +966,15 @@ type UserRole = Enums<"user_role">;
 | `claimed_count` | `number` | No |
 | `created_at` | `string | null` | Yes |
 | `description` | `string | null` | Yes |
+| `distribution_mode` | `reward_distribution_mode` | No |
 | `fixed_expiry_date` | `string | null` | Yes |
 | `id` | `string` | No |
 | `is_active` | `boolean | null` | Yes |
 | `is_infinite` | `boolean | null` | Yes |
 | `max_claims` | `number | null` | Yes |
+| `restrictions` | `Json` | No |
 | `reward_value` | `Json` | No |
+| `status` | `reward_template_status` | No |
 | `title` | `string` | No |
 | `trigger_conditions` | `Json` | No |
 | `type` | `reward_type` | No |
@@ -1003,17 +1038,18 @@ type UserRole = Enums<"user_role">;
 | `grant_dedup_key` | `string` | No |
 | `id` | `string` | No |
 | `is_used` | `boolean | null` | Yes |
+| `reserved_merchant_order_id` | `string | null` | Yes |
 | `template_id` | `string` | No |
 | `used_at` | `string | null` | Yes |
 | `user_id` | `string` | No |
 
-**Foreign keys:** `template_id` → `reward_templates`
+**Foreign keys:** `reserved_merchant_order_id` → `merchant_orders`
 
 ---
 
 ## Table Index
 
-**35 tables**
+**36 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -1048,6 +1084,7 @@ type UserRole = Enums<"user_role">;
 | `profiles` | Users & auth |
 | `report_attachments` | — |
 | `reports` | Moderation |
+| `reward_template_audits` | — |
 | `reward_templates` | Rewards |
 | `transaction_reviews` | Reputation |
 | `user_collections` | User portfolio |
