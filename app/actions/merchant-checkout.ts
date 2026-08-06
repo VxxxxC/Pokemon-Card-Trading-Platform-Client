@@ -619,10 +619,7 @@ export async function createMerchantOrderPaymentIntent(
           ? deliveryDetails.meetupDetail ?? null
           : null,
       p_buyer_remark: deliveryDetails.buyerRemark ?? null,
-      p_user_reward_id:
-        !options.useAuth && options.userRewardId
-          ? options.userRewardId
-          : null,
+      p_user_reward_id: options.userRewardId ?? null,
     });
 
     if (prepareError) {

@@ -6,6 +6,7 @@ import {
   setAdminRewardTemplateStatus,
   upsertAdminRewardTemplate,
 } from "@/app/actions/admin-rewards";
+import { upsertAdminRewardCampaign } from "@/app/actions/admin-reward-campaigns";
 import { RewardCampaignScheduleStep } from "@/app/admin/campaigns/wizard/RewardCampaignScheduleStep";
 import { RewardDistributionStep } from "@/app/admin/campaigns/wizard/RewardDistributionStep";
 import { RewardTemplateDefinitionStep } from "@/app/admin/campaigns/wizard/RewardTemplateDefinitionStep";
@@ -21,6 +22,7 @@ import type {
   AdminRewardTemplateUpsertInput,
 } from "@/lib/admin-rewards/types";
 import {
+  buildDefaultFlashSchedule,
   buildDefaultForm,
   rowToForm,
 } from "@/lib/admin-rewards/template-form";
@@ -40,6 +42,45 @@ const STEP_LABELS: Record<WizardStep, string> = {
   3: "檔期（可選）",
 };
 
+function localDateTimeToIso(value: string): string {
+  if (!value.trim()) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toISOString();
+}
+
+function validateFlashSchedule(form: AdminRewardTemplateUpsertInput): string | null {
+  const schedule = form.flash_schedule;
+  if (!schedule) {
+    return "請設定搶券檔期";
+  }
+  if (!schedule.campaign_name.trim()) {
+    return "請填寫活動名稱";
+  }
+  if (!schedule.starts_at || !schedule.ends_at) {
+    return "請設定活動開始與結束時間";
+  }
+  const startsAt = localDateTimeToIso(schedule.starts_at);
+  const endsAt = localDateTimeToIso(schedule.ends_at);
+  if (!startsAt || !endsAt) {
+    return "活動時間格式無效";
+  }
+  if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    return "活動結束時間必須晚於開始時間";
+  }
+  if (schedule.max_claims <= 0) {
+    return "場次庫存必須大於 0";
+  }
+  if (schedule.max_claims_per_user <= 0) {
+    return "每人限搶必須大於 0";
+  }
+  return null;
+}
+
 export function RewardTemplateWizard({
   open,
   onOpenChange,
@@ -54,7 +95,14 @@ export function RewardTemplateWizard({
 
   const resetForOpen = (row: AdminRewardTemplateRow | null | undefined) => {
     setStep(1);
-    setForm(row ? rowToForm(row) : buildDefaultForm());
+    const nextForm = row ? rowToForm(row) : buildDefaultForm();
+    if (nextForm.distribution_mode === "flash_only" && !nextForm.flash_schedule) {
+      nextForm.flash_schedule = {
+        ...buildDefaultFlashSchedule(),
+        campaign_name: nextForm.title || "",
+      };
+    }
+    setForm(nextForm);
   };
 
   const handleOpenChange = (next: boolean) => {
@@ -62,6 +110,19 @@ export function RewardTemplateWizard({
       resetForOpen(initialRow);
     }
     onOpenChange(next);
+  };
+
+  const handleFormChange = (next: AdminRewardTemplateUpsertInput) => {
+    if (
+      next.distribution_mode === "flash_only" &&
+      !next.flash_schedule
+    ) {
+      next.flash_schedule = {
+        ...buildDefaultFlashSchedule(),
+        campaign_name: next.title || "",
+      };
+    }
+    setForm(next);
   };
 
   const handleSaveDraft = () => {
@@ -78,12 +139,21 @@ export function RewardTemplateWizard({
   };
 
   const handlePublish = () => {
+    if (form.distribution_mode === "flash_only") {
+      const scheduleError = validateFlashSchedule(form);
+      if (scheduleError) {
+        toast.error(scheduleError);
+        return;
+      }
+    }
+
     startTransition(async () => {
       const saveResult = await upsertAdminRewardTemplate(form);
       if (!saveResult.success) {
         toast.error(saveResult.error);
         return;
       }
+
       const templateId = saveResult.data.templateId;
       const publishResult = await setAdminRewardTemplateStatus(
         templateId,
@@ -93,6 +163,27 @@ export function RewardTemplateWizard({
         toast.error(publishResult.error);
         return;
       }
+
+      if (form.distribution_mode === "flash_only" && form.flash_schedule) {
+        const schedule = form.flash_schedule;
+        const campaignResult = await upsertAdminRewardCampaign({
+          id: schedule.campaign_id,
+          template_id: templateId,
+          name: schedule.campaign_name.trim(),
+          status: "active",
+          starts_at: localDateTimeToIso(schedule.starts_at),
+          ends_at: localDateTimeToIso(schedule.ends_at),
+          max_claims: schedule.max_claims,
+          max_claims_per_user: schedule.max_claims_per_user,
+          override_valid_days: schedule.override_valid_days,
+        });
+
+        if (!campaignResult.success) {
+          toast.error(campaignResult.error);
+          return;
+        }
+      }
+
       toast.success("已發布模板");
       onSaved();
       onOpenChange(false);
@@ -127,12 +218,14 @@ export function RewardTemplateWizard({
         </div>
 
         {step === 1 ? (
-          <RewardTemplateDefinitionStep form={form} onChange={setForm} />
+          <RewardTemplateDefinitionStep form={form} onChange={handleFormChange} />
         ) : null}
         {step === 2 ? (
-          <RewardDistributionStep form={form} onChange={setForm} />
+          <RewardDistributionStep form={form} onChange={handleFormChange} />
         ) : null}
-        {step === 3 ? <RewardCampaignScheduleStep /> : null}
+        {step === 3 ? (
+          <RewardCampaignScheduleStep form={form} onChange={handleFormChange} />
+        ) : null}
 
         <div className="flex flex-wrap justify-between gap-2 border-t border-white/10 pt-4">
           <div className="flex gap-2">

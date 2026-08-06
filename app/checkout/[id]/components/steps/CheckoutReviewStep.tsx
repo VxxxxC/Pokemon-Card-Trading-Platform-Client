@@ -79,7 +79,12 @@ export function CheckoutReviewStep({
   return (
     <div className="space-y-6">
       <ProductSummaryCard session={session} />
-      <AuthEscrowReview session={session} />
+      <AuthEscrowReview
+        session={session}
+        selectedCouponId={selectedCouponId}
+        onCouponChange={onCouponChange}
+        paymentLocked={paymentLocked}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import {
   DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+  type AdminRewardTemplateFlashSchedule,
   type AdminRewardTemplateRow,
   type AdminRewardTemplateStatus,
   type AdminRewardTemplateType,
@@ -17,6 +18,20 @@ export const STATUS_LABELS: Record<AdminRewardTemplateStatus, string> = {
   active: "已發布",
   archived: "已封存",
 };
+
+export function buildDefaultFlashSchedule(): AdminRewardTemplateFlashSchedule {
+  const now = new Date();
+  const starts = new Date(now.getTime() + 5 * 60 * 1000);
+  const ends = new Date(starts.getTime() + 24 * 60 * 60 * 1000);
+  return {
+    campaign_name: "",
+    starts_at: starts.toISOString().slice(0, 16),
+    ends_at: ends.toISOString().slice(0, 16),
+    max_claims: 100,
+    max_claims_per_user: 1,
+    override_valid_days: null,
+  };
+}
 
 export function buildDefaultForm(): AdminRewardTemplateUpsertInput {
   return {

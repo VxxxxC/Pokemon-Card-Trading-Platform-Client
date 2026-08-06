@@ -50,8 +50,7 @@ export function RewardDistributionStep({
         </p>
       ) : (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-          已選擇「限時搶領」。模板可先發布，但正式搶券檔期需於 Phase 3 建立
-          campaign 後才會上線。
+          已選擇「限時搶領」。請於 Step 3 設定檔期，發布後會員可在獎勵中心搶券。
         </div>
       )}
     </div>

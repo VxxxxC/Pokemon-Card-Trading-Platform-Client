@@ -162,14 +162,24 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     }
   };
 
+  const merchantCouponUseAuth =
+    session?.variant === "merchant_auth" ||
+    (session?.variant === "merchant_direct" &&
+      Boolean(merchantDirectForm?.authServiceEnabled));
+
   useEffect(() => {
+    if (!session || !selectedCouponId) {
+      return;
+    }
+
     if (
-      !session ||
-      session.variant !== "merchant_direct" ||
-      !merchantDirectForm ||
-      merchantDirectForm.authServiceEnabled ||
-      !selectedCouponId
+      session.variant !== "merchant_auth" &&
+      session.variant !== "merchant_direct"
     ) {
+      return;
+    }
+
+    if (session.variant === "merchant_direct" && !merchantDirectForm) {
       return;
     }
 
@@ -177,7 +187,11 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
 
     const syncCouponPreview = async () => {
       const result = await listCheckoutEligibleCoupons(session.orderId, {
-        shippingMethod: merchantDirectForm.shippingType,
+        shippingMethod:
+          session.variant === "merchant_auth" || merchantCouponUseAuth
+            ? "sf"
+            : merchantDirectForm?.shippingType ?? "sf",
+        useAuth: merchantCouponUseAuth,
       });
 
       if (cancelled || !result.success) {
@@ -196,6 +210,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
       cancelled = true;
     };
   }, [
+    merchantCouponUseAuth,
     merchantDirectForm,
     selectedCouponId,
     session,
@@ -241,9 +256,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
       session.variant === "merchant_direct" ? merchantDirectForm ?? undefined : undefined,
       {
         userRewardId:
-          session.variant === "merchant_direct" &&
-          merchantDirectForm &&
-          !merchantDirectForm.authServiceEnabled
+          session.variant === "merchant_auth" ||
+          session.variant === "merchant_direct"
             ? selectedCouponId
             : null,
       },
@@ -413,7 +427,9 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
               showShippingRow={Boolean(showShippingRow)}
               showAuthFeeRow={
                 session.variant === "merchant_auth" ||
-                session.variant === "member_auth"
+                session.variant === "member_auth" ||
+                (session.variant === "merchant_direct" &&
+                  Boolean(merchantDirectForm?.authServiceEnabled))
               }
               extraShippingNote={extraShippingNote}
             >

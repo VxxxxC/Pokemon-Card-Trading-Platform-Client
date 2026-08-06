@@ -209,20 +209,19 @@ export function MerchantDirectReview({
         ) : null}
       </section>
 
-      {showDirectDeliverySection ? (
-        <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
-          <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-            🎟️ 5. 平台優惠券
-          </h2>
-          <CheckoutCouponPicker
-            orderId={session.orderId}
-            shippingMethod={form.shippingType}
-            selectedCouponId={selectedCouponId}
-            onSelectCoupon={onCouponChange}
-            disabled={paymentLocked}
-          />
-        </section>
-      ) : null}
+      <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
+        <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
+          🎟️ 5. 平台優惠券
+        </h2>
+        <CheckoutCouponPicker
+          orderId={session.orderId}
+          shippingMethod={form.authServiceEnabled ? "sf" : form.shippingType}
+          selectedCouponId={selectedCouponId}
+          onSelectCoupon={onCouponChange}
+          disabled={paymentLocked}
+          useAuth={form.authServiceEnabled}
+        />
+      </section>
 
       <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
         <label

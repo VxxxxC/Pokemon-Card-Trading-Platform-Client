@@ -1,13 +1,22 @@
 "use client";
 
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
+import { CheckoutCouponPicker } from "@/app/checkout/[id]/components/CheckoutCouponPicker";
 import type { CheckoutSession } from "@/lib/checkout/types";
 
 type AuthEscrowReviewProps = {
   session: CheckoutSession;
+  selectedCouponId?: string | null;
+  onCouponChange?: (couponId: string | null) => void;
+  paymentLocked?: boolean;
 };
 
-export function AuthEscrowReview({ session }: AuthEscrowReviewProps) {
+export function AuthEscrowReview({
+  session,
+  selectedCouponId = null,
+  onCouponChange,
+  paymentLocked = false,
+}: AuthEscrowReviewProps) {
   const isMember = session.variant === "member_auth";
 
   return (
@@ -47,6 +56,22 @@ export function AuthEscrowReview({ session }: AuthEscrowReviewProps) {
           </ol>
         </section>
       )}
+
+      {session.variant === "merchant_auth" && onCouponChange ? (
+        <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
+          <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
+            🎟️ 平台優惠券
+          </h2>
+          <CheckoutCouponPicker
+            orderId={session.orderId}
+            shippingMethod="sf"
+            selectedCouponId={selectedCouponId}
+            onSelectCoupon={onCouponChange}
+            disabled={paymentLocked}
+            useAuth
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

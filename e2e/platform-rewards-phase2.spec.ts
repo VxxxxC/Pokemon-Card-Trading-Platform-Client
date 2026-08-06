@@ -1,25 +1,28 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   assertListingIsActiveMerchant,
+  buyMerchantListingAndReachCheckout,
+  buyMerchantListingWithAuthAndReachCheckout,
+  completeMerchantAuthCheckout,
   completeMerchantDirectCheckout,
+  findActiveDiscountCouponTemplateId,
   findActiveFreeShippingTemplateId,
   findActiveMerchantListingForE2e,
-  findPendingMerchantOrderForListing,
   getMerchantOrderCouponSnapshot,
   getRewardTemplateIdByTitle,
   getUserRewardRow,
   grantUserRewardForE2e,
+  openRewardTemplateWizard,
+  publishDiscountCouponTemplate,
   reactivateListingForE2e,
   setListingAuthenticationForE2e,
 } from "./helpers/platform-rewards";
 import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import {
-  buildMerchantProductDetailPath,
   getMerchantProductDetailFixtures,
   hasBuyerAuthFixtures,
   hasCoreMerchantFixtures,
 } from "./fixtures/test-data";
-import { dismissBlockingOverlays } from "./helpers/member-trading";
 
 function readEnv(key: string): string | undefined {
   return process.env[key]?.trim() || undefined;
@@ -48,14 +51,7 @@ async function publishFreeShippingTemplate(
   page: Page,
   title: string,
 ): Promise<void> {
-  await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "新增模板" })).toBeVisible({
-    timeout: 20_000,
-  });
-  await page.getByRole("button", { name: "新增模板" }).click();
-
-  const wizard = page.locator('[data-slot="dialog-content"]');
-  await expect(wizard).toBeVisible({ timeout: 15_000 });
+  const wizard = await openRewardTemplateWizard(page);
   await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
 
   await wizard.locator("#template-title").fill(title);
@@ -71,67 +67,22 @@ async function publishFreeShippingTemplate(
   await expect(wizard).toBeHidden({ timeout: 15_000 });
 }
 
-async function buyMerchantListingAndReachCheckout(
-  page: Page,
-  sellerId: string,
-  listingId: string,
-): Promise<string> {
-  await page.goto(buildMerchantProductDetailPath(sellerId, listingId), {
-    waitUntil: "domcontentloaded",
-  });
-  await dismissBlockingOverlays(page);
-  await expect(page.locator("main h1")).toBeVisible({ timeout: 15_000 });
-
-  const buyButton = page.getByRole("button", { name: /立即購買/ });
-  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
-  await buyButton.click();
-
-  const dialog = page.getByRole("alertdialog", { name: "確認立即購買" });
-  await expect(dialog).toBeVisible({ timeout: 15_000 });
-  await dialog.getByRole("button", { name: "確認立即購買" }).click();
-
-  const navigatedToCheckout = await page
-    .waitForURL(/\/checkout\//, { timeout: 20_000 })
-    .then(() => true)
-    .catch(() => false);
-
-  if (!navigatedToCheckout) {
-    let pendingOrderId: string | null = null;
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      pendingOrderId = await findPendingMerchantOrderForListing(listingId);
-      if (pendingOrderId) {
-        break;
-      }
-      await page.waitForTimeout(500);
-    }
-    if (!pendingOrderId) {
-      throw new Error(
-        "Buy now did not navigate to checkout and no pending order was created",
-      );
-    }
-    await page.goto(`/checkout/${pendingOrderId}`, {
-      waitUntil: "domcontentloaded",
-    });
-  }
-
-  await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
-  const orderId =
-    page.url().match(/\/checkout\/([^/?#]+)/)?.[1]?.trim() ?? "";
-  expect(orderId.length).toBeGreaterThan(0);
-  return orderId;
-}
-
 test.describe.configure({ mode: "serial" });
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(300_000);
 
 test.describe("Platform rewards Phase 2 E2E", () => {
   const templateTitle = `E2E Phase2 Free Ship ${Date.now()}`;
+  const highMinSpendTemplateTitle = `E2E Phase2 High Min ${Date.now()}`;
+  const lowMinSpendTemplateTitle = `E2E Phase2 Low Min ${Date.now()}`;
   let templateId: string | null = null;
+  let highMinSpendTemplateId: string | null = null;
+  let lowMinSpendTemplateId: string | null = null;
   let couponRewardId: string | null = null;
   let orderId: string | null = null;
 
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
     test.skip(
       !hasAdminAuthFixtures() ||
         !hasBuyerAuthFixtures() ||
@@ -142,11 +93,45 @@ test.describe("Platform rewards Phase 2 E2E", () => {
       test.skip(true, "Missing SUPABASE_SERVICE_ROLE_KEY for DB assertions");
     }
     templateId = await findActiveFreeShippingTemplateId();
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await loginAsAdmin(page);
+
+    if (!templateId) {
+      await publishFreeShippingTemplate(page, templateTitle);
+      templateId = await getRewardTemplateIdByTitle(templateTitle);
+    }
+
+    await publishDiscountCouponTemplate(page, {
+      title: highMinSpendTemplateTitle,
+      amount: 10,
+      minSpend: 500,
+    });
+    highMinSpendTemplateId = await getRewardTemplateIdByTitle(
+      highMinSpendTemplateTitle,
+    );
+
+    await publishDiscountCouponTemplate(page, {
+      title: lowMinSpendTemplateTitle,
+      amount: 10,
+      minSpend: 50,
+    });
+    lowMinSpendTemplateId = await getRewardTemplateIdByTitle(
+      lowMinSpendTemplateTitle,
+    );
+
+    await context.close();
+
+    if (!highMinSpendTemplateId || !lowMinSpendTemplateId) {
+      throw new Error("Failed to bootstrap discount templates for Phase 2 E2E");
+    }
   });
 
   test("A1–A3 admin publishes free-shipping template via wizard", async ({
     browser,
-  }) => {
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Admin-only setup");
     test.skip(!hasAdminAuthFixtures(), "Missing admin credentials");
 
     templateId = await findActiveFreeShippingTemplateId();
@@ -161,6 +146,15 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     templateId = await getRewardTemplateIdByTitle(templateTitle);
     expect(templateId).toBeTruthy();
     await context.close();
+  });
+
+  test("A4 admin publishes discount_coupon template for min-spend tests", async (
+    {},
+    testInfo,
+  ) => {
+    test.skip(testInfo.project.name !== "guest", "Admin-only setup");
+    expect(highMinSpendTemplateId).toBeTruthy();
+    expect(lowMinSpendTemplateId).toBeTruthy();
   });
 
   test("B1 free-shipping checkout applies platform subsidy", async ({
@@ -219,7 +213,96 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     expect(reward?.reserved_merchant_order_id).toBeNull();
   });
 
-  test("B3.1 auth toggle hides coupon picker", async ({ page }, testInfo) => {
+  test("B2 min spend eligibility at checkout", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+    test.skip(
+      !highMinSpendTemplateId || !lowMinSpendTemplateId,
+      "Discount templates not created",
+    );
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId!,
+    });
+    await reactivateListingForE2e(merchantListing.listingId);
+
+    const ineligibleRewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: highMinSpendTemplateId!,
+    });
+    const eligibleRewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: lowMinSpendTemplateId!,
+    });
+
+    await buyMerchantListingAndReachCheckout(
+      page,
+      merchantListing.sellerId,
+      merchantListing.listingId,
+    );
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible({
+      timeout: 20_000,
+    });
+
+    const ineligibleOption = page.locator(
+      `#checkout-coupon option[value="${ineligibleRewardId}"]`,
+    );
+    await expect(ineligibleOption).toBeDisabled();
+    const ineligibleLabel = (await ineligibleOption.textContent()) ?? "";
+    expect(ineligibleLabel).toMatch(/未達優惠券最低消費門檻/);
+
+    await page.locator("#checkout-coupon").selectOption(eligibleRewardId);
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+  });
+
+  test("B3.4 switching coupon A to B updates selection", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+    test.skip(!templateId || !lowMinSpendTemplateId, "Templates not created");
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId!,
+    });
+    await reactivateListingForE2e(merchantListing.listingId);
+
+    const freeShippingRewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: templateId!,
+    });
+    const discountRewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: lowMinSpendTemplateId!,
+    });
+
+    await buyMerchantListingAndReachCheckout(
+      page,
+      merchantListing.sellerId,
+      merchantListing.listingId,
+    );
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.locator("#checkout-coupon").selectOption(freeShippingRewardId);
+    await page.waitForTimeout(1000);
+    await expect(page.locator("#checkout-coupon")).toHaveValue(
+      freeShippingRewardId,
+    );
+
+    await page.locator("#checkout-coupon").selectOption(discountRewardId);
+    await page.waitForTimeout(1000);
+    await expect(page.locator("#checkout-coupon")).toHaveValue(discountRewardId);
+  });
+
+  test("B3.5 clearing coupon pays without subsidy", async ({
+    page,
+  }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
     test.skip(!templateId, "Template not created");
 
@@ -228,7 +311,48 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     const merchantListing = await findActiveMerchantListingForE2e({
       excludeSellerId: buyerId!,
     });
-    await grantUserRewardForE2e({
+    await reactivateListingForE2e(merchantListing.listingId);
+
+    const rewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: templateId!,
+    });
+
+    const clearCouponOrderId = await buyMerchantListingAndReachCheckout(
+      page,
+      merchantListing.sellerId,
+      merchantListing.listingId,
+    );
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.locator("#checkout-coupon").selectOption(rewardId);
+    await page.waitForTimeout(1000);
+    await page.locator("#checkout-coupon").selectOption("");
+    await page.waitForTimeout(1000);
+    await expect(page.locator("#checkout-coupon")).toHaveValue("");
+
+    await completeMerchantDirectCheckout(page);
+
+    const snapshot = await getMerchantOrderCouponSnapshot(clearCouponOrderId);
+    expect(snapshot).toBeTruthy();
+    expect(Number(snapshot!.platform_subsidy_amount ?? 0)).toBe(0);
+    expect(snapshot!.coupon_user_reward_id).toBeNull();
+  });
+
+  test("B3.1 auth toggle keeps coupon picker visible and clears selection", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+    test.skip(!templateId, "Template not created");
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId!,
+    });
+    const rewardId = await grantUserRewardForE2e({
       userId: buyerId!,
       templateId: templateId!,
     });
@@ -236,23 +360,113 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     await reactivateListingForE2e(merchantListing.listingId);
     await setListingAuthenticationForE2e(merchantListing.listingId, true);
 
-    const newOrderId = await buyMerchantListingAndReachCheckout(
+    await buyMerchantListingAndReachCheckout(
       page,
       merchantListing.sellerId,
       merchantListing.listingId,
     );
-    expect(newOrderId).toBeTruthy();
 
     await expect(page.locator("#checkout-coupon")).toBeVisible({
       timeout: 20_000,
     });
+    await page.locator("#checkout-coupon").selectOption(rewardId);
+    await page.waitForTimeout(1000);
+
     const authSection = page.locator("section").filter({
       hasText: "啟用鑑定服務",
     });
     const authSwitch = authSection.getByRole("switch");
     await expect(authSwitch).toBeEnabled({ timeout: 10_000 });
     await authSwitch.click();
-    await expect(page.locator("#checkout-coupon")).toHaveCount(0);
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible();
+    await expect(page.locator("#checkout-coupon")).toHaveValue("");
+  });
+
+  test("B2b.1 merchant_auth checkout applies discount coupon subsidy", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+
+    const discountTemplateId = await findActiveDiscountCouponTemplateId();
+    test.skip(!discountTemplateId, "No active discount_coupon template in DB");
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId!,
+    });
+    await reactivateListingForE2e(merchantListing.listingId);
+    await setListingAuthenticationForE2e(merchantListing.listingId, true);
+
+    const rewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: discountTemplateId!,
+    });
+
+    const authOrderId = await buyMerchantListingWithAuthAndReachCheckout(
+      page,
+      merchantListing.sellerId,
+      merchantListing.listingId,
+    );
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.locator("#checkout-coupon").selectOption(rewardId);
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+
+    await completeMerchantAuthCheckout(page, { couponRewardId: rewardId });
+
+    const snapshot = await getMerchantOrderCouponSnapshot(authOrderId);
+    expect(snapshot).toBeTruthy();
+    expect(Number(snapshot!.platform_subsidy_amount)).toBeGreaterThan(0);
+    expect(Number(snapshot!.buyer_total_amount)).toBeLessThan(
+      Number(snapshot!.total_amount),
+    );
+    expect(snapshot!.coupon_user_reward_id).toBe(rewardId);
+  });
+
+  test("B2b.2 merchant_auth checkout applies free-shipping subsidy", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
+    test.skip(!templateId, "Template not created");
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId!,
+    });
+    await reactivateListingForE2e(merchantListing.listingId);
+    await setListingAuthenticationForE2e(merchantListing.listingId, true);
+
+    const rewardId = await grantUserRewardForE2e({
+      userId: buyerId!,
+      templateId: templateId!,
+    });
+
+    const authOrderId = await buyMerchantListingWithAuthAndReachCheckout(
+      page,
+      merchantListing.sellerId,
+      merchantListing.listingId,
+    );
+
+    await expect(page.locator("#checkout-coupon")).toBeVisible({
+      timeout: 20_000,
+    });
+    await page.locator("#checkout-coupon").selectOption(rewardId);
+    await page.waitForTimeout(1500);
+    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+
+    await completeMerchantAuthCheckout(page, { couponRewardId: rewardId });
+
+    const snapshot = await getMerchantOrderCouponSnapshot(authOrderId);
+    expect(snapshot).toBeTruthy();
+    expect(Number(snapshot!.platform_subsidy_amount)).toBeGreaterThan(0);
+    expect(snapshot!.coupon_type).toBe("free_shipping");
+    expect(snapshot!.coupon_user_reward_id).toBe(rewardId);
   });
 
   test("B3.3 meetup makes free-shipping coupon ineligible", async ({

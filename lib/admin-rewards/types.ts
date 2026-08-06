@@ -51,6 +51,16 @@ export type AdminRewardTemplateRow = {
   updated_at: string | null;
 };
 
+export type AdminRewardTemplateFlashSchedule = {
+  campaign_id?: string;
+  campaign_name: string;
+  starts_at: string;
+  ends_at: string;
+  max_claims: number;
+  max_claims_per_user: number;
+  override_valid_days: number | null;
+};
+
 export type AdminRewardTemplateUpsertInput = {
   id?: string;
   title: string;
@@ -64,6 +74,7 @@ export type AdminRewardTemplateUpsertInput = {
   fixed_expiry_date?: string | null;
   distribution_mode?: AdminRewardDistributionMode;
   restrictions?: AdminRewardTemplateRestrictions;
+  flash_schedule?: AdminRewardTemplateFlashSchedule;
 };
 
 export const DEFAULT_ADMIN_REWARD_RESTRICTIONS: AdminRewardTemplateRestrictions =
@@ -73,3 +84,61 @@ export const DEFAULT_ADMIN_REWARD_RESTRICTIONS: AdminRewardTemplateRestrictions 
     shipping_methods: ["sf"],
     min_item_subtotal_hkd: 0,
   };
+
+export type AdminRewardCampaignStatus =
+  | "draft"
+  | "active"
+  | "paused"
+  | "ended";
+
+export type AdminRewardCampaignRow = {
+  id: string;
+  template_id: string;
+  name: string;
+  status: AdminRewardCampaignStatus;
+  starts_at: string;
+  ends_at: string;
+  max_claims: number;
+  claimed_count: number;
+  max_claims_per_user: number;
+  override_valid_days: number | null;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  template_title: string | null;
+  template_type: string | null;
+};
+
+export type AdminRewardCampaignUpsertInput = {
+  id?: string;
+  template_id: string;
+  name: string;
+  status?: AdminRewardCampaignStatus;
+  starts_at: string;
+  ends_at: string;
+  max_claims: number;
+  max_claims_per_user?: number;
+  override_valid_days?: number | null;
+};
+
+export type FlashCampaignTemplateView = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  reward_value: Record<string, unknown>;
+};
+
+export type FlashCampaignView = {
+  id: string;
+  name: string;
+  starts_at: string;
+  ends_at: string;
+  max_claims: number;
+  claimed_count: number;
+  max_claims_per_user: number;
+  remaining_claims: number;
+  user_claims_today: number;
+  can_claim: boolean;
+  template: FlashCampaignTemplateView;
+};
