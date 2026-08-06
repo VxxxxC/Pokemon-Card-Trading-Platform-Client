@@ -1,6 +1,53 @@
 # Platform Rewards v2 — backend
 
-> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified (merchant_direct) · **Phase 2b:** 🟡 auth multicapture coupons
+> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified (merchant_direct) · **Phase 2b:** 🟡 auth multicapture coupons · **Phase 4:** ⏸ on hold
+
+## Admin activity workflow (2026-08 refactor)
+
+Migration: `supabase/migrations/20260819120000_admin_reward_activity_workflow.sql`
+
+| RPC | Purpose |
+|-----|---------|
+| `rpc_admin_list_reward_activities` | Join `reward_templates` + optional `reward_campaigns` (1:1) |
+| `rpc_admin_get_reward_activity` | Single activity for edit page |
+| `rpc_admin_upsert_reward_activity` | Atomic template + campaign upsert |
+| `rpc_admin_set_reward_activity_status` | Publish / pause / archive (sync template + campaign) |
+
+**Also in migration:**
+
+- `fn_validate_reward_template` — `flash_only` allows `trigger_conditions.kind = 'none'`
+- `UNIQUE (template_id)` on `reward_campaigns`
+- `get_reward_coupon_center` — exclude `kind = 'none'` from locked catalog
+
+| Path | Purpose |
+|------|---------|
+| `app/actions/admin-reward-activities.ts` | Server actions for unified admin UI |
+| `lib/admin-rewards/parse-admin-reward-activity.ts` | List/detail parsers |
+
+Legacy `app/actions/admin-rewards.ts` / `admin-reward-campaigns.ts` remain for E2E/RPC compatibility; Admin UI uses activity actions only.
+
+## Trigger expansion (2026-08)
+
+Migration: `supabase/migrations/20260820120000_reward_trigger_events_expansion.sql`  
+Cleanup: `supabase/migrations/20260821120000_remove_first_review_event.sql`
+
+| Change | Notes |
+|--------|-------|
+| `event_once.account_registered` | Signup / profile created (`handle_new_user`); **not** first login. `profiles.created_at >= campaign.starts_at` when window set; else `>= template.created_at` |
+| `handle_new_user` | Calls `fn_try_auto_grant_rewards` after signup |
+| `fn_reward_auto_grant_in_window` | Optional `reward_campaigns` window for `auto_grant`; no row = perpetual |
+| `rpc_admin_upsert_reward_activity` | `auto_grant` may upsert campaign (dates only); flash unchanged |
+| `get_reward_coupon_center` | Locked catalog excludes templates past `campaign.ends_at` |
+
+**Removed:** `event_once.first_review` — review RPC no longer triggers auto-grant. Use `trade_count` (buyer, `count: 1`) for 首筆交易.
+
+### Coupon scope
+
+- Members may receive `discount_coupon` / `free_shipping` in wallet from any auto-grant trigger.
+- **Redemption:** merchant checkout only (`fn_compute_platform_subsidy`, default `order_kinds: ["merchant"]`). P2P `member_orders` have no coupon checkout path.
+- **首筆交易 (Admin):** `trade_count` → role `buyer`, count `1`.
+
+**Admin UI:** [`RewardActivityForm.tsx`](../../../app/admin/campaigns/RewardActivityForm.tsx) — trigger params (`trade_count`, check-in) + optional 活動期限 for `auto_grant`; signup event label「註冊完成」.
 
 ## Phase 1 — Admin templates
 

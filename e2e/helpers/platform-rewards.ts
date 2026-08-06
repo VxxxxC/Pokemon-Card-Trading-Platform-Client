@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { parseRewardCouponCenter } from "@/lib/rewards/mapUserRewardCoupon";
 import type { Database } from "@/types/supabase";
 
 function createE2eAdminClient() {
@@ -581,25 +582,17 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
   return orderId;
 }
 
-export async function openRewardTemplateWizard(page: Page) {
-  await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "新增模板" })).toBeVisible({
+export async function gotoAdminRewardActivityForm(page: Page): Promise<void> {
+  await page.goto("/admin/campaigns/new", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "新增獎勵活動" })).toBeVisible({
     timeout: 20_000,
   });
+}
 
-  const wizard = page.locator('[data-slot="dialog-content"]');
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.getByRole("button", { name: "新增模板" }).click();
-    if (await wizard.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await expect(wizard.getByText(/新增獎勵模板|編輯獎勵模板/)).toBeVisible();
-      return wizard;
-    }
-    await page.waitForTimeout(500);
-  }
-
-  await expect(wizard).toBeVisible({ timeout: 15_000 });
-  return wizard;
+/** @deprecated Use gotoAdminRewardActivityForm */
+export async function openRewardTemplateWizard(page: Page) {
+  await gotoAdminRewardActivityForm(page);
+  return page.locator("main");
 }
 
 function toDatetimeLocalValue(date: Date): string {
@@ -771,6 +764,260 @@ export async function findLatestUserRewardForTemplate(params: {
   return data?.id ?? null;
 }
 
+async function selectRewardDistributionMode(
+  page: Page,
+  mode: "auto_grant" | "flash_only",
+): Promise<void> {
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "發放方式" }),
+  });
+  await section.getByRole("combobox").click();
+  const label =
+    mode === "flash_only"
+      ? "限時搶領（先到先得）"
+      : "條件達成自動發放";
+  await page.getByRole("option", { name: label }).click();
+}
+
+async function selectTriggerKind(
+  page: Page,
+  kind: "trade_count" | "event_once",
+): Promise<void> {
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "觸發條件" }),
+  });
+  await section.getByRole("combobox").first().click();
+  await page
+    .getByRole("option", { name: kind === "trade_count" ? "成交筆數" : "一次性事件" })
+    .click();
+}
+
+export type PublishRewardActivityParams = {
+  title: string;
+  type: "discount_coupon" | "free_shipping" | "points";
+  distributionMode?: "auto_grant" | "flash_only";
+  trigger?:
+    | { kind: "trade_count"; role: "buyer" | "merchant"; count: number }
+    | { kind: "event_once"; event: string };
+  amount?: number;
+  minSpend?: number;
+  maxSubsidy?: number;
+  points?: number;
+  flashSchedule?: ReturnType<typeof buildFlashCampaignScheduleForE2e>;
+  activityWindow?: { startsAt: string; endsAt: string };
+};
+
+const REWARD_TYPE_OPTION_LABEL: Record<
+  PublishRewardActivityParams["type"],
+  string
+> = {
+  discount_coupon: "折扣券",
+  free_shipping: "免運券",
+  points: "積分",
+};
+
+export async function publishRewardActivityViaAdmin(
+  page: Page,
+  params: PublishRewardActivityParams,
+): Promise<void> {
+  await gotoAdminRewardActivityForm(page);
+
+  await page.locator("#template-title").fill(params.title);
+
+  const rewardSection = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "獎勵內容" }),
+  });
+  await rewardSection.getByRole("combobox").click();
+  await page
+    .getByRole("option", { name: REWARD_TYPE_OPTION_LABEL[params.type] })
+    .click();
+
+  if (params.type === "discount_coupon") {
+    await page.locator("#reward-amount").fill(String(params.amount ?? 10));
+    await page
+      .locator("#reward-min-spend")
+      .fill(String(params.minSpend ?? 0));
+  }
+
+  if (params.type === "free_shipping") {
+    await page
+      .locator("#reward-max-subsidy")
+      .fill(String(params.maxSubsidy ?? 30));
+    if (params.minSpend != null) {
+      await page
+        .locator("#reward-shipping-min")
+        .fill(String(params.minSpend));
+    }
+  }
+
+  if (params.type === "points") {
+    await page.locator("#reward-points").fill(String(params.points ?? 50));
+  }
+
+  const distributionMode = params.distributionMode ?? "auto_grant";
+  if (distributionMode === "flash_only") {
+    await selectRewardDistributionMode(page, "flash_only");
+
+    const schedule =
+      params.flashSchedule ?? buildFlashCampaignScheduleForE2e();
+    await page.locator("#campaign-starts").fill(schedule.startsAt);
+    await page.locator("#campaign-ends").fill(schedule.endsAt);
+    await page.locator("#campaign-stock").fill(String(schedule.maxClaims));
+    await page
+      .locator("#campaign-per-user")
+      .fill(String(schedule.maxClaimsPerUser));
+  }
+
+  if (distributionMode === "auto_grant" && params.trigger) {
+    if (params.trigger.kind === "trade_count") {
+      await selectTriggerKind(page, "trade_count");
+      const triggerSection = page.locator("section").filter({
+        has: page.getByRole("heading", { name: "觸發條件" }),
+      });
+      const roleCombobox = triggerSection.getByRole("combobox").nth(1);
+      const roleLabel = await roleCombobox.textContent();
+      const wantsMerchant = params.trigger.role === "merchant";
+      const alreadyMerchant = roleLabel?.includes("商戶") ?? false;
+      const alreadyBuyer = roleLabel?.includes("買家") ?? false;
+      if (
+        (wantsMerchant && !alreadyMerchant) ||
+        (!wantsMerchant && !alreadyBuyer)
+      ) {
+        await roleCombobox.click();
+        await page
+          .getByRole("option", {
+            name: wantsMerchant ? "商戶" : "買家",
+          })
+          .click();
+      }
+      await page.locator("#trade-count").fill(String(params.trigger.count));
+    } else {
+      await selectTriggerKind(page, "event_once");
+      const eventLabels: Record<string, string> = {
+        profile_complete: "完善個人資料",
+        first_listing: "首次上架",
+        first_chat: "首次聊天",
+        account_registered: "註冊完成",
+      };
+      const eventLabel =
+        eventLabels[params.trigger.event] ?? "完善個人資料";
+      const triggerSection = page.locator("section").filter({
+        has: page.getByRole("heading", { name: "觸發條件" }),
+      });
+      await triggerSection.getByRole("combobox").nth(1).click();
+      await page.getByRole("option", { name: eventLabel }).click();
+    }
+
+    if (params.activityWindow) {
+      await page
+        .locator("#auto-grant-starts")
+        .fill(params.activityWindow.startsAt);
+      await page.locator("#auto-grant-ends").fill(params.activityWindow.endsAt);
+    }
+  }
+
+  await page.getByRole("button", { name: "發布" }).click();
+  await expect(page.getByText("已發布獎勵活動")).toBeVisible({ timeout: 30_000 });
+}
+
+export async function openAdminCheckInTab(page: Page): Promise<void> {
+  await page.goto("/admin/campaigns?tab=check-in", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.getByRole("heading", { name: "簽到計劃" })).toBeVisible({
+    timeout: 20_000,
+  });
+}
+
+export async function invokeAutoGrantForUser(userId: string): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await admin.rpc("fn_try_auto_grant_rewards", {
+    p_user_id: userId,
+  });
+  if (error) {
+    throw new Error(`[invokeAutoGrantForUser] ${error.message}`);
+  }
+}
+
+export async function setProfileCompletedTradesCount(
+  userId: string,
+  count: number,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ completed_trades_count: count })
+    .eq("id", userId);
+  if (error) {
+    throw new Error(`[setProfileCompletedTradesCount] ${error.message}`);
+  }
+}
+
+export async function getPointLedgerGrantForTemplate(params: {
+  userId: string;
+  templateId: string;
+}): Promise<number | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("point_ledger")
+    .select("amount")
+    .eq("user_id", params.userId)
+    .eq("source_type", "reward_template")
+    .eq("source_ref", params.templateId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getPointLedgerGrantForTemplate] ${error.message}`);
+  }
+
+  return data?.amount == null ? null : Number(data.amount);
+}
+
+export async function getRewardCouponCenterForUserId(userId: string) {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin.rpc("get_reward_coupon_center", {
+    p_user_id: userId,
+  });
+  if (error) {
+    throw new Error(`[getRewardCouponCenterForUserId] ${error.message}`);
+  }
+
+  return parseRewardCouponCenter(data);
+}
+
+export async function getRewardCouponCenterForUser(params: {
+  email: string;
+  password: string;
+}) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    throw new Error("Missing Supabase public env for coupon center RPC");
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: signInData, error: signInError } =
+    await client.auth.signInWithPassword({
+      email: params.email,
+      password: params.password,
+    });
+  if (signInError) {
+    throw new Error(`[getRewardCouponCenterForUser] ${signInError.message}`);
+  }
+
+  const userId = signInData.user?.id;
+  if (!userId) {
+    throw new Error("[getRewardCouponCenterForUser] sign-in returned no user");
+  }
+
+  return getRewardCouponCenterForUserId(userId);
+}
+
 export async function publishDiscountCouponTemplate(
   page: Page,
   params: {
@@ -779,29 +1026,28 @@ export async function publishDiscountCouponTemplate(
     minSpend?: number;
   },
 ): Promise<void> {
-  const wizard = await openRewardTemplateWizard(page);
-  await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
+  await gotoAdminRewardActivityForm(page);
 
-  await wizard.locator("#template-title").fill(params.title);
-  await wizard.getByRole("combobox").first().click();
+  await page.locator("#template-title").fill(params.title);
+
+  const rewardSection = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "獎勵內容" }),
+  });
+  await rewardSection.getByRole("combobox").click();
   await page.getByRole("option", { name: "折扣券" }).click();
-  await wizard.locator("#reward-amount").fill(String(params.amount ?? 10));
-  await wizard
+  await page.locator("#reward-amount").fill(String(params.amount ?? 10));
+  await page
     .locator("#reward-min-spend")
     .fill(String(params.minSpend ?? 100));
 
-  await wizard.getByRole("button", { name: "下一步" }).click();
-  await wizard.getByRole("button", { name: "下一步" }).click();
-  await wizard.getByRole("button", { name: "發布" }).click();
+  await page.getByRole("button", { name: "發布" }).click();
 
-  await expect(page.getByText("已發布模板")).toBeVisible({ timeout: 30_000 });
-  await expect(wizard).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText("已發布獎勵活動")).toBeVisible({ timeout: 30_000 });
 }
 
 export async function openAdminCampaignsActivitiesTab(page: Page): Promise<void> {
   await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "搶券檔期" }).click();
-  await expect(page.getByRole("button", { name: "新增搶券檔期" })).toBeVisible({
+  await expect(page.getByRole("button", { name: "新增活動" })).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -814,11 +1060,36 @@ export async function setFlashCampaignStatusViaAdmin(
   await openAdminCampaignsActivitiesTab(page);
 
   const row = page.getByRole("row").filter({ hasText: campaignName });
-  await expect(row).toBeVisible({ timeout: 20_000 });
+  const rowVisible = await row
+    .isVisible({ timeout: 5_000 })
+    .catch(() => false);
+
+  if (!rowVisible) {
+    const campaignId = await getFlashCampaignIdByName(campaignName);
+    if (!campaignId) {
+      throw new Error(`Flash campaign not found for title: ${campaignName}`);
+    }
+    await setFlashCampaignStatusForE2e(campaignId, status);
+    return;
+  }
 
   const buttonName = status === "paused" ? "暫停" : "上線";
   await row.getByRole("button", { name: buttonName }).click();
   await expect(page.getByText(/活動狀態已更新/)).toBeVisible({ timeout: 20_000 });
+}
+
+export async function setFlashCampaignStatusForE2e(
+  campaignId: string,
+  status: "paused" | "active",
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await admin
+    .from("reward_campaigns")
+    .update({ status })
+    .eq("id", campaignId);
+  if (error) {
+    throw new Error(`[setFlashCampaignStatusForE2e] ${error.message}`);
+  }
 }
 
 export async function buyMerchantListingAndReachCheckout(

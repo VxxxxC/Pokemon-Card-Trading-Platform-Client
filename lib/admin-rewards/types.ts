@@ -12,6 +12,7 @@ export type AdminRewardTemplateType = Exclude<
 >;
 
 export type AdminRewardTriggerKind =
+  | "none"
   | "event_once"
   | "trade_count"
   | "check_in_streak"
@@ -20,7 +21,8 @@ export type AdminRewardTriggerKind =
 export type AdminRewardEventOnceEvent =
   | "profile_complete"
   | "first_listing"
-  | "first_chat";
+  | "first_chat"
+  | "account_registered";
 
 export type AdminRewardAuthRestriction = "any" | "true" | "false";
 
@@ -142,3 +144,37 @@ export type FlashCampaignView = {
   can_claim: boolean;
   template: FlashCampaignTemplateView;
 };
+
+export type AdminRewardActivitySchedule = {
+  campaign_id?: string;
+  name?: string;
+  campaign_name?: string;
+  starts_at: string;
+  ends_at: string;
+  max_claims: number;
+  max_claims_per_user: number;
+  override_valid_days: number | null;
+  status?: AdminRewardCampaignStatus;
+};
+
+export type AdminRewardActivityUpsertInput = AdminRewardTemplateUpsertInput & {
+  schedule?: AdminRewardActivitySchedule;
+};
+
+export type AdminRewardActivityRow = AdminRewardTemplateRow & {
+  activity_id: string;
+  campaign_id: string | null;
+  campaign_name: string | null;
+  campaign_status: AdminRewardCampaignStatus | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  campaign_max_claims: number | null;
+  campaign_claimed_count: number | null;
+  max_claims_per_user: number | null;
+  override_valid_days: number | null;
+  display_status: string;
+};
+
+export type AdminRewardActivityStatus =
+  | AdminRewardTemplateStatus
+  | AdminRewardCampaignStatus;

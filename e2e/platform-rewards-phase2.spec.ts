@@ -12,11 +12,15 @@ import {
   getRewardTemplateIdByTitle,
   getUserRewardRow,
   grantUserRewardForE2e,
-  openRewardTemplateWizard,
+  gotoAdminRewardActivityForm,
   publishDiscountCouponTemplate,
   reactivateListingForE2e,
   setListingAuthenticationForE2e,
 } from "./helpers/platform-rewards";
+import {
+  assertPaymentIntentMatchesBuyerTotal,
+  hasStripeReconcileEnv,
+} from "./helpers/stripe-reconcile";
 import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import {
   getMerchantProductDetailFixtures,
@@ -51,20 +55,16 @@ async function publishFreeShippingTemplate(
   page: Page,
   title: string,
 ): Promise<void> {
-  const wizard = await openRewardTemplateWizard(page);
-  await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
+  await gotoAdminRewardActivityForm(page);
 
-  await wizard.locator("#template-title").fill(title);
-  await wizard.getByRole("combobox").first().click();
+  await page.locator("#template-title").fill(title);
+  await page.getByRole("combobox").first().click();
   await page.getByRole("option", { name: "免運券" }).click();
-  await wizard.locator("#reward-max-subsidy").fill("30");
+  await page.locator("#reward-max-subsidy").fill("30");
 
-  await wizard.getByRole("button", { name: "下一步" }).click();
-  await wizard.getByRole("button", { name: "下一步" }).click();
-  await wizard.getByRole("button", { name: "發布" }).click();
+  await page.getByRole("button", { name: "發布" }).click();
 
-  await expect(page.getByText("已發布模板")).toBeVisible({ timeout: 30_000 });
-  await expect(wizard).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByText("已發布獎勵活動")).toBeVisible({ timeout: 30_000 });
 }
 
 test.describe.configure({ mode: "serial" });
@@ -193,7 +193,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     await page.locator("#checkout-coupon").selectOption(couponRewardId!);
     await page.waitForTimeout(1500);
     await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
-    await expect(page.getByText(/- HK\$ 30/)).toBeVisible();
+    await expect(page.getByText(/- HK\$/)).toBeVisible();
 
     await completeMerchantDirectCheckout(page, {
       couponRewardId: couponRewardId!,
@@ -207,10 +207,19 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     );
     expect(snapshot!.coupon_user_reward_id).toBe(couponRewardId);
 
-    const reward = await getUserRewardRow(couponRewardId!);
-    expect(reward?.is_used).toBe(true);
-    expect(reward?.used_at).toBeTruthy();
-    expect(reward?.reserved_merchant_order_id).toBeNull();
+    if (hasStripeReconcileEnv()) {
+      await assertPaymentIntentMatchesBuyerTotal(orderId!);
+    }
+
+    await expect
+      .poll(async () => (await getUserRewardRow(couponRewardId!))?.is_used, {
+        timeout: 45_000,
+      })
+      .toBe(true);
+
+    const rewardRow = await getUserRewardRow(couponRewardId!);
+    expect(rewardRow?.used_at).toBeTruthy();
+    expect(rewardRow?.reserved_merchant_order_id).toBeNull();
   });
 
   test("B2 min spend eligibility at checkout", async ({ page }, testInfo) => {

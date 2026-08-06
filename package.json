@@ -17,6 +17,8 @@
     "stripe:webhook:listen": "bash scripts/stripe-webhook-listen.sh",
     "stripe:webhook:sync": "bun run scripts/stripe-webhook-sync-endpoint.ts",
     "test:e2e": "playwright test",
+    "test:e2e:rewards": "playwright test e2e/platform-rewards-phase2.spec.ts e2e/platform-rewards-phase3.spec.ts e2e/platform-rewards-matrix.spec.ts --project=setup --project=guest --project=buyer",
+    "test:e2e:stripe-reconcile": "playwright test e2e/platform-rewards-stripe-reconcile.spec.ts --project=setup --project=buyer",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed"
   },

@@ -1,5 +1,6 @@
 # 平台獎勵 v2 — Partner QA 測試清單
 
+> **精簡版（建議 Partner 先看）：** [PARTNER_CHECKLIST.md](./PARTNER_CHECKLIST.md)  
 > **分支：** `aaron-backend-wired`  
 > **Migrations（遠端已套用）：** `20260813120000`、`20260815120000`、`20260815130000`、`20260816120000`、`20260817120000`  
 > **負責人：** Frontend / 全端 Partner  

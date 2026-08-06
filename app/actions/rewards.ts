@@ -3,6 +3,11 @@
 import { guardMemberPersonaPersonalFeatures } from "@/lib/auth/guard-member-persona-server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
+  parseCheckInProgramMemberView,
+  parseCompletionGranted,
+} from "@/lib/admin-check-in-program/parse-check-in-program";
+import type { CheckInProgramMemberView } from "@/lib/admin-check-in-program/types";
+import {
   parseRewardGrantRows,
   type UnacknowledgedRewardGrant,
 } from "@/lib/constants/rewards";
@@ -41,8 +46,17 @@ type DailyCheckInResult =
         longestStreak: number;
         cycleDay: number;
         newlyGranted: UnacknowledgedRewardGrant[];
+        completionGranted: {
+          type: string;
+          title: string;
+          pointsGranted: number | null;
+        } | null;
       };
     }
+  | { success: false; error: string };
+
+type CheckInProgramResult =
+  | { success: true; data: CheckInProgramMemberView }
   | { success: false; error: string };
 
 type UnacknowledgedRewardsResult =
@@ -188,6 +202,7 @@ export async function executeDailyCheckIn(): Promise<DailyCheckInResult> {
         longestStreak: Number(payload.longest_streak ?? 0),
         cycleDay: Number(payload.cycle_day ?? 1),
         newlyGranted: parseRewardGrantRows(payload.newly_granted),
+        completionGranted: parseCompletionGranted(payload.completion_granted),
       },
     };
   } catch (error) {
@@ -195,6 +210,59 @@ export async function executeDailyCheckIn(): Promise<DailyCheckInResult> {
       error instanceof Error ? error.message : "簽到時發生錯誤";
     console.error("[executeDailyCheckIn]", error);
     return { success: false, error: message };
+  }
+}
+
+export async function getCheckInProgram(): Promise<CheckInProgramResult> {
+  if (!isSupabaseConfigured()) {
+    return {
+      success: true,
+      data: parseCheckInProgramMemberView(null),
+    };
+  }
+
+  const personaGuard = await guardMemberPersonaPersonalFeatures();
+  if (!personaGuard.allowed) {
+    return { success: false, error: personaGuard.error };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (fn: "get_check_in_program_for_member") => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("get_check_in_program_for_member");
+
+    if (error) {
+      console.error("[getCheckInProgram]", error.message);
+      return {
+        success: true,
+        data: parseCheckInProgramMemberView(null),
+      };
+    }
+
+    return {
+      success: true,
+      data: parseCheckInProgramMemberView(data),
+    };
+  } catch (error) {
+    console.error("[getCheckInProgram]", error);
+    return {
+      success: true,
+      data: parseCheckInProgramMemberView(null),
+    };
   }
 }
 

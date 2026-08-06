@@ -1,35 +1,41 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { AdminRewardCampaignRow, AdminRewardTemplateRow } from "@/lib/admin-rewards/types";
-import { AdminRewardTemplatesClient } from "./AdminRewardTemplatesClient";
-import { AdminRewardCampaignsClient } from "./AdminRewardCampaignsClient";
-import { CampaignsMockTab } from "./CampaignsMockTab";
+import { AdminCheckInProgramClient } from "./AdminCheckInProgramClient";
+import { AdminRewardActivitiesClient } from "./AdminRewardActivitiesClient";
+import {
+  type CampaignTab,
+  campaignTabToQuery,
+} from "./campaign-tabs";
+import type { CheckInProgramRow } from "@/lib/admin-check-in-program/types";
+import type { AdminRewardActivityRow } from "@/lib/admin-rewards/types";
 
 type CampaignsPageShellProps = {
-  initialTemplates: AdminRewardTemplateRow[];
-  initialTotal: number;
-  templatesLoadError: string | null;
-  initialCampaigns: AdminRewardCampaignRow[];
-  campaignsTotal: number;
-  campaignsLoadError: string | null;
+  initialActivities: AdminRewardActivityRow[];
+  activitiesTotal: number;
+  activitiesLoadError: string | null;
+  initialCheckInProgram: CheckInProgramRow | null;
+  checkInLoadError: string | null;
+  initialTab: CampaignTab;
 };
 
-type CampaignTab = "templates" | "activities" | "roi";
-
 export function CampaignsPageShell({
-  initialTemplates,
-  initialTotal,
-  templatesLoadError,
-  initialCampaigns,
-  campaignsTotal,
-  campaignsLoadError,
+  initialActivities,
+  activitiesTotal,
+  activitiesLoadError,
+  initialCheckInProgram,
+  checkInLoadError,
+  initialTab,
 }: CampaignsPageShellProps) {
-  const [activeTab, setActiveTab] = useState<CampaignTab>("templates");
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<CampaignTab>(initialTab);
 
-  const flashTemplates = initialTemplates.filter(
-    (row) => row.distribution_mode === "flash_only",
-  );
+  const handleTabChange = (tab: CampaignTab) => {
+    setActiveTab(tab);
+    const query = campaignTabToQuery(tab);
+    router.replace(query ? `/admin/campaigns?tab=${query}` : "/admin/campaigns");
+  };
 
   return (
     <div className="space-y-6">
@@ -38,64 +44,49 @@ export function CampaignsPageShell({
           積分與獎勵活動
         </h1>
         <p className="mt-1 text-sm text-[#d4c4b7]">
-          管理獎勵模板、限時搶券檔期與活動分析。
+          管理獎勵活動（自動發放、限時搶領）與簽到計劃。
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => setActiveTab("templates")}
-          className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "templates"
-              ? "bg-brand text-[#17130f]"
-              : "bg-[#26211C] text-[#d4c4b7] border border-white/10"
-          }`}
-        >
-          獎勵模板
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("activities")}
+          onClick={() => handleTabChange("activities")}
           className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
             activeTab === "activities"
               ? "bg-brand text-[#17130f]"
               : "bg-[#26211C] text-[#d4c4b7] border border-white/10"
           }`}
         >
-          搶券檔期
+          獎勵活動
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("roi")}
+          onClick={() => handleTabChange("check_in")}
           className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "roi"
+            activeTab === "check_in"
               ? "bg-brand text-[#17130f]"
               : "bg-[#26211C] text-[#d4c4b7] border border-white/10"
           }`}
         >
-          ROI 分析（展示）
+          簽到計劃
         </button>
       </div>
 
-      {activeTab === "templates" ? (
-        <AdminRewardTemplatesClient
-          initialRows={initialTemplates}
-          initialTotal={initialTotal}
-          loadError={templatesLoadError}
-        />
-      ) : null}
-
       {activeTab === "activities" ? (
-        <AdminRewardCampaignsClient
-          initialCampaigns={initialCampaigns}
-          initialTotal={campaignsTotal}
-          flashTemplates={flashTemplates}
-          loadError={campaignsLoadError}
+        <AdminRewardActivitiesClient
+          initialRows={initialActivities}
+          initialTotal={activitiesTotal}
+          loadError={activitiesLoadError}
         />
       ) : null}
 
-      {activeTab === "roi" ? <CampaignsMockTab /> : null}
+      {activeTab === "check_in" ? (
+        <AdminCheckInProgramClient
+          initialRow={initialCheckInProgram}
+          loadError={checkInLoadError}
+        />
+      ) : null}
     </div>
   );
 }

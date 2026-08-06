@@ -1,19 +1,27 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { listAdminRewardCampaigns } from "@/app/actions/admin-reward-campaigns";
-import { listAdminRewardTemplates } from "@/app/actions/admin-rewards";
+import { getAdminCheckInProgram } from "@/app/actions/admin-check-in-program";
+import { listAdminRewardActivities } from "@/app/actions/admin-reward-activities";
+import { resolveCampaignTab } from "@/app/admin/campaigns/campaign-tabs";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { REWARD_ACTIVITY_PAGE_SIZE } from "@/lib/admin-rewards/template-form";
 import { CampaignsPageShell } from "./CampaignsPageShell";
 
 export const metadata: Metadata = {
   title: "積分與獎勵活動 — HKCardVault Admin",
-  description: "管理獎勵模板、限時活動與積分任務",
+  description: "管理獎勵活動、簽到計劃與積分任務",
 };
 
-export default async function AdminCampaignsPage() {
+type AdminCampaignsPageProps = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
+export default async function AdminCampaignsPage({
+  searchParams,
+}: AdminCampaignsPageProps) {
   if (!isSupabaseConfigured()) {
     redirect("/auth");
   }
@@ -29,31 +37,34 @@ export default async function AdminCampaignsPage() {
     redirect("/");
   }
 
-  const [templatesResult, campaignsResult] = await Promise.all([
-    listAdminRewardTemplates({
+  const params = await searchParams;
+  const initialTab = resolveCampaignTab(params.tab);
+
+  const [activitiesResult, programResult] = await Promise.all([
+    listAdminRewardActivities({
       status: "all",
       page: 1,
-      pageSize: 50,
+      pageSize: REWARD_ACTIVITY_PAGE_SIZE,
     }),
-    listAdminRewardCampaigns({
-      status: "all",
-      page: 1,
-      pageSize: 50,
-    }),
+    getAdminCheckInProgram(),
   ]);
 
   return (
     <CampaignsPageShell
-      initialTemplates={templatesResult.success ? templatesResult.data.rows : []}
-      initialTotal={templatesResult.success ? templatesResult.data.total : 0}
-      templatesLoadError={templatesResult.success ? null : templatesResult.error}
-      initialCampaigns={
-        campaignsResult.success ? campaignsResult.data.rows : []
+      initialActivities={
+        activitiesResult.success ? activitiesResult.data.rows : []
       }
-      campaignsTotal={campaignsResult.success ? campaignsResult.data.total : 0}
-      campaignsLoadError={
-        campaignsResult.success ? null : campaignsResult.error
+      activitiesTotal={
+        activitiesResult.success ? activitiesResult.data.total : 0
       }
+      activitiesLoadError={
+        activitiesResult.success ? null : activitiesResult.error
+      }
+      initialCheckInProgram={
+        programResult.success ? programResult.data : null
+      }
+      checkInLoadError={programResult.success ? null : programResult.error}
+      initialTab={initialTab}
     />
   );
 }

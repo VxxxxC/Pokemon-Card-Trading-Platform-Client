@@ -29,6 +29,8 @@ export function RewardTemplateDefinitionStep({
 }: RewardTemplateDefinitionStepProps) {
   const triggerKind = (form.trigger_conditions.kind ??
     "event_once") as AdminRewardTriggerKind;
+  const isLegacyCheckInTrigger =
+    triggerKind === "check_in_streak" || triggerKind === "check_in_cycle_day";
 
   const updateRewardValue = (patch: Record<string, unknown>) => {
     onChange({
@@ -199,24 +201,12 @@ export function RewardTemplateDefinitionStep({
                   event: "profile_complete",
                   once_per_user: true,
                 });
-              } else if (kind === "trade_count") {
+              } else {
                 updateTrigger({
-                  kind,
+                  kind: "trade_count",
                   role: "buyer",
                   count: 1,
                   once_per_user: true,
-                });
-              } else if (kind === "check_in_streak") {
-                updateTrigger({
-                  kind,
-                  min_streak: 7,
-                  once_per_user: true,
-                });
-              } else {
-                updateTrigger({
-                  kind,
-                  day: 7,
-                  once_per_cycle: true,
                 });
               }
             }}
@@ -227,8 +217,6 @@ export function RewardTemplateDefinitionStep({
             <SelectContent>
               <SelectItem value="event_once">一次性事件</SelectItem>
               <SelectItem value="trade_count">成交筆數</SelectItem>
-              <SelectItem value="check_in_streak">連續簽到</SelectItem>
-              <SelectItem value="check_in_cycle_day">簽到週期日</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -293,40 +281,10 @@ export function RewardTemplateDefinitionStep({
           </div>
         ) : null}
 
-        {triggerKind === "check_in_streak" ? (
-          <div>
-            <Label htmlFor="min-streak">連續天數</Label>
-            <Input
-              id="min-streak"
-              type="number"
-              value={String(form.trigger_conditions.min_streak ?? 7)}
-              onChange={(event) =>
-                updateTrigger({
-                  min_streak: Number(event.target.value),
-                  once_per_user: true,
-                })
-              }
-            />
-          </div>
-        ) : null}
-
-        {triggerKind === "check_in_cycle_day" ? (
-          <div>
-            <Label htmlFor="cycle-day">週期第幾天 (1-7)</Label>
-            <Input
-              id="cycle-day"
-              type="number"
-              min={1}
-              max={7}
-              value={String(form.trigger_conditions.day ?? 7)}
-              onChange={(event) =>
-                updateTrigger({
-                  day: Number(event.target.value),
-                  once_per_cycle: true,
-                })
-              }
-            />
-          </div>
+        {isLegacyCheckInTrigger ? (
+          <p className="text-sm text-amber-200/90">
+            此簽到獎勵已遷移至「簽到計劃」分頁；此活動已封存，無法編輯。
+          </p>
         ) : null}
 
         <div>

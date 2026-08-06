@@ -1,20 +1,35 @@
 # Platform Rewards v2 — frontend
 
-> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified · **Phase 2b:** 🟡 auth path · **Phase 3:** 🟡 flash campaigns
+> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified · **Phase 2b:** 🟡 auth path · **Phase 3:** 🟡 flash campaigns · **Phase 4:** ⏸ on hold
 
-## Phase 1 — Admin wizard
+## Admin activity workflow (2026-08 refactor)
 
 | Path | Purpose |
 |------|---------|
-| `app/admin/campaigns/page.tsx` | SSR bootstrap (templates + campaigns) |
-| `app/admin/campaigns/CampaignsPageShell.tsx` | Tabs: 獎勵模板 / 搶券檔期 / ROI 展示 |
-| `app/admin/campaigns/AdminRewardTemplatesClient.tsx` | List + filter + open wizard |
-| `app/admin/campaigns/AdminRewardCampaignsClient.tsx` | Flash campaign CRUD table |
-| `app/admin/campaigns/wizard/RewardTemplateWizard.tsx` | Stepper dialog |
-| `app/admin/campaigns/wizard/RewardTemplateDefinitionStep.tsx` | Step 1 — template fields |
-| `app/admin/campaigns/wizard/RewardDistributionStep.tsx` | Step 2 — `auto_grant` / `flash_only` |
-| `app/admin/campaigns/wizard/RewardCampaignScheduleStep.tsx` | Step 3 — flash schedule (stock/window) |
-| `lib/admin-rewards/template-form.ts` | Shared form defaults + labels |
+| `app/admin/campaigns/page.tsx` | SSR list via `listAdminRewardActivities` |
+| `app/admin/campaigns/CampaignsPageShell.tsx` | Tabs: 獎勵活動 / 簽到計劃 |
+| `app/admin/campaigns/AdminRewardActivitiesClient.tsx` | Unified list (auto-grant + flash) |
+| `app/admin/campaigns/new/page.tsx` | Create activity (single page) |
+| `app/admin/campaigns/[id]/page.tsx` | Edit activity |
+| `app/admin/campaigns/RewardActivityForm.tsx` | Single-page form (no wizard steps) |
+| `app/actions/admin-reward-activities.ts` | `list` / `get` / `upsert` / `setStatus` |
+
+**Rules:**
+
+- One mental model: **獎勵活動** (template + optional 1:1 campaign merged in UI)
+- `flash_only` → hide trigger conditions (`kind: none`); show schedule fields on same page
+- `auto_grant` → show triggers; no campaign row
+- Publish/save via `rpc_admin_upsert_reward_activity` + `rpc_admin_set_reward_activity_status`
+
+**Removed:** `RewardTemplateWizard`, separate 獎勵模板 / 搶券檔期 tabs.
+
+## Phase 1 — Admin wizard (superseded by activity workflow)
+
+Legacy wizard files under `app/admin/campaigns/wizard/` are retained for reference only; Admin UI uses `RewardActivityForm`.
+
+| Path | Purpose |
+|------|---------|
+| `app/admin/campaigns/wizard/RewardTemplateDefinitionStep.tsx` | (legacy) template field reference |
 
 ## Phase 3 — Flash claim UI
 
@@ -29,8 +44,6 @@
 - Load flash list on mount; refresh wallet after claim
 - Disable CTA when sold out / daily cap / outside window
 - Countdown ticks every second (client-only)
-
-**Out of scope:** ROI mock charts (`CampaignsMockTab.tsx`) remain demo data.
 
 ## Phase 2 — Checkout coupons (merchant_direct)
 
