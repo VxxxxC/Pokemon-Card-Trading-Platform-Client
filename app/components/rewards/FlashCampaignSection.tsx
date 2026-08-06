@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
   claimFlashReward,
   listActiveFlashCampaigns,
 } from "@/app/actions/reward-flash";
 import type { FlashCampaignView } from "@/lib/admin-rewards/types";
+import { useNowTicker } from "@/app/lib/hooks/useNowTicker";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -24,8 +25,8 @@ function rewardLabel(campaign: FlashCampaignView): string {
   return amount > 0 ? `折扣 HK$${amount}` : campaign.template.title;
 }
 
-function formatCountdown(targetMs: number): string {
-  const diff = Math.max(0, targetMs - Date.now());
+function formatCountdown(targetMs: number, now: number): string {
+  const diff = Math.max(0, targetMs - now);
   const totalSeconds = Math.floor(diff / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -37,14 +38,7 @@ export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
   const [campaigns, setCampaigns] = useState<FlashCampaignView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const now = useSyncExternalStore(
-    (onStoreChange) => {
-      const timer = window.setInterval(onStoreChange, 1000);
-      return () => window.clearInterval(timer);
-    },
-    () => Date.now(),
-    () => 0,
-  );
+  const now = useNowTicker();
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -183,7 +177,7 @@ export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
                 {countdownPrefix}
                 {!ended ? (
                   <span className="ml-2 text-brand font-bold">
-                    {formatCountdown(countdownTarget)}
+                    {formatCountdown(countdownTarget, now)}
                   </span>
                 ) : null}
               </div>
