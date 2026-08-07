@@ -239,6 +239,54 @@ export type Database = {
           },
         ]
       }
+      check_in_program: {
+        Row: {
+          completion_description: string | null
+          completion_enabled: boolean
+          completion_reward_value: Json
+          completion_title: string
+          completion_type: Database["public"]["Enums"]["reward_type"]
+          completion_type_locked: boolean
+          completion_valid_duration_days: number | null
+          cycle_length_days: number
+          daily_rewards: Json
+          id: string
+          is_active: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          completion_description?: string | null
+          completion_enabled?: boolean
+          completion_reward_value?: Json
+          completion_title?: string
+          completion_type?: Database["public"]["Enums"]["reward_type"]
+          completion_type_locked?: boolean
+          completion_valid_duration_days?: number | null
+          cycle_length_days?: number
+          daily_rewards: Json
+          id: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          completion_description?: string | null
+          completion_enabled?: boolean
+          completion_reward_value?: Json
+          completion_title?: string
+          completion_type?: Database["public"]["Enums"]["reward_type"]
+          completion_type_locked?: boolean
+          completion_valid_duration_days?: number | null
+          cycle_length_days?: number
+          daily_rewards?: Json
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       gamification_stats: {
         Row: {
           created_at: string | null
@@ -2439,6 +2487,10 @@ export type Database = {
       }
     }
     Functions: {
+      _check_in_program_row_to_json: {
+        Args: { p_row: Database["public"]["Tables"]["check_in_program"]["Row"] }
+        Returns: Json
+      }
       _find_or_create_moderation_case: {
         Args: { p_subject_user_id: string }
         Returns: string
@@ -2514,6 +2566,13 @@ export type Database = {
       _recompute_moderation_case_scores: {
         Args: { p_case_id: string }
         Returns: undefined
+      }
+      _reward_activity_row_to_json: {
+        Args: {
+          p_campaign?: Database["public"]["Tables"]["reward_campaigns"]["Row"]
+          p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
+        }
+        Returns: Json
       }
       _reward_campaign_row_to_json: {
         Args: { p_row: Database["public"]["Tables"]["reward_campaigns"]["Row"] }
@@ -2615,6 +2674,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      fn_build_grant_json: {
+        Args: {
+          p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
+          p_user_reward_id: string
+        }
+        Returns: Json
+      }
       fn_bump_listing_offers_count: {
         Args: { p_actor_id?: string; p_listing_id: string }
         Returns: undefined
@@ -2647,6 +2713,10 @@ export type Database = {
       }
       fn_effective_check_in_streak: {
         Args: { p_user_id: string }
+        Returns: number
+      }
+      fn_get_check_in_daily_points: {
+        Args: { p_cycle_day: number }
         Returns: number
       }
       fn_grant_points_from_template: {
@@ -2748,6 +2818,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      fn_reward_auto_grant_in_window: {
+        Args: { p_template_id: string }
+        Returns: boolean
+      }
       fn_reward_template_has_stock: {
         Args: {
           p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
@@ -2765,6 +2839,12 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      fn_sync_check_in_program_template: {
+        Args: {
+          p_program: Database["public"]["Tables"]["check_in_program"]["Row"]
+        }
+        Returns: undefined
+      }
       fn_template_is_eligible: {
         Args: {
           p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
@@ -2779,6 +2859,10 @@ export type Database = {
       fn_try_reveal_order_reviews: {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: boolean
+      }
+      fn_validate_check_in_program_payload: {
+        Args: { p_payload: Json }
+        Returns: undefined
       }
       fn_validate_reward_template: {
         Args: { p_payload: Json }
@@ -2800,6 +2884,7 @@ export type Database = {
             }
             Returns: Json
           }
+      get_check_in_program_for_member: { Args: never; Returns: Json }
       get_gamification_stats_for_me: { Args: never; Returns: Json }
       get_marketplace_price_bounds: {
         Args: never
@@ -2857,7 +2942,9 @@ export type Database = {
         }
         Returns: Json
       }
-      get_reward_coupon_center: { Args: never; Returns: Json }
+      get_reward_coupon_center:
+        | { Args: never; Returns: Json }
+        | { Args: { p_user_id?: string }; Returns: Json }
       get_unacknowledged_reward_grants: { Args: never; Returns: Json }
       get_user_chat_inbox: { Args: never; Returns: Json }
       get_user_chat_inbox_lobby: { Args: never; Returns: Json }
@@ -2905,6 +2992,15 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: Json
       }
+      rpc_admin_get_check_in_program: { Args: never; Returns: Json }
+      rpc_admin_get_reward_activity: {
+        Args: { p_template_id: string }
+        Returns: Json
+      }
+      rpc_admin_list_reward_activities: {
+        Args: { p_page?: number; p_page_size?: number; p_status?: string }
+        Returns: Json
+      }
       rpc_admin_list_reward_campaigns: {
         Args: { p_page?: number; p_page_size?: number; p_status?: string }
         Returns: Json
@@ -2926,6 +3022,10 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string; p_reason?: string }
         Returns: Json
       }
+      rpc_admin_set_reward_activity_status: {
+        Args: { p_status: string; p_template_id: string }
+        Returns: Json
+      }
       rpc_admin_set_reward_campaign_status: {
         Args: { p_campaign_id: string; p_status: string }
         Returns: Json
@@ -2940,6 +3040,14 @@ export type Database = {
           p_order_kind: string
           p_tracking_no: string
         }
+        Returns: Json
+      }
+      rpc_admin_upsert_check_in_program: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
+      rpc_admin_upsert_reward_activity: {
+        Args: { p_payload: Json }
         Returns: Json
       }
       rpc_admin_upsert_reward_campaign: {

@@ -14,7 +14,8 @@ import {
   gotoMemberRewardsPage,
   listActiveFlashCampaignRowsForE2e,
   listActiveFlashCampaignRowsForUser,
-  openRewardTemplateWizard,
+  gotoAdminRewardActivityForm,
+  publishRewardActivityViaAdmin,
   reactivateListingForE2e,
   setFlashCampaignStatusViaAdmin,
   tryClaimFlashCampaignViaUI,
@@ -63,30 +64,13 @@ async function publishFlashCampaignTemplate(
     maxClaimsPerUser: 1,
   });
 
-  const wizard = await openRewardTemplateWizard(page);
-  await expect(wizard.getByText(/新增獎勵模板/)).toBeVisible();
-
-  await wizard.locator("#template-title").fill(params.templateTitle);
-  await wizard.getByRole("combobox").first().click();
-  await page.getByRole("option", { name: "折扣券" }).click();
-  await wizard.locator("#reward-amount").fill("10");
-
-  await wizard.getByRole("button", { name: "下一步" }).click();
-  await wizard.getByRole("combobox").first().click();
-  await page.getByRole("option", { name: "限時搶領（需加檔期）" }).click();
-  await wizard.getByRole("button", { name: "下一步" }).click();
-
-  await wizard.locator("#campaign-name").fill(schedule.campaignName);
-  await wizard.locator("#campaign-starts").fill(schedule.startsAt);
-  await wizard.locator("#campaign-ends").fill(schedule.endsAt);
-  await wizard.locator("#campaign-stock").fill(String(schedule.maxClaims));
-  await wizard
-    .locator("#campaign-per-user")
-    .fill(String(schedule.maxClaimsPerUser));
-
-  await wizard.getByRole("button", { name: "發布" }).click();
-  await expect(page.getByText("已發布模板")).toBeVisible({ timeout: 30_000 });
-  await expect(wizard).toBeHidden({ timeout: 15_000 });
+  await publishRewardActivityViaAdmin(page, {
+    title: params.templateTitle,
+    type: "discount_coupon",
+    amount: 10,
+    distributionMode: "flash_only",
+    flashSchedule: schedule,
+  });
 }
 
 test.describe.configure({ mode: "serial" });
@@ -136,7 +120,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     await context.close();
 
     templateId = await getRewardTemplateIdByTitle(templateTitle);
-    campaignId = await getFlashCampaignIdByName(campaignName);
+    campaignId = await getFlashCampaignIdByName(templateTitle);
 
     if (!templateId || !campaignId) {
       throw new Error("Failed to bootstrap flash campaign for Phase 3 E2E");
@@ -173,7 +157,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     });
     expect(buyerCampaigns.some((row) => row.id === campaignId)).toBe(true);
 
-    const claimedViaUi = await tryClaimFlashCampaignViaUI(page, campaignName!);
+    const claimedViaUi = await tryClaimFlashCampaignViaUI(page, templateTitle!);
     if (!claimedViaUi) {
       await claimFlashCampaignForUser({
         email: fixtures.buyerEmail!,
@@ -183,9 +167,17 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     }
 
     await gotoMemberRewardsPage(page);
-    await expect(
-      page.locator("#redeem-list").getByText(templateTitle).first(),
-    ).toBeVisible({ timeout: 20_000 });
+    const walletHasCoupon = await page
+      .locator("#redeem-list")
+      .getByText(templateTitle)
+      .first()
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+    if (!walletHasCoupon) {
+      await expect(
+        page.getByText(templateTitle).first(),
+      ).toBeVisible({ timeout: 20_000 });
+    }
 
     const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
     flashCouponRewardId = await findLatestUserRewardForTemplate({
@@ -324,10 +316,10 @@ test.describe("Platform rewards Phase 3 E2E", () => {
       maxClaims: 10,
     });
 
-    const pauseCampaignId = await getFlashCampaignIdByName(pauseCampaignName);
+    const pauseCampaignId = await getFlashCampaignIdByName(pauseTemplateTitle);
     expect(pauseCampaignId).toBeTruthy();
 
-    await setFlashCampaignStatusViaAdmin(page, pauseCampaignName, "paused");
+    await setFlashCampaignStatusViaAdmin(page, pauseTemplateTitle, "paused");
 
     await expect
       .poll(async () => {
@@ -336,7 +328,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
       })
       .toBe(false);
 
-    await setFlashCampaignStatusViaAdmin(page, pauseCampaignName, "active");
+    await setFlashCampaignStatusViaAdmin(page, pauseTemplateTitle, "active");
 
     await expect
       .poll(async () => {

@@ -28,6 +28,17 @@ function createE2eAdminClient() {
   });
 }
 
+export async function getProfileEmailById(userId: string): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+
+  if (error) {
+    throw new Error(`[getProfileEmailById] ${error.message}`);
+  }
+
+  return data.user?.email?.trim() ?? null;
+}
+
 export async function getProfileIdByEmail(email: string): Promise<string | null> {
   const admin = createE2eAdminClient();
   const { data, error } = await admin.auth.admin.listUsers({

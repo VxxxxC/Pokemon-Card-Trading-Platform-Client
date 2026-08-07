@@ -47,8 +47,10 @@
 |------|------|
 | `event_once` | `profile_complete`, `first_listing`, `first_chat` |
 | `trade_count` | buyer / merchant 成交筆數 |
-| `check_in_streak` | 連續簽到天數 |
-| `check_in_cycle_day` | 7 日週期第 N 天 |
+| ~~`check_in_streak`~~ | **已廢止** — 改用 `/admin/campaigns?tab=check-in`（簽到計劃） |
+| ~~`check_in_cycle_day`~~ | **已廢止** — 同上 |
+
+**簽到獎勵：** 每日階梯 + 簽滿 7 日加碼由 `check_in_program` + `execute_daily_check_in` 處理，不再經獎勵活動觸發條件。
 
 ### Existing `reward_type` enum
 
