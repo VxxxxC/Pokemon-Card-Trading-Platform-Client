@@ -455,12 +455,15 @@ export async function getUserRewardCoupons(): Promise<UserRewardCouponsResult> {
 
     const { data, error } = await (
       supabase as unknown as {
-        rpc: (fn: "get_reward_coupon_center") => Promise<{
+        rpc: (
+          fn: "get_reward_coupon_center",
+          args: { p_user_id: string },
+        ) => Promise<{
           data: unknown;
           error: { message: string } | null;
         }>;
       }
-    ).rpc("get_reward_coupon_center");
+    ).rpc("get_reward_coupon_center", { p_user_id: user.id });
 
     if (error) {
       if (isCouponRpcUnavailable(error)) {
