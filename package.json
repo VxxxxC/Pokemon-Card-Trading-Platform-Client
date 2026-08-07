@@ -61,6 +61,8 @@
     "@next/swc-linux-x64-gnu": "16.2.9",
     "@playwright/test": "^1.61.1",
     "@serwist/turbopack": "^9.5.7",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@stripe/cli": "^1.45.0",
     "@tailwindcss/postcss": "^4",
     "@types/bun": "^1.3.14",
