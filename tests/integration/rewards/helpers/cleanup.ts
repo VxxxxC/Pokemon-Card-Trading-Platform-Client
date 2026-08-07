@@ -88,31 +88,3 @@ export async function cleanupMatrixRun(
   await cleanupTemplatesByTitlePrefix(titlePrefix);
   await resetBuyerProfile(buyerId);
 }
-
-export async function wipeCouponFsmRun(params: {
-  orderIds: string[];
-  userRewardIds: string[];
-}): Promise<void> {
-  const admin = createServiceRoleClient();
-
-  for (const orderId of params.orderIds) {
-    const { error: releaseError } = await admin.rpc(
-      "fn_release_merchant_order_coupon",
-      { p_order_id: orderId },
-    );
-    if (releaseError && !releaseError.message.includes("does not exist")) {
-      throw new Error(`[wipeCouponFsmRun] release ${orderId}: ${releaseError.message}`);
-    }
-  }
-
-  if (params.userRewardIds.length > 0) {
-    const { error: rewardDeleteError } = await admin
-      .from("user_rewards")
-      .delete()
-      .in("id", params.userRewardIds);
-
-    if (rewardDeleteError) {
-      throw new Error(`[wipeCouponFsmRun] rewards: ${rewardDeleteError.message}`);
-    }
-  }
-}
