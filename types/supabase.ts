@@ -2385,6 +2385,7 @@ export type Database = {
           grant_dedup_key: string
           id: string
           is_used: boolean | null
+          reserved_at: string | null
           reserved_merchant_order_id: string | null
           template_id: string
           used_at: string | null
@@ -2397,6 +2398,7 @@ export type Database = {
           grant_dedup_key?: string
           id?: string
           is_used?: boolean | null
+          reserved_at?: string | null
           reserved_merchant_order_id?: string | null
           template_id: string
           used_at?: string | null
@@ -2409,6 +2411,7 @@ export type Database = {
           grant_dedup_key?: string
           id?: string
           is_used?: boolean | null
+          reserved_at?: string | null
           reserved_merchant_order_id?: string | null
           template_id?: string
           used_at?: string | null
@@ -2810,6 +2813,14 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: undefined
       }
+      fn_reserve_user_reward_for_merchant_order: {
+        Args: {
+          p_buyer_id: string
+          p_order_id: string
+          p_user_reward_id: string
+        }
+        Returns: string
+      }
       fn_resolve_member_listing_id: {
         Args: { p_listing_ref: string; p_seller_id: string }
         Returns: string
@@ -3114,9 +3125,21 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      rpc_e2e_backdate_coupon_reserve: {
+        Args: { p_minutes_ago?: number; p_user_reward_id: string }
+        Returns: Json
+      }
+      rpc_e2e_backdate_merchant_payout_hold: {
+        Args: { p_order_id: string }
+        Returns: Json
+      }
       rpc_e2e_reset_listing_trading_fixture: {
         Args: { p_buyer_id: string; p_listing_id: string; p_seller_id: string }
         Returns: Json
+      }
+      rpc_e2e_seed_merchant_pending_payment_order: {
+        Args: { p_buyer_id: string; p_listing_id: string }
+        Returns: string
       }
       rpc_fail_member_auth_order: {
         Args: { p_order_id: string }
@@ -3177,6 +3200,10 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      rpc_finalize_stale_coupon_reserve: {
+        Args: { p_user_reward_id: string }
+        Returns: Json
+      }
       rpc_get_user_reviewed_member_order_ids: {
         Args: { p_order_ids: string[] }
         Returns: string[]
@@ -3216,6 +3243,13 @@ export type Database = {
           listing_id: string
           order_id: string
           stripe_payment_intent_id: string
+        }[]
+      }
+      rpc_list_stale_coupon_reserve_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          merchant_order_id: string
+          user_reward_id: string
         }[]
       }
       rpc_make_offer:
