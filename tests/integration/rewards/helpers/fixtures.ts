@@ -117,6 +117,26 @@ export function buildAutoGrantProfileCompleteInput(
   );
 }
 
+export function buildAuthFreeShippingInput(
+  title: string,
+): AdminRewardActivityUpsertInput {
+  const base = buildDefaultActivityForm();
+  return withActivityWindow(
+    {
+      ...base,
+      type: "free_shipping",
+      reward_value: { max_subsidy_hkd: 30, min_spend_hkd: 0 },
+      distribution_mode: "auto_grant",
+      trigger_conditions: {
+        kind: "trade_count",
+        role: "buyer",
+        count: 1,
+      },
+    },
+    title,
+  );
+}
+
 export function buildFlashFreeShipInput(
   title: string,
   campaignName: string,

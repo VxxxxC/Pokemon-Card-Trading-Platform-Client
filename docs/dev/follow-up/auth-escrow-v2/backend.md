@@ -219,10 +219,10 @@ SELECT public.fn_compute_auth_escrow_amounts(100);
 ```bash
 bunx tsc --noEmit
 bun run build:ci
-bun run test:rewards:gate
+bun run test:auth-escrow:gate
 ```
 
-**Partner QA:** [frontend.md](./frontend.md) · multicapture amounts in [PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)
+**Partner QA:** [PARTNER_QA.md](./PARTNER_QA.md) · [frontend.md](./frontend.md) · multicapture amounts in [PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)
 
 ## Verify (Phase A)
 
@@ -242,7 +242,7 @@ SELECT key, value FROM platform_settings WHERE key = 'auth_escrow_config';
 ```bash
 bunx tsc --noEmit
 bun run build:ci
-bun run test:rewards:gate   # non-auth paths unchanged
+bun run test:auth-escrow:gate
 ```
 
 **Partner QA:** Phase A 無人手驗收項。

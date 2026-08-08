@@ -1,6 +1,6 @@
 # Auth Escrow v2 — Phase D（Rewards on Auth）
 
-> **Status:** 🟡 Implemented — pending `db push` + Partner QA  
+> **Status:** 🟡 Implemented — automated gate ✅ · **Partner:** [PARTNER_QA.md](./PARTNER_QA.md)  
 > **Unlocks:** Platform Rewards Phase 2b (`merchant_auth` + `merchant_direct` 鑑定開關用券)
 
 ## 目標
@@ -74,7 +74,16 @@ v_escrow_capture_model := CASE WHEN COALESCE(p_use_auth, false) THEN 'single' EL
 2. **`rpc_list_checkout_eligible_coupons`** — auth preview 用 outbound leg  
 3. **`rpc_prepare_merchant_order_payment`** — 以 `20260901140000` 為底：auth 永遠 v2 amounts + `escrow_capture_model='single'`；刪除 coupon legacy gate
 
-執行：`bunx supabase db push` → `bun run supabase:types`
+```bash
+bun run test:auth-escrow:gate
+```
+
+或分開：
+
+```bash
+bun run test:integration:rewards
+bun run test:e2e:auth-escrow   # B2b only
+```
 
 ### Frontend（輕量）
 
@@ -88,7 +97,7 @@ v_escrow_capture_model := CASE WHEN COALESCE(p_use_auth, false) THEN 'single' EL
 
 ### 文檔
 
-- 本檔、`backend.md`、`plan.md`、`platform-rewards-v2/backend.md`、`QA_CHECKLIST.md` D2、`INTEGRATION_QUEUE.md`
+- 本檔、`backend.md`、`plan.md`、**[PARTNER_QA.md](./PARTNER_QA.md)**、`platform-rewards-v2/backend.md`、`QA_CHECKLIST.md` D2、`INTEGRATION_QUEUE.md`
 
 ---
 

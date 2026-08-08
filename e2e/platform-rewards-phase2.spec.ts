@@ -27,6 +27,10 @@ import {
   waitForCheckoutCouponClearedAfterAuthToggle,
   waitForCheckoutCouponPicker,
 } from "./helpers/rewards-checkout-coupon";
+import {
+  assertPaymentIntentMatchesBuyerTotal,
+  hasStripeReconcileEnv,
+} from "./helpers/stripe-reconcile";
 
 function readEnv(key: string): string | undefined {
   return process.env[key]?.trim() || undefined;
@@ -399,6 +403,10 @@ test.describe("Platform rewards Phase 2 E2E", () => {
 
     await completeMerchantAuthCheckout(page, { couponRewardId: rewardId });
 
+    if (hasStripeReconcileEnv()) {
+      await assertPaymentIntentMatchesBuyerTotal(authOrderId);
+    }
+
     const snapshot = await getMerchantOrderCouponSnapshot(authOrderId);
     expect(snapshot).toBeTruthy();
     expect(snapshot!.escrow_capture_model).toBe("single");
@@ -450,6 +458,10 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
 
     await completeMerchantAuthCheckout(page, { couponRewardId: rewardId });
+
+    if (hasStripeReconcileEnv()) {
+      await assertPaymentIntentMatchesBuyerTotal(authOrderId);
+    }
 
     const snapshot = await getMerchantOrderCouponSnapshot(authOrderId);
     expect(snapshot).toBeTruthy();

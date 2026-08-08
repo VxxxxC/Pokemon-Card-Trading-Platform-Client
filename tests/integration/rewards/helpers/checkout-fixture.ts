@@ -360,6 +360,58 @@ export async function getMerchantOrderCouponRow(orderId: string) {
   return data;
 }
 
+export type MerchantOrderAuthEscrowRow = {
+  id: string;
+  item_subtotal: number | null;
+  final_price: number | null;
+  auth_fee: number | null;
+  shipping_fee: number | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
+  total_amount: number | null;
+  buyer_total_amount: number | null;
+  platform_subsidy_amount: number | null;
+  escrow_capture_model: string | null;
+  coupon_user_reward_id: string | null;
+  coupon_type: string | null;
+  requires_authentication: boolean | null;
+};
+
+export async function getMerchantOrderAuthEscrowRow(
+  orderId: string,
+): Promise<MerchantOrderAuthEscrowRow | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("merchant_orders")
+    .select(
+      "id, item_subtotal, final_price, auth_fee, shipping_fee, inbound_shipping_fee, outbound_shipping_fee, total_amount, buyer_total_amount, platform_subsidy_amount, escrow_capture_model, coupon_user_reward_id, coupon_type, requires_authentication",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getMerchantOrderAuthEscrowRow] ${error.message}`);
+  }
+
+  return data;
+}
+
+const AUTH_PREPARE_OVERRIDES = {
+  p_use_auth: true,
+  p_shipping_method: "sf",
+  p_sf_locker_code: "VITEST01",
+  p_sf_address: "Vitest SF locker",
+  p_buyer_phone: "91234567",
+} as const;
+
+export async function invokeAuthPreparePayment(
+  client: SupabaseClient<Database>,
+  orderId: string,
+  couponId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  return invokePreparePayment(client, orderId, couponId, AUTH_PREPARE_OVERRIDES);
+}
+
 export async function setCouponExpiry(
   userRewardId: string,
   expiryIso: string,
