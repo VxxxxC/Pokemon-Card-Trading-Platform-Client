@@ -18,9 +18,13 @@ type MerchantPayoutAdminRpcClient = {
     fn: "rpc_finalize_merchant_order_payout",
     args: {
       p_order_id: string;
-      p_transfer_id: string;
+      p_transfer_id: string | null;
       p_transfer_amount_cents: number;
       p_destination_account_id: string;
+      p_recovery_applications: Array<{
+        recovery_order_id: string;
+        amount_applied: number;
+      }>;
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
@@ -31,6 +35,15 @@ type MerchantPayoutAdminRpcClient = {
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
+
+function buildRecoveryApplicationsPayload(
+  prepared: Extract<MerchantPayoutPreparation, { alreadyApplied: false }>,
+) {
+  return prepared.recoveryApplications.map((application) => ({
+    recovery_order_id: application.recoveryOrderId,
+    amount_applied: application.amountApplied,
+  }));
+}
 
 export async function executeMerchantConnectPayout(
   orderId: string,
@@ -100,9 +113,42 @@ export async function executeMerchantConnectPayout(
       paymentIntent.metadata?.order_id !== prepared.orderId ||
       paymentIntent.amount_received < expectedBuyerTotalInCents ||
       !latestCharge ||
-      merchantPayoutInCents <= 0
+      merchantPayoutInCents < 0
     ) {
       throw new Error("payment_not_settled");
+    }
+
+    const recoveryApplications = buildRecoveryApplicationsPayload(prepared);
+
+    if (merchantPayoutInCents === 0) {
+      const { error: finalizeError } = await admin.rpc(
+        "rpc_finalize_merchant_order_payout",
+        {
+          p_order_id: prepared.orderId,
+          p_transfer_id: null,
+          p_transfer_amount_cents: 0,
+          p_destination_account_id: prepared.stripeAccountId,
+          p_recovery_applications: recoveryApplications,
+        },
+      );
+
+      if (finalizeError) {
+        console.error(
+          "[executeMerchantConnectPayout] finalize zero-net payout",
+          prepared.orderId,
+          finalizeError.message,
+        );
+        return {
+          success: false,
+          orderId: trimmedOrderId,
+          error: "finalize_failed",
+        };
+      }
+
+      return {
+        success: true,
+        orderId: trimmedOrderId,
+      };
     }
 
     const transferPayload: Parameters<typeof stripe.transfers.create>[0] = {
@@ -116,6 +162,7 @@ export async function executeMerchantConnectPayout(
         destination_account_id: prepared.stripeAccountId,
         transfer_amount_cents: String(merchantPayoutInCents),
         commission_amount: String(prepared.commissionAmount),
+        recovery_deduction_total: String(prepared.recoveryDeductionTotal),
       },
     };
 
@@ -137,6 +184,7 @@ export async function executeMerchantConnectPayout(
           typeof transfer.destination === "string"
             ? transfer.destination
             : (transfer.destination?.id ?? prepared.stripeAccountId),
+        p_recovery_applications: recoveryApplications,
       },
     );
 

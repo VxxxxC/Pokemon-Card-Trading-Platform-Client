@@ -4,10 +4,12 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
+  adminClearSellerSettlement,
   adminConfirmGradingIntake,
   adminFailGradingAndRefund,
   adminPassGrading,
   adminSubmitGradingOutbound,
+  adminSubmitSellerReturnTracking,
   getAdminGradingAuditHistory,
   searchAdminGradingOrders,
   type AdminGradingAuditRow,
@@ -39,6 +41,7 @@ const TAB_LABELS: Record<AdminGradingTab, string> = {
   awaiting_intake: "待入庫",
   grading: "鑑定中",
   awaiting_outbound: "待出庫",
+  awaiting_settlement: "待追償／寄回",
   closed: "已結案／退款",
 };
 
@@ -89,6 +92,26 @@ function formatListingGrade(row: AdminGradingQueueRow): string {
   return score ? `${company} ${score}` : company;
 }
 
+function isSellerFaultGradingFail(row: AdminGradingQueueRow): boolean {
+  return row.auth_result === "failed" && row.fault_party === "seller";
+}
+
+function showSellerSettlementPanel(row: AdminGradingQueueRow): boolean {
+  if (!isSellerFaultGradingFail(row)) {
+    return false;
+  }
+  if (row.seller_settlement_status === "pending") {
+    return true;
+  }
+  if (
+    row.seller_settlement_status === "cleared" &&
+    !row.outbound_tracking_no?.trim()
+  ) {
+    return true;
+  }
+  return false;
+}
+
 type AdminGradingClientProps = {
   initialRows: AdminGradingQueueRow[];
   initialTotal: number;
@@ -115,6 +138,9 @@ export function AdminGradingClient({
   const [failReason, setFailReason] = useState("");
   const [faultParty, setFaultParty] = useState<AdminGradingFaultParty | "">("");
   const [outboundTracking, setOutboundTracking] = useState("");
+  const [fpsReference, setFpsReference] = useState("");
+  const [settlementNotes, setSettlementNotes] = useState("");
+  const [sellerReturnTracking, setSellerReturnTracking] = useState("");
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
@@ -162,6 +188,9 @@ export function AdminGradingClient({
     setGradingOptionId(defaultPassGradingOptionId(row));
     setFailReason("");
     setOutboundTracking(row.outbound_tracking_no ?? "");
+    setFpsReference("");
+    setSettlementNotes("");
+    setSellerReturnTracking("");
     setAuditRows([]);
     loadAudit(row);
   };
@@ -169,6 +198,7 @@ export function AdminGradingClient({
   const runMutation = (
     action: () => Promise<{ success: boolean; error?: string }>,
     successMessage: string,
+    options?: { keepDetailOpen?: boolean },
   ) => {
     startTransition(async () => {
       const result = await action();
@@ -177,6 +207,62 @@ export function AdminGradingClient({
         return;
       }
       toast.success(successMessage);
+      if (!options?.keepDetailOpen) {
+        setSelected(null);
+      }
+      refreshQueue(page);
+      router.refresh();
+    });
+  };
+
+  const handleClearSellerSettlement = () => {
+    if (!selected) {
+      return;
+    }
+    const current = selected;
+    startTransition(async () => {
+      const result = await adminClearSellerSettlement({
+        orderKind: current.order_kind,
+        orderId: current.order_id,
+        fpsReference,
+        notes: settlementNotes,
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("已確認賣方收款，請提交寄回賣家物流");
+      setSelected({
+        ...current,
+        seller_settlement_status: "cleared",
+      });
+      loadAudit({ ...current, seller_settlement_status: "cleared" });
+      refreshQueue(page);
+      router.refresh();
+    });
+  };
+
+  const handleSubmitSellerReturnTracking = () => {
+    if (!selected) {
+      return;
+    }
+    const current = selected;
+    const trackingNo = sellerReturnTracking.trim();
+    if (!trackingNo) {
+      toast.error("請輸入寄回物流單號");
+      return;
+    }
+    startTransition(async () => {
+      const result = await adminSubmitSellerReturnTracking({
+        orderKind: current.order_kind,
+        orderId: current.order_id,
+        trackingNo,
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("寄回賣家物流已更新");
       setSelected(null);
       refreshQueue(page);
       router.refresh();
@@ -425,6 +511,21 @@ export function AdminGradingClient({
                 </p>
               ) : null}
               <p>退款狀態：{selected.refund_status}</p>
+              {selected.fault_party ? (
+                <p>責任方：{selected.fault_party}</p>
+              ) : null}
+              {selected.seller_settlement_status ? (
+                <p>賣方追償：{selected.seller_settlement_status}</p>
+              ) : null}
+              {selected.receivable_amount_hkd != null ? (
+                <p>
+                  追償金額：HK${" "}
+                  {Number(selected.receivable_amount_hkd).toLocaleString("zh-HK", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              ) : null}
             </div>
 
             {tab === "awaiting_intake" ? (
@@ -549,6 +650,59 @@ export function AdminGradingClient({
                     鑑定失敗並釋放餘額
                   </Button>
                 </div>
+              </div>
+            ) : null}
+
+            {showSellerSettlementPanel(selected) ? (
+              <div className="mt-4 space-y-3">
+                <p className="text-xs text-text-secondary">
+                  賣方責任鑑定失敗：請先確認已向賣方收取追償款項，再提交寄回賣家物流。
+                </p>
+                {selected.seller_settlement_status === "pending" ? (
+                  <>
+                    <input
+                      value={fpsReference}
+                      onChange={(event) => setFpsReference(event.target.value)}
+                      placeholder="FPS 參考編號（選填）"
+                      className="h-10 w-full rounded-lg border border-white/10 bg-[#1A1612] px-3 font-mono text-xs text-text-primary"
+                    />
+                    <textarea
+                      value={settlementNotes}
+                      onChange={(event) => setSettlementNotes(event.target.value)}
+                      placeholder="收款備註（選填）"
+                      className="min-h-[64px] w-full rounded-lg border border-white/10 bg-[#1A1612] px-3 py-2 text-xs text-text-primary"
+                    />
+                    <Button
+                      type="button"
+                      disabled={isPending}
+                      onClick={handleClearSellerSettlement}
+                    >
+                      確認賣方已收款
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-xs text-brand">
+                    追償款項已確認，請填寫寄回賣家物流單號。
+                  </p>
+                )}
+
+                <input
+                  value={sellerReturnTracking}
+                  onChange={(event) => setSellerReturnTracking(event.target.value)}
+                  placeholder="寄回賣家物流單號"
+                  className="h-10 w-full rounded-lg border border-white/10 bg-[#1A1612] px-3 font-mono text-xs text-text-primary"
+                />
+                <Button
+                  type="button"
+                  disabled={
+                    isPending ||
+                    selected.seller_settlement_status !== "cleared" ||
+                    !sellerReturnTracking.trim()
+                  }
+                  onClick={handleSubmitSellerReturnTracking}
+                >
+                  提交寄回賣家物流
+                </Button>
               </div>
             ) : null}
 

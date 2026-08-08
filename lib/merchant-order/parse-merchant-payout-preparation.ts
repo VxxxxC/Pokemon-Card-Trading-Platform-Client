@@ -1,3 +1,8 @@
+export type MerchantPayoutRecoveryApplication = {
+  recoveryOrderId: string;
+  amountApplied: number;
+};
+
 export type MerchantPayoutPreparation =
   | {
       alreadyApplied: true;
@@ -11,7 +16,10 @@ export type MerchantPayoutPreparation =
       totalAmount: number;
       buyerTotalAmount: number;
       commissionAmount: number;
+      merchantPayoutGross: number;
       merchantPayoutAmount: number;
+      recoveryDeductionTotal: number;
+      recoveryApplications: MerchantPayoutRecoveryApplication[];
     };
 
 function readMerchantPayoutRpcString(
@@ -28,6 +36,43 @@ function readMerchantPayoutRpcString(
     }
   }
   return "";
+}
+
+function parseRecoveryApplications(
+  value: unknown,
+): MerchantPayoutRecoveryApplication[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const applications: MerchantPayoutRecoveryApplication[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      continue;
+    }
+
+    const row = item as Record<string, unknown>;
+    const recoveryOrderId = readMerchantPayoutRpcString(row, [
+      "recovery_order_id",
+    ]);
+    const amountApplied = Number(row.amount_applied);
+
+    if (
+      !recoveryOrderId ||
+      !Number.isFinite(amountApplied) ||
+      amountApplied <= 0
+    ) {
+      continue;
+    }
+
+    applications.push({
+      recoveryOrderId,
+      amountApplied,
+    });
+  }
+
+  return applications;
 }
 
 export function parseMerchantPayoutPreparation(
@@ -60,7 +105,14 @@ export function parseMerchantPayoutPreparation(
     row.buyer_total_amount ?? row.total_amount,
   );
   const commissionAmount = Number(row.commission_amount);
+  const merchantPayoutGross = Number(
+    row.merchant_payout_gross ?? row.merchant_payout_amount,
+  );
   const merchantPayoutAmount = Number(row.merchant_payout_amount);
+  const recoveryDeductionTotal = Number(row.recovery_deduction_total ?? 0);
+  const recoveryApplications = parseRecoveryApplications(
+    row.recovery_applications,
+  );
 
   if (
     !paymentIntentId ||
@@ -71,8 +123,12 @@ export function parseMerchantPayoutPreparation(
     buyerTotalAmount <= 0 ||
     !Number.isFinite(commissionAmount) ||
     commissionAmount < 0 ||
+    !Number.isFinite(merchantPayoutGross) ||
+    merchantPayoutGross < 0 ||
     !Number.isFinite(merchantPayoutAmount) ||
-    merchantPayoutAmount <= 0
+    merchantPayoutAmount < 0 ||
+    !Number.isFinite(recoveryDeductionTotal) ||
+    recoveryDeductionTotal < 0
   ) {
     return null;
   }
@@ -85,6 +141,9 @@ export function parseMerchantPayoutPreparation(
     totalAmount,
     buyerTotalAmount,
     commissionAmount,
+    merchantPayoutGross,
     merchantPayoutAmount,
+    recoveryDeductionTotal,
+    recoveryApplications,
   };
 }

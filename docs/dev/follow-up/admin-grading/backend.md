@@ -47,7 +47,7 @@ Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/fina
 ## Fail / void policy (P1)
 
 - **single（authorized，入庫後）：** `paymentIntents.cancel` — 買家無扣款
-- **legacy（auth_fee_captured）：** `capture(0)` 釋放未 capture 餘額；auth fee 已扣（Phase C 全退另做）
+- **legacy（auth_fee_captured）：** `refund(auth_fee + inbound)` then `capture(0)` when `fault_party = seller`（Phase C）；其他 fault 僅 `capture(0)`
 - `fault_party` enum: `buyer | seller | platform | carrier | inconclusive` (required on fail)
 - Idempotency key: `auth-grading-fail-capture-zero:<orderKind>:<orderId>` (must differ from legacy `auth-grading-fail-void:*` used with `cancel`)
 - Legacy `rpc_finalize_auth_refund` + `refund.created` webhook kept for manual recovery only

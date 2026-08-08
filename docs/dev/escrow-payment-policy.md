@@ -122,10 +122,12 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 | 步驟 | 動作 |
 |------|------|
 | Admin fail | 必填 `fault_party` + 原因 |
-| 金額 | 釋放 **未 capture** 卡價／運費；**auth_fee 不退** |
+| **Single capture（新單）** | PI `cancel` → 買家全額退回（卡價 + 鑑定費 + 兩段運費）；**無** processing fee |
+| **Legacy staged** | 先 `refund` 已 capture（鑑定費 + inbound），再 `capture(0)` 釋放餘額 |
+| **賣方責任（`fault_party = seller`）** | Member → `seller_receivables`（single：追償 `buyer_total_amount`；legacy：已退買家金額）；Merchant → `merchant_ledgers` `grading_fail_recovery`；`seller_settlement_status = pending` → Admin 收款 → `cleared` → 寄回賣家 tracking |
 | 訂單 | Member → `cancelled`；Merchant → `refunded` |
 | Listing | 回 `active` |
-| Stripe fee | 僅對已 capture 金額產生；按 fault 記入 seller/merchant payable |
+| Stripe fee | Single void → 零 fee；legacy 已 capture 部分按 fault 記入 seller/merchant payable |
 
 ---
 

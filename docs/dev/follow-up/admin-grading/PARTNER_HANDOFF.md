@@ -19,7 +19,7 @@
 | 優先 | 流程 | 路由 |
 |------|------|------|
 | **P0** | 買家付款 → 賣家入庫物流 → Admin 入庫 → Admin 鑑定通過 | Member C2C + `/admin/grading` |
-| P1 | 鑑定失敗 cancel PI（新單未 capture） | Admin fail + `fault_party` |
+| P1 | 鑑定失敗 cancel PI（新單未 capture）+ **賣方追償** | Admin fail `fault_party=seller` → **待追償** → 寄回賣家 |
 | P2 | 出庫物流 → 買家確認 → T+3 FPS | 見 [member-fps-payout e2e-checklist](../member-fps-payout/e2e-checklist.md) |
 | P3 | Merchant B2C 鑑定單（同上 single capture） | `MerchantOrderDetailView` 入庫 + `/admin/grading` |
 
@@ -103,6 +103,20 @@ WHERE id = '<order_id>';
 
 - 入庫後：`Amount capturable` = **$310**，`Amount captured` = **$0**
 - Pass 後：`Amount captured` = **$310**
+
+---
+
+## Phase C — 賣方追償（P1）
+
+| # | 誰 | 做咩 | 預期 |
+|---|-----|------|------|
+| 1 | Admin | **鑑定中** → fail，`fault_party = seller` | Single：PI canceled；`escrow_status=cancelled`；`seller_settlement_status=pending` |
+| 2 | — | SQL 抽查 | `seller_receivables` row `pending`，`amount_hkd = buyer_total_amount` |
+| 3 | Admin | **待追償** → 確認賣方已收款（FPS ref 選填） | `seller_settlement_status=cleared`；receivable `paid` |
+| 4 | Admin | 提交寄回賣家物流 | `outbound_tracking_no` 有值 |
+| 5 | Seller | 訂單詳情 | 待追償 banner 顯示金額 |
+
+**Legacy smoke：** `escrow_capture_model IS NULL` → fail → Stripe partial refund + receivable（金額 = auth_fee + inbound）。
 
 ---
 

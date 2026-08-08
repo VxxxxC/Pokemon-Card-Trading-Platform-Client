@@ -350,6 +350,26 @@ export function MemberOrderDetailView({
         </div>
       ) : null}
 
+      {isSeller &&
+      order.useAuthentication &&
+      order.sellerSettlementStatus === "pending" ? (
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-1">
+          <p className="text-[12.5px] font-semibold text-warning">
+            鑑定失敗追償待處理
+          </p>
+          <p className="text-[12px] text-text-secondary leading-relaxed">
+            平台判定為賣方責任。請依平台通知向平台繳付追償款項
+            {order.sellerReceivableAmountHkd != null
+              ? `（HK$ ${order.sellerReceivableAmountHkd.toLocaleString("zh-HK", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}）`
+              : ""}
+            ，完成後平台將安排寄回卡牌。
+          </p>
+        </div>
+      ) : null}
+
       {isBuyer &&
         order.orderKind === "merchant" &&
         shouldShowMerchantBuyerPayoutStatus(

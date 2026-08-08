@@ -19,6 +19,7 @@ export type AdminGradingTab =
   | "awaiting_intake"
   | "grading"
   | "awaiting_outbound"
+  | "awaiting_settlement"
   | "closed";
 
 export type AdminGradingOrderKind = "member" | "merchant";
@@ -64,6 +65,9 @@ export type AdminGradingQueueRow = {
   product_name_en: string | null;
   grading_company: string;
   grading_score: string | null;
+  fault_party: string | null;
+  seller_settlement_status: string | null;
+  receivable_amount_hkd: number | null;
 };
 
 export type AdminGradingAuditRow = {
@@ -203,6 +207,7 @@ export async function countAdminPendingGradingOrders(): Promise<ActionResult<num
     "awaiting_intake",
     "grading",
     "awaiting_outbound",
+    "awaiting_settlement",
   ];
 
   try {
@@ -256,6 +261,23 @@ type AdminGradingRpcClient = {
   rpc(
     fn: "rpc_admin_confirm_grading_intake",
     args: { p_order_kind: AdminGradingOrderKind; p_order_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "rpc_admin_submit_seller_return_tracking",
+    args: {
+      p_order_kind: AdminGradingOrderKind;
+      p_order_id: string;
+      p_tracking_no: string;
+    },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "rpc_admin_clear_seller_settlement",
+    args: {
+      p_order_kind: AdminGradingOrderKind;
+      p_order_id: string;
+      p_fps_reference: string | null;
+      p_notes: string | null;
+    },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "rpc_admin_submit_grading_outbound",
@@ -494,6 +516,87 @@ export async function adminFailGradingAndRefund(input: {
   } catch (error) {
     console.error("[adminFailGradingAndRefund]", error);
     return { success: false, error: "鑑定失敗處理未完成，請稍後重試" };
+  }
+}
+
+export async function adminClearSellerSettlement(input: {
+  orderKind: AdminGradingOrderKind;
+  orderId: string;
+  fpsReference?: string;
+  notes?: string;
+}): Promise<ActionResult<{ applied: true }>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const orderId = input.orderId.trim();
+  if (!orderId) {
+    return { success: false, error: "找不到此訂單" };
+  }
+
+  try {
+    const supabase = asAdminGradingRpcClient(await createClient());
+    const { error } = await supabase.rpc("rpc_admin_clear_seller_settlement", {
+      p_order_kind: input.orderKind,
+      p_order_id: orderId,
+      p_fps_reference: input.fpsReference?.trim() || null,
+      p_notes: input.notes?.trim() || null,
+    });
+
+    if (error) {
+      console.error("[adminClearSellerSettlement]", error.message);
+      return { success: false, error: mapRpcError(error.message) };
+    }
+
+    revalidateGradingPaths(input.orderKind, orderId);
+    return { success: true, data: { applied: true } };
+  } catch (error) {
+    console.error("[adminClearSellerSettlement]", error);
+    return { success: false, error: "確認收款失敗，請稍後再試" };
+  }
+}
+
+export async function adminSubmitSellerReturnTracking(input: {
+  orderKind: AdminGradingOrderKind;
+  orderId: string;
+  trackingNo: string;
+}): Promise<ActionResult<{ applied: true }>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const orderId = input.orderId.trim();
+  const trackingNo = input.trackingNo.trim();
+  if (!orderId) {
+    return { success: false, error: "找不到此訂單" };
+  }
+  if (!trackingNo) {
+    return { success: false, error: "請輸入寄回物流單號" };
+  }
+
+  try {
+    const supabase = asAdminGradingRpcClient(await createClient());
+    const { error } = await supabase.rpc(
+      "rpc_admin_submit_seller_return_tracking",
+      {
+        p_order_kind: input.orderKind,
+        p_order_id: orderId,
+        p_tracking_no: trackingNo,
+      },
+    );
+
+    if (error) {
+      console.error("[adminSubmitSellerReturnTracking]", error.message);
+      return { success: false, error: mapRpcError(error.message) };
+    }
+
+    revalidateGradingPaths(input.orderKind, orderId);
+    return { success: true, data: { applied: true } };
+  } catch (error) {
+    console.error("[adminSubmitSellerReturnTracking]", error);
+    return { success: false, error: "寄回物流更新失敗，請稍後再試" };
   }
 }
 

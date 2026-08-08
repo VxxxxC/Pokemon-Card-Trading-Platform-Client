@@ -119,12 +119,18 @@ export function MerchantOrderDetailView({
         0,
         merchantOrder.itemSubtotal - platformFee,
       );
+    const payoutGross =
+      merchantOrder.merchantPayoutGross ?? payoutAmount;
+    const recoveryDeductionTotal =
+      merchantOrder.recoveryDeductionTotal ?? 0;
 
     return {
       paymentIntentId: merchantOrder.stripePaymentIntentId,
       transferId: merchantOrder.stripeTransferId,
       platformFee,
       platformFeeIsEstimate,
+      payoutGross,
+      recoveryDeductionTotal,
       payoutAmount,
       payoutStatus: merchantOrder.payoutStatus,
       authFee: merchantOrder.authFee,
@@ -592,6 +598,23 @@ export function MerchantOrderDetailView({
                   HK$ {stripeDisplay.platformFee.toLocaleString("zh-TW")}
                 </span>
               </div>
+              {stripeDisplay.recoveryDeductionTotal > 0 ? (
+                <div className="flex justify-between items-center text-[11.5px]">
+                  <span className="text-text-secondary">應撥總額</span>
+                  <span className="font-mono text-text-primary font-semibold">
+                    HK$ {stripeDisplay.payoutGross.toLocaleString("zh-TW")}
+                  </span>
+                </div>
+              ) : null}
+              {stripeDisplay.recoveryDeductionTotal > 0 ? (
+                <div className="flex justify-between items-center text-[11.5px]">
+                  <span className="text-text-secondary">追償抵扣</span>
+                  <span className="font-mono text-warning font-semibold">
+                    -HK${" "}
+                    {stripeDisplay.recoveryDeductionTotal.toLocaleString("zh-TW")}
+                  </span>
+                </div>
+              ) : null}
               <div className="flex justify-between items-center text-[11.5px]">
                 <span className="text-text-secondary">預計撥款淨額</span>
                 <span className="font-mono text-text-primary font-semibold">
@@ -612,6 +635,27 @@ export function MerchantOrderDetailView({
                     {formatMerchantPayoutHoldUntilLabel(
                       merchantOrder.payoutHoldUntil,
                     )}
+                  </span>
+                </div>
+              ) : null}
+              {merchantOrder.sellerSettlementStatus === "pending" &&
+              merchantOrder.gradingFailRecoveryAmount != null ? (
+                <div className="flex justify-between items-center text-[11.5px]">
+                  <span className="text-text-secondary">鑑定失敗追償（待繳）</span>
+                  <span className="font-mono text-warning font-semibold">
+                    HK${" "}
+                    {merchantOrder.gradingFailRecoveryAmount.toLocaleString("zh-TW")}
+                  </span>
+                </div>
+              ) : null}
+              {merchantOrder.gradingFailRecoveryAmount != null &&
+              merchantOrder.sellerSettlementStatus === "cleared" ? (
+                <div className="flex justify-between items-center text-[11.5px]">
+                  <span className="text-text-secondary">鑑定失敗追償</span>
+                  <span className="font-mono text-text-primary font-semibold">
+                    HK${" "}
+                    {merchantOrder.gradingFailRecoveryAmount.toLocaleString("zh-TW")}
+                    （已確認）
                   </span>
                 </div>
               ) : null}

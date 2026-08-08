@@ -1,6 +1,6 @@
 # Auth Escrow v2 — Frontend
 
-> **Status:** 🟡 Phase B wired (checkout breakdown)  
+> **Status:** 🟢 Phase B + **Phase C** wired (checkout + admin 待追償)  
 > **Backend:** [backend.md](./backend.md) · **Plan:** [plan.md](./plan.md)
 
 ## Touchpoints
@@ -27,9 +27,24 @@ Example: HK$100 card → total **HK$310** (auth $150 + inbound $30 + outbound $3
 - [ ] Admin pass capture = **$130** ($100 + $30 outbound)
 - [ ] No single「運費 HK$0」row on auth-only checkout (replaced by two leg rows)
 
+## Phase C — Fail settlement UI ✅
+
+| Route / component | Change |
+|-------------------|--------|
+| [`app/admin/grading/AdminGradingClient.tsx`](../../../app/admin/grading/AdminGradingClient.tsx) | Tab **待追償**；確認賣方收款 + 寄回賣家物流 |
+| [`app/actions/admin-grading.ts`](../../../app/actions/admin-grading.ts) | `adminClearSellerSettlement`, `adminSubmitSellerReturnTracking` |
+| [`app/components/user/MemberOrderDetailView.tsx`](../../../app/components/user/MemberOrderDetailView.tsx) | Seller banner when `seller_settlement_status = pending` |
+| [`app/components/merchant/MerchantOrderDetailView.tsx`](../../../app/components/merchant/MerchantOrderDetailView.tsx) | Read-only `grading_fail_recovery` line in Stripe section |
+
+### Phase C acceptance (Partner QA)
+
+1. Fail with `fault_party = seller` on **single** capture order → DB `seller_receivables` pending, `amount_hkd = buyer_total`
+2. Admin **待追償** → 確認收款 → `seller_settlement_status = cleared`, receivable `paid`
+3. Submit **寄回賣家** tracking → `outbound_tracking_no` on cancelled order
+4. Seller order detail shows pending settlement banner
+
 ## Out of scope (Phase B)
 
-- Fail/refund UI (Phase C)
 - Auth checkout coupons / picker subsidy (Phase D — E2E B2b skipped)
 
 ## Verify

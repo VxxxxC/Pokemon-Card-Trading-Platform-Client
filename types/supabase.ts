@@ -1015,6 +1015,7 @@ export type Database = {
           meetup_detail: string | null
           merchant_id: string
           merchant_payout_amount: number | null
+          merchant_payout_gross: number | null
           order_number: string | null
           outbound_courier_name: string | null
           outbound_shipping_fee: number
@@ -1081,6 +1082,7 @@ export type Database = {
           meetup_detail?: string | null
           merchant_id: string
           merchant_payout_amount?: number | null
+          merchant_payout_gross?: number | null
           order_number?: string | null
           outbound_courier_name?: string | null
           outbound_shipping_fee?: number
@@ -1147,6 +1149,7 @@ export type Database = {
           meetup_detail?: string | null
           merchant_id?: string
           merchant_payout_amount?: number | null
+          merchant_payout_gross?: number | null
           order_number?: string | null
           outbound_courier_name?: string | null
           outbound_shipping_fee?: number
@@ -2826,6 +2829,10 @@ export type Database = {
           subsidy_amount: number
         }[]
       }
+      fn_compute_seller_grading_fail_liability: {
+        Args: { p_order_id: string; p_order_kind: string }
+        Returns: Json
+      }
       fn_effective_check_in_streak: {
         Args: { p_user_id: string }
         Returns: number
@@ -2901,6 +2908,14 @@ export type Database = {
             }
             Returns: boolean
           }
+      fn_merchant_unsettled_grading_recovery: {
+        Args: { p_merchant_id: string }
+        Returns: {
+          recovery_created_at: string
+          recovery_order_id: string
+          remaining_hkd: number
+        }[]
+      }
       fn_platform_auth_escrow_config: { Args: never; Returns: Json }
       fn_platform_auth_fee_hkd: { Args: never; Returns: number }
       fn_platform_auth_sf_leg_fee: { Args: never; Returns: number }
@@ -3114,6 +3129,15 @@ export type Database = {
         Args: { p_adjustment: number; p_case_id: string; p_reason?: string }
         Returns: Json
       }
+      rpc_admin_clear_seller_settlement: {
+        Args: {
+          p_fps_reference?: string
+          p_notes?: string
+          p_order_id: string
+          p_order_kind: string
+        }
+        Returns: Json
+      }
       rpc_admin_confirm_grading_intake: {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: Json
@@ -3161,6 +3185,14 @@ export type Database = {
         Returns: Json
       }
       rpc_admin_submit_grading_outbound: {
+        Args: {
+          p_order_id: string
+          p_order_kind: string
+          p_tracking_no: string
+        }
+        Returns: Json
+      }
+      rpc_admin_submit_seller_return_tracking: {
         Args: {
           p_order_id: string
           p_order_kind: string
@@ -3317,15 +3349,26 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
-      rpc_finalize_merchant_order_payout: {
-        Args: {
-          p_destination_account_id: string
-          p_order_id: string
-          p_transfer_amount_cents: number
-          p_transfer_id: string
-        }
-        Returns: Json
-      }
+      rpc_finalize_merchant_order_payout:
+        | {
+            Args: {
+              p_destination_account_id: string
+              p_order_id: string
+              p_transfer_amount_cents: number
+              p_transfer_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_destination_account_id: string
+              p_order_id: string
+              p_recovery_applications?: Json
+              p_transfer_amount_cents: number
+              p_transfer_id: string
+            }
+            Returns: Json
+          }
       rpc_finalize_merchant_pending_payment_expiry: {
         Args: { p_order_id: string }
         Returns: Json
@@ -4053,6 +4096,7 @@ export type Database = {
         | "refund"
         | "payout"
         | "grading_fail_recovery"
+        | "grading_fail_recovery_applied"
       user_role: "admin" | "merchant" | "member"
       violation_persona: "member" | "merchant" | "both" | "unknown"
     }
@@ -4290,6 +4334,7 @@ export const Constants = {
         "refund",
         "payout",
         "grading_fail_recovery",
+        "grading_fail_recovery_applied",
       ],
       user_role: ["admin", "merchant", "member"],
       violation_persona: ["member", "merchant", "both", "unknown"],

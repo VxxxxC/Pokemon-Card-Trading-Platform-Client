@@ -1,6 +1,6 @@
 # Auth Escrow v2 — Backend
 
-> **Status:** 🟢 Phase B + single capture (v2.1) · **Phase C:** [phase-c-plan.md](./phase-c-plan.md) · **Phase D:** pending  
+> **Status:** 🟢 Phase B + single capture (v2.1) · **Phase C:** ✅ implemented · **Phase D:** pending  
 > **Migration:** `20260901120000`, `20260901130000`, **`20260901140000_auth_escrow_single_capture.sql`**  
 > **Plan:** [plan.md](./plan.md) · **Blocks:** [Platform Rewards v2 Phase 2b](../platform-rewards-v2/plan.md)  
 > **Policy SSOT (pending v0.2):** [escrow-payment-policy.md](../../escrow-payment-policy.md)
@@ -125,17 +125,61 @@ Checkout breakdown 四行：卡價、鑑定費、運費（入庫段）、運費�
 
 ---
 
-## Fail & settlement target (Phase C — not implemented)
+## Fail & settlement (Phase C ✅)
 
 **賣方責任（`fault_party = seller`）MVP：**
 
-1. Stripe **refund** 已 capture（鑑定費 + inbound + 若有的其餘）
-2. Void 未 capture 餘額
-3. 買家收回：卡價 + 鑑定費 + 兩段運費
-4. Member → `INSERT seller_receivables`；Merchant → `merchant_ledgers` `grading_fail_recovery`
-5. `seller_settlement_status = pending` → Admin 收款 → `cleared` → 允許寄回賣家 tracking
+| Model | Stripe saga | Seller liability |
+|-------|-------------|------------------|
+| **single** | PI `cancel` | `buyer_total_amount` |
+| **legacy** | `refund(auth_fee + inbound)` then `capture(0)` | refunded buyer amount |
 
-取代現行 fail saga（`capture(0)` + **auth_fee 不退**）。
+1. `rpc_finalize_auth_grading_fail` → Member `seller_receivables` / Merchant `merchant_ledgers` `grading_fail_recovery`
+2. `seller_settlement_status = pending` → Admin **待追償** → `rpc_admin_clear_seller_settlement` → `cleared`
+3. `rpc_admin_submit_seller_return_tracking` → sets `outbound_tracking_no` (seller return)
+
+**Migration:** `20260902100000_auth_escrow_phase_c_settlement.sql`  
+**Saga:** `lib/payments/auth-grading-fail-void-saga.ts` (legacy refund before capture zero)  
+**Admin:** `adminClearSellerSettlement`, `adminSubmitSellerReturnTracking`, tab `awaiting_settlement`
+
+---
+
+## Merchant Connect recovery deduction (post-Phase C ✅)
+
+**Migration:** `20260909100000_merchant_payout_recovery_enum.sql` + `20260909110000_merchant_payout_recovery_deduction.sql`
+
+At T+7 `rpc_prepare_merchant_order_payout`, FIFO deduct unsettled `grading_fail_recovery` debt (merchant-level). Stripe transfers **net**; debt > gross → **$0 transfer**, order still completes, remainder carries to next payout.
+
+| Column / enum | Purpose |
+|---------------|---------|
+| `merchant_payout_gross` | Snapshot at buyer confirm (pre-deduction) |
+| `merchant_payout_amount` | Net transfer amount (forced at prepare) |
+| `grading_fail_recovery_applied` | Cumulative positive ledger on recovery order (UPSERT per `order_id`) |
+
+| RPC / helper | Notes |
+|--------------|-------|
+| `fn_merchant_unsettled_grading_recovery(merchant_id)` | FIFO open debts (`cleared` + failed seller fault) |
+| `rpc_confirm_merchant_buyer_receipt` | Auth gross uses `inbound_shipping_fee`; writes `merchant_payout_gross` |
+| `rpc_prepare_merchant_order_payout` | Returns `recovery_applications[]`, `recovery_deduction_total` |
+| `rpc_finalize_merchant_order_payout(..., p_recovery_applications)` | UPSERT applied rows; allows null `p_transfer_id` when net = 0 |
+
+**Saga:** `lib/merchant-order/execute-connect-payout.ts` — skip Stripe when net = 0, pass `p_recovery_applications` to finalize.
+
+### Partner QA (2-order scenario)
+
+1. Merchant M: auth fail order A → `grading_fail_recovery = -289`, admin `cleared` + return tracking.
+2. Success order B: buyer confirm → `merchant_payout_gross` = gross, `held`.
+3. T+7 cron: prepare B → `merchant_payout_amount = 0`, `recovery_applications = [{A, 72}]` (example).
+4. Saga: no Stripe transfer; finalize writes `grading_fail_recovery_applied +72` on A.
+5. Remaining debt on A = 289 − 72 = **217**; next order C clears remainder when gross ≥ 217.
+
+```sql
+SELECT order_id, transaction_type, amount
+FROM merchant_ledgers
+WHERE merchant_id = '<merchant_id>'
+  AND transaction_type IN ('grading_fail_recovery', 'grading_fail_recovery_applied')
+ORDER BY created_at;
+```
 
 ---
 
@@ -152,7 +196,7 @@ Checkout breakdown 四行：卡價、鑑定費、運費（入庫段）、運費�
 
 | Phase | Paths |
 |-------|-------|
-| C | `lib/payments/auth-grading-fail-void-saga.ts`, Admin 追償 UI |
+| C | `20260902100000_auth_escrow_phase_c_settlement.sql`, `lib/payments/auth-grading-fail-void-saga.ts`, `app/actions/admin-grading.ts`, `AdminGradingClient.tsx` |
 | D | `fn_compute_platform_subsidy`（免運只減 outbound）、Rewards Phase 2b 解鎖 |
 
 ---

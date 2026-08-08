@@ -407,6 +407,8 @@ export type MemberOrderDetail = UserTradingOrder & {
   buyerPhone?: string | null;
   meetupDetail?: string | null;
   buyerRemark?: string | null;
+  sellerSettlementStatus?: Tables<"member_orders">["seller_settlement_status"];
+  sellerReceivableAmountHkd?: number | null;
 };
 
 export type GetMemberOrderDetailResult =
@@ -434,6 +436,7 @@ type MemberOrderDetailQueryRow = {
   buyer_confirmed_at: string | null;
   payout_hold_until: string | null;
   seller_payout_status: Tables<"member_orders">["seller_payout_status"];
+  seller_settlement_status: Tables<"member_orders">["seller_settlement_status"];
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1194,6 +1197,8 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   commissionAmount: number | null;
   commissionRateApplied: number | null;
   merchantPayoutAmount: number | null;
+  merchantPayoutGross: number | null;
+  recoveryDeductionTotal: number | null;
   payoutStatus: string;
   sfLockerCode: string | null;
   sfAddress: string | null;
@@ -1202,6 +1207,8 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   buyerRemark: string | null;
   buyerConfirmedAt: string | null;
   payoutHoldUntil: string | null;
+  sellerSettlementStatus?: Tables<"merchant_orders">["seller_settlement_status"];
+  gradingFailRecoveryAmount?: number | null;
 };
 
 export type GetMerchantOrderDetailResult =
@@ -1234,6 +1241,7 @@ type MerchantOrderDetailQueryRow = {
   commission_amount: number | null;
   commission_rate_applied: number | null;
   merchant_payout_amount: number | null;
+  merchant_payout_gross: number | null;
   payout_status: string;
   sf_locker_code: string | null;
   sf_address: string | null;
@@ -1242,6 +1250,7 @@ type MerchantOrderDetailQueryRow = {
   buyer_remark: string | null;
   buyer_confirmed_at: string | null;
   payout_hold_until: string | null;
+  seller_settlement_status: Tables<"merchant_orders">["seller_settlement_status"];
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1267,6 +1276,7 @@ type MerchantOrderDetailQueryRow = {
 function mapMerchantOrderDetailRow(
   row: MerchantOrderDetailQueryRow,
   hasReviewedByMe: boolean,
+  gradingFailRecoveryAmount?: number | null,
 ): MerchantOrderDetail {
   const catalog = row.listings.product_catalog;
   const listingImageUrls = parseListingImageUrls(row.listings.images);
@@ -1342,6 +1352,24 @@ function mapMerchantOrderDetailRow(
       row.merchant_payout_amount != null
         ? Number(row.merchant_payout_amount)
         : null,
+    merchantPayoutGross:
+      row.merchant_payout_gross != null
+        ? Number(row.merchant_payout_gross)
+        : row.merchant_payout_amount != null
+          ? Number(row.merchant_payout_amount)
+          : null,
+    recoveryDeductionTotal:
+      row.merchant_payout_gross != null &&
+      row.merchant_payout_amount != null
+        ? Math.max(
+            0,
+            Math.round(
+              (Number(row.merchant_payout_gross) -
+                Number(row.merchant_payout_amount)) *
+                100,
+            ) / 100,
+          )
+        : null,
     payoutStatus: row.payout_status,
     buyerConfirmedAt: row.buyer_confirmed_at,
     payoutHoldUntil: row.payout_hold_until,
@@ -1350,6 +1378,8 @@ function mapMerchantOrderDetailRow(
     buyerPhone: row.buyer_phone,
     meetupDetail: row.meetup_detail,
     buyerRemark: row.buyer_remark,
+    sellerSettlementStatus: row.seller_settlement_status,
+    gradingFailRecoveryAmount: gradingFailRecoveryAmount ?? null,
   };
 }
 
@@ -1426,9 +1456,11 @@ export async function getMerchantOrderDetail(
           commission_amount,
           commission_rate_applied,
           merchant_payout_amount,
+          merchant_payout_gross,
           payout_status,
           buyer_confirmed_at,
           payout_hold_until,
+          seller_settlement_status,
           sf_locker_code,
           sf_address,
           buyer_phone,
@@ -1487,9 +1519,33 @@ export async function getMerchantOrderDetail(
 
     const hasReviewedByMe = (reviewRows?.length ?? 0) > 0;
 
+    let gradingFailRecoveryAmount: number | null = null;
+    if (
+      row.requires_authentication &&
+      row.seller_settlement_status &&
+      row.seller_settlement_status !== "none"
+    ) {
+      const { data: ledgerRow } = await db
+        .from("merchant_ledgers")
+        .select("amount")
+        .eq("order_id", trimmedOrderId)
+        .eq("transaction_type", "grading_fail_recovery")
+        .maybeSingle();
+
+      const ledgerAmount = (ledgerRow as { amount: number | null } | null)
+        ?.amount;
+      if (ledgerAmount != null) {
+        gradingFailRecoveryAmount = Math.abs(Number(ledgerAmount));
+      }
+    }
+
     return {
       success: true,
-      data: mapMerchantOrderDetailRow(row, hasReviewedByMe),
+      data: mapMerchantOrderDetailRow(
+        row,
+        hasReviewedByMe,
+        gradingFailRecoveryAmount,
+      ),
     };
   } catch (error) {
     console.error("[getMerchantOrderDetail]", error);
@@ -1501,6 +1557,7 @@ function mapMemberOrderDetailRow(
   row: MemberOrderDetailQueryRow,
   viewerId: string,
   hasReviewedByMe: boolean,
+  sellerReceivableAmountHkd?: number | null,
 ): MemberOrderDetail {
   const isBuyer = row.buyer_id === viewerId;
   const persona = isBuyer ? "buy" : "sell";
@@ -1574,6 +1631,8 @@ function mapMemberOrderDetailRow(
           sellerPayoutStatus: row.seller_payout_status,
           payoutHoldUntil: row.payout_hold_until,
           buyerConfirmedAt: row.buyer_confirmed_at,
+          sellerSettlementStatus: row.seller_settlement_status,
+          sellerReceivableAmountHkd: sellerReceivableAmountHkd ?? null,
         }
       : {}),
   };
@@ -1918,6 +1977,7 @@ export async function getMemberOrderDetail(
           buyer_confirmed_at,
           payout_hold_until,
           seller_payout_status,
+          seller_settlement_status,
           listings!inner (
             grading_company,
             grading_score,
@@ -1980,9 +2040,36 @@ export async function getMemberOrderDetail(
 
     const hasReviewedByMe = (reviewRows?.length ?? 0) > 0;
 
+    let sellerReceivableAmountHkd: number | null = null;
+    if (
+      row.seller_id === user.id &&
+      row.use_authentication &&
+      row.seller_settlement_status &&
+      row.seller_settlement_status !== "none"
+    ) {
+      const { data: receivableRow } = await db
+        .from("seller_receivables")
+        .select("amount_hkd")
+        .eq("order_kind", "member")
+        .eq("order_id", trimmedOrderId)
+        .maybeSingle();
+
+      const receivableAmount = (
+        receivableRow as { amount_hkd: number | null } | null
+      )?.amount_hkd;
+      if (receivableAmount != null) {
+        sellerReceivableAmountHkd = Number(receivableAmount);
+      }
+    }
+
     return {
       success: true,
-      data: mapMemberOrderDetailRow(row, user.id, hasReviewedByMe),
+      data: mapMemberOrderDetailRow(
+        row,
+        user.id,
+        hasReviewedByMe,
+        sellerReceivableAmountHkd,
+      ),
     };
   } catch (error) {
     console.error("[getMemberOrderDetail]", error);

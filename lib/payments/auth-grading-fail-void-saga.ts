@@ -20,6 +20,8 @@ export type PrepareAuthGradingFailPayload = {
   fault_party: GradingFaultParty;
   void_mode?: "cancel" | "capture_zero";
   escrow_capture_model?: string | null;
+  settlement_required?: boolean;
+  refund_cents?: number;
 };
 
 type AuthGradingFailRpcClient = {
@@ -62,6 +64,10 @@ export function isGradingFaultParty(value: string): value is GradingFaultParty {
   return VALID_FAULT_PARTIES.has(value as GradingFaultParty);
 }
 
+function gradingRefundOrderKind(orderKind: AuthGradingFailOrderKind): string {
+  return orderKind === "member" ? "auth_grading_member" : "auth_grading_merchant";
+}
+
 function parsePreparePayload(data: unknown): PrepareAuthGradingFailPayload | null {
   if (!data || typeof data !== "object") {
     return null;
@@ -98,6 +104,8 @@ function parsePreparePayload(data: unknown): PrepareAuthGradingFailPayload | nul
       typeof payload.escrow_capture_model === "string"
         ? payload.escrow_capture_model
         : null,
+    settlement_required: payload.settlement_required === true,
+    refund_cents: Number(payload.refund_cents ?? 0),
   };
 }
 
@@ -129,20 +137,43 @@ export async function runAuthGradingFailVoidSaga(input: {
     return { ok: false, error: "鑑定失敗處理準備失敗" };
   }
 
-  const idempotencyKey = `auth-grading-fail:${prepared.void_mode ?? "capture_zero"}:${input.orderKind}:${input.orderId}`;
+  const refundCents =
+    prepared.settlement_required && prepared.refund_cents
+      ? prepared.refund_cents
+      : 0;
 
   try {
+    if (refundCents > 0) {
+      await stripe.refunds.create(
+        {
+          payment_intent: prepared.payment_intent_id,
+          amount: refundCents,
+          metadata: {
+            order_kind: gradingRefundOrderKind(input.orderKind),
+            order_id: input.orderId,
+            capture_stage: "auth_grading_fail",
+            admin_id: prepared.admin_id,
+          },
+        },
+        {
+          idempotencyKey: `auth-grading-fail-refund:${input.orderKind}:${input.orderId}`,
+        },
+      );
+    }
+
+    const voidIdempotencyKey = `auth-grading-fail:${prepared.void_mode ?? "capture_zero"}:${input.orderKind}:${input.orderId}`;
+
     if (prepared.void_mode === "cancel") {
       await stripe.paymentIntents.cancel(
         prepared.payment_intent_id,
         undefined,
-        { idempotencyKey },
+        { idempotencyKey: voidIdempotencyKey },
       );
     } else {
       await stripe.paymentIntents.capture(
         prepared.payment_intent_id,
         { amount_to_capture: 0, final_capture: true },
-        { idempotencyKey },
+        { idempotencyKey: voidIdempotencyKey },
       );
     }
   } catch (error) {
