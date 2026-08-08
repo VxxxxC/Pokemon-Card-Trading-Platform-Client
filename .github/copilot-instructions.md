@@ -163,14 +163,11 @@ export default async function OrdersGatewayPage() {
 - **正統 E2E 測試機制**：
   1. 測試必須使用專屬的沙盒測試帳號:
 
-     | Level             | Email          | Passworld |
-     | ----------------- | -------------- | --------- |
-     | Admin             | admin@t.com    | Abcd1234! |
-     | Merchant + Member | merchant@t.com | Abcd1234! |
-     | Member            | test@t.com     | Abcd1234! |
-     | Merchant + Member | c01@t.com      | Abcd1234! |
-     | Merchant + Member | c02@t.com      | Abcd1234! |
-     | Merchant + Member | sc01@t.com     | Abcd1234! |
+     | Level             | Email            | Passworld |
+     | ----------------- | ---------------- | --------- |
+     | Admin             | admin@t.com      | Abcd1234! |
+     | Merchant + Member | qa_test02@jj.com | Abcd1234! |
+     | Member            | qa_test01@jj.com | Abcd1234! |
 
   2. 或使用 Playwright 官方推薦的 `playwright/.auth/user.json` (Storage State) 預存 Session 進行無密碼直接注入。
   3. 任何嘗試透過 Service Role 改寫 Password 的操作將被視為資安違規行為。
