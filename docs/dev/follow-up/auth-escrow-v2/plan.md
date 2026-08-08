@@ -266,7 +266,7 @@ pass_capture_amount =
 
 ### Phase C — Fail & settlement
 
-- [ ] Fail saga：refund + receivable / ledger
+- [ ] Fail saga：refund + receivable / ledger → **[phase-c-plan.md](./phase-c-plan.md)**
 - [ ] Admin 追償 UI + 寄回 gate
 - [ ] E2E：入庫 → fail（seller）→ 買家全退 → 收款 → 寄回
 

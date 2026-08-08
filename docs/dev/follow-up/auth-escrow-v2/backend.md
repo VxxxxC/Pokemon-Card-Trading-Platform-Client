@@ -1,6 +1,6 @@
 # Auth Escrow v2 — Backend
 
-> **Status:** 🟢 Phase B + single capture (v2.1) · **Phase C/D:** pending  
+> **Status:** 🟢 Phase B + single capture (v2.1) · **Phase C:** [phase-c-plan.md](./phase-c-plan.md) · **Phase D:** pending  
 > **Migration:** `20260901120000`, `20260901130000`, **`20260901140000_auth_escrow_single_capture.sql`**  
 > **Plan:** [plan.md](./plan.md) · **Blocks:** [Platform Rewards v2 Phase 2b](../platform-rewards-v2/plan.md)  
 > **Policy SSOT (pending v0.2):** [escrow-payment-policy.md](../../escrow-payment-policy.md)
