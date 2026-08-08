@@ -1,0 +1,47 @@
+function readEnv(key: string): string | undefined {
+  return process.env[key]?.trim() || undefined;
+}
+
+export function hasBaseIntegrationEnv(): boolean {
+  return Boolean(
+    readEnv("NEXT_PUBLIC_SUPABASE_URL") &&
+      readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY") &&
+      readEnv("SUPABASE_SERVICE_ROLE_KEY") &&
+      readEnv("E2E_ADMIN_EMAIL") &&
+      readEnv("E2E_ADMIN_PASSWORD") &&
+      readEnv("E2E_BUYER_EMAIL") &&
+      readEnv("E2E_BUYER_PASSWORD"),
+  );
+}
+
+export function getIntegrationEnv() {
+  const url = readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const anonKey = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const serviceRoleKey = readEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const adminEmail = readEnv("E2E_ADMIN_EMAIL");
+  const adminPassword = readEnv("E2E_ADMIN_PASSWORD");
+  const buyerEmail = readEnv("E2E_BUYER_EMAIL");
+  const buyerPassword = readEnv("E2E_BUYER_PASSWORD");
+
+  if (
+    !url ||
+    !anonKey ||
+    !serviceRoleKey ||
+    !adminEmail ||
+    !adminPassword ||
+    !buyerEmail ||
+    !buyerPassword
+  ) {
+    throw new Error("Missing integration test env vars");
+  }
+
+  return {
+    url,
+    anonKey,
+    serviceRoleKey,
+    adminEmail,
+    adminPassword,
+    buyerEmail,
+    buyerPassword,
+  };
+}

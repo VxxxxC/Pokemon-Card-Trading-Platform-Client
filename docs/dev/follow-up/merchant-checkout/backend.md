@@ -42,6 +42,8 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ buyer confirm
 | `20260803120500_merchant_shipping_fees.sql` | `merchant_shops.base_courier_shipping_fee`；`listings.extra_shipping_fee`；`fn_merchant_checkout_shipping_fee(method, merchant_id, listing_id)` |
 | `20260803120800_merchant_meetup_buyer_confirm.sql` | Meetup buyer confirm at `payment_held` |
 | `20260804120000_merchant_connect_payout_t7_hold.sql` | `payout_hold_until`；`rpc_confirm_merchant_buyer_receipt`；prepare 改 service_role + held gate；cron list RPC |
+| `20260830120000_merchant_coupon_reserve_hardening.sql` | `user_rewards.reserved_at`；`fn_reserve_user_reward_for_merchant_order`；prepare 原子預留；`rpc_mark_merchant_order_paid` 過期/reserve 驗證；15m stale reserve cron RPCs；E2E seed/backdate helpers |
+| `20260831120000_rewards_security_hardening.sql` | R-01 column UPDATE grant；R-02 `get_reward_coupon_center` 歸屬檢查；R-03 `fn_release_merchant_order_coupon` 僅 service_role |
 
 ### 運費模型（商戶自定）
 
@@ -250,6 +252,36 @@ Cron：`GET /api/cron/expire-merchant-pending-payment`（`vercel.json` 每小時
 | 5 | DB | `escrow_status = refunded`；`listings.status = active` |
 | 6 | 再跑一次 curl | 冪等，無副作用 |
 | 7 | （可選）若曾建立 PI | Stripe PI `canceled` 或已終態 |
+
+## 11. 優惠券預留 FSM（V1–V3）— 手動驗證
+
+Migration：`20260830120000_merchant_coupon_reserve_hardening.sql`
+
+| 機制 | RPC / Cron | 說明 |
+|------|------------|------|
+| **V1 原子預留** | `fn_reserve_user_reward_for_merchant_order`（由 `rpc_prepare_merchant_order_payment` 呼叫） | 同一券不可同時預留於兩筆 `pending_payment` 訂單 |
+| **V2 付款驗券** | `rpc_mark_merchant_order_paid` | `calculated_expiry < now()` 或 reserve 與訂單不符 → 拒絕入帳 |
+| **V3 15m 幽靈鎖** | `GET /api/cron/release-stale-coupon-reserves`（`vercel.json` 每 15 分鐘） | `rpc_list_stale_coupon_reserve_candidates` + `rpc_finalize_stale_coupon_reserve`；仍保留 §10 的 48h 訂單逾時作後備 |
+
+Vitest（遠端 DB）：`bun run test:integration:rewards` → `coupon-fsm.integration.test.ts`（I-C2 / I-C3 / I-C4）。
+
+| # | 步驟 | 預期 |
+|---|------|------|
+| 1 | 兩筆 `pending_payment` 訂單對同一張券各呼叫一次 prepare | 第二筆失敗（無法預留 / 已被其他訂單預留） |
+| 2 | prepare 成功後將券 `calculated_expiry` 設為過去，再呼叫 mark_paid | 失敗「已過期」；`is_used` 仍 false |
+| 3 | prepare 後 `rpc_e2e_backdate_coupon_reserve(id, 16)` → `rpc_finalize_stale_coupon_reserve` | `reserved_merchant_order_id` 清空；訂單 `coupon_user_reward_id` 清空；券可再次 prepare |
+
+## 12. Security hardening（R-01～R-03）
+
+Migration：`20260831120000_rewards_security_hardening.sql`
+
+| 修復 | 措施 |
+|------|------|
+| **R-01** | `authenticated` 僅可 `UPDATE user_rewards(acknowledged_at)`；券狀態欄位僅能經 SECURITY DEFINER RPC 變更 |
+| **R-02** | `get_reward_coupon_center(p_user_id)` 拒絕非本人且非 admin 的跨用戶查詢 |
+| **R-03** | `fn_release_merchant_order_coupon` 僅 `service_role` 可執行（prepare / webhook / cron 內部不受影響） |
+
+Vitest：`coupon-security.integration.test.ts`（I-S1 / I-S2 / I-S3）。
 
 ## 9. 已知缺口
 

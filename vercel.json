@@ -14,6 +14,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/release-stale-coupon-reserves",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/member-fps-payout-ready",
       "schedule": "0 * * * *"
     },

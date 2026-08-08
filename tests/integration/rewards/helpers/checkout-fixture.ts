@@ -1,0 +1,309 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
+import { createServiceRoleClient } from "../../shared/supabase-admin";
+
+export type MerchantListingFixture = {
+  listingId: string;
+  sellerId: string;
+  price: number;
+};
+
+const DEFAULT_PREPARE_ARGS = {
+  p_shipping_method: "meetup",
+  p_use_auth: false,
+  p_sf_locker_code: null,
+  p_sf_address: null,
+  p_buyer_phone: "91234567",
+  p_meetup_detail: "Vitest meetup",
+  p_buyer_remark: null,
+} as const;
+
+export async function findMerchantListingForIntegration(): Promise<MerchantListingFixture> {
+  const envListingId = process.env.E2E_LISTING_ID?.trim();
+  const envSellerId = process.env.E2E_SELLER_ID?.trim();
+  const admin = createServiceRoleClient();
+
+  if (envListingId && envSellerId) {
+    const { data, error } = await admin
+      .from("listings")
+      .select("id, seller_id, price, seller_persona")
+      .eq("id", envListingId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`[findMerchantListingForIntegration] ${error.message}`);
+    }
+
+    if (data?.seller_persona === "merchant" && data.seller_id) {
+      return {
+        listingId: data.id,
+        sellerId: data.seller_id,
+        price: data.price,
+      };
+    }
+  }
+
+  const { data: kycRows, error: kycError } = await admin
+    .from("kyc_records")
+    .select("merchant_id")
+    .eq("kyc_status", "verified")
+    .eq("stripe_charges_enabled", true)
+    .eq("stripe_payouts_enabled", true);
+
+  if (kycError) {
+    throw new Error(`[findMerchantListingForIntegration] ${kycError.message}`);
+  }
+
+  const payoutReadySellerIds = new Set(
+    (kycRows ?? [])
+      .map((row) => row.merchant_id)
+      .filter((sellerId): sellerId is string => Boolean(sellerId)),
+  );
+
+  const { data: listings, error: listingError } = await admin
+    .from("listings")
+    .select("id, seller_id, price, seller_persona")
+    .eq("seller_persona", "merchant")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (listingError) {
+    throw new Error(`[findMerchantListingForIntegration] ${listingError.message}`);
+  }
+
+  const match = (listings ?? []).find(
+    (row) => row.seller_id && payoutReadySellerIds.has(row.seller_id),
+  );
+
+  if (!match?.seller_id) {
+    throw new Error(
+      "No payout-ready merchant listing found for coupon FSM integration tests",
+    );
+  }
+
+  return {
+    listingId: match.id,
+    sellerId: match.seller_id,
+    price: match.price,
+  };
+}
+
+export async function seedPendingMerchantOrders(
+  buyerId: string,
+  listingId: string,
+  count: number,
+): Promise<string[]> {
+  const admin = createServiceRoleClient();
+  const orderIds: string[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const { data, error } = await admin.rpc(
+      "rpc_e2e_seed_merchant_pending_payment_order",
+      {
+        p_listing_id: listingId,
+        p_buyer_id: buyerId,
+      },
+    );
+
+    if (error) {
+      throw new Error(`[seedPendingMerchantOrders] ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("[seedPendingMerchantOrders] missing order id");
+    }
+
+    orderIds.push(data);
+  }
+
+  return orderIds;
+}
+
+export async function grantCouponForCheckout(params: {
+  userId: string;
+  templateId: string;
+  dedupKey?: string;
+}): Promise<string> {
+  const admin = createServiceRoleClient();
+  const dedupKey =
+    params.dedupKey ?? `vitest-coupon-${crypto.randomUUID()}`;
+
+  const { data, error } = await admin
+    .from("user_rewards")
+    .insert({
+      user_id: params.userId,
+      template_id: params.templateId,
+      grant_dedup_key: dedupKey,
+      is_used: false,
+      calculated_expiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`[grantCouponForCheckout] ${error.message}`);
+  }
+
+  return data.id;
+}
+
+export async function invokePreparePayment(
+  client: SupabaseClient<Database>,
+  orderId: string,
+  couponId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { error } = await client.rpc("rpc_prepare_merchant_order_payment", {
+    p_order_id: orderId,
+    ...DEFAULT_PREPARE_ARGS,
+    p_user_reward_id: couponId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function invokeMarkPaid(
+  orderId: string,
+  paymentIntentId = `pi_vitest_${crypto.randomUUID()}`,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("rpc_mark_merchant_order_paid", {
+    p_order_id: orderId,
+    p_payment_intent_id: paymentIntentId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function backdateCouponReserve(
+  userRewardId: string,
+  minutesAgo = 16,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("rpc_e2e_backdate_coupon_reserve", {
+    p_user_reward_id: userRewardId,
+    p_minutes_ago: minutesAgo,
+  });
+
+  if (error) {
+    throw new Error(`[backdateCouponReserve] ${error.message}`);
+  }
+}
+
+export async function finalizeStaleCouponReserve(
+  userRewardId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("rpc_finalize_stale_coupon_reserve", {
+    p_user_reward_id: userRewardId,
+  });
+
+  if (error) {
+    throw new Error(`[finalizeStaleCouponReserve] ${error.message}`);
+  }
+}
+
+export async function getUserRewardCheckoutRow(userRewardId: string) {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("user_rewards")
+    .select(
+      "id, is_used, used_at, reserved_merchant_order_id, reserved_at, calculated_expiry",
+    )
+    .eq("id", userRewardId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getUserRewardCheckoutRow] ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function getMerchantOrderCouponRow(orderId: string) {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("merchant_orders")
+    .select("id, coupon_user_reward_id, escrow_status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getMerchantOrderCouponRow] ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function setCouponExpiry(
+  userRewardId: string,
+  expiryIso: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("user_rewards")
+    .update({ calculated_expiry: expiryIso })
+    .eq("id", userRewardId);
+
+  if (error) {
+    throw new Error(`[setCouponExpiry] ${error.message}`);
+  }
+}
+
+export async function attemptDirectCouponTamper(
+  client: SupabaseClient<Database>,
+  userRewardId: string,
+  patch: {
+    is_used?: boolean;
+    calculated_expiry?: string;
+    reserved_merchant_order_id?: null;
+  },
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { error } = await client
+    .from("user_rewards")
+    .update(patch)
+    .eq("id", userRewardId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function invokeReleaseCoupon(
+  client: SupabaseClient<Database>,
+  orderId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { error } = await client.rpc("fn_release_merchant_order_coupon", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function invokeGetRewardCouponCenter(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<{ success: true; data: unknown } | { success: false; error: string }> {
+  const { data, error } = await client.rpc("get_reward_coupon_center", {
+    p_user_id: userId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data };
+}

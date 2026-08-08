@@ -133,6 +133,7 @@ type UserRole = Enums<"user_role">;
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_redeem_member_points` | `{ p_amount: number p_description?: string p_source_ref?: string }` | `Json` |
 | `fn_release_merchant_order_coupon` | `{ p_order_id: string }` | `undefined` |
+| `fn_reserve_user_reward_for_merchant_order` | `{ p_buyer_id: string p_order_id: string p_user_reward_id: string }` | `string` |
 | `fn_resolve_member_listing_id` | `{ p_listing_ref: string; p_seller_id: string }` | `string` |
 | `fn_restore_merchant_order_coupon_on_void` | `{ p_order_id: string }` | `undefined` |
 | `fn_reward_auto_grant_in_window` | `{ p_template_id: string }` | `boolean` |
@@ -202,7 +203,10 @@ type UserRole = Enums<"user_role">;
 | `rpc_confirm_buyer_received` | `{ p_buyer_id: string; p_order_id: string }` | `Json` |
 | `rpc_confirm_merchant_buyer_receipt` | `{ p_order_id: string }` | `Json` |
 | `rpc_confirm_platform_received` | `{ p_order_id: string }` | `Json` |
+| `rpc_e2e_backdate_coupon_reserve` | `{ p_minutes_ago?: number; p_user_reward_id: string }` | `Json` |
+| `rpc_e2e_backdate_merchant_payout_hold` | `{ p_order_id: string }` | `Json` |
 | `rpc_e2e_reset_listing_trading_fixture` | `{ p_buyer_id: string; p_listing_id: string; p_seller_id: string }` | `Json` |
+| `rpc_e2e_seed_merchant_pending_payment_order` | `{ p_buyer_id: string; p_listing_id: string }` | `string` |
 | `rpc_fail_member_auth_order` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_auth_fee_capture` | `{ p_admin_id?: string p_captured_amount_cents: number p_order_id: string p_order_kind: string p_pay…` | `Json` |
 | `rpc_finalize_auth_grading_fail` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
@@ -211,6 +215,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_finalize_member_fps_payout_ready` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_merchant_order_payout` | `{ p_destination_account_id: string p_order_id: string p_transfer_amount_cents: number p_transfer_id…` | `Json` |
 | `rpc_finalize_merchant_pending_payment_expiry` | `{ p_order_id: string }` | `Json` |
+| `rpc_finalize_stale_coupon_reserve` | `{ p_user_reward_id: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
@@ -219,6 +224,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_list_member_fps_payout_ready_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_connect_payout_candidates` | `{ p_limit?: number }` | `{ order_id: string }[]` |
 | `rpc_list_merchant_pending_payment_expiry_candidates` | `{ p_limit?: number }` | `{ listing_id: string order_id: string stripe_payment_intent_id: string }[]` |
+| `rpc_list_stale_coupon_reserve_candidates` | `{ p_limit?: number }` | `{ merchant_order_id: string user_reward_id: string }[]` |
 | `rpc_make_offer` | `{ p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number }` | `Json } | { Args: { p_buyer_id: string p_content: string p_listing_id: string p_offer_price: number …` |
 | `rpc_mark_auth_grading_fail_failed` | `{ p_error: string; p_order_id: string; p_order_kind: string }` | `Json` |
 | `rpc_mark_auth_order_payment_voided` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
@@ -1118,6 +1124,7 @@ type UserRole = Enums<"user_role">;
 | `grant_dedup_key` | `string` | No |
 | `id` | `string` | No |
 | `is_used` | `boolean | null` | Yes |
+| `reserved_at` | `string | null` | Yes |
 | `reserved_merchant_order_id` | `string | null` | Yes |
 | `template_id` | `string` | No |
 | `used_at` | `string | null` | Yes |

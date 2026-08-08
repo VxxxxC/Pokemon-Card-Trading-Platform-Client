@@ -274,6 +274,14 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
         setStep(2);
         return;
       }
+      if (
+        (session.variant === "merchant_direct" ||
+          session.variant === "merchant_auth") &&
+        /優惠券.*過期|已過期/.test(result.error)
+      ) {
+        setSelectedCouponId(null);
+        setCouponPreviewSubsidy(0);
+      }
       toast.error("⚠️ 無法建立託管付款", { description: result.error });
       return;
     }

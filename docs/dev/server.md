@@ -222,6 +222,7 @@ All cron handlers use `handleCronRoute` (`lib/cron/request.ts`): require `CRON_S
 | `/api/cron/ingest-platform-trades` | `30 18 * * *` | Ingest external trade data |
 | `/api/cron/aggregate-prices` | `0 19 * * *` | Aggregate market prices |
 | `/api/cron/expire-merchant-pending-payment` | `0 * * * *` | Expire unpaid merchant orders + cancel Stripe PI |
+| `/api/cron/release-stale-coupon-reserves` | `*/15 * * * *` | Release coupon reserves idle >15m on `pending_payment` orders |
 | `/api/cron/member-fps-payout-ready` | `0 * * * *` | Promote T+3 held member auth orders → `payout_requests` |
 | `/api/cron/merchant-connect-payout-ready` | `0 * * * *` | Execute T+7 held merchant orders → Stripe Connect `transfers.create` |
 

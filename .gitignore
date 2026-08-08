@@ -17,6 +17,8 @@ package-lock.json
 # testing
 /coverage
 /test-results/
+.stryker-tmp/
+reports/mutation/
 e2e/.auth/
 e2e/.cache/
 
