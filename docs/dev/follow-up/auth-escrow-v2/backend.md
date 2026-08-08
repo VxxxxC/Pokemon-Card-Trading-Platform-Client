@@ -1,7 +1,7 @@
 # Auth Escrow v2 — Backend
 
-> **Status:** 🟢 Phase B + single capture (v2.1) · **Phase C:** ✅ implemented · **Phase D:** pending  
-> **Migration:** `20260901120000`, `20260901130000`, **`20260901140000_auth_escrow_single_capture.sql`**  
+> **Status:** 🟢 Phase B + single capture (v2.1) · **Phase C:** ✅ implemented · **Phase D:** ✅ implemented  
+> **Migration:** `20260901120000`–`20260901170000`, `20260902100000`, **`20260910100000_auth_escrow_phase_d_coupons.sql`**  
 > **Plan:** [plan.md](./plan.md) · **Blocks:** [Platform Rewards v2 Phase 2b](../platform-rewards-v2/plan.md)  
 > **Policy SSOT (pending v0.2):** [escrow-payment-policy.md](../../escrow-payment-policy.md)
 
@@ -9,7 +9,7 @@
 
 鑑定託管金流 v2：Member 鑑定 + Merchant 鑑定兩類；全程順豐；平台固定單程運費；兩段運費 snapshot；**pass 單次 full capture**；賣方責任鑑定失敗時買家全退 + 賣方追償。
 
-**Phase B** 已 patch prepare / payout（無券）。**v2.1（`20260901140000`）** 新單 `escrow_capture_model = 'single'`；在途 NULL 仍 staged multicapture。fail saga Phase C pending。
+**Phase B** 已 patch prepare / payout（無券）。**v2.1（`20260901140000`）** 新單 `escrow_capture_model = 'single'`；在途 NULL 仍 staged multicapture。**Phase D（`20260910100000`）** 鑑定用券亦寫入 v2 四行金額 + `escrow_capture_model = 'single'`（有冇券一致）。
 
 ---
 
@@ -99,7 +99,7 @@ Checkout breakdown 四行：卡價、鑑定費、運費（入庫段）、運費�
 | Column | Values |
 |--------|--------|
 | `member_orders.escrow_capture_model` | `'single'` = 新單；`NULL` = legacy staged |
-| `merchant_orders.escrow_capture_model` | 同上（v2 無券鑑定 checkout 寫入 `single`） |
+| `merchant_orders.escrow_capture_model` | 同上（v2 鑑定 checkout 寫入 `single`，**有冇券**一致 — Phase D） |
 
 ### Single capture (`escrow_capture_model = 'single'`)
 

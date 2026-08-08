@@ -17,6 +17,11 @@ function createE2eAdminClient() {
 
 export type MerchantOrderCouponSnapshot = {
   id: string;
+  item_subtotal: number | null;
+  auth_fee: number | null;
+  shipping_fee: number | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
   total_amount: number | null;
   buyer_total_amount: number | null;
   platform_subsidy_amount: number | null;
@@ -24,6 +29,7 @@ export type MerchantOrderCouponSnapshot = {
   coupon_type: string | null;
   merchant_payout_amount: number | null;
   escrow_status: string | null;
+  escrow_capture_model: string | null;
 };
 
 type RewardTemplateAuditSnapshot = {
@@ -167,7 +173,7 @@ export async function getMerchantOrderCouponSnapshot(
   const { data, error } = await admin
     .from("merchant_orders")
     .select(
-      "id, total_amount, buyer_total_amount, platform_subsidy_amount, coupon_user_reward_id, coupon_type, merchant_payout_amount, escrow_status",
+      "id, item_subtotal, auth_fee, shipping_fee, inbound_shipping_fee, outbound_shipping_fee, total_amount, buyer_total_amount, platform_subsidy_amount, coupon_user_reward_id, coupon_type, merchant_payout_amount, escrow_status, escrow_capture_model",
     )
     .eq("id", orderId)
     .maybeSingle();

@@ -45,7 +45,7 @@ Example: HK$100 card → total **HK$310** (auth $150 + inbound $30 + outbound $3
 
 ## Out of scope (Phase B)
 
-- Auth checkout coupons / picker subsidy (Phase D — E2E B2b skipped)
+- Auth checkout coupons / picker subsidy (Phase D — E2E B2b unskipped; preview via RPC)
 
 ## Verify
 

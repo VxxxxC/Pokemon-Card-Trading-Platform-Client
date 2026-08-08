@@ -89,14 +89,14 @@ FROM merchant_orders WHERE id = '<order_id>';
 | D1.1 | 購買商戶 listing **含**鑑定（立即購買開 auth 或 `merchant_auth` 訂單） | Coupon picker 可見 | ☐ |
 | D1.2 | 選折扣券（`requires_authentication: true` 或 `any`） | 摘要 **平台優惠**；買家實付減少 | ☐ |
 | D1.3 | 完成 Stripe authorize（manual capture） | PI 金額 = `buyer_total_amount` | ☐ |
-| D1.4 | Admin 鑑定費 capture + 貨款 capture 通過 | `auth_fee` + goods = `buyer_total_amount` | ☐ |
+| D1.4 | Admin 鑑定 pass（single capture） | PI full capture = `buyer_total_amount` | ☐ |
 
-### D2 — 鑑定免運券
+### D2 — 鑑定免運券（v2 outbound leg）
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| D2.1 | 鑑定 checkout + 免運券 | 補貼 = min(報價順豐, 上限)；摘要無運費列 | ☐ |
-| D2.2 | DB `merchant_orders` | `shipping_fee` = 報價順豐快照；`total_amount` 包含運費 | ☐ |
+| D2.1 | 鑑定 checkout + 免運券 | 補貼 = min(outbound leg, 上限)；摘要顯示平台優惠 | ☐ |
+| D2.2 | DB `merchant_orders` | `shipping_fee=0`；`inbound/outbound` 有值；`escrow_capture_model='single'`；`total_amount` = 四行 gross | ☐ |
 
 ### D3 — 限制與還原
 

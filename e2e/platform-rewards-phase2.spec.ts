@@ -368,10 +368,6 @@ test.describe("Platform rewards Phase 2 E2E", () => {
   test("B2b.1 merchant_auth checkout applies discount coupon subsidy", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      true,
-      "Blocked until Auth Escrow v2 Phase D (merchant_auth coupon amounts)",
-    );
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
 
     const discountTemplateId = await findActiveDiscountCouponTemplateId();
@@ -405,9 +401,20 @@ test.describe("Platform rewards Phase 2 E2E", () => {
 
     const snapshot = await getMerchantOrderCouponSnapshot(authOrderId);
     expect(snapshot).toBeTruthy();
+    expect(snapshot!.escrow_capture_model).toBe("single");
+    expect(Number(snapshot!.shipping_fee)).toBe(0);
+    expect(Number(snapshot!.inbound_shipping_fee)).toBeGreaterThan(0);
+    expect(Number(snapshot!.outbound_shipping_fee)).toBeGreaterThan(0);
+    expect(Number(snapshot!.total_amount)).toBe(
+      Number(snapshot!.item_subtotal) +
+        Number(snapshot!.auth_fee) +
+        Number(snapshot!.inbound_shipping_fee) +
+        Number(snapshot!.outbound_shipping_fee),
+    );
     expect(Number(snapshot!.platform_subsidy_amount)).toBeGreaterThan(0);
-    expect(Number(snapshot!.buyer_total_amount)).toBeLessThan(
-      Number(snapshot!.total_amount),
+    expect(Number(snapshot!.buyer_total_amount)).toBe(
+      Number(snapshot!.total_amount) -
+        Number(snapshot!.platform_subsidy_amount),
     );
     expect(snapshot!.coupon_user_reward_id).toBe(rewardId);
   });
@@ -415,10 +422,6 @@ test.describe("Platform rewards Phase 2 E2E", () => {
   test("B2b.2 merchant_auth checkout applies free-shipping subsidy", async ({
     page,
   }, testInfo) => {
-    test.skip(
-      true,
-      "Blocked until Auth Escrow v2 Phase D (merchant_auth coupon amounts)",
-    );
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
     test.skip(!templateId, "Template not created");
 
@@ -450,7 +453,24 @@ test.describe("Platform rewards Phase 2 E2E", () => {
 
     const snapshot = await getMerchantOrderCouponSnapshot(authOrderId);
     expect(snapshot).toBeTruthy();
+    expect(snapshot!.escrow_capture_model).toBe("single");
+    expect(Number(snapshot!.shipping_fee)).toBe(0);
+    expect(Number(snapshot!.inbound_shipping_fee)).toBeGreaterThan(0);
+    expect(Number(snapshot!.outbound_shipping_fee)).toBeGreaterThan(0);
+    expect(Number(snapshot!.total_amount)).toBe(
+      Number(snapshot!.item_subtotal) +
+        Number(snapshot!.auth_fee) +
+        Number(snapshot!.inbound_shipping_fee) +
+        Number(snapshot!.outbound_shipping_fee),
+    );
     expect(Number(snapshot!.platform_subsidy_amount)).toBeGreaterThan(0);
+    expect(Number(snapshot!.platform_subsidy_amount)).toBeLessThanOrEqual(
+      Number(snapshot!.outbound_shipping_fee),
+    );
+    expect(Number(snapshot!.buyer_total_amount)).toBe(
+      Number(snapshot!.total_amount) -
+        Number(snapshot!.platform_subsidy_amount),
+    );
     expect(snapshot!.coupon_type).toBe("free_shipping");
     expect(snapshot!.coupon_user_reward_id).toBe(rewardId);
   });

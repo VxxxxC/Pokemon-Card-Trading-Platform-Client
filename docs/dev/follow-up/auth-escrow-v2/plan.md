@@ -272,9 +272,10 @@ pass_capture_amount =
 
 ### Phase D — Rewards on Auth（解鎖 Phase 2b）
 
-- [ ] 重做 `fn_compute_platform_subsidy` / prepare 券參數
-- [ ] Picker + E2E B2b / D2
-- [ ] `INTEGRATION_QUEUE` Phase 2b 恢復 Partner QA
+- [x] 重做 `fn_compute_platform_subsidy` / prepare 券參數 → **[phase-d-plan.md](./phase-d-plan.md)**
+- [x] `escrow_capture_model = 'single'` 有券時亦寫入 DB（P0）
+- [x] Picker + E2E B2b / D2
+- [ ] `INTEGRATION_QUEUE` Phase 2b Partner QA
 
 ---
 

@@ -93,28 +93,26 @@ Migrations: `20260815120000_merchant_checkout_coupon.sql`, `20260815130000_fix_f
 
 ## Phase 2b — merchant_auth checkout coupons
 
-Migration: `supabase/migrations/20260816120000_merchant_auth_checkout_coupon.sql`
+Migrations: `20260816120000_merchant_auth_checkout_coupon.sql` (initial) · **`20260910100000_auth_escrow_phase_d_coupons.sql`** (v2 amount contract)
 
-### Amount semantics (auth + coupon)
+### Amount semantics (auth + coupon — Phase D / Auth Escrow v2)
 
 | Field | Formula |
 |-------|---------|
-| `shipping_fee` (snapshot) | Quoted SF via `fn_merchant_checkout_shipping_fee` when free-shipping coupon; else `0` on auth path |
-| `total_amount` (gross) | `item_subtotal + auth_fee + shipping_fee_snapshot` |
-| `platform_subsidy_amount` | Discount on item, or `min(quoted_sf, cap)` for free-shipping |
-| `buyer_total_amount` | `total_amount − platform_subsidy_amount` (PI authorize amount) |
-| Goods multicapture | `goods_cents = buyer_total_amount − auth_fee` |
-| Finalize goods capture | Cumulative `amount_received` must equal `buyer_total_amount` |
+| `shipping_fee` | **0**（運費在 inbound/outbound legs） |
+| `inbound_shipping_fee` / `outbound_shipping_fee` | `fn_compute_auth_escrow_amounts` |
+| `total_amount` (gross) | `item_subtotal + auth_fee + inbound + outbound` |
+| `platform_subsidy_amount` | Discount on item, or `min(outbound_shipping_fee, max_subsidy_hkd)` for free-shipping |
+| `buyer_total_amount` | `total_amount − platform_subsidy_amount` (PI single authorize) |
+| `escrow_capture_model` | `'single'` when `p_use_auth=true` (with or without coupon) |
 
 ### New / patched RPCs
 
 | Name | Change |
 |------|--------|
-| `fn_compute_platform_subsidy` | Auth path enabled; `requires_authentication` enforcement |
-| `rpc_list_checkout_eligible_coupons` | + `p_use_auth`; lists auth-eligible coupons |
-| `rpc_prepare_merchant_order_payment` | Coupons when `p_use_auth=true` |
-| `rpc_prepare_goods_capture` | Merchant goods amount from `buyer_total − auth_fee` |
-| `rpc_finalize_goods_capture` | Merchant expected cents = `buyer_total_amount` |
+| `fn_compute_platform_subsidy` | Auth free-shipping uses outbound leg (`fn_platform_auth_sf_leg_fee`) |
+| `rpc_list_checkout_eligible_coupons` | Auth preview uses outbound leg |
+| `rpc_prepare_merchant_order_payment` | Auth always v2 amounts + single capture with coupon |
 | `fn_restore_merchant_order_coupon_on_void` | Grading fail void restores `is_used` |
 | `rpc_finalize_auth_grading_fail` | Calls restore on merchant branch |
 
