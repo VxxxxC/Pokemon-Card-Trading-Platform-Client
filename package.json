@@ -9,6 +9,8 @@
     "build:ci": "NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run --config vitest.unit.config.mts",
+    "test:unit": "vitest run --config vitest.unit.config.mts",
     "supabase:types": "bunx supabase gen types typescript --linked > types/supabase.ts && bun run scripts/generate-supabase-md.ts",
     "test:catalog-search": "bun run scripts/test-product-catalog-search.ts",
     "test:member-order-complete-rpc": "bun run scripts/test-member-order-complete-rpc.ts",
