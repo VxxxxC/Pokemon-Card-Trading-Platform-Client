@@ -270,3 +270,100 @@ export default async function OrdersGatewayPage() {
 - **組件安裝：** 如果需要尚未安裝的新 shadcn/ui 組件，請使用 `bunx --bun shadcn@latest add [component-name]` 開始安裝。此命令將引導使用者完成設定。
 - **自定義：** 所有 shadcn/ui 組件都必須進行自定義，以符合 `.stitch/designs/DESIGN.md` 中定義的 HKCardVault 設計系統。請嚴格遵守 `.agents/skills/shadcn-ui/SKILL.md` 和 `.github/prompts/shadcn-ui.prompt.md` 中指定的審美覆蓋和組件整合規則。
 - **觸發動作：** 當 UI 實作需要特定的 shadcn 組件時，請明確提及需要使用 `bunx --bun shadcn@latest add [component-name]`。此動作將自動觸發 `.github/prompts/shadcn-ui.prompt.md` 和 `shadcn-ui` 技能，以進行安裝 and 品味自定義。
+
+## 🧪 HKCardVault 6 大測試體系與執行規範
+
+HKCardVault 採用分層測試策略，涵蓋狀態機正確性、安全威脅建模、單元/整合測試、屬性測試、突變測試與端對端測試。以下六層缺一不可，各層皆有明確觸發時機與真實業務範圍。
+
+### 總覽表
+
+| 層級 | 名稱 | 核心目的 | 主要工具 |
+|---|---|---|---|
+| L1 | FSM 狀態機測試 | 驗證合法轉移 100% 正確、非法轉移拒絕、終態不可回退 | Vitest + 手寫 FSM 驗證器 |
+| L2 | AI 威脅建模 (Threat Modeling) | 模擬注入、越權、RLS 繞過、雙重支付 | Vitest + anon key + sandbox 帳號 |
+| L3 | Vitest 單元/整合測試 | 純函數、計算、parser/mapper、Server Action seam | Vitest |
+| L4 | PBT / fast-check 屬性測試 | 隨機生成極端輸入驗證不變式 | fast-check |
+| L5 | Mutation Testing | 衡量斷言品質，Kill mutants | Stryker |
+| L6 | E2E / Playwright | 真實瀏覽器全流程模擬 | Playwright |
+
+---
+
+### L1 FSM（Finite State Machine 測試）
+
+- **定義**：將嚴格業務狀態轉移建模為有限狀態機，驗證合法轉移 100% 正確、非法轉移一律拒絕、終態（如 `released`、`cancelled`、`expired`）不可回退。
+- **何時觸發**：每次改動 enum、escrow RPC、coupon reserve-release 邏輯、campaign 狀態、cron 狀態轉移、任何 migration 或 Release 前。
+- **真實 HKCardVault 場景**：
+  - Member C2C `member_orders.escrow_status` / `member_escrow_status`：`payment → custody → grading → shipped → released | cancelled`
+  - Merchant B2C `merchant_orders.escrow_status` / `escrow_state`：`pending_payment → payment_held → shipped`（非鑑定）或 `authenticating → authenticated`（鑑定）→ `completed_and_transferred | refunded`
+  - 優惠券無獨立 status enum，由 `user_rewards.is_used`、`reserved_merchant_order_id`、`reserved_at`、`calculated_expiry` 推導 `available/reserved/used/released/expired`
+  - Flash campaign 真實 enum：`draft/active/paused/ended`；`upcoming/sold_out` 為推導狀態，非資料庫欄位
+- **主要工具**：Vitest 撰寫狀態轉移表驗證器，對每個 enum 窮舉合法/非法轉移組合。
+
+---
+
+### L2 AI Threat Modeling（AI 威脅建模）
+
+- **定義**：模擬 Server Actions、PostgREST/RPC 參數注入、RLS/GRANT/SECURITY DEFINER 濫用、金額篡改、雙重支付與角色越權攻擊路徑。
+- **何時觸發**：每次 migration、新增 SECURITY DEFINER 函數、新增/修改 GRANT/REVOKE、RLS policy 變更、Webhook 邏輯、Admin Action、支付邏輯改動、Release 前。
+- **真實 HKCardVault 場景**：非授權跨用戶讀寫 `member_orders`/`merchant_orders`、偽造 `reserved_merchant_order_id` 搶佔優惠券、繞過 RLS 直接呼叫 RPC 竄改 `escrow_status`、Stripe Webhook 偽造事件。
+- **要求**：
+  - 以 anon key + 專屬 sandbox test account 進行負向測試；非授權呼叫必須回傳 4xx 或觸發 `RAISE EXCEPTION`。
+  - 靜態掃描所有 `SECURITY DEFINER` 函數，必須設定 `SET search_path` 並具備明確身分驗證 gate。
+- **🚨 資安鐵律**：嚴禁使用 Service Role / Admin API / SQL / Node / curl 修改任何真實或管理員密碼；嚴禁修改 `.env`；只可使用 `.env.test` 專屬 sandbox 帳號或 Playwright `storageState`。嚴禁在任何報告或代碼中寫入真實帳號值。
+- **主要工具**：Vitest + Supabase anon client + sandbox 測試帳號。
+
+---
+
+### L3 Vitest（單元 + 函數級整合測試）
+
+- **定義**：快速執行的 unit 測試與 function-level 整合測試，針對純函數、計算邏輯、parser/mapper、Server Action seam。
+- **何時觸發**：每次新增或重構 helper 函數、Server Action、parser、金額/日期/映射邏輯時；PR 快層必跑 unit 測試，DB 整合測試於 merge gate 執行。
+- **真實 HKCardVault 場景**：補貼計算、`min_spend_hkd` 門檻判斷、運費計算、Stripe cents 轉換、香港時區日期/連續登入 streak 計算、RPC payload parser、Server Actions。
+- **主要工具**：Vitest (`bun run test:unit` / `vitest run`)。
+
+---
+
+### L4 PBT / fast-check（屬性測試）
+
+- **定義**：隨機生成數千組負數、0、巨大值、浮點數、特殊字串與極端日期/操作序列，驗證系統不變式 (invariants) 在任何輸入下皆成立。
+- **何時觸發**：每次改動金額、日期、庫存、優惠券、併發相關邏輯；nightly 執行高迭代次數；TS mirror 與 SQL RPC 之間執行 differential testing。
+- **真實不變式範例**：
+  - `total_amount = item_subtotal + shipping_fee + auth_fee`
+  - `buyer_total_amount = max(total - subsidy, 0)`，且生產環境 checkout 必須 `> 0`
+  - 折扣補貼不得超過商品小計
+  - 免運補貼 `<= shipping_fee` 且 `<= max_subsidy_hkd`
+  - Campaign `0 <= claimed_count <= max_claims`
+  - 一張優惠券最多同時預留於一筆訂單
+- **主要工具**：fast-check（整合於 Vitest）。
+
+---
+
+### L5 Mutation Testing / Stryker（突變測試）
+
+- **定義**：主動將程式碼中的 `>` 改為 `>=`、`+` 改為 `-`、移除 guard 判斷等產生「突變體」，驗證既有測試是否能偵測 (kill) 這些突變。Mutation Score 用以衡量斷言品質，而非僅覆蓋率。
+- **何時觸發**：核心 Billing/Escrow 邏輯改動時；大版本發布前；nightly/weekly 排程；僅在 L3/L4 基線測試穩定通過後才作為 merge gate。
+- **真實 HKCardVault 場景**：清算分賬邏輯、補貼計算、payout parser、shipping fee 邊界條件、連續登入 streak 計算。
+- **現況**：Stryker 相關依賴已重新安裝並可正常執行，非依賴斷鏈狀態。
+- **主要工具**：Stryker Mutator (`bunx stryker run`)。
+
+---
+
+### L6 E2E / Playwright（端對端測試）
+
+- **定義**：透過真實瀏覽器模擬使用者點擊、切換分頁、填寫表單、完成付款與導航，驗證完整業務流程。
+- **何時觸發**：重大 PR merge 前執行 smoke 測試；main 分支合併時執行核心旅程測試；nightly 執行全量測試；release gate 必跑。
+- **真實 HKCardVault 場景**：B2C checkout（選券／鑑定選項／Stripe 付款／訂單詳情頁）、Member C2C escrow 全鏈流程、Admin 建立獎勵 → 會員領取與使用、FPS/Stripe Connect payout 流程、雙 persona（買家/賣家）切換測試。
+- **🚨 資安要求**：必須使用專屬 sandbox 測試帳號 / `.env.test` / Playwright `storageState` 模擬登入，嚴禁使用真實帳號密碼。
+- **主要工具**：Playwright (`bun run test:e2e`)。
+
+---
+
+### 共通執行規範
+
+> **報告根路徑定義**：本文件與 `opencode.json` 內的 `$root` 均指目前代碼庫（repository/workspace）的專案根目錄，與既有 `$Project_Root` 指向同一實體位置；`$root` 只係 prompt 內的路徑佔位符，禁止建立名為 `$root` 的字面資料夾。
+
+- 進行綜合測試時，Commander 允許**同時調度 2-3 個**專屬測試 sub-agent 並行執行。
+- 各測試 agent 的報告一律寫入 `$root/test-results/` 目錄下對應的 markdown 檔案，不得互相覆寫。
+- Commander 在任務結束前，**必須強制讀取** `$root/test-results/` 內今次 run 產生的所有報告，不可只信任 sub-agent 的口頭 summary。
+- Commander 最終須彙整輸出：各層結果、執行 command、失敗案例、blockers、最終判決 **Pass / Fail with Blockers**。
+- 修復循環仍受最多 **3 輪**自動熔斷限制；超過仍 Fail 必須 STOP 並提交 Blocker Report。
