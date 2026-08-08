@@ -12,8 +12,16 @@ import {
   isMerchantShippingMethod,
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
+import {
+  AUTH_ESCROW_AUTH_FEE_HKD,
+  AUTH_ESCROW_SF_LEG_FEE_HKD,
+  estimateAuthEscrowCheckoutTotal,
+} from "@/lib/auth-escrow/defaults";
 import { resolveMerchantOrderIdForBuyer } from "@/lib/merchant-order/resolve-order-id";
-import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS, MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES } from "@/lib/payments/escrow-payment-intent";
+import {
+  AUTH_ESCROW_CAPTURE_MODEL_SINGLE,
+  MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES,
+} from "@/lib/payments/escrow-payment-intent";
 import { getStripeClient, getStripePublishableKey } from "@/lib/stripe/env";
 import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -35,6 +43,8 @@ export type MerchantCheckoutOrder = {
   paymentExpiresAt: string | null;
   itemSubtotal: number;
   shippingFee: number;
+  inboundShippingFee: number;
+  outboundShippingFee: number;
   authFee: number;
   totalAmount: number;
   baseCourierShippingFee: number;
@@ -97,6 +107,8 @@ type CheckoutOrderQueryRow = Pick<
   | "final_price"
   | "item_subtotal"
   | "shipping_fee"
+  | "inbound_shipping_fee"
+  | "outbound_shipping_fee"
   | "auth_fee"
   | "shipping_method"
   | "total_amount"
@@ -134,6 +146,8 @@ const CHECKOUT_ORDER_SELECT = `
   final_price,
   item_subtotal,
   shipping_fee,
+  inbound_shipping_fee,
+  outbound_shipping_fee,
   auth_fee,
   shipping_method,
   total_amount,
@@ -172,6 +186,8 @@ type PrepareMerchantOrderPaymentPayload = {
   merchant_id: string;
   item_subtotal: number;
   shipping_fee: number;
+  inbound_shipping_fee: number;
+  outbound_shipping_fee: number;
   auth_fee: number;
   total_amount: number;
   buyer_total_amount: number;
@@ -300,6 +316,8 @@ function parsePreparePayload(
     merchant_id: payload.merchant_id,
     item_subtotal: Number(payload.item_subtotal ?? 0),
     shipping_fee: Number(payload.shipping_fee ?? 0),
+    inbound_shipping_fee: Number(payload.inbound_shipping_fee ?? 0),
+    outbound_shipping_fee: Number(payload.outbound_shipping_fee ?? 0),
     auth_fee: Number(payload.auth_fee ?? 0),
     total_amount: Number(payload.total_amount ?? 0),
     buyer_total_amount: Number(
@@ -448,15 +466,31 @@ export async function loadMerchantCheckoutOrder(
 
     const requiresAuthentication = Boolean(row.requires_authentication);
     const authFeeFromRow = Number(row.auth_fee ?? 0);
+    const inboundFromRow = Number(row.inbound_shipping_fee ?? 0);
+    const outboundFromRow = Number(row.outbound_shipping_fee ?? 0);
     const authFee =
       requiresAuthentication && authFeeFromRow <= 0
-        ? AUTHENTICATION_FEE
-        : authFeeFromRow;
+        ? AUTH_ESCROW_AUTH_FEE_HKD
+        : authFeeFromRow > 0
+          ? authFeeFromRow
+          : requiresAuthentication
+            ? AUTHENTICATION_FEE
+            : 0;
+    const inboundShippingFee =
+      requiresAuthentication && inboundFromRow <= 0
+        ? AUTH_ESCROW_SF_LEG_FEE_HKD
+        : inboundFromRow;
+    const outboundShippingFee =
+      requiresAuthentication && outboundFromRow <= 0
+        ? AUTH_ESCROW_SF_LEG_FEE_HKD
+        : outboundFromRow;
     const totalFromRow = Number(row.total_amount ?? 0);
-    const totalAmount =
-      requiresAuthentication && totalFromRow <= itemSubtotal
-        ? itemSubtotal + shippingFee + authFee
-        : Number(row.total_amount ?? itemSubtotal);
+    const totalAmount = requiresAuthentication
+      ? totalFromRow > itemSubtotal
+        ? totalFromRow
+        : estimateAuthEscrowCheckoutTotal(itemSubtotal)
+      : Number(row.total_amount ?? itemSubtotal);
+    const displayShippingFee = requiresAuthentication ? 0 : shippingFee;
 
     return {
       success: true,
@@ -468,7 +502,9 @@ export async function loadMerchantCheckoutOrder(
         createdAt,
         paymentExpiresAt,
         itemSubtotal,
-        shippingFee,
+        shippingFee: displayShippingFee,
+        inboundShippingFee,
+        outboundShippingFee,
         authFee,
         totalAmount,
         baseCourierShippingFee,
@@ -648,7 +684,12 @@ export async function createMerchantOrderPaymentIntent(
 
     const metadata: Stripe.MetadataParam = {
       order_kind: "merchant",
-      ...(options.useAuth ? { capture_mode: "manual" } : {}),
+      ...(options.useAuth
+        ? {
+            capture_mode: "manual",
+            escrow_capture_model: AUTH_ESCROW_CAPTURE_MODEL_SINGLE,
+          }
+        : {}),
       order_id: prepared.order_id,
       order_number: row.order_number ?? "",
       buyer_id: user.id,
@@ -685,9 +726,6 @@ export async function createMerchantOrderPaymentIntent(
           metadata,
           capture_method: captureMethod,
           payment_method_types: [...MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES],
-          ...(options.useAuth
-            ? { payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS }
-            : {}),
         });
       }
     }
@@ -699,9 +737,6 @@ export async function createMerchantOrderPaymentIntent(
         capture_method: captureMethod,
         payment_method_types: [...MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES],
         metadata,
-        ...(options.useAuth
-          ? { payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS }
-          : {}),
       });
     }
 

@@ -283,10 +283,18 @@ Migration：`20260831120000_rewards_security_hardening.sql`
 
 Vitest：`coupon-security.integration.test.ts`（I-S1 / I-S2 / I-S3）。
 
+## 13. Webhook 金額交叉驗證（R-04）
+
+| 修復 | 措施 |
+|------|------|
+| **R-04** | `validateMerchantPaymentIntentAmount`（[`lib/stripe/merchant-payment-intent-guard.ts`](../../../lib/stripe/merchant-payment-intent-guard.ts)）於 `payment_intent.succeeded` 呼叫 `rpc_mark_merchant_order_paid` 前比對 `PI.amount` 與 metadata `buyer_total_amount`；不符則拒絕入帳 |
+
+Vitest：`coupon-webhook.integration.test.ts`（I-P0-1b / I-R04）；unit `tests/unit/stripe/merchant-payment-intent-guard.test.ts`。
+
 ## 9. 已知缺口
 
 - ~~`pending_payment` 訂單**無過期 / 取消機制**~~ → `rpc_finalize_merchant_pending_payment_expiry` + cron（見 migration `20260731120000`）
 - 佣金率暫固定 8%，未接 `platform_settings` / Admin 動態設定
-- 優惠券未接後端，checkout 券選單暫時 disabled，總額不折扣
+- ~~優惠券未接後端，checkout 券選單暫時 disabled，總額不折扣~~ → Phase 2 已接駁；見 `test:rewards:gate`
 - 收件資料（電話 / 順豐櫃 / 面交備註 / 買家備註）仍只留前端 state，未有 DB 欄位
 - Refund / transfer reversal 尚未落地；Member C2C payout 屬另一流程

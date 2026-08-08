@@ -64,8 +64,10 @@ type UserRole = Enums<"user_role">;
 | `sanction_scope` | `account`, `member_persona`, `merchant_persona` |
 | `sanction_type` | `warn`, `restrict_listing`, `restrict_chat`, `freeze_payout`, `suspend`, `ban` |
 | `seller_persona_type` | `member`, `merchant` |
+| `seller_receivable_status` | `pending`, `paid`, `waived`, `cancelled` |
+| `seller_settlement_status` | `none`, `pending`, `cleared`, `waived` |
 | `sync_state` | `synced`, `partial`, `needs_review` |
-| `transaction_type` | `escrow_payment`, `commission_deduction`, `shipping_subsidy`, `refund`, `payout` |
+| `transaction_type` | `escrow_payment`, `commission_deduction`, `shipping_subsidy`, `refund`, `payout`, `grading_fail_recovery` |
 | `user_role` | `admin`, `merchant`, `member` |
 | `violation_persona` | `member`, `merchant`, `both`, `unknown` |
 
@@ -115,6 +117,7 @@ type UserRole = Enums<"user_role">;
 | `fn_bump_listing_offers_count` | `{ p_actor_id?: string; p_listing_id: string }` | `undefined` |
 | `fn_chat_party_profile_snippet` | `{ p_persona: Database["public"]["Enums"]["seller_persona_type"] p_profile_id: string }` | `Json` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
+| `fn_compute_auth_escrow_amounts` | `{ p_item_subtotal: number }` | `{ auth_fee: number buyer_total_amount: number inbound_shipping_fee: number outbound_shipping_fee: n…` |
 | `fn_compute_platform_subsidy` | `{ p_buyer_id: string p_item_subtotal: number p_order_id?: string p_shipping_fee: number p_shipping_…` | `{ coupon_type: Database["public"]["Enums"]["reward_type"] subsidy_amount: number }[]` |
 | `fn_effective_check_in_streak` | `{ p_user_id: string }` | `number` |
 | `fn_get_check_in_daily_points` | `{ p_cycle_day: number }` | `number` |
@@ -128,6 +131,9 @@ type UserRole = Enums<"user_role">;
 | `fn_merchant_order_is_open` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] }` | `boolean` |
 | `fn_merchant_order_is_payment_stage` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] }` | `boolean` |
 | `fn_merchant_order_needs_seller_action` | `{ p_escrow_status: Database["public"]["Enums"]["escrow_state"] p_requires_authentication: boolean }` | `boolean } | { Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] p_inbound_tracki…` |
+| `fn_platform_auth_escrow_config` | `never;` | `Json` |
+| `fn_platform_auth_fee_hkd` | `never;` | `number` |
+| `fn_platform_auth_sf_leg_fee` | `never;` | `number` |
 | `fn_recalculate_member_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_recalculate_merchant_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
@@ -204,18 +210,21 @@ type UserRole = Enums<"user_role">;
 | `rpc_confirm_merchant_buyer_receipt` | `{ p_order_id: string }` | `Json` |
 | `rpc_confirm_platform_received` | `{ p_order_id: string }` | `Json` |
 | `rpc_e2e_backdate_coupon_reserve` | `{ p_minutes_ago?: number; p_user_reward_id: string }` | `Json` |
+| `rpc_e2e_backdate_merchant_order_created_at` | `{ p_hours_ago?: number; p_order_id: string }` | `undefined` |
 | `rpc_e2e_backdate_merchant_payout_hold` | `{ p_order_id: string }` | `Json` |
 | `rpc_e2e_reset_listing_trading_fixture` | `{ p_buyer_id: string; p_listing_id: string; p_seller_id: string }` | `Json` |
 | `rpc_e2e_seed_merchant_pending_payment_order` | `{ p_buyer_id: string; p_listing_id: string }` | `string` |
 | `rpc_fail_member_auth_order` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_auth_fee_capture` | `{ p_admin_id?: string p_captured_amount_cents: number p_order_id: string p_order_kind: string p_pay…` | `Json` |
 | `rpc_finalize_auth_grading_fail` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
+| `rpc_finalize_auth_intake_confirm` | `{ p_admin_id?: string p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
 | `rpc_finalize_auth_refund` | `{ p_order_id: string p_order_kind: string p_refund_amount_cents: number p_refund_id: string }` | `Json` |
-| `rpc_finalize_goods_capture` | `{ p_admin_id?: string p_captured_amount_cents: number p_notes?: string p_order_id: string p_order_k…` | `Json` |
+| `rpc_finalize_goods_capture` | `{ p_admin_id?: string p_auth_grading_company?: string p_auth_grading_score?: string p_captured_amou…` | `Json` |
 | `rpc_finalize_member_fps_payout_ready` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_merchant_order_payout` | `{ p_destination_account_id: string p_order_id: string p_transfer_amount_cents: number p_transfer_id…` | `Json` |
 | `rpc_finalize_merchant_pending_payment_expiry` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_stale_coupon_reserve` | `{ p_user_reward_id: string }` | `Json` |
+| `rpc_get_auth_escrow_capture_model` | `{ p_order_id: string; p_order_kind: string }` | `Json` |
 | `rpc_get_user_reviewed_member_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_get_user_reviewed_merchant_order_ids` | `{ p_order_ids: string[] }` | `string[]` |
 | `rpc_increment_listing_view` | `{ p_listing_id: string }` | `undefined` |
@@ -239,10 +248,12 @@ type UserRole = Enums<"user_role">;
 | `rpc_modify_offer` | `{ p_buyer_id: string p_content: string p_new_price: number p_offer_id: string }` | `Json` |
 | `rpc_prepare_auth_fee_capture` | `{ p_order_id: string; p_order_kind: string }` | `Json` |
 | `rpc_prepare_auth_grading_fail` | `{ p_fault_party: Database["public"]["Enums"]["grading_fault_party"] p_order_id: string p_order_kind…` | `Json` |
-| `rpc_prepare_goods_capture` | `{ p_notes?: string; p_order_id: string; p_order_kind: string }` | `Json` |
+| `rpc_prepare_auth_intake_confirm` | `{ p_order_id: string; p_order_kind: string }` | `Json` |
+| `rpc_prepare_goods_capture` | `{ p_auth_grading_company?: string p_auth_grading_score?: string p_notes?: string p_order_id: string…` | `Json` |
 | `rpc_prepare_member_auth_order_payment` | `{ p_order_id: string }` | `Json` |
 | `rpc_prepare_merchant_order_payment` | `{ p_order_id: string p_shipping_method: string p_use_auth?: boolean }` | `Json } | { Args: { p_buyer_phone?: string p_buyer_remark?: string p_meetup_detail?: string p_order_…` |
 | `rpc_prepare_merchant_order_payout` | `{ p_order_id: string }` | `Json` |
+| `rpc_refresh_auth_escrow_payment_intent` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
 | `rpc_resolve_moderation_case` | `{ p_case_id: string; p_payload: Json }` | `Json` |
 | `rpc_send_chat_message` | `{ p_content: string; p_room_id: string; p_sender_id: string }` | `Json` |
@@ -548,11 +559,15 @@ type UserRole = Enums<"user_role">;
 | `auth_fee_captured_at` | `string | null` | Yes |
 | `auth_graded_at` | `string | null` | Yes |
 | `auth_graded_by` | `string | null` | Yes |
+| `auth_grading_company` | `string | null` | Yes |
+| `auth_grading_score` | `string | null` | Yes |
 | `auth_notes` | `string | null` | Yes |
 | `auth_result` | `string | null` | Yes |
 | `buyer_confirmed_at` | `string | null` | Yes |
 | `buyer_id` | `string` | No |
+| `buyer_total_amount` | `number | null` | Yes |
 | `created_at` | `string | null` | Yes |
+| `escrow_capture_model` | `string | null` | Yes |
 | `escrow_status` | `| member_escrow_status` | No |
 | `expires_at` | `string` | No |
 | `extended_count` | `number` | No |
@@ -560,6 +575,7 @@ type UserRole = Enums<"user_role">;
 | `final_price` | `number` | No |
 | `id` | `string` | No |
 | `inbound_courier_name` | `string | null` | Yes |
+| `inbound_shipping_fee` | `number` | No |
 | `inbound_tracking_no` | `string | null` | Yes |
 | `item_subtotal` | `number | null` | Yes |
 | `listing_id` | `string` | No |
@@ -567,6 +583,7 @@ type UserRole = Enums<"user_role">;
 | `meetup_details` | `Json | null` | Yes |
 | `mock_payment_session_id` | `string | null` | Yes |
 | `order_number` | `string | null` | Yes |
+| `outbound_shipping_fee` | `number` | No |
 | `outbound_tracking_no` | `string | null` | Yes |
 | `payment_capture_status` | `payment_capture_status` | No |
 | `payment_confirmed_at` | `string | null` | Yes |
@@ -579,6 +596,7 @@ type UserRole = Enums<"user_role">;
 | `refunded_at` | `string | null` | Yes |
 | `seller_id` | `string` | No |
 | `seller_payout_status` | `member_seller_payout_status` | No |
+| `seller_settlement_status` | `seller_settlement_status` | No |
 | `status` | `member_order_state | null` | Yes |
 | `stripe_payment_intent_id` | `string | null` | Yes |
 | `stripe_refund_id` | `string | null` | Yes |
@@ -618,6 +636,8 @@ type UserRole = Enums<"user_role">;
 | `auth_fee_captured_at` | `string | null` | Yes |
 | `auth_graded_at` | `string | null` | Yes |
 | `auth_graded_by` | `string | null` | Yes |
+| `auth_grading_company` | `string | null` | Yes |
+| `auth_grading_score` | `string | null` | Yes |
 | `auth_notes` | `string | null` | Yes |
 | `auth_result` | `string | null` | Yes |
 | `buyer_confirmed_at` | `string | null` | Yes |
@@ -630,11 +650,13 @@ type UserRole = Enums<"user_role">;
 | `coupon_type` | `reward_type | null` | Yes |
 | `coupon_user_reward_id` | `string | null` | Yes |
 | `created_at` | `string | null` | Yes |
+| `escrow_capture_model` | `string | null` | Yes |
 | `escrow_status` | `escrow_state | null` | Yes |
 | `fault_party` | `grading_fault_party | null` | Yes |
 | `final_price` | `number` | No |
 | `id` | `string` | No |
 | `inbound_courier_name` | `string | null` | Yes |
+| `inbound_shipping_fee` | `number` | No |
 | `inbound_tracking_no` | `string | null` | Yes |
 | `item_subtotal` | `number | null` | Yes |
 | `listing_id` | `string` | No |
@@ -644,6 +666,7 @@ type UserRole = Enums<"user_role">;
 | `merchant_payout_amount` | `number | null` | Yes |
 | `order_number` | `string | null` | Yes |
 | `outbound_courier_name` | `string | null` | Yes |
+| `outbound_shipping_fee` | `number` | No |
 | `outbound_tracking_no` | `string | null` | Yes |
 | `paid_at` | `string | null` | Yes |
 | `payment_capture_status` | `payment_capture_status` | No |
@@ -659,6 +682,7 @@ type UserRole = Enums<"user_role">;
 | `refund_status` | `string` | No |
 | `refunded_at` | `string | null` | Yes |
 | `requires_authentication` | `boolean | null` | Yes |
+| `seller_settlement_status` | `seller_settlement_status` | No |
 | `sf_address` | `string | null` | Yes |
 | `sf_locker_code` | `string | null` | Yes |
 | `shipping_fee` | `number` | No |
@@ -1069,6 +1093,28 @@ type UserRole = Enums<"user_role">;
 
 ---
 
+### `seller_receivables`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `amount_hkd` | `number` | No |
+| `created_at` | `string` | No |
+| `fps_reference` | `string | null` | Yes |
+| `id` | `string` | No |
+| `notes` | `string | null` | Yes |
+| `order_id` | `string` | No |
+| `order_kind` | `string` | No |
+| `paid_at` | `string | null` | Yes |
+| `paid_by` | `string | null` | Yes |
+| `seller_id` | `string` | No |
+| `status` | `seller_receivable_status` | No |
+| `stripe_fee_hkd` | `number | null` | Yes |
+| `updated_at` | `string` | No |
+
+**Foreign keys:** `paid_by` → `profiles`
+
+---
+
 ### `transaction_reviews`
 
 *Domain:* Reputation
@@ -1136,7 +1182,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**39 tables**
+**40 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -1176,6 +1222,7 @@ type UserRole = Enums<"user_role">;
 | `reward_campaigns` | — |
 | `reward_template_audits` | — |
 | `reward_templates` | Rewards |
+| `seller_receivables` | — |
 | `transaction_reviews` | Reputation |
 | `user_collections` | User portfolio |
 | `user_rewards` | Rewards |

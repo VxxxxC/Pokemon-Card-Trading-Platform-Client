@@ -42,6 +42,21 @@ export async function findLatestUserRewardForTemplate(params: {
   return data?.id ?? null;
 }
 
+export async function getUserRewardGrantRow(userRewardId: string) {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("user_rewards")
+    .select("grant_dedup_key, is_used")
+    .eq("id", userRewardId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getUserRewardGrantRow] ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function invokeAutoGrantForUser(userId: string): Promise<void> {
   const admin = createServiceRoleClient();
   const { error } = await admin.rpc("fn_try_auto_grant_rewards", {

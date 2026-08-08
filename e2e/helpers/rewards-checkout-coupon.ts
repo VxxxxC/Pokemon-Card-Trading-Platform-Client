@@ -215,6 +215,101 @@ export async function ensureCourierShippingSelected(page: Page): Promise<void> {
   await page.waitForTimeout(1500);
 }
 
+export async function waitForMerchantDirectCheckoutReady(
+  page: Page,
+): Promise<void> {
+  const summary = page.getByText("訂單財務明細總結");
+  const couponSection = page.getByText("平台優惠券");
+  await expect(summary.or(couponSection).first()).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+type CheckoutCouponPickerPollState =
+  | "ready"
+  | "loading"
+  | "empty"
+  | "error"
+  | "pending";
+
+async function pollCheckoutCouponPickerState(
+  page: Page,
+): Promise<CheckoutCouponPickerPollState> {
+  if (await page.locator("#checkout-coupon").isVisible().catch(() => false)) {
+    return "ready";
+  }
+
+  const emptyVisible = await page
+    .getByText("暫無可用優惠券")
+    .isVisible()
+    .catch(() => false);
+  if (emptyVisible) {
+    return "empty";
+  }
+
+  const loadErrorVisible = await page
+    .getByText("無法載入優惠券")
+    .isVisible()
+    .catch(() => false);
+  if (loadErrorVisible) {
+    return "error";
+  }
+
+  const loadingVisible = await page
+    .getByText("載入優惠券中…")
+    .isVisible()
+    .catch(() => false);
+  if (loadingVisible) {
+    return "loading";
+  }
+
+  return "pending";
+}
+
+export async function waitForCheckoutCouponPicker(
+  page: Page,
+  options?: { rewardId?: string; timeout?: number },
+): Promise<void> {
+  const timeout = options?.timeout ?? 30_000;
+
+  await expect
+    .poll(
+      async () => {
+        const outcome = await pollCheckoutCouponPickerState(page);
+        if (outcome === "empty") {
+          throw new Error("Checkout coupon picker is empty (暫無可用優惠券)");
+        }
+        if (outcome === "error") {
+          const message =
+            (await page
+              .getByText(/無法載入優惠券/)
+              .first()
+              .textContent()) ?? "無法載入優惠券";
+          throw new Error(
+            `Checkout coupon picker failed to load: ${message.trim()}`,
+          );
+        }
+        return outcome;
+      },
+      { timeout },
+    )
+    .toBe("ready");
+
+  if (options?.rewardId) {
+    await waitForCheckoutCouponOptionEnabled(page, options.rewardId);
+  }
+}
+
+export async function waitForCheckoutCouponClearedAfterAuthToggle(
+  page: Page,
+): Promise<void> {
+  await expect(page.getByText("載入優惠券中…")).toBeHidden({
+    timeout: 30_000,
+  });
+  await waitForCheckoutCouponPicker(page, { timeout: 30_000 });
+  await expect(page.locator("#checkout-coupon")).toHaveValue("");
+}
+
 export async function waitForCheckoutCouponOptionEnabled(
   page: Page,
   rewardId: string,

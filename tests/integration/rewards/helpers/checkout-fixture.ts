@@ -88,6 +88,22 @@ export async function findMerchantListingForIntegration(): Promise<MerchantListi
   };
 }
 
+export async function ensureMerchantListingAcceptsAuthentication(
+  listingId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("listings")
+    .update({ use_authentication: true })
+    .eq("id", listingId);
+
+  if (error) {
+    throw new Error(
+      `[ensureMerchantListingAcceptsAuthentication] ${error.message}`,
+    );
+  }
+}
+
 export async function seedPendingMerchantOrders(
   buyerId: string,
   listingId: string,
@@ -151,10 +167,20 @@ export async function invokePreparePayment(
   client: SupabaseClient<Database>,
   orderId: string,
   couponId: string,
+  overrides?: Partial<{
+    p_shipping_method: string;
+    p_use_auth: boolean;
+    p_sf_locker_code: string | null;
+    p_sf_address: string | null;
+    p_buyer_phone: string;
+    p_meetup_detail: string;
+    p_buyer_remark: string | null;
+  }>,
 ): Promise<{ success: true } | { success: false; error: string }> {
   const { error } = await client.rpc("rpc_prepare_merchant_order_payment", {
     p_order_id: orderId,
     ...DEFAULT_PREPARE_ARGS,
+    ...overrides,
     p_user_reward_id: couponId,
   });
 
@@ -163,6 +189,98 @@ export async function invokePreparePayment(
   }
 
   return { success: true };
+}
+
+export async function releaseMerchantOrderCoupon(
+  orderId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("fn_release_merchant_order_coupon", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    throw new Error(`[releaseMerchantOrderCoupon] ${error.message}`);
+  }
+}
+
+export async function backdateMerchantOrderCreatedAt(
+  orderId: string,
+  hoursAgo = 49,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc(
+    "rpc_e2e_backdate_merchant_order_created_at",
+    {
+      p_order_id: orderId,
+      p_hours_ago: hoursAgo,
+    },
+  );
+
+  if (error) {
+    throw new Error(`[backdateMerchantOrderCreatedAt] ${error.message}`);
+  }
+}
+
+export async function finalizeMerchantPendingPaymentExpiry(
+  orderId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc(
+    "rpc_finalize_merchant_pending_payment_expiry",
+    { p_order_id: orderId },
+  );
+
+  if (error) {
+    throw new Error(`[finalizeMerchantPendingPaymentExpiry] ${error.message}`);
+  }
+}
+
+export async function restoreMerchantOrderCouponOnVoid(
+  orderId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("fn_restore_merchant_order_coupon_on_void", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    throw new Error(`[restoreMerchantOrderCouponOnVoid] ${error.message}`);
+  }
+}
+
+export async function markCouponUsedForOrder(params: {
+  userRewardId: string;
+  orderId: string;
+}): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("user_rewards")
+    .update({
+      is_used: true,
+      used_at: new Date().toISOString(),
+      reserved_merchant_order_id: params.orderId,
+    })
+    .eq("id", params.userRewardId);
+
+  if (error) {
+    throw new Error(`[markCouponUsedForOrder] ${error.message}`);
+  }
+}
+
+export async function setBuyerProfileComplete(userId: string): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({
+      avatar_path: `vitest/avatar-${userId.slice(0, 8)}.png`,
+      username: `vitest_${userId.slice(0, 8)}`,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    throw new Error(`[setBuyerProfileComplete] ${error.message}`);
+  }
 }
 
 export async function invokeMarkPaid(

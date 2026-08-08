@@ -21,7 +21,9 @@ export function mapMerchantCheckoutToSession(
     },
     pricing: {
       itemSubtotal: order.itemSubtotal,
-      shippingFee: order.shippingFee,
+      shippingFee: order.requiresAuthentication ? 0 : order.shippingFee,
+      inboundShippingFee: order.inboundShippingFee,
+      outboundShippingFee: order.outboundShippingFee,
       authFee: order.authFee,
       totalAmount: order.totalAmount,
     },

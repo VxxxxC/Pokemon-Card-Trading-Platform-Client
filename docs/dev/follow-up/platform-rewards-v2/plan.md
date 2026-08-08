@@ -277,7 +277,8 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 **Scope:**
 
 - ✅ `merchant_direct`，`requires_authentication = false`，SF 運費 > 0 時可用免運
-- ❌ 鑑定加購（`p_use_auth`）— prepare **hard reject**；UI 隱藏/禁用 picker
+- ✅ Phase 2b：`merchant_direct` + 鑑定開關 ON → picker **仍顯示**，`useAuth: true` 重載列表，切換時清空選券（E2E B3.1）
+- ❌ 在 **未**開啟鑑定開關的直發單誤傳 `p_use_auth=true` + 券 → prepare 應 reject（舊 B3.2 路徑）
 - 券預留：`user_rewards.reserved_merchant_order_id` only（prepare **唔** set `is_used`）
 - Payout：§6.3 定案（payout > charge 時單筆無 `source_transaction` transfer）
 
@@ -300,11 +301,11 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 - [ ] `total_amount` 永遠 gross；PI / ledger `escrow_payment` 用 `buyer_total_amount`
 - [ ] `merchant_payout_amount` 仍按 gross `item_subtotal + shipping`（confirm receipt 時 snapshot）
 
-**鑑定路徑（兩條都要擋）**
+**鑑定路徑（Phase 2b）**
 
-- [ ] `merchant_auth` variant（訂單已 `requires_authentication`）— 唔顯示 picker
-- [ ] `merchant_direct` + `authServiceEnabled` — UI 隱藏 picker；`rpc_prepare` **`p_use_auth` hard reject**
-- [ ] 誤傳 `p_user_reward_id` + `p_use_auth=true` → RPC 錯誤，唔 silent ignore
+- [x] `merchant_auth` variant（訂單已 `requires_authentication`）— 顯示 picker，`useAuth: true`（E2E B2b）
+- [x] `merchant_direct` + `authServiceEnabled` — picker **仍顯示**；切換時清空選券並以 `useAuth: true` 重載（E2E B3.1）
+- [ ] 誤傳 `p_user_reward_id` + `p_use_auth=true` 而 listing/訂單未開鑑定 → RPC 錯誤，唔 silent ignore
 
 **券生命週期**
 

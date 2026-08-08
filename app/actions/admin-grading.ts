@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { runAuthFeeCaptureSaga } from "@/lib/payments/auth-capture-saga";
+import { runAuthIntakeConfirmSaga } from "@/lib/payments/auth-intake-confirm-saga";
 import {
   isGradingFaultParty,
   runAuthGradingFailVoidSaga,
   type GradingFaultParty,
 } from "@/lib/payments/auth-grading-fail-void-saga";
+import { isAuthPassGradingOptionId } from "@/lib/grading/options";
 import { runGoodsCaptureSaga } from "@/lib/payments/goods-capture-saga";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -48,6 +50,8 @@ export type AdminGradingQueueRow = {
   escrow_status: string;
   platform_received_at: string | null;
   auth_graded_at: string | null;
+  auth_grading_company: string | null;
+  auth_grading_score: string | null;
   created_at: string | null;
   updated_at: string | null;
   buyer_display_name: string | null;
@@ -121,6 +125,40 @@ function revalidateGradingPaths(
     revalidatePath("/profile/merchant/trading");
     revalidatePath("/profile/user/orderDetail/" + orderId);
   }
+}
+
+async function resolveEscrowCaptureModel(input: {
+  orderKind: AdminGradingOrderKind;
+  orderId: string;
+}): Promise<
+  { ok: true; model: string | null } | { ok: false; error: string }
+> {
+  const supabase = asAdminGradingRpcClient(await createClient());
+  const { data, error } = await supabase.rpc(
+    "rpc_get_auth_escrow_capture_model",
+    {
+      p_order_kind: input.orderKind,
+      p_order_id: input.orderId,
+    },
+  );
+
+  if (error) {
+    console.error("[resolveEscrowCaptureModel]", error.message);
+    return { ok: false, error: error.message };
+  }
+
+  if (!data || typeof data !== "object") {
+    return { ok: false, error: "無法讀取訂單扣款模式" };
+  }
+
+  const payload = data as { escrow_capture_model?: string | null };
+  return {
+    ok: true,
+    model:
+      typeof payload.escrow_capture_model === "string"
+        ? payload.escrow_capture_model
+        : null,
+  };
 }
 
 function parseQueuePayload(data: unknown): {
@@ -212,6 +250,10 @@ type AdminGradingRpcClient = {
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
+    fn: "rpc_get_auth_escrow_capture_model",
+    args: { p_order_kind: AdminGradingOrderKind; p_order_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
     fn: "rpc_admin_confirm_grading_intake",
     args: { p_order_kind: AdminGradingOrderKind; p_order_id: string },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
@@ -299,10 +341,25 @@ export async function adminConfirmGradingIntake(input: {
   }
 
   try {
-    const result = await runAuthFeeCaptureSaga({
+    const resolved = await resolveEscrowCaptureModel({
       orderKind: input.orderKind,
       orderId,
     });
+
+    if (!resolved.ok) {
+      return { success: false, error: mapRpcError(resolved.error) };
+    }
+
+    const result =
+      resolved.model === "single"
+        ? await runAuthIntakeConfirmSaga({
+            orderKind: input.orderKind,
+            orderId,
+          })
+        : await runAuthFeeCaptureSaga({
+            orderKind: input.orderKind,
+            orderId,
+          });
 
     if (!result.ok) {
       console.error("[adminConfirmGradingIntake]", result.error);
@@ -320,6 +377,7 @@ export async function adminConfirmGradingIntake(input: {
 export async function adminPassGrading(input: {
   orderKind: AdminGradingOrderKind;
   orderId: string;
+  gradingOptionId: string;
   notes?: string;
 }): Promise<ActionResult<{ applied: true }>> {
   const guard = await requireAdmin();
@@ -332,10 +390,16 @@ export async function adminPassGrading(input: {
     return { success: false, error: "找不到此訂單" };
   }
 
+  const gradingOptionId = input.gradingOptionId.trim();
+  if (!isAuthPassGradingOptionId(gradingOptionId)) {
+    return { success: false, error: "請選擇鑑定等級" };
+  }
+
   try {
     const result = await runGoodsCaptureSaga({
       orderKind: input.orderKind,
       orderId,
+      gradingOptionId,
       notes: input.notes,
     });
 

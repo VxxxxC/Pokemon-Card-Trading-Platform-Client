@@ -9,6 +9,10 @@ import {
   isGoodsCapturePaymentIntent,
 } from "@/lib/payments/goods-capture-saga";
 import { stripe } from "@/lib/stripe";
+import {
+  processMerchantPaymentIntentCanceled,
+  processMerchantPaymentIntentSucceeded,
+} from "@/lib/stripe/merchant-payment-webhook";
 import { syncKycConnectFlagsFromStripeAccount } from "@/lib/stripe/sync-kyc-connect-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -17,7 +21,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * - `account.updated`：同步 connected account 的 charges_enabled / payouts_enabled 返
  *   kyc_records（fail-closed：兩者皆 true 先算 Stripe 就緒，可成為 transfer 收款方）。
  * - `payment_intent.amount_capturable_updated`：鑑定訂單 authorize 成功 → authorized。
- * - `payment_intent.succeeded`：商戶非鑑定全額 capture；鑑定 partial auth_fee finalize。
+ * - `payment_intent.succeeded`：商戶非鑑定全額 capture；鑑定 pass 全額/分段 capture finalize；舊版 staged auth_fee partial finalize。
  * - `payment_intent.canceled`：鑑定訂單 void 同步。
  * - `transfer.created`：補償確認 Merchant Connect 撥款，冪等完成 B2C 訂單。
  * - `refund.created`：補償確認鑑定失敗部分退款 finalize。
@@ -27,24 +31,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
  */
 
 type AdminSupabaseClient = ReturnType<typeof createAdminClient>;
-
-type MarkPaidRpcClient = {
-  rpc(
-    fn: "rpc_mark_merchant_order_paid",
-    args: {
-      p_order_id: string;
-      p_payment_intent_id: string;
-      p_amounts: Record<string, string>;
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-};
-
-type MerchantCouponRpcClient = {
-  rpc(
-    fn: "fn_release_merchant_order_coupon",
-    args: { p_order_id: string },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-};
 
 type AuthOrderRpcClient = {
   rpc(
@@ -164,31 +150,7 @@ async function handleMerchantPaymentSucceeded(
   admin: AdminSupabaseClient,
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const parsed = readMerchantOrderMetadata(paymentIntent);
-  if (!parsed) {
-    // 非 B2C 商戶訂單（例如日後其他付款流程）— 直接放行，避免重試風暴。
-    return { ok: true };
-  }
-
-  const { error } = await (admin as unknown as MarkPaidRpcClient).rpc(
-    "rpc_mark_merchant_order_paid",
-    {
-      p_order_id: parsed.orderId,
-      p_payment_intent_id: paymentIntent.id,
-      p_amounts: parsed.amounts,
-    },
-  );
-
-  if (error) {
-    console.error(
-      "[stripe/webhook] rpc_mark_merchant_order_paid",
-      parsed.orderId,
-      error.message,
-    );
-    return { ok: false, error: "order settlement failed" };
-  }
-
-  return { ok: true };
+  return processMerchantPaymentIntentSucceeded(admin, paymentIntent);
 }
 
 async function handleMemberAuthPaymentAuthorized(
@@ -428,42 +390,8 @@ async function handlePaymentIntentCanceled(
     return { ok: true };
   }
 
-  if (orderKind === "merchant" && metadata.capture_mode === "manual") {
-    const { error } = await (admin as unknown as AuthOrderRpcClient).rpc(
-      "rpc_mark_auth_order_payment_voided",
-      {
-        p_order_kind: "merchant",
-        p_order_id: orderId,
-        p_payment_intent_id: paymentIntent.id,
-      },
-    );
-
-    if (error) {
-      console.error(
-        "[stripe/webhook] rpc_mark_auth_order_payment_voided merchant",
-        orderId,
-        error.message,
-      );
-      return { ok: false, error: "merchant auth void sync failed" };
-    }
-
-    return { ok: true };
-  }
-
-  if (orderKind === "merchant" && metadata.capture_mode !== "manual") {
-    const { error } = await (admin as unknown as MerchantCouponRpcClient).rpc(
-      "fn_release_merchant_order_coupon",
-      { p_order_id: orderId },
-    );
-
-    if (error) {
-      console.error(
-        "[stripe/webhook] fn_release_merchant_order_coupon",
-        orderId,
-        error.message,
-      );
-      return { ok: false, error: "merchant coupon release failed" };
-    }
+  if (orderKind === "merchant") {
+    return processMerchantPaymentIntentCanceled(admin, paymentIntent);
   }
 
   return { ok: true };

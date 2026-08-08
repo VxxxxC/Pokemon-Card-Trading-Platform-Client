@@ -6,10 +6,13 @@ import type { CheckoutSession } from "@/lib/checkout/types";
 type CheckoutOrderSummaryProps = {
   session: CheckoutSession;
   shippingFee: number;
+  inboundShippingFee?: number;
+  outboundShippingFee?: number;
   authFee: number;
   totalAmount: number;
   shippingLabel?: string;
   showShippingRow?: boolean;
+  showAuthEscrowShippingRows?: boolean;
   showAuthFeeRow?: boolean;
   platformSubsidyAmount?: number;
   extraShippingNote?: string | null;
@@ -19,10 +22,13 @@ type CheckoutOrderSummaryProps = {
 export function CheckoutOrderSummary({
   session,
   shippingFee,
+  inboundShippingFee = 0,
+  outboundShippingFee = 0,
   authFee,
   totalAmount,
   shippingLabel = "運費",
   showShippingRow = true,
+  showAuthEscrowShippingRows = false,
   showAuthFeeRow = true,
   platformSubsidyAmount = 0,
   extraShippingNote,
@@ -75,6 +81,22 @@ export function CheckoutOrderSummary({
             <span>{shippingLabel}</span>
             <span className="font-mono text-[#eae1da]">HK$ {shippingFee}</span>
           </div>
+        ) : null}
+        {showAuthEscrowShippingRows ? (
+          <>
+            <div className="flex justify-between">
+              <span>運費（賣家寄送平台）</span>
+              <span className="font-mono text-[#eae1da]">
+                HK$ {inboundShippingFee}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>運費（平台寄送買家）</span>
+              <span className="font-mono text-[#eae1da]">
+                HK$ {outboundShippingFee}
+              </span>
+            </div>
+          </>
         ) : null}
         {extraShippingNote ? (
           <p className="font-mono text-[10.5px] text-text-disabled">

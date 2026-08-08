@@ -16,6 +16,13 @@ import {
   type AdminGradingTab,
   type AdminGradingFaultParty,
 } from "@/app/actions/admin-grading";
+import {
+  DEFAULT_GRADING_OPTION_ID,
+  GRADING_OPTION_GROUPS,
+  getGradingOptionsByGroup,
+  isRawGradingOptionId,
+} from "@/lib/grading/options";
+import { resolveGradingOptionId } from "@/lib/grading/resolve-option-id";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -67,6 +74,21 @@ function formatRefundPreview(row: AdminGradingQueueRow): string {
   })}`;
 }
 
+function defaultPassGradingOptionId(row: AdminGradingQueueRow): string {
+  const resolved = resolveGradingOptionId(row.grading_company, row.grading_score);
+  if (!isRawGradingOptionId(resolved)) {
+    return resolved;
+  }
+  return DEFAULT_GRADING_OPTION_ID;
+}
+
+function formatListingGrade(row: AdminGradingQueueRow): string {
+  const company = row.grading_company?.trim();
+  const score = row.grading_score?.trim();
+  if (!company) return "—";
+  return score ? `${company} ${score}` : company;
+}
+
 type AdminGradingClientProps = {
   initialRows: AdminGradingQueueRow[];
   initialTotal: number;
@@ -89,6 +111,7 @@ export function AdminGradingClient({
   const [selected, setSelected] = useState<AdminGradingQueueRow | null>(null);
   const [auditRows, setAuditRows] = useState<AdminGradingAuditRow[]>([]);
   const [notes, setNotes] = useState("");
+  const [gradingOptionId, setGradingOptionId] = useState("");
   const [failReason, setFailReason] = useState("");
   const [faultParty, setFaultParty] = useState<AdminGradingFaultParty | "">("");
   const [outboundTracking, setOutboundTracking] = useState("");
@@ -136,6 +159,7 @@ export function AdminGradingClient({
   const openDetail = (row: AdminGradingQueueRow) => {
     setSelected(row);
     setNotes("");
+    setGradingOptionId(defaultPassGradingOptionId(row));
     setFailReason("");
     setOutboundTracking(row.outbound_tracking_no ?? "");
     setAuditRows([]);
@@ -384,12 +408,22 @@ export function AdminGradingClient({
               <p>買家：{selected.buyer_display_name ?? selected.buyer_username ?? "—"}</p>
               <p>賣方：{formatParty(selected)}</p>
               <p>商品：{formatProductName(selected)}</p>
+              <p>賣家申報：{formatListingGrade(selected)}</p>
               <p>
                 金額：HK$ {Number(selected.total_amount ?? 0).toLocaleString("zh-HK")}
               </p>
               <p>入庫：{selected.inbound_tracking_no ?? "—"}</p>
               <p>出庫：{selected.outbound_tracking_no ?? "—"}</p>
               <p>鑑定結果：{selected.auth_result ?? "—"}</p>
+              {selected.auth_grading_company ? (
+                <p>
+                  平台鑑定：
+                  {selected.auth_grading_company}
+                  {selected.auth_grading_score
+                    ? ` ${selected.auth_grading_score}`
+                    : ""}
+                </p>
+              ) : null}
               <p>退款狀態：{selected.refund_status}</p>
             </div>
 
@@ -416,6 +450,25 @@ export function AdminGradingClient({
 
             {tab === "grading" ? (
               <div className="mt-4 space-y-3">
+                <select
+                  name="gradingOptionId"
+                  value={gradingOptionId}
+                  onChange={(event) => setGradingOptionId(event.target.value)}
+                  className="h-10 w-full rounded-lg border border-white/10 bg-[#1A1612] px-3 text-xs text-text-primary"
+                >
+                  <option value="">請選擇鑑定等級（必填）</option>
+                  {GRADING_OPTION_GROUPS.filter((group) => group.key !== "RAW").map(
+                    (group) => (
+                      <optgroup key={group.key} label={group.label}>
+                        {getGradingOptionsByGroup(group.key).map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ),
+                  )}
+                </select>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
@@ -425,13 +478,14 @@ export function AdminGradingClient({
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    disabled={isPending}
+                    disabled={isPending || !gradingOptionId}
                     onClick={() =>
                       runMutation(
                         () =>
                           adminPassGrading({
                             orderKind: selected.order_kind,
                             orderId: selected.order_id,
+                            gradingOptionId,
                             notes,
                           }),
                         "鑑定已標記為通過",
@@ -444,7 +498,7 @@ export function AdminGradingClient({
 
                 <div className="rounded-lg border border-warning/20 bg-warning/5 p-3">
                   <p className="text-xs text-warning">
-                    鑑定失敗將釋放未扣款餘額（卡價+運費，約 {formatRefundPreview(selected)}），HK$150 鑑定費不退
+                    鑑定失敗將釋放未扣款餘額（卡價+運費，約 {formatRefundPreview(selected)}）。舊版分階扣款訂單之 HK$150 鑑定費可能不退；單次授權訂單則取消授權並全額退回。
                   </p>
                   <select
                     name="faultParty"

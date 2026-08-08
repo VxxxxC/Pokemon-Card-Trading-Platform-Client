@@ -122,11 +122,19 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
       )
     : {
         shippingFee: 0,
+        inboundShippingFee: 0,
+        outboundShippingFee: 0,
         authFee: 0,
         grossTotalAmount: 0,
         platformSubsidy: 0,
         totalAmount: 0,
       };
+
+  const isAuthEscrowVariant =
+    session?.variant === "member_auth" ||
+    session?.variant === "merchant_auth" ||
+    (session?.variant === "merchant_direct" &&
+      Boolean(merchantDirectForm?.authServiceEnabled));
 
   const shippingLabel =
     session?.variant === "merchant_direct" && merchantDirectForm
@@ -428,11 +436,14 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
             <CheckoutOrderSummary
               session={session}
               shippingFee={pricing.shippingFee}
+              inboundShippingFee={pricing.inboundShippingFee}
+              outboundShippingFee={pricing.outboundShippingFee}
               authFee={pricing.authFee}
               totalAmount={pricing.totalAmount}
               platformSubsidyAmount={pricing.platformSubsidy}
               shippingLabel={shippingLabel}
               showShippingRow={Boolean(showShippingRow)}
+              showAuthEscrowShippingRows={isAuthEscrowVariant}
               showAuthFeeRow={
                 session.variant === "merchant_auth" ||
                 session.variant === "member_auth" ||

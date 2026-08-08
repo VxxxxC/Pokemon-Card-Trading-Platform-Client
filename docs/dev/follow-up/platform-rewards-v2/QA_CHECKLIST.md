@@ -29,6 +29,8 @@
 
 ## Part B — Checkout 用券（Phase 2，僅 merchant_direct）
 
+> **自動化：** `bun run test:rewards:gate` 覆蓋 B1–B3.7 主流程（E2E + Vitest P0）。人手僅 **spot-check** 或 Admin 未覆蓋 UI。
+
 ### B1 — 主流程：免運補貼
 
 | # | 步驟 | 預期結果 | 通過 |
@@ -58,7 +60,7 @@ FROM merchant_orders WHERE id = '<order_id>';
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| B3.1 | 開啟 **鑑定加購**（Phase 2 直發） | Picker 隱藏；已選券清空 | ☐ |
+| B3.1 | 開啟 **鑑定加購**（Phase 2 直發） | **Picker 仍顯示**；已選券清空；列表以 `useAuth: true` 重新載入（僅符合鑑定資格的券） | ☐ |
 | B3.2 | 直發路徑開 auth + 帶 coupon id（2b 前） | RPC 報錯 | ☐ |
 | B3.3 | 運送 = **面交** + 免運券 | 不符合資格（運費 0） | ☐ |
 | B3.4 | 付款前切換券 A → B | 舊 reserve 釋放；新 reserve 在 B | ☐ |
@@ -101,7 +103,7 @@ FROM merchant_orders WHERE id = '<order_id>';
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
 | D3.1 | `requires_authentication: false` 的券用於鑑定訂單 | 不符合資格 | ☐ |
-| D3.2 | `merchant_direct` + 開啟 auth 開關 | Picker 顯示符合鑑定資格的券 | ☐ |
+| D3.2 | `merchant_direct` + 開啟 auth 開關 | Picker 顯示符合鑑定資格的券；切換時清空已選券（同 B3.1） | ☐ |
 | D3.3 | 鑑定失敗 void（admin） | 券 `is_used` 清除；錢包可重用 | ☐ |
 
 ## Part E — Phase 3（限時搶券）

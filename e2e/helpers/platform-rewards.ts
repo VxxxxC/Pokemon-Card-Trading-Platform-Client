@@ -109,7 +109,7 @@ export async function findActiveFreeShippingTemplateId(): Promise<string | null>
   return null;
 }
 
-export async function getRewardTemplateIdByTitle(
+async function lookupRewardTemplateIdByTitle(
   title: string,
 ): Promise<string | null> {
   for (const row of await listRecentTemplateAudits(100)) {
@@ -119,6 +119,22 @@ export async function getRewardTemplateIdByTitle(
     }
   }
   return null;
+}
+
+export async function getRewardTemplateIdByTitle(
+  title: string,
+): Promise<string | null> {
+  let templateId: string | null = null;
+  await expect
+    .poll(
+      async () => {
+        templateId = await lookupRewardTemplateIdByTitle(title);
+        return templateId;
+      },
+      { timeout: 15_000 },
+    )
+    .not.toBeNull();
+  return templateId;
 }
 
 export async function grantUserRewardForE2e(params: {
@@ -579,6 +595,7 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
   if (orderId.length === 0) {
     throw new Error("Could not resolve checkout order id after auth buy now");
   }
+  await waitForMerchantDirectCheckoutReady(page);
   return orderId;
 }
 
@@ -779,6 +796,53 @@ async function selectRewardDistributionMode(
   await page.getByRole("option", { name: label }).click();
 }
 
+const ADMIN_REWARD_PUBLISH_SUCCESS_TOAST = "已發布獎勵活動";
+
+async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "發布" }).click();
+
+  let outcome = "pending";
+  await expect
+    .poll(
+      async () => {
+        const successVisible = await page
+          .locator("[data-sonner-toast]")
+          .filter({ hasText: ADMIN_REWARD_PUBLISH_SUCCESS_TOAST })
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (successVisible) {
+          outcome = "success";
+          return "success";
+        }
+
+        const errorToast = page
+          .locator('[data-sonner-toast][data-type="error"]')
+          .last();
+        if (await errorToast.isVisible().catch(() => false)) {
+          const text =
+            (await errorToast.textContent())?.trim() ?? "unknown error";
+          outcome = `error:${text}`;
+          return outcome;
+        }
+
+        return "pending";
+      },
+      { timeout: 30_000 },
+    )
+    .not.toBe("pending");
+
+  if (outcome.startsWith("error:")) {
+    throw new Error(
+      `Admin reward publish failed: ${outcome.slice("error:".length)}`,
+    );
+  }
+
+  await page.waitForURL((url) => url.pathname === "/admin/campaigns", {
+    timeout: 30_000,
+  });
+}
+
 async function selectTriggerKind(
   page: Page,
   kind: "trade_count" | "event_once",
@@ -916,8 +980,8 @@ export async function publishRewardActivityViaAdmin(
     }
   }
 
-  await page.getByRole("button", { name: "發布" }).click();
-  await expect(page.getByText("已發布獎勵活動")).toBeVisible({ timeout: 30_000 });
+  await submitAdminRewardActivityPublish(page);
+  await openAdminCampaignsActivitiesTab(page);
 }
 
 export async function openAdminCheckInTab(page: Page): Promise<void> {
@@ -976,15 +1040,9 @@ export async function getPointLedgerGrantForTemplate(params: {
 }
 
 export async function getRewardCouponCenterForUserId(userId: string) {
-  const admin = createE2eAdminClient();
-  const { data, error } = await admin.rpc("get_reward_coupon_center", {
-    p_user_id: userId,
-  });
-  if (error) {
-    throw new Error(`[getRewardCouponCenterForUserId] ${error.message}`);
-  }
-
-  return parseRewardCouponCenter(data);
+  throw new Error(
+    "[getRewardCouponCenterForUserId] Post R-02 requires an authenticated user session; use getRewardCouponCenterForUser({ email, password }) instead.",
+  );
 }
 
 export async function getRewardCouponCenterForUser(params: {
@@ -1015,7 +1073,14 @@ export async function getRewardCouponCenterForUser(params: {
     throw new Error("[getRewardCouponCenterForUser] sign-in returned no user");
   }
 
-  return getRewardCouponCenterForUserId(userId);
+  const { data, error } = await client.rpc("get_reward_coupon_center", {
+    p_user_id: userId,
+  });
+  if (error) {
+    throw new Error(`[getRewardCouponCenterForUser] ${error.message}`);
+  }
+
+  return parseRewardCouponCenter(data);
 }
 
 export async function publishDiscountCouponTemplate(
@@ -1040,9 +1105,8 @@ export async function publishDiscountCouponTemplate(
     .locator("#reward-min-spend")
     .fill(String(params.minSpend ?? 100));
 
-  await page.getByRole("button", { name: "發布" }).click();
-
-  await expect(page.getByText("已發布獎勵活動")).toBeVisible({ timeout: 30_000 });
+  await submitAdminRewardActivityPublish(page);
+  await openAdminCampaignsActivitiesTab(page);
 }
 
 export async function openAdminCampaignsActivitiesTab(page: Page): Promise<void> {
@@ -1052,44 +1116,55 @@ export async function openAdminCampaignsActivitiesTab(page: Page): Promise<void>
   });
 }
 
+export async function setFlashActivityStatusForE2e(
+  templateId: string,
+  status: "paused" | "active",
+): Promise<void> {
+  const client = await createE2eAdminAuthedClient();
+  const { error } = await client.rpc("rpc_admin_set_reward_activity_status", {
+    p_template_id: templateId,
+    p_status: status,
+  });
+  if (error) {
+    throw new Error(`[setFlashActivityStatusForE2e] ${error.message}`);
+  }
+}
+
 export async function setFlashCampaignStatusViaAdmin(
   page: Page,
-  campaignName: string,
+  templateTitle: string,
   status: "paused" | "active",
 ): Promise<void> {
   await openAdminCampaignsActivitiesTab(page);
 
-  const row = page.getByRole("row").filter({ hasText: campaignName });
-  const rowVisible = await row
-    .isVisible({ timeout: 5_000 })
-    .catch(() => false);
+  const card = page
+    .locator("div")
+    .filter({ has: page.getByRole("heading", { name: templateTitle, exact: true }) })
+    .first();
+  const cardVisible = await card.isVisible({ timeout: 10_000 }).catch(() => false);
 
-  if (!rowVisible) {
-    const campaignId = await getFlashCampaignIdByName(campaignName);
-    if (!campaignId) {
-      throw new Error(`Flash campaign not found for title: ${campaignName}`);
+  if (cardVisible) {
+    const toggle = card.getByRole("switch");
+    const toggleVisible = await toggle
+      .isVisible({ timeout: 5_000 })
+      .catch(() => false);
+
+    if (toggleVisible) {
+      const isActive = await toggle.isChecked();
+      const shouldBeActive = status === "active";
+      if (isActive !== shouldBeActive) {
+        await toggle.click();
+        await expect(toggle).toBeChecked({ checked: shouldBeActive, timeout: 20_000 });
+      }
+      return;
     }
-    await setFlashCampaignStatusForE2e(campaignId, status);
-    return;
   }
 
-  const buttonName = status === "paused" ? "暫停" : "上線";
-  await row.getByRole("button", { name: buttonName }).click();
-  await expect(page.getByText(/活動狀態已更新/)).toBeVisible({ timeout: 20_000 });
-}
-
-export async function setFlashCampaignStatusForE2e(
-  campaignId: string,
-  status: "paused" | "active",
-): Promise<void> {
-  const admin = createE2eAdminClient();
-  const { error } = await admin
-    .from("reward_campaigns")
-    .update({ status })
-    .eq("id", campaignId);
-  if (error) {
-    throw new Error(`[setFlashCampaignStatusForE2e] ${error.message}`);
+  const templateId = await getRewardTemplateIdByTitle(templateTitle);
+  if (!templateId) {
+    throw new Error(`Flash activity template not found for title: ${templateTitle}`);
   }
+  await setFlashActivityStatusForE2e(templateId, status);
 }
 
 export async function buyMerchantListingAndReachCheckout(
@@ -1148,7 +1223,15 @@ export async function buyMerchantListingAndReachCheckout(
   if (orderId.length === 0) {
     throw new Error("Could not resolve checkout order id after buy now");
   }
+  await waitForMerchantDirectCheckoutReady(page);
   return orderId;
+}
+
+async function waitForMerchantDirectCheckoutReady(page: Page): Promise<void> {
+  const { waitForMerchantDirectCheckoutReady: waitReady } = await import(
+    "./rewards-checkout-coupon"
+  );
+  await waitReady(page);
 }
 
 export async function tryClaimFlashCampaignViaUI(
