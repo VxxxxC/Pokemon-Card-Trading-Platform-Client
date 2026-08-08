@@ -22,6 +22,7 @@ import {
   readCheckoutSummaryAmounts,
   resolveCheckoutCouponTemplateIds,
   waitForCheckoutCouponOptionEnabled,
+  waitForCheckoutCouponPicker,
 } from "./helpers/rewards-checkout-coupon";
 
 function readEnv(key: string): string | undefined {
@@ -93,9 +94,7 @@ async function reachMerchantDirectCheckout(page: Page): Promise<void> {
     merchantListing.listingId,
   );
 
-  await expect(page.locator("#checkout-coupon")).toBeVisible({
-    timeout: 20_000,
-  });
+  await waitForCheckoutCouponPicker(page);
 }
 
 test.describe.configure({ mode: "serial" });

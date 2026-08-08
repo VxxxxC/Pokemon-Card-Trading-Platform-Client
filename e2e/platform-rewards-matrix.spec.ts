@@ -5,7 +5,7 @@ import {
   ensureE2eFlashBuyer,
   findLatestUserRewardForTemplate,
   getPointLedgerGrantForTemplate,
-  getRewardCouponCenterForUserId,
+  getRewardCouponCenterForUser,
   getRewardTemplateIdByTitle,
   gotoMemberRewardsPage,
   invokeAutoGrantForUser,
@@ -289,7 +289,10 @@ test.describe("Platform rewards full matrix", () => {
     await setProfileCompletedTradesCount(buyerId!, 1);
     await invokeAutoGrantForUser(buyerId!);
 
-    const center = await getRewardCouponCenterForUserId(buyerId!);
+    const center = await getRewardCouponCenterForUser({
+      email: fixtures.buyerEmail!,
+      password: fixtures.buyerPassword!,
+    });
 
     const locked = center.locked.find(
       (entry) => entry.name === lockedProgressTitle,
@@ -309,7 +312,10 @@ test.describe("Platform rewards full matrix", () => {
     const fixtures = getMerchantProductDetailFixtures();
     const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
     expect(buyerId).toBeTruthy();
-    const center = await getRewardCouponCenterForUserId(buyerId!);
+    const center = await getRewardCouponCenterForUser({
+      email: fixtures.buyerEmail!,
+      password: fixtures.buyerPassword!,
+    });
 
     const legacyTitles = center.locked.map((entry) => entry.name.toLowerCase());
     expect(
@@ -330,7 +336,10 @@ test.describe("Platform rewards full matrix", () => {
     const fixtures = getMerchantProductDetailFixtures();
     const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
     expect(buyerId).toBeTruthy();
-    const center = await getRewardCouponCenterForUserId(buyerId!);
+    const center = await getRewardCouponCenterForUser({
+      email: fixtures.buyerEmail!,
+      password: fixtures.buyerPassword!,
+    });
 
     expect(
       center.locked.some((entry) => entry.name === flashFreeShipTitle),

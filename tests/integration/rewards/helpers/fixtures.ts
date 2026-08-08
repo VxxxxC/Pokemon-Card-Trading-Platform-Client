@@ -98,6 +98,25 @@ export function buildAutoGrantPointsInput(
   );
 }
 
+export function buildAutoGrantProfileCompleteInput(
+  title: string,
+): AdminRewardActivityUpsertInput {
+  const base = buildDefaultActivityForm();
+  return withActivityWindow(
+    {
+      ...base,
+      type: "discount_coupon",
+      reward_value: { amount_hkd: 10, min_spend_hkd: 0 },
+      distribution_mode: "auto_grant",
+      trigger_conditions: {
+        kind: "event_once",
+        event: "profile_complete",
+      },
+    },
+    title,
+  );
+}
+
 export function buildFlashFreeShipInput(
   title: string,
   campaignName: string,

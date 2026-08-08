@@ -438,7 +438,7 @@ type MemberDashboardTradingStats = {
 | `POST` | `[Server Action] triggerScraperJob` | `{ jobType: 'mercari'\|'skunk' }` | `{ jobId }` | ADMIN |
 | `GET` | `[Server Action] searchAdminGradingOrders` | `{ tab, orderKind?, keyword?, page?, pageSize? }` | `{ rows, total, page, pageSize }` | ADMIN |
 | `POST` | `[Server Action] adminConfirmGradingIntake` | `{ orderKind, orderId }` | `{ applied: true }` | ADMIN |
-| `POST` | `[Server Action] adminPassGrading` | `{ orderKind, orderId, notes? }` | `{ applied: true }` — triggers goods capture saga → `fully_captured` | ADMIN |
+| `POST` | `[Server Action] adminPassGrading` | `{ orderKind, orderId, gradingOptionId, notes? }` | `{ applied: true }` — goods capture saga → `fully_captured` + `auth_grading_*` | ADMIN |
 | `POST` | `[Server Action] adminSubmitGradingOutbound` | `{ orderKind, orderId, trackingNo }` | `{ applied: true }` | ADMIN |
 | `POST` | `[Server Action] adminFailGradingAndRefund` | `{ orderKind, orderId, faultParty, reason? }` | `{ applied: true }` — void uncaptured balance (auth fee retained) | ADMIN |
 | `GET` | `[Server Action] getAdminGradingAuditHistory` | `{ orderKind, orderId }` | `AuditRow[]` | ADMIN |

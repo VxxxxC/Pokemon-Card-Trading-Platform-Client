@@ -59,7 +59,7 @@
 
 | 階段 | Member 鑑定 (#2) | Merchant (#3 / #4) |
 |------|------------------|---------------------|
-| 收款 | Stripe manual PI + multicapture 🟡 Partner QA | 非鑑定：automatic ✅；鑑定：manual 🟡 Partner QA |
+| 收款 | Stripe manual PI · **single capture at pass** 🟡 Partner QA | 非鑑定：automatic ✅；鑑定：manual 🟡 Partner QA |
 | 出款觸發 | 買家確認收貨 | 買家確認收貨 |
 | Hold | **T+3** | **T+7** |
 | 出款方式 | **FPS** + `payout_requests`（平台外轉數） | **Stripe Connect** `transfers.create` |
@@ -76,7 +76,7 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 |----|------|
 | `none` | 未建立 PI / P2P |
 | `authorized` | PI `requires_capture` |
-| `auth_fee_captured` | 已 partial capture 鑑定費 |
+| `auth_fee_captured` | 已 partial capture 鑑定費（**legacy staged 入庫**）；single 新單入庫後仍為 `authorized` |
 | `fully_captured` | 卡價 + 運費已 capture |
 | `voided` | PI canceled |
 | `refunded` | 全額已退（售後或 fail） |
@@ -89,9 +89,9 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 | 規則 | 期限 |
 |------|------|
 | 買家付款後須有入庫 tracking + Admin 入庫 | **7 個曆日**內；否則 `payment_expired`，void PI，listing 釋放 |
-| 入庫後須 `capture(auth_fee)` | **24 小時**內 |
+| 入庫後須完成入庫確認（single：**不 capture**；legacy：須 `capture(auth_fee+inbound)`） | **24 小時**內 |
 | 入庫後鑑定須出結果 | **10 個工作天**內；超時 Admin 介入（不自動判 buyer fault） |
-| Authorize 將過期（約第 6 日） | 通知買家；必要時 **新 PI 替換**（cancel 舊 PI） |
+| Authorize 將過期（約第 6 日） | **入庫確認時**自動 re-auth（off_session）；失敗則通知買家重新付款 |
 
 ---
 
@@ -214,7 +214,7 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 **Idempotency key 範例**：
 
 - `auth-fee-capture:<orderKind>:<orderId>`
-- `goods-capture:<orderKind>:<orderId>`
+- `goods-capture:<full|goods>:<orderKind>:<orderId>` (`full` = single-capture PI, `goods` = legacy staged leg)
 
 ---
 
@@ -310,7 +310,7 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 
 ## 19. 相關文件
 
-- [admin-grading/PARTNER_HANDOFF.md](./follow-up/admin-grading/PARTNER_HANDOFF.md) — 🟡 Partner QA（multicapture E2E 主流程）
+- [admin-grading/PARTNER_HANDOFF.md](./follow-up/admin-grading/PARTNER_HANDOFF.md) — 🟡 Partner QA（single capture E2E 主流程）
 - [admin-grading/backend.md](./follow-up/admin-grading/backend.md) — 鑑定工作台（須對齊本文件 capture 時序）
 - [unified-checkout/backend.md](./follow-up/unified-checkout/backend.md) — 統一結帳 wizard + 入款兩 route / 出款 T+3 FPS vs T+7 Connect
 - [member-fps-payout/backend.md](./follow-up/member-fps-payout/backend.md) — Member 鑑定 T+3 FPS 提現單

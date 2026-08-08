@@ -18,6 +18,8 @@ export type PrepareAuthGradingFailPayload = {
   payment_intent_id: string;
   admin_id: string;
   fault_party: GradingFaultParty;
+  void_mode?: "cancel" | "capture_zero";
+  escrow_capture_model?: string | null;
 };
 
 type AuthGradingFailRpcClient = {
@@ -90,6 +92,12 @@ function parsePreparePayload(data: unknown): PrepareAuthGradingFailPayload | nul
     payment_intent_id: payload.payment_intent_id,
     admin_id: payload.admin_id,
     fault_party: faultParty,
+    void_mode:
+      payload.void_mode === "cancel" ? "cancel" : "capture_zero",
+    escrow_capture_model:
+      typeof payload.escrow_capture_model === "string"
+        ? payload.escrow_capture_model
+        : null,
   };
 }
 
@@ -121,14 +129,22 @@ export async function runAuthGradingFailVoidSaga(input: {
     return { ok: false, error: "鑑定失敗處理準備失敗" };
   }
 
-  const idempotencyKey = `auth-grading-fail-capture-zero:${input.orderKind}:${input.orderId}`;
+  const idempotencyKey = `auth-grading-fail:${prepared.void_mode ?? "capture_zero"}:${input.orderKind}:${input.orderId}`;
 
   try {
-    await stripe.paymentIntents.capture(
-      prepared.payment_intent_id,
-      { amount_to_capture: 0, final_capture: true },
-      { idempotencyKey },
-    );
+    if (prepared.void_mode === "cancel") {
+      await stripe.paymentIntents.cancel(
+        prepared.payment_intent_id,
+        undefined,
+        { idempotencyKey },
+      );
+    } else {
+      await stripe.paymentIntents.capture(
+        prepared.payment_intent_id,
+        { amount_to_capture: 0, final_capture: true },
+        { idempotencyKey },
+      );
+    }
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Stripe capture 失敗";

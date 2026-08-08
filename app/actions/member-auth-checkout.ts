@@ -4,8 +4,12 @@ import type Stripe from "stripe";
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import { getMemberAuthOrderActions } from "@/app/lib/member-order/auth-escrow";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
-import { AUTH_ESCROW_PAYMENT_METHOD_OPTIONS } from "@/lib/payments/escrow-payment-intent";
+import { AUTH_ESCROW_CAPTURE_MODEL_SINGLE } from "@/lib/payments/escrow-payment-intent";
 import { calculateMemberAuthPaymentTotal } from "@/lib/payments/member-auth-payment";
+import {
+  AUTH_ESCROW_AUTH_FEE_HKD,
+  AUTH_ESCROW_SF_LEG_FEE_HKD,
+} from "@/lib/auth-escrow/defaults";
 import { resolveMemberOrderIdForUser } from "@/lib/member-order/resolve-order-id";
 import { getStripeClient, getStripePublishableKey } from "@/lib/stripe/env";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -25,7 +29,10 @@ export type MemberAuthCheckoutOrder = {
   canPay: boolean;
   itemSubtotal: number;
   authFee: number;
+  inboundShippingFee: number;
+  outboundShippingFee: number;
   totalAmount: number;
+  buyerTotalAmount: number;
   paymentAmount: number;
   useAuthentication: boolean;
   seller: {
@@ -49,7 +56,10 @@ export type MemberAuthCheckoutPaymentIntent = {
   publishableKey: string;
   itemSubtotal: number;
   authFee: number;
+  inboundShippingFee: number;
+  outboundShippingFee: number;
   totalAmount: number;
+  buyerTotalAmount: number;
 };
 
 export type MemberAuthPaymentStatus = {
@@ -71,7 +81,10 @@ type MemberAuthCheckoutRow = Pick<
   | "final_price"
   | "item_subtotal"
   | "auth_fee"
+  | "inbound_shipping_fee"
+  | "outbound_shipping_fee"
   | "total_amount"
+  | "buyer_total_amount"
   | "escrow_status"
   | "use_authentication"
   | "status"
@@ -115,7 +128,10 @@ type PrepareMemberAuthPaymentPayload = {
   listing_id: string;
   item_subtotal: number;
   auth_fee: number;
+  inbound_shipping_fee: number;
+  outbound_shipping_fee: number;
   total_amount: number;
+  buyer_total_amount: number;
   stripe_payment_intent_id: string | null;
 };
 
@@ -141,7 +157,10 @@ const MEMBER_AUTH_CHECKOUT_SELECT = `
   final_price,
   item_subtotal,
   auth_fee,
+  inbound_shipping_fee,
+  outbound_shipping_fee,
   total_amount,
+  buyer_total_amount,
   escrow_status,
   use_authentication,
   status,
@@ -192,7 +211,12 @@ function parsePreparePayload(data: unknown): PrepareMemberAuthPaymentPayload | n
     listing_id: payload.listing_id,
     item_subtotal: Number(payload.item_subtotal ?? 0),
     auth_fee: Number(payload.auth_fee ?? 0),
+    inbound_shipping_fee: Number(payload.inbound_shipping_fee ?? 0),
+    outbound_shipping_fee: Number(payload.outbound_shipping_fee ?? 0),
     total_amount: Number(payload.total_amount ?? 0),
+    buyer_total_amount: Number(
+      payload.buyer_total_amount ?? payload.total_amount ?? 0,
+    ),
     stripe_payment_intent_id:
       typeof payload.stripe_payment_intent_id === "string"
         ? payload.stripe_payment_intent_id
@@ -244,9 +268,18 @@ function mapCheckoutSnapshot(
 ): MemberAuthCheckoutOrder {
   const isBuyer = row.buyer_id === viewerId;
   const itemSubtotal = Number(row.item_subtotal ?? row.final_price);
-  const authFee = Number(row.auth_fee ?? 0);
+  const authFee = Number(row.auth_fee ?? AUTH_ESCROW_AUTH_FEE_HKD);
+  const inboundShippingFee = Number(
+    row.inbound_shipping_fee ?? AUTH_ESCROW_SF_LEG_FEE_HKD,
+  );
+  const outboundShippingFee = Number(
+    row.outbound_shipping_fee ?? AUTH_ESCROW_SF_LEG_FEE_HKD,
+  );
   const totalAmount = Number(
     row.total_amount ?? calculateMemberAuthPaymentTotal(itemSubtotal),
+  );
+  const buyerTotalAmount = Number(
+    row.buyer_total_amount ?? row.total_amount ?? totalAmount,
   );
   const authActions = getMemberAuthOrderActions({
     persona: isBuyer ? "buy" : "sell",
@@ -271,8 +304,11 @@ function mapCheckoutSnapshot(
     canPay: isBuyer && authActions.canPay && row.payment_confirmed_at == null,
     itemSubtotal,
     authFee,
+    inboundShippingFee,
+    outboundShippingFee,
     totalAmount,
-    paymentAmount: totalAmount,
+    buyerTotalAmount,
+    paymentAmount: buyerTotalAmount,
     useAuthentication: row.use_authentication,
     seller: {
       id: row.seller_id,
@@ -418,7 +454,7 @@ export async function createMemberAuthPaymentIntent(
       return { success: false, error: "結帳金額計算失敗，請重試" };
     }
 
-    const amountInCents = Math.round(prepared.total_amount * 100);
+    const amountInCents = Math.round(prepared.buyer_total_amount * 100);
     if (!Number.isFinite(amountInCents) || amountInCents <= 0) {
       return { success: false, error: "訂單金額異常，請聯絡客服" };
     }
@@ -426,6 +462,7 @@ export async function createMemberAuthPaymentIntent(
     const metadata: Stripe.MetadataParam = {
       order_kind: "member_auth",
       capture_mode: "manual",
+      escrow_capture_model: AUTH_ESCROW_CAPTURE_MODEL_SINGLE,
       order_id: prepared.order_id,
       order_number: row.order_number ?? "",
       buyer_id: user.id,
@@ -433,7 +470,10 @@ export async function createMemberAuthPaymentIntent(
       listing_id: prepared.listing_id,
       item_subtotal: String(prepared.item_subtotal),
       auth_fee: String(prepared.auth_fee),
+      inbound_shipping_fee: String(prepared.inbound_shipping_fee),
+      outbound_shipping_fee: String(prepared.outbound_shipping_fee),
       total_amount: String(prepared.total_amount),
+      buyer_total_amount: String(prepared.buyer_total_amount),
     };
 
     let paymentIntent: Stripe.PaymentIntent | null = null;
@@ -461,7 +501,6 @@ export async function createMemberAuthPaymentIntent(
             amount: amountInCents,
             metadata,
             capture_method: "manual",
-            payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS,
           });
         }
       } catch (retrieveError) {
@@ -484,7 +523,6 @@ export async function createMemberAuthPaymentIntent(
         capture_method: "manual",
         automatic_payment_methods: { enabled: true },
         metadata,
-        payment_method_options: AUTH_ESCROW_PAYMENT_METHOD_OPTIONS,
       });
     }
 
@@ -515,7 +553,10 @@ export async function createMemberAuthPaymentIntent(
         publishableKey,
         itemSubtotal: prepared.item_subtotal,
         authFee: prepared.auth_fee,
+        inboundShippingFee: prepared.inbound_shipping_fee,
+        outboundShippingFee: prepared.outbound_shipping_fee,
         totalAmount: prepared.total_amount,
+        buyerTotalAmount: prepared.buyer_total_amount,
       },
     };
   } catch (error) {
@@ -564,7 +605,9 @@ export async function getMemberAuthPaymentStatus(
         paymentConfirmedAt: row.payment_confirmed_at,
         paymentCaptureStatus: row.payment_capture_status ?? null,
         totalAmount: Number(
-          row.total_amount ?? calculateMemberAuthPaymentTotal(Number(row.final_price)),
+          row.buyer_total_amount ??
+            row.total_amount ??
+            calculateMemberAuthPaymentTotal(Number(row.final_price)),
         ),
       },
     };

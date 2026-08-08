@@ -22,6 +22,8 @@ export type CheckoutCounterparty = {
 export type CheckoutPricing = {
   itemSubtotal: number;
   shippingFee: number;
+  inboundShippingFee?: number;
+  outboundShippingFee?: number;
   authFee: number;
   totalAmount: number;
 };

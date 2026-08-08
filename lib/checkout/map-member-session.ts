@@ -19,8 +19,10 @@ export function mapMemberCheckoutToSession(
     pricing: {
       itemSubtotal: order.itemSubtotal,
       shippingFee: 0,
+      inboundShippingFee: order.inboundShippingFee,
+      outboundShippingFee: order.outboundShippingFee,
       authFee: order.authFee,
-      totalAmount: order.totalAmount,
+      totalAmount: order.buyerTotalAmount,
     },
   };
 }

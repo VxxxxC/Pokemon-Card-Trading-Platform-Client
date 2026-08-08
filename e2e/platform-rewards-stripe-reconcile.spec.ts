@@ -23,6 +23,10 @@ import {
   hasBuyerAuthFixtures,
   hasCoreMerchantFixtures,
 } from "./fixtures/test-data";
+import {
+  ensureCourierShippingSelected,
+  waitForCheckoutCouponPicker,
+} from "./helpers/rewards-checkout-coupon";
 
 test.describe.configure({ mode: "serial" });
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -74,7 +78,8 @@ test.describe("Platform rewards Stripe reconcile E2E", () => {
     );
     subsidizedSellerId = merchantListing.sellerId;
 
-    await expect(page.locator("#checkout-coupon")).toBeVisible({ timeout: 20_000 });
+    await ensureCourierShippingSelected(page);
+    await waitForCheckoutCouponPicker(page, { rewardId: couponRewardId });
     await page.locator("#checkout-coupon").selectOption(couponRewardId);
     await page.waitForTimeout(1500);
 

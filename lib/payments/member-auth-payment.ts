@@ -1,4 +1,8 @@
-import { MEMBER_AUTH_SERVICE_FEE } from "@/app/lib/member-order/p2p";
+import {
+  AUTH_ESCROW_AUTH_FEE_HKD,
+  AUTH_ESCROW_SF_LEG_FEE_HKD,
+  estimateAuthEscrowCheckoutTotal,
+} from "@/lib/auth-escrow/defaults";
 
 export type MemberAuthPaymentSession = {
   sessionId: string;
@@ -10,7 +14,7 @@ export type MemberAuthPaymentSession = {
 };
 
 export function calculateMemberAuthPaymentTotal(cardPrice: number): number {
-  return cardPrice + MEMBER_AUTH_SERVICE_FEE;
+  return estimateAuthEscrowCheckoutTotal(cardPrice);
 }
 
 export function createMemberAuthPaymentSession(input: {
@@ -24,7 +28,7 @@ export function createMemberAuthPaymentSession(input: {
     amount: calculateMemberAuthPaymentTotal(input.cardPrice),
     currency: "hkd",
     cardPrice: input.cardPrice,
-    authFee: MEMBER_AUTH_SERVICE_FEE,
+    authFee: AUTH_ESCROW_AUTH_FEE_HKD,
     isMock: true,
   };
 }
@@ -38,3 +42,5 @@ export function confirmMemberAuthPayment(sessionId: string): {
     confirmedAt: new Date().toISOString(),
   };
 }
+
+export { AUTH_ESCROW_AUTH_FEE_HKD, AUTH_ESCROW_SF_LEG_FEE_HKD };

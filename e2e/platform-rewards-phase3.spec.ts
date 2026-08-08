@@ -21,6 +21,7 @@ import {
   tryClaimFlashCampaignViaUI,
   waitForFlashCampaignSectionReady,
 } from "./helpers/platform-rewards";
+import { waitForCheckoutCouponPicker } from "./helpers/rewards-checkout-coupon";
 import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import {
   getMerchantProductDetailFixtures,
@@ -220,8 +221,8 @@ test.describe("Platform rewards Phase 3 E2E", () => {
       merchantListing.listingId,
     );
 
-    await expect(page.locator("#checkout-coupon")).toBeVisible({
-      timeout: 20_000,
+    await waitForCheckoutCouponPicker(page, {
+      rewardId: flashCouponRewardId!,
     });
     await page.locator("#checkout-coupon").selectOption(flashCouponRewardId!);
     await page.waitForTimeout(1500);
@@ -258,7 +259,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
     const card = section
       .locator("div.rounded-2xl")
-      .filter({ hasText: campaignName! });
+      .filter({ hasText: templateTitle! });
     const hasFlashCard = await card.isVisible().catch(() => false);
     if (hasFlashCard) {
       await expect(

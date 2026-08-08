@@ -28,8 +28,9 @@ Import from `@/app/actions/admin-grading`:
 - [ ] Admin (`profiles.role=admin`) can open `/admin/grading`; non-admin redirected
 - [ ] Tabs filter queue: 待入庫 / 鑑定中 / 待出庫 / 已結案
 - [ ] Member vs Merchant filter + keyword search + pagination
-- [ ] Detail modal: confirm intake, pass (goods capture), fail with **fault_party** select + void preview, outbound tracking
-- [ ] Audit history loads per order
+- [ ] Detail modal: confirm intake, pass with **grading** select (PSA/BGS/CGC/ARS/OTHER — not 裸卡) + goods capture, fail with **fault_party** select + void preview, outbound tracking
+- [ ] Pass defaults grading from seller listing when graded (non-RAW); otherwise PSA 10
+- [ ] After pass, detail shows platform `auth_grading_company` / `auth_grading_score`
 - [ ] Mutations toast success/error; list refreshes on success
 - [ ] Merchant auth order: seller can submit inbound tracking on order detail (paid + auth) — `canSubmitLogistics` shows inbound input at `payment_held`; hides「確認訂單並移交保管」
 - [ ] CI: page safe when Supabase env unset (`isSupabaseConfigured` guard)

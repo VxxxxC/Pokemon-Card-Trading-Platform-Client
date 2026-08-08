@@ -71,7 +71,10 @@ export function MemberMerchantB2cOrderInvoice({
 
         <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
           <span>{isSeller ? "買家託管總額" : "託管付款總額"}</span>
-          <span className="text-brand font-mono text-[18px] md:text-[24px]">
+          <span
+            className="text-brand font-mono text-[18px] md:text-[24px]"
+            data-testid="order-payment-amount"
+          >
             {"HK$ " + totalAmount.toLocaleString("zh-TW")}
           </span>
         </div>

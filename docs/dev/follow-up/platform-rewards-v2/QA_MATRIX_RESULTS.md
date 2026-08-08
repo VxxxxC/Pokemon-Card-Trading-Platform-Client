@@ -1,8 +1,8 @@
 # 平台獎勵 v2 — 全矩陣 QA 結果
 
 > 執行指令：
-> - `bun run test:e2e:rewards` — phase2 + phase3 + matrix
-> - `bun run test:e2e:stripe-reconcile` — PI 對帳 + Connect 出款補差（獨立，較慢）
+> - `bun run test:rewards:gate` — integration + 合併 E2E（推薦；同 CI `rewards-e2e` job）
+> - `bun run test:e2e:rewards-gate` — 僅 E2E（phase2 + phase3 + matrix + checkout-coupon + order-detail + stripe-reconcile，單一 dev server）
 
 ## Stripe 對帳 / 出款（`platform-rewards-stripe-reconcile`）
 
@@ -29,7 +29,7 @@
 | `discount_coupon` | 手動入錢包 | 最低消費符合 / 不符合 | ✅ phase2 B2 | |
 | `free_shipping` / `discount` | 手動入錢包 | 切換券 / 清除券 | ✅ phase2 B3.4–B3.5 | |
 | `free_shipping` | 手動入錢包 | 面交不符合 | ✅ phase2 B3.3 | |
-| `free_shipping` | 手動入錢包 | checkout 開啟鑑定開關清空選券 | ✅ phase2 B3.1 | |
+| `free_shipping` | 手動入錢包 | checkout 開啟鑑定開關：picker 仍顯示、選券清空 | ✅ phase2 B3.1 | Phase 2b；非隱藏 picker |
 | `discount_coupon` | 手動入錢包 | merchant_auth checkout | ✅ phase2 B2b.1 | |
 | `free_shipping` | 手動入錢包 | merchant_auth checkout | ✅ phase2 B2b.2 | |
 | 封存 `CHECK_IN_DAY7_BONUS` | — | 不可解鎖列表 | ✅ matrix M-M2 | |
@@ -44,13 +44,13 @@
 | 商戶角色 `trade_count` | 未單獨開 case |
 | 付款取消 / 48h cron 釋放券 | phase2 B3.6 未自動化 |
 | 鑑定失敗 void 還券 | Part D3.3 未自動化 |
-| T+7 Connect 出款補差 | ~~Part B4 可選~~ → **R2/R3 已自動化**（`test:e2e:stripe-reconcile`） |
+| T+7 Connect 出款補差 | ~~Part B4 可選~~ → **R2/R3 已自動化**（`test:e2e:rewards-gate` 內 stripe-reconcile） |
 | Admin 搶券檔期暫停/恢復 UI | ✅ phase3 C3.8 |
 | 簽到計劃儲存（7 日階梯 + completion bonus） | 僅 smoke 載入，未測儲存 |
 
 ## 執行紀錄
 
 - 新增 `e2e/platform-rewards-stripe-reconcile.spec.ts`：PI 對帳 + 出款 `source_transaction` 規則
-- `bun run test:e2e:rewards` 請在具備 `E2E_ADMIN_*`、`E2E_BUYER_*`、`E2E_LISTING_ID`、Stripe 測試模式與 `SUPABASE_SERVICE_ROLE_KEY` 的環境執行
-- `bun run test:e2e:stripe-reconcile` 另需 `STRIPE_SECRET_KEY` 與 seller 帳號對齊 listing
+- `bun run test:e2e:rewards-gate`（或 `bun run test:rewards:gate`）請在具備 `E2E_ADMIN_*`、`E2E_BUYER_*`、`E2E_LISTING_ID`、Stripe 測試模式與 `SUPABASE_SERVICE_ROLE_KEY` 的環境執行
+- Stripe reconcile（R1–R3）另需 `STRIPE_SECRET_KEY` 與 seller 帳號對齊 listing；未設時相關 spec 會 skip
 - Partner 人手清單：[PARTNER_CHECKLIST.md](./PARTNER_CHECKLIST.md)
