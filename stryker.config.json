@@ -8,7 +8,7 @@
     "lib/rewards/coupon-expiry.ts"
   ],
   "vitest": {
-    "configFile": "vitest.mutation.config.mts",
+    "configFile": "vitest.config.mts",
     "related": false
   },
   "thresholds": {

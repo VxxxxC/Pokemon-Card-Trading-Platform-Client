@@ -9,8 +9,8 @@
     "build:ci": "NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run --config vitest.unit.config.mts",
-    "test:unit": "vitest run --config vitest.unit.config.mts",
+    "test": "VITEST_SUITE=unit vitest run --config vitest.config.mts",
+    "test:unit": "VITEST_SUITE=unit vitest run --config vitest.config.mts",
     "supabase:types": "bunx supabase gen types typescript --linked > types/supabase.ts && bun run scripts/generate-supabase-md.ts",
     "test:catalog-search": "bun run scripts/test-product-catalog-search.ts",
     "test:member-order-complete-rpc": "bun run scripts/test-member-order-complete-rpc.ts",
@@ -24,10 +24,10 @@
     "test:e2e:stripe-reconcile": "playwright test e2e/platform-rewards-stripe-reconcile.spec.ts --project=setup --project=buyer",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:integration:rewards": "vitest run --config vitest.config.mts tests/integration/rewards",
-    "test:integration:rewards:pbt": "vitest run --config vitest.config.mts tests/integration/rewards/coupon-pbt.integration.test.ts",
-    "test:rewards:mutation": "stryker run",
-    "test:integration:moderation": "vitest run --config vitest.config.mts tests/integration/moderation"
+    "test:integration:rewards": "VITEST_SUITE=integration vitest run --config vitest.config.mts tests/integration/rewards",
+    "test:integration:rewards:pbt": "VITEST_SUITE=integration vitest run --config vitest.config.mts tests/integration/rewards/coupon-pbt.integration.test.ts",
+    "test:rewards:mutation": "VITEST_SUITE=mutation stryker run",
+    "test:integration:moderation": "VITEST_SUITE=integration vitest run --config vitest.config.mts tests/integration/moderation"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
