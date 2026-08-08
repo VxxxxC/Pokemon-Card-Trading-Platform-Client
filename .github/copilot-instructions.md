@@ -277,14 +277,14 @@ HKCardVault 採用分層測試策略，涵蓋狀態機正確性、安全威脅�
 
 ### 總覽表
 
-| 層級 | 名稱 | 核心目的 | 主要工具 |
-|---|---|---|---|
-| L1 | FSM 狀態機測試 | 驗證合法轉移 100% 正確、非法轉移拒絕、終態不可回退 | Vitest + 手寫 FSM 驗證器 |
-| L2 | AI 威脅建模 (Threat Modeling) | 模擬注入、越權、RLS 繞過、雙重支付 | Vitest + anon key + sandbox 帳號 |
-| L3 | Vitest 單元/整合測試 | 純函數、計算、parser/mapper、Server Action seam | Vitest |
-| L4 | PBT / fast-check 屬性測試 | 隨機生成極端輸入驗證不變式 | fast-check |
-| L5 | Mutation Testing | 衡量斷言品質，Kill mutants | Stryker |
-| L6 | E2E / Playwright | 真實瀏覽器全流程模擬 | Playwright |
+| 層級 | 名稱                          | 核心目的                                           | 主要工具                         |
+| ---- | ----------------------------- | -------------------------------------------------- | -------------------------------- |
+| L1   | FSM 狀態機測試                | 驗證合法轉移 100% 正確、非法轉移拒絕、終態不可回退 | Vitest + 手寫 FSM 驗證器         |
+| L2   | AI 威脅建模 (Threat Modeling) | 模擬注入、越權、RLS 繞過、雙重支付                 | Vitest + anon key + sandbox 帳號 |
+| L3   | Vitest 單元/整合測試          | 純函數、計算、parser/mapper、Server Action seam    | Vitest                           |
+| L4   | PBT / fast-check 屬性測試     | 隨機生成極端輸入驗證不變式                         | fast-check                       |
+| L5   | Mutation Testing              | 衡量斷言品質，Kill mutants                         | Stryker                          |
+| L6   | E2E / Playwright              | 真實瀏覽器全流程模擬                               | Playwright                       |
 
 ---
 
@@ -362,6 +362,7 @@ HKCardVault 採用分層測試策略，涵蓋狀態機正確性、安全威脅�
 
 > **報告根路徑定義**：本文件與 `opencode.json` 內的 `$root` 均指目前代碼庫（repository/workspace）的專案根目錄，與既有 `$Project_Root` 指向同一實體位置；`$root` 只係 prompt 內的路徑佔位符，禁止建立名為 `$root` 的字面資料夾。
 
+- 每次進行編寫和測試前，要求指揮官大腦先檢查[6Tie Test Architecture](../docs/HKCARDVAULT_6TIER_TESTING_ARCHITECTURE.md)，要求各測試sub-agents都需要遵從和根據文檔內的指引去進行測試，如文檔資料過時及不準確，可作出更新並編輯文檔。
 - 進行綜合測試時，Commander 允許**同時調度 2-3 個**專屬測試 sub-agent 並行執行。
 - 各測試 agent 的報告一律寫入 `$root/test-results/` 目錄下對應的 markdown 檔案，不得互相覆寫。
 - Commander 在任務結束前，**必須強制讀取** `$root/test-results/` 內今次 run 產生的所有報告，不可只信任 sub-agent 的口頭 summary。
