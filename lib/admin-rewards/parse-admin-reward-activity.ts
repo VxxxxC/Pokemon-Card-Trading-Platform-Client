@@ -1,8 +1,30 @@
 import { parseAdminRewardTemplateRow } from "@/lib/admin-rewards/parse-admin-reward-template";
 import type {
+  AdminRedemptionCatalogInput,
   AdminRewardActivityRow,
   AdminRewardCampaignStatus,
 } from "@/lib/admin-rewards/types";
+
+function parseRedemptionCatalog(
+  value: unknown,
+): AdminRedemptionCatalogInput | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const row = value as Record<string, unknown>;
+  const pointsCost = Number(row.points_cost ?? 0);
+  const stock = Number(row.stock ?? 0);
+
+  return {
+    enabled: row.enabled === true || row.is_active === true,
+    points_cost: pointsCost,
+    stock,
+    is_active: row.is_active === true,
+    display_order:
+      row.display_order == null ? 0 : Number(row.display_order),
+  };
+}
 
 function parseCampaignStatus(value: unknown): AdminRewardCampaignStatus | null {
   if (
@@ -56,6 +78,7 @@ export function parseAdminRewardActivityRow(
       typeof row.display_status === "string"
         ? row.display_status
         : template.status,
+    redemption_catalog: parseRedemptionCatalog(row.redemption_catalog),
   };
 }
 

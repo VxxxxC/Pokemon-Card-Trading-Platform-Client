@@ -19,10 +19,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  applyFormFlow,
   buildDefaultActivityForm,
   buildDefaultFlashSchedule,
+  deriveFormFlow,
   DISTRIBUTION_MODE_LABELS,
+  FORM_FLOW_DESCRIPTIONS,
+  FORM_FLOW_LABELS,
+  isCatalogEligibleRewardType,
   rewardValueForType,
+  shouldShowAutoGrantTriggers,
+  type AdminRewardFormFlow,
 } from "@/lib/admin-rewards/template-form";
 import type {
   AdminRewardActivityUpsertInput,
@@ -44,6 +51,7 @@ import {
 
 type RewardActivityFormProps = {
   initialForm?: AdminRewardActivityUpsertInput;
+  initialFlow?: AdminRewardFormFlow;
 };
 
 function localDateTimeToIso(value: string): string {
@@ -105,14 +113,63 @@ function validateAutoGrantSchedule(
   return null;
 }
 
-export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
+function validateRedemptionCatalog(
+  form: AdminRewardActivityUpsertInput,
+): string | null {
+  const catalog = form.redemption_catalog;
+  if (!catalog?.enabled) {
+    return null;
+  }
+
+  if (form.distribution_mode === "flash_only") {
+    return "搶券活動不可同時上架積分商城";
+  }
+
+  if (form.type !== "discount_coupon" && form.type !== "free_shipping") {
+    return "僅折扣券與免運券可上架積分商城";
+  }
+
+  if (catalog.points_cost <= 0) {
+    return "兌換積分必須大於 0";
+  }
+
+  if (catalog.stock < 0) {
+    return "商城庫存不可為負數";
+  }
+
+  return null;
+}
+
+export function RewardActivityForm({
+  initialForm,
+  initialFlow,
+}: RewardActivityFormProps) {
   const router = useRouter();
+  const resolvedInitialForm = initialForm ?? buildDefaultActivityForm();
+  const [formFlow, setFormFlow] = useState<AdminRewardFormFlow>(
+    initialFlow ?? deriveFormFlow(resolvedInitialForm),
+  );
   const [form, setForm] = useState<AdminRewardActivityUpsertInput>(
-    initialForm ?? buildDefaultActivityForm(),
+    initialFlow ? applyFormFlow(resolvedInitialForm, initialFlow) : resolvedInitialForm,
   );
   const [isPending, startTransition] = useTransition();
 
+  const isEditing = Boolean(form.id);
+  const isPointsMallFlow = formFlow === "points_mall";
   const mode = form.distribution_mode ?? "auto_grant";
+  const redemptionCatalog = form.redemption_catalog ?? {
+    enabled: false,
+    points_cost: 500,
+    stock: 100,
+    is_active: false,
+  };
+  const showTriggerConditions = shouldShowAutoGrantTriggers(
+    mode,
+    redemptionCatalog,
+    formFlow,
+  );
+  const showCouponValidityLimits =
+    mode === "auto_grant" || isPointsMallFlow;
   const triggerKind = (form.trigger_conditions.kind ??
     "event_once") as AdminRewardTriggerKind;
   const isLegacyCheckInTrigger =
@@ -141,8 +198,46 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
     return next;
   };
 
+  const normalizeForFlow = (
+    next: AdminRewardActivityUpsertInput,
+    flow: AdminRewardFormFlow = formFlow,
+  ): AdminRewardActivityUpsertInput => {
+    if (flow === "points_mall") {
+      const nextType = isCatalogEligibleRewardType(next.type)
+        ? next.type
+        : "discount_coupon";
+      return {
+        ...next,
+        type: nextType,
+        distribution_mode: "auto_grant",
+        trigger_conditions: { kind: "none" },
+        flash_schedule: undefined,
+        redemption_catalog: isCatalogEligibleRewardType(nextType)
+          ? {
+              ...(next.redemption_catalog ?? redemptionCatalog),
+              enabled: true,
+              is_active: true,
+            }
+          : undefined,
+      };
+    }
+
+    return {
+      ...next,
+      redemption_catalog: undefined,
+    };
+  };
+
   const handleChange = (next: AdminRewardActivityUpsertInput) => {
-    setForm(ensureFlashSchedule(next));
+    setForm(ensureFlashSchedule(normalizeForFlow(next)));
+  };
+
+  const handleFlowChange = (nextFlow: AdminRewardFormFlow) => {
+    if (nextFlow === formFlow) {
+      return;
+    }
+    setFormFlow(nextFlow);
+    setForm((current) => ensureFlashSchedule(applyFormFlow(current, nextFlow)));
   };
 
   const handleDistributionChange = (value: AdminRewardDistributionMode) => {
@@ -216,6 +311,12 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
       }
     }
 
+    const catalogError = validateRedemptionCatalog(form);
+    if (catalogError) {
+      toast.error(catalogError);
+      return;
+    }
+
     startTransition(async () => {
       const result = await upsertAdminRewardActivity(form);
       if (!result.success) {
@@ -248,6 +349,12 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
         toast.error(scheduleError);
         return;
       }
+    }
+
+    const catalogError = validateRedemptionCatalog(form);
+    if (catalogError) {
+      toast.error(catalogError);
+      return;
     }
 
     startTransition(async () => {
@@ -286,6 +393,38 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
       ) : null}
 
       <div className={sectionShell}>
+        {/* 0. 建立類型 */}
+        <section className="space-y-3">
+          <h2 className={blockTitle}>建立類型</h2>
+          <p className="font-sans text-[12px] text-text-secondary">
+            {FORM_FLOW_DESCRIPTIONS[formFlow]}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(["general", "points_mall"] as const).map((flow) => (
+              <button
+                key={flow}
+                type="button"
+                disabled={isEditing || isLegacyCheckInTrigger}
+                onClick={() => handleFlowChange(flow)}
+                className={cn(
+                  "h-9 rounded-xl border px-4 font-sans text-[12px] transition-colors",
+                  formFlow === flow
+                    ? "border-brand/50 bg-brand/10 text-text-primary"
+                    : "border-[rgba(237,232,224,0.12)] bg-transparent text-text-secondary hover:text-text-primary",
+                  isEditing ? "cursor-not-allowed opacity-60" : "",
+                )}
+              >
+                {FORM_FLOW_LABELS[flow]}
+              </button>
+            ))}
+          </div>
+          {isEditing ? (
+            <p className="font-sans text-[11px] text-text-disabled">
+              編輯既有活動時無法變更建立類型。
+            </p>
+          ) : null}
+        </section>
+
         {/* 1. 基本資料 */}
         <section className="space-y-3">
           <h2 className={blockTitle}>基本資料</h2>
@@ -348,7 +487,7 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
                   </SelectContent>
                 </Select>
               </div>
-              {mode === "auto_grant" ? (
+              {showCouponValidityLimits ? (
                 <div className="space-y-2">
                   <Label htmlFor="valid-days" className={fieldLabel}>
                     領取後有效天數
@@ -369,7 +508,7 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
                   />
                 </div>
               ) : null}
-              {mode === "auto_grant" ? (
+              {showCouponValidityLimits ? (
                 <div className="space-y-2">
                   <Label htmlFor="max-claims" className={fieldLabel}>
                     限量（空白=無限）
@@ -402,7 +541,8 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
           </section>
         </div>
 
-        {/* 3. 發放方式 */}
+        {/* 3. 發放方式（一般券） */}
+        {!isPointsMallFlow ? (
         <div className={sectionDivider}>
           <section className="space-y-3">
             <h2 className={blockTitle}>發放方式</h2>
@@ -437,9 +577,10 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
             )}
           </section>
         </div>
+        ) : null}
 
-        {/* 4. 觸發條件 */}
-        {mode === "auto_grant" ? (
+        {/* 4. 觸發條件（一般券） */}
+        {showTriggerConditions ? (
           <div className={sectionDivider}>
             <section className="space-y-3">
               <h2 className={blockTitle}>觸發條件</h2>
@@ -562,19 +703,25 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
                 </Label>
                 <Select
                   value={form.type}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
+                    const nextType = value as AdminRewardTemplateType;
                     handleChange({
                       ...form,
-                      type: value as AdminRewardTemplateType,
-                      reward_value: rewardValueForType(value as AdminRewardTemplateType),
-                    })
-                  }
+                      type: nextType,
+                      reward_value: rewardValueForType(nextType),
+                      redemption_catalog: isCatalogEligibleRewardType(nextType)
+                        ? form.redemption_catalog
+                        : undefined,
+                    });
+                  }}
                 >
                   <SelectTrigger className={fieldSelect}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="points">積分</SelectItem>
+                    {!isPointsMallFlow ? (
+                      <SelectItem value="points">積分</SelectItem>
+                    ) : null}
                     <SelectItem value="discount_coupon">折扣券</SelectItem>
                     <SelectItem value="free_shipping">免運券</SelectItem>
                   </SelectContent>
@@ -697,13 +844,15 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
           </section>
         </div>
 
-        {/* 6. 活動期限 / 搶券檔期 */}
-        {mode === "auto_grant" ? (
+        {/* 6. 活動期限 */}
+        {mode === "auto_grant" || isPointsMallFlow ? (
           <div className={sectionDivider}>
             <section className="space-y-3">
               <h2 className={blockTitle}>活動期限</h2>
               <p className="font-sans text-[12px] text-text-secondary">
-                可選。不設定則發布後持續有效，直至封存或模板庫存用盡。
+                {isPointsMallFlow
+                  ? "可選。不設定則發布後持續上架，直至封存或商城庫存用盡。"
+                  : "可選。不設定則發布後持續有效，直至封存或模板庫存用盡。"}
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
@@ -739,7 +888,7 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
           </div>
         ) : null}
 
-        {mode === "flash_only" && schedule ? (
+        {mode === "flash_only" && schedule && !isPointsMallFlow ? (
           <div className={sectionDivider}>
             <section className="space-y-3">
               <h2 className={blockTitle}>搶券檔期</h2>
@@ -827,6 +976,65 @@ export function RewardActivityForm({ initialForm }: RewardActivityFormProps) {
                   <p className="font-mono text-[10px] text-text-disabled">
                     留空則使用模板預設有效期。
                   </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {isPointsMallFlow ? (
+          <div className={sectionDivider}>
+            <section className="space-y-3">
+              <h2 className={blockTitle}>積分商城設定</h2>
+              <p className="font-sans text-[12px] text-text-secondary">
+                會員可在獎勵頁使用積分兌換此券；無需觸發條件，與搶券活動互斥。
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="catalog-points-cost" className={fieldLabel}>
+                    兌換積分
+                  </Label>
+                  <Input
+                    id="catalog-points-cost"
+                    type="number"
+                    min={1}
+                    value={String(redemptionCatalog.points_cost)}
+                    onChange={(event) =>
+                      handleChange({
+                        ...form,
+                        redemption_catalog: {
+                          ...redemptionCatalog,
+                          enabled: true,
+                          is_active: true,
+                          points_cost: Number(event.target.value || 0),
+                        },
+                      })
+                    }
+                    className={fieldInput}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="catalog-stock" className={fieldLabel}>
+                    商城庫存
+                  </Label>
+                  <Input
+                    id="catalog-stock"
+                    type="number"
+                    min={0}
+                    value={String(redemptionCatalog.stock)}
+                    onChange={(event) =>
+                      handleChange({
+                        ...form,
+                        redemption_catalog: {
+                          ...redemptionCatalog,
+                          enabled: true,
+                          is_active: true,
+                          stock: Number(event.target.value || 0),
+                        },
+                      })
+                    }
+                    className={fieldInput}
+                  />
                 </div>
               </div>
             </section>

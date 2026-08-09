@@ -5,6 +5,10 @@ import {
   parseAdminRewardActivityListPayload,
   parseAdminRewardActivityRow,
 } from "@/lib/admin-rewards/parse-admin-reward-activity";
+import {
+  resolveActivityTriggerConditions,
+  sanitizeRedemptionCatalogForType,
+} from "@/lib/admin-rewards/template-form";
 import type {
   AdminRewardActivityRow,
   AdminRewardActivityStatus,
@@ -89,10 +93,10 @@ function buildActivityPayload(
   const schedule = input.schedule ?? input.flash_schedule;
   const distributionMode = input.distribution_mode ?? "auto_grant";
 
-  const triggerConditions =
-    distributionMode === "flash_only"
-      ? { kind: "none" }
-      : input.trigger_conditions;
+  const sanitizedCatalog = sanitizeRedemptionCatalogForType(
+    input.type,
+    input.redemption_catalog,
+  );
 
   const payload: Record<string, unknown> = {
     id: input.id ?? null,
@@ -100,7 +104,10 @@ function buildActivityPayload(
     description: input.description?.trim() || null,
     type: input.type,
     reward_value: input.reward_value,
-    trigger_conditions: triggerConditions,
+    trigger_conditions: resolveActivityTriggerConditions({
+      ...input,
+      redemption_catalog: sanitizedCatalog,
+    }),
     is_infinite: input.is_infinite,
     max_claims: input.is_infinite ? null : (input.max_claims ?? null),
     valid_duration_days: input.valid_duration_days ?? null,
@@ -113,6 +120,16 @@ function buildActivityPayload(
       min_item_subtotal_hkd: 0,
     },
   };
+
+  if (sanitizedCatalog) {
+    payload.redemption_catalog = {
+      enabled: sanitizedCatalog.enabled,
+      points_cost: sanitizedCatalog.points_cost,
+      stock: sanitizedCatalog.stock,
+      is_active: sanitizedCatalog.is_active,
+      display_order: sanitizedCatalog.display_order ?? 0,
+    };
+  }
 
   if (schedule?.starts_at?.trim() && schedule?.ends_at?.trim()) {
     const scheduleName =

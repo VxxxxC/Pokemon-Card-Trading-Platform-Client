@@ -78,7 +78,8 @@ FROM merchant_orders WHERE id = '<order_id>';
 ## Part C — 不在範圍內（勿當 bug 提報）
 
 - Member C2C checkout 用券 → **Phase 5**
-- `percent_off`、積分兌換商店
+- `percent_off`
+- 積分兌換商店 → **Phase 4 已涵蓋（Part G）**
 
 ## Part D — Phase 2b（merchant_auth + auth 開關用券）
 
@@ -143,9 +144,47 @@ FROM merchant_orders WHERE id = '<order_id>';
 | UI crash 修復 | ✅ | `FlashCampaignSection` 穩定 `useSyncExternalStore` snapshot |
 | **正式簽核** | **✅ Partner QA** | Part E 全項已覆蓋（人手 + E2E）；合併關卡仍建議跑 `bun run test:rewards:gate` 維持 CI 綠燈 |
 
-### 合併簽核關卡（Phase 4 前）
+### 合併簽核關卡（Phase 4）
 
-執行一次：Part A–B 回歸 → **Part D**（2b）→ **Part E**（3）→ `bunx tsc --noEmit`、`bun run lint`、`bun run build:ci` → E2E `platform-rewards-phase2.spec.ts` + `platform-rewards-phase3.spec.ts`。
+執行一次：`bun run test:rewards:gate`（integration I-G* + unit I-G9 + E2E 含 phase4）→ `bunx tsc --noEmit`、`bun run lint`、`bun run build:ci`。
+
+## Part G — Phase 4（積分商城）
+
+### G1 — Admin 上架積分商城
+
+| # | 步驟 | 預期結果 | 自動化 | 通過 |
+|---|------|----------|--------|------|
+| G1.1 | 建立 `discount_coupon` + 勾選「上架積分商城」、設定 PTS/庫存 → 發布 | 模板 active；catalog row 存在；`is_infinite=true` | E2E `C4.1` · `I-G8` | ☐ |
+| G1.2 | 同模板啟用 flash + catalog | 發布失敗（互斥） | Vitest admin 負向 | ☐ |
+| G1.3 | `points` 類型模板 | 無「上架積分商城」區塊 | 人手 spot-check | ☐ |
+
+### G2 — 會員兌換
+
+| # | 步驟 | 預期結果 | 自動化 | 通過 |
+|---|------|----------|--------|------|
+| G2.1 | `/profile/user/rewards` Flash 下方見「積分商城」 | 顯示 PTS 成本、剩餘庫存 | E2E `C4.1` | ☐ |
+| G2.2 | 積分足夠 → 兌換 | Toast 成功；券入錢包 | E2E `C4.1`/`C4.2` · `I-G3` | ☐ |
+| G2.3 | 積分不足 | 按鈕 disabled 或錯誤 | `I-G4` | ☐ |
+| G2.4 | 庫存為 0 | 卡片仍可能顯示「已兌完」；`can_redeem=false`；redeem reject | `I-G5` | ☐ |
+| G2.5 | 商戶 persona | Section 不顯示 / 無法兌換 | `I-G9` · 人手 | ☐ |
+
+### G3 — 邊界與回歸
+
+| # | 步驟 | 預期結果 | 自動化 | 通過 |
+|---|------|----------|--------|------|
+| G3.1 | 併發兌換最後 1 庫存 | 僅一筆成功 | `I-G6` | ☐ |
+| G3.2 | 模板 archive | 列表不含該商品 | `I-G2` | ☐ |
+| G3.3 | `is_infinite=false` 模板（手動回歸） | Redeem 拒絕 | `I-G10` | ☐ |
+| G3.4 | 兌換券用於商戶 checkout | 沿用 Part B（可選回歸） | 人手 / 未來擴充 | ☐ |
+
+### Phase 4 簽核評估
+
+| 維度 | 狀態 | 依據 |
+|------|------|------|
+| Admin 上架（G1） | ☐ | E2E `C4.1` + Vitest `I-G8` / admin 負向 |
+| 會員兌換 happy path（G2.1–G2.2） | ☐ | E2E `C4.1`/`C4.2` · `I-G3` |
+| 邊界（G2.3–G2.4、G3.1–G3.3） | ☐ | Vitest `I-G4`–`I-G6`、`I-G10` |
+| Persona guard（G2.5） | ☐ | `I-G9` + 人手 |
 
 ## 簽核
 

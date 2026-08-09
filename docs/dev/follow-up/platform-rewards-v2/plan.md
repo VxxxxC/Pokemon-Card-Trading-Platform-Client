@@ -11,7 +11,7 @@
 2. **三種取得方式：** 簽到、條件達成（交易宗數等）、限時主動搶。
 3. **Admin 可配置：** 活動倒數、領取/使用期限、全站與每人限額、適用範圍（含 merchant 非鑑定免運 + **補貼上限**）。
 4. **Checkout 用券：** 折扣與免運共用 **平台補貼 + order snapshot**；佣金仍按原 `item_subtotal` × 8%，不罰商戶。
-5. **積分：** 本期作直接發放類型；**積分換領卷／禮品頁**留 Phase 4。
+5. **積分：** 本期作直接發放類型；**積分換領**嵌入 [`/profile/user/rewards`](../../../app/profile/user/rewards/page.tsx) 頁內區塊（見 [phase-4-plan.md §Member UI](./phase-4-plan.md#member-ui--pointsredemptionsection) — 無獨立商城頁）。
 
 ### Design principles
 

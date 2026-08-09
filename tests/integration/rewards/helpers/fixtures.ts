@@ -213,6 +213,40 @@ export function buildMemberAuthFreeShippingInput(
   };
 }
 
+export function buildPointsCatalogDiscountInput(
+  title: string,
+  options?: { pointsCost?: number; stock?: number },
+): AdminRewardActivityUpsertInput {
+  const base = buildAutoGrantDiscountInput(title);
+  return {
+    ...base,
+    trigger_conditions: { kind: "none" },
+    redemption_catalog: {
+      enabled: true,
+      points_cost: options?.pointsCost ?? 100,
+      stock: options?.stock ?? 5,
+      is_active: true,
+      display_order: 0,
+    },
+  };
+}
+
+export function buildFlashWithCatalogConflictInput(
+  title: string,
+  campaignName: string,
+): AdminRewardActivityUpsertInput {
+  return {
+    ...buildFlashFreeShipInput(title, campaignName),
+    redemption_catalog: {
+      enabled: true,
+      points_cost: 100,
+      stock: 5,
+      is_active: true,
+      display_order: 0,
+    },
+  };
+}
+
 export function buildFlashFreeShipInput(
   title: string,
   campaignName: string,

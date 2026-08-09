@@ -1,13 +1,163 @@
 import {
   DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+  type AdminRedemptionCatalogInput,
   type AdminRewardActivityRow,
   type AdminRewardActivityUpsertInput,
+  type AdminRewardDistributionMode,
   type AdminRewardTemplateFlashSchedule,
   type AdminRewardTemplateRow,
   type AdminRewardTemplateStatus,
   type AdminRewardTemplateType,
   type AdminRewardTemplateUpsertInput,
 } from "@/lib/admin-rewards/types";
+
+const CATALOG_ELIGIBLE_TYPES = new Set<AdminRewardTemplateType>([
+  "discount_coupon",
+  "free_shipping",
+]);
+
+export type AdminRewardFormFlow = "general" | "points_mall";
+
+export const FORM_FLOW_LABELS: Record<AdminRewardFormFlow, string> = {
+  general: "一般獎勵券",
+  points_mall: "積分商城商品",
+};
+
+export const FORM_FLOW_DESCRIPTIONS: Record<AdminRewardFormFlow, string> = {
+  general: "條件達成自動發放、限時搶領等傳統發券方式",
+  points_mall: "會員以積分兌換折扣券或免運券，無觸發條件",
+};
+
+export function isCatalogEligibleRewardType(
+  type: AdminRewardTemplateType,
+): boolean {
+  return CATALOG_ELIGIBLE_TYPES.has(type);
+}
+
+export function isRedemptionCatalogEnabled(
+  catalog: AdminRedemptionCatalogInput | null | undefined,
+): boolean {
+  return catalog?.enabled === true;
+}
+
+export function shouldShowRedemptionCatalog(
+  type: AdminRewardTemplateType,
+  distributionMode: AdminRewardDistributionMode | undefined,
+): boolean {
+  return (
+    isCatalogEligibleRewardType(type) && distributionMode !== "flash_only"
+  );
+}
+
+export function shouldShowAutoGrantTriggers(
+  distributionMode: AdminRewardDistributionMode | undefined,
+  catalog: AdminRedemptionCatalogInput | null | undefined,
+  formFlow: AdminRewardFormFlow = "general",
+): boolean {
+  if (formFlow === "points_mall") {
+    return false;
+  }
+  return (
+    (distributionMode ?? "auto_grant") === "auto_grant" &&
+    !isRedemptionCatalogEnabled(catalog)
+  );
+}
+
+export function deriveFormFlow(
+  form: AdminRewardActivityUpsertInput,
+): AdminRewardFormFlow {
+  if (isRedemptionCatalogEnabled(form.redemption_catalog)) {
+    return "points_mall";
+  }
+  return "general";
+}
+
+export function buildDefaultPointsMallActivityForm(): AdminRewardActivityUpsertInput {
+  return {
+    ...buildDefaultActivityForm(),
+    type: "discount_coupon",
+    reward_value: rewardValueForType("discount_coupon"),
+    trigger_conditions: { kind: "none" },
+    redemption_catalog: {
+      enabled: true,
+      points_cost: 500,
+      stock: 100,
+      is_active: true,
+    },
+  };
+}
+
+export function applyFormFlow(
+  form: AdminRewardActivityUpsertInput,
+  flow: AdminRewardFormFlow,
+): AdminRewardActivityUpsertInput {
+  if (flow === "points_mall") {
+    const nextType = isCatalogEligibleRewardType(form.type)
+      ? form.type
+      : "discount_coupon";
+    return {
+      ...form,
+      type: nextType,
+      reward_value: isCatalogEligibleRewardType(form.type)
+        ? form.reward_value
+        : rewardValueForType("discount_coupon"),
+      distribution_mode: "auto_grant",
+      trigger_conditions: { kind: "none" },
+      schedule: form.schedule,
+      flash_schedule: undefined,
+      redemption_catalog: {
+        enabled: true,
+        points_cost: form.redemption_catalog?.points_cost ?? 500,
+        stock: form.redemption_catalog?.stock ?? 100,
+        is_active: true,
+        display_order: form.redemption_catalog?.display_order,
+      },
+    };
+  }
+
+  const restoreTriggers =
+    isRedemptionCatalogEnabled(form.redemption_catalog) ||
+    form.trigger_conditions.kind === "none";
+
+  return {
+    ...form,
+    redemption_catalog: undefined,
+    trigger_conditions: restoreTriggers
+      ? {
+          kind: "event_once",
+          event: "profile_complete",
+          once_per_user: true,
+        }
+      : form.trigger_conditions,
+    distribution_mode:
+      form.distribution_mode === "flash_only"
+        ? "flash_only"
+        : (form.distribution_mode ?? "auto_grant"),
+  };
+}
+
+export function sanitizeRedemptionCatalogForType(
+  type: AdminRewardTemplateType,
+  catalog: AdminRedemptionCatalogInput | null | undefined,
+): AdminRedemptionCatalogInput | undefined {
+  if (!catalog || !isCatalogEligibleRewardType(type)) {
+    return undefined;
+  }
+  return catalog;
+}
+
+export function resolveActivityTriggerConditions(
+  input: AdminRewardActivityUpsertInput,
+): Record<string, unknown> {
+  const distributionMode = input.distribution_mode ?? "auto_grant";
+  if (distributionMode === "flash_only") {
+    return { kind: "none" };
+  }
+  if (isRedemptionCatalogEnabled(input.redemption_catalog)) {
+    return { kind: "none" };
+  }
+  return input.trigger_conditions;
+}
 
 export const TYPE_LABELS: Record<AdminRewardTemplateType, string> = {
   points: "積分",
@@ -206,6 +356,16 @@ export function activityRowToForm(
   const form: AdminRewardActivityUpsertInput = {
     ...rowToForm(row),
   };
+
+  if (row.redemption_catalog && isCatalogEligibleRewardType(row.type)) {
+    form.redemption_catalog = {
+      enabled: row.redemption_catalog.enabled,
+      points_cost: row.redemption_catalog.points_cost,
+      stock: row.redemption_catalog.stock,
+      is_active: row.redemption_catalog.is_active,
+      display_order: row.redemption_catalog.display_order ?? 0,
+    };
+  }
 
   if (row.starts_at && row.ends_at) {
     const scheduleFields = {

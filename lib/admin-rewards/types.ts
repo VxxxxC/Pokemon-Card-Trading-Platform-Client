@@ -145,6 +145,14 @@ export type FlashCampaignView = {
   template: FlashCampaignTemplateView;
 };
 
+export type AdminRedemptionCatalogInput = {
+  enabled: boolean;
+  points_cost: number;
+  stock: number;
+  is_active: boolean;
+  display_order?: number;
+};
+
 export type AdminRewardActivitySchedule = {
   campaign_id?: string;
   name?: string;
@@ -159,6 +167,7 @@ export type AdminRewardActivitySchedule = {
 
 export type AdminRewardActivityUpsertInput = AdminRewardTemplateUpsertInput & {
   schedule?: AdminRewardActivitySchedule;
+  redemption_catalog?: AdminRedemptionCatalogInput;
 };
 
 export type AdminRewardActivityRow = AdminRewardTemplateRow & {
@@ -173,6 +182,23 @@ export type AdminRewardActivityRow = AdminRewardTemplateRow & {
   max_claims_per_user: number | null;
   override_valid_days: number | null;
   display_status: string;
+  redemption_catalog?: AdminRedemptionCatalogInput | null;
+};
+
+export type PointsRedemptionCatalogView = {
+  catalogId: string;
+  pointsCost: number;
+  stock: number;
+  canRedeem: boolean;
+  userPointsBalance: number;
+  template: {
+    id: string;
+    title: string;
+    description: string | null;
+    type: string;
+    rewardValue: Record<string, unknown>;
+    restrictions: Record<string, unknown>;
+  };
 };
 
 export type AdminRewardActivityStatus =

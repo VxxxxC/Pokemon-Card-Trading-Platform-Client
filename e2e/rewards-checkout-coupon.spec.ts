@@ -8,21 +8,26 @@ import {
 import {
   buyMerchantListingAndReachCheckout,
   dismissBlockingOverlays,
+  findActiveFreeShippingTemplateId,
   findActiveMerchantListingForE2e,
   getRewardTemplateIdByTitle,
   grantUserRewardForE2e,
+  publishDiscountCouponTemplate,
   publishRewardActivityViaAdmin,
   reactivateListingForE2e,
 } from "./helpers/platform-rewards";
 import {
   expireUserRewardForE2e,
   expectPlatformSubsidyVisible,
+  selectCheckoutCoupon,
+  clearCheckoutCoupon,
   ensureCourierShippingSelected,
   fillMerchantDirectFulfillmentForm,
   readCheckoutSummaryAmounts,
-  resolveCheckoutCouponTemplateIds,
+  findActiveFreeShippingTemplateFromAudits,
   waitForCheckoutCouponOptionEnabled,
   waitForCheckoutCouponPicker,
+  waitForMerchantDirectCheckoutReady,
 } from "./helpers/rewards-checkout-coupon";
 
 function readEnv(key: string): string | undefined {
@@ -95,6 +100,7 @@ async function reachMerchantDirectCheckout(page: Page): Promise<void> {
   );
 
   await waitForCheckoutCouponPicker(page);
+  await waitForMerchantDirectCheckoutReady(page);
 }
 
 test.describe.configure({ mode: "serial" });
@@ -103,6 +109,8 @@ test.setTimeout(300_000);
 
 test.describe("Rewards checkout coupon E2E", () => {
   const runId = String(Date.now());
+  const highMinSpendTemplateTitle = `E2E Checkout High Min ${runId}`;
+  const lowMinSpendTemplateTitle = `E2E Checkout Low Min ${runId}`;
   const freeShippingTemplateTitle = `E2E Coupon Free Ship ${runId}`;
 
   let highMinSpendTemplateId: string | null = null;
@@ -110,21 +118,61 @@ test.describe("Rewards checkout coupon E2E", () => {
   let freeShippingTemplateId: string | null = null;
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
     test.skip(!hasRewardsCheckoutE2eEnv(), "Missing rewards checkout E2E env");
 
-    let templates = await resolveCheckoutCouponTemplateIds();
-    if (!templates.freeShippingTemplateId) {
-      await seedFreeShippingTemplateIfMissing(browser, freeShippingTemplateTitle);
-      templates = await resolveCheckoutCouponTemplateIds();
-      freeShippingTemplateId =
-        templates.freeShippingTemplateId ??
-        (await getRewardTemplateIdByTitle(freeShippingTemplateTitle));
-    } else {
-      freeShippingTemplateId = templates.freeShippingTemplateId;
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId ?? undefined,
+    });
+    const highMinSpend = Math.max(
+      500,
+      Math.ceil(merchantListing.price) + 100,
+    );
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    try {
+      await loginAsAdmin(page);
+      await dismissBlockingOverlays(page);
+      await publishDiscountCouponTemplate(page, {
+        title: highMinSpendTemplateTitle,
+        amount: 10,
+        minSpend: highMinSpend,
+      });
+      await publishDiscountCouponTemplate(page, {
+        title: lowMinSpendTemplateTitle,
+        amount: 10,
+        minSpend: 0,
+      });
+    } finally {
+      await context.close();
     }
 
-    highMinSpendTemplateId = templates.highMinSpendTemplateId;
-    lowMinSpendTemplateId = templates.lowMinSpendTemplateId;
+    highMinSpendTemplateId = await getRewardTemplateIdByTitle(
+      highMinSpendTemplateTitle,
+    );
+    lowMinSpendTemplateId = await getRewardTemplateIdByTitle(
+      lowMinSpendTemplateTitle,
+    );
+
+    if (!highMinSpendTemplateId || !lowMinSpendTemplateId) {
+      throw new Error(
+        "Failed to publish checkout coupon templates for rewards-checkout E2E",
+      );
+    }
+
+    freeShippingTemplateId =
+      (await findActiveFreeShippingTemplateFromAudits()) ??
+      (await findActiveFreeShippingTemplateId());
+    if (!freeShippingTemplateId) {
+      await seedFreeShippingTemplateIfMissing(browser, freeShippingTemplateTitle);
+      freeShippingTemplateId =
+        (await getRewardTemplateIdByTitle(freeShippingTemplateTitle)) ??
+        (await findActiveFreeShippingTemplateFromAudits()) ??
+        (await findActiveFreeShippingTemplateId());
+    }
   });
 
   test("E2E-C1 min spend coupon is disabled with threshold hint", async ({
@@ -181,9 +229,7 @@ test.describe("Rewards checkout coupon E2E", () => {
     const baseline = await readCheckoutSummaryAmounts(page);
     expect(baseline.platformSubsidy).toBe(0);
 
-    await page.locator("#checkout-coupon").selectOption(rewardId);
-    await expectPlatformSubsidyVisible(page, true);
-    await page.waitForTimeout(1500);
+    await selectCheckoutCoupon(page, rewardId);
 
     const optionLabel =
       (await page
@@ -201,9 +247,7 @@ test.describe("Rewards checkout coupon E2E", () => {
       baseline.itemSubtotal + baseline.shippingFee - expectedSubsidy,
     );
 
-    await page.locator("#checkout-coupon").selectOption("");
-    await page.waitForTimeout(1000);
-    await expectPlatformSubsidyVisible(page, false);
+    await clearCheckoutCoupon(page);
 
     const cleared = await readCheckoutSummaryAmounts(page);
     expect(cleared.platformSubsidy).toBe(0);

@@ -2191,6 +2191,99 @@ export type Database = {
           },
         ]
       }
+      reward_redemption_catalog: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          initial_stock: number | null
+          is_active: boolean
+          points_cost: number
+          stock: number
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          initial_stock?: number | null
+          is_active?: boolean
+          points_cost: number
+          stock: number
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          initial_stock?: number | null
+          is_active?: boolean
+          points_cost?: number
+          stock?: number
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemption_catalog_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: true
+            referencedRelation: "reward_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reward_redemption_claims: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          id: string
+          points_spent: number
+          user_id: string
+          user_reward_id: string | null
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          id?: string
+          points_spent: number
+          user_id: string
+          user_reward_id?: string | null
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          id?: string
+          points_spent?: number
+          user_id?: string
+          user_reward_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_redemption_claims_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "reward_redemption_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemption_claims_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_redemption_claims_user_reward_id_fkey"
+            columns: ["user_reward_id"]
+            isOneToOne: false
+            referencedRelation: "user_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_template_audits: {
         Row: {
           action: Database["public"]["Enums"]["reward_template_audit_action"]
@@ -2618,6 +2711,10 @@ export type Database = {
       }
     }
     Functions: {
+      _admin_sync_redemption_catalog: {
+        Args: { p_payload: Json; p_template_id: string }
+        Returns: undefined
+      }
       _check_in_program_row_to_json: {
         Args: { p_row: Database["public"]["Tables"]["check_in_program"]["Row"] }
         Returns: Json
@@ -3328,11 +3425,11 @@ export type Database = {
         Args: { p_buyer_id: string; p_listing_id: string; p_seller_id: string }
         Returns: Json
       }
-      rpc_e2e_seed_merchant_pending_payment_order: {
+      rpc_e2e_seed_member_auth_pending_payment_order: {
         Args: { p_buyer_id: string; p_listing_id: string }
         Returns: string
       }
-      rpc_e2e_seed_member_auth_pending_payment_order: {
+      rpc_e2e_seed_merchant_pending_payment_order: {
         Args: { p_buyer_id: string; p_listing_id: string }
         Returns: string
       }
@@ -3466,6 +3563,7 @@ export type Database = {
           stripe_payment_intent_id: string
         }[]
       }
+      rpc_list_points_redemption_catalog: { Args: never; Returns: Json }
       rpc_list_stale_coupon_reserve_candidates: {
         Args: { p_limit?: number }
         Returns: {
@@ -3628,6 +3726,10 @@ export type Database = {
           }
       rpc_prepare_merchant_order_payout: {
         Args: { p_order_id: string }
+        Returns: Json
+      }
+      rpc_redeem_points_catalog_item: {
+        Args: { p_catalog_id: string }
         Returns: Json
       }
       rpc_refresh_auth_escrow_payment_intent: {

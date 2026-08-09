@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { SEED_REWARD_TEMPLATE_IDS } from "@/lib/constants/rewards";
 import {
   buildFlashCampaignScheduleForE2e,
+  clearUserRewardsForTemplateForE2e,
   ensureE2eFlashBuyer,
   findLatestUserRewardForTemplate,
   getPointLedgerGrantForTemplate,
@@ -211,7 +212,11 @@ test.describe("Platform rewards full matrix", () => {
 
     await loginAsAdmin(page);
     await openAdminCampaignsActivitiesTab(page);
-    await expect(page.getByRole("button", { name: "新增活動" })).toBeVisible();
+    await expect(
+      page
+        .getByRole("button", { name: "新增活動" })
+        .or(page.getByRole("button", { name: "新增一般券" })),
+    ).toBeVisible();
   });
 
   test("M-A2 admin check-in tab loads", async ({ page }, testInfo) => {
@@ -286,6 +291,10 @@ test.describe("Platform rewards full matrix", () => {
     const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
     expect(buyerId).toBeTruthy();
 
+    await clearUserRewardsForTemplateForE2e({
+      userId: buyerId!,
+      templateId: lockedProgressTemplateId!,
+    });
     await setProfileCompletedTradesCount(buyerId!, 1);
     await invokeAutoGrantForUser(buyerId!);
 

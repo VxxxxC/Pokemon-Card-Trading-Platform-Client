@@ -27,6 +27,8 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/auth/guard-member-persona-server", () => ({
-  guardMemberPersonaPersonalFeatures: async () => ({ allowed: true as const }),
+  guardMemberPersonaPersonalFeatures: vi.fn(async () => ({
+    allowed: true as const,
+  })),
   MEMBER_PERSONA_FEATURES_BLOCKED_ERROR: "此功能僅限個人會員使用",
 }));

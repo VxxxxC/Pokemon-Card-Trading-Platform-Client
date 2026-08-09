@@ -84,6 +84,16 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     }
     templateId = await findActiveFreeShippingTemplateId();
 
+    const fixtures = getMerchantProductDetailFixtures();
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const merchantListing = await findActiveMerchantListingForE2e({
+      excludeSellerId: buyerId ?? undefined,
+    });
+    const highMinSpend = Math.max(
+      500,
+      Math.ceil(merchantListing.price) + 100,
+    );
+
     const context = await browser.newContext();
     const page = await context.newPage();
     await loginAsAdmin(page);
@@ -100,7 +110,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     await publishDiscountCouponTemplate(page, {
       title: highMinSpendTemplateTitle,
       amount: 10,
-      minSpend: 500,
+      minSpend: highMinSpend,
     });
     highMinSpendTemplateId = await getRewardTemplateIdByTitle(
       highMinSpendTemplateTitle,
@@ -109,7 +119,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     await publishDiscountCouponTemplate(page, {
       title: lowMinSpendTemplateTitle,
       amount: 10,
-      minSpend: 50,
+      minSpend: 0,
     });
     lowMinSpendTemplateId = await getRewardTemplateIdByTitle(
       lowMinSpendTemplateTitle,

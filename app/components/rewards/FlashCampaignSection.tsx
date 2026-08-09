@@ -33,17 +33,34 @@ function formatCountdown(targetMs: number, nowMs: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// Cached snapshot — getSnapshot must return the same value until the store notifies.
+let flashCountdownNowMs = 0;
+
+function subscribeFlashCountdown(onStoreChange: () => void) {
+  flashCountdownNowMs = Date.now();
+  const intervalId = window.setInterval(() => {
+    flashCountdownNowMs = Date.now();
+    onStoreChange();
+  }, 1000);
+  return () => window.clearInterval(intervalId);
+}
+
+function getFlashCountdownNowSnapshot() {
+  return flashCountdownNowMs;
+}
+
+function getFlashCountdownNowServerSnapshot() {
+  return 0;
+}
+
 export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
   const [campaigns, setCampaigns] = useState<FlashCampaignView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const now = useSyncExternalStore(
-    (onStoreChange) => {
-      const timer = window.setInterval(onStoreChange, 1000);
-      return () => window.clearInterval(timer);
-    },
-    () => Date.now(),
-    () => 0,
+    subscribeFlashCountdown,
+    getFlashCountdownNowSnapshot,
+    getFlashCountdownNowServerSnapshot,
   );
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();

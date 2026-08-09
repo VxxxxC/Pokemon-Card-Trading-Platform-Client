@@ -2,7 +2,7 @@
 
 > 執行指令：
 > - `bun run test:rewards:gate` — integration + 合併 E2E（推薦；同 CI `rewards-e2e` job）
-> - `bun run test:e2e:rewards-gate` — 僅 E2E（phase2 + phase3 + matrix + checkout-coupon + order-detail + stripe-reconcile，單一 dev server）
+> - `bun run test:e2e:rewards-gate` — 僅 E2E（phase2 + phase3 + **phase4** + matrix + checkout-coupon + order-detail + stripe-reconcile，單一 dev server）
 
 ## Stripe 對帳 / 出款（`platform-rewards-stripe-reconcile`）
 

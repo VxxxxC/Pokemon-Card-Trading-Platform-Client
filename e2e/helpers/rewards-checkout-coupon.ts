@@ -147,21 +147,27 @@ function parseHkdAmount(text: string | null | undefined): number {
   return match ? Number(match[1]) : 0;
 }
 
+function checkoutOrderSummary(page: Page) {
+  return page
+    .getByRole("heading", { name: /訂單財務明細總結/ })
+    .locator(
+      "xpath=ancestor::div[contains(@class,'rounded-2xl') and contains(@class,'border')]",
+    )
+    .first();
+}
+
 async function readSummaryRowAmount(
   page: Page,
   label: string | RegExp,
 ): Promise<number> {
-  const summary = page
-    .locator("div")
-    .filter({ hasText: "訂單財務明細總結" })
-    .first();
-  const labelMatcher =
+  const summary = checkoutOrderSummary(page);
+  const labelEl =
     typeof label === "string"
-      ? page.getByText(label, { exact: true })
-      : page.getByText(label);
-  const row = summary.locator("div.flex.justify-between").filter({
-    has: labelMatcher,
-  });
+      ? summary.getByText(label, { exact: true })
+      : summary.getByText(label);
+  const row = labelEl.locator(
+    "xpath=ancestor::*[contains(@class,'justify-between')][1]",
+  );
   const valueText = await row.locator("span").last().textContent();
   return parseHkdAmount(valueText);
 }
@@ -173,7 +179,7 @@ export async function readCheckoutSummaryAmounts(
   const shippingFee = await readSummaryRowAmount(page, /運費/);
   const totalAmount = await readSummaryRowAmount(page, "託管安全支付總額");
 
-  const subsidyVisible = await page
+  const subsidyVisible = await checkoutOrderSummary(page)
     .getByText("平台優惠", { exact: true })
     .isVisible()
     .catch(() => false);
@@ -218,11 +224,17 @@ export async function ensureCourierShippingSelected(page: Page): Promise<void> {
 export async function waitForMerchantDirectCheckoutReady(
   page: Page,
 ): Promise<void> {
-  const summary = page.getByText("訂單財務明細總結");
+  const summaryHeading = page.getByRole("heading", {
+    name: /訂單財務明細總結/,
+  });
   const couponSection = page.getByText("平台優惠券");
-  await expect(summary.or(couponSection).first()).toBeVisible({
+  await expect(summaryHeading.or(couponSection).first()).toBeVisible({
     timeout: 30_000,
   });
+  await expect(summaryHeading).toBeVisible({ timeout: 30_000 });
+  await expect(
+    checkoutOrderSummary(page).getByText("卡牌商品總額", { exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 type CheckoutCouponPickerPollState =
@@ -321,11 +333,48 @@ export async function waitForCheckoutCouponOptionEnabled(
 export async function expectPlatformSubsidyVisible(
   page: Page,
   visible: boolean,
+  options?: { timeout?: number },
 ): Promise<void> {
-  const subsidy = page.getByText("平台優惠", { exact: true });
+  const timeout = options?.timeout ?? 30_000;
+  const subsidy = checkoutOrderSummary(page).getByText("平台優惠", {
+    exact: true,
+  });
+
   if (visible) {
-    await expect(subsidy).toBeVisible();
+    // Subsidy row renders after selectOption + async listCheckoutEligibleCoupons preview.
+    await expect
+      .poll(
+        async () => (await readCheckoutSummaryAmounts(page)).platformSubsidy,
+        { timeout },
+      )
+      .toBeGreaterThan(0);
+    await expect(subsidy).toBeVisible({ timeout: 5_000 });
   } else {
-    await expect(subsidy).toBeHidden();
+    await expect
+      .poll(
+        async () => (await readCheckoutSummaryAmounts(page)).platformSubsidy,
+        { timeout },
+      )
+      .toBe(0);
+    await expect(subsidy).toBeHidden({ timeout: 5_000 });
   }
+}
+
+export async function selectCheckoutCoupon(
+  page: Page,
+  rewardId: string,
+): Promise<void> {
+  await page.locator("#checkout-coupon").selectOption(rewardId);
+  await expect(page.locator("#checkout-coupon")).toHaveValue(rewardId, {
+    timeout: 10_000,
+  });
+  await expectPlatformSubsidyVisible(page, true);
+}
+
+export async function clearCheckoutCoupon(page: Page): Promise<void> {
+  await page.locator("#checkout-coupon").selectOption("");
+  await expect(page.locator("#checkout-coupon")).toHaveValue("", {
+    timeout: 10_000,
+  });
+  await expectPlatformSubsidyVisible(page, false);
 }

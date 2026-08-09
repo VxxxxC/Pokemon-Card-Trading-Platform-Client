@@ -16,6 +16,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import { FlashCampaignSection } from "@/app/components/rewards/FlashCampaignSection";
+import { PointsRedemptionSection } from "@/app/components/rewards/PointsRedemptionSection";
 import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
 // 🟢 核心對接：引入全域統一的奢華黑金分頁組件
@@ -209,6 +210,8 @@ export default function MemberRewardsPage() {
         <CheckInCard />
 
         <FlashCampaignSection onClaimed={reloadCoupons} />
+
+        <PointsRedemptionSection onRedeemed={reloadCoupons} />
 
         {/* ── 智能三態 Coupon 中心 ── */}
         <section id="redeem-list" className="space-y-4 pt-2">

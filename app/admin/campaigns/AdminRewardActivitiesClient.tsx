@@ -136,9 +136,18 @@ export function AdminRewardActivitiesClient({
               共 {total} 個活動 (每頁 {REWARD_ACTIVITY_PAGE_SIZE} 筆)
             </span>
           </div>
-          <Button type="button" onClick={() => router.push("/admin/campaigns/new")}>
-            新增活動
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={() => router.push("/admin/campaigns/new")}>
+              新增一般券
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/admin/campaigns/new?flow=points_mall")}
+            >
+              新增積分商城商品
+            </Button>
+          </div>
         </div>
 
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-3.5 space-y-3">

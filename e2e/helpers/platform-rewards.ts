@@ -274,7 +274,17 @@ export async function findActiveMerchantListingForE2e(params?: {
       }
 
       if ((count ?? 0) === 0) {
-        return entry;
+        await reactivateListingForE2e(entry.id);
+        try {
+          const listing = await assertListingIsActiveMerchant(entry.id);
+          return {
+            listingId: entry.id,
+            sellerId: listing.sellerId,
+            price: listing.price,
+          };
+        } catch {
+          continue;
+        }
       }
     }
     return null;
@@ -301,15 +311,17 @@ export async function findActiveMerchantListingForE2e(params?: {
         continue;
       }
 
-      if (entry.status !== "active") {
-        await reactivateListingForE2e(entry.id);
+      await reactivateListingForE2e(entry.id);
+      try {
+        const listing = await assertListingIsActiveMerchant(entry.id);
+        return {
+          listingId: entry.id,
+          sellerId: listing.sellerId,
+          price: listing.price,
+        };
+      } catch {
+        continue;
       }
-
-      return {
-        listingId: entry.id,
-        sellerId: entry.seller_id,
-        price: Number(entry.price),
-      };
     }
   }
 
@@ -319,11 +331,7 @@ export async function findActiveMerchantListingForE2e(params?: {
     );
   }
 
-  return {
-    listingId: row.id,
-    sellerId: row.seller_id,
-    price: Number(row.price),
-  };
+  return row;
 }
 
 export async function assertListingIsActiveMerchant(
@@ -332,7 +340,7 @@ export async function assertListingIsActiveMerchant(
   const admin = createE2eAdminClient();
   const { data, error } = await admin
     .from("listings")
-    .select("id, seller_id, price, status, seller_persona")
+    .select("id, seller_id, price, status, seller_persona, product_id")
     .eq("id", listingId)
     .maybeSingle();
 
@@ -346,6 +354,9 @@ export async function assertListingIsActiveMerchant(
     throw new Error(
       `Listing ${listingId} seller_persona=${data.seller_persona} (expected merchant)`,
     );
+  }
+  if (!data.product_id) {
+    throw new Error(`Listing ${listingId} is missing product_id`);
   }
   return { sellerId: data.seller_id, price: Number(data.price) };
 }
@@ -520,6 +531,112 @@ export async function waitForFlashCampaignSectionReady(page: Page): Promise<void
   });
 }
 
+export async function waitForPointsRedemptionSectionReady(
+  page: Page,
+): Promise<void> {
+  await expect(page.getByRole("heading", { name: "🪙 積分商城" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText(/載入積分商城/)).toBeHidden({
+    timeout: 20_000,
+  });
+}
+
+export async function getPointsCatalogIdByTemplateTitle(
+  title: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const templateId = await lookupRewardTemplateIdByTitle(title);
+  if (!templateId) {
+    return null;
+  }
+
+  const { data, error } = await admin
+    .from("reward_redemption_catalog")
+    .select("id")
+    .eq("template_id", templateId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getPointsCatalogIdByTemplateTitle] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+export async function seedBuyerPointsForE2e(
+  _userId: string,
+  targetPoints: number,
+): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const buyerEmail = process.env.E2E_BUYER_EMAIL?.trim();
+  const buyerPassword = process.env.E2E_BUYER_PASSWORD?.trim();
+
+  if (!url || !anonKey || !buyerEmail || !buyerPassword) {
+    throw new Error(
+      "Missing Supabase/buyer env for seedBuyerPointsForE2e",
+    );
+  }
+
+  const buyerClient = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: signInError } = await buyerClient.auth.signInWithPassword({
+    email: buyerEmail,
+    password: buyerPassword,
+  });
+  if (signInError) {
+    throw new Error(`[seedBuyerPointsForE2e] sign-in failed: ${signInError.message}`);
+  }
+
+  const { data: statsData, error: statsError } = await buyerClient.rpc(
+    "get_gamification_stats_for_me",
+  );
+  if (statsError) {
+    throw new Error(`[seedBuyerPointsForE2e] ${statsError.message}`);
+  }
+
+  const current = Number(
+    (statsData as Record<string, unknown> | null)?.points_balance ?? 0,
+  );
+
+  if (targetPoints > current) {
+    const { error } = await buyerClient.rpc("fn_claim_mission_points", {
+      p_mission_id: crypto.randomUUID(),
+      p_points: targetPoints - current,
+      p_description: "E2E catalog seed",
+    });
+    if (error) {
+      throw new Error(`[seedBuyerPointsForE2e] ${error.message}`);
+    }
+  } else if (targetPoints < current) {
+    const { error } = await buyerClient.rpc("fn_redeem_member_points", {
+      p_amount: current - targetPoints,
+      p_description: "E2E catalog seed",
+    });
+    if (error) {
+      throw new Error(`[seedBuyerPointsForE2e] ${error.message}`);
+    }
+  }
+
+  const { data: verifyStats, error: verifyError } = await buyerClient.rpc(
+    "get_gamification_stats_for_me",
+  );
+  if (verifyError) {
+    throw new Error(`[seedBuyerPointsForE2e] verify failed: ${verifyError.message}`);
+  }
+
+  const balance = Number(
+    (verifyStats as Record<string, unknown> | null)?.points_balance ?? 0,
+  );
+  if (balance < targetPoints) {
+    throw new Error(
+      `[seedBuyerPointsForE2e] expected >= ${targetPoints} PTS, got ${balance}`,
+    );
+  }
+}
+
 export async function completeMerchantAuthCheckout(
   page: Page,
   options?: { couponRewardId?: string | null },
@@ -574,43 +691,51 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
     `/marketplace/${sellerId}/product/${listingId}`,
     { waitUntil: "domcontentloaded" },
   );
-  await dismissBlockingOverlays(page);
-  await expect(page.locator("main h1")).toBeVisible({ timeout: 15_000 });
+  await waitForMerchantProductDetailReady(page);
 
   const buyButton = page.getByRole("button", { name: /立即購買/ });
-  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
-  await buyButton.click();
+  const confirmHeading = page.getByRole("heading", { name: "確認立即購買" });
+  const buyNowDialog = page.getByRole("alertdialog", { name: "確認立即購買" });
 
-  const dialog = page.getByRole("alertdialog", { name: "確認立即購買" });
-  await expect(dialog).toBeVisible({ timeout: 15_000 });
-  const authSwitch = dialog.getByRole("switch");
-  await expect(authSwitch).toBeVisible({ timeout: 15_000 });
-  await authSwitch.click();
-  await dialog.getByRole("button", { name: "確認立即購買" }).click();
+  let dialogConfirmed = false;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await dismissBlockingOverlays(page);
+    await expect(buyButton).toBeEnabled({ timeout: 15_000 });
+    await buyButton.click();
 
-  const navigatedToCheckout = await page
-    .waitForURL(/\/checkout\//, { timeout: 20_000 })
-    .then(() => true)
-    .catch(() => false);
-
-  if (!navigatedToCheckout) {
-    let pendingOrderId: string | null = null;
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      pendingOrderId = await findPendingMerchantOrderForListing(listingId);
-      if (pendingOrderId) {
-        break;
-      }
-      await page.waitForTimeout(500);
+    if (page.url().includes("/checkout/")) {
+      dialogConfirmed = true;
+      break;
     }
-    if (!pendingOrderId) {
-      throw new Error(
-        "Auth buy now did not navigate to checkout and no pending order was created",
-      );
+
+    if (await confirmHeading.isVisible().catch(() => false)) {
+      await expect(buyNowDialog).toBeVisible({ timeout: 5_000 });
+      const authSwitch = buyNowDialog.getByRole("switch");
+      await expect(authSwitch).toBeVisible({ timeout: 15_000 });
+      await authSwitch.click();
+      await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
+      dialogConfirmed = true;
+      break;
     }
-    await page.goto(`/checkout/${pendingOrderId}`, {
-      waitUntil: "domcontentloaded",
-    });
+
+    if (attempt < 2) {
+      await page.waitForTimeout(1_500);
+    }
   }
+
+  if (!dialogConfirmed && !page.url().includes("/checkout/")) {
+    await expect(buyNowDialog).toBeVisible({ timeout: 15_000 });
+    const authSwitch = buyNowDialog.getByRole("switch");
+    await expect(authSwitch).toBeVisible({ timeout: 15_000 });
+    await authSwitch.click();
+    await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
+  }
+
+  await navigateToCheckoutAfterBuyNow(
+    page,
+    listingId,
+    "Auth buy now did not navigate to checkout and no pending order was created",
+  );
 
   await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
   const orderId =
@@ -645,6 +770,57 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
   if (await pwaClose.isVisible().catch(() => false)) {
     await pwaClose.click();
   }
+}
+
+async function waitForMerchantProductDetailReady(page: Page): Promise<void> {
+  const title = page.locator("main h1");
+  const sellerTag = page.getByText("店主獨立出讓一口價");
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await dismissBlockingOverlays(page);
+    const hasTitle = await title.isVisible().catch(() => false);
+    const hasSellerTag = await sellerTag.isVisible().catch(() => false);
+    if (hasTitle && hasSellerTag) {
+      return;
+    }
+    if (attempt < 2) {
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1_000);
+    }
+  }
+
+  await expect(title).toBeVisible({ timeout: 15_000 });
+  await expect(sellerTag).toBeVisible({ timeout: 15_000 });
+}
+
+async function navigateToCheckoutAfterBuyNow(
+  page: Page,
+  listingId: string,
+  errorMessage: string,
+): Promise<void> {
+  const navigatedToCheckout = await page
+    .waitForURL(/\/checkout\//, { timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (navigatedToCheckout) {
+    return;
+  }
+
+  let pendingOrderId: string | null = null;
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    pendingOrderId = await findPendingMerchantOrderForListing(listingId);
+    if (pendingOrderId) {
+      break;
+    }
+    await page.waitForTimeout(500);
+  }
+  if (!pendingOrderId) {
+    throw new Error(errorMessage);
+  }
+  await page.goto(`/checkout/${pendingOrderId}`, {
+    waitUntil: "domcontentloaded",
+  });
 }
 
 export async function gotoMemberRewardsPage(page: Page): Promise<void> {
@@ -809,6 +985,21 @@ export async function claimFlashCampaignForUser(params: {
   return { userRewardId };
 }
 
+export async function clearUserRewardsForTemplateForE2e(params: {
+  userId: string;
+  templateId: string;
+}): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await admin
+    .from("user_rewards")
+    .delete()
+    .eq("user_id", params.userId)
+    .eq("template_id", params.templateId);
+  if (error) {
+    throw new Error(`[clearUserRewardsForTemplateForE2e] ${error.message}`);
+  }
+}
+
 export async function findLatestUserRewardForTemplate(params: {
   userId: string;
   templateId: string;
@@ -918,6 +1109,7 @@ export type PublishRewardActivityParams = {
   points?: number;
   flashSchedule?: ReturnType<typeof buildFlashCampaignScheduleForE2e>;
   activityWindow?: { startsAt: string; endsAt: string };
+  redemptionCatalog?: { pointsCost: number; stock: number };
 };
 
 const REWARD_TYPE_OPTION_LABEL: Record<
@@ -934,6 +1126,10 @@ export async function publishRewardActivityViaAdmin(
   params: PublishRewardActivityParams,
 ): Promise<void> {
   await gotoAdminRewardActivityForm(page);
+
+  if (params.redemptionCatalog) {
+    await page.getByRole("button", { name: "積分商城商品" }).click();
+  }
 
   await page.locator("#template-title").fill(params.title);
 
@@ -968,7 +1164,7 @@ export async function publishRewardActivityViaAdmin(
   }
 
   const distributionMode = params.distributionMode ?? "auto_grant";
-  if (distributionMode === "flash_only") {
+  if (!params.redemptionCatalog && distributionMode === "flash_only") {
     await selectRewardDistributionMode(page, "flash_only");
 
     const schedule =
@@ -981,7 +1177,11 @@ export async function publishRewardActivityViaAdmin(
       .fill(String(schedule.maxClaimsPerUser));
   }
 
-  if (distributionMode === "auto_grant" && params.trigger) {
+  if (
+    !params.redemptionCatalog &&
+    distributionMode === "auto_grant" &&
+    params.trigger
+  ) {
     if (params.trigger.kind === "trade_count") {
       await selectTriggerKind(page, "trade_count");
       const triggerSection = page.locator("section").filter({
@@ -1027,6 +1227,15 @@ export async function publishRewardActivityViaAdmin(
         .fill(params.activityWindow.startsAt);
       await page.locator("#auto-grant-ends").fill(params.activityWindow.endsAt);
     }
+  }
+
+  if (params.redemptionCatalog) {
+    await page
+      .locator("#catalog-points-cost")
+      .fill(String(params.redemptionCatalog.pointsCost));
+    await page
+      .locator("#catalog-stock")
+      .fill(String(params.redemptionCatalog.stock));
   }
 
   await submitAdminRewardActivityPublish(page);
@@ -1160,7 +1369,11 @@ export async function publishDiscountCouponTemplate(
 
 export async function openAdminCampaignsActivitiesTab(page: Page): Promise<void> {
   await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("button", { name: "新增活動" })).toBeVisible({
+  await expect(
+    page
+      .getByRole("button", { name: "新增活動" })
+      .or(page.getByRole("button", { name: "新增一般券" })),
+  ).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -1224,47 +1437,49 @@ export async function buyMerchantListingAndReachCheckout(
   await page.goto(`/marketplace/${sellerId}/product/${listingId}`, {
     waitUntil: "domcontentloaded",
   });
-  await dismissBlockingOverlays(page);
-  await expect(page.locator("main h1")).toBeVisible({ timeout: 15_000 });
+  await waitForMerchantProductDetailReady(page);
 
   const buyButton = page.getByRole("button", { name: /立即購買/ });
-  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
-  await buyButton.click();
+  const confirmHeading = page.getByRole("heading", { name: "確認立即購買" });
+  const buyNowDialog = page.getByRole("alertdialog", { name: "確認立即購買" });
 
-  const navigatedImmediately = await page
-    .waitForURL(/\/checkout\//, { timeout: 8_000 })
-    .then(() => true)
-    .catch(() => false);
+  let buyConfirmed = false;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await dismissBlockingOverlays(page);
+    await expect(buyButton).toBeEnabled({ timeout: 15_000 });
+    await buyButton.click();
 
-  if (!navigatedImmediately) {
-    const dialog = page.getByRole("alertdialog", { name: "確認立即購買" });
-    await expect(dialog).toBeVisible({ timeout: 15_000 });
-    await dialog.getByRole("button", { name: "確認立即購買" }).click();
+    const navigatedImmediately = await page
+      .waitForURL(/\/checkout\//, { timeout: 8_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (navigatedImmediately) {
+      buyConfirmed = true;
+      break;
+    }
+
+    if (await confirmHeading.isVisible().catch(() => false)) {
+      await expect(buyNowDialog).toBeVisible({ timeout: 5_000 });
+      await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
+      buyConfirmed = true;
+      break;
+    }
+
+    if (attempt < 2) {
+      await page.waitForTimeout(1_500);
+    }
   }
 
-  const navigatedToCheckout = await page
-    .waitForURL(/\/checkout\//, { timeout: 20_000 })
-    .then(() => true)
-    .catch(() => false);
-
-  if (!navigatedToCheckout) {
-    let pendingOrderId: string | null = null;
-    for (let attempt = 0; attempt < 30; attempt += 1) {
-      pendingOrderId = await findPendingMerchantOrderForListing(listingId);
-      if (pendingOrderId) {
-        break;
-      }
-      await page.waitForTimeout(500);
-    }
-    if (!pendingOrderId) {
-      throw new Error(
-        "Buy now did not navigate to checkout and no pending order was created",
-      );
-    }
-    await page.goto(`/checkout/${pendingOrderId}`, {
-      waitUntil: "domcontentloaded",
-    });
+  if (!buyConfirmed && !page.url().includes("/checkout/")) {
+    await expect(buyNowDialog).toBeVisible({ timeout: 15_000 });
+    await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
   }
+
+  await navigateToCheckoutAfterBuyNow(
+    page,
+    listingId,
+    "Buy now did not navigate to checkout and no pending order was created",
+  );
 
   await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
   const orderId =

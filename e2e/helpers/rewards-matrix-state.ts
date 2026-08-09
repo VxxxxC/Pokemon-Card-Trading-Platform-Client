@@ -21,12 +21,23 @@ const CACHE_PATH = path.resolve(
   "e2e/.cache/rewards-matrix-bootstrap.json",
 );
 
+const BOOTSTRAP_MAX_AGE_MS = 46 * 60 * 60 * 1000;
+
+export function isRewardsMatrixBootstrapFresh(
+  bootstrap: RewardsMatrixBootstrap,
+): boolean {
+  return Date.now() - bootstrap.stamp < BOOTSTRAP_MAX_AGE_MS;
+}
+
 export function readRewardsMatrixBootstrap(): RewardsMatrixBootstrap | null {
   if (!existsSync(CACHE_PATH)) {
     return null;
   }
   try {
-    return JSON.parse(readFileSync(CACHE_PATH, "utf8")) as RewardsMatrixBootstrap;
+    const parsed = JSON.parse(
+      readFileSync(CACHE_PATH, "utf8"),
+    ) as RewardsMatrixBootstrap;
+    return isRewardsMatrixBootstrapFresh(parsed) ? parsed : null;
   } catch {
     return null;
   }

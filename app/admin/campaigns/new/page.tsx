@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RewardActivityForm } from "@/app/admin/campaigns/RewardActivityForm";
+import {
+  buildDefaultPointsMallActivityForm,
+  type AdminRewardFormFlow,
+} from "@/lib/admin-rewards/template-form";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -12,7 +16,22 @@ export const metadata: Metadata = {
   description: "建立平台獎勵活動",
 };
 
-export default async function AdminNewRewardActivityPage() {
+type AdminNewRewardActivityPageProps = {
+  searchParams: Promise<{ flow?: string }>;
+};
+
+function resolveInitialFlow(flow?: string): AdminRewardFormFlow | undefined {
+  if (flow === "points_mall") {
+    return "points_mall";
+  }
+  return undefined;
+}
+
+export default async function AdminNewRewardActivityPage({
+  searchParams,
+}: AdminNewRewardActivityPageProps) {
+  const { flow: flowParam } = await searchParams;
+  const initialFlow = resolveInitialFlow(flowParam);
   if (!isSupabaseConfigured()) {
     redirect("/auth");
   }
@@ -38,14 +57,23 @@ export default async function AdminNewRewardActivityPage() {
           <span className="text-text-disabled"> / 新增活動</span>
         </div>
         <h1 className="mt-2 font-sans text-[24px] font-bold text-text-primary">
-          新增獎勵活動
+          {initialFlow === "points_mall" ? "新增積分商城商品" : "新增獎勵活動"}
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          一次設定獎勵內容、發放方式與檔期（如適用）。
+          {initialFlow === "points_mall"
+            ? "設定可兌換的折扣券或免運券、積分成本與商城庫存。"
+            : "一次設定獎勵內容、發放方式與檔期（如適用）。"}
         </p>
       </div>
 
-      <RewardActivityForm />
+      <RewardActivityForm
+        initialFlow={initialFlow}
+        initialForm={
+          initialFlow === "points_mall"
+            ? buildDefaultPointsMallActivityForm()
+            : undefined
+        }
+      />
     </div>
   );
 }

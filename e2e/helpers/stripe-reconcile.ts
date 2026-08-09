@@ -93,6 +93,7 @@ export async function resolveReconcileMerchantListing(params?: {
   if (sellerId) {
     if (preferredListingId) {
       try {
+        await reactivateListingForE2e(preferredListingId);
         const listing = await assertListingIsActiveMerchant(preferredListingId);
         if (listing.sellerId === sellerId) {
           return { listingId: preferredListingId, sellerId };

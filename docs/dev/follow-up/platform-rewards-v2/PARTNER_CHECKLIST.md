@@ -28,7 +28,7 @@ bun run test:rewards:gate
 
 ```bash
 bun run test:integration:rewards
-bun run test:e2e:rewards-gate   # phase2/3/matrix + checkout-coupon + order-detail + stripe-reconcile
+bun run test:e2e:rewards-gate   # phase2/3/4/matrix + checkout-coupon + order-detail + stripe-reconcile
 ```
 
 細分（可選）：
