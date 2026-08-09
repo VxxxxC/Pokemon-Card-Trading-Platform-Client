@@ -22,7 +22,9 @@ export async function prepareCheckoutPayment(
   options?: { userRewardId?: string | null },
 ): Promise<ActionResult<CheckoutPaymentIntentResult>> {
   if (session.variant === "member_auth") {
-    const result = await createMemberAuthPaymentIntent(session.orderId);
+    const result = await createMemberAuthPaymentIntent(session.orderId, {
+      userRewardId: options?.userRewardId,
+    });
     if (!result.success) {
       return result;
     }
@@ -31,7 +33,8 @@ export async function prepareCheckoutPayment(
       data: {
         clientSecret: result.data.clientSecret,
         publishableKey: result.data.publishableKey,
-        totalAmount: result.data.totalAmount,
+        totalAmount: result.data.buyerTotalAmount,
+        platformSubsidyAmount: result.data.platformSubsidyAmount,
       },
     };
   }

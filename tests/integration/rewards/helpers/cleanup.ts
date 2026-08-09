@@ -96,12 +96,30 @@ export async function wipeCouponFsmRun(params: {
   const admin = createServiceRoleClient();
 
   for (const orderId of params.orderIds) {
-    const { error: releaseError } = await admin.rpc(
+    const { error: merchantReleaseError } = await admin.rpc(
       "fn_release_merchant_order_coupon",
       { p_order_id: orderId },
     );
-    if (releaseError && !releaseError.message.includes("does not exist")) {
-      throw new Error(`[wipeCouponFsmRun] release ${orderId}: ${releaseError.message}`);
+    if (
+      merchantReleaseError &&
+      !merchantReleaseError.message.includes("does not exist")
+    ) {
+      throw new Error(
+        `[wipeCouponFsmRun] merchant release ${orderId}: ${merchantReleaseError.message}`,
+      );
+    }
+
+    const { error: memberReleaseError } = await admin.rpc(
+      "fn_release_member_order_coupon",
+      { p_order_id: orderId },
+    );
+    if (
+      memberReleaseError &&
+      !memberReleaseError.message.includes("does not exist")
+    ) {
+      throw new Error(
+        `[wipeCouponFsmRun] member release ${orderId}: ${memberReleaseError.message}`,
+      );
     }
   }
 

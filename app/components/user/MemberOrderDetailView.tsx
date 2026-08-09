@@ -846,6 +846,8 @@ export function MemberOrderDetailView({
             orderNumber={order.orderNumber}
             escrowStatus={order.escrowStatus}
             status={order.status}
+            buyerTotalAmount={order.buyerTotalAmount}
+            platformSubsidyAmount={order.platformSubsidyAmount}
           />
         )}
 

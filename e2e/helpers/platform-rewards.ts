@@ -351,12 +351,29 @@ export async function assertListingIsActiveMerchant(
 }
 
 export async function fillStripePaymentElement(page: Page): Promise<void> {
-  await page.waitForTimeout(2500);
+  await expect
+    .poll(
+      async () => {
+        for (const frame of page.frames()) {
+          const number = frame.locator(
+            'input[name="number"], input[autocomplete="cc-number"], input[placeholder*="1234"]',
+          );
+          if ((await number.count()) > 0) {
+            return true;
+          }
+        }
+        return false;
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(true);
+
+  await page.waitForTimeout(1500);
 
   const fillInFrames = async (): Promise<boolean> => {
     for (const frame of page.frames()) {
       const number = frame.locator(
-        'input[name="number"], input[autocomplete="cc-number"]',
+        'input[name="number"], input[autocomplete="cc-number"], input[placeholder*="1234"]',
       );
       if ((await number.count()) === 0) {
         continue;
@@ -678,6 +695,32 @@ export function buildFlashCampaignScheduleForE2e(params?: {
     startsAt: toDatetimeLocalValue(startsAt),
     endsAt: toDatetimeLocalValue(endsAt),
     maxClaims: params?.maxClaims ?? 2,
+    maxClaimsPerUser: params?.maxClaimsPerUser ?? 1,
+  };
+}
+
+export function buildFutureFlashCampaignScheduleForE2e(params?: {
+  campaignName?: string;
+  hoursAhead?: number;
+  maxClaims?: number;
+  maxClaimsPerUser?: number;
+}): {
+  campaignName: string;
+  startsAt: string;
+  endsAt: string;
+  maxClaims: number;
+  maxClaimsPerUser: number;
+} {
+  const now = Date.now();
+  const hoursAhead = params?.hoursAhead ?? 2;
+  const startsAt = new Date(now + hoursAhead * 60 * 60 * 1000);
+  const endsAt = new Date(now + 48 * 60 * 60 * 1000);
+
+  return {
+    campaignName: params?.campaignName ?? `E2E Future Flash ${Date.now()}`,
+    startsAt: toDatetimeLocalValue(startsAt),
+    endsAt: toDatetimeLocalValue(endsAt),
+    maxClaims: params?.maxClaims ?? 10,
     maxClaimsPerUser: params?.maxClaimsPerUser ?? 1,
   };
 }

@@ -275,7 +275,7 @@ pass_capture_amount =
 - [x] 重做 `fn_compute_platform_subsidy` / prepare 券參數 → **[phase-d-plan.md](./phase-d-plan.md)**
 - [x] `escrow_capture_model = 'single'` 有券時亦寫入 DB（P0）
 - [x] Picker + E2E B2b / D2
-- [ ] Partner QA → **[PARTNER_QA.md](./PARTNER_QA.md)**（P0–P2）
+- [x] Partner QA → **[PARTNER_QA.md](./PARTNER_QA.md)**（P0–P2 ✅ 2026-07-29）
 
 ---
 

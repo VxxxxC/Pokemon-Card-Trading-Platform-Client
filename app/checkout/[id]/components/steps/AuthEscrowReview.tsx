@@ -57,7 +57,9 @@ export function AuthEscrowReview({
         </section>
       )}
 
-      {session.variant === "merchant_auth" && onCouponChange ? (
+      {(session.variant === "merchant_auth" ||
+        session.variant === "member_auth") &&
+      onCouponChange ? (
         <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
           <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
             🎟️ 平台優惠券

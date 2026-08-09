@@ -3,7 +3,7 @@
 > **Status:** 🟡 Planned  
 > **Depends on:** Existing `reward_templates` / `user_rewards` / `point_ledger` (migrations `20260705180000`–`20260705188000`, `20260719150000`–`20260719170000`)  
 > **Explicitly out of scope:** `lucky_draw_ticket`（香港牌照 — 維持封存）  
-> **Deferred:** 積分換領商城頁（Phase 4）
+> **Phase 4:** 積分兌換區塊嵌入 `/profile/user/rewards`（見 [phase-4-plan.md](./phase-4-plan.md)）
 
 ## 1. Goals
 
@@ -250,7 +250,7 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 | `/profile/user/rewards` | 1–3 | 搶券區、倒數、wallet |
 | Merchant checkout wizard（`merchant_direct` 非鑑定） | 2 | 選券、補貼明細 |
 | Merchant checkout wizard（`merchant_auth` 鑑定） | 2b | 選券 + multicapture 金額調整 |
-| `/profile/user/rewards` 積分商城 tab | 4 | 積分換領 |
+| `/profile/user/rewards` 積分商城 section（Flash 下方） | 4 | 積分換領 |
 
 ---
 
@@ -362,19 +362,32 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 
 ---
 
-### Phase 4 — 積分換領頁（下一部）
+### Phase 4 — 積分商城（嵌入獎勵頁）
 
-**Goal:** 用戶用積分換券／禮品。
+**Goal:** 會員 persona 用積分兌換 `discount_coupon` / `free_shipping`（無新 route）。
+
+**詳細實作計劃：** [phase-4-plan.md](./phase-4-plan.md)
 
 - [ ] `reward_redemption_catalog`
-- [ ] `rpc_redeem_points_catalog_item` → `fn_redeem_member_points` + 發券
-- [ ] `/profile/user/rewards` 積分商城 tab
+- [ ] `rpc_list_points_redemption_catalog` + `rpc_redeem_points_catalog_item` → `fn_redeem_member_points` + `fn_issue_reward_from_template` + 扣 stock
+- [ ] Admin「上架積分商城」in `RewardActivityForm` / `rpc_admin_upsert_reward_activity`
+- [ ] `/profile/user/rewards` → `PointsRedemptionSection`（Flash 下方、折價券中心上方）
 
 ---
 
-### Phase 5 — Hardening (optional)
+### Phase 5 — Member Auth 免運券
 
-- Member C2C checkout 用券
+**Goal:** C2C 鑑定託管 checkout 使用平台免運券（僅 `free_shipping`）；賣家 FPS 仍收 `final_price`（Member **無** commission）。
+
+**詳細實作計劃：** [phase-5-plan.md](./phase-5-plan.md)
+
+- [ ] `member_orders` 券 snapshot + `reserved_member_order_id`
+- [ ] 泛化 `fn_compute_platform_subsidy` / list / prepare / release / restore（member）
+- [ ] `member_auth` checkout picker + authorize `is_used` 修復
+- [ ] Partner QA Part F
+
+### Phase 5b — Hardening (optional)
+
 - 平台補貼成本 admin 報表
 - `manual_claim` 條件獎勵
 - 爭議單人工處理券狀態

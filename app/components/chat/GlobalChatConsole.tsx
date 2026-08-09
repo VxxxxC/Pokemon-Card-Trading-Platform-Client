@@ -956,6 +956,7 @@ export function GlobalChatConsole({
                 <button
                   key={room.id}
                   type="button"
+                  data-chat-room-id={room.id}
                   onClick={() => {
                     setActiveRoomId(room.id);
                     void persistMarkRoomReadAsync(room.id, room.timestamp);
@@ -1236,6 +1237,8 @@ export function GlobalChatConsole({
                   filteredLobbyRooms.map((room: ChatRoom) => (
                   <button
                     key={room.id}
+                    type="button"
+                    data-chat-room-id={room.id}
                     onClick={() => {
                       setActiveRoomId(room.id);
                       void persistMarkRoomReadAsync(room.id, room.timestamp);

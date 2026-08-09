@@ -32,6 +32,7 @@ import {
   buildAutoGrantDiscountInput,
   buildAutoGrantPointsInput,
   buildFlashFreeShipInput,
+  buildFutureFlashFreeShipInput,
   MATRIX_PREFIX,
   uniqueTitle,
 } from "./helpers/fixtures";
@@ -178,6 +179,38 @@ describe.skipIf(!hasRewardsIntegrationEnv()).sequential(
         expect(second.error).toMatch(/今日搶券上限/);
       }
     });
+  });
+
+  it("I-F3: future flash campaign cannot claim before starts_at", async () => {
+    const title = uniqueTitle("I-F3", runId);
+    const campaignName = `${titlePrefix} I-F3 Flash`;
+    await publishActivity(buildFutureFlashFreeShipInput(title, campaignName));
+
+    const templateId = await getTemplateIdByTitle(title);
+    expect(templateId).toBeTruthy();
+    const campaignId = await getFlashCampaignIdForTemplate(templateId!);
+    expect(campaignId).toBeTruthy();
+
+    await runAsBuyer(async () => {
+      const list = await listActiveFlashCampaigns();
+      expect(list.success).toBe(true);
+      if (!list.success) {
+        return;
+      }
+
+      const campaign = list.data.find((entry) => entry.id === campaignId);
+      expect(campaign).toBeTruthy();
+      expect(campaign!.can_claim).toBe(false);
+
+      const claim = await claimFlashReward(campaignId!);
+      expect(claim.success).toBe(false);
+      if (!claim.success) {
+        expect(claim.error).toMatch(/尚未開始/);
+      }
+    });
+
+    const claims = await getFlashCampaignClaimedCount(templateId!);
+    expect(claims).toBe(0);
   });
 
   it("I-W1 wallet shows granted coupon", async () => {

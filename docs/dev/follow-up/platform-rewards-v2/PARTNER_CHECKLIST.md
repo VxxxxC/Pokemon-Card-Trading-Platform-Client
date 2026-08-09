@@ -76,13 +76,13 @@ GitHub：`.github/workflows/rewards.yml`（nightly / `workflow_dispatch` / PR la
 
 ## P1 — 建議驗（Admin smoke，約 10 分鐘）
 
-| # | 試咩 | 路由 | 預期 |
-|---|------|------|------|
-| 6 | **鑑定單 PI / capture** | merchant_auth checkout + 券 → Stripe Dashboard | authorize 金額 = `buyer_total_amount`；鑑定費 + 貨款 capture 正確 |
-| 7 | **直發開鑑定 + 用券（Phase 2b）** | direct checkout：開啟鑑定開關 → 選**符合鑑定資格**券 → 繼續付款 | Picker **仍顯示**；開關會清空已選券並以 `useAuth` 重載列表；摘要有平台優惠、prepare 成功（E2E B3.1/B2b 已覆蓋，可選 spot-check） |
-| 8 | **非鑑定券用於鑑定單** | `requires_authentication: false` 券 + auth 訂單 | 不符合資格 |
-| 9 | **Admin 精靈逐步** | `/admin/campaigns` 新增/編輯模板 | Step 1–3 預填、發布、限制欄位正確 |
-| 10 | **簽到計劃儲存** | `/admin/campaigns?tab=check-in` | 改 7 日階梯 + completion bonus → 會員簽到生效 |
+| # | 試咩 | 路由 | 預期 | 通過 |
+|---|------|------|------|------|
+| 6 | **鑑定單 PI / capture** | merchant_auth checkout + 券 → Stripe Dashboard | authorize 金額 = `buyer_total_amount`；鑑定費 + 貨款 capture 正確 | |
+| 7 | **直發開鑑定 + 用券（Phase 2b）** | direct checkout：開啟鑑定開關 → 選**符合鑑定資格**券 → 繼續付款 | Picker **仍顯示**；開關會清空已選券並以 `useAuth` 重載列表；摘要有平台優惠、prepare 成功（E2E B3.1/B2b 已覆蓋，可選 spot-check） | |
+| 8 | **非鑑定券用於鑑定單** | `requires_authentication: false` 券 + auth 訂單 | 不符合資格 | ✅ `I-D4`（可 skip） |
+| 9 | **Admin 精靈逐步** | `/admin/campaigns` 新增/編輯模板 | 單頁表單預填、發布、限制欄位正確 | ✅ 2026-07-29 |
+| 10 | **簽到計劃儲存** | `/admin/campaigns?tab=check-in` | 改 7 日階梯 + completion bonus → 會員簽到生效 | ✅ 2026-07-29 |
 
 ---
 
@@ -90,7 +90,7 @@ GitHub：`.github/workflows/rewards.yml`（nightly / `workflow_dispatch` / PR la
 
 | # | 試咩 | 備註 |
 |---|------|------|
-| 11 | 搶券 **未開始**（`starts_at` 前） | 按鈕 disabled / 文案 |
+| 11 | 搶券 **未開始**（`starts_at` 前） | 按鈕 disabled / 文案 — ✅ Partner UI 2026-07-29 · `I-F3` + `C3.9` |
 | 12 | 商戶角色 `trade_count` auto_grant | 買家路徑 E2E 有，商戶未單獨開 case |
 | 13 | Admin 搶券檔期 **ROI tab** | 檔期 CRUD E2E 有；ROI 為 mock |
 | 14 | 跨瀏覽器 / 手機 checkout 用券 | 純 UI smoke |
@@ -100,7 +100,8 @@ GitHub：`.github/workflows/rewards.yml`（nightly / `workflow_dispatch` / PR la
 ## 快速通過標準
 
 - [ ] `bun run test:rewards:gate` 全綠（或 CI `rewards.yml` 綠燈）
-- [ ] P1 #9–10 Admin 各點一次（精靈 + 簽到）
+- [x] P1 **#9–10** Admin 各點一次（精靈 + 簽到）— ✅ Partner 2026-07-29
+- [x] **Phase 3** 限時搶券 happy path（E2.1–E2.3 + E3.1）— ✅ Partner 2026-07-29
 - [ ] （可選）P1 #6 鑑定單 Stripe capture 至少跑通一單；#7–8 鑑定用券 spot-check（合法組合 + 不符合資格券）
 - [ ] 無 console error、無錯誤 Toast
 

@@ -60,6 +60,7 @@ export type MemberAuthCheckoutPaymentIntent = {
   outboundShippingFee: number;
   totalAmount: number;
   buyerTotalAmount: number;
+  platformSubsidyAmount: number;
 };
 
 export type MemberAuthPaymentStatus = {
@@ -132,6 +133,7 @@ type PrepareMemberAuthPaymentPayload = {
   outbound_shipping_fee: number;
   total_amount: number;
   buyer_total_amount: number;
+  platform_subsidy_amount: number;
   stripe_payment_intent_id: string | null;
 };
 
@@ -140,7 +142,7 @@ type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 type MemberAuthCheckoutRpcClient = {
   rpc(
     fn: "rpc_prepare_member_auth_order_payment",
-    args: { p_order_id: string },
+    args: { p_order_id: string; p_user_reward_id?: string | null },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "rpc_attach_member_auth_order_payment_intent",
@@ -217,6 +219,7 @@ function parsePreparePayload(data: unknown): PrepareMemberAuthPaymentPayload | n
     buyer_total_amount: Number(
       payload.buyer_total_amount ?? payload.total_amount ?? 0,
     ),
+    platform_subsidy_amount: Number(payload.platform_subsidy_amount ?? 0),
     stripe_payment_intent_id:
       typeof payload.stripe_payment_intent_id === "string"
         ? payload.stripe_payment_intent_id
@@ -387,6 +390,7 @@ export async function loadMemberAuthCheckoutOrder(
  */
 export async function createMemberAuthPaymentIntent(
   orderIdOrNumber: string,
+  options?: { userRewardId?: string | null },
 ): Promise<ActionResult<MemberAuthCheckoutPaymentIntent>> {
   if (!isSupabaseConfigured()) {
     return { success: false, error: "未登入" };
@@ -431,10 +435,15 @@ export async function createMemberAuthPaymentIntent(
       return { success: false, error: "此訂單並非待付款狀態，無法重複付款" };
     }
 
+    const trimmedCouponId = options?.userRewardId?.trim() || null;
+
     const { data: prepareData, error: prepareError } =
       await asMemberAuthCheckoutRpcClient(supabase).rpc(
         "rpc_prepare_member_auth_order_payment",
-        { p_order_id: row.id },
+        {
+          p_order_id: row.id,
+          p_user_reward_id: trimmedCouponId,
+        },
       );
 
     if (prepareError) {
@@ -474,6 +483,7 @@ export async function createMemberAuthPaymentIntent(
       outbound_shipping_fee: String(prepared.outbound_shipping_fee),
       total_amount: String(prepared.total_amount),
       buyer_total_amount: String(prepared.buyer_total_amount),
+      platform_subsidy_amount: String(prepared.platform_subsidy_amount),
     };
 
     let paymentIntent: Stripe.PaymentIntent | null = null;
@@ -557,6 +567,7 @@ export async function createMemberAuthPaymentIntent(
         outboundShippingFee: prepared.outbound_shipping_fee,
         totalAmount: prepared.total_amount,
         buyerTotalAmount: prepared.buyer_total_amount,
+        platformSubsidyAmount: prepared.platform_subsidy_amount,
       },
     };
   } catch (error) {

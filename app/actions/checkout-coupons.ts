@@ -62,7 +62,7 @@ function parseEligibleCoupons(data: unknown): CheckoutEligibleCoupon[] {
   });
 }
 
-/** 結帳頁列出買家可用優惠券（merchant_direct / merchant_auth；權威金額仍以 prepare RPC 為準）。 */
+/** 結帳頁列出買家可用優惠券（merchant / member auth；權威金額仍以 prepare RPC 為準）。 */
 export async function listCheckoutEligibleCoupons(
   orderId: string,
   options?: { shippingMethod?: string; useAuth?: boolean },

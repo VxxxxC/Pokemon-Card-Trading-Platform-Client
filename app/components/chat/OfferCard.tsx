@@ -585,7 +585,7 @@ export function OfferCardComponent({
           </div>
         </div>
 
-        {useAuthentication && isPending && !isSeller ? (
+        {useAuthentication && isPending && isBuyer ? (
           <Alert className="border-brand/25 bg-brand/10 text-brand">
             <AlertDescription className="text-[11.5px] leading-relaxed">
               您已加購平台第三方鑑定服務；賣家接受後將走託管鑑定流程。
@@ -671,7 +671,10 @@ export function OfferCardComponent({
                   </p>
                   <div className="flex flex-col gap-2">
                     <AlertDialogAction
-                      onClick={() => void handleAccept()}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void handleAccept();
+                      }}
                       disabled={isAccepting}
                       className="h-11 rounded-xl bg-[#10b981] font-black text-white hover:bg-[#0fa573] disabled:opacity-50"
                     >

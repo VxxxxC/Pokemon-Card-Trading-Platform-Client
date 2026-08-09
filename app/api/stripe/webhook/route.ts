@@ -129,7 +129,15 @@ function readMemberAuthOrderMetadata(
   }
 
   const amounts: Record<string, string> = {};
-  for (const key of ["item_subtotal", "auth_fee", "total_amount"] as const) {
+  for (const key of [
+    "item_subtotal",
+    "auth_fee",
+    "inbound_shipping_fee",
+    "outbound_shipping_fee",
+    "total_amount",
+    "buyer_total_amount",
+    "platform_subsidy_amount",
+  ] as const) {
     const value = metadata[key];
     if (typeof value === "string" && value.trim()) {
       amounts[key] = value.trim();

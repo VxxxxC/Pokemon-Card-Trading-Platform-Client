@@ -1,6 +1,6 @@
 # Auth Escrow v2 — Phase D（Rewards on Auth）
 
-> **Status:** 🟡 Implemented — automated gate ✅ · **Partner:** [PARTNER_QA.md](./PARTNER_QA.md)  
+> **Status:** ✅ Implemented — gate ✅ · **Partner QA** P0–P2 ✅ ([PARTNER_QA.md](./PARTNER_QA.md))  
 > **Unlocks:** Platform Rewards Phase 2b (`merchant_auth` + `merchant_direct` 鑑定開關用券)
 
 ## 目標

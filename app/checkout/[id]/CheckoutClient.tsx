@@ -10,7 +10,6 @@ import { CheckoutOrderSummary } from "@/app/checkout/[id]/components/CheckoutOrd
 import { CheckoutPaymentStep } from "@/app/checkout/[id]/components/CheckoutPaymentStep";
 import { CheckoutWizardStepper } from "@/app/checkout/[id]/components/CheckoutWizardStepper";
 import { CheckoutReviewStep } from "@/app/checkout/[id]/components/steps/CheckoutReviewStep";
-import { MemberAuthMockPaymentPanel } from "@/app/components/transactions/MemberAuthMockPaymentPanel";
 import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import { resolveCheckoutDisplayPricing } from "@/lib/checkout/compute-pricing";
 import { prepareCheckoutPayment } from "@/lib/checkout/prepare-payment";
@@ -70,7 +69,6 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [publishableKey, setPublishableKey] = useState<string | null>(null);
   const [isPreparingPayment, setIsPreparingPayment] = useState(false);
-  const [useMockPayment, setUseMockPayment] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,7 +180,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
 
     if (
       session.variant !== "merchant_auth" &&
-      session.variant !== "merchant_direct"
+      session.variant !== "merchant_direct" &&
+      session.variant !== "member_auth"
     ) {
       return;
     }
@@ -196,10 +195,15 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     const syncCouponPreview = async () => {
       const result = await listCheckoutEligibleCoupons(session.orderId, {
         shippingMethod:
-          session.variant === "merchant_auth" || merchantCouponUseAuth
+          session.variant === "member_auth" ||
+          session.variant === "merchant_auth" ||
+          merchantCouponUseAuth
             ? "sf"
             : merchantDirectForm?.shippingType ?? "sf",
-        useAuth: merchantCouponUseAuth,
+        useAuth:
+          session.variant === "member_auth" ||
+          session.variant === "merchant_auth" ||
+          merchantCouponUseAuth,
       });
 
       if (cancelled || !result.success) {
@@ -248,8 +252,9 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     }
 
     if (session.variant === "member_auth" && !stripePaymentAvailable) {
-      setUseMockPayment(true);
-      setStep(2);
+      toast.error("付款服務尚未設定", {
+        description: "請設定 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 與 STRIPE_SECRET_KEY 後再試。",
+      });
       return;
     }
 
@@ -265,7 +270,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
       {
         userRewardId:
           session.variant === "merchant_auth" ||
-          session.variant === "merchant_direct"
+          session.variant === "merchant_direct" ||
+          session.variant === "member_auth"
             ? selectedCouponId
             : null,
       },
@@ -275,16 +281,9 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
 
     if (!result.success) {
       if (
-        session.variant === "member_auth" &&
-        result.error.includes("付款服務尚未設定")
-      ) {
-        setUseMockPayment(true);
-        setStep(2);
-        return;
-      }
-      if (
         (session.variant === "merchant_direct" ||
-          session.variant === "merchant_auth") &&
+          session.variant === "merchant_auth" ||
+          session.variant === "member_auth") &&
         /優惠券.*過期|已過期/.test(result.error)
       ) {
         setSelectedCouponId(null);
@@ -296,7 +295,6 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
 
     setPublishableKey(result.data.publishableKey);
     setClientSecret(result.data.clientSecret);
-    setUseMockPayment(false);
     if (result.data.platformSubsidyAmount != null) {
       setCouponPreviewSubsidy(result.data.platformSubsidyAmount);
     }
@@ -321,11 +319,6 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     setStep(1);
     setClientSecret(null);
     setPublishableKey(null);
-    setUseMockPayment(false);
-  };
-
-  const handleMockPaymentSuccess = () => {
-    router.push(`/checkout/${orderId}/success`);
   };
 
   if (!isMounted) {
@@ -470,14 +463,6 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
                     <span>⚡ 繼續付款</span>
                   )}
                 </button>
-              ) : useMockPayment && session.variant === "member_auth" ? (
-                <MemberAuthMockPaymentPanel
-                  orderId={session.orderId}
-                  finalPrice={session.pricing.itemSubtotal}
-                  paymentAmount={pricing.totalAmount}
-                  disabled={!session.isPayable}
-                  onSuccess={handleMockPaymentSuccess}
-                />
               ) : clientSecret && stripeInstance ? (
                 <CheckoutPaymentStep
                   session={session}

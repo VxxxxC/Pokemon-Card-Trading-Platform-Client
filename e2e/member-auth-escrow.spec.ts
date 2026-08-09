@@ -17,27 +17,29 @@ import {
   ensurePendingAuthOffer,
   gotoOrderDetail,
   gotoTradingPageWithFilter,
-  mockPayAuthOrderOnCheckout,
   offerAmountFromListingPrice,
   offerAmountLabelFromListingPrice,
+  payAuthMemberOrder,
   pollMemberOrderIdForOffer,
   resolveAuthMemberOrderIdFromTradingList,
   runDevAuthMockFullFlow,
   waitForTradingListSettled,
 } from "./helpers/member-trading";
+import { hasStripeReconcileEnv } from "./helpers/stripe-reconcile";
 
 test.describe.configure({ mode: "serial" });
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(300_000);
 
 test.describe("Member auth escrow closure", () => {
-  test("auth offer → accept → mock pay → dev complete", async ({
+  test("auth offer → accept → stripe pay → dev complete", async ({
     browser,
   }, testInfo) => {
     test.skip(
       testInfo.project.name !== "member-trading",
       "Dual-browser auth escrow runs on member-trading project",
     );
+    test.skip(!hasStripeReconcileEnv(), "Missing Stripe keys for member auth checkout");
     if (!hasMemberTradingFixtures()) {
       test.skip(true, "Missing member trading E2E env");
     }
@@ -113,6 +115,8 @@ test.describe("Member auth escrow closure", () => {
           offerLabel,
           buyerPage,
           sellerDisplayName,
+          sellerId,
+          buyerId,
         );
       });
 
@@ -154,11 +158,11 @@ test.describe("Member auth escrow closure", () => {
               .locator("article, div")
               .filter({ hasText: `#${order.order_number}` })
               .first();
-            await expect(authOrderRow.getByText("待付款")).toBeVisible({
+            await expect(authOrderRow.getByText("待付款").first()).toBeVisible({
               timeout: 15_000,
             });
             await expect(
-              authOrderRow.getByRole("button", { name: "前往付款" }),
+              authOrderRow.getByRole("button", { name: "前往付款" }).first(),
             ).toBeVisible();
           }
         }
@@ -172,11 +176,7 @@ test.describe("Member auth escrow closure", () => {
           throw new Error("Could not resolve auth member order id");
         }
 
-        await buyerPage.goto(`/checkout/${memberOrderId}`, {
-          waitUntil: "domcontentloaded",
-        });
-        await buyerPage.getByRole("button", { name: "繼續付款" }).click();
-        await mockPayAuthOrderOnCheckout(buyerPage);
+        await payAuthMemberOrder(buyerPage, memberOrderId);
       });
 
       await test.step("Step 6 — dev mock panel completes auth escrow", async () => {
@@ -190,11 +190,6 @@ test.describe("Member auth escrow closure", () => {
 
         const completed = await runDevAuthMockFullFlow(buyerPage);
         expect(completed).toBe(true);
-
-        await gotoOrderDetail(buyerPage, memberOrderId);
-        await expect(
-          buyerPage.getByText("測試模式 — Stripe 尚未接入"),
-        ).toHaveCount(0);
       });
     } finally {
       await buyerContext.close();

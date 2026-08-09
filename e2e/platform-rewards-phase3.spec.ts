@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   buildFlashCampaignScheduleForE2e,
+  buildFutureFlashCampaignScheduleForE2e,
   buyMerchantListingAndReachCheckout,
   claimFlashCampaignForUser,
   completeMerchantDirectCheckout,
@@ -339,5 +340,57 @@ test.describe("Platform rewards Phase 3 E2E", () => {
       .toBe(true);
 
     await context.close();
+  });
+});
+
+test.describe("Platform rewards Phase 3 — flash not started", () => {
+  test.setTimeout(300_000);
+
+  test("C3.9 future flash campaign cannot claim before starts_at", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
+    test.skip(!hasAdminAuthFixtures(), "Missing admin credentials");
+    test.skip(!hasBuyerAuthFixtures(), "Missing buyer credentials");
+
+    const fixtures = getMerchantProductDetailFixtures();
+    const templateTitle = `E2E Phase3 Future ${Date.now()}`;
+    const futureSchedule = buildFutureFlashCampaignScheduleForE2e({
+      campaignName: templateTitle,
+      hoursAhead: 2,
+    });
+
+    const adminContext = await browser.newContext();
+    const adminPage = await adminContext.newPage();
+    await loginAsAdmin(adminPage);
+    await publishRewardActivityViaAdmin(adminPage, {
+      title: templateTitle,
+      type: "discount_coupon",
+      amount: 10,
+      distributionMode: "flash_only",
+      flashSchedule: futureSchedule,
+    });
+    await adminContext.close();
+
+    const campaignId = await getFlashCampaignIdByName(templateTitle);
+    expect(campaignId).toBeTruthy();
+
+    await expect
+      .poll(async () => {
+        const rows = await listActiveFlashCampaignRowsForUser({
+          email: fixtures.buyerEmail!,
+          password: fixtures.buyerPassword!,
+        });
+        return rows.some((row) => row.id === campaignId);
+      })
+      .toBe(true);
+
+    await expect(
+      claimFlashCampaignForUser({
+        email: fixtures.buyerEmail!,
+        password: fixtures.buyerPassword!,
+        campaignId: campaignId!,
+      }),
+    ).rejects.toThrow(/尚未開始/);
   });
 });

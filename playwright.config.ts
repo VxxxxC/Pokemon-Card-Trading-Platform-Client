@@ -50,6 +50,7 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
+    actionTimeout: 30_000,
   },
   webServer: {
     command: "bun run dev",

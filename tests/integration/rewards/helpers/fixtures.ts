@@ -2,7 +2,9 @@ import { buildDefaultActivityForm } from "@/lib/admin-rewards/template-form";
 import type {
   AdminRewardActivityUpsertInput,
   AdminRewardTemplateFlashSchedule,
+  AdminRewardTemplateRestrictions,
 } from "@/lib/admin-rewards/types";
+import { DEFAULT_ADMIN_REWARD_RESTRICTIONS } from "@/lib/admin-rewards/types";
 
 export const MATRIX_PREFIX = "Vitest Matrix";
 
@@ -21,18 +23,19 @@ export function buildOpenActivityWindow(): { startsAt: string; endsAt: string } 
   };
 }
 
+function toLocalDateTime(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function buildFlashSchedule(campaignName: string): AdminRewardTemplateFlashSchedule {
   const now = Date.now();
   const starts = new Date(now - 2 * 60 * 60 * 1000);
   const ends = new Date(now + 24 * 60 * 60 * 1000);
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const toLocal = (date: Date) =>
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-
   return {
     campaign_name: campaignName,
-    starts_at: toLocal(starts),
-    ends_at: toLocal(ends),
+    starts_at: toLocalDateTime(starts),
+    ends_at: toLocalDateTime(ends),
     max_claims: 3,
     max_claims_per_user: 1,
     override_valid_days: null,
@@ -117,6 +120,65 @@ export function buildAutoGrantProfileCompleteInput(
   );
 }
 
+const DIRECT_ONLY_RESTRICTIONS: AdminRewardTemplateRestrictions = {
+  ...DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+  requires_authentication: "false",
+};
+
+export function buildDirectOnlyDiscountInput(
+  title: string,
+): AdminRewardActivityUpsertInput {
+  return {
+    ...buildAutoGrantDiscountInput(title),
+    restrictions: DIRECT_ONLY_RESTRICTIONS,
+  };
+}
+
+export function buildFutureFlashSchedule(
+  campaignName: string,
+  hoursAhead = 2,
+): AdminRewardTemplateFlashSchedule {
+  const now = Date.now();
+  const starts = new Date(now + hoursAhead * 60 * 60 * 1000);
+  const ends = new Date(now + 48 * 60 * 60 * 1000);
+
+  return {
+    campaign_name: campaignName,
+    starts_at: toLocalDateTime(starts),
+    ends_at: toLocalDateTime(ends),
+    max_claims: 3,
+    max_claims_per_user: 1,
+    override_valid_days: null,
+  };
+}
+
+export function buildFutureFlashFreeShipInput(
+  title: string,
+  campaignName: string,
+  hoursAhead = 2,
+): AdminRewardActivityUpsertInput {
+  const base = buildDefaultActivityForm();
+  const flashSchedule = buildFutureFlashSchedule(campaignName, hoursAhead);
+  return {
+    ...base,
+    title,
+    type: "free_shipping",
+    reward_value: { max_subsidy_hkd: 20, min_spend_hkd: 0 },
+    distribution_mode: "flash_only",
+    trigger_conditions: { kind: "none" },
+    flash_schedule: flashSchedule,
+    schedule: {
+      name: campaignName,
+      campaign_name: campaignName,
+      starts_at: flashSchedule.starts_at,
+      ends_at: flashSchedule.ends_at,
+      max_claims: flashSchedule.max_claims,
+      max_claims_per_user: flashSchedule.max_claims_per_user,
+      override_valid_days: null,
+    },
+  };
+}
+
 export function buildAuthFreeShippingInput(
   title: string,
 ): AdminRewardActivityUpsertInput {
@@ -135,6 +197,20 @@ export function buildAuthFreeShippingInput(
     },
     title,
   );
+}
+
+export function buildMemberAuthFreeShippingInput(
+  title: string,
+): AdminRewardActivityUpsertInput {
+  const base = buildAuthFreeShippingInput(title);
+  return {
+    ...base,
+    restrictions: {
+      ...DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+      order_kinds: ["merchant", "member"],
+      requires_authentication: "any",
+    },
+  };
 }
 
 export function buildFlashFreeShipInput(

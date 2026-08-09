@@ -15,6 +15,7 @@ import {
   getUserRewardCheckoutRow,
   grantCouponForCheckout,
   invokeAuthPreparePayment,
+  invokeListCheckoutEligibleCoupons,
   markCouponUsedForOrder,
   restoreMerchantOrderCouponOnVoid,
   seedPendingMerchantOrders,
@@ -25,6 +26,7 @@ import { hasRewardsIntegrationEnv } from "./helpers/env";
 import {
   buildAuthFreeShippingInput,
   buildAutoGrantDiscountInput,
+  buildDirectOnlyDiscountInput,
   uniqueTitle,
 } from "./helpers/fixtures";
 import { publishActivity } from "./helpers/publish";
@@ -215,6 +217,56 @@ describe.skipIf(!hasRewardsIntegrationEnv()).sequential(
         couponId,
       );
       expect(rePrepare.success).toBe(true);
+    });
+
+    it("I-D4: direct-only coupon ineligible when useAuth=true", async () => {
+      const directOnlyTitle = uniqueTitle("I-D4 DirectOnly", runId);
+
+      await runAsAdmin(async () => {
+        await publishActivity(buildDirectOnlyDiscountInput(directOnlyTitle));
+      });
+
+      const directOnlyTemplateId = await getTemplateIdByTitle(directOnlyTitle);
+      expect(directOnlyTemplateId).toBeTruthy();
+      tracked.templateIds.push(directOnlyTemplateId!);
+
+      const buyerId = getBuyerUserId();
+      const [orderId] = await seedPendingMerchantOrders(buyerId, listingId, 1);
+      tracked.orderIds.push(orderId);
+
+      const couponId = await grantCouponForCheckout({
+        userId: buyerId,
+        templateId: directOnlyTemplateId!,
+      });
+      tracked.userRewardIds.push(couponId);
+
+      const buyerClient = getBuyerClient();
+      const directList = await invokeListCheckoutEligibleCoupons(
+        buyerClient,
+        orderId,
+        { useAuth: false },
+      );
+      const directRow = directList.find((row) => row.id === couponId);
+      expect(directRow?.eligible).toBe(true);
+
+      const authList = await invokeListCheckoutEligibleCoupons(
+        buyerClient,
+        orderId,
+        { useAuth: true },
+      );
+      const authRow = authList.find((row) => row.id === couponId);
+      expect(authRow?.eligible).toBe(false);
+      expect(authRow?.ineligibleReason).toMatch(/鑑定/);
+
+      const prepared = await invokeAuthPreparePayment(
+        buyerClient,
+        orderId,
+        couponId,
+      );
+      expect(prepared.success).toBe(false);
+      if (!prepared.success) {
+        expect(prepared.error).toMatch(/鑑定/);
+      }
     });
   },
 );

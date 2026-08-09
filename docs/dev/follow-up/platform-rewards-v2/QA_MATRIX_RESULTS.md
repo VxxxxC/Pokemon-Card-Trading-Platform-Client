@@ -24,6 +24,7 @@
 | `points` | `auto_grant` + `trade_count` 買家 | 後台發布 → `point_ledger` 入帳 | ✅ matrix M-G3 | |
 | `discount_coupon` | `auto_grant` | 可解鎖 tab 進度（5 筆門檻） | ✅ matrix M-M1 | |
 | `discount_coupon` | `flash_only` | 搶券 / 庫存 / 每日上限 | ✅ phase3 C3.x | |
+| `discount_coupon` | `flash_only` | `starts_at` 前不可搶 | ✅ `I-F3` + `C3.9` | |
 | `free_shipping` | `flash_only` | 不出現在可解鎖 tab | ✅ matrix M-M3 | |
 | `free_shipping` | 手動入錢包 | merchant_direct + 順豐 checkout | ✅ phase2 B1 | 補貼金額隨 listing 運費 |
 | `discount_coupon` | 手動入錢包 | 最低消費符合 / 不符合 | ✅ phase2 B2 | |
@@ -32,8 +33,9 @@
 | `free_shipping` | 手動入錢包 | checkout 開啟鑑定開關：picker 仍顯示、選券清空 | ✅ phase2 B3.1 | Phase 2b；非隱藏 picker |
 | `discount_coupon` | 手動入錢包 | merchant_auth checkout | ✅ phase2 B2b.1 | |
 | `free_shipping` | 手動入錢包 | merchant_auth checkout | ✅ phase2 B2b.2 | |
+| `discount_coupon` | 手動入錢包 | direct-only 券 + auth preview | ✅ `I-D4` | `requires_authentication: false` |
 | 封存 `CHECK_IN_DAY7_BONUS` | — | 不可解鎖列表 | ✅ matrix M-M2 | |
-| 簽到計劃 | — | Admin `?tab=check-in` 載入 | ✅ matrix M-A2 | |
+| 簽到計劃 | — | Admin `?tab=check-in` 載入 + 儲存 | ✅ matrix M-A2 + Partner #10 | |
 | 獎勵活動列表 | — | Admin campaigns 載入 | ✅ matrix M-A1 | |
 
 ## 仍建議人工點一輪（E2E 未覆蓋或僅部分覆蓋）
@@ -43,10 +45,10 @@
 | `event_once`（完善資料 / 首次上架 / 註冊完成） | 需真實事件觸發鏈，matrix 以 `trade_count` 代表 auto_grant |
 | 商戶角色 `trade_count` | 未單獨開 case |
 | 付款取消 / 48h cron 釋放券 | phase2 B3.6 未自動化 |
-| 鑑定失敗 void 還券 | Part D3.3 未自動化 |
+| 鑑定失敗 void 還券 | ✅ `I-D3` / `I-P0-3` |
 | T+7 Connect 出款補差 | ~~Part B4 可選~~ → **R2/R3 已自動化**（`test:e2e:rewards-gate` 內 stripe-reconcile） |
 | Admin 搶券檔期暫停/恢復 UI | ✅ phase3 C3.8 |
-| 簽到計劃儲存（7 日階梯 + completion bonus） | 僅 smoke 載入，未測儲存 |
+| 簽到計劃儲存（7 日階梯 + completion bonus） | ~~僅 smoke 載入~~ → ✅ Partner #10 2026-07-29 |
 
 ## 執行紀錄
 

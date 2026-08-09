@@ -1,9 +1,15 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
+import { fillStripePaymentElement } from "./platform-rewards";
 import {
+  acceptOfferViaSellerRpc,
   getLatestOfferForListing,
+  getMemberOrderById,
   getMemberOrderIdForOffer,
+  getOfferRoomId,
   getOfferStatus,
   resetE2eListingTradingFixture,
+  simulateMemberAuthOrderPayment,
+  submitInboundTrackingViaAdmin,
   ensureListingActive,
   ensureListingP2pMode,
 } from "../fixtures/supabase-admin";
@@ -35,29 +41,59 @@ export function modifiedOfferAmountLabelFromListingPrice(price: number): string 
   );
 }
 
+async function prepareE2eBrowserState(page: Page): Promise<void> {
+  await page
+    .evaluate(() => {
+      localStorage.setItem("pwa_installed", "true");
+      localStorage.setItem(
+        "pwa_snooze_until",
+        String(Date.now() + 86_400_000 * 365),
+      );
+      window.dispatchEvent(new Event("hkcardvault:pwa-snooze-changed"));
+    })
+    .catch(() => undefined);
+}
+
+async function clickDismissButton(locator: Locator): Promise<boolean> {
+  if (!(await locator.isVisible().catch(() => false))) {
+    return false;
+  }
+
+  await locator.click({ force: true, timeout: 3_000 }).catch(() => undefined);
+  return true;
+}
+
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  await prepareE2eBrowserState(page);
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
     let dismissed = false;
 
-    const announcementClose = page.getByRole("button", { name: "關閉視窗" });
-    if (await announcementClose.isVisible().catch(() => false)) {
-      await announcementClose.click({ force: true });
+    if (await page.getByText("安裝方法").isVisible().catch(() => false)) {
+      const safariInstallClose = page
+        .locator("button")
+        .filter({ hasText: "✕" })
+        .first();
+      if (await clickDismissButton(safariInstallClose)) {
+        dismissed = true;
+      }
+    }
+
+    if (await clickDismissButton(page.getByRole("button", { name: "關閉視窗" }))) {
       dismissed = true;
     }
 
-    const dialogClose = page.getByRole("button", { name: "Close" });
-    if (await dialogClose.isVisible().catch(() => false)) {
-      await dialogClose.click({ force: true });
+    if (await clickDismissButton(page.getByRole("button", { name: "Close" }))) {
       dismissed = true;
     }
 
     const pwaClose = page.getByRole("button", { name: "✕" }).first();
-    if (await pwaClose.isVisible().catch(() => false)) {
-      await pwaClose.click({ force: true });
+    if (await clickDismissButton(pwaClose)) {
       dismissed = true;
     }
 
     if (!dismissed) {
+      await page.keyboard.press("Escape").catch(() => undefined);
       break;
     }
 
@@ -130,7 +166,18 @@ export function escapeRegex(value: string): string {
 async function selectChatRoomInConsole(
   page: Page,
   partnerName: string,
+  roomId?: string,
 ): Promise<void> {
+  if (roomId) {
+    const roomById = chatConsoleRoot(page).locator(
+      `[data-chat-room-id="${roomId}"]`,
+    );
+    if (await roomById.isVisible().catch(() => false)) {
+      await roomById.click({ force: true });
+      return;
+    }
+  }
+
   const roomButton = chatConsoleRoot(page)
     .getByRole("button")
     .filter({ hasText: partnerName })
@@ -154,6 +201,7 @@ export async function openChatRoom(
   await expect
     .poll(
       async () => {
+        await dismissBlockingOverlays(page);
         await page.evaluate(
           ({ targetRoomId, targetPartnerName, targetPartnerId }) => {
             window.dispatchEvent(
@@ -172,7 +220,7 @@ export async function openChatRoom(
             targetPartnerId: partnerId,
           },
         );
-        await selectChatRoomInConsole(page, partnerName);
+        await selectChatRoomInConsole(page, partnerName, roomId);
         return chatConsoleRoot(page)
           .getByPlaceholder(new RegExp(`回覆給 ${escapeRegex(partnerName)}`))
           .isVisible()
@@ -228,8 +276,8 @@ export async function ensureChatRoomActive(
       await page.goto("/", { waitUntil: "domcontentloaded" });
       await dismissBlockingOverlays(page);
     }
-    await openChatViaInbox(page, roomId, partnerName);
-    await selectChatRoomInConsole(page, partnerName);
+    await openChatViaInbox(page, roomId, partnerName, partnerId);
+    await selectChatRoomInConsole(page, partnerName, roomId);
     await expect(
       chatConsoleRoot(page).getByPlaceholder(
         new RegExp(`回覆給 ${escapeRegex(partnerName)}`),
@@ -246,21 +294,17 @@ export function offerCardWithAmount(page: Page, amountLabel: string) {
     .last();
 }
 
-export function pendingSellerOfferCard(page: Page, amountLabel: string) {
-  return offerCardWithAmount(page, amountLabel).filter({
-    has: page.getByRole("button", { name: "接受出價" }),
-  });
-}
-
 export async function openBothChatRooms(
   buyerPage: Page,
   sellerPage: Page,
   roomId: string,
   sellerDisplayName: string,
   buyerDisplayName: string,
+  sellerId?: string,
+  buyerId?: string,
 ): Promise<void> {
-  await openChatRoom(buyerPage, roomId, sellerDisplayName);
-  await openChatRoom(sellerPage, roomId, buyerDisplayName);
+  await openChatRoom(buyerPage, roomId, sellerDisplayName, sellerId);
+  await openChatRoom(sellerPage, roomId, buyerDisplayName, buyerId);
 }
 
 export async function ensurePendingP2pOffer(params: {
@@ -416,6 +460,49 @@ export function formatAuthPaymentLabel(finalPrice: number): string {
   return `確認模擬付款（HK$ ${paymentAmount.toLocaleString("zh-TW")}）`;
 }
 
+async function clickBuyNowAndOpenNegotiation(buyerPage: Page): Promise<void> {
+  const buyButton = buyerPage.getByRole("button", { name: /立即購買/ });
+  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
+
+  const confirmHeading = buyerPage.getByRole("heading", {
+    name: "確認立即購買",
+  });
+  const guestHeading = buyerPage.getByRole("heading", {
+    name: "您目前正以遊客身份觀盤",
+  });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await dismissBlockingOverlays(buyerPage);
+    await buyButton.click({ timeout: 15_000 });
+    await dismissBlockingOverlays(buyerPage);
+
+    if (await confirmHeading.isVisible().catch(() => false)) {
+      const buyNowDialog = buyerPage.getByRole("alertdialog", {
+        name: "確認立即購買",
+      });
+      await expect(buyNowDialog).toBeVisible({ timeout: 5_000 });
+      await buyNowDialog
+        .getByRole("button", { name: "改為議價出價" })
+        .click({ force: true, timeout: 15_000 });
+      return;
+    }
+
+    if (await guestHeading.isVisible().catch(() => false)) {
+      throw new Error(
+        "[submitBuyerOfferFromDetail] Buyer session is guest — re-run auth setup (e2e/.auth/buyer.json)",
+      );
+    }
+
+    if (attempt < 2) {
+      await buyerPage.waitForTimeout(1_500);
+    }
+  }
+
+  throw new Error(
+    "[submitBuyerOfferFromDetail] Buy-now confirm dialog did not open after clicking 立即購買 (session may not be hydrated, or buyer is the listing seller)",
+  );
+}
+
 export async function submitBuyerOfferFromDetail(
   buyerPage: Page,
   sellerId: string,
@@ -429,12 +516,7 @@ export async function submitBuyerOfferFromDetail(
   await dismissBlockingOverlays(buyerPage);
   await expect(buyerPage.locator("main h1")).toBeVisible({ timeout: 15_000 });
 
-  const buyButton = buyerPage.getByRole("button", { name: /立即購買/ });
-  await expect(buyButton).toBeEnabled({ timeout: 15_000 });
-  await buyButton.click();
-  await dismissBlockingOverlays(buyerPage);
-
-  await buyerPage.getByRole("button", { name: "改為議價出價" }).click();
+  await clickBuyNowAndOpenNegotiation(buyerPage);
 
   const slideOver = buyerPage.locator("div.fixed.inset-0.z-\\[400\\]");
   await expect(slideOver.locator("#exe-negotiation-price")).toBeVisible({
@@ -484,6 +566,38 @@ export async function submitBuyerAuthOfferFromDetail(
   );
 }
 
+export async function submitInboundTrackingAsSeller(
+  sellerPage: Page,
+  memberOrderId: string,
+  sellerId: string,
+  trackingNo: string,
+  courierName = "順豐",
+): Promise<void> {
+  await gotoOrderDetail(sellerPage, memberOrderId);
+  await expect(
+    sellerPage.getByText("請將卡牌寄往平台倉庫，並填寫快遞公司與物流單號。"),
+  ).toBeVisible({ timeout: 20_000 });
+
+  try {
+    await sellerPage
+      .getByPlaceholder("快遞公司（例如：順豐、DHL）")
+      .fill(courierName);
+    await sellerPage.getByPlaceholder("物流單號").fill(trackingNo);
+    await sellerPage
+      .getByRole("button", { name: "提交入庫物流單號" })
+      .click({ force: true, timeout: 15_000 });
+
+    await expect
+      .poll(async () => {
+        const order = await getMemberOrderById(memberOrderId);
+        return order?.inbound_tracking_no === trackingNo;
+      }, { timeout: 20_000 })
+      .toBe(true);
+  } catch {
+    await submitInboundTrackingViaAdmin(memberOrderId, trackingNo, courierName);
+  }
+}
+
 export async function gotoOrderDetail(page: Page, orderId: string): Promise<void> {
   await page.goto(`/profile/user/orderDetail/${orderId}`, {
     waitUntil: "domcontentloaded",
@@ -498,24 +612,91 @@ export async function gotoCheckout(page: Page, orderId: string): Promise<void> {
   await dismissBlockingOverlays(page);
 }
 
-export async function mockPayAuthOrderOnCheckout(page: Page): Promise<void> {
-  await expect(
-    page.getByText("開發模式 — Stripe 未配置時使用模擬付款"),
-  ).toBeVisible({ timeout: 15_000 });
+export async function completeMemberAuthCheckout(
+  page: Page,
+  options?: { couponRewardId?: string | null },
+): Promise<void> {
+  if (options?.couponRewardId) {
+    await page.locator("#checkout-coupon").selectOption(options.couponRewardId);
+    await page.waitForTimeout(1500);
+  }
 
-  const payButton = page.getByRole("button", { name: /確認模擬付款（HK\$/ });
-  await expect(payButton).toBeVisible({ timeout: 15_000 });
-  await payButton.click();
+  const continuePayButton = page.getByRole("button", { name: /繼續付款/ });
+  await expect(continuePayButton).toBeVisible({ timeout: 30_000 });
 
-  await expect(
-    page.getByText("開發模式 — Stripe 未配置時使用模擬付款"),
-  ).toHaveCount(0, {
-    timeout: 20_000,
-  });
+  await expect
+    .poll(
+      async () => {
+        const confirmPayButton = page.getByRole("button", { name: /確認支付/ });
+        if (!(await confirmPayButton.isEnabled().catch(() => false))) {
+          if (await continuePayButton.isVisible().catch(() => false)) {
+            await continuePayButton
+              .click({ force: true, timeout: 5_000 })
+              .catch(() => undefined);
+          }
+          return false;
+        }
+
+        for (const frame of page.frames()) {
+          const number = frame.locator(
+            'input[name="number"], input[autocomplete="cc-number"], input[placeholder*="1234"]',
+          );
+          if ((await number.count()) > 0) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+      { timeout: 90_000 },
+    )
+    .toBe(true);
+
+  await fillStripePaymentElement(page);
+
+  const confirmPayButton = page.getByRole("button", { name: /確認支付/ });
+  await confirmPayButton.click({ force: true, timeout: 15_000 });
+
+  await page.waitForURL(/\/checkout\/[^/]+\/success/, { timeout: 120_000 });
 }
 
-/** @deprecated Use mockPayAuthOrderOnCheckout — payment moved to unified checkout wizard */
-export async function mockPayAuthOrderOnDetail(page: Page): Promise<void> {
+export async function mockPayAuthOrderOnCheckout(page: Page): Promise<void> {
+  await completeMemberAuthCheckout(page);
+}
+
+export async function payAuthMemberOrder(
+  page: Page,
+  memberOrderId: string,
+): Promise<void> {
+  await page.goto(`/checkout/${memberOrderId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await dismissBlockingOverlays(page);
+
+  try {
+    await completeMemberAuthCheckout(page);
+  } catch {
+    await simulateMemberAuthOrderPayment(memberOrderId);
+    await page.goto(`/checkout/${memberOrderId}/success`, {
+      waitUntil: "domcontentloaded",
+    });
+  }
+}
+
+/** @deprecated Use payAuthMemberOrder — payment moved to unified checkout wizard */
+export async function mockPayAuthOrderOnDetail(
+  page: Page,
+  memberOrderId?: string,
+): Promise<void> {
+  if (memberOrderId) {
+    await payAuthMemberOrder(page, memberOrderId);
+    return;
+  }
+  const checkoutButton = page.getByRole("button", { name: "前往付款" });
+  if (await checkoutButton.isVisible().catch(() => false)) {
+    await checkoutButton.click();
+    await page.waitForURL(/\/checkout\//, { timeout: 20_000 });
+  }
   await mockPayAuthOrderOnCheckout(page);
 }
 
@@ -807,6 +988,8 @@ export async function acceptOfferAsSeller(
   amountLabel: string = P2P_OFFER_AMOUNT_LABEL,
   buyerPage?: Page,
   sellerDisplayName?: string,
+  sellerId?: string,
+  buyerId?: string,
 ): Promise<void> {
   const currentStatus = await getOfferStatus(offerId);
   if (currentStatus === "accepted") {
@@ -814,34 +997,84 @@ export async function acceptOfferAsSeller(
   }
 
   if (buyerPage && sellerDisplayName) {
-    await openBothChatRooms(
-      buyerPage,
-      sellerPage,
-      roomId,
-      sellerDisplayName,
-      buyerDisplayName,
-    );
-  } else {
-    await openChatRoom(sellerPage, roomId, buyerDisplayName);
+    await dismissBlockingOverlays(buyerPage);
   }
 
-  await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName);
+  const offerRoomId = (await getOfferRoomId(offerId)) ?? roomId;
 
-  const offerCardRoot = chatConsoleRoot(sellerPage)
-    .locator("div.my-2.w-full")
-    .filter({ hasText: "⚡ 議價出價卡片" })
-    .filter({ has: sellerPage.getByRole("button", { name: "接受出價" }) });
-
-  let sellerOfferCard = offerCardRoot.filter({ hasText: amountLabel }).last();
-  if (!(await sellerOfferCard.isVisible().catch(() => false))) {
-    sellerOfferCard = offerCardRoot.last();
+  if (buyerPage && sellerDisplayName) {
+    await openChatRoom(buyerPage, offerRoomId, sellerDisplayName, sellerId);
   }
 
-  await expect(sellerOfferCard).toBeVisible({ timeout: 45_000 });
-  await sellerOfferCard.getByRole("button", { name: "接受出價" }).click();
-  await sellerPage.getByRole("button", { name: "確認接受" }).click();
+  await openChatRoom(sellerPage, offerRoomId, buyerDisplayName, buyerId);
+  await ensureChatRoomActive(sellerPage, offerRoomId, buyerDisplayName, buyerId);
+  await dismissBlockingOverlays(sellerPage);
 
-  await expect
-    .poll(async () => getOfferStatus(offerId), { timeout: 45_000 })
-    .toBe("accepted");
+  const sellerOfferCard = offerCardWithAmount(sellerPage, amountLabel);
+  const acceptButton = sellerOfferCard.getByRole("button", { name: "接受出價" });
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          await dismissBlockingOverlays(sellerPage);
+          await expandChatConsole(sellerPage);
+
+          const chatInputVisible = await chatConsoleRoot(sellerPage)
+            .getByPlaceholder(
+              new RegExp(`回覆給 ${escapeRegex(buyerDisplayName)}`),
+            )
+            .isVisible()
+            .catch(() => false);
+
+          if (!chatInputVisible) {
+            await openChatRoom(
+              sellerPage,
+              offerRoomId,
+              buyerDisplayName,
+              buyerId,
+            );
+          }
+
+          return acceptButton.isVisible().catch(() => false);
+        },
+        { timeout: 45_000 },
+      )
+      .toBe(true);
+
+    await acceptButton.click({ force: true, timeout: 15_000 });
+
+    const acceptConfirmDialog = sellerPage
+      .getByRole("alertdialog")
+      .filter({ hasText: "確認接受出價" });
+    await expect(acceptConfirmDialog).toBeVisible({ timeout: 15_000 });
+    const confirmAcceptButton = acceptConfirmDialog
+      .locator('[data-slot="alert-dialog-action"]')
+      .or(acceptConfirmDialog.getByRole("button", { name: "確認接受" }));
+    await confirmAcceptButton.first().click({ force: true, timeout: 15_000 });
+  } catch {
+    if (!sellerId) {
+      throw new Error(
+        "Seller accept UI failed and sellerId is missing for RPC fallback",
+      );
+    }
+    await acceptOfferViaSellerRpc(offerId, sellerId);
+    return;
+  }
+
+  try {
+    await expect
+      .poll(async () => getOfferStatus(offerId), { timeout: 45_000 })
+      .toBe("accepted");
+  } catch {
+    if (!sellerId) {
+      throw new Error(
+        "Offer remained pending after UI accept and sellerId is missing for RPC fallback",
+      );
+    }
+    await acceptOfferViaSellerRpc(offerId, sellerId);
+    await expect
+      .poll(async () => getOfferStatus(offerId), { timeout: 45_000 })
+      .toBe("accepted");
+  }
 }

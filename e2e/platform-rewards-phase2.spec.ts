@@ -5,7 +5,6 @@ import {
   buyMerchantListingWithAuthAndReachCheckout,
   completeMerchantAuthCheckout,
   completeMerchantDirectCheckout,
-  findActiveDiscountCouponTemplateId,
   findActiveFreeShippingTemplateId,
   findActiveMerchantListingForE2e,
   getMerchantOrderCouponSnapshot,
@@ -374,8 +373,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
 
-    const discountTemplateId = await findActiveDiscountCouponTemplateId();
-    test.skip(!discountTemplateId, "No active discount_coupon template in DB");
+    test.skip(!lowMinSpendTemplateId, "Discount templates not created");
 
     const fixtures = getMerchantProductDetailFixtures();
     const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
@@ -387,7 +385,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
 
     const rewardId = await grantUserRewardForE2e({
       userId: buyerId!,
-      templateId: discountTemplateId!,
+      templateId: lowMinSpendTemplateId!,
     });
 
     const authOrderId = await buyMerchantListingWithAuthAndReachCheckout(

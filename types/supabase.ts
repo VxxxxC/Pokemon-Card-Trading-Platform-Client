@@ -757,6 +757,8 @@ export type Database = {
           buyer_confirmed_at: string | null
           buyer_id: string
           buyer_total_amount: number | null
+          coupon_type: Database["public"]["Enums"]["reward_type"] | null
+          coupon_user_reward_id: string | null
           created_at: string | null
           escrow_capture_model: string | null
           escrow_status:
@@ -774,7 +776,6 @@ export type Database = {
           listing_id: string
           logistics_proof_path: string | null
           meetup_details: Json | null
-          mock_payment_session_id: string | null
           order_number: string | null
           outbound_shipping_fee: number
           outbound_tracking_no: string | null
@@ -782,6 +783,7 @@ export type Database = {
           payment_confirmed_at: string | null
           payout_hold_until: string | null
           platform_received_at: string | null
+          platform_subsidy_amount: number
           refund_amount: number | null
           refund_attempted_at: string | null
           refund_error: string | null
@@ -809,6 +811,8 @@ export type Database = {
           buyer_confirmed_at?: string | null
           buyer_id: string
           buyer_total_amount?: number | null
+          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
+          coupon_user_reward_id?: string | null
           created_at?: string | null
           escrow_capture_model?: string | null
           escrow_status?:
@@ -828,7 +832,6 @@ export type Database = {
           listing_id: string
           logistics_proof_path?: string | null
           meetup_details?: Json | null
-          mock_payment_session_id?: string | null
           order_number?: string | null
           outbound_shipping_fee?: number
           outbound_tracking_no?: string | null
@@ -836,6 +839,7 @@ export type Database = {
           payment_confirmed_at?: string | null
           payout_hold_until?: string | null
           platform_received_at?: string | null
+          platform_subsidy_amount?: number
           refund_amount?: number | null
           refund_attempted_at?: string | null
           refund_error?: string | null
@@ -863,6 +867,8 @@ export type Database = {
           buyer_confirmed_at?: string | null
           buyer_id?: string
           buyer_total_amount?: number | null
+          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
+          coupon_user_reward_id?: string | null
           created_at?: string | null
           escrow_capture_model?: string | null
           escrow_status?:
@@ -882,7 +888,6 @@ export type Database = {
           listing_id?: string
           logistics_proof_path?: string | null
           meetup_details?: Json | null
-          mock_payment_session_id?: string | null
           order_number?: string | null
           outbound_shipping_fee?: number
           outbound_tracking_no?: string | null
@@ -890,6 +895,7 @@ export type Database = {
           payment_confirmed_at?: string | null
           payout_hold_until?: string | null
           platform_received_at?: string | null
+          platform_subsidy_amount?: number
           refund_amount?: number | null
           refund_attempted_at?: string | null
           refund_error?: string | null
@@ -939,6 +945,13 @@ export type Database = {
             columns: ["auth_graded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_orders_coupon_user_reward_id_fkey"
+            columns: ["coupon_user_reward_id"]
+            isOneToOne: false
+            referencedRelation: "user_rewards"
             referencedColumns: ["id"]
           },
         ]
@@ -2491,6 +2504,7 @@ export type Database = {
           id: string
           is_used: boolean | null
           reserved_at: string | null
+          reserved_member_order_id: string | null
           reserved_merchant_order_id: string | null
           template_id: string
           used_at: string | null
@@ -2504,6 +2518,7 @@ export type Database = {
           id?: string
           is_used?: boolean | null
           reserved_at?: string | null
+          reserved_member_order_id?: string | null
           reserved_merchant_order_id?: string | null
           template_id: string
           used_at?: string | null
@@ -2517,12 +2532,20 @@ export type Database = {
           id?: string
           is_used?: boolean | null
           reserved_at?: string | null
+          reserved_member_order_id?: string | null
           reserved_merchant_order_id?: string | null
           template_id?: string
           used_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_rewards_reserved_member_order_id_fkey"
+            columns: ["reserved_member_order_id"]
+            isOneToOne: false
+            referencedRelation: "member_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_rewards_reserved_merchant_order_id_fkey"
             columns: ["reserved_merchant_order_id"]
@@ -2819,6 +2842,7 @@ export type Database = {
           p_buyer_id: string
           p_item_subtotal: number
           p_order_id?: string
+          p_order_kind?: string
           p_shipping_fee: number
           p_shipping_method: string
           p_use_auth: boolean
@@ -2939,9 +2963,21 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_release_member_order_coupon: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
       fn_release_merchant_order_coupon: {
         Args: { p_order_id: string }
         Returns: undefined
+      }
+      fn_reserve_user_reward_for_member_order: {
+        Args: {
+          p_buyer_id: string
+          p_order_id: string
+          p_user_reward_id: string
+        }
+        Returns: string
       }
       fn_reserve_user_reward_for_merchant_order: {
         Args: {
@@ -2954,6 +2990,10 @@ export type Database = {
       fn_resolve_member_listing_id: {
         Args: { p_listing_ref: string; p_seller_id: string }
         Returns: string
+      }
+      fn_restore_member_order_coupon_on_void: {
+        Args: { p_order_id: string }
+        Returns: undefined
       }
       fn_restore_merchant_order_coupon_on_void: {
         Args: { p_order_id: string }
@@ -3292,6 +3332,10 @@ export type Database = {
         Args: { p_buyer_id: string; p_listing_id: string }
         Returns: string
       }
+      rpc_e2e_seed_member_auth_pending_payment_order: {
+        Args: { p_buyer_id: string; p_listing_id: string }
+        Returns: string
+      }
       rpc_fail_member_auth_order: {
         Args: { p_order_id: string }
         Returns: Json
@@ -3425,7 +3469,8 @@ export type Database = {
       rpc_list_stale_coupon_reserve_candidates: {
         Args: { p_limit?: number }
         Returns: {
-          merchant_order_id: string
+          order_id: string
+          order_kind: string
           user_reward_id: string
         }[]
       }
@@ -3505,14 +3550,6 @@ export type Database = {
         Args: { p_error: string; p_order_id: string }
         Returns: Json
       }
-      rpc_mock_pay_member_auth_order: {
-        Args: {
-          p_buyer_id: string
-          p_mock_session_id?: string
-          p_order_id: string
-        }
-        Returns: Json
-      }
       rpc_modify_offer: {
         Args: {
           p_buyer_id: string
@@ -3550,7 +3587,7 @@ export type Database = {
         Returns: Json
       }
       rpc_prepare_member_auth_order_payment: {
-        Args: { p_order_id: string }
+        Args: { p_order_id: string; p_user_reward_id?: string }
         Returns: Json
       }
       rpc_prepare_merchant_order_payment:

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import { getChatRealtimeFixtures } from "./chat-test-data";
 
 export type ChatMessageAuditRow = {
   id: string;
@@ -135,6 +136,110 @@ export async function getOfferStatus(offerId: string): Promise<string | null> {
   }
 
   return data?.status ?? null;
+}
+
+export async function getOfferRoomId(offerId: string): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("offers")
+    .select("room_id")
+    .eq("id", offerId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getOfferRoomId] ${error.message}`);
+  }
+
+  return data?.room_id ?? null;
+}
+
+export async function acceptOfferViaSellerRpc(
+  offerId: string,
+  sellerId: string,
+): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { sellerEmail, sellerPassword } = getChatRealtimeFixtures();
+
+  if (!url || !anonKey || !sellerEmail || !sellerPassword) {
+    throw new Error(
+      "Missing Supabase public env or E2E seller credentials for RPC accept",
+    );
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email: sellerEmail,
+    password: sellerPassword,
+  });
+  if (signInError) {
+    throw new Error(`[acceptOfferViaSellerRpc] sign-in failed: ${signInError.message}`);
+  }
+
+  const { error } = await client.rpc("rpc_accept_offer", {
+    p_offer_id: offerId,
+    p_seller_id: sellerId,
+  });
+  if (error) {
+    throw new Error(`[acceptOfferViaSellerRpc] ${error.message}`);
+  }
+}
+
+export async function simulateMemberAuthOrderPayment(
+  memberOrderId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  const paymentIntentId = `pi_e2e_${memberOrderId.replace(/-/g, "").slice(0, 24)}`;
+
+  const { error } = await (
+    admin as unknown as {
+      rpc: (
+        fn: "rpc_mark_member_auth_order_authorized",
+        args: {
+          p_order_id: string;
+          p_payment_intent_id: string;
+          p_amounts: Record<string, never>;
+        },
+      ) => Promise<{ error: { message: string } | null }>;
+    }
+  ).rpc("rpc_mark_member_auth_order_authorized", {
+    p_order_id: memberOrderId,
+    p_payment_intent_id: paymentIntentId,
+    p_amounts: {},
+  });
+
+  if (error) {
+    throw new Error(`[simulateMemberAuthOrderPayment] ${error.message}`);
+  }
+}
+
+export async function submitInboundTrackingViaAdmin(
+  orderId: string,
+  trackingNo: string,
+  courierName: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await admin
+    .from("member_orders")
+    .update({
+      inbound_tracking_no: trackingNo,
+      inbound_courier_name: courierName,
+    })
+    .eq("id", orderId);
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      throw new Error(
+        "[submitInboundTrackingViaAdmin] service role lacks member_orders update grant",
+      );
+    }
+    throw new Error(`[submitInboundTrackingViaAdmin] ${error.message}`);
+  }
 }
 
 export async function getListingSellerId(

@@ -86,25 +86,25 @@ FROM merchant_orders WHERE id = '<order_id>';
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| D1.1 | 購買商戶 listing **含**鑑定（立即購買開 auth 或 `merchant_auth` 訂單） | Coupon picker 可見 | ☐ |
-| D1.2 | 選折扣券（`requires_authentication: true` 或 `any`） | 摘要 **平台優惠**；買家實付減少 | ☐ |
-| D1.3 | 完成 Stripe authorize（manual capture） | PI 金額 = `buyer_total_amount` | ☐ |
-| D1.4 | Admin 鑑定 pass（single capture） | PI full capture = `buyer_total_amount` | ☐ |
+| D1.1 | 購買商戶 listing **含**鑑定（立即購買開 auth 或 `merchant_auth` 訂單） | Coupon picker 可見 | ✅ PARTNER_QA P1 |
+| D1.2 | 選折扣券（`requires_authentication: true` 或 `any`） | 摘要 **平台優惠**；買家實付減少 | ✅ PARTNER_QA P1.1 |
+| D1.3 | 完成 Stripe authorize（manual capture） | PI 金額 = `buyer_total_amount` | ✅ PARTNER_QA P1 + gate B2b |
+| D1.4 | Admin 鑑定 pass（single capture） | PI full capture = `buyer_total_amount` | ✅ PARTNER_QA P0.4 |
 
 ### D2 — 鑑定免運券（v2 outbound leg）
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| D2.1 | 鑑定 checkout + 免運券 | 補貼 = min(outbound leg, 上限)；摘要顯示平台優惠 | ☐ |
-| D2.2 | DB `merchant_orders` | `shipping_fee=0`；`inbound/outbound` 有值；`escrow_capture_model='single'`；`total_amount` = 四行 gross | ☐ |
+| D2.1 | 鑑定 checkout + 免運券 | 補貼 = min(outbound leg, 上限)；摘要顯示平台優惠 | ✅ PARTNER_QA P1.2 |
+| D2.2 | DB `merchant_orders` | `shipping_fee=0`；`inbound/outbound` 有值；`escrow_capture_model='single'`；`total_amount` = 四行 gross | ✅ PARTNER_QA P1.2（ORD-2026-BE6370） |
 
 ### D3 — 限制與還原
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| D3.1 | `requires_authentication: false` 的券用於鑑定訂單 | 不符合資格 | ☐ |
-| D3.2 | `merchant_direct` + 開啟 auth 開關 | Picker 顯示符合鑑定資格的券；切換時清空已選券（同 B3.1） | ☐ |
-| D3.3 | 鑑定失敗 void（admin） | 券 `is_used` 清除；錢包可重用 | ☐ |
+| D3.1 | `requires_authentication: false` 的券用於鑑定訂單 | 不符合資格 | ✅ `I-D4` |
+| D3.2 | `merchant_direct` + 開啟 auth 開關 | Picker 顯示符合鑑定資格的券；切換時清空已選券（同 B3.1） | ✅ PARTNER_QA P1.3 |
+| D3.3 | 鑑定失敗 void（admin） | 券還原（訂單 coupon 清空 + reserve 清除）；錢包可重用 | ✅ PARTNER_QA P2.1（ORD-2026-BE6370） |
 
 ## Part E — Phase 3（限時搶券）
 
@@ -112,26 +112,36 @@ FROM merchant_orders WHERE id = '<order_id>';
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| E1.1 | `/admin/campaigns` → **搶券檔期** tab | 列表顯示庫存 %、時間窗、狀態 | ☐ |
-| E1.2 | 精靈：`flash_only` + Step 3 檔期 → **發布** | 模板 `active` + 檔期 `active` | ☐ |
-| E1.3 | 表格暫停 / 恢復檔期 | 狀態更新；會員端列表同步 | ☐ |
+| E1.1 | `/admin/campaigns` → **搶券檔期** tab（或統一活動列表含 flash） | 列表顯示庫存 %、時間窗、狀態 | ✅ `C3.1` |
+| E1.2 | 建立 `flash_only` 活動 + 檔期 → **發布** | 模板 `active` + 檔期 `active` | ✅ `C3.1` |
+| E1.3 | 表格暫停 / 恢復檔期 | 狀態更新；會員端列表同步 | ✅ `C3.8` |
 
 ### E2 — 會員搶券
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| E2.1 | `/profile/user/rewards` **限時搶券** 區塊 | 進行中檔期、倒數、庫存 | ☐ |
-| E2.2 | `starts_at` 前搶券 | 按鈕 disabled / 顯示尚未開始 | ☐ |
-| E2.3 | 活動時間內搶券 | Toast 成功；券入錢包 | ☐ |
-| E2.4 | 庫存搶光 | 錯誤「優惠券已被搶光」 | ☐ |
-| E2.5 | 同一 HKT 日第二次搶券 | 錯誤「你已達今日搶券上限」 | ☐ |
-| E2.6 | `flash_only` 模板 | **不**出現在「可解鎖」tab | ☐ |
+| E2.1 | `/profile/user/rewards` **限時搶券** 區塊 | 進行中檔期、倒數、庫存 | ✅ Partner 2026-07-29 |
+| E2.2 | `starts_at` 前搶券 | 按鈕 disabled / 顯示尚未開始 | ✅ Partner UI 2026-07-29 · `I-F3` + `C3.9` |
+| E2.3 | 活動時間內搶券 | Toast 成功；券入錢包 | ✅ Partner 2026-07-29 |
+| E2.4 | 庫存搶光 | 錯誤「優惠券已被搶光」 | ✅ `C3.4` |
+| E2.5 | 同一 HKT 日第二次搶券 | 錯誤「你已達今日搶券上限」 | ✅ `C3.5` |
+| E2.6 | `flash_only` 模板 | **不**出現在「可解鎖」tab | ✅ `C3.6` · matrix M-M3 |
 
 ### E3 — Checkout 回歸（搶到的券）
 
 | # | 步驟 | 預期結果 | 通過 |
 |---|------|----------|------|
-| E3.1 | 用搶到的券於商戶 checkout 結帳 | 沿用 Part B 流程（符合資格 + 補貼） | ☐ |
+| E3.1 | 用搶到的券於商戶 checkout 結帳 | 沿用 Part B 流程（符合資格 + 補貼） | ✅ Partner 2026-07-29 · `C3.7` |
+
+### Phase 3 簽核評估
+
+| 維度 | 狀態 | 依據 |
+|------|------|------|
+| 會員 happy path（E2.1–E2.3 + E3.1） | ✅ | Partner 人手 2026-07-29 |
+| Admin 檔期（E1） | ✅ | E2E `C3.1`、`C3.8` |
+| 邊界（E2.4–E2.6） | ✅ | E2E `C3.4`–`C3.6` · Vitest `I-F3` |
+| UI crash 修復 | ✅ | `FlashCampaignSection` 穩定 `useSyncExternalStore` snapshot |
+| **正式簽核** | **✅ Partner QA** | Part E 全項已覆蓋（人手 + E2E）；合併關卡仍建議跑 `bun run test:rewards:gate` 維持 CI 綠燈 |
 
 ### 合併簽核關卡（Phase 4 前）
 
@@ -142,6 +152,7 @@ FROM merchant_orders WHERE id = '<order_id>';
 | 角色 | 姓名 | 日期 | 備註 |
 |------|------|------|------|
 | QA | Partner | 2026-08 | Phase 1–2 已通過 |
+| QA | Partner | 2026-07-29 | **Phase 3** Part E（E2.1–E3.1 人手 + E1/E2.4–E2.6 E2E） |
 | Frontend | | | |
 | Backend | | | |
 

@@ -33,6 +33,29 @@ type AuthOrderRpcClient = {
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
+type MemberCouponRpcClient = {
+  rpc(
+    fn: "fn_release_member_order_coupon",
+    args: { p_order_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+type MemberOrderLookupClient = {
+  from(table: "member_orders"): {
+    select(cols: string): {
+      eq(col: string, val: string): {
+        maybeSingle(): Promise<{
+          data: {
+            payment_capture_status: string | null;
+            escrow_status: string | null;
+          } | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  };
+};
+
 function readMerchantOrderMetadata(
   paymentIntent: Stripe.PaymentIntent,
 ): { orderId: string; amounts: Record<string, string> } | null {
@@ -118,6 +141,61 @@ export async function processMerchantPaymentIntentCanceled(
   }
 
   if (orderKind === "member_auth") {
+    const { data: memberOrder, error: lookupError } = await (
+      admin as unknown as MemberOrderLookupClient
+    )
+      .from("member_orders")
+      .select("payment_capture_status, escrow_status")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error(
+        "[stripe/webhook] member_auth PI canceled lookup",
+        orderId,
+        lookupError.message,
+      );
+      return { ok: false, error: "member auth cancel lookup failed" };
+    }
+
+    if (memberOrder?.payment_capture_status === "authorized") {
+      const { error } = await (admin as unknown as AuthOrderRpcClient).rpc(
+        "rpc_mark_auth_order_payment_voided",
+        {
+          p_order_kind: "member",
+          p_order_id: orderId,
+          p_payment_intent_id: paymentIntent.id,
+        },
+      );
+
+      if (error) {
+        console.error(
+          "[stripe/webhook] rpc_mark_auth_order_payment_voided member",
+          orderId,
+          error.message,
+        );
+        return { ok: false, error: "member auth void sync failed" };
+      }
+
+      return { ok: true };
+    }
+
+    if (memberOrder?.escrow_status === "payment") {
+      const { error } = await (admin as unknown as MemberCouponRpcClient).rpc(
+        "fn_release_member_order_coupon",
+        { p_order_id: orderId },
+      );
+
+      if (error) {
+        console.error(
+          "[stripe/webhook] fn_release_member_order_coupon",
+          orderId,
+          error.message,
+        );
+        return { ok: false, error: "member coupon release failed" };
+      }
+    }
+
     return { ok: true };
   }
 

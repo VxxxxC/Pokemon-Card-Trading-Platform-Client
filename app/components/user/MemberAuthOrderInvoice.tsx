@@ -18,6 +18,8 @@ type MemberAuthOrderInvoiceProps = {
   releasedAmount?: number;
   platformFee?: number;
   releaseStatus?: "pending" | "completed" | "rejected" | string;
+  buyerTotalAmount?: number;
+  platformSubsidyAmount?: number;
 };
 
 export function MemberAuthOrderInvoice({
@@ -31,8 +33,12 @@ export function MemberAuthOrderInvoice({
   releasedAmount,
   platformFee,
   releaseStatus: explicitReleaseStatus,
+  buyerTotalAmount,
+  platformSubsidyAmount,
 }: MemberAuthOrderInvoiceProps) {
   const totalAmount = finalPrice + MEMBER_AUTH_SERVICE_FEE;
+  const resolvedSubsidy = platformSubsidyAmount ?? MEMBER_AUTH_PLATFORM_SUBSIDY;
+  const resolvedBuyerTotal = buyerTotalAmount ?? totalAmount;
 
   // Resolve Escrow Release details
   const displayPayoutId =
@@ -105,10 +111,9 @@ export function MemberAuthOrderInvoice({
           </span>
         </div>
         <div className="flex justify-between text-[#ef4444]">
-          {/* TODO: depends on coupon redeem */}
           <span>免郵補貼</span>
           <span>
-            {"-HK$ " + MEMBER_AUTH_PLATFORM_SUBSIDY.toLocaleString("zh-TW")}
+            {"-HK$ " + resolvedSubsidy.toLocaleString("zh-TW")}
           </span>
         </div>
         <div className="flex justify-between text-brand">
@@ -125,7 +130,7 @@ export function MemberAuthOrderInvoice({
             {isSeller
               ? "HK$ " +
                 (totalAmount - MEMBER_AUTH_SERVICE_FEE).toLocaleString("zh-TW")
-              : "HK$ " + totalAmount.toLocaleString("zh-TW")}
+              : "HK$ " + resolvedBuyerTotal.toLocaleString("zh-TW")}
           </span>
         </div>
 

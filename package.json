@@ -22,6 +22,7 @@
     "test:e2e:rewards-checkout-coupon": "playwright test e2e/rewards-checkout-coupon.spec.ts e2e/rewards-order-detail.spec.ts --project=setup --project=buyer",
     "test:e2e:stripe-reconcile": "playwright test e2e/platform-rewards-stripe-reconcile.spec.ts --project=setup --project=buyer",
     "test:e2e:auth-escrow": "playwright test e2e/platform-rewards-phase2.spec.ts -g \"B2b\" --project=setup --project=buyer",
+    "test:e2e:member-auth-escrow": "playwright test e2e/member-auth-escrow.spec.ts e2e/member-auth-inbound.spec.ts e2e/member-order-detail-auth.spec.ts --project=setup --project=member-trading",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:integration:rewards": "vitest run --config vitest.config.mts tests/integration/rewards",

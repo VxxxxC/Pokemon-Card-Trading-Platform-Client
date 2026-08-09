@@ -21,7 +21,6 @@ import {
 } from "@/lib/member-order/perf-log";
 import {
   calculateMemberAuthPaymentTotal,
-  createMemberAuthPaymentSession,
 } from "@/lib/payments/member-auth-payment";
 import {
   getMemberAuthOrderActions,
@@ -409,6 +408,14 @@ export type MemberOrderDetail = UserTradingOrder & {
   buyerRemark?: string | null;
   sellerSettlementStatus?: Tables<"member_orders">["seller_settlement_status"];
   sellerReceivableAmountHkd?: number | null;
+  /** Auth escrow checkout breakdown (member auth). */
+  itemSubtotalAuth?: number;
+  authFeeAuth?: number;
+  inboundShippingFeeAuth?: number;
+  outboundShippingFeeAuth?: number;
+  totalAmountAuth?: number;
+  buyerTotalAmount?: number;
+  platformSubsidyAmount?: number;
 };
 
 export type GetMemberOrderDetailResult =
@@ -437,6 +444,13 @@ type MemberOrderDetailQueryRow = {
   payout_hold_until: string | null;
   seller_payout_status: Tables<"member_orders">["seller_payout_status"];
   seller_settlement_status: Tables<"member_orders">["seller_settlement_status"];
+  item_subtotal: number | null;
+  auth_fee: number | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
+  total_amount: number | null;
+  buyer_total_amount: number | null;
+  platform_subsidy_amount: number | null;
   listings: {
     grading_company: string;
     grading_score: string | null;
@@ -1616,7 +1630,10 @@ function mapMemberOrderDetailRow(
     inboundCourierName: row.inbound_courier_name,
     outboundTrackingNo: row.outbound_tracking_no,
     outboundCourierName: null,
-    paymentAmount: calculateMemberAuthPaymentTotal(Number(row.final_price)),
+    paymentAmount:
+      row.use_authentication && row.buyer_total_amount != null
+        ? Number(row.buyer_total_amount)
+        : calculateMemberAuthPaymentTotal(Number(row.final_price)),
     listingAcceptsBuyerAuth: row.listings.use_authentication,
     canPay: authActions.canPay,
     canSubmitInbound: authActions.canSubmitInbound,
@@ -1633,6 +1650,30 @@ function mapMemberOrderDetailRow(
           buyerConfirmedAt: row.buyer_confirmed_at,
           sellerSettlementStatus: row.seller_settlement_status,
           sellerReceivableAmountHkd: sellerReceivableAmountHkd ?? null,
+        }
+      : {}),
+    ...(row.use_authentication
+      ? {
+          itemSubtotalAuth: row.item_subtotal != null ? Number(row.item_subtotal) : undefined,
+          authFeeAuth: row.auth_fee != null ? Number(row.auth_fee) : undefined,
+          inboundShippingFeeAuth:
+            row.inbound_shipping_fee != null
+              ? Number(row.inbound_shipping_fee)
+              : undefined,
+          outboundShippingFeeAuth:
+            row.outbound_shipping_fee != null
+              ? Number(row.outbound_shipping_fee)
+              : undefined,
+          totalAmountAuth:
+            row.total_amount != null ? Number(row.total_amount) : undefined,
+          buyerTotalAmount:
+            row.buyer_total_amount != null
+              ? Number(row.buyer_total_amount)
+              : undefined,
+          platformSubsidyAmount:
+            row.platform_subsidy_amount != null
+              ? Number(row.platform_subsidy_amount)
+              : undefined,
         }
       : {}),
   };
@@ -1978,6 +2019,13 @@ export async function getMemberOrderDetail(
           payout_hold_until,
           seller_payout_status,
           seller_settlement_status,
+          item_subtotal,
+          auth_fee,
+          inbound_shipping_fee,
+          outbound_shipping_fee,
+          total_amount,
+          buyer_total_amount,
+          platform_subsidy_amount,
           listings!inner (
             grading_company,
             grading_score,
@@ -2543,76 +2591,6 @@ export async function completeMemberOrder(
       error instanceof Error ? error.message : "確認完成時發生錯誤";
     console.error("[completeMemberOrder]", error);
     return { success: false, error: message };
-  }
-}
-
-export async function mockPayMemberAuthOrder(
-  orderId: string,
-): Promise<MemberOrderActionResult> {
-  if (process.env.NODE_ENV === "production") {
-    return {
-      success: false,
-      error: "模擬付款僅供開發環境使用，請使用 Stripe 完成託管付款",
-    };
-  }
-
-  if (!isSupabaseConfigured()) {
-    return { success: false, error: "未登入" };
-  }
-
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { success: false, error: "請先登入後再付款" };
-    }
-
-    const resolved = await resolveMemberOrderIdForUser(
-      supabase,
-      orderId,
-      user.id,
-    );
-    if (!resolved.ok) {
-      return { success: false, error: resolved.error };
-    }
-    const trimmedOrderId = resolved.id;
-
-    const session = createMemberAuthPaymentSession({
-      orderId: trimmedOrderId,
-      cardPrice: 0,
-    });
-
-    const { error } = await (
-      supabase as unknown as {
-        rpc: (
-          fn: "rpc_mock_pay_member_auth_order",
-          args: {
-            p_order_id: string;
-            p_buyer_id: string;
-            p_mock_session_id?: string;
-          },
-        ) => Promise<{ error: { message: string } | null }>;
-      }
-    ).rpc("rpc_mock_pay_member_auth_order", {
-      p_order_id: trimmedOrderId,
-      p_buyer_id: user.id,
-      p_mock_session_id: session.sessionId,
-    });
-
-    if (error) {
-      console.error("[mockPayMemberAuthOrder]", error.message);
-      return { success: false, error: mapOrderRpcError(error.message) };
-    }
-
-    revalidateMemberOrderPaths(trimmedOrderId);
-
-    return { success: true };
-  } catch (error) {
-    console.error("[mockPayMemberAuthOrder]", error);
-    return { success: false, error: "模擬付款失敗，請稍後再試" };
   }
 }
 

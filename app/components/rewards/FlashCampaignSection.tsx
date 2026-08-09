@@ -24,8 +24,8 @@ function rewardLabel(campaign: FlashCampaignView): string {
   return amount > 0 ? `折扣 HK$${amount}` : campaign.template.title;
 }
 
-function formatCountdown(targetMs: number): string {
-  const diff = Math.max(0, targetMs - Date.now());
+function formatCountdown(targetMs: number, nowMs: number): string {
+  const diff = Math.max(0, targetMs - nowMs);
   const totalSeconds = Math.floor(diff / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -183,7 +183,7 @@ export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
                 {countdownPrefix}
                 {!ended ? (
                   <span className="ml-2 text-brand font-bold">
-                    {formatCountdown(countdownTarget)}
+                    {formatCountdown(countdownTarget, now)}
                   </span>
                 ) : null}
               </div>

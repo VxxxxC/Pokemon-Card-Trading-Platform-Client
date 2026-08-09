@@ -333,7 +333,7 @@ export async function getUserRewardCheckoutRow(userRewardId: string) {
   const { data, error } = await admin
     .from("user_rewards")
     .select(
-      "id, is_used, used_at, reserved_merchant_order_id, reserved_at, calculated_expiry",
+      "id, is_used, used_at, reserved_merchant_order_id, reserved_member_order_id, reserved_at, calculated_expiry",
     )
     .eq("id", userRewardId)
     .maybeSingle();
@@ -412,6 +412,54 @@ export async function invokeAuthPreparePayment(
   return invokePreparePayment(client, orderId, couponId, AUTH_PREPARE_OVERRIDES);
 }
 
+export type CheckoutEligibleCouponRow = {
+  id: string;
+  eligible: boolean;
+  ineligibleReason: string | null;
+  previewSubsidy: number;
+};
+
+export async function invokeListCheckoutEligibleCoupons(
+  client: SupabaseClient<Database>,
+  orderId: string,
+  options?: { shippingMethod?: string; useAuth?: boolean },
+): Promise<CheckoutEligibleCouponRow[]> {
+  const { data, error } = await client.rpc("rpc_list_checkout_eligible_coupons", {
+    p_order_id: orderId,
+    p_shipping_method: options?.shippingMethod ?? "sf",
+    p_use_auth: options?.useAuth ?? false,
+  });
+
+  if (error) {
+    throw new Error(`[invokeListCheckoutEligibleCoupons] ${error.message}`);
+  }
+
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+
+    const row = entry as Record<string, unknown>;
+    if (typeof row.id !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        id: row.id,
+        eligible: row.eligible === true,
+        ineligibleReason:
+          typeof row.ineligible_reason === "string" ? row.ineligible_reason : null,
+        previewSubsidy: Number(row.preview_subsidy ?? 0),
+      },
+    ];
+  });
+}
+
 export async function setCouponExpiry(
   userRewardId: string,
   expiryIso: string,
@@ -476,4 +524,162 @@ export async function invokeGetRewardCouponCenter(
   }
 
   return { success: true, data };
+}
+
+export type MemberListingFixture = {
+  listingId: string;
+  sellerId: string;
+  price: number;
+};
+
+export async function findMemberListingForIntegration(): Promise<MemberListingFixture> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("listings")
+    .select("id, seller_id, price, seller_persona, status")
+    .eq("seller_persona", "member")
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[findMemberListingForIntegration] ${error.message}`);
+  }
+
+  if (!data?.seller_id) {
+    throw new Error("No active member listing found for member auth coupon tests");
+  }
+
+  return {
+    listingId: data.id,
+    sellerId: data.seller_id,
+    price: Number(data.price),
+  };
+}
+
+export async function ensureMemberListingAcceptsAuthentication(
+  listingId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("listings")
+    .update({ use_authentication: true })
+    .eq("id", listingId);
+
+  if (error) {
+    throw new Error(
+      `[ensureMemberListingAcceptsAuthentication] ${error.message}`,
+    );
+  }
+}
+
+export async function seedPendingMemberAuthOrders(
+  buyerId: string,
+  listingId: string,
+  count = 1,
+): Promise<string[]> {
+  const admin = createServiceRoleClient();
+  const orderIds: string[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const { data, error } = await admin.rpc(
+      "rpc_e2e_seed_member_auth_pending_payment_order",
+      {
+        p_listing_id: listingId,
+        p_buyer_id: buyerId,
+      },
+    );
+
+    if (error) {
+      throw new Error(`[seedPendingMemberAuthOrders] ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error("[seedPendingMemberAuthOrders] missing order id");
+    }
+
+    orderIds.push(data);
+  }
+
+  return orderIds;
+}
+
+export type MemberOrderAuthEscrowRow = {
+  id: string;
+  final_price: number;
+  item_subtotal: number | null;
+  auth_fee: number | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
+  total_amount: number | null;
+  buyer_total_amount: number | null;
+  platform_subsidy_amount: number | null;
+  coupon_user_reward_id: string | null;
+  coupon_type: string | null;
+  escrow_capture_model: string | null;
+};
+
+export async function getMemberOrderAuthEscrowRow(
+  orderId: string,
+): Promise<MemberOrderAuthEscrowRow | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("member_orders")
+    .select(
+      "id, final_price, item_subtotal, auth_fee, inbound_shipping_fee, outbound_shipping_fee, total_amount, buyer_total_amount, platform_subsidy_amount, escrow_capture_model, coupon_user_reward_id, coupon_type",
+    )
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getMemberOrderAuthEscrowRow] ${error.message}`);
+  }
+
+  return data;
+}
+
+export async function invokeMemberAuthPreparePayment(
+  client: SupabaseClient<Database>,
+  orderId: string,
+  couponId?: string | null,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const { error } = await client.rpc("rpc_prepare_member_auth_order_payment", {
+    p_order_id: orderId,
+    p_user_reward_id: couponId ?? undefined,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function restoreMemberOrderCouponOnVoid(
+  orderId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("fn_restore_member_order_coupon_on_void", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    throw new Error(`[restoreMemberOrderCouponOnVoid] ${error.message}`);
+  }
+}
+
+export async function invokeReleaseMemberCoupon(
+  orderId: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin.rpc("fn_release_member_order_coupon", {
+    p_order_id: orderId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
 }

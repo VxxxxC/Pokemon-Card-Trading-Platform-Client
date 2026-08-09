@@ -16,22 +16,24 @@ import {
   acceptOfferAsSeller,
   ensurePendingAuthOffer,
   gotoOrderDetail,
-  mockPayAuthOrderOnDetail,
   offerAmountFromListingPrice,
   offerAmountLabelFromListingPrice,
+  payAuthMemberOrder,
 } from "./helpers/member-trading";
+import { hasStripeReconcileEnv } from "./helpers/stripe-reconcile";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(300_000);
 
 test.describe("Member order detail — auth escrow", () => {
-  test("auth order at payment shows mock pay panel, not P2P handover", async ({
+  test("auth order at payment shows checkout CTA, not P2P handover", async ({
     browser,
   }, testInfo) => {
     test.skip(
       testInfo.project.name !== "member-trading",
       "Order detail auth CTA runs on member-trading project",
     );
+    test.skip(!hasStripeReconcileEnv(), "Missing Stripe keys for member auth checkout");
     if (!hasMemberTradingFixtures()) {
       test.skip(true, "Missing member trading E2E env");
     }
@@ -98,6 +100,8 @@ test.describe("Member order detail — auth escrow", () => {
         offerLabel,
         buyerPage,
         sellerDisplayName,
+        sellerId,
+        buyerId,
       );
 
       const order = await getLatestMemberOrderForListing({ listingId, buyerId });
@@ -129,7 +133,10 @@ test.describe("Member order detail — auth escrow", () => {
       }
 
       await expect(
-        buyerPage.getByText("測試模式 — Stripe 尚未接入"),
+        buyerPage.getByRole("button", { name: "前往付款" }),
+      ).toBeVisible({ timeout: 15_000 });
+      await expect(
+        buyerPage.getByText(/尚未完成託管付款/),
       ).toBeVisible({ timeout: 15_000 });
       await expect(
         buyerPage.getByRole("button", { name: "確認完成交易" }),
@@ -138,11 +145,11 @@ test.describe("Member order detail — auth escrow", () => {
         buyerPage.getByRole("link", { name: "返回交易管理" }),
       ).toBeVisible();
 
-      await mockPayAuthOrderOnDetail(buyerPage);
-
       if (!memberOrderId) {
-        throw new Error("Missing member order id before seller inbound check");
+        throw new Error("Missing member order id before stripe checkout");
       }
+
+      await payAuthMemberOrder(buyerPage, memberOrderId);
 
       const advanced = await advanceAuthOrderToCustody(memberOrderId);
       if (!advanced) {

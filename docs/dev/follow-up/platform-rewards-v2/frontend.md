@@ -1,6 +1,6 @@
 # Platform Rewards v2 — frontend
 
-> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified · **Phase 2b:** 🟡 auth path · **Phase 3:** 🟡 flash campaigns · **Phase 4:** ⏸ on hold
+> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified · **Phase 2b:** ✅ Partner verified · **Phase 3:** ✅ Partner verified · **Phase 4:** ⏸ on hold
 
 ## Admin activity workflow (2026-08 refactor)
 
@@ -89,16 +89,16 @@ Partner QA: **[QA_CHECKLIST.md](./QA_CHECKLIST.md)**
 
 ### Phase 2b
 
-- [ ] `merchant_auth` checkout shows coupon picker
-- [ ] Auth + discount reduces buyer total; summary shows 平台優惠
-- [ ] Auth + free-shipping uses quoted SF subsidy
-- [ ] `merchant_direct` + auth toggle shows picker with auth-eligible coupons
-- [ ] `bun run build:ci` passes
+- [x] `merchant_auth` checkout shows coupon picker — PARTNER_QA P1
+- [x] Auth + discount reduces buyer total; summary shows 平台優惠
+- [x] Auth + free-shipping uses quoted SF subsidy
+- [x] `merchant_direct` + auth toggle shows picker with auth-eligible coupons
+- [x] `bun run build:ci` passes
 
 ### Phase 3
 
-- [ ] Wizard Step 3 enabled for `flash_only`; publish creates campaign
-- [ ] **搶券檔期** tab shows campaign table + pause/resume
-- [ ] `/profile/user/rewards` flash section: countdown + claim
-- [ ] Claimed coupon usable at merchant checkout (Part E3)
-- [ ] E2E `e2e/platform-rewards-phase3.spec.ts` (C3.1–C3.5)
+- [x] Admin activity form: `flash_only` + schedule → publish creates campaign (`C3.1`)
+- [x] Campaign pause/resume (`C3.8`)
+- [x] `/profile/user/rewards` flash section: countdown + claim — Partner 2026-07-29
+- [x] Claimed coupon usable at merchant checkout (Part E3.1) — Partner 2026-07-29 · `C3.7`
+- [x] E2E `e2e/platform-rewards-phase3.spec.ts` (C3.1–C3.9)

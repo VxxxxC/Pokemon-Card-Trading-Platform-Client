@@ -162,4 +162,4 @@ bun run supabase:types
 
 ## Verify
 
-Partner QA: **[QA_CHECKLIST.md](./QA_CHECKLIST.md)** (Parts A–B verified; Part D for 2b; Part E for Phase 3)
+Partner QA: **[QA_CHECKLIST.md](./QA_CHECKLIST.md)** — Parts A–B verified; Part D (2b) ✅; **Part E (Phase 3) ✅ 2026-07-29**

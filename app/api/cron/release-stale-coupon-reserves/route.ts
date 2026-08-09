@@ -9,7 +9,8 @@ const BATCH_LIMIT = 50;
 
 type StaleReserveCandidate = {
   user_reward_id: string;
-  merchant_order_id: string;
+  order_kind: string;
+  order_id: string;
 };
 
 type StaleReserveRpcClient = {

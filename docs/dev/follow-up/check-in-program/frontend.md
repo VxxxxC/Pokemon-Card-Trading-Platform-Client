@@ -19,8 +19,8 @@
 
 ## Acceptance
 
-- [ ] `/admin/campaigns?tab=check-in` — edit daily PTS, completion (points / coupon / free shipping)
-- [ ] Member grid reflects saved ladder
+- [x] `/admin/campaigns?tab=check-in` — edit daily PTS, completion (points / coupon / free shipping) — Partner #10 2026-07-29
+- [x] Member grid reflects saved ladder — Partner #10 2026-07-29
 - [ ] Program paused → banner + disabled button; existing wallet coupons still work
 - [ ] Day 7 toast shows combined PTS when completion is points
 - [ ] Reward activity form has no `check_in_streak` / `check_in_cycle_day` triggers
