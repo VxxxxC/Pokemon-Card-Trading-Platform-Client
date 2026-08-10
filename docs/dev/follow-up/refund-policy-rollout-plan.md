@@ -130,16 +130,19 @@ flowchart LR
 
 ### 3B — Fault 擴充（待做）
 
+**IC 已鎖定（2026-08-11）：** IC-1 50/50 fee · IC-2 `carrierLiabilityParty` UI · 詳見 [pr3b_pr3c_remaining.plan.md](../../../.cursor/plans/pr3b_pr3c_remaining.plan.md#decisions-locked)
+
 | 任務 | 說明 |
 |------|------|
-| `DisputeDetailClient` | 加 carrier、inconclusive（+ `carrierLiabilityParty` 待 IC-2） |
-| `fn_compute_moderation_order_refund` / finalize / saga | carrier / inconclusive 結算規則 |
-| Integration | **I-H15** / **I-H16** |
+| `DisputeDetailClient` | 加 carrier、inconclusive + `carrierLiabilityParty` |
+| `fn_compute` / prepare / finalize / saga | `feeRecoveryMode`（inconclusive → fee_half） |
+| Integration | **I-H15** / **I-H16**（+ optional I-H15b carrier/platform） |
 
 ### 3C — Admin 金額 preview（待做）
 
-- Resolve 前唯讀 §2.1 breakdown（`fn_preview_moderation_order_refund_breakdown`）
-- 詳見 [pr3b_pr3c_remaining.plan.md](../../../.cursor/plans/pr3b_pr3c_remaining.plan.md)（含 **IC-1–IC-3** intent checks）
+**IC-3 已鎖定：** 政策估算 preview（唔 call Stripe）
+
+- `fn_preview_moderation_order_refund_breakdown` + 唯讀 UI panel
 
 ### 驗收
 

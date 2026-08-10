@@ -25,36 +25,50 @@
 
 ---
 
-## ❓ Intent checks (block implementation until confirmed)
+## Decisions (locked)
+
+**Locked 2026-08-11** — implementation may proceed.
+
+| IC | Choice | Rationale |
+|----|--------|-----------|
+| **IC-1** inconclusive Stripe fee | **Option A — 50/50 seller/platform** | SSOT §5 table default「各 50%」；買家仍收 full `eligible_policy`（唔扣 fee）。賣家追償 **僅 `stripe_fee_actual / 2`**（唔追 full refund）；另一半記 `platform_absorb_hkd`。§4 S1 inconclusive auth-fee goodwill **獨立**，唔混入 S3。 |
+| **IC-2** carrier logistics liability | **Option A — `carrierLiabilityParty` UI** | SSOT §5/§8.2/§11 要求按「誰安排物流」分攤；heuristic 易誤判追償。與 grading enum 一致，resolve 時 **必填** `seller \| platform`。 |
+| **IC-3** preview stripe fee source | **Option A — policy estimate** | Preview 唯讀、唔 call Stripe；`stripe_fee_hkd: null` + `stripeFeeNote` 標示 finalize 時讀 balance transaction。與 saga `extractStripeFeeHkd` 職責分離，staging 無 Stripe 仍可驗 UI。 |
+
+### Plan fixes (from review)
+
+1. **`settlementRequired` semantics (IC-1):** inconclusive 唔再簡單設 `false`。新增 prepare 欄位 `feeRecoveryMode: 'none' \| 'full' \| 'fee_half'`（或等價 `stripeFeeBearer`）：inconclusive → `fee_half`；carrier(seller) / seller → `full`；carrier(platform) / buyer / platform → `none`。Saga 僅在 `full` 或 `fee_half` 時傳 `p_stripe_fee_hkd`（後者傳 `fee/2`）。
+2. **Persist `carrierLiabilityParty`:** PR3B migration 須寫入 `auth_notes`（`carrier_liability: seller\|platform`）或 audit payload，否則 `rpc_retry_moderation_order_refund_prepare` 無法還原 carrier(platform) vs carrier(seller)。
+3. **Extend `rpc_prepare_moderation_order_refund`:** 計劃原只列 `fn_compute` / `rpc_resolve` — 須同步加參 `p_carrier_liability_party` 並傳入 compute。
+4. **I-H16 assertion fix:** inconclusive + IC-1 → assert **seller_receivable 僅 `stripe_fee/2`**（唔係「no receivable」）；`platform_absorb` 另一半（integration 用 mock fee 或 seed）。
+5. **I-H15b (optional):** carrier(platform) → refunded、**no** seller_receivable、platform absorb fee — 防 finalize 分支漏測。
+6. **§8.2 test matrix:** `refund-policy.md` §8.2 表缺 inconclusive / carrier(platform) 列 — PR3B docs 或 unit fixture 補充；preview unit test 用 §5 + 計劃內 A=800,C=50,D=150,fee=30 範例。
+7. **Grading UI parity:** `AdminGradingClient` 有 carrier/inconclusive 但 **無** `carrierLiabilityParty` — 仍屬 PR2+ / out of scope；PR3B 僅 dispute resolve UI。
+8. **Rollout doc:** `refund-policy-rollout-plan.md` DB push 清單補 `20260914*` / `20260915*`；`PARTNER_QA_SIGNOFF` migration range 於 PR3B/C merge 後更新。
+
+---
+
+## ❓ Intent checks (superseded — see Decisions above)
+
+<details>
+<summary>Original IC options (archived)</summary>
 
 ### IC-1 — S3 `inconclusive` Stripe fee split
 
-[refund-policy §5](../../docs/dev/refund-policy.md#5-stripe-processing-fee-總規則) states **50/50 buyer/seller** for `inconclusive`, with a footnote allowing platform absorb in PR scope.
-
-**Confirm before PR3B migration:**
-
-- **Option A (SSOT default):** `stripe_fee_actual` split 50/50 — buyer refund unchanged (full eligible); record half on seller receivable / merchant ledger and half as `platform_absorb_hkd` (or internal ledger only).
-- **Option B:** Platform absorbs entire stripe fee (`platform_absorb_hkd = stripe_fee_actual`); no buyer deduction, no seller recovery for fee.
-
-> S1 inconclusive auth-fee goodwill (§4) is **separate** from S3 stripe-fee rule — do not conflate.
+- **Option A (SSOT default):** 50/50 — **✅ locked**
+- **Option B:** Platform absorb entire fee
 
 ### IC-2 — S3 `carrier` logistics liability
 
-[refund-policy §5](../../docs/dev/refund-policy.md#5-stripe-processing-fee-總規則) / [§8.2](../../docs/dev/refund-policy.md#82-s3-breakdown-表鑑定-pass-後): carrier splits by **who arranged shipping**.
-
-**Confirm before PR3B UI:**
-
-- **Option A (recommended):** Add resolve payload field `carrierLiabilityParty: 'seller' | 'platform'` (required when `faultParty === 'carrier'`). Seller logistics → same as seller fault (receivable + stripe fee). Platform logistics → full buyer refund, stripe fee platform absorb, **no** seller receivable.
-- **Option B:** Default heuristic only (e.g. outbound damage → platform; inbound → seller) with no UI — higher mis-routing risk.
+- **Option A:** `carrierLiabilityParty` UI — **✅ locked**
+- **Option B:** Heuristic only
 
 ### IC-3 — PR3C preview stripe fee source
 
-**Confirm before PR3C:**
+- **Option A:** Policy estimate — **✅ locked**
+- **Option B:** Live Stripe PI
 
-- **Option A:** Preview uses **policy formula** only; `stripe_fee_hkd` shown as「依 finalize 時 Stripe balance transaction」with estimated placeholder 0 unless cached on order.
-- **Option B:** Preview calls Stripe PI retrieve (admin-only server action) — accurate but slower + requires live Stripe in staging.
-
-Default recommendation: **Option A** for v1 preview; label fee row as estimate.
+</details>
 
 ---
 
@@ -67,8 +81,9 @@ Default recommendation: **Option A** for v1 preview; label fee row as estimate.
 | Function | Change |
 |----------|--------|
 | `rpc_resolve_moderation_case` | Whitelist `carrier`, `inconclusive`; validate `carrierLiabilityParty` when carrier (if IC-2 Option A) |
-| `fn_compute_moderation_order_refund` | Return extended JSON: `settlementRequired`, `stripeFeeBearer`, `authFeeRetainedHkd`, `carrierLiabilityParty` (optional); carrier(seller) → `settlementRequired=true`; inconclusive → `settlementRequired=false` |
-| `rpc_finalize_moderation_order_refund` | carrier(seller logistics): receivable/ledger like seller; carrier(platform): skip receivable; inconclusive: per IC-1 (no full-order seller recovery) |
+| `fn_compute_moderation_order_refund` | Add `p_carrier_liability_party`; return `feeRecoveryMode` / `stripeFeeBearer`, `authFeeRetainedHkd`; carrier(seller) → full recovery; inconclusive → fee_half (IC-1); carrier(platform) → none |
+| `rpc_prepare_moderation_order_refund` | Accept + pass `p_carrier_liability_party`; persist liability in `auth_notes` for retry |
+| `rpc_finalize_moderation_order_refund` | carrier(seller): receivable like seller; carrier(platform): skip receivable; inconclusive: receivable **fee/2 only** + platform absorb fee/2 (IC-1) |
 | `rpc_retry_moderation_order_refund_prepare` | Recompute `settlementRequired` for carrier (not only seller) |
 
 **Do not regress:** PR3A `set_config('moderation.order_refund')` wrappers in finalize / mark_failed / retry for `member_auth`.
@@ -78,7 +93,7 @@ Default recommendation: **Option A** for v1 preview; label fee row as estimate.
 | Change | Rule |
 |--------|------|
 | `computeRefundCents` | Only `buyer` deducts stripe fee; `carrier` / `inconclusive` / `platform` / `seller` → full policy cents |
-| `p_stripe_fee_hkd` on finalize | Pass fee when settlement/receivable path (seller **or** carrier-seller per IC-2) |
+| `p_stripe_fee_hkd` on finalize | Pass when `feeRecoveryMode` is `full` (seller / carrier-seller) or `fee_half` (inconclusive, pass `fee/2`) |
 | `parsePrepareModerationOrderRefundPayload` | Accept new prepare fields if added |
 
 ### 3. Backend actions — `app/actions/admin-moderation.ts`
@@ -104,7 +119,7 @@ Default recommendation: **Option A** for v1 preview; label fee row as estimate.
 | ID | Scenario | File | Assert |
 |----|----------|------|--------|
 | **I-H15** | `member_auth` carrier (seller logistics): resolve → prepare → admin finalize | `tests/integration/moderation/phase-h-refund.integration.test.ts` | `fault_party=carrier`, `refunded`, **seller_receivables** row (fee + refund like I-H10 seller) |
-| **I-H16** | `member_auth` inconclusive: resolve → prepare → admin finalize | same | `fault_party=inconclusive`, `refunded`, **no** seller receivable (or split per IC-1) |
+| **I-H16** | `member_auth` inconclusive: resolve → prepare → admin finalize | same | `fault_party=inconclusive`, `refunded`, seller_receivable **= stripe_fee/2 only** (IC-1); no full-order recovery |
 
 Optional unit tests:
 
@@ -123,7 +138,7 @@ Optional unit tests:
 
 ### PR3B acceptance criteria
 
-- [ ] IC-1 and IC-2 confirmed in writing (PR description or issue)
+- [x] IC-1 and IC-2 confirmed — see **Decisions (locked)**
 - [ ] Admin can resolve with carrier / inconclusive; invalid combo rejected at RPC
 - [ ] `bun run test:integration:moderation` green including **I-H15**, **I-H16**
 - [ ] `bunx tsc --noEmit` + `bun run lint` pass
@@ -216,6 +231,7 @@ Optional: extract `ModerationRefundPreviewPanel.tsx` if file grows — not requi
 
 ### PR3C acceptance criteria
 
+- [x] IC-3 confirmed — see **Decisions (locked)**
 - [ ] Preview visible when refund checkbox + order + fault selected
 - [ ] Preview amounts match `fn_compute_moderation_order_refund` / §8.2 for seller, buyer, platform on `member_auth` fixture
 - [ ] Resolve + actual refund flow **unchanged** (preview is read-only)
@@ -275,8 +291,8 @@ bunx tsc --noEmit && bun run lint
 
 ### PR3B
 
-- [ ] IC-1 inconclusive fee split confirmed
-- [ ] IC-2 carrier liability UI confirmed
+- [x] IC-1 inconclusive fee split confirmed (50/50)
+- [x] IC-2 carrier liability UI confirmed (`carrierLiabilityParty`)
 - [ ] Migration `20260914xxxx`
 - [ ] Saga + finalize receivable branches
 - [ ] DisputeDetailClient fault options
@@ -285,7 +301,7 @@ bunx tsc --noEmit && bun run lint
 
 ### PR3C
 
-- [ ] IC-3 stripe fee preview strategy confirmed
+- [x] IC-3 stripe fee preview strategy confirmed (policy estimate)
 - [ ] `fn_preview_moderation_order_refund_breakdown` + action
 - [ ] Preview panel in resolve form
 - [ ] Unit tests §8.2 matrix
