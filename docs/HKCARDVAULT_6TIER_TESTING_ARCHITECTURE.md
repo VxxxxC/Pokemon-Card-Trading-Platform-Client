@@ -633,49 +633,42 @@ STRIDE 對應表：
 測試斷言：需人工登入 Supabase Studio 執行 `\d+` 核實。
 目前實況：⚠️ **治理盲區，最優先人工核實**。
 
-**T-14** ｜ MEDIUM ｜ —
-攻擊入口：`.github/copilot-instructions.md` 約 L160-168
-攻擊手法：Markdown 表格含 `Email` 與 `Passworld` 欄位，3 組測試帳號密碼以**明文**列出並已 commit 入 git。
-預期防禦：應改為指向 `.env` 變數名（如 `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD`），並輪換已洩漏憑證。
-測試斷言：靜態掃描：文檔內不得出現密碼欄位。
-目前實況：🔴 存在明文密碼欄位（本文依規範不複製內容）。
-
-**T-15** ｜ HIGH ｜ Stripe webhook（或能觸發 refund 的路徑）
+**T-14** ｜ HIGH ｜ Stripe webhook（或能觸發 refund 的路徑）
 攻擊入口：`20260729190000:605-743`（member `:667-668`，merchant `:712-713`）
 攻擊手法：`rpc_finalize_auth_refund` UPDATE 的 WHERE 只有 `refund_status IN ('processing','refunded')`，**完全無 `escrow_status` from-state 條件** → 已 `released`/`completed_and_transferred` 訂單被強制改為 `cancelled`/`refunded`，listing 由 `sold` 打回 `active`（`:723-726`）。
 預期防禦：應加 escrow from-state guard。
 測試斷言：終態訂單的 refund finalize 必被拒。
 目前實況：🔴 未防禦。
 
-**T-16** ｜ MEDIUM ｜ service_role（或未來重新 GRANT）
+**T-15** ｜ MEDIUM ｜ service_role（或未來重新 GRANT）
 攻擊入口：`20260718110000:3-84`，REVOKE 於 `20260729180000:444`
 攻擊手法：`rpc_complete_merchant_order` 遺留後門：由 `payment_held`/`authenticating`/`authenticated` 直接跳 `completed_and_transferred` + `listings='sold'`，**無 payout、無 capture、無 auth_result、無 transfer_id 檢查**。REVOKE 只針對 `authenticated`，函數**未 DROP**。
 預期防禦：應 `DROP FUNCTION`。
 測試斷言：函數不應存在。
 目前實況：🔴 未移除。`types/supabase.ts:3112` 仍導出型別。
 
-**T-17** ｜ MEDIUM ｜ 具 public schema CREATE 權限者
+**T-16** ｜ MEDIUM ｜ 具 public schema CREATE 權限者
 攻擊入口：各 migration
 攻擊手法：12 個 SECURITY DEFINER trigger 函數缺 `SET search_path`：`fn_trigger_member_order_complete`、`fn_recalculate_reputation_tags`、`fn_enforce_member_order_transitions`、`fn_handle_kyc_verified`、`fn_aggregate_user_reputation_stats`、`fn_trigger_merchant_order_complete`、`fn_recalculate_merchant_reputation_tags`、`fn_recalculate_member_reputation_tags` 等 → search_path hijack（CVE-2018-1058 類型）。
 預期防禦：全部補 `SET search_path = public`。
 測試斷言：靜態掃描：所有 SECURITY DEFINER 必須有 `SET search_path`。
 目前實況：🔴 未防禦。實際可利用性取決於 `public` schema 嘅 CREATE 權限是否已對 PUBLIC 收回（需 `\dn+ public` 核實）。
 
-**T-18** ｜ MEDIUM-HIGH ｜ 能重放 webhook 者
+**T-17** ｜ MEDIUM-HIGH ｜ 能重放 webhook 者
 攻擊入口：`app/api/stripe/webhook/route.ts:565-708`
 攻擊手法：**無 `stripe_webhook_events` 去重表**（全 codebase grep `webhook_event|event_id` 零命中），replay 防護只靠 DB 狀態機 `already_applied` + UNIQUE INDEX（屬「事後失敗」而非「事前拒絕」）。任何未來新增、缺少狀態機守衛的 handler 將直接暴露。
 預期防禦：應建立 event-id 去重表。
 測試斷言：同一 `event.id` 第二次必須 early-return。
 目前實況：⚠️ ✅ 有 `constructEventAsync` 簽名驗證（`:575-597`）。
 
-**T-19** ｜ HIGH ｜ 能寫入 PI metadata 者（Stripe Dashboard 存取權 / Key 洩漏 / 未來 metadata 注入點）
+**T-18** ｜ HIGH ｜ 能寫入 PI metadata 者（Stripe Dashboard 存取權 / Key 洩漏 / 未來 metadata 注入點）
 攻擊入口：`app/api/stripe/webhook/route.ts:113-127` → `20260830120000:212-235`
 攻擊手法：`rpc_mark_merchant_order_paid` 直接用 PI metadata 覆寫 `item_subtotal`/`total_amount`/`buyer_total_amount`/`platform_subsidy_amount`，**①不檢查 `buyer_total_amount*100 == amount_received` ②不檢查 `total == subtotal+shipping+auth` ③不檢查 `buyer_total == total - subsidy`**。唯一守衛係 `escrow_status='pending_payment'`。
 預期防禦：應在 RPC 內重新呼叫 `fn_compute_platform_subsidy` 重算，或至少斷言三條不變式。
 測試斷言：webhook 路徑的 INV-1/INV-2 必須成立。
 目前實況：🔴 未防禦。緩解：下游 `rpc_confirm_merchant_buyer_receipt`（`:164-171`）與 `rpc_prepare_merchant_order_payout`（`:1084-1091`）會延遲檢出並攔截撥款，但 `merchant_ledgers` 已被污染。
 
-**T-20** ｜ LOW-MEDIUM ｜ —
+**T-19** ｜ LOW-MEDIUM ｜ —
 攻擊入口：`app/lib/types/rbac.ts:1`
 攻擊手法：前端 `UserRole = "USER" | "MERCHANT" | "ADMIN" | "PENDING_MERCHANT"`（全大寫），真實 DB enum `user_role` 係小寫 `member`/`merchant`/`admin`。`docs/dev/database.md:34` 亦係全大寫（過時文件）。
 預期防禦：統一為 DB 小寫值。
@@ -784,11 +777,9 @@ expect(error).not.toBeNull();
 
 - 🚫 **嚴禁**任何測試腳本或 Agent 透過 Supabase Admin Service Role Key、curl、Node 腳本或 SQL 去修改現有管理員或真實用戶密碼。
 - 🚫 **嚴禁**篡改 `.env` 內任何正式 Key 或憑證。
-- ✅ 測試必須使用專屬沙盒測試帳號（env 變數名：`E2E_ADMIN_EMAIL`/`E2E_ADMIN_PASSWORD`、`E2E_BUYER_EMAIL`/`E2E_BUYER_PASSWORD`、`E2E_SELLER_EMAIL`/`E2E_SELLER_PASSWORD`、`E2E_MERCHANT_CHECKOUT_PASSWORD`）。
+- ✅ 測試必須使用專屬沙盒測試帳號 `.env.test`。
 - ✅ 或使用 Playwright storageState 預存 Session，無密碼注入（`e2e/fixtures/auth.setup.ts` → `e2e/.auth/buyer.json`、`e2e/.auth/seller.json`，已 gitignore）。
 - ✅ Integration test 用 `tests/integration/shared/vitest.setup.ts` 的 `vi.mock` seam 注入 auth context，唔需要真實密碼。
-- 📌 **待辦**：清理 `.github/copilot-instructions.md` 內的明文憑證表格，改為指向 env 變數名，並輪換已洩漏憑證。
-- 📌 **待辦**：統一規範命名——同一條鐵律喺三處有三個名（「E2E 測試資安防線」/「QA 測試資安防線」/「測試資安防線」），令 Agent 靠字串定位會撲空，建議統一命名為單一標準術語並全庫替換引用。
 
 ## 4. 第三層：Vitest 單元與邏輯整合測試
 
