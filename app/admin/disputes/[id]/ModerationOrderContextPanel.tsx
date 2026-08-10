@@ -10,7 +10,9 @@ import {
   formatModerationDateTime,
   moderationOrderPersonaLabel,
   moderationOrderSourceLabel,
+  moderationRefundStatusLabel,
 } from "@/lib/moderation/admin-case-presenters";
+import { Button } from "@/components/ui/button";
 import type {
   AdminModerationOrderSummary,
   ReportCategorySlug,
@@ -20,6 +22,10 @@ import type { Tables } from "@/types/supabase";
 type ModerationOrderContextPanelProps = {
   relatedOrders: AdminModerationOrderSummary[];
   primaryCategory: ReportCategorySlug | null;
+  caseId?: string;
+  caseOpen?: boolean;
+  isRetryPending?: boolean;
+  onRetryRefund?: (orderId: string) => void;
 };
 
 function orderDetailHref(order: AdminModerationOrderSummary): string {
@@ -52,6 +58,10 @@ function MemberOrderTimeline({
 export default function ModerationOrderContextPanel({
   relatedOrders,
   primaryCategory,
+  caseId,
+  caseOpen = true,
+  isRetryPending = false,
+  onRetryRefund,
 }: ModerationOrderContextPanelProps) {
   const showPanel =
     relatedOrders.length > 0 || primaryCategory === "fraud" || primaryCategory === "offline_trade";
@@ -109,7 +119,35 @@ export default function ModerationOrderContextPanel({
                 {order.createdAt ? (
                   <p>建立於 {formatModerationDateTime(order.createdAt)}</p>
                 ) : null}
+                {order.refundWindowEndsAt ? (
+                  <p>退款窗口至 {formatModerationDateTime(order.refundWindowEndsAt)}</p>
+                ) : null}
+                {order.refundStatus ? (
+                  <p>退款狀態：{moderationRefundStatusLabel(order.refundStatus)}</p>
+                ) : null}
+                {order.refundEligible ? (
+                  <p className="text-[#10b981]">可執行售後退款</p>
+                ) : order.refundIneligibleReason ? (
+                  <p className="text-[#8A8680]">不可退款：{order.refundIneligibleReason}</p>
+                ) : null}
               </div>
+
+              {!caseOpen &&
+              caseId &&
+              onRetryRefund &&
+              ["processing", "failed"].includes(
+                (order.refundStatus ?? "").toLowerCase(),
+              ) ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isRetryPending}
+                  onClick={() => onRetryRefund(order.id)}
+                  className="h-9 border-white/10 text-[#d4c4b7]"
+                >
+                  {isRetryPending ? "重試中…" : "重試退款"}
+                </Button>
+              ) : null}
 
               <Link
                 href={orderDetailHref(order)}

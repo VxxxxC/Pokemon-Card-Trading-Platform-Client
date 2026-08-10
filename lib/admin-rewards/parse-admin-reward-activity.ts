@@ -16,6 +16,12 @@ function parseRedemptionCatalog(
   const pointsCost = Number(row.points_cost ?? 0);
   const stock = Number(row.stock ?? 0);
 
+  const maxPerUserRaw = row.max_redemptions_per_user;
+  const maxRedemptionsPerUser =
+    maxPerUserRaw == null || maxPerUserRaw === ""
+      ? null
+      : Number(maxPerUserRaw);
+
   return {
     enabled: row.enabled === true || row.is_active === true,
     points_cost: pointsCost,
@@ -23,6 +29,10 @@ function parseRedemptionCatalog(
     is_active: row.is_active === true,
     display_order:
       row.display_order == null ? 0 : Number(row.display_order),
+    max_redemptions_per_user:
+      maxRedemptionsPerUser != null && Number.isFinite(maxRedemptionsPerUser)
+        ? maxRedemptionsPerUser
+        : null,
   };
 }
 

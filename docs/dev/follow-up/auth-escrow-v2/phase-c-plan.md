@@ -1,6 +1,7 @@
 # Auth Escrow v2 — Phase C implementation plan
 
 > **Status:** 📋 Planned (next slice after v2.1 single capture merge)  
+> **Refund rules superseded by:** [refund-policy.md](../../refund-policy.md)（fail／追償細則以 SSOT 為準）  
 > **Depends on:** `aaron-backend-wired` @ `53e7d83` (single capture pass/fail QA ✅)  
 > **SSOT:** [plan.md](./plan.md) §6–7 · [backend.md](./backend.md) § Fail & settlement
 

@@ -19,6 +19,9 @@ import type {
   AdminModerationSearchResult,
   AdminModerationSearchStatus,
   AdminReportAttachmentRow,
+  AdminSubjectModerationHistory,
+  AdminSubjectModerationPriorCase,
+  AdminSubjectSanctionHistoryRow,
   ModerationResolution,
   ReportCategorySlug,
   ResolveAdminModerationCaseInput,
@@ -34,6 +37,11 @@ import {
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
+import {
+  parsePrepareModerationOrderRefundPayload,
+  runModerationOrderRefundRetry,
+  runModerationOrderRefundSaga,
+} from "@/lib/payments/moderation-order-refund-saga";
 
 type ActionResult<T> =
   | { success: true; data: T }
@@ -59,6 +67,10 @@ type AdminModerationRpcClient = {
   rpc(
     fn: "rpc_resolve_moderation_case",
     args: Database["public"]["Functions"]["rpc_resolve_moderation_case"]["Args"],
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "admin_get_subject_moderation_history",
+    args: Database["public"]["Functions"]["admin_get_subject_moderation_history"]["Args"],
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
@@ -173,6 +185,121 @@ function parseSearchRow(value: unknown): AdminModerationCaseRow | null {
     reporterPreview: parseReporterPreview(row.reporterPreview),
     previewDetails:
       typeof row.previewDetails === "string" ? row.previewDetails : null,
+    subjectPriorUpheldCount:
+      row.subjectPriorUpheldCount === null ||
+      row.subjectPriorUpheldCount === undefined
+        ? 0
+        : Number(row.subjectPriorUpheldCount),
+  };
+}
+
+function parseSubjectHistory(
+  data: unknown,
+): AdminSubjectModerationHistory | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+  const subjectUserId =
+    typeof payload.subjectUserId === "string" ? payload.subjectUserId : null;
+  if (!subjectUserId) {
+    return null;
+  }
+
+  const statsRaw =
+    payload.stats && typeof payload.stats === "object"
+      ? (payload.stats as Record<string, unknown>)
+      : {};
+  const distinctTypes = Array.isArray(statsRaw.distinctSanctionTypes)
+    ? statsRaw.distinctSanctionTypes.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+
+  const priorCasesRaw = Array.isArray(payload.priorCases)
+    ? payload.priorCases
+    : [];
+  const priorCases = priorCasesRaw.flatMap((entry): AdminSubjectModerationPriorCase[] => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+    const row = entry as Record<string, unknown>;
+    const id = typeof row.id === "string" ? row.id : null;
+    const caseNumber = typeof row.caseNumber === "string" ? row.caseNumber : null;
+    const status = typeof row.status === "string" ? row.status : null;
+    const createdAt = typeof row.createdAt === "string" ? row.createdAt : null;
+    if (!id || !caseNumber || !status || !createdAt) {
+      return [];
+    }
+    return [
+      {
+        id,
+        caseNumber,
+        status: status as AdminSubjectModerationPriorCase["status"],
+        primaryCategory: toCategorySlug(row.primaryCategory),
+        finalScore:
+          row.finalScore === null || row.finalScore === undefined
+            ? null
+            : Number(row.finalScore),
+        resolution:
+          typeof row.resolution === "string"
+            ? (row.resolution as ModerationResolution)
+            : null,
+        createdAt,
+        resolvedAt:
+          typeof row.resolvedAt === "string" ? row.resolvedAt : null,
+      },
+    ];
+  });
+
+  const sanctionHistoryRaw = Array.isArray(payload.sanctionHistory)
+    ? payload.sanctionHistory
+    : [];
+  const sanctionHistory = sanctionHistoryRaw.flatMap(
+    (entry): AdminSubjectSanctionHistoryRow[] => {
+      if (!entry || typeof entry !== "object") {
+        return [];
+      }
+      const row = entry as Record<string, unknown>;
+      const id = typeof row.id === "string" ? row.id : null;
+      const scope = typeof row.scope === "string" ? row.scope : null;
+      const type = typeof row.type === "string" ? row.type : null;
+      const startsAt = typeof row.startsAt === "string" ? row.startsAt : null;
+      const status = row.status === "expired" ? "expired" : "active";
+      if (!id || !scope || !type || !startsAt) {
+        return [];
+      }
+      return [
+        {
+          id,
+          scope: scope as AdminSubjectSanctionHistoryRow["scope"],
+          type: type as AdminSubjectSanctionHistoryRow["type"],
+          caseId: typeof row.caseId === "string" ? row.caseId : null,
+          caseNumber:
+            typeof row.caseNumber === "string" ? row.caseNumber : null,
+          startsAt,
+          endsAt: typeof row.endsAt === "string" ? row.endsAt : null,
+          revokedAt:
+            typeof row.revokedAt === "string" ? row.revokedAt : null,
+          reason: typeof row.reason === "string" ? row.reason : null,
+          status,
+        },
+      ];
+    },
+  );
+
+  return {
+    subjectUserId,
+    stats: {
+      priorCaseCount: Number(statsRaw.priorCaseCount ?? 0),
+      upheldCount: Number(statsRaw.upheldCount ?? 0),
+      dismissedCount: Number(statsRaw.dismissedCount ?? 0),
+      reportsLast90Days: Number(statsRaw.reportsLast90Days ?? 0),
+      distinctSanctionTypes: distinctTypes,
+    },
+    priorCases,
+    sanctionHistory,
   };
 }
 
@@ -409,6 +536,21 @@ function parseOrderSummaryRow(
     source: typeof row.source === "string" ? row.source : null,
     useAuthentication: row.useAuthentication === true,
     requiresAuthentication: row.requiresAuthentication === true,
+    payoutHoldUntil:
+      typeof row.payoutHoldUntil === "string" ? row.payoutHoldUntil : null,
+    payoutStatus: typeof row.payoutStatus === "string" ? row.payoutStatus : null,
+    sellerPayoutStatus:
+      typeof row.sellerPayoutStatus === "string" ? row.sellerPayoutStatus : null,
+    authResult: typeof row.authResult === "string" ? row.authResult : null,
+    refundStatus: typeof row.refundStatus === "string" ? row.refundStatus : null,
+    orderKind: typeof row.orderKind === "string" ? row.orderKind : null,
+    refundEligible: row.refundEligible === true,
+    refundIneligibleReason:
+      typeof row.refundIneligibleReason === "string"
+        ? row.refundIneligibleReason
+        : null,
+    refundWindowEndsAt:
+      typeof row.refundWindowEndsAt === "string" ? row.refundWindowEndsAt : null,
   };
 }
 
@@ -621,6 +763,49 @@ export async function getAdminModerationCase(
   }
 }
 
+export async function getAdminSubjectModerationHistory(input: {
+  subjectUserId: string;
+  excludeCaseId?: string;
+}): Promise<ActionResult<AdminSubjectModerationHistory>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const subjectUserId = input.subjectUserId.trim();
+  if (!subjectUserId) {
+    return { success: false, error: "無效的被舉報人" };
+  }
+
+  try {
+    const supabase = asAdminModerationRpcClient(await createClient());
+    const { data, error } = await supabase.rpc(
+      "admin_get_subject_moderation_history",
+      {
+        p_subject_user_id: subjectUserId,
+        p_exclude_case_id: input.excludeCaseId?.trim() || undefined,
+        p_case_limit: 10,
+        p_sanction_limit: 20,
+      },
+    );
+
+    if (error) {
+      console.error("[getAdminSubjectModerationHistory]", error.message);
+      return { success: false, error: mapRpcError(error.message) };
+    }
+
+    const parsed = parseSubjectHistory(data);
+    if (!parsed) {
+      return { success: false, error: "無法載入歷史檔案" };
+    }
+
+    return { success: true, data: parsed };
+  } catch (error) {
+    console.error("[getAdminSubjectModerationHistory]", error);
+    return { success: false, error: "無法載入歷史檔案" };
+  }
+}
+
 export async function getAdminModerationChatThread(input: {
   caseId: string;
   roomId: string;
@@ -689,6 +874,18 @@ function buildResolvePayload(
       reason: input.sanction.reason,
     };
   }
+  payload.notifyReporter = input.notifyReporter !== false;
+
+  if (input.orderRefund?.enabled) {
+    payload.orderRefund = {
+      enabled: true,
+      orderId: input.orderRefund.orderId,
+      faultParty: input.orderRefund.faultParty,
+      ...(input.orderRefund.platformFaultReason?.trim()
+        ? { platformFaultReason: input.orderRefund.platformFaultReason.trim() }
+        : {}),
+    };
+  }
 
   return payload as Database["public"]["Functions"]["rpc_resolve_moderation_case"]["Args"]["p_payload"];
 }
@@ -744,6 +941,7 @@ export async function resolveAdminModerationCase(input: {
     status: string;
     resolution: string;
     authBanWarning?: string;
+    refundWarning?: string;
   }>
 > {
   const guard = await requireAdmin();
@@ -774,6 +972,32 @@ export async function resolveAdminModerationCase(input: {
     }
 
     let authBanWarning: string | undefined;
+    let refundWarning: string | undefined;
+
+    if (payload.orderRefundPrepared === true) {
+      const prepared = parsePrepareModerationOrderRefundPayload({
+        success: true,
+        orderKind: payload.orderKind,
+        orderId: payload.orderId,
+        paymentIntentId: payload.paymentIntentId,
+        refundCents: payload.refundCents,
+        settlementRequired: payload.settlementRequired,
+        faultParty: payload.faultParty,
+      });
+
+      if (prepared) {
+        const sagaResult = await runModerationOrderRefundSaga({
+          caseId,
+          prepared,
+        });
+        if (!sagaResult.ok) {
+          refundWarning = `案件已裁定，但售後退款失敗：${sagaResult.error}`;
+        }
+      } else {
+        refundWarning = "案件已裁定，但售後退款準備資料無效";
+      }
+    }
+
     if (input.sanction?.type === "ban" && input.sanction.scope === "account") {
       const subjectClient = await createClient();
       const { data: caseRow, error: caseError } = await subjectClient
@@ -801,10 +1025,39 @@ export async function resolveAdminModerationCase(input: {
         resolution:
           typeof payload.resolution === "string" ? payload.resolution : input.resolution,
         ...(authBanWarning ? { authBanWarning } : {}),
+        ...(refundWarning ? { refundWarning } : {}),
       },
     };
   } catch (error) {
     console.error("[resolveAdminModerationCase]", error);
     return { success: false, error: "無法完成裁定" };
+  }
+}
+
+export async function retryModerationOrderRefund(input: {
+  caseId: string;
+  orderId: string;
+}): Promise<ActionResult<{ caseId: string; orderId: string }>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const caseId = input.caseId.trim();
+  const orderId = input.orderId.trim();
+  if (!caseId || !orderId) {
+    return { success: false, error: "參數無效" };
+  }
+
+  try {
+    const sagaResult = await runModerationOrderRefundRetry({ caseId, orderId });
+    if (!sagaResult.ok) {
+      return { success: false, error: sagaResult.error };
+    }
+
+    return { success: true, data: { caseId, orderId } };
+  } catch (error) {
+    console.error("[retryModerationOrderRefund]", error);
+    return { success: false, error: "重試退款失敗" };
   }
 }

@@ -532,16 +532,23 @@ export type MemberListingFixture = {
   price: number;
 };
 
-export async function findMemberListingForIntegration(): Promise<MemberListingFixture> {
+export async function findMemberListingForIntegration(params?: {
+  excludeBuyerId?: string;
+}): Promise<MemberListingFixture> {
   const admin = createServiceRoleClient();
-  const { data, error } = await admin
+  let query = admin
     .from("listings")
     .select("id, seller_id, price, seller_persona, status")
     .eq("seller_persona", "member")
     .eq("status", "active")
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  if (params?.excludeBuyerId) {
+    query = query.neq("seller_id", params.excludeBuyerId);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(`[findMemberListingForIntegration] ${error.message}`);

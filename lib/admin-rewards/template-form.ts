@@ -83,6 +83,7 @@ export function buildDefaultPointsMallActivityForm(): AdminRewardActivityUpsertI
       points_cost: 500,
       stock: 100,
       is_active: true,
+      max_redemptions_per_user: null,
     },
   };
 }
@@ -111,6 +112,8 @@ export function applyFormFlow(
         stock: form.redemption_catalog?.stock ?? 100,
         is_active: true,
         display_order: form.redemption_catalog?.display_order,
+        max_redemptions_per_user:
+          form.redemption_catalog?.max_redemptions_per_user ?? null,
       },
     };
   }
@@ -364,6 +367,8 @@ export function activityRowToForm(
       stock: row.redemption_catalog.stock,
       is_active: row.redemption_catalog.is_active,
       display_order: row.redemption_catalog.display_order ?? 0,
+      max_redemptions_per_user:
+        row.redemption_catalog.max_redemptions_per_user ?? null,
     };
   }
 

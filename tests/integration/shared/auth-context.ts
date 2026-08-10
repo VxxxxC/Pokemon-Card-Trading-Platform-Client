@@ -3,7 +3,11 @@ import type { Database } from "@/types/supabase";
 import { authState } from "./auth-state";
 import { getIntegrationEnv } from "./env";
 
-export type SessionRole = "admin" | "buyer";
+export type SessionRole = "admin" | "buyer" | "seller";
+
+function readEnv(key: string): string | undefined {
+  return process.env[key]?.trim() || undefined;
+}
 
 type CachedSession = {
   email: string;
@@ -19,6 +23,16 @@ function getCredentials(role: SessionRole): { email: string; password: string } 
   const env = getIntegrationEnv();
   if (role === "admin") {
     return { email: env.adminEmail, password: env.adminPassword };
+  }
+  if (role === "seller") {
+    const email = readEnv("E2E_SELLER_EMAIL");
+    const password = readEnv("E2E_SELLER_PASSWORD");
+    if (!email || !password) {
+      throw new Error(
+        "Missing E2E_SELLER_EMAIL or E2E_SELLER_PASSWORD for seller session",
+      );
+    }
+    return { email, password };
   }
   return { email: env.buyerEmail, password: env.buyerPassword };
 }
@@ -97,6 +111,13 @@ export async function runAsBuyer<T>(fn: () => Promise<T>): Promise<T> {
   return fn();
 }
 
+export async function runAsSeller<T>(fn: () => Promise<T>): Promise<T> {
+  const session = await getCachedSession("seller");
+  authState.user = session.user;
+  authState.supabase = session.client;
+  return fn();
+}
+
 export async function clearSessionCache(): Promise<void> {
   for (const session of sessionCache.values()) {
     await session.client.auth.signOut().catch(() => undefined);
@@ -121,6 +142,16 @@ export function getAdminClient(): SupabaseClient<Database> {
   if (!cached?.client) {
     throw new Error(
       "Admin session not warmed; call warmSession('admin') in beforeAll",
+    );
+  }
+  return cached.client;
+}
+
+export function getSellerClient(): SupabaseClient<Database> {
+  const cached = sessionCache.get("seller");
+  if (!cached?.client) {
+    throw new Error(
+      "Seller session not warmed; call warmSession('seller') in beforeAll",
     );
   }
   return cached.client;

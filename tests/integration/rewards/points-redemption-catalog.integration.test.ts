@@ -23,6 +23,7 @@ import {
   uniqueTitle,
 } from "./helpers/fixtures";
 import { publishActivity } from "./helpers/publish";
+import { activityRowToForm } from "@/lib/admin-rewards/template-form";
 
 const RUN_ID = `catalog-${Date.now()}`;
 const TITLE_PREFIX = `Vitest Catalog ${RUN_ID}`;
@@ -413,6 +414,96 @@ describe.skipIf(!hasRewardsIntegrationEnv())("points redemption catalog", () => 
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toMatch(/搶券活動不可同時上架積分商城/);
+    }
+  });
+
+  it("I-G11 per-user lifetime limit blocks repeat redeem", async () => {
+    const title = uniqueTitle("I-G11", RUN_ID);
+    const limitedTemplateId = await publishActivity(
+      buildPointsCatalogDiscountInput(title, {
+        pointsCost: 50,
+        stock: 10,
+        maxRedemptionsPerUser: 1,
+      }),
+    );
+
+    const admin = createServiceRoleClient();
+    const { data: limitedCatalog } = await admin
+      .from("reward_redemption_catalog")
+      .select("id, max_redemptions_per_user")
+      .eq("template_id", limitedTemplateId)
+      .single();
+    expect(limitedCatalog?.max_redemptions_per_user).toBe(1);
+
+    await setBuyerPointsBalance(500);
+    const buyer = getBuyerClient();
+
+    const first = await buyer.rpc("rpc_redeem_points_catalog_item", {
+      p_catalog_id: limitedCatalog!.id,
+    });
+    expect(first.error).toBeNull();
+
+    const rows = await listCatalogForBuyer();
+    const row = rows.find((entry) => entry.catalog_id === limitedCatalog!.id);
+    expect(row).toBeTruthy();
+    expect(row!.user_redemption_count).toBe(1);
+    expect(row!.can_redeem).toBe(false);
+
+    const retry = await buyer.rpc("rpc_redeem_points_catalog_item", {
+      p_catalog_id: limitedCatalog!.id,
+    });
+    expect(retry.error?.message).toMatch(/你已達此商品的兌換上限/);
+  });
+
+  it("I-G12 admin cannot lower per-user limit below existing claims", async () => {
+    const title = uniqueTitle("I-G12", RUN_ID);
+    const limitTemplateId = await publishActivity(
+      buildPointsCatalogDiscountInput(title, {
+        pointsCost: 30,
+        stock: 10,
+        maxRedemptionsPerUser: null,
+      }),
+    );
+
+    const admin = createServiceRoleClient();
+    const { data: catalogRow } = await admin
+      .from("reward_redemption_catalog")
+      .select("id")
+      .eq("template_id", limitTemplateId)
+      .single();
+    expect(catalogRow?.id).toBeTruthy();
+
+    await setBuyerPointsBalance(500);
+    const buyer = getBuyerClient();
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const redeem = await buyer.rpc("rpc_redeem_points_catalog_item", {
+        p_catalog_id: catalogRow!.id,
+      });
+      expect(redeem.error).toBeNull();
+    }
+
+    const activity = await runAsAdmin(async () =>
+      getAdminRewardActivity(limitTemplateId),
+    );
+    expect(activity.success).toBe(true);
+    if (!activity.success) {
+      return;
+    }
+
+    const form = activityRowToForm(activity.data);
+    const update = await runAsAdmin(async () =>
+      upsertAdminRewardActivity({
+        ...form,
+        redemption_catalog: {
+          ...form.redemption_catalog!,
+          max_redemptions_per_user: 1,
+        },
+      }),
+    );
+
+    expect(update.success).toBe(false);
+    if (!update.success) {
+      expect(update.error).toMatch(/每人限兌次數不可低於已有用戶的兌換次數/);
     }
   });
 });

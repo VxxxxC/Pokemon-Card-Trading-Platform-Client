@@ -1,21 +1,25 @@
 # Admin moderation & disputes — backend
 
-> **Status:** ✅ Phase A–E+ Ready（resolve/sanctions + proxy suspend/ban + order context panel）；Phase F deferred · **Phase G planned** → [subject-history-plan.md](./subject-history-plan.md)  
-> **Policy SSOT:** [escrow-payment-policy.md](../../escrow-payment-policy.md) §8–9, §14  
+> **Status:** ✅ Phase A–E+ Ready + **Phase G subject history** + **reporter in-app outcome notifications**  
+> **v2 / pre-launch:** [v2-plan.md](./v2-plan.md) · Phase F deferred to v2  
+> **Phase G:** [subject-history-plan.md](./subject-history-plan.md) ✅ · **6-phase test plan:** [6phase-test-plan.md](./6phase-test-plan.md)  
+> **Policy SSOT:** [refund-policy.md](../../refund-policy.md)（退款 breakdown）· [escrow-payment-policy.md](../../escrow-payment-policy.md)（capture／出款）  
 > **Frontend handoff:** [frontend.md](./frontend.md)  
 > **Replaces:** mock data in `app/admin/disputes/*`
 
 ## Scope
 
-| In scope (MVP) | Out of scope (later) |
-|----------------|----------------------|
-| User reports (`reports`) → moderation cases | Full escrow refund saga on every case |
+| In scope (MVP) | Out of scope (v2 — see [v2-plan.md](./v2-plan.md)) |
+|----------------|------------------------------------------------------|
+| User reports (`reports`) → moderation cases | ✅ **Phase H** — post-sale refund saga on resolve（見 [§8 refund-policy](../../refund-policy.md#8-s3--收貨後售後phase-h舉報-resolve) + I-H verify） |
 | Category weights + case scoring + admin adjustment | ML / automated NLP on chat |
-| Report image attachments (Bunny) | Reporter appeal portal |
+| Report image attachments (Bunny) | Accused-user appeal portal |
 | Admin read-only chat thread (room-scoped) | Site-wide chat search |
 | Account sanctions (`suspend` / `ban` / persona restrict) | Chargeback dispute UI |
-| Subject history panel（重犯／歷史案件） | → [subject-history-plan.md](./subject-history-plan.md) Phase G |
-| P2P + chat-only cases (account action only) | Merge with `/admin/grading` |
+| Subject history panel（重犯／歷史案件） | ✅ Phase G — `admin_get_subject_moderation_history` |
+| Reporter outcome notification (in-app) | ✅ `outcome_acknowledged_at` + `get_unacknowledged_report_outcomes_for_me` |
+| P2P + chat-only cases (account action only) | Listing 頁直接舉報 · Phase F auto-escalation cron |
+| Chat + profile 舉報入口 | Merge with `/admin/grading` |
 
 **Sanction subject:** `profiles.id` (= one auth account per email).  
 **Sanction scope:** `account` \| `member_persona` \| `merchant_persona` (see §7).
@@ -278,7 +282,7 @@ RPC: `admin_get_moderation_chat_thread(p_case_id, p_room_id, p_limit, p_before)`
     endsAt: string | null;  // ISO; null = permanent ban
     reason: string;
   };
-  notifyReporter?: boolean;  // v1: optional email/in-app stub
+  notifyReporter?: boolean;  // default true — in-app outcome for reporters; false skips queue
 }
 ```
 
@@ -305,6 +309,9 @@ Side effects when `resolution === upheld` and sanction present:
 | `admin_get_moderation_case_bundle` | Case + reports + attachments metadata |
 | `admin_get_moderation_chat_thread` | Read-only chat; audit on call |
 | `admin_get_moderation_order_context` | Order summaries for parties |
+| `admin_get_subject_moderation_history` | Subject prior cases + sanction history (Phase G) |
+| `get_unacknowledged_report_outcomes_for_me` | Reporter pending outcome notifications |
+| `acknowledge_report_outcomes` | Mark report outcomes acknowledged |
 | `rpc_apply_account_sanction` | Insert sanction + side-effect flags |
 | `rpc_resolve_moderation_case` | Status + resolution + mark reports resolved/dismissed |
 
@@ -367,6 +374,17 @@ Store on `profiles` or `user_moderation_stats`:
 | `e2e/user-report.spec.ts` | Assert `category` column; optional attachment test |
 
 ---
+
+## Test closure
+
+✅ **6-phase test closure implemented** — [6phase-test-plan.md](./6phase-test-plan.md) · [fsm-audit.md](./fsm-audit.md) · [threat-model-moderation.md](./threat-model-moderation.md)
+
+| Gate | Command |
+|------|---------|
+| Fast (daily / pre-push) | `bun run test:moderation:gate` |
+| Full (pre-release sign-off) | `bun run test:moderation:gate:full && bun run build:ci` |
+
+Integration matrix: **26 cases** (`I-R*` / `I-M*` / `I-L*` / `I-G*` / `I-N*`) in `tests/integration/moderation/moderation-matrix.integration.test.ts`.
 
 ## Verify (backend)
 
@@ -463,5 +481,46 @@ bun run test:e2e e2e/admin-moderation.spec.ts --project=buyer -g "suspended user
 | **D** | ✅ `moderation_audit_logs` + `admin_get_moderation_chat_thread` + detail chat panel + audit log |
 | **E** | ✅ `account_sanctions` + `rpc_adjust/resolve` + chat DB block + listing action guard + detail resolve UI |
 | **E+** | ✅ `moderation_get_account_access_restriction` + `proxy.ts` + `/auth/suspended` + `auth.ban` on resolve + `admin_get_moderation_order_context` |
-| **F** | Auto-escalation cron (optional) + dashboard pending count |
-| **G** | 📋 [Subject history panel](./subject-history-plan.md) — 被舉報人歷史案件／制裁／重犯統計（只讀，唔改計分） |
+| **F** | ⏳ v2 — Auto-escalation cron + dashboard pending count（見 [v2-plan.md](./v2-plan.md)） |
+| **G** | ✅ Subject history RPC + admin panel + list badge「曾有違規」 |
+| **G+** | ✅ Reporter in-app outcome (`outcome_acknowledged_at`, resolve `notifyReporter`) |
+| **H** | ✅ Moderation post-sale refund saga — `20260910180000` + `moderation-order-refund-saga.ts` + admin resolve UI |
+| **H+** | ✅ I-H14 Stripe smoke E2E — `e2e/moderation-stripe-refund-smoke.spec.ts` + `20260911120000` capture status fix |
+| **H++** | ✅ I-H2/I-H3 auth refund confidence — `20260911130000` seeds + `test:integration:moderation` |
+
+### I-H14 verify (pre-release)
+
+```bash
+bun run stripe:webhook:listen   # required: PI → payment_held
+bun run test:e2e:moderation-stripe-smoke
+# Staging:
+PLAYWRIGHT_BASE_URL=https://<staging-host> bun run test:e2e:moderation-stripe-smoke
+```
+
+| Env | Purpose |
+|-----|---------|
+| `STRIPE_SECRET_KEY` | Real refund + assert |
+| `E2E_BUYER_*` / `E2E_SELLER_*` / `E2E_ADMIN_*` | Checkout, fulfill, admin resolve |
+| `SUPABASE_SERVICE_ROLE_KEY` | Seed case + DB asserts |
+| `PLAYWRIGHT_BASE_URL` | Optional staging host |
+
+Not included in `test:moderation:gate:full` (secrets + ~3–5 min + webhook).
+
+### I-H2 / I-H3 verify (integration)
+
+```bash
+bunx supabase db push   # through 20260911140000
+bun run test:integration:moderation
+```
+
+Covers `merchant_auth` and `member_auth` prepare paths with fake `pi_phase_h_*` (no Stripe). Member listing fixture excludes buyer `seller_id`.
+
+---
+
+## 退款政策
+
+| 資源 | 用途 |
+|------|------|
+| [refund-policy.md](../../refund-policy.md) | 退款 SSOT（S0–S4、breakdown、fault_party） |
+| [REFUND_ADMIN_PLAYBOOK.md](./REFUND_ADMIN_PLAYBOOK.md) | Admin 操作速查 |
+| [refund-policy §12](../../refund-policy.md#12-實作對照與缺口) | Target vs code 缺口（PR2 buyer fault fail、PR3 member finalize / carrier UI） |

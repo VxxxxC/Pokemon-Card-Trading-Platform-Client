@@ -126,8 +126,31 @@ export function moderationAuditActionLabel(action: string): string {
       return "套用帳戶制裁";
     case "resolve":
       return "裁定結案";
+    case "prepare_order_refund":
+      return "準備售後退款";
+    case "finalize_order_refund":
+      return "完成售後退款";
+    case "refund_failed":
+      return "售後退款失敗";
     default:
       return action;
+  }
+}
+
+export function moderationRefundStatusLabel(
+  status: string | null | undefined,
+): string {
+  switch (status?.toLowerCase()) {
+    case "processing":
+      return "退款處理中";
+    case "failed":
+      return "退款失敗";
+    case "refunded":
+      return "已退款";
+    case "none":
+      return "未退款";
+    default:
+      return status ?? "—";
   }
 }
 
@@ -144,6 +167,12 @@ export function moderationResolutionLabel(
     default:
       return resolution ?? "—";
   }
+}
+
+export function sanctionHistoryStatusLabel(
+  status: "active" | "expired",
+): string {
+  return status === "expired" ? "已過期" : "生效中";
 }
 
 export function sanctionTypeLabel(type: string | null | undefined): string {

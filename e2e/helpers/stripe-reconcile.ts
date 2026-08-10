@@ -43,7 +43,7 @@ function createE2eAdminClient() {
   });
 }
 
-function createE2eStripeClient(): Stripe {
+export function createE2eStripeClient(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secretKey) {
     throw new Error("Missing STRIPE_SECRET_KEY for Stripe reconcile E2E");

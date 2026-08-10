@@ -151,6 +151,8 @@ export type AdminRedemptionCatalogInput = {
   stock: number;
   is_active: boolean;
   display_order?: number;
+  /** Lifetime per-user cap; null/undefined = unlimited */
+  max_redemptions_per_user?: number | null;
 };
 
 export type AdminRewardActivitySchedule = {
@@ -189,6 +191,8 @@ export type PointsRedemptionCatalogView = {
   catalogId: string;
   pointsCost: number;
   stock: number;
+  userRedemptionCount: number;
+  maxRedemptionsPerUser: number | null;
   canRedeem: boolean;
   userPointsBalance: number;
   template: {

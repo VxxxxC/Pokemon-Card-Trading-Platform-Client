@@ -1,10 +1,10 @@
 # Platform Rewards v2 — Phase 4（積分商城 · Points Redemption Catalog）
 
-> **Status:** 📋 Planned — doc only; no migrations or app code yet  
+> **Status:** ✅ Shipped — Partner QA Part G 2026-08-09  
 > **Depends on:** Platform Rewards Phase 1–3 ✅ · `fn_redeem_member_points` (`20260706170000`) · `fn_issue_reward_from_template` · member persona guards  
 > **Unlocks:** Member persona spends PTS to redeem `discount_coupon` / `free_shipping` coupons from an admin-configured catalog  
 > **Master plan:** [plan.md](./plan.md) §7.5 · §Phase 4  
-> **Integration queue:** No dedicated Phase 4 row yet — add to [INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md) when backend work starts (see §Implementation phases)
+> **Integration queue:** [INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md) — Phase 4 row ✅
 
 ## 目標
 
@@ -34,9 +34,8 @@
 | 項目 | 原因 / 歸屬 |
 |------|-------------|
 | 獨立 `/profile/user/rewards/points-shop` 或新 tab | 產品定案：同一頁區塊即可 |
-| 實體禮品 / SKU 物流 | **v2 goods** — deferred |
+| 實體禮品 / SKU 物流 | **Future v2** — 見 [plan.md §Future v2](./plan.md#future-v2計劃中未排期) |
 | `points` 類型 catalog 項目 | MVP 只發券，不「用積分換積分」 |
-| `lucky_draw_ticket` | 香港牌照 — 維持封存 |
 | Merchant 專屬積分帳戶 | 商戶 **無** 積分；見 §Persona rules |
 | Checkout 用券變更 | Phase 2/2b/5 已覆蓋；Phase 4 只 **發券到 wallet** |
 | SQL-seed-only catalog | Admin UI 為 SSOT；seed 僅供 local/E2E fixture |
@@ -95,7 +94,7 @@ CREATE INDEX idx_redemption_catalog_active
 
 - `reward_templates.type IN ('discount_coupon', 'free_shipping')`
 - `reward_templates.status = 'active'` 且 `is_active = true`
-- **禁止** `points`、`lucky_draw_ticket`
+- **禁止** `points` 類型上架 catalog
 - Member list：**回傳所有 `catalog.is_active = true` 項目**（含 `stock = 0`），以 `can_redeem = false` + UI「已兌完」標示售罄；**唔** server-side filter `stock > 0`
 
 ### Access / RLS
@@ -280,7 +279,7 @@ RETURNS JSONB
 
 **Reference — issue coupon:** [`fn_issue_reward_from_template`](../../../supabase/migrations/20260705183000_reward_template_claim_limits.sql)（canonical；含 `max_claims` / `claimed_count`）
 
-**Per-user redemption（MVP）：** 無 `max_redemptions_per_user`；用戶積分足夠可重複兌換同一 SKU（每次獨立 `user_rewards`）。Phase 4b 可再加每人限次。
+**Per-user redemption：** Phase 4 MVP 無每人限次；**Phase 4b** 新增 `max_redemptions_per_user`（終身，`NULL` = 不限）。見下方 §Phase 4b。
 
 ---
 
@@ -404,36 +403,46 @@ flowchart TD
 
 ### Phase 4a — DB + RPC（Backend）
 
-- [ ] Migration `reward_redemption_catalog` (+ optional claims)
-- [ ] Patch `rpc_admin_upsert_reward_activity` / get activity JSON
-- [ ] `rpc_list_points_redemption_catalog`
-- [ ] `rpc_redeem_points_catalog_item`（atomic 三步）
-- [ ] `bun run supabase:types` → `types/supabase.ts`
+- [x] Migration `reward_redemption_catalog` (+ optional claims)
+- [x] Patch `rpc_admin_upsert_reward_activity` / get activity JSON
+- [x] `rpc_list_points_redemption_catalog`
+- [x] `rpc_redeem_points_catalog_item`（atomic 三步）
+- [x] `bun run supabase:types` → `types/supabase.ts`
 
 **Acceptance:** SQL 手動 redeem 後 `point_ledger` + `user_rewards` + `stock` 一致。
 
 ### Phase 4b — Admin UI
 
-- [ ] `RewardActivityForm` — 上架積分商城區塊
-- [ ] `AdminRewardActivityUpsertInput` + `buildActivityPayload` 擴展
-- [ ] 僅 coupon types 顯示欄位
+- [x] `RewardActivityForm` — 積分商城分離 flow（**新增積分商城商品**）
+- [x] `AdminRewardActivityUpsertInput` + `buildActivityPayload` 擴展
+- [x] 僅 coupon types 顯示 catalog；`points` 隱藏
 
 **Acceptance:** Admin 建立 HK$10 券 template + 500 PTS / 100 stock → member list 可見。
 
+### Phase 4e — Per-user redemption limits
+
+- [x] Migration `20260910140000` — `max_redemptions_per_user` on `reward_redemption_catalog`
+- [x] Patch `_admin_sync_redemption_catalog`, `rpc_list_points_redemption_catalog`, `rpc_redeem_points_catalog_item`
+- [x] Admin `RewardActivityForm` — **每人限兌（終身）**（留空 = 不限）
+- [x] Member `PointsRedemptionSection` — 已兌 N/M、按鈕「已達上限」
+- [x] Vitest `I-G11`（達限拒絕）、`I-G12`（Admin 不可調低於既有兌換次數）
+
+**Acceptance:** 設定限 1 次 → 兌換後 `can_redeem=false`；再次 redeem → `你已達此商品的兌換上限`。
+
 ### Phase 4c — Member UI + actions
 
-- [ ] `listPointsRedemptionCatalog` / `redeemPointsCatalogItem`
-- [ ] `PointsRedemptionSection` below Flash, above coupon tabs
-- [ ] `guardMemberPersonaPersonalFeatures` on all paths
+- [x] `listPointsRedemptionCatalog` / `redeemPointsCatalogItem`
+- [x] `PointsRedemptionSection` below Flash, above coupon tabs
+- [x] `guardMemberPersonaPersonalFeatures` on all paths
 
 **Acceptance:** Member 兌換後券出現在折價券中心；商戶 persona 無法兌換。
 
 ### Phase 4d — QA & docs
 
-- [ ] Vitest `I-G*`
-- [ ] Update [backend.md](./backend.md), [frontend.md](./frontend.md)
-- [ ] Add **Platform rewards v2 — Phase 4** row to [INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md)
-- [ ] [QA_CHECKLIST.md](./QA_CHECKLIST.md) Part G（可從本檔測試表複製）
+- [x] Vitest `I-G*`
+- [x] Update [backend.md](./backend.md), [frontend.md](./frontend.md)
+- [x] Add **Platform rewards v2 — Phase 4** row to [INTEGRATION_QUEUE.md](../../INTEGRATION_QUEUE.md)
+- [x] [QA_CHECKLIST.md](./QA_CHECKLIST.md) Part G — Partner ✅ 2026-08-09
 
 **Release gate:** extend `bun run test:rewards:gate` when E2E added.
 
@@ -452,11 +461,13 @@ flowchart TD
 
 Phase 4 兌換的免運券能否用於 member 鑑定 checkout，取決於 template `restrictions.order_kinds` — Admin 配置責任，非 Phase 4 RPC 強制。
 
-### v2 physical goods — **deferred**
+### Future v2 — physical goods（計劃中，未排期）
+
+對齊 [plan.md §Future v2](./plan.md#future-v2計劃中未排期)：
 
 - 新 `reward_type` 或 catalog `kind = physical_sku`
 - 收貨地址、庫存 WMS、出貨狀態
-- 可能需獨立 fulfillment 表 — **不在 MVP**
+- 可能需獨立 fulfillment 表
 
 ---
 
@@ -486,3 +497,5 @@ Phase 4 兌換的免運券能否用於 member 鑑定 checkout，取決於 templa
 |------|--------|
 | 2026-08-09 | 初稿：無新頁、MVP coupon catalog、member-only points、admin 上架積分商城、RPC/actions/UI 合約、測試與 Phase 5 關係 |
 | 2026-08-09 | Review pass：template `is_infinite` vs catalog stock、RLS、admin early-return、售罄 list 行為、persona MVP、I-G10 |
+| 2026-08-09 | **Shipped：** migrations 30000–30300、split Admin flow、Part G Partner QA ✅ |
+| 2026-08-09 | Roadmap：實體禮品 → Future v2；抽獎券移出 roadmap（見 plan.md §Cancelled） |

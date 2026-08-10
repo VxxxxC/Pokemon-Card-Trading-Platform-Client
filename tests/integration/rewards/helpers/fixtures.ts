@@ -215,7 +215,11 @@ export function buildMemberAuthFreeShippingInput(
 
 export function buildPointsCatalogDiscountInput(
   title: string,
-  options?: { pointsCost?: number; stock?: number },
+  options?: {
+    pointsCost?: number;
+    stock?: number;
+    maxRedemptionsPerUser?: number | null;
+  },
 ): AdminRewardActivityUpsertInput {
   const base = buildAutoGrantDiscountInput(title);
   return {
@@ -227,6 +231,7 @@ export function buildPointsCatalogDiscountInput(
       stock: options?.stock ?? 5,
       is_active: true,
       display_order: 0,
+      max_redemptions_per_user: options?.maxRedemptionsPerUser ?? null,
     },
   };
 }

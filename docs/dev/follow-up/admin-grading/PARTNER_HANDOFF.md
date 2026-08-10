@@ -5,6 +5,7 @@
 **Scope:** Member C2C 鑑定單 · Stripe manual PI · **single full capture at pass** · Admin 鑑定工作台  
 **Backend:** Aaron track  
 **Frontend / QA:** Partner  
+**退款政策:** [refund-policy §7](../../refund-policy.md#7-s1--鑑定失敗grading-fail) · [REFUND_ADMIN_PLAYBOOK.md](../admin-moderation/REFUND_ADMIN_PLAYBOOK.md)
 
 ---
 

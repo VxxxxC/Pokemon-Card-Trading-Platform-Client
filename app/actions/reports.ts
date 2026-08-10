@@ -6,7 +6,12 @@ import {
   resolveReportCategoryInput,
 } from "@/lib/moderation/category-config";
 import { REPORT_EVIDENCE_MAX_COUNT } from "@/lib/moderation/report-evidence-files";
-import type { SubmitUserReportRpcResult } from "@/lib/moderation/types";
+import type {
+  ModerationResolution,
+  ReportOutcomeNotification,
+  SubmitUserReportRpcResult,
+} from "@/lib/moderation/types";
+import { reportOutcomeMessage } from "@/lib/moderation/report-outcome-copy";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/types/supabase";
@@ -264,5 +269,137 @@ export async function submitUserReport(
   } catch (error) {
     console.error("[submitUserReport]", error);
     return { success: false, error: "提交舉報時發生錯誤" };
+  }
+}
+
+export type GetUnacknowledgedReportOutcomesResult =
+  | { success: true; data: ReportOutcomeNotification[] }
+  | { success: false; error: string };
+
+type ReportOutcomeRpcClient = {
+  rpc(
+    fn: "get_unacknowledged_report_outcomes_for_me",
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "acknowledge_report_outcomes",
+    args: { p_report_ids: string[] },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+};
+
+function asReportOutcomeRpcClient(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): ReportOutcomeRpcClient {
+  return supabase as unknown as ReportOutcomeRpcClient;
+}
+
+function parseReportOutcomeNotifications(
+  data: unknown,
+): ReportOutcomeNotification[] {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return data.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+    const row = entry as Record<string, unknown>;
+    const reportId = typeof row.reportId === "string" ? row.reportId : null;
+    const caseId = typeof row.caseId === "string" ? row.caseId : null;
+    const caseNumber = typeof row.caseNumber === "string" ? row.caseNumber : null;
+    if (!reportId || !caseId || !caseNumber) {
+      return [];
+    }
+    const resolution =
+      typeof row.resolution === "string"
+        ? (row.resolution as ModerationResolution)
+        : null;
+    return [
+      {
+        reportId,
+        caseId,
+        caseNumber,
+        resolution,
+        resolvedAt:
+          typeof row.resolvedAt === "string" ? row.resolvedAt : null,
+        message: reportOutcomeMessage(resolution),
+      },
+    ];
+  });
+}
+
+export async function getUnacknowledgedReportOutcomes(): Promise<GetUnacknowledgedReportOutcomesResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "請先登入" };
+  }
+
+  try {
+    const { data, error } = await asReportOutcomeRpcClient(supabase).rpc(
+      "get_unacknowledged_report_outcomes_for_me",
+    );
+
+    if (error) {
+      console.error("[getUnacknowledgedReportOutcomes]", error.message);
+      return { success: false, error: "無法載入舉報結果通知" };
+    }
+
+    return { success: true, data: parseReportOutcomeNotifications(data) };
+  } catch (error) {
+    console.error("[getUnacknowledgedReportOutcomes]", error);
+    return { success: false, error: "無法載入舉報結果通知" };
+  }
+}
+
+export async function acknowledgeReportOutcomes(
+  reportIds: string[],
+): Promise<{ success: true; updated: number } | { success: false; error: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  const uniqueIds = [...new Set(reportIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { success: true, updated: 0 };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { success: false, error: "請先登入" };
+  }
+
+  try {
+    const { data, error } = await asReportOutcomeRpcClient(supabase).rpc(
+      "acknowledge_report_outcomes",
+      { p_report_ids: uniqueIds },
+    );
+
+    if (error) {
+      console.error("[acknowledgeReportOutcomes]", error.message);
+      return { success: false, error: "無法確認通知" };
+    }
+
+    const payload = data as Record<string, unknown> | null;
+    return {
+      success: true,
+      updated: Number(payload?.updated ?? 0),
+    };
+  } catch (error) {
+    console.error("[acknowledgeReportOutcomes]", error);
+    return { success: false, error: "無法確認通知" };
   }
 }

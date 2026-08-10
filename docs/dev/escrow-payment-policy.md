@@ -2,7 +2,8 @@
 
 > **版本**：v0.1  
 > **狀態**：設計定案（未完全落地）  
-> **取代**：與本文件衝突之舊 `server.md` 付款描述，以本文件為準。
+> **取代**：與本文件衝突之舊 `server.md` 付款描述，以本文件為準。  
+> **退款細則（情境／breakdown／責任方）**：以 [refund-policy.md](./refund-policy.md) 為準；本文件 §6–§9 為摘要。
 
 本文件定義四類訂單的收款、capture、退款、出款、責任分攤與 Admin 操作。實作里程碑見 [§14](#14-實作里程碑)。
 
@@ -30,7 +31,7 @@
 
 | 項目 | 規則 |
 |------|------|
-| **鑑定費（auth_fee）** | 預設 HK$150；**任何情況不退**，除非 Admin 判定 `platform` fault 之例外（須 audit） |
+| **鑑定費（auth_fee）** | 預設 HK$150；**入庫後鑑定服務已開始** — 退留依 `fault_party` 與階段（S1 fail / S3 售後）；細則見 [refund-policy §4](./refund-policy.md#4-鑑定費auth_fee總規則) |
 | **Stripe processing fee** | 未 capture 即 void → 目標 **零** processing fee；已 capture 後 refund → **Stripe 不退還已收 processing fee** |
 | **Fee 轉嫁** | 預設由 **Member 賣家 / Merchant** 承擔（`seller_payable` / merchant ledger）；`platform` fault 由平台 absorb；`buyer` fault 由買家承擔（**減少應退金額**，不額外向卡 charge） |
 | **Merchant 佣金** | 卡價 8%（第一版）；條款註明 **已包含 payment processing 成本**；售後 refund 之不可回收 stripe fee 另計入 merchant ledger |
@@ -50,7 +51,7 @@
 1. **Checkout**：建立 PI，authorize 全額 → `requires_capture` → `payment_capture_status = authorized`
 2. **Admin 確認入庫**：`capture(auth_fee)` → `auth_fee_captured`；進入 **鑑定鎖定期**
 3. **鑑定通過**：`capture(item_subtotal + shipping_fee)` → `fully_captured`
-4. **鑑定失敗（入庫後）**：釋放未 capture 餘額；已 capture 之 auth_fee **保留**
+4. **鑑定失敗（入庫後）**：依 `fault_party` 處理 D 與釋放餘額 — 見 [refund-policy §7](./refund-policy.md#7-s1--鑑定失敗grading-fail)。Legacy staged：已 capture D 視 fault 留／退；single 新單多為 `PI.cancel` 或 capture D only（buyer fault，**PR2**）
 5. **入庫前取消**：`payment_intent.cancel`；全額未 capture → 無 processing fee
 
 ### 2.3 Unified checkout 與兩條出款路（2026-07 sync）
@@ -119,15 +120,17 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 
 ## 6. 鑑定失敗
 
-| 步驟 | 動作 |
+> **退款細則 SSOT**：[refund-policy §7](./refund-policy.md#7-s1--鑑定失敗grading-fail)
+
+| 情境 | 摘要 |
 |------|------|
 | Admin fail | 必填 `fault_party` + 原因 |
-| **Single capture（新單）** | PI `cancel` → 買家全額退回（卡價 + 鑑定費 + 兩段運費）；**無** processing fee |
-| **Legacy staged** | 先 `refund` 已 capture（鑑定費 + inbound），再 `capture(0)` 釋放餘額 |
-| **賣方責任（`fault_party = seller`）** | Member → `seller_receivables`（single：追償 `buyer_total_amount`；legacy：已退買家金額）；Merchant → `merchant_ledgers` `grading_fail_recovery`；`seller_settlement_status = pending` → Admin 收款 → `cleared` → 寄回賣家 tracking |
-| 訂單 | Member → `cancelled`；Merchant → `refunded` |
-| Listing | 回 `active` |
-| Stripe fee | Single void → 零 fee；legacy 已 capture 部分按 fault 記入 seller/merchant payable |
+| **Single + seller fault** | `PI.cancel` 全釋（含 D）→ 追賣家（現行 code ✅） |
+| **Single + buyer fault** | **目標**：capture D only，釋放 A+B+C — **PR2 前 code 仍 full cancel** |
+| **Single + platform / carrier / inconclusive** | 目標多為全釋含 D — 見 refund-policy §7.2 |
+| **Legacy staged** | Refund 已 capture + `capture(0)`；fault 矩陣見 refund-policy §7.3 |
+| 訂單終態 | Member → `cancelled`；Merchant → `refunded`；listing → `active` |
+| 追償 | Seller fault → `seller_receivables` / `merchant_ledgers` `grading_fail_recovery` |
 
 ---
 
@@ -135,13 +138,31 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 
 **Enum**：`buyer | seller | platform | carrier | inconclusive`
 
-| fault | Stripe fee 承擔 | 卡價／運費（已 capture 須 refund 時） |
-|-------|-----------------|--------------------------------------|
+> **售後 breakdown 與 Stripe fee 分攤**：[refund-policy §5](./refund-policy.md#5-stripe-processing-fee-規則)、[§8](./refund-policy.md#8-s3--收貨後售後phase-h舉報-resolve)
+
+### S1 — Grading fail（摘要）
+
+| fault | 買家（single 目標） | D（鑑定費） |
+|-------|---------------------|-------------|
+| `seller` / `platform` / `carrier` / `inconclusive` | 全釋（含 D） | 退畀買家 |
+| `buyer` | A+B+C | **留平台**（PR2 前 code 仍全釋） |
+
+### S3 — 收貨後售後（摘要）
+
+| fault | eligible（鑑定 pass 後） | D |
+|-------|--------------------------|---|
+| `seller` / `buyer` / `carrier` | A+C（唔含 D） | 留平台 |
+| `platform`（有原因） | A+C+D | 退畀買家 |
+| `inconclusive` | 同 seller 對買家 eligible；UI → **PR3** | 留平台（除 platform fault） |
+
+### Stripe fee（已 capture 後 refund）
+
+| fault | Stripe fee 承擔 | 卡價／運費 |
+|-------|-----------------|------------|
 | `seller` | seller payable | 全退 buyer |
-| `buyer` | buyer（少退） | 不退或 `eligible - stripe_fee_actual` |
+| `buyer` | buyer（少退） | `eligible - stripe_fee_actual` |
 | `platform` | platform | 全退 buyer |
-| `carrier` | seller（賣家物流）或 platform（平台物流） | 全退 buyer |
-| `inconclusive` | 各 50% stripe fee | 全退 buyer；auth fee 仍不退 |
+| `carrier` | seller 或 platform（視物流） | 全退 buyer |
 
 **Stripe fee 公式（已 capture 後 refund）**：
 
@@ -180,6 +201,8 @@ Checkout **唔負責**出款；T+3 / T+7 只喺買家確認後啟動。
 ---
 
 ## 9. 收貨後售後（Post-delivery）
+
+> **退款 breakdown SSOT**：[refund-policy §8](./refund-policy.md#8-s3--收貨後售後phase-h舉報-resolve) · Admin 操作：[REFUND_ADMIN_PLAYBOOK.md](./follow-up/admin-moderation/REFUND_ADMIN_PLAYBOOK.md)
 
 | 類型 | 窗口 | 可申訴範圍 | 平台動作 |
 |------|------|------------|----------|

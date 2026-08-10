@@ -1,10 +1,10 @@
 # Admin Moderation — Subject History Panel (Phase G)
 
-> **Status:** 📋 Planned（優化時再做）  
+> **Status:** 📋 Planned（優化時再做） → ✅ **Shipped 2026-08-09**  
 > **Depends on:** Phase A–E+ ✅（`/admin/disputes` live）  
 > **Blocked by:** Nothing  
 > **Policy:** 永久 `ban` 仍 **Admin only, never auto** — 本 phase 只提供**只讀上下文**，不改計分／自動制裁  
-> **Related:** [backend.md](./backend.md) · [frontend.md](./frontend.md) · Phase F（auto-escalation cron）仍 deferred，與本 phase 獨立
+> **Related:** [backend.md](./backend.md) · [frontend.md](./frontend.md) · Phase F（auto-escalation cron）→ [v2-plan.md](./v2-plan.md)
 
 ---
 
@@ -242,18 +242,18 @@ Index note：已有 `moderation_cases (subject_user_id, created_at DESC)`、`acc
 | **G4** | Hint banner（§4.5） | P1 |
 | **G5** | E2E: seed 2 cases same subject → detail shows prior case | P1 |
 
-**Phase F**（auto-escalation cron / dashboard pending）維持獨立 deferred，唔與 G 合併。
+**Phase F**（auto-escalation cron / dashboard pending）→ [v2-plan.md](./v2-plan.md)，唔與 G 合併。
 
 ---
 
 ## 8. Acceptance checklist
 
-- [ ] Admin 開啟案件詳情 → 見「被舉報人歷史檔案」
-- [ ] 同一 subject 有 2+ 案件 → 列表顯示舊案（不含本案）含 case_number link
-- [ ] 7 日 suspend 已過期 → 制裁歷史仍顯示 `expired`
-- [ ] 本案 `finalScore` 顯示不受 history 影響
-- [ ] 非 admin → action 拒絕
-- [ ] `bunx tsc --noEmit` · `bun run lint` · `bun run build:ci`
+- [x] Admin 開啟案件詳情 → 見「被舉報人歷史檔案」
+- [x] 同一 subject 有 2+ 案件 → 列表顯示舊案（不含本案）含 case_number link
+- [x] 7 日 suspend 已過期 → 制裁歷史仍顯示 `expired`
+- [x] 本案 `finalScore` 顯示不受 history 影響
+- [x] 非 admin → action 拒絕
+- [x] Vitest `I-G1`–`I-G3` · `bunx tsc --noEmit` · `bun run build:ci`
 
 ---
 

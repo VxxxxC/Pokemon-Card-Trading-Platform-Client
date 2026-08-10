@@ -8,6 +8,7 @@ import type {
 export type ModerationResolutionOptionValue =
   | "dismissed"
   | "insufficient_evidence"
+  | "upheld_warn_only"
   | "suspend_7d"
   | "ban_permanent"
   | "restrict_member_listing"
@@ -33,6 +34,12 @@ export const MODERATION_RESOLUTION_OPTIONS: ModerationResolutionOption[] = [
     label: "證據不足",
     requiresUpheld: false,
     disabledWhenEvidenceInsufficient: false,
+  },
+  {
+    value: "upheld_warn_only",
+    label: "裁定成立（僅警告／可選退款）",
+    requiresUpheld: true,
+    disabledWhenEvidenceInsufficient: true,
   },
   {
     value: "suspend_7d",
@@ -91,6 +98,11 @@ export function mapResolutionOptionToInput(
       return { resolution: "dismissed" };
     case "insufficient_evidence":
       return { resolution: "insufficient_evidence" };
+    case "upheld_warn_only":
+      return {
+        resolution: "upheld",
+        violationPersona,
+      };
     case "suspend_7d":
       return {
         resolution: "upheld",

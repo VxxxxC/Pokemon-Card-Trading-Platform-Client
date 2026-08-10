@@ -1,6 +1,7 @@
 # Admin grading workbench — backend
 
 > **Status:** ✅ P1 Ready · 🟡 Partner QA  
+> **Refund policy:** [refund-policy §7](../../refund-policy.md#7-s1--鑑定失敗grading-fail) · **Admin 速查:** [REFUND_ADMIN_PLAYBOOK.md](../admin-moderation/REFUND_ADMIN_PLAYBOOK.md)  
 > **Partner handoff:** [PARTNER_HANDOFF.md](./PARTNER_HANDOFF.md)
 
 ## Files
@@ -19,6 +20,8 @@
 | `supabase/migrations/20260901140000_auth_escrow_single_capture.sql` | Single-capture auth escrow: intake no capture, pass full capture |
 | `supabase/migrations/20260901160000_admin_auth_pass_grading.sql` | `auth_grading_company` / `auth_grading_score`; grading required on pass RPCs |
 | `supabase/migrations/20260901170000_admin_grading_fail_single_capture_fix.sql` | Restore admin grading-fail trigger whitelist; single-capture `rpc_finalize_auth_grading_fail` |
+| `supabase/migrations/20260912120000_grading_fail_buyer_fault_single.sql` | PR2: buyer fault `capture_auth_fee_only`; seller settlement restore; `search_admin_grading_orders` preview fields |
+| `supabase/migrations/20260912130000_grading_fail_member_trigger_bypass.sql` | Re-restore admin grading-fail trigger whitelist after moderation migration regression |
 
 ## Migrations / env
 
@@ -37,7 +40,7 @@ All exports return `{ success: true, data } | { success: false, error }`.
 | `adminConfirmGradingIntake` | **single:** `rpc_prepare_auth_intake_confirm` → optional re-auth (`auth-authorization-refresh`) → `rpc_finalize_auth_intake_confirm`（**no Stripe capture**） · **legacy:** `rpc_prepare_auth_fee_capture` → partial capture → `rpc_finalize_auth_fee_capture` | 分流：`rpc_get_auth_escrow_capture_model`（admin SECURITY DEFINER，唔經 participant RLS）；single: `authorized` + `platform_received_at`；legacy: `auth_fee_captured` |
 | `adminPassGrading` | `rpc_prepare_goods_capture(p_auth_grading_*)` → `stripe.paymentIntents.capture` → `rpc_finalize_goods_capture` | **Required** `gradingOptionId` (non-RAW `GRADING_OPTIONS`); persists `auth_grading_*`. **single:** full `buyer_total`, **omit** `final_capture`; **legacy:** goods leg + `final_capture: true` |
 | `adminSubmitGradingOutbound` | `rpc_admin_submit_grading_outbound` | Requires `auth_result=passed` |
-| `adminFailGradingAndRefund` | `rpc_prepare_auth_grading_fail` → single: `paymentIntents.cancel` · legacy: `capture(0)` → `rpc_finalize_auth_grading_fail` | single: void uncaptured PI; legacy: void remainder after partial capture |
+| `adminFailGradingAndRefund` | `rpc_prepare_auth_grading_fail` → single buyer: `capture(auth_fee)` · single other: `PI.cancel` · legacy: `capture(0)` → `rpc_finalize_auth_grading_fail` | single buyer: retain D; single seller: void + receivable |
 | `getAdminGradingAuditHistory` | `get_admin_grading_audit_history` | Admin read via session client |
 
 Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/finalize RPCs (`_grading_require_admin()` needs `auth.uid()`). Webhook `finalize*FromWebhook` and `rpc_mark_auth_grading_fail_failed` use service-role `createAdminClient()`.
@@ -46,8 +49,15 @@ Admin-triggered sagas (`run*Saga`) use session `createClient()` for prepare/fina
 
 ## Fail / void policy (P1)
 
-- **single（authorized，入庫後）：** `paymentIntents.cancel` — 買家無扣款
-- **legacy（auth_fee_captured）：** `refund(auth_fee + inbound)` then `capture(0)` when `fault_party = seller`（Phase C）；其他 fault 僅 `capture(0)`
+> **Target breakdown:** [refund-policy §7](../../refund-policy.md#7-s1--鑑定失敗grading-fail) · **現況 vs target:** [§12](../../refund-policy.md#12-實作對照與缺口)
+
+| 路徑 | 現行 code | Target |
+|------|-----------|--------|
+| **single + buyer fault** | `capture(D, final_capture)` | Capture D only，釋放 A+B+C | ✅ PR2 |
+| **single + seller fault** | `PI.cancel` 全釋 → 追賣家 | ✅ 一致 |
+| **legacy + seller fault** | `refund(D+B)` + `capture(0)` | ✅ 大致一致 |
+| **legacy + other fault** | `capture(0)` only | 見 refund-policy §7.3 |
+
 - `fault_party` enum: `buyer | seller | platform | carrier | inconclusive` (required on fail)
 - Idempotency key: `auth-grading-fail-capture-zero:<orderKind>:<orderId>` (must differ from legacy `auth-grading-fail-void:*` used with `cancel`)
 - Legacy `rpc_finalize_auth_refund` + `refund.created` webhook kept for manual recovery only

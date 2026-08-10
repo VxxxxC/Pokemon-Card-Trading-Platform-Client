@@ -432,6 +432,51 @@ bun run test:e2e e2e/admin-moderation.spec.ts --project=guest
 bun run test:e2e e2e/admin-moderation.spec.ts
 ```
 
+### Moderation release gate (`MODERATION_GATE`)
+
+Full pre-release bundle (same env as integration + E2E above):
+
+| Variable | Used for |
+|----------|----------|
+| `E2E_BUYER_*` | Reporter flows, outcome modal |
+| `E2E_ADMIN_*` | Admin resolve (UI + `resolveModerationCaseForE2e`) |
+| `E2E_SELLER_ID` | Subject fixture |
+| `E2E_SELLER_EMAIL` / `E2E_SELLER_PASSWORD` | **Required** for full moderation integration matrix (`hasFullModerationIntegrationEnv`) — I-E3, I-N6, AB-9 |
+
+```bash
+# Fast: tsc + integration (31) + unit/PBT helpers
+bun run test:moderation:gate
+
+# Full: fast + PBT + Stryker mutation + E2E (user-report, admin-moderation, report-outcome-notification)
+MODERATION_GATE=1 bun run test:moderation:gate:full
+```
+
+E2E order in gate: `user-report` → `admin-moderation` → `report-outcome-notification` (E2E-N1 is self-contained on buyer project). New cases: **E2E-R6**, **E2E-G5**, **E2E-N1**, **E2E-AB5a/b**, **E2E-AB6**, **E2E-AB7**, **E2E-AB8**.
+
+CI: [`.github/workflows/moderation-integration.yml`](../../.github/workflows/moderation-integration.yml) (label `moderation`, nightly, or manual dispatch) runs `bun run test:integration:moderation` with full `E2E_*` secrets.
+
+### Moderation Stripe refund smoke (I-H14, pre-release)
+
+Real `merchant_direct` checkout → buyer confirm (in refund window) → admin resolve with optional refund → Stripe + DB terminal state.
+
+| Variable | Required |
+|----------|----------|
+| `STRIPE_SECRET_KEY` | Yes |
+| `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` | Yes |
+| `E2E_SELLER_EMAIL` / `E2E_SELLER_PASSWORD` / `E2E_SELLER_ID` | Yes (aligned) |
+| `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` | Yes |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes |
+| `PLAYWRIGHT_BASE_URL` | Optional (default `http://localhost:3000`; set for staging) |
+
+```bash
+bun run stripe:webhook:listen
+bun run test:e2e:moderation-stripe-smoke
+# alias:
+bun run test:moderation:stripe-smoke
+```
+
+Playwright starts `bun run dev` via `webServer` unless a server is already running (`reuseExistingServer`). Skips cleanly when `STRIPE_SECRET_KEY` is unset. Requires migration `20260911120000`.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |

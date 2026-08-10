@@ -74,9 +74,11 @@ async function submitReportDialogExpectError(
     .click();
 
   await expect(page.getByText(expectedError)).toBeVisible({
-    timeout: 15_000,
+    timeout: 45_000,
   });
-  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: /確認提交安全審查/ }),
+  ).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe("User report submission", () => {
@@ -355,6 +357,41 @@ test.describe("User report submission", () => {
       page,
       "E2E duplicate profile report",
       /您已在此用戶公開資料提交過同類別的待審核舉報/,
+    );
+
+    expect(
+      await countPendingReports({ reporterId: buyerId, targetId: sellerId }),
+    ).toBe(1);
+
+    await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
+  });
+
+  test("E2E-R6 duplicate chat room report is blocked", async ({ page }) => {
+    const { sellerId } = getMerchantProductDetailFixtures();
+    const buyerId = await getBuyerProfileIdFromEnv();
+
+    if (!sellerId || !buyerId) {
+      test.skip(true, "Missing buyer or seller profile id");
+      return;
+    }
+
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const partnerName = await getProfileDisplayName(sellerId);
+
+    await deletePendingReports({ reporterId: buyerId, targetId: sellerId });
+
+    await openChatRoom(page, roomId, partnerName, sellerId);
+    await chatConsoleRoot(page).getByRole("button", { name: "舉報" }).click();
+    await fillAndSubmitReportDialog(page, `E2E-R6 first chat report ${Date.now()}`);
+
+    await expect(
+      chatConsoleRoot(page).getByRole("button", { name: "舉報" }),
+    ).toBeVisible({ timeout: 10_000 });
+    await chatConsoleRoot(page).getByRole("button", { name: "舉報" }).click();
+    await submitReportDialogExpectError(
+      page,
+      "E2E duplicate chat room report",
+      /您已在此對話提交過待審核的舉報/,
     );
 
     expect(

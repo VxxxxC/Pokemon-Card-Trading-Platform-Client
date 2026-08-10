@@ -137,6 +137,11 @@ function validateRedemptionCatalog(
     return "商城庫存不可為負數";
   }
 
+  const maxPerUser = catalog.max_redemptions_per_user;
+  if (maxPerUser != null && maxPerUser <= 0) {
+    return "每人限兌必須大於 0，或留空表示不限";
+  }
+
   return null;
 }
 
@@ -162,6 +167,7 @@ export function RewardActivityForm({
     points_cost: 500,
     stock: 100,
     is_active: false,
+    max_redemptions_per_user: null,
   };
   const showTriggerConditions = shouldShowAutoGrantTriggers(
     mode,
@@ -1033,6 +1039,36 @@ export function RewardActivityForm({
                         },
                       })
                     }
+                    className={fieldInput}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="catalog-max-per-user" className={fieldLabel}>
+                    每人限兌（終身）
+                  </Label>
+                  <Input
+                    id="catalog-max-per-user"
+                    type="number"
+                    min={1}
+                    placeholder="留空表示不限"
+                    value={
+                      redemptionCatalog.max_redemptions_per_user == null
+                        ? ""
+                        : String(redemptionCatalog.max_redemptions_per_user)
+                    }
+                    onChange={(event) => {
+                      const raw = event.target.value.trim();
+                      handleChange({
+                        ...form,
+                        redemption_catalog: {
+                          ...redemptionCatalog,
+                          enabled: true,
+                          is_active: true,
+                          max_redemptions_per_user:
+                            raw === "" ? null : Number(raw || 0),
+                        },
+                      });
+                    }}
                     className={fieldInput}
                   />
                 </div>

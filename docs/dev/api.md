@@ -440,15 +440,18 @@ type MemberDashboardTradingStats = {
 | `POST` | `[Server Action] adminConfirmGradingIntake` | `{ orderKind, orderId }` | `{ applied: true }` | ADMIN |
 | `POST` | `[Server Action] adminPassGrading` | `{ orderKind, orderId, gradingOptionId, notes? }` | `{ applied: true }` — goods capture saga → `fully_captured` + `auth_grading_*` | ADMIN |
 | `POST` | `[Server Action] adminSubmitGradingOutbound` | `{ orderKind, orderId, trackingNo }` | `{ applied: true }` | ADMIN |
-| `POST` | `[Server Action] adminFailGradingAndRefund` | `{ orderKind, orderId, faultParty, reason? }` | `{ applied: true }` — void uncaptured balance (auth fee retained) | ADMIN |
+| `POST` | `[Server Action] adminFailGradingAndRefund` | `{ orderKind, orderId, faultParty, reason? }` | `{ applied: true }` — single buyer: capture auth_fee; single seller/platform: PI cancel; legacy: capture(0) | ADMIN |
 | `GET` | `[Server Action] getAdminGradingAuditHistory` | `{ orderKind, orderId }` | `AuditRow[]` | ADMIN |
-| `POST` | `[Server Action] submitUserReport` | `{ reportedUserId, category, details?, chatRoomId?, attachmentIds? }` | `{ success, reportId? }` | USER+ |
+| `POST` | `[Server Action] submitUserReport` | `{ reportedUserId, category, details?, chatRoomId?, attachmentIds? }` | `{ success, reportId?, caseId?, caseNumber? }` | USER+ |
+| `GET` | `[Server Action] getUnacknowledgedReportOutcomes` ✅ Phase G+ | — | `{ reportId, caseNumber, resolution, message }[]` — copy from `moderation_cases.resolution` | USER+ |
+| `POST` | `[Server Action] acknowledgeReportOutcomes` ✅ Phase G+ | `reportIds[]` | `{ updated }` | USER+ |
 | `POST` | `/api/reports/upload-evidence` | multipart image (≤5MB, max 3) | `{ attachmentId, publicUrl }` | USER+ |
-| `GET` | `[Server Action] searchAdminModerationCases` ✅ Phase C | `{ page?, status?, category?, minScore?, search? }` | `{ rows, total, pendingCount }` | ADMIN |
+| `GET` | `[Server Action] searchAdminModerationCases` ✅ Phase C | `{ page?, status?, category?, minScore?, search? }` | `{ rows, total, pendingCount }` — rows include `subjectPriorUpheldCount` (Phase G) | ADMIN |
 | `GET` | `[Server Action] getAdminModerationCase` ✅ Phase C | `caseId` | case bundle (reports, attachments, chatAccess, auditLog, activeSanctions, **relatedOrders**; read-only order summaries) | ADMIN |
+| `GET` | `[Server Action] getAdminSubjectModerationHistory` ✅ Phase G | `{ subjectUserId, excludeCaseId? }` | prior cases + sanction history + stats | ADMIN |
 | `GET` | `[Server Action] getAdminModerationChatThread` ✅ Phase D | `{ caseId, roomId, before? }` | paginated messages + audit `view_chat` on first page | ADMIN |
 | `POST` | `[Server Action] adjustAdminModerationCaseScore` ✅ Phase E | `{ caseId, adjustment, reason? }` | `{ caseId }` | ADMIN |
-| `POST` | `[Server Action] resolveAdminModerationCase` ✅ Phase E/E+ | `{ caseId, resolution, violationPersona?, sanction?, evidenceOverrideReason? }` | `{ caseId, status, resolution, authBanWarning? }` — permanent `ban` triggers `auth.admin` ban + global signOut | ADMIN |
+| `POST` | `[Server Action] resolveAdminModerationCase` ✅ Phase E/E+ | `{ caseId, resolution, violationPersona?, sanction?, evidenceOverrideReason?, notifyReporter? }` | `{ caseId, status, resolution, authBanWarning? }` — `notifyReporter` default true; permanent `ban` triggers `auth.admin` ban | ADMIN |
 | `GET` | `[RPC] moderation_get_account_access_restriction` ✅ Phase E+ | `{ p_user_id }` (self or admin) | `{ blocked, type?, endsAt?, reason? }` — used by `proxy.ts` |
 
 > 完整契約見 [follow-up/admin-moderation/backend.md](./follow-up/admin-moderation/backend.md)。

@@ -14,6 +14,10 @@ export function hasBaseIntegrationEnv(): boolean {
   );
 }
 
+export function hasGradingStripeSmokeEnv(): boolean {
+  return hasBaseIntegrationEnv() && Boolean(readEnv("STRIPE_SECRET_KEY"));
+}
+
 export function getIntegrationEnv() {
   const url = readEnv("NEXT_PUBLIC_SUPABASE_URL");
   const anonKey = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");

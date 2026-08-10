@@ -1,13 +1,14 @@
 # Platform Rewards v2 — Plan（積分 · 折扣 · 免運）
 
-> **Status:** 🟡 Planned  
+> **Status:** 🟢 Phase 1–4 shipped · Phase 5 in progress  
 > **Depends on:** Existing `reward_templates` / `user_rewards` / `point_ledger` (migrations `20260705180000`–`20260705188000`, `20260719150000`–`20260719170000`)  
-> **Explicitly out of scope:** `lucky_draw_ticket`（香港牌照 — 維持封存）  
-> **Phase 4:** 積分兌換區塊嵌入 `/profile/user/rewards`（見 [phase-4-plan.md](./phase-4-plan.md)）
+> **Phase 4:** ✅ 積分兌換區塊嵌入 `/profile/user/rewards`（見 [phase-4-plan.md](./phase-4-plan.md)）  
+> **Future v2（計劃中）：** `percent_off` 折扣券、實體禮品 / SKU 物流（見 §10 Future v2）  
+> **永久不做（已移出 roadmap）：** `lucky_draw_ticket` 抽獎券、Member C2C `discount_coupon` checkout（見 §10 Cancelled）
 
 ## 1. Goals
 
-1. **三種平台獎勵：** `points`、`discount_coupon`、`free_shipping`（無抽獎券）。
+1. **三種平台獎勵：** `points`、`discount_coupon`（固定金額 `amount_hkd`）、`free_shipping`。
 2. **三種取得方式：** 簽到、條件達成（交易宗數等）、限時主動搶。
 3. **Admin 可配置：** 活動倒數、領取/使用期限、全站與每人限額、適用範圍（含 merchant 非鑑定免運 + **補貼上限**）。
 4. **Checkout 用券：** 折扣與免運共用 **平台補貼 + order snapshot**；佣金仍按原 `item_subtotal` × 8%，不罰商戶。
@@ -31,15 +32,15 @@
 
 | Asset | Status |
 |-------|--------|
-| `reward_templates` | ✅ DB + seed（points、coupon、archived lucky draw） |
+| `reward_templates` | ✅ DB + seed（`points`、`discount_coupon`、`free_shipping`） |
 | `user_rewards` | ✅ 發放、dedup、`acknowledged_at` |
-| `fn_try_auto_grant_rewards` | ✅ 條件達成自動發（skip `lucky_draw_ticket`） |
+| `fn_try_auto_grant_rewards` | ✅ 條件達成自動發 |
 | `get_reward_coupon_center` | ✅ wallet + locked catalog |
 | `execute_daily_check_in` | ✅ 簽到 PTS 階梯（**獨立於 template**） |
 | Checkout 用券 | ❌ 未接；`api.md` 標註優惠券暫不折扣 |
 | Admin rewards CRUD | ❌ 僅 migration seed；`/admin/campaigns` 為 mock UI |
 | `reward_campaigns` | ❌ 無表 |
-| 積分換領商城 | ❌ 無 catalog / UI |
+| 積分換領商城 | ✅ Phase 4 — `reward_redemption_catalog` + `PointsRedemptionSection` |
 
 ### Existing trigger kinds (`trigger_conditions.kind`)
 
@@ -52,9 +53,11 @@
 
 **簽到獎勵：** 每日階梯 + 簽滿 7 日加碼由 `check_in_program` + `execute_daily_check_in` 處理，不再經獎勵活動觸發條件。
 
-### Existing `reward_type` enum
+### Supported `reward_type` values (v2)
 
-`points` | `discount_coupon` | `free_shipping` | `lucky_draw_ticket`（封存，勿新建）
+`points` | `discount_coupon` | `free_shipping`
+
+> DB enum 可能仍含 legacy `lucky_draw_ticket` 列 — **不新建、不擴展、不納入產品 roadmap**。
 
 ---
 
@@ -72,9 +75,10 @@
 
 | Field | Schema |
 |-------|--------|
-| `reward_value` | `{ "amount_hkd"?, "percent_off"?, "min_spend_hkd"?, "max_discount_hkd"? }` |
+| `reward_value` | **MVP：** `{ "amount_hkd", "min_spend_hkd"? }` · **Future v2：** `percent_off`, `max_discount_hkd`（見 §10） |
 | Checkout | `platform_subsidy_amount` = 折抵額（cap 後） |
 | 佣金 | 仍按 **原** `item_subtotal` × 8% |
+| Checkout 範圍 | **僅 merchant** 路徑（`merchant_direct` / `merchant_auth`）；Member C2C 折扣券 **不做** |
 
 ### 3.3 Free shipping (`free_shipping`)
 
@@ -135,7 +139,7 @@ platform_subsidy  = discount 金額 或 min(shipping_fee, max_subsidy_hkd)
 
 | Field | Purpose |
 |-------|---------|
-| `order_kinds` | `['merchant']`（v1 checkout）；Member C2C 後續 |
+| `order_kinds` | `merchant`（商戶 checkout）；`member` 僅 Phase 5 **免運券**（`member_auth`），**不含** C2C 折扣券 |
 | `requires_authentication` | `true` / `false` / `any` |
 | `shipping_methods` | `['sf']`（免運必填） |
 | `min_item_subtotal_hkd` | 滿額門檻 |
@@ -362,16 +366,16 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 
 ---
 
-### Phase 4 — 積分商城（嵌入獎勵頁）
+### Phase 4 — 積分商城（嵌入獎勵頁）✅
 
 **Goal:** 會員 persona 用積分兌換 `discount_coupon` / `free_shipping`（無新 route）。
 
-**詳細實作計劃：** [phase-4-plan.md](./phase-4-plan.md)
+**詳細實作計劃：** [phase-4-plan.md](./phase-4-plan.md) — **Partner QA Part G ✅ 2026-08-09**
 
-- [ ] `reward_redemption_catalog`
-- [ ] `rpc_list_points_redemption_catalog` + `rpc_redeem_points_catalog_item` → `fn_redeem_member_points` + `fn_issue_reward_from_template` + 扣 stock
-- [ ] Admin「上架積分商城」in `RewardActivityForm` / `rpc_admin_upsert_reward_activity`
-- [ ] `/profile/user/rewards` → `PointsRedemptionSection`（Flash 下方、折價券中心上方）
+- [x] `reward_redemption_catalog`
+- [x] `rpc_list_points_redemption_catalog` + `rpc_redeem_points_catalog_item` → `fn_redeem_member_points` + `fn_issue_reward_from_template` + 扣 stock
+- [x] Admin「新增積分商城商品」分離 flow
+- [x] `/profile/user/rewards` → `PointsRedemptionSection`（Flash 下方、折價券中心上方）
 
 ---
 
@@ -391,6 +395,20 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 - 平台補貼成本 admin 報表
 - `manual_claim` 條件獎勵
 - 爭議單人工處理券狀態
+
+### Future v2（計劃中，未排期）
+
+| 項目 | 說明 |
+|------|------|
+| **`percent_off` 折扣券** | 擴展 `discount_coupon` `reward_value` + checkout subsidy 計算 + Admin 表單 |
+| **實體禮品 / SKU 物流** | Catalog `kind = physical_sku`、收貨地址、庫存 / 出貨狀態（見 [phase-4-plan.md §v2 goods](./phase-4-plan.md#v2-physical-goods--deferred)） |
+
+### Cancelled（永久不做，已移出 roadmap）
+
+| 項目 | 原因 |
+|------|------|
+| **`lucky_draw_ticket` 抽獎券** | 香港牌照風險；不實作、不擴展 |
+| **Member C2C `discount_coupon` checkout** | 產品定案：C2C 鑑定單僅支援免運（Phase 5）；折扣券僅 merchant 路徑 |
 
 ---
 
@@ -423,3 +441,4 @@ Existing to keep: `fn_try_auto_grant_rewards`, `get_reward_coupon_center`, `exec
 |------|--------|
 | 2026-07-29 | Initial plan — 三類獎勵、Template+Campaign、checkout 補貼、Phase 1–4 |
 | 2026-08-04 | Phase 2 收窄為僅 `merchant_direct` 非鑑定；新增 Phase 2b；§6.3 payout 定案；券預留 `reserved_merchant_order_id`；§6.4 + Phase 2 implementation checklist |
+| 2026-08-09 | Roadmap：Future v2 = `percent_off` + 實體禮品；Cancelled = 抽獎券 + Member C2C 折扣券 |

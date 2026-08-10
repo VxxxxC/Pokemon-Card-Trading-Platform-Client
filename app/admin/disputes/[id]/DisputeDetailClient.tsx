@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   adjustAdminModerationCaseScore,
   resolveAdminModerationCase,
+  retryModerationOrderRefund,
 } from "@/app/actions/admin-moderation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,13 +42,16 @@ import {
 } from "@/lib/moderation/resolution-config";
 import type {
   AdminModerationCaseBundle,
+  AdminSubjectModerationHistory,
   ViolationPersona,
 } from "@/lib/moderation/types";
 import ModerationChatThreadPanel from "./ModerationChatThreadPanel";
 import ModerationOrderContextPanel from "./ModerationOrderContextPanel";
+import ModerationSubjectHistoryPanel from "./ModerationSubjectHistoryPanel";
 
 interface DisputeDetailClientProps {
   bundle: AdminModerationCaseBundle;
+  subjectHistory: AdminSubjectModerationHistory | null;
 }
 
 function isCaseOpen(status: AdminModerationCaseBundle["case"]["status"]): boolean {
@@ -56,6 +60,7 @@ function isCaseOpen(status: AdminModerationCaseBundle["case"]["status"]): boolea
 
 export default function DisputeDetailClient({
   bundle,
+  subjectHistory,
 }: DisputeDetailClientProps) {
   const router = useRouter();
   const [isAdjustPending, startAdjustTransition] = useTransition();
@@ -87,6 +92,16 @@ export default function DisputeDetailClient({
   >("");
   const [evidenceOverride, setEvidenceOverride] = useState(false);
   const [evidenceOverrideReason, setEvidenceOverrideReason] = useState("");
+  const [notifyReporter, setNotifyReporter] = useState(true);
+  const [executeOrderRefund, setExecuteOrderRefund] = useState(false);
+  const [refundOrderId, setRefundOrderId] = useState("");
+  const [faultParty, setFaultParty] = useState<"seller" | "buyer" | "platform" | "">(
+    "",
+  );
+  const [platformFaultReason, setPlatformFaultReason] = useState("");
+  const [isRetryPending, startRetryTransition] = useTransition();
+
+  const eligibleRefundOrders = relatedOrders.filter((order) => order.refundEligible);
 
   const handleSaveScoreAdjustment = () => {
     const adjustment = Number(scoreAdjustment);
@@ -143,6 +158,21 @@ export default function DisputeDetailClient({
       return;
     }
 
+    if (requiresUpheld && executeOrderRefund) {
+      if (!refundOrderId) {
+        toast.error("請選擇要退款的訂單");
+        return;
+      }
+      if (!faultParty) {
+        toast.error("請選擇退款責任方");
+        return;
+      }
+      if (faultParty === "platform" && !platformFaultReason.trim()) {
+        toast.error("平台責任退款必須填寫原因");
+        return;
+      }
+    }
+
     const resolveInput = mapResolutionOptionToInput(
       resolutionOption,
       violationPersona || undefined,
@@ -152,10 +182,22 @@ export default function DisputeDetailClient({
       resolveInput.evidenceOverrideReason = evidenceOverrideReason.trim();
     }
 
+    if (requiresUpheld && executeOrderRefund && refundOrderId && faultParty) {
+      resolveInput.orderRefund = {
+        enabled: true,
+        orderId: refundOrderId,
+        faultParty,
+        ...(faultParty === "platform"
+          ? { platformFaultReason: platformFaultReason.trim() }
+          : {}),
+      };
+    }
+
     startResolveTransition(async () => {
       const result = await resolveAdminModerationCase({
         caseId: caseDetail.id,
         ...resolveInput,
+        notifyReporter,
       });
 
       if (!result.success) {
@@ -165,6 +207,10 @@ export default function DisputeDetailClient({
 
       if (result.data.authBanWarning) {
         toast.warning(result.data.authBanWarning);
+      }
+
+      if (result.data.refundWarning) {
+        toast.warning(result.data.refundWarning);
       }
 
       toast.success("案件已裁定結案");
@@ -266,6 +312,13 @@ export default function DisputeDetailClient({
           ) : null}
         </div>
       </div>
+
+      {subjectHistory ? (
+        <ModerationSubjectHistoryPanel
+          history={subjectHistory}
+          currentFinalScore={caseDetail.finalScore}
+        />
+      ) : null}
 
       {!chatAccess.evidenceSufficient ? (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-sans text-[13px] text-[#ef4444]">
@@ -468,6 +521,23 @@ export default function DisputeDetailClient({
           <ModerationOrderContextPanel
             relatedOrders={relatedOrders}
             primaryCategory={caseDetail.primaryCategory}
+            caseId={caseDetail.id}
+            caseOpen={caseOpen}
+            isRetryPending={isRetryPending}
+            onRetryRefund={(orderId) => {
+              startRetryTransition(async () => {
+                const result = await retryModerationOrderRefund({
+                  caseId: caseDetail.id,
+                  orderId,
+                });
+                if (!result.success) {
+                  toast.error(result.error);
+                  return;
+                }
+                toast.success("已重新提交售後退款");
+                router.refresh();
+              });
+            }}
           />
 
           <div
@@ -543,6 +613,92 @@ export default function DisputeDetailClient({
                     </div>
                   ) : null}
 
+                  {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
+                    <div className="space-y-3 rounded-xl border border-white/[0.06] bg-[#17130f] p-3">
+                      <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
+                        <input
+                          type="checkbox"
+                          name="executeOrderRefund"
+                          checked={executeOrderRefund}
+                          onChange={(event) =>
+                            setExecuteOrderRefund(event.target.checked)
+                          }
+                          disabled={isResolvePending}
+                        />
+                        執行售後退款
+                      </label>
+                      {executeOrderRefund ? (
+                        <>
+                          <div>
+                            <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
+                              退款訂單
+                            </label>
+                            {eligibleRefundOrders.length === 0 ? (
+                              <p className="font-sans text-[12px] text-[#8A8680]">
+                                無符合條件的關聯訂單
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {eligibleRefundOrders.map((order) => (
+                                  <label
+                                    key={order.id}
+                                    className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]"
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="refundOrderId"
+                                      value={order.id}
+                                      checked={refundOrderId === order.id}
+                                      onChange={() => setRefundOrderId(order.id)}
+                                      disabled={isResolvePending}
+                                    />
+                                    {order.orderNumber ?? order.id.slice(0, 8)}
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
+                              退款責任方
+                            </label>
+                            <select
+                              name="faultParty"
+                              value={faultParty}
+                              onChange={(event) =>
+                                setFaultParty(
+                                  event.target.value as
+                                    | "seller"
+                                    | "buyer"
+                                    | "platform"
+                                    | "",
+                                )
+                              }
+                              disabled={isResolvePending}
+                            >
+                              <option value="">請選擇</option>
+                              <option value="seller">賣家責任</option>
+                              <option value="buyer">買家責任</option>
+                              <option value="platform">平台責任</option>
+                            </select>
+                          </div>
+                          {faultParty === "platform" ? (
+                            <textarea
+                              name="platformFaultReason"
+                              rows={2}
+                              placeholder="平台責任原因"
+                              value={platformFaultReason}
+                              onChange={(event) =>
+                                setPlatformFaultReason(event.target.value)
+                              }
+                              disabled={isResolvePending}
+                            />
+                          ) : null}
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   {!chatAccess.evidenceSufficient ? (
                     <div className="space-y-2">
                       <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
@@ -569,6 +725,17 @@ export default function DisputeDetailClient({
                       ) : null}
                     </div>
                   ) : null}
+
+                  <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
+                    <input
+                      type="checkbox"
+                      name="notifyReporter"
+                      checked={notifyReporter}
+                      onChange={(event) => setNotifyReporter(event.target.checked)}
+                      disabled={isResolvePending}
+                    />
+                    通知舉報人結果（in-app）
+                  </label>
                 </div>
 
                 <Button

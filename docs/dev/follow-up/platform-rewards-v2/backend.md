@@ -1,6 +1,6 @@
 # Platform Rewards v2 — backend
 
-> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified (merchant_direct) · **Phase 2b:** 🟡 auth multicapture coupons · **Phase 4:** ⏸ on hold
+> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified (merchant_direct) · **Phase 2b:** ✅ Partner verified · **Phase 4:** ✅ Partner verified
 
 ## Admin activity workflow (2026-08 refactor)
 
@@ -162,4 +162,25 @@ bun run supabase:types
 
 ## Verify
 
-Partner QA: **[QA_CHECKLIST.md](./QA_CHECKLIST.md)** — Parts A–B verified; Part D (2b) ✅; **Part E (Phase 3) ✅ 2026-07-29**
+Partner QA: **[QA_CHECKLIST.md](./QA_CHECKLIST.md)** — Parts A–B verified; Part D (2b) ✅; **Part E (Phase 3) ✅ 2026-07-29**; **Part G (Phase 4) ✅ 2026-08-09**
+
+## Phase 4 — Points redemption catalog
+
+Migrations: `20260910130000`–`20260910130300`
+
+| Table / RPC | Notes |
+|-------------|-------|
+| `reward_redemption_catalog` | `points_cost`, `stock`, `is_active`; 1:1 with `reward_templates` |
+| `rpc_list_points_redemption_catalog` | Member list; `can_redeem` + stock |
+| `rpc_redeem_points_catalog_item` | Atomic: deduct PTS + issue coupon + decrement stock |
+| `rpc_admin_upsert_reward_activity` (patch) | Catalog sync; `trigger_conditions: none` when catalog enabled |
+| `rpc_admin_set_reward_template_status` (patch) | Publish validation includes catalog context |
+
+### Server actions
+
+| Action | Notes |
+|--------|-------|
+| `listPointsRedemptionCatalog`, `redeemPointsCatalogItem` | `app/actions/rewards.ts` — member persona guard |
+| `upsertAdminRewardActivity` (patch) | Strips catalog for non-coupon types; forces trigger `none` |
+
+**Verify:** `bun run test:integration:rewards` → `points-redemption-catalog.integration.test.ts` (I-G1–I-G10)

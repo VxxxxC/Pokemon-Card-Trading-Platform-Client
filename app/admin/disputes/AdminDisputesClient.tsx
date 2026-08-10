@@ -295,9 +295,20 @@ function AdminDisputesContent({
                       onClick={() => handleRowClick(c.id)}
                     >
                       <TableCell>
-                        <span className="font-mono text-[13px] font-medium text-[#eae1da]">
-                          {c.caseNumber}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono text-[13px] font-medium text-[#eae1da]">
+                            {c.caseNumber}
+                          </span>
+                          {(c.status === "open" || c.status === "reviewing") &&
+                          (c.subjectPriorUpheldCount ?? 0) >= 1 ? (
+                            <Badge
+                              variant="outline"
+                              className="w-fit bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border-[#f59e0b]/20"
+                            >
+                              曾有違規
+                            </Badge>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">

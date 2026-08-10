@@ -1618,6 +1618,7 @@ export type ModerationCaseAuditRow = {
   subject_user_id: string;
   status: string;
   final_score: number | null;
+  primary_category?: string | null;
 };
 
 export async function getLatestModerationCaseForSubject(
@@ -1651,7 +1652,7 @@ export async function getLatestModerationCaseWithChatRoom(
 
   const { data: cases, error: casesError } = await admin
     .from("moderation_cases")
-    .select("id, case_number, subject_user_id, status, final_score, created_at")
+    .select("id, case_number, subject_user_id, status, final_score, created_at, primary_category")
     .eq("subject_user_id", subjectId)
     .order("created_at", { ascending: false })
     .limit(20);
@@ -1835,4 +1836,211 @@ export async function deleteAccountSanctionsForUser(userId: string): Promise<voi
     }
     throw new Error(`[deleteAccountSanctionsForUser] ${error.message}`);
   }
+}
+
+export async function countResolvedModerationCasesForSubject(
+  subjectId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+  const { count, error } = await admin
+    .from("moderation_cases")
+    .select("id", { count: "exact", head: true })
+    .eq("subject_user_id", subjectId)
+    .in("status", ["resolved", "dismissed"]);
+
+  if (error) {
+    throw new Error(
+      `[countResolvedModerationCasesForSubject] ${error.message}`,
+    );
+  }
+
+  return count ?? 0;
+}
+
+export async function resolveModerationCaseForE2e(params: {
+  caseId: string;
+  resolution?: "dismissed" | "insufficient_evidence" | "upheld";
+  notifyReporter?: boolean;
+}): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const email = process.env.E2E_ADMIN_EMAIL?.trim();
+  const password = process.env.E2E_ADMIN_PASSWORD?.trim();
+
+  if (!url || !anonKey || !email || !password) {
+    throw new Error(
+      "Missing Supabase public env or E2E admin credentials for moderation resolve",
+    );
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (signInError) {
+    throw new Error(
+      `[resolveModerationCaseForE2e] sign-in failed: ${signInError.message}`,
+    );
+  }
+
+  const { error } = await client.rpc("rpc_resolve_moderation_case", {
+    p_case_id: params.caseId,
+    p_payload: {
+      resolution: params.resolution ?? "dismissed",
+      notifyReporter: params.notifyReporter ?? true,
+    },
+  });
+  if (error) {
+    throw new Error(`[resolveModerationCaseForE2e] ${error.message}`);
+  }
+}
+
+export async function getAdminProfileIdFromEnv(): Promise<string | null> {
+  const email = process.env.E2E_ADMIN_EMAIL?.trim();
+  if (!email) {
+    return null;
+  }
+
+  return getProfileIdByEmail(email);
+}
+
+export async function expireAccountSanctionForE2e(userId: string): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error, status } = await admin
+    .from("account_sanctions")
+    .update({ ends_at: new Date(Date.now() - 60_000).toISOString() })
+    .eq("user_id", userId)
+    .eq("type", "suspend");
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return;
+    }
+    throw new Error(`[expireAccountSanctionForE2e] ${error.message}`);
+  }
+}
+
+export async function unbanUserForE2e(userId: string): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    ban_duration: "none",
+  });
+
+  if (error) {
+    throw new Error(`[unbanUserForE2e] ${error.message}`);
+  }
+}
+
+export async function insertOpenFraudCaseForE2e(params: {
+  subjectId: string;
+  reporterId: string;
+  suffix: string;
+}): Promise<string> {
+  const admin = createE2eAdminClient();
+  const caseNumber = `E2E-BAN-${params.suffix}-${Date.now()}`;
+
+  const { data: moderationCase, error: caseError } = await admin
+    .from("moderation_cases")
+    .insert({
+      case_number: caseNumber,
+      subject_user_id: params.subjectId,
+      status: "open",
+      primary_category: "fraud",
+      auto_score: 40,
+      admin_adjustment: 0,
+    })
+    .select("id")
+    .single();
+
+  if (caseError) {
+    throw new Error(`[insertOpenFraudCaseForE2e:case] ${caseError.message}`);
+  }
+
+  const { error: reportError } = await admin.from("reports").insert({
+    reporter_id: params.reporterId,
+    target_id: params.subjectId,
+    target_type: "user",
+    reason: "E2E AB-7 ban fixture",
+    status: "pending",
+    category: "fraud",
+    case_id: moderationCase.id,
+    source: "profile",
+    contribution_score: 40,
+  });
+
+  if (reportError) {
+    await admin.from("moderation_cases").delete().eq("id", moderationCase.id);
+    throw new Error(`[insertOpenFraudCaseForE2e:report] ${reportError.message}`);
+  }
+
+  return moderationCase.id;
+}
+
+export async function hasActiveBanSanctionForUser(userId: string): Promise<boolean> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("account_sanctions")
+    .select("id, type, revoked_at, ends_at")
+    .eq("user_id", userId)
+    .eq("type", "ban");
+
+  if (error) {
+    throw new Error(`[hasActiveBanSanctionForUser] ${error.message}`);
+  }
+
+  return (data ?? []).some(
+    (row) =>
+      row.revoked_at == null &&
+      (row.ends_at == null || new Date(row.ends_at).getTime() > Date.now()),
+  );
+}
+
+export async function isSellerPasswordSignInBlocked(): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const email = process.env.E2E_SELLER_EMAIL?.trim();
+  const password = process.env.E2E_SELLER_PASSWORD?.trim();
+
+  if (!url || !anonKey || !email || !password) {
+    throw new Error("Missing seller auth env for ban assertion");
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error } = await client.auth.signInWithPassword({ email, password });
+  return Boolean(error);
+}
+
+export async function getLatestMemberOrderForPair(params: {
+  buyerId: string;
+  sellerId: string;
+}): Promise<{ id: string; orderNumber: string | null } | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("member_orders")
+    .select("id, order_number")
+    .eq("buyer_id", params.buyerId)
+    .eq("seller_id", params.sellerId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getLatestMemberOrderForPair] ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    id: data.id,
+    orderNumber: data.order_number ?? null,
+  };
 }

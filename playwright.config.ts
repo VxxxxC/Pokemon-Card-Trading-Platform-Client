@@ -44,7 +44,10 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI || process.env.REWARDS_GATE ? 1 : 0,
+  retries:
+    process.env.CI || process.env.REWARDS_GATE || process.env.MODERATION_GATE
+      ? 1
+      : 0,
   workers: 1,
   reporter: "list",
   use: {

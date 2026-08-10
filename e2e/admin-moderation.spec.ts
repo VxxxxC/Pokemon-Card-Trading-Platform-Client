@@ -1,16 +1,24 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   countModerationAuditLogsForCase,
+  countResolvedModerationCasesForSubject,
   deleteAccountSanctionsForUser,
+  expireAccountSanctionForE2e,
+  getAdminProfileIdFromEnv,
   getBuyerProfileIdFromEnv,
+  getLatestMemberOrderForPair,
   getLatestModerationCaseDetailForSubject,
-  getLatestModerationCaseForSubject,
   getLatestModerationCaseWithChatRoom,
   getLatestOpenModerationCaseForSubject,
   getModerationCaseStatus,
   insertAccountSanctionForE2e,
   insertChatMessageForE2e,
+  hasActiveBanSanctionForUser,
+  isSellerPasswordSignInBlocked,
+  insertOpenFraudCaseForE2e,
+  unbanUserForE2e,
 } from "./fixtures/supabase-admin";
+import { getChatRealtimeFixtures, hasSellerAuthFixtures } from "./fixtures/chat-test-data";
 import { getMerchantProductDetailFixtures } from "./fixtures/test-data";
 
 const E2E_ADMIN_CHAT_PROBE = "E2E admin moderation chat probe";
@@ -38,6 +46,18 @@ async function loginAsAdmin(page: Page): Promise<void> {
   await page.waitForURL((url) => !url.pathname.startsWith("/auth"), {
     timeout: 20_000,
   });
+}
+
+async function loginAsSeller(page: Page): Promise<void> {
+  const { sellerEmail, sellerPassword } = getChatRealtimeFixtures();
+  if (!sellerEmail || !sellerPassword) {
+    throw new Error("Missing E2E_SELLER_EMAIL or E2E_SELLER_PASSWORD");
+  }
+
+  await page.goto("/auth");
+  await page.locator('input[name="email"]').fill(sellerEmail);
+  await page.locator('input[name="password"]').fill(sellerPassword);
+  await page.locator('form button[type="submit"]').click();
 }
 
 test.describe("Admin moderation — access control", () => {
@@ -86,9 +106,9 @@ test.describe("Admin moderation — admin flows", () => {
       return;
     }
 
-    const latestCase = await getLatestModerationCaseForSubject(sellerId);
-    if (!latestCase) {
-      test.skip(true, "No moderation case for seller fixture — run user-report E2E first");
+    const openCase = await getLatestOpenModerationCaseForSubject(sellerId);
+    if (!openCase) {
+      test.skip(true, "No open moderation case for seller fixture — run seed:moderation-e2e first");
       return;
     }
 
@@ -98,15 +118,15 @@ test.describe("Admin moderation — admin flows", () => {
       page.getByRole("heading", { name: "舉報與爭議仲裁工作台" }),
     ).toBeVisible({ timeout: 20_000 });
 
-    await expect(page.getByText(latestCase.case_number)).toBeVisible({
+    await expect(page.getByText(openCase.case_number)).toBeVisible({
       timeout: 20_000,
     });
 
-    await page.getByText(latestCase.case_number).click();
+    await page.getByText(openCase.case_number).click();
     await expect(page).toHaveURL(
-      new RegExp(`/admin/disputes/${latestCase.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      new RegExp(`/admin/disputes/${openCase.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
     );
-    await expect(page.getByText(latestCase.case_number)).toBeVisible({
+    await expect(page.getByText(openCase.case_number)).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText("舉報摘要")).toBeVisible();
@@ -152,7 +172,7 @@ test.describe("Admin moderation — admin flows", () => {
     await expect(page.getByText("唯讀聊天室歷史")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText(E2E_ADMIN_CHAT_PROBE)).toBeVisible({
+    await expect(page.getByText(E2E_ADMIN_CHAT_PROBE).first()).toBeVisible({
       timeout: 20_000,
     });
 
@@ -167,53 +187,6 @@ test.describe("Admin moderation — admin flows", () => {
     await expect(page.getByText("調閱聊天紀錄")).toBeVisible({
       timeout: 15_000,
     });
-  });
-
-  test("admin dismisses open case", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "guest", "Guest-only: admin logs in via /auth");
-    if (!hasAdminAuthFixtures()) {
-      test.skip(true, "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
-      return;
-    }
-
-    const { sellerId } = getMerchantProductDetailFixtures();
-    if (!sellerId) {
-      test.skip(true, "Missing E2E_SELLER_ID");
-      return;
-    }
-
-    const openCase = await getLatestOpenModerationCaseForSubject(sellerId);
-    if (!openCase) {
-      test.skip(
-        true,
-        "No open moderation case for seller fixture — run user-report E2E first",
-      );
-      return;
-    }
-
-    await loginAsAdmin(page);
-    await page.goto(`/admin/disputes/${openCase.id}`);
-    await expect(page.getByText("仲裁判定動作")).toBeVisible({
-      timeout: 20_000,
-    });
-
-    await page.getByRole("combobox").filter({ hasText: /請選擇一項仲裁判定動作/ }).click();
-    await page.getByRole("option", { name: "駁回舉報" }).click();
-    await page.getByRole("button", { name: "執行最終仲裁裁決" }).click();
-
-    await expect(page).toHaveURL(/\/admin\/disputes\?status=completed/, {
-      timeout: 20_000,
-    });
-
-    await expect
-      .poll(async () => getModerationCaseStatus(openCase.id), { timeout: 15_000 })
-      .toMatchObject({ status: "dismissed", resolution: "dismissed" });
-
-    const resolveAuditCount = await countModerationAuditLogsForCase(
-      openCase.id,
-      "resolve",
-    );
-    expect(resolveAuditCount).toBeGreaterThan(0);
   });
 
   test("admin sees related orders panel for fraud or offline_trade case", async ({ page }, testInfo) => {
@@ -249,11 +222,319 @@ test.describe("Admin moderation — admin flows", () => {
       timeout: 20_000,
     });
   });
+
+  test("E2E-G5 admin detail shows subject history panel", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Guest-only: admin logs in via /auth");
+    if (!hasAdminAuthFixtures()) {
+      test.skip(true, "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
+      return;
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
+    if (!sellerId) {
+      test.skip(true, "Missing E2E_SELLER_ID");
+      return;
+    }
+
+    const openCase = await getLatestOpenModerationCaseForSubject(sellerId);
+    if (!openCase) {
+      test.skip(true, "No open moderation case — run seed:moderation-e2e first");
+      return;
+    }
+
+    const resolvedCount = await countResolvedModerationCasesForSubject(sellerId);
+    if (resolvedCount < 1) {
+      test.skip(
+        true,
+        "No prior resolved case for subject — resolve a case before checking history panel",
+      );
+      return;
+    }
+
+    await loginAsAdmin(page);
+    await page.goto(`/admin/disputes/${openCase.id}`);
+    await expect(
+      page.getByRole("heading", { name: "被舉報人歷史檔案" }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByRole("heading", { name: "歷史案件" }),
+    ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("admin dismisses open case", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Guest-only: admin logs in via /auth");
+    if (!hasAdminAuthFixtures()) {
+      test.skip(true, "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
+      return;
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
+    if (!sellerId) {
+      test.skip(true, "Missing E2E_SELLER_ID");
+      return;
+    }
+
+    const openCase = await getLatestOpenModerationCaseForSubject(sellerId);
+    if (!openCase) {
+      test.skip(
+        true,
+        "No open moderation case for seller fixture — run seed:moderation-e2e first",
+      );
+      return;
+    }
+
+    await loginAsAdmin(page);
+    await page.goto(`/admin/disputes/${openCase.id}`);
+    await expect(
+      page.getByRole("heading", { name: "仲裁判定動作" }),
+    ).toBeVisible({
+      timeout: 20_000,
+    });
+
+    await page.getByRole("combobox").filter({ hasText: /請選擇一項仲裁判定動作/ }).click();
+    await page.getByRole("option", { name: "駁回舉報" }).click();
+    await page.getByRole("button", { name: "執行最終仲裁裁決" }).click();
+
+    await expect(page).toHaveURL(/\/admin\/disputes\?status=completed/, {
+      timeout: 20_000,
+    });
+
+    await expect
+      .poll(async () => getModerationCaseStatus(openCase.id), { timeout: 15_000 })
+      .toMatchObject({ status: "dismissed", resolution: "dismissed" });
+
+    const resolveAuditCount = await countModerationAuditLogsForCase(
+      openCase.id,
+      "resolve",
+    );
+    expect(resolveAuditCount).toBeGreaterThan(0);
+  });
 });
 
 test.describe("Admin moderation — enforcement", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
   test.setTimeout(120_000);
+
+  test("E2E-AB5a suspended buyer is redirected from marketplace", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer-only marketplace suspended redirect");
+
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (!buyerId) {
+      test.skip(true, "Missing E2E_BUYER_EMAIL");
+      return;
+    }
+
+    const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    await deleteAccountSanctionsForUser(buyerId);
+    await insertAccountSanctionForE2e({
+      userId: buyerId,
+      type: "suspend",
+      endsAt,
+    });
+
+    try {
+      await page.goto("/marketplace");
+      await expect(page).toHaveURL(/\/auth\/suspended/, { timeout: 20_000 });
+    } finally {
+      await deleteAccountSanctionsForUser(buyerId);
+    }
+  });
+
+  test("E2E-AB5b admin remains on disputes when self is suspended", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Guest-only admin exemption");
+    if (!hasAdminAuthFixtures()) {
+      test.skip(true, "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
+      return;
+    }
+
+    const adminId = await getAdminProfileIdFromEnv();
+    if (!adminId) {
+      test.skip(true, "Missing E2E_ADMIN_EMAIL profile");
+      return;
+    }
+
+    const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    await deleteAccountSanctionsForUser(adminId);
+    await insertAccountSanctionForE2e({
+      userId: adminId,
+      type: "suspend",
+      endsAt,
+    });
+
+    try {
+      await loginAsAdmin(page);
+      await page.goto("/admin/disputes");
+      await expect(page).toHaveURL(/\/admin\/disputes/, { timeout: 20_000 });
+      await expect(
+        page.getByRole("heading", { name: "舉報與爭議仲裁工作台" }),
+      ).toBeVisible({ timeout: 20_000 });
+    } finally {
+      await deleteAccountSanctionsForUser(adminId);
+    }
+  });
+
+  test("E2E-AB6 expired suspend allows profile access again", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "buyer", "Buyer-only expired suspend unblock");
+
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (!buyerId) {
+      test.skip(true, "Missing E2E_BUYER_EMAIL");
+      return;
+    }
+
+    const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    await deleteAccountSanctionsForUser(buyerId);
+    await insertAccountSanctionForE2e({
+      userId: buyerId,
+      type: "suspend",
+      endsAt,
+    });
+
+    try {
+      await page.goto("/profile/user");
+      await expect(page).toHaveURL(/\/auth\/suspended/, { timeout: 20_000 });
+
+      await expireAccountSanctionForE2e(buyerId);
+      await page.goto("/profile/user");
+      await expect(page).not.toHaveURL(/\/auth\/suspended/, { timeout: 20_000 });
+    } finally {
+      await deleteAccountSanctionsForUser(buyerId);
+    }
+  });
+
+  test("E2E-AB8 related order card shows link and timeline", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Guest-only order panel detail");
+    if (!hasAdminAuthFixtures()) {
+      test.skip(true, "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
+      return;
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (!sellerId || !buyerId) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_BUYER_EMAIL");
+      return;
+    }
+
+    const chatCase = await getLatestModerationCaseWithChatRoom(sellerId);
+    if (!chatCase) {
+      test.skip(true, "No chat-linked moderation case — run seed:moderation-e2e first");
+      return;
+    }
+
+    if (
+      chatCase.primary_category !== "fraud" &&
+      chatCase.primary_category !== "offline_trade"
+    ) {
+      test.skip(true, "Chat case is not fraud/offline_trade — no order panel expected");
+      return;
+    }
+
+    const relatedOrder = await getLatestMemberOrderForPair({
+      buyerId,
+      sellerId,
+    });
+    if (!relatedOrder) {
+      test.skip(true, "No member order between buyer and seller fixtures");
+      return;
+    }
+
+    await loginAsAdmin(page);
+    await page.goto(`/admin/disputes/${chatCase.id}`);
+    await expect(page.getByRole("heading", { name: "關聯訂單" })).toBeVisible({
+      timeout: 20_000,
+    });
+
+    const orderLink = page.getByRole("link", { name: "在新分頁開啟訂單詳情" });
+    const orderLinkCount = await orderLink.count();
+    if (orderLinkCount === 0) {
+      test.skip(
+        true,
+        "No related orders in moderation context for buyer-seller pair on this case",
+      );
+      return;
+    }
+
+    await expect(orderLink.first()).toBeVisible({ timeout: 15_000 });
+    await expect(orderLink.first()).toHaveAttribute(
+      "href",
+      /\/profile\/user\/orderDetail\//,
+    );
+    await expect(page.getByText("Escrow：", { exact: false }).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("E2E-AB7 permanent ban blocks seller login", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "guest", "Guest-only ban enforcement");
+    if (!hasAdminAuthFixtures()) {
+      test.skip(true, "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
+      return;
+    }
+    if (!hasSellerAuthFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_EMAIL or E2E_SELLER_PASSWORD");
+      return;
+    }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+      test.skip(true, "Missing SUPABASE_SERVICE_ROLE_KEY for unban cleanup");
+      return;
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
+    if (!sellerId) {
+      test.skip(true, "Missing E2E_SELLER_ID");
+      return;
+    }
+
+    const buyerId = await getBuyerProfileIdFromEnv();
+    if (!buyerId) {
+      test.skip(true, "Missing E2E_BUYER_EMAIL");
+      return;
+    }
+
+    const existingOpenCase = await getLatestOpenModerationCaseForSubject(sellerId);
+    const banCaseId =
+      existingOpenCase?.id ??
+      (await insertOpenFraudCaseForE2e({
+        subjectId: sellerId,
+        reporterId: buyerId,
+        suffix: "AB7",
+      }));
+
+    await loginAsAdmin(page);
+    await page.goto(`/admin/disputes/${banCaseId}`);
+    await expect(
+      page.getByRole("heading", { name: "仲裁判定動作" }),
+    ).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole("combobox").filter({ hasText: /請選擇一項仲裁判定動作/ }).click();
+    await page.getByRole("option", { name: "永久封禁" }).click();
+    await page.getByRole("combobox").filter({ hasText: /請選擇違規身分/ }).click();
+    await page.getByRole("option", { name: "Member" }).click();
+    await page.getByRole("button", { name: "執行最終仲裁裁決" }).click();
+
+    await expect(page).toHaveURL(/\/admin\/disputes\?status=completed/, {
+      timeout: 20_000,
+    });
+
+    await expect
+      .poll(async () => hasActiveBanSanctionForUser(sellerId), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+
+    try {
+      await expect
+        .poll(async () => isSellerPasswordSignInBlocked(), { timeout: 15_000 })
+        .toBe(true);
+    } finally {
+      await deleteAccountSanctionsForUser(sellerId);
+      await unbanUserForE2e(sellerId);
+    }
+  });
 
   test("suspended user is redirected to /auth/suspended", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer-only suspended redirect");

@@ -22,11 +22,22 @@ export function parsePointsRedemptionCatalogList(
       return [];
     }
 
+    const maxPerUserRaw = row.max_redemptions_per_user;
+    const maxRedemptionsPerUser =
+      maxPerUserRaw == null || maxPerUserRaw === ""
+        ? null
+        : Number(maxPerUserRaw);
+
     return [
       {
         catalogId: row.catalog_id,
         pointsCost: Number(row.points_cost ?? 0),
         stock: Number(row.stock ?? 0),
+        userRedemptionCount: Number(row.user_redemption_count ?? 0),
+        maxRedemptionsPerUser:
+          maxRedemptionsPerUser != null && Number.isFinite(maxRedemptionsPerUser)
+            ? maxRedemptionsPerUser
+            : null,
         canRedeem: row.can_redeem === true,
         userPointsBalance: Number(row.user_points_balance ?? 0),
         template: {

@@ -1,10 +1,11 @@
 # Admin moderation & disputes — frontend
 
-> **Status:** ✅ Phase C+D+E+E+ wired（list + detail + chat + audit + resolve + orders panel + suspended redirect）  
-> **Planned:** Phase G — [subject-history-plan.md](./subject-history-plan.md)（被舉報人歷史檔案 panel）  
+> **Status:** ✅ Phase A–E+ wired · Phase G subject history · reporter outcome modal  
+> **Planned:** Phase F auto-escalation → [v2-plan.md](./v2-plan.md)  
+> **v2:** Appeal portal · listing 舉報 · carrier/inconclusive fault UI（PR3）  
 > **Backend contract:** [backend.md](./backend.md)  
 > **Routes:** `/admin/disputes`, `/admin/disputes/[id]`  
-> **Policy:** [escrow-payment-policy.md](../../escrow-payment-policy.md)
+> **Policy:** [refund-policy.md](../../refund-policy.md) · [escrow-payment-policy.md](../../escrow-payment-policy.md)（capture／出款）
 
 ## Overview
 
@@ -220,7 +221,7 @@ interface UserReportModalProps {
 | 限制 Merchant 店鋪 | `upheld` + `restrict_listing` + `scope: merchant_persona` |
 | 凍結出款 | `upheld` + `freeze_payout` |
 
-Remove mock-only escrow refund options from MVP unless linked order + backend saga ready (show disabled + tooltip「需接訂單仲裁 Phase」).
+Phase H resolve UI：`orderRefund` checkbox + `fault_party`（seller / buyer / platform）— 見 [backend.md](./backend.md) Phase H。Carrier / inconclusive → **PR3**。
 
 **Violation persona:** select `member` / `merchant` / `both` / `unknown` (required on upheld).
 
@@ -340,12 +341,28 @@ Do not call Supabase in client without env at build — follow existing admin pa
 
 ---
 
-## Out of scope (document only)
+## Out of scope
 
-- Reporter notification of outcome.
-- Accused user appeal form.
-- In-app dispute filing on order detail (separate escrow P3 flow).
-- Auto-suspend without admin UI indicator.
+### v1 已完成（勿再列為 out of scope）
+
+- ✅ Reporter in-app outcome notification（`ReportOutcomeNotificationHost`）
+- ✅ Phase H post-sale refund on resolve（`merchant_direct` / `merchant_auth` / `member_auth` prepare）
+
+### Pre-v1 上線（全站 batch，唔屬 moderation v2）
+
+- Email／push：含 Admin 裁定後 **通知被罰用戶**（backend only，無專用 UI）
+
+### v2 — 見 [v2-plan.md](./v2-plan.md)
+
+- Accused-user **appeal portal**（制裁申訴 + 窗口內訂單申訴）
+- Listing 頁直接舉報
+- **carrier / inconclusive** `fault_party` UI on resolve（PR3）
+- Phase F auto-escalation cron
+
+### 其他 deferred
+
+- In-app dispute filing on order detail（escrow P3 售後 flow，與舉報分開）
+- Auto-suspend without admin UI indicator
 
 ---
 

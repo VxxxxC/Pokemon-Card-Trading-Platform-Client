@@ -1,6 +1,6 @@
 # Platform Rewards v2 — frontend
 
-> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified · **Phase 2b:** ✅ Partner verified · **Phase 3:** ✅ Partner verified · **Phase 4:** ⏸ on hold
+> **Phase 1:** ✅ Partner verified · **Phase 2:** ✅ Partner verified · **Phase 2b:** ✅ Partner verified · **Phase 3:** ✅ Partner verified · **Phase 4:** ✅ Partner verified
 
 ## Admin activity workflow (2026-08 refactor)
 
@@ -19,6 +19,7 @@
 - One mental model: **獎勵活動** (template + optional 1:1 campaign merged in UI)
 - `flash_only` → hide trigger conditions (`kind: none`); show schedule fields on same page
 - `auto_grant` → show triggers; no campaign row
+- **積分商城商品**（`/admin/campaigns/new?flow=points_mall`）→ 隱藏發放方式／觸發條件；僅 coupon 類型 + PTS/庫存
 - Publish/save via `rpc_admin_upsert_reward_activity` + `rpc_admin_set_reward_activity_status`
 
 **Removed:** `RewardTemplateWizard`, separate 獎勵模板 / 搶券檔期 tabs.
@@ -102,3 +103,24 @@ Partner QA: **[QA_CHECKLIST.md](./QA_CHECKLIST.md)**
 - [x] `/profile/user/rewards` flash section: countdown + claim — Partner 2026-07-29
 - [x] Claimed coupon usable at merchant checkout (Part E3.1) — Partner 2026-07-29 · `C3.7`
 - [x] E2E `e2e/platform-rewards-phase3.spec.ts` (C3.1–C3.9)
+
+### Phase 4 — Points redemption catalog
+
+| Path | Purpose |
+|------|---------|
+| `app/admin/campaigns/AdminRewardActivitiesClient.tsx` | **新增一般券** / **新增積分商城商品** entry points |
+| `app/admin/campaigns/new/page.tsx` | `?flow=points_mall` for catalog-only form |
+| `app/admin/campaigns/RewardActivityForm.tsx` | Top-level **建立類型** toggle (general vs points mall) |
+| `app/components/rewards/PointsRedemptionSection.tsx` | Member catalog list + redeem CTA |
+| `app/profile/user/rewards/page.tsx` | Flash → Points mall → coupon center tabs |
+| `app/actions/rewards.ts` | `listPointsRedemptionCatalog`, `redeemPointsCatalogItem` |
+
+**Rules:**
+
+- Points mall flow: no trigger conditions; `trigger_conditions: { kind: "none" }`
+- `points` reward type never shows catalog UI
+- Merchant persona: section hidden (`useIsMemberPersonaActive`)
+
+- [x] Admin split flow — Partner 2026-08-09
+- [x] Member redeem + wallet — E2E `C4.1`/`C4.2` · Vitest `I-G*`
+- [x] Merchant persona guard (G2.5) — Partner 2026-08-09

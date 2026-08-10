@@ -2,7 +2,7 @@
 
 > **精簡版（建議 Partner 先看）：** [PARTNER_CHECKLIST.md](./PARTNER_CHECKLIST.md)  
 > **分支：** `aaron-backend-wired`  
-> **Migrations（遠端已套用）：** `20260813120000`、`20260815120000`、`20260815130000`、`20260816120000`、`20260817120000`  
+> **Migrations（遠端已套用）：** `20260813120000`–`20260817120000`、Phase 4 `20260910130000`–`20260910130300`  
 > **負責人：** Frontend / 全端 Partner  
 > **後端聯絡：** Aaron（server actions、RPC、payout）
 
@@ -77,9 +77,12 @@ FROM merchant_orders WHERE id = '<order_id>';
 
 ## Part C — 不在範圍內（勿當 bug 提報）
 
-- Member C2C checkout 用券 → **Phase 5**
-- `percent_off`
-- 積分兌換商店 → **Phase 4 已涵蓋（Part G）**
+- Member C2C **免運券**（`member_auth` 鑑定 checkout）→ **Phase 5**（僅 `free_shipping`）
+- Member C2C **折扣券** → **永久不做**（見 [plan.md §Cancelled](./plan.md#cancelled永久不做已移出-roadmap)）
+- `lucky_draw_ticket` / 抽獎券 → **永久不做**（同上）
+- `percent_off` 百分比折扣券 → **Future v2**（見 [plan.md §Future v2](./plan.md#future-v2計劃中未排期)）
+- 實體禮品 / SKU 物流兌換 → **Future v2**（同上）
+- 積分兌換商店 → **Phase 4 已涵蓋（Part G）** ✅
 
 ## Part D — Phase 2b（merchant_auth + auth 開關用券）
 
@@ -154,37 +157,39 @@ FROM merchant_orders WHERE id = '<order_id>';
 
 | # | 步驟 | 預期結果 | 自動化 | 通過 |
 |---|------|----------|--------|------|
-| G1.1 | 建立 `discount_coupon` + 勾選「上架積分商城」、設定 PTS/庫存 → 發布 | 模板 active；catalog row 存在；`is_infinite=true` | E2E `C4.1` · `I-G8` | ☐ |
-| G1.2 | 同模板啟用 flash + catalog | 發布失敗（互斥） | Vitest admin 負向 | ☐ |
-| G1.3 | `points` 類型模板 | 無「上架積分商城」區塊 | 人手 spot-check | ☐ |
+| G1.1 | **新增積分商城商品** → `discount_coupon`、設定 PTS/庫存 → 發布 | 模板 active；catalog row 存在；`is_infinite=true` | E2E `C4.1` · `I-G8` | ✅ |
+| G1.2 | 同模板啟用 flash + catalog | 發布失敗（互斥） | Vitest admin 負向 | ✅ |
+| G1.3 | **新增一般券** → `points` 類型；或積分商城 flow 僅 coupon 類型 | 無積分商城區塊 / 分離建立類型 | Partner spot-check 2026-08-09 | ✅ |
 
 ### G2 — 會員兌換
 
 | # | 步驟 | 預期結果 | 自動化 | 通過 |
 |---|------|----------|--------|------|
-| G2.1 | `/profile/user/rewards` Flash 下方見「積分商城」 | 顯示 PTS 成本、剩餘庫存 | E2E `C4.1` | ☐ |
-| G2.2 | 積分足夠 → 兌換 | Toast 成功；券入錢包 | E2E `C4.1`/`C4.2` · `I-G3` | ☐ |
-| G2.3 | 積分不足 | 按鈕 disabled 或錯誤 | `I-G4` | ☐ |
-| G2.4 | 庫存為 0 | 卡片仍可能顯示「已兌完」；`can_redeem=false`；redeem reject | `I-G5` | ☐ |
-| G2.5 | 商戶 persona | Section 不顯示 / 無法兌換 | `I-G9` · 人手 | ☐ |
+| G2.1 | `/profile/user/rewards` Flash 下方見「積分商城」 | 顯示 PTS 成本、剩餘庫存 | E2E `C4.1` | ✅ |
+| G2.2 | 積分足夠 → 兌換 | Toast 成功；券入錢包 | E2E `C4.1`/`C4.2` · `I-G3` | ✅ |
+| G2.3 | 積分不足 | 按鈕 disabled 或錯誤 | `I-G4` | ✅ |
+| G2.4 | 庫存為 0 | 卡片仍可能顯示「已兌完」；`can_redeem=false`；redeem reject | `I-G5` | ✅ |
+| G2.5 | 商戶 persona | Section 不顯示 / 無法兌換 | `I-G9` · Partner 2026-08-09 | ✅ |
+| G2.6 | 每人限兌（終身） | Admin 設限 → 達限後「已達上限」；redeem reject | `I-G11` · `I-G12` | ⬜ |
 
 ### G3 — 邊界與回歸
 
 | # | 步驟 | 預期結果 | 自動化 | 通過 |
 |---|------|----------|--------|------|
-| G3.1 | 併發兌換最後 1 庫存 | 僅一筆成功 | `I-G6` | ☐ |
-| G3.2 | 模板 archive | 列表不含該商品 | `I-G2` | ☐ |
-| G3.3 | `is_infinite=false` 模板（手動回歸） | Redeem 拒絕 | `I-G10` | ☐ |
-| G3.4 | 兌換券用於商戶 checkout | 沿用 Part B（可選回歸） | 人手 / 未來擴充 | ☐ |
+| G3.1 | 併發兌換最後 1 庫存 | 僅一筆成功 | `I-G6` | ✅ |
+| G3.2 | 模板 archive | 列表不含該商品 | `I-G2` | ✅ |
+| G3.3 | `is_infinite=false` 模板（手動回歸） | Redeem 拒絕 | `I-G10` | ✅ |
+| G3.4 | 兌換券用於商戶 checkout | 沿用 Part B（可選回歸） | Part B E2E · 可選 | — |
 
 ### Phase 4 簽核評估
 
 | 維度 | 狀態 | 依據 |
 |------|------|------|
-| Admin 上架（G1） | ☐ | E2E `C4.1` + Vitest `I-G8` / admin 負向 |
-| 會員兌換 happy path（G2.1–G2.2） | ☐ | E2E `C4.1`/`C4.2` · `I-G3` |
-| 邊界（G2.3–G2.4、G3.1–G3.3） | ☐ | Vitest `I-G4`–`I-G6`、`I-G10` |
-| Persona guard（G2.5） | ☐ | `I-G9` + 人手 |
+| Admin 上架（G1） | ✅ | E2E `C4.1` + Vitest `I-G8` / admin 負向 · Partner Admin UI 2026-08-09 |
+| 會員兌換 happy path（G2.1–G2.2） | ✅ | E2E `C4.1`/`C4.2` · `I-G3` |
+| 邊界（G2.3–G2.4、G3.1–G3.3） | ✅ | Vitest `I-G4`–`I-G6`、`I-G10`（integration 11/11） |
+| Persona guard（G2.5） | ✅ | `I-G9` + Partner 2026-08-09 |
+| **正式簽核** | **✅ Partner QA** | Part G 全項；合併關卡 integration 55/55；E2E phase4 + checkout 綠；gate R2 偶發 Stripe 餘額 |
 
 ## 簽核
 
@@ -192,6 +197,7 @@ FROM merchant_orders WHERE id = '<order_id>';
 |------|------|------|------|
 | QA | Partner | 2026-08 | Phase 1–2 已通過 |
 | QA | Partner | 2026-07-29 | **Phase 3** Part E（E2.1–E3.1 人手 + E1/E2.4–E2.6 E2E） |
+| QA | Partner | 2026-08-09 | **Phase 4** Part G（積分商城 Admin 分離 flow + G2.5；Vitest I-G* + E2E C4.x） |
 | Frontend | | | |
 | Backend | | | |
 

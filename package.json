@@ -22,6 +22,8 @@
     "test:e2e:rewards-phase4": "playwright test e2e/platform-rewards-phase4.spec.ts --project=setup --project=buyer",
     "test:e2e:rewards-checkout-coupon": "playwright test e2e/rewards-checkout-coupon.spec.ts e2e/rewards-order-detail.spec.ts --project=setup --project=buyer",
     "test:e2e:stripe-reconcile": "playwright test e2e/platform-rewards-stripe-reconcile.spec.ts --project=setup --project=buyer",
+    "test:e2e:moderation-stripe-smoke": "playwright test e2e/moderation-stripe-refund-smoke.spec.ts --project=setup --project=buyer",
+    "test:moderation:stripe-smoke": "bun run test:e2e:moderation-stripe-smoke",
     "test:e2e:auth-escrow": "playwright test e2e/platform-rewards-phase2.spec.ts -g \"B2b\" --project=setup --project=buyer",
     "test:e2e:member-auth-escrow": "playwright test e2e/member-auth-escrow.spec.ts e2e/member-auth-inbound.spec.ts e2e/member-order-detail-auth.spec.ts --project=setup --project=member-trading",
     "test:e2e:ui": "playwright test --ui",
@@ -31,7 +33,15 @@
     "test:rewards:gate": "bash scripts/rewards-release-gate.sh",
     "test:auth-escrow:gate": "bash scripts/auth-escrow-release-gate.sh",
     "test:rewards:mutation": "stryker run",
-    "test:integration:moderation": "vitest run --config vitest.config.mts tests/integration/moderation"
+    "test:integration:moderation": "vitest run --config vitest.config.mts tests/integration/moderation",
+    "test:integration:grading": "vitest run --config vitest.config.mts tests/integration/grading/auth-grading-fail-single.integration.test.ts tests/unit/payments/auth-grading-fail-void-saga.test.ts",
+    "test:integration:grading:stripe-smoke": "vitest run --config vitest.config.mts tests/integration/grading/auth-grading-fail-stripe-smoke.integration.test.ts",
+    "test:integration:moderation:pbt": "vitest run --config vitest.config.mts tests/unit/moderation/compute-report-contribution.pbt.test.ts tests/unit/moderation/moderation-pbt.test.ts",
+    "test:moderation:mutation": "stryker run stryker.moderation.config.json",
+    "test:e2e:moderation-gate": "playwright test e2e/user-report.spec.ts e2e/admin-moderation.spec.ts e2e/report-outcome-notification.spec.ts --project=setup --project=guest --project=buyer",
+    "test:moderation:gate": "bash scripts/moderation-release-gate.sh",
+    "test:moderation:gate:full": "bash scripts/moderation-release-gate-full.sh",
+    "seed:moderation-e2e": "bun run scripts/seed-moderation-e2e.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

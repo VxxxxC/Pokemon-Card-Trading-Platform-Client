@@ -160,6 +160,9 @@ export function PointsRedemptionSection({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.map((item) => {
           const soldOut = item.stock <= 0;
+          const atUserLimit =
+            item.maxRedemptionsPerUser != null &&
+            item.userRedemptionCount >= item.maxRedemptionsPerUser;
           const label = rewardLabelFromCatalogItem(item);
 
           return (
@@ -190,6 +193,15 @@ export function PointsRedemptionSection({
                   <span>
                     {soldOut ? "已兌完" : `剩餘 ${item.stock}`}
                   </span>
+                  {item.maxRedemptionsPerUser != null ? (
+                    <>
+                      <span className="text-[#50453b] mx-1">·</span>
+                      <span>
+                        已兌 {item.userRedemptionCount}/
+                        {item.maxRedemptionsPerUser}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
                 <Button
                   type="button"
@@ -202,6 +214,8 @@ export function PointsRedemptionSection({
                     <Spinner className="size-3.5" />
                   ) : soldOut ? (
                     "已兌完"
+                  ) : atUserLimit ? (
+                    "已達上限"
                   ) : (
                     "兌換"
                   )}

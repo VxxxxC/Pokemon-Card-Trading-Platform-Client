@@ -69,17 +69,93 @@ export async function deleteMatrixProbeChatMessages(
   }
 }
 
+export async function deleteMatrixTestListingsForSeller(
+  sellerId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("listings")
+    .delete()
+    .eq("seller_id", sellerId)
+    .like("seller_description", `${MATRIX_PREFIX}%`);
+
+  if (error) {
+    if (
+      error.message.includes("permission denied") ||
+      error.message.includes("foreign key")
+    ) {
+      const { error: deactivateError } = await admin
+        .from("listings")
+        .update({ status: "inactive" })
+        .eq("seller_id", sellerId)
+        .like("seller_description", `${MATRIX_PREFIX}%`);
+
+      if (deactivateError && !deactivateError.message.includes("permission denied")) {
+        throw new Error(
+          `[deleteMatrixTestListingsForSeller:deactivate] ${deactivateError.message}`,
+        );
+      }
+      return;
+    }
+    throw new Error(`[deleteMatrixTestListingsForSeller] ${error.message}`);
+  }
+}
+
+export async function deleteMatrixTestOrdersForSeller(
+  sellerId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { data: listingRows, error: listingError } = await admin
+    .from("listings")
+    .select("id")
+    .eq("seller_id", sellerId)
+    .like("seller_description", `${MATRIX_PREFIX}%`);
+
+  if (listingError) {
+    throw new Error(`[deleteMatrixTestOrdersForSeller:listings] ${listingError.message}`);
+  }
+
+  const listingIds = (listingRows ?? []).map((row) => row.id);
+  if (listingIds.length === 0) {
+    return;
+  }
+
+  const { error: orderError } = await admin
+    .from("member_orders")
+    .delete()
+    .in("listing_id", listingIds);
+
+  if (orderError) {
+    if (orderError.message.includes("permission denied")) {
+      return;
+    }
+    throw new Error(`[deleteMatrixTestOrdersForSeller:orders] ${orderError.message}`);
+  }
+}
+
 export async function wipeModerationMatrixPair(params: {
   reporterId: string;
   subjectId: string;
   chatRoomId?: string;
+  additionalReporterIds?: string[];
 }): Promise<void> {
+  await deleteMatrixTestOrdersForSeller(params.subjectId);
+  await deleteMatrixTestListingsForSeller(params.subjectId);
+
+  const reporterIds = new Set([
+    params.reporterId,
+    ...(params.additionalReporterIds ?? []),
+  ]);
+
+  for (const reporterId of reporterIds) {
+    await deleteReportAttachmentsForReporter(reporterId);
+    await deleteReportsForPair({
+      reporterId,
+      subjectId: params.subjectId,
+    });
+  }
+
   await deleteAccountSanctionsForUser(params.subjectId);
-  await deleteReportAttachmentsForReporter(params.reporterId);
-  await deleteReportsForPair({
-    reporterId: params.reporterId,
-    subjectId: params.subjectId,
-  });
   await deleteModerationCasesForSubject(params.subjectId);
   if (params.chatRoomId) {
     await deleteMatrixProbeChatMessages(params.chatRoomId);

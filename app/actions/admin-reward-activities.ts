@@ -128,6 +128,8 @@ function buildActivityPayload(
       stock: sanitizedCatalog.stock,
       is_active: sanitizedCatalog.is_active,
       display_order: sanitizedCatalog.display_order ?? 0,
+      max_redemptions_per_user:
+        sanitizedCatalog.max_redemptions_per_user ?? null,
     };
   }
 

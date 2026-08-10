@@ -1,7 +1,8 @@
 # Auth Escrow v2 — Plan（鑑定託管金流 · 兩段順豐運費）
 
 > **Status:** 🟡 Draft — product / policy reset (2026-08)  
-> **Supersedes (partial):** [escrow-payment-policy.md](../../escrow-payment-policy.md) §2.2 capture 時序、§6 鑑定失敗（auth_fee 不退）、單一 `shipping_fee` 語意  
+> **Refund rules superseded by:** [refund-policy.md](../../refund-policy.md)（本 plan 內 auth_fee／fail 矩陣僅作歷史參考）  
+> **Supersedes (partial):** [escrow-payment-policy.md](../../escrow-payment-policy.md) §2.2 capture 時序、§6 鑑定失敗、單一 `shipping_fee` 語意  
 > **Blocks:** [Platform Rewards v2 Phase 2b](../platform-rewards-v2/plan.md)（鑑定 checkout 用券）、Member 鑑定 Phase 5 用券  
 > **Does not block:** Rewards Phase 2 / 3（`merchant_direct` 非鑑定）、`test:rewards:gate` 非鑑定 E2E
 

@@ -69,12 +69,56 @@ function formatParty(row: AdminGradingQueueRow): string {
 }
 
 function formatRefundPreview(row: AdminGradingQueueRow): string {
+  const authFee = Number(row.auth_fee ?? 0);
+  const buyerTotal = Number(row.buyer_total_amount ?? row.total_amount ?? 0);
+  if (row.escrow_capture_model === "single" && buyerTotal > 0) {
+    const released = Math.max(buyerTotal - authFee, 0);
+    return `HK$ ${released.toLocaleString("zh-HK", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
   const base = Number(row.item_subtotal ?? 0);
+  const inbound = Number(row.inbound_shipping_fee ?? 0);
+  const outbound = Number(row.outbound_shipping_fee ?? 0);
   const shipping = Number(row.shipping_fee ?? 0);
-  return `HK$ ${(base + shipping).toLocaleString("zh-HK", {
+  const released =
+    inbound + outbound > 0 ? base + inbound + outbound : base + shipping;
+
+  return `HK$ ${released.toLocaleString("zh-HK", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function formatAuthFeePreview(row: AdminGradingQueueRow): string {
+  return `HK$ ${Number(row.auth_fee ?? 0).toLocaleString("zh-HK", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function isSingleCaptureGradingRow(row: AdminGradingQueueRow): boolean {
+  return row.escrow_capture_model === "single";
+}
+
+function formatBuyerTotalPreview(row: AdminGradingQueueRow): string {
+  const total = Number(row.buyer_total_amount ?? row.total_amount ?? 0);
+  return `HK$ ${total.toLocaleString("zh-HK", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatGradingFailWarning(row: AdminGradingQueueRow, faultParty: string): string {
+  if (isSingleCaptureGradingRow(row) && faultParty === "buyer") {
+    return `鑑定失敗（買家責任）：將扣除鑑定費 ${formatAuthFeePreview(row)}，其餘授權金額約 ${formatRefundPreview(row)} 釋放。`;
+  }
+  if (isSingleCaptureGradingRow(row)) {
+    return `鑑定失敗將取消授權，買家全額退回（約 ${formatBuyerTotalPreview(row)}）。`;
+  }
+  return `鑑定失敗將釋放未扣款餘額（卡價+運費，約 ${formatRefundPreview(row)}）。舊版分階扣款訂單之鑑定費可能不退；單次授權訂單則取消授權並全額退回。`;
 }
 
 function defaultPassGradingOptionId(row: AdminGradingQueueRow): string {
@@ -599,7 +643,7 @@ export function AdminGradingClient({
 
                 <div className="rounded-lg border border-warning/20 bg-warning/5 p-3">
                   <p className="text-xs text-warning">
-                    鑑定失敗將釋放未扣款餘額（卡價+運費，約 {formatRefundPreview(selected)}）。舊版分階扣款訂單之 HK$150 鑑定費可能不退；單次授權訂單則取消授權並全額退回。
+                    {formatGradingFailWarning(selected, faultParty)}
                   </p>
                   <select
                     name="faultParty"

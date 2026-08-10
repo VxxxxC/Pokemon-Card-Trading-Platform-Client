@@ -8,7 +8,7 @@
 
 ## 一句話
 
-**Release gate**（`bun run test:rewards:gate`）已覆蓋 checkout 用券、搶券、Stripe 對帳、P0 釋券/過期/還券、訂單詳情實付。Partner 只需 **Admin UI smoke**（精靈 + 簽到）同可選跨裝置 spot-check。
+**Release gate**（`bun run test:rewards:gate`）已覆蓋 checkout 用券、搶券、**積分商城**、Stripe 對帳、P0 釋券/過期/還券、訂單詳情實付。Partner 只需 **Admin UI smoke**（一般券 / 積分商城分離 flow + 簽到）同可選跨裝置 spot-check。
 
 ---
 
@@ -59,6 +59,7 @@ GitHub：`.github/workflows/rewards.yml`（nightly / `workflow_dispatch` / PR la
 | **P0-3** 鑑定失敗還券（DB 路徑） | Vitest `I-P0-3` |
 | **P0-4** 訂單詳情實付 | E2E `E2E-P0-4` |
 | **P0-5** `event_once` 發放 | Vitest `I-P0-5` |
+| **Phase 4** 積分商城兌換 | `platform-rewards-phase4` C4.x · Vitest `I-G*` |
 
 ---
 
@@ -102,6 +103,7 @@ GitHub：`.github/workflows/rewards.yml`（nightly / `workflow_dispatch` / PR la
 - [ ] `bun run test:rewards:gate` 全綠（或 CI `rewards.yml` 綠燈）
 - [x] P1 **#9–10** Admin 各點一次（精靈 + 簽到）— ✅ Partner 2026-07-29
 - [x] **Phase 3** 限時搶券 happy path（E2.1–E2.3 + E3.1）— ✅ Partner 2026-07-29
+- [x] **Phase 4** 積分商城（G1 Admin 分離 flow + G2.5 persona）— ✅ Partner 2026-08-09
 - [ ] （可選）P1 #6 鑑定單 Stripe capture 至少跑通一單；#7–8 鑑定用券 spot-check（合法組合 + 不符合資格券）
 - [ ] 無 console error、無錯誤 Toast
 

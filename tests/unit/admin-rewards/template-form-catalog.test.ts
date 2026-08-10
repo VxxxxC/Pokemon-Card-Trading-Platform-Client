@@ -96,4 +96,21 @@ describe("admin reward catalog form helpers", () => {
     expect(restored.redemption_catalog).toBeUndefined();
     expect(restored.trigger_conditions.kind).toBe("event_once");
   });
+
+  it("preserves max_redemptions_per_user in points mall flow", () => {
+    const switched = applyFormFlow(
+      {
+        ...buildDefaultActivityForm(),
+        redemption_catalog: {
+          enabled: true,
+          points_cost: 200,
+          stock: 20,
+          is_active: true,
+          max_redemptions_per_user: 3,
+        },
+      },
+      "points_mall",
+    );
+    expect(switched.redemption_catalog?.max_redemptions_per_user).toBe(3);
+  });
 });

@@ -30,9 +30,9 @@
 | 項目 | 原因 |
 |------|------|
 | P2P **無鑑定** / 面交 offline 用券 | 無 unified checkout / Stripe PI |
-| Member **`discount_coupon`** | 產品定案：鑑定單折扣券違反人性 |
-| `percent_off`、積分商城（Phase 4） | 另 phase |
-| 平台補貼 admin 報表、`manual_claim`、爭議人工改券 | Phase 5b（[plan.md](./plan.md) § Phase 5 原列表） |
+| Member C2C **`discount_coupon`** | **永久不做**（已移出 roadmap；見 [plan.md §Cancelled](./plan.md#cancelled永久不做已移出-roadmap)） |
+| `percent_off` | **Future v2**（見 [plan.md §Future v2](./plan.md#future-v2計劃中未排期)）；積分商城 → Phase 4 ✅ |
+| 平台補貼 admin 報表、`manual_claim`、爭議人工改券 | Phase 5b（[plan.md](./plan.md) § Phase 5b） |
 | Polymorphic `reserved_order_id` 重構 | 風險大；沿用雙欄位 |
 
 ---
@@ -363,3 +363,4 @@ flowchart TD
 | Date | Change |
 |------|--------|
 | 2026-07-29 | 初稿：Member auth **僅 free_shipping**；FPS = `final_price` 無 commission；泛化 RPC；`reserved_member_order_id`；authorize `is_used` 修復 |
+| 2026-08-09 | Roadmap 對齊 plan.md：Member C2C 折扣券 → Cancelled；`percent_off` → Future v2 |

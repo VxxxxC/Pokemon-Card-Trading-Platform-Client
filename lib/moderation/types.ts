@@ -41,6 +41,7 @@ export type AdminModerationCaseRow = {
   subject: AdminModerationSubjectPreview;
   reporterPreview: AdminModerationReporterPreview;
   previewDetails: string | null;
+  subjectPriorUpheldCount?: number;
 };
 
 export type AdminModerationSearchResult = {
@@ -99,6 +100,64 @@ export type ResolveAdminModerationCaseInput = {
   adjustmentReason?: string;
   sanction?: ResolveAdminModerationCaseSanctionInput;
   evidenceOverrideReason?: string;
+  /** Default true — in-app outcome notification for reporters */
+  notifyReporter?: boolean;
+  orderRefund?: {
+    enabled: boolean;
+    orderId: string;
+    faultParty: "buyer" | "seller" | "platform";
+    platformFaultReason?: string;
+  };
+};
+
+export type AdminSubjectModerationHistoryStats = {
+  priorCaseCount: number;
+  upheldCount: number;
+  dismissedCount: number;
+  reportsLast90Days: number;
+  distinctSanctionTypes: string[];
+};
+
+export type AdminSubjectModerationPriorCase = {
+  id: string;
+  caseNumber: string;
+  status: ModerationCaseStatus;
+  primaryCategory: ReportCategorySlug | null;
+  finalScore: number | null;
+  resolution: ModerationResolution | null;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+export type AdminSubjectSanctionHistoryStatus = "active" | "expired";
+
+export type AdminSubjectSanctionHistoryRow = {
+  id: string;
+  scope: SanctionScope;
+  type: SanctionType;
+  caseId: string | null;
+  caseNumber: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  revokedAt: string | null;
+  reason: string | null;
+  status: AdminSubjectSanctionHistoryStatus;
+};
+
+export type AdminSubjectModerationHistory = {
+  subjectUserId: string;
+  stats: AdminSubjectModerationHistoryStats;
+  priorCases: AdminSubjectModerationPriorCase[];
+  sanctionHistory: AdminSubjectSanctionHistoryRow[];
+};
+
+export type ReportOutcomeNotification = {
+  reportId: string;
+  caseId: string;
+  caseNumber: string;
+  resolution: ModerationResolution | null;
+  resolvedAt: string | null;
+  message: string;
 };
 
 export type AdminModerationReportRow = {
@@ -193,6 +252,15 @@ export type AdminModerationOrderSummary = {
   source: string | null;
   useAuthentication?: boolean;
   requiresAuthentication?: boolean;
+  payoutHoldUntil?: string | null;
+  payoutStatus?: string | null;
+  sellerPayoutStatus?: string | null;
+  authResult?: string | null;
+  refundStatus?: string | null;
+  orderKind?: string | null;
+  refundEligible?: boolean;
+  refundIneligibleReason?: string | null;
+  refundWindowEndsAt?: string | null;
 };
 
 export type AdminModerationCaseBundle = {

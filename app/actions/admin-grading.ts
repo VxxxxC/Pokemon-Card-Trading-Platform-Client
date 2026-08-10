@@ -43,6 +43,10 @@ export type AdminGradingQueueRow = {
   shipping_fee: number;
   auth_fee: number;
   total_amount: number | null;
+  buyer_total_amount: number | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
+  escrow_capture_model: string | null;
   inbound_tracking_no: string | null;
   outbound_tracking_no: string | null;
   auth_result: string | null;

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
 import { createServiceRoleClient } from "../../shared/supabase-admin";
 
 export type ReportAuditRow = {
@@ -132,4 +134,185 @@ export async function getActiveAccountSanctionsForUser(userId: string) {
   }
 
   return data ?? [];
+}
+
+export async function getOutcomeAckState(
+  reportId: string,
+): Promise<{ outcomeAcknowledgedAt: string | null } | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("reports")
+    .select("outcome_acknowledged_at")
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getOutcomeAckState] ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return {
+    outcomeAcknowledgedAt: data.outcome_acknowledged_at ?? null,
+  };
+}
+
+export async function getModerationCaseResolution(
+  caseId: string,
+): Promise<string | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("moderation_cases")
+    .select("resolution")
+    .eq("id", caseId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getModerationCaseResolution] ${error.message}`);
+  }
+
+  return data?.resolution ?? null;
+}
+
+export async function insertLegacyResolvedReportFixture(params: {
+  reporterId: string;
+  subjectId: string;
+  adminId: string;
+  runId: string;
+  suffix: string;
+}): Promise<{ reportId: string; caseId: string }> {
+  const admin = createServiceRoleClient();
+  const caseNumber = `VT-LEGACY-${params.runId}-${params.suffix}`;
+  const ackAt = new Date(Date.now() - 86_400_000).toISOString();
+  const resolvedAt = ackAt;
+
+  const { data: moderationCase, error: caseError } = await admin
+    .from("moderation_cases")
+    .insert({
+      case_number: caseNumber,
+      subject_user_id: params.subjectId,
+      status: "dismissed",
+      resolution: "dismissed",
+      resolved_at: resolvedAt,
+      resolved_by: params.adminId,
+      primary_category: "other",
+      auto_score: 10,
+      admin_adjustment: 0,
+    })
+    .select("id")
+    .single();
+
+  if (caseError) {
+    throw new Error(`[insertLegacyResolvedReportFixture:case] ${caseError.message}`);
+  }
+
+  const { data: report, error: reportError } = await admin
+    .from("reports")
+    .insert({
+      reporter_id: params.reporterId,
+      target_id: params.subjectId,
+      target_type: "user",
+      reason: `Legacy fixture ${params.suffix}`,
+      status: "dismissed",
+      category: "other",
+      case_id: moderationCase.id,
+      outcome_acknowledged_at: ackAt,
+      contribution_score: 10,
+    })
+    .select("id")
+    .single();
+
+  if (reportError) {
+    await admin.from("moderation_cases").delete().eq("id", moderationCase.id);
+    throw new Error(
+      `[insertLegacyResolvedReportFixture:report] ${reportError.message}`,
+    );
+  }
+
+  return { reportId: report.id, caseId: moderationCase.id };
+}
+
+export async function getListingStatus(
+  listingId: string,
+): Promise<string | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("listings")
+    .select("status")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getListingStatus] ${error.message}`);
+  }
+
+  return data?.status ?? null;
+}
+
+export async function getMemberOrderPayoutStatus(
+  orderId: string,
+): Promise<string | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("member_orders")
+    .select("seller_payout_status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getMemberOrderPayoutStatus] ${error.message}`);
+  }
+
+  return data?.seller_payout_status ?? null;
+}
+
+export type AccountAccessRestriction = {
+  blocked: boolean;
+  type?: string;
+  endsAt?: string | null;
+  reason?: string | null;
+};
+
+export async function getAccountAccessRestriction(
+  client: SupabaseClient<Database>,
+  userId: string,
+): Promise<AccountAccessRestriction> {
+  const { data, error } = await client.rpc(
+    "moderation_get_account_access_restriction",
+    { p_user_id: userId },
+  );
+
+  if (error) {
+    throw new Error(`[getAccountAccessRestriction] ${error.message}`);
+  }
+
+  const payload = data as AccountAccessRestriction | null;
+  return {
+    blocked: payload?.blocked === true,
+    type: payload?.type,
+    endsAt: payload?.endsAt ?? null,
+    reason: payload?.reason ?? null,
+  };
+}
+
+export async function getResolveAuditPayload(
+  caseId: string,
+): Promise<Record<string, unknown> | null> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("moderation_audit_logs")
+    .select("payload")
+    .eq("case_id", caseId)
+    .eq("action", "resolve")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getResolveAuditPayload] ${error.message}`);
+  }
+
+  return (data?.payload as Record<string, unknown> | null) ?? null;
 }

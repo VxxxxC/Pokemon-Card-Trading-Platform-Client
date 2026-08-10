@@ -2032,6 +2032,7 @@ export type Database = {
           created_at: string | null
           details: string | null
           id: string
+          outcome_acknowledged_at: string | null
           reason: string
           reporter_id: string
           source: Database["public"]["Enums"]["report_source"] | null
@@ -2050,6 +2051,7 @@ export type Database = {
           created_at?: string | null
           details?: string | null
           id?: string
+          outcome_acknowledged_at?: string | null
           reason: string
           reporter_id: string
           source?: Database["public"]["Enums"]["report_source"] | null
@@ -2068,6 +2070,7 @@ export type Database = {
           created_at?: string | null
           details?: string | null
           id?: string
+          outcome_acknowledged_at?: string | null
           reason?: string
           reporter_id?: string
           source?: Database["public"]["Enums"]["report_source"] | null
@@ -2198,6 +2201,7 @@ export type Database = {
           id: string
           initial_stock: number | null
           is_active: boolean
+          max_redemptions_per_user: number | null
           points_cost: number
           stock: number
           template_id: string
@@ -2209,6 +2213,7 @@ export type Database = {
           id?: string
           initial_stock?: number | null
           is_active?: boolean
+          max_redemptions_per_user?: number | null
           points_cost: number
           stock: number
           template_id: string
@@ -2220,6 +2225,7 @@ export type Database = {
           id?: string
           initial_stock?: number | null
           is_active?: boolean
+          max_redemptions_per_user?: number | null
           points_cost?: number
           stock?: number
           template_id?: string
@@ -2819,6 +2825,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      _sync_catalog_active_for_template_status: {
+        Args: { p_status: string; p_template_id: string }
+        Returns: undefined
+      }
+      acknowledge_report_outcomes: {
+        Args: { p_report_ids: string[] }
+        Returns: Json
+      }
       acknowledge_reward_grants: {
         Args: { p_user_reward_ids: string[] }
         Returns: Json
@@ -2934,6 +2948,14 @@ export type Database = {
           total_amount: number
         }[]
       }
+      fn_compute_moderation_order_refund: {
+        Args: {
+          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
+          p_order_id: string
+          p_platform_fault_reason?: string
+        }
+        Returns: Json
+      }
       fn_compute_platform_subsidy: {
         Args: {
           p_buyer_id: string
@@ -3036,6 +3058,18 @@ export type Database = {
           recovery_order_id: string
           remaining_hkd: number
         }[]
+      }
+      fn_moderation_case_links_order: {
+        Args: { p_case_id: string; p_order_id: string }
+        Returns: boolean
+      }
+      fn_moderation_derive_order_kind: {
+        Args: { p_order_id: string }
+        Returns: string
+      }
+      fn_moderation_order_refund_eligible: {
+        Args: { p_order_id: string }
+        Returns: Json
       }
       fn_platform_auth_escrow_config: { Args: never; Returns: Json }
       fn_platform_auth_fee_hkd: { Args: never; Returns: number }
@@ -3223,6 +3257,7 @@ export type Database = {
       get_reward_coupon_center:
         | { Args: never; Returns: Json }
         | { Args: { p_user_id?: string }; Returns: Json }
+      get_unacknowledged_report_outcomes_for_me: { Args: never; Returns: Json }
       get_unacknowledged_reward_grants: { Args: never; Returns: Json }
       get_user_chat_inbox: { Args: never; Returns: Json }
       get_user_chat_inbox_lobby: { Args: never; Returns: Json }
@@ -3429,6 +3464,30 @@ export type Database = {
         Args: { p_buyer_id: string; p_listing_id: string }
         Returns: string
       }
+      rpc_e2e_seed_member_auth_refund_eligible_order: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_payment_intent_suffix?: string
+        }
+        Returns: string
+      }
+      rpc_e2e_seed_merchant_auth_refund_eligible_order: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_payment_intent_suffix?: string
+        }
+        Returns: string
+      }
+      rpc_e2e_seed_merchant_direct_refund_eligible_order: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_payment_intent_suffix?: string
+        }
+        Returns: string
+      }
       rpc_e2e_seed_merchant_pending_payment_order: {
         Args: { p_buyer_id: string; p_listing_id: string }
         Returns: string
@@ -3512,6 +3571,17 @@ export type Database = {
           }
       rpc_finalize_merchant_pending_payment_expiry: {
         Args: { p_order_id: string }
+        Returns: Json
+      }
+      rpc_finalize_moderation_order_refund: {
+        Args: {
+          p_case_id?: string
+          p_order_id: string
+          p_payment_intent_id: string
+          p_refund_cents: number
+          p_refund_id: string
+          p_stripe_fee_hkd?: number
+        }
         Returns: Json
       }
       rpc_finalize_stale_coupon_reserve: {
@@ -3648,6 +3718,10 @@ export type Database = {
         Args: { p_error: string; p_order_id: string }
         Returns: Json
       }
+      rpc_mark_moderation_order_refund_failed: {
+        Args: { p_case_id?: string; p_error: string; p_order_id: string }
+        Returns: Json
+      }
       rpc_modify_offer: {
         Args: {
           p_buyer_id: string
@@ -3728,6 +3802,16 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      rpc_prepare_moderation_order_refund: {
+        Args: {
+          p_case_id: string
+          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
+          p_order_id: string
+          p_platform_fault_reason?: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       rpc_redeem_points_catalog_item: {
         Args: { p_catalog_id: string }
         Returns: Json
@@ -3746,6 +3830,10 @@ export type Database = {
       }
       rpc_resolve_moderation_case: {
         Args: { p_case_id: string; p_payload: Json }
+        Returns: Json
+      }
+      rpc_retry_moderation_order_refund_prepare: {
+        Args: { p_case_id: string; p_order_id: string }
         Returns: Json
       }
       rpc_send_chat_message: {

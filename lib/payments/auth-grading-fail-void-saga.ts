@@ -11,6 +11,11 @@ export type GradingFaultParty =
 
 export type AuthGradingFailOrderKind = "member" | "merchant";
 
+export type AuthGradingFailVoidMode =
+  | "cancel"
+  | "capture_zero"
+  | "capture_auth_fee_only";
+
 export type PrepareAuthGradingFailPayload = {
   success: boolean;
   order_kind: AuthGradingFailOrderKind;
@@ -18,10 +23,11 @@ export type PrepareAuthGradingFailPayload = {
   payment_intent_id: string;
   admin_id: string;
   fault_party: GradingFaultParty;
-  void_mode?: "cancel" | "capture_zero";
+  void_mode?: AuthGradingFailVoidMode;
   escrow_capture_model?: string | null;
   settlement_required?: boolean;
   refund_cents?: number;
+  capture_cents?: number;
 };
 
 type AuthGradingFailRpcClient = {
@@ -68,6 +74,16 @@ function gradingRefundOrderKind(orderKind: AuthGradingFailOrderKind): string {
   return orderKind === "member" ? "auth_grading_member" : "auth_grading_merchant";
 }
 
+function parseVoidMode(value: unknown): AuthGradingFailVoidMode {
+  if (value === "cancel") {
+    return "cancel";
+  }
+  if (value === "capture_auth_fee_only") {
+    return "capture_auth_fee_only";
+  }
+  return "capture_zero";
+}
+
 function parsePreparePayload(data: unknown): PrepareAuthGradingFailPayload | null {
   if (!data || typeof data !== "object") {
     return null;
@@ -98,14 +114,14 @@ function parsePreparePayload(data: unknown): PrepareAuthGradingFailPayload | nul
     payment_intent_id: payload.payment_intent_id,
     admin_id: payload.admin_id,
     fault_party: faultParty,
-    void_mode:
-      payload.void_mode === "cancel" ? "cancel" : "capture_zero",
+    void_mode: parseVoidMode(payload.void_mode),
     escrow_capture_model:
       typeof payload.escrow_capture_model === "string"
         ? payload.escrow_capture_model
         : null,
     settlement_required: payload.settlement_required === true,
     refund_cents: Number(payload.refund_cents ?? 0),
+    capture_cents: Number(payload.capture_cents ?? 0),
   };
 }
 
@@ -163,7 +179,27 @@ export async function runAuthGradingFailVoidSaga(input: {
 
     const voidIdempotencyKey = `auth-grading-fail:${prepared.void_mode ?? "capture_zero"}:${input.orderKind}:${input.orderId}`;
 
-    if (prepared.void_mode === "cancel") {
+    if (prepared.void_mode === "capture_auth_fee_only") {
+      const captureCents = prepared.capture_cents ?? 0;
+      if (captureCents <= 0) {
+        throw new Error("鑑定費扣款金額異常");
+      }
+
+      await stripe.paymentIntents.capture(
+        prepared.payment_intent_id,
+        {
+          amount_to_capture: captureCents,
+          final_capture: true,
+          metadata: {
+            capture_stage: "auth_grading_fail",
+            order_kind: gradingRefundOrderKind(input.orderKind),
+            order_id: input.orderId,
+            admin_id: prepared.admin_id,
+          },
+        },
+        { idempotencyKey: voidIdempotencyKey },
+      );
+    } else if (prepared.void_mode === "cancel") {
       await stripe.paymentIntents.cancel(
         prepared.payment_intent_id,
         undefined,

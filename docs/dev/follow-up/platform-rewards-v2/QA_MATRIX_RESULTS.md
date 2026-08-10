@@ -37,6 +37,11 @@
 | 封存 `CHECK_IN_DAY7_BONUS` | — | 不可解鎖列表 | ✅ matrix M-M2 | |
 | 簽到計劃 | — | Admin `?tab=check-in` 載入 + 儲存 | ✅ matrix M-A2 + Partner #10 | |
 | 獎勵活動列表 | — | Admin campaigns 載入 | ✅ matrix M-A1 | |
+| `discount_coupon` | 積分商城 catalog | Admin 新增積分商城商品 → 兌換 | ✅ phase4 `C4.1`/`C4.2` · `I-G3` | |
+| `free_shipping` | 積分商城 catalog | 兌換後入錢包 | ✅ `I-G8` | |
+| `discount_coupon` | catalog | 積分不足 / 庫存 0 / 併發 | ✅ `I-G4`–`I-G6` | |
+| `discount_coupon` | catalog + `points` 類型 | Admin 分離 flow 無 catalog | ✅ Partner G1.3 2026-08-09 | |
+| 積分商城 | member persona | 商戶不可見 / 不可兌換 | ✅ `I-G9` · Partner G2.5 2026-08-09 | |
 
 ## 仍建議人工點一輪（E2E 未覆蓋或僅部分覆蓋）
 

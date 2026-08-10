@@ -23,3 +23,11 @@ export function getModerationIntegrationEnv() {
 export function getSellerId(): string {
   return getModerationIntegrationEnv().sellerId;
 }
+
+export function hasSellerIntegrationCreds(): boolean {
+  return Boolean(readEnv("E2E_SELLER_EMAIL") && readEnv("E2E_SELLER_PASSWORD"));
+}
+
+export function hasFullModerationIntegrationEnv(): boolean {
+  return hasModerationIntegrationEnv() && hasSellerIntegrationCreds();
+}
