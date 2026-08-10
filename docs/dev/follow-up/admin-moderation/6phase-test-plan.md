@@ -48,7 +48,8 @@
 | `20260910190000` – `20260910210000` | Phase H eligibility / e2e seed fixes |
 | `20260911120000` | `merchant_direct` sets `payment_capture_status = fully_captured` on paid (I-H14 prerequisite) |
 | `20260911130000` | E2E seeds for `merchant_auth` + `member_auth` refund-eligible orders (I-H2 / I-H3) |
-| `20260911140000` | Member order trigger bypass for moderation refund **prepare** only (`rpc_prepare_moderation_order_refund`); finalize bypass → **PR3** |
+| `20260911140000` | Member order trigger bypass for moderation refund **prepare** only (`rpc_prepare_moderation_order_refund`) |
+| `20260913140000` | Member order trigger bypass for moderation refund **finalize / fail / retry** (PR3A) |
 | `20260912120000` | Grading fail buyer fault single capture + seller settlement restore in finalize |
 | `20260912130000` | Restore admin grading-fail member trigger bypass (regression from `20260911140000`) |
 
@@ -105,6 +106,7 @@ Requires migration `20260911120000` (`payment_capture_status = fully_captured` o
 |----|----------|-------|
 | **I-H2** | `merchant_auth` seed → eligible → resolve + `orderRefund` → `refund_status = processing` (fake PI) | `phase-h-refund.integration.test.ts` |
 | **I-H3** | `member_auth` seed → eligible → resolve + `orderRefund` → `refund_status = processing` (fake PI) | `phase-h-refund.integration.test.ts` |
+| **I-H10** | `member_auth` prepare + **admin session** finalize (fake refund id) → `refunded` + receivable | `phase-h-refund.integration.test.ts` |
 
 Requires migration `20260911130000`. Real Stripe path remains **I-H14** (`merchant_direct` only). Member refund prepare also requires `20260911140000` (trigger bypass).
 
@@ -130,7 +132,7 @@ Use **staging / dev** only. Wipe pair via `wipeModerationMatrixPair` / `deletePe
 | S3 `merchant_auth` / `member_auth` prepare | §8.2 | **I-H2**, **I-H3** (integration) |
 | S1 seller fault fail single | §7.2 | Partner smoke / [admin-grading verify #4](../admin-grading/backend.md#verify-backend) — **無 grading IT** |
 | S1 buyer fault fail single | §7.2 | **G-BF1–G-BF4** (`test:integration:grading`) · **G-BF-S1/S2** real Stripe (`test:integration:grading:stripe-smoke`) |
-| S3 member_auth finalize (real Stripe) | §12 | **PR3**（prepare only today） |
+| S3 member_auth finalize (real Stripe) | §12 | **I-H10** (`test:integration:moderation`); real Stripe E2E optional follow-up |
 | carrier / inconclusive on resolve | §11 | **PR3**（UI 未接） |
 
 ---

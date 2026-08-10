@@ -523,4 +523,4 @@ Covers `merchant_auth` and `member_auth` prepare paths with fake `pi_phase_h_*` 
 |------|------|
 | [refund-policy.md](../../refund-policy.md) | 退款 SSOT（S0–S4、breakdown、fault_party） |
 | [REFUND_ADMIN_PLAYBOOK.md](./REFUND_ADMIN_PLAYBOOK.md) | Admin 操作速查 |
-| [refund-policy §12](../../refund-policy.md#12-實作對照與缺口) | Target vs code 缺口（PR2 buyer fault fail、PR3 member finalize / carrier UI） |
+| [refund-policy §12](../../refund-policy.md#12-實作對照與缺口) | Target vs code 缺口（PR3B carrier/inconclusive UI） |

@@ -251,7 +251,7 @@ Grading fail 與 Phase H **共用** `grading_fault_party` enum；售後 UI 現�
 | **S1 Buyer fault single 留 D** | ✅ | ✅ `capture_auth_fee_only` saga（`20260912120000`） |
 | S1 Platform / carrier / inconclusive | ✅ | ⚠️ enum 有；grading UI 未必全暴露 |
 | S3 carrier / inconclusive | ✅ | ❌ 舉報 UI 未接 |
-| Member S3 finalize（真 Stripe） | ✅ | ⚠️ prepare bypass only；finalize 待補 |
+| Member S3 finalize（真 Stripe） | ✅ | ✅ `20260913140000` finalize/retry bypass |
 | 政策文案 §2.1 vs §6 矛盾 | — | ❌ 以 **本文件** 為準 |
 
 ---

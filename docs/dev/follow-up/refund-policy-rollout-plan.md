@@ -120,32 +120,35 @@ flowchart LR
 
 **目標**：Phase H 真退款端到端安全；可選擴充 carrier / inconclusive。
 
-### 3A — Member auth finalize trigger（必做）
+### 3A — Member auth finalize trigger（✅ 已完成）
+
+| 任務 | 狀態 |
+|------|------|
+| Migration `20260913140000` | ✅ finalize / mark_failed / retry `set_config` |
+| Tests **I-H10** | ✅ admin session member_auth finalize |
+| Plan | [pr3a_member_finalize_7f5511af.plan.md](../../../.cursor/plans/pr3a_member_finalize_7f5511af.plan.md) |
+
+### 3B — Fault 擴充（待做）
 
 | 任務 | 說明 |
 |------|------|
-| Migration | `rpc_finalize_moderation_order_refund` / `rpc_mark_*` / `rpc_retry_*` 對 `member_orders` UPDATE 前 `set_config('moderation.order_refund','on')`（extend `20260911140000` 模式） |
-| 或 | `runModerationOrderRefundSaga` finalize 改用 `service_role`（需安全審查） |
-| Tests | I-H3 延伸：fake finalize member；或 stripe smoke 子集 |
+| `DisputeDetailClient` | 加 carrier、inconclusive（+ `carrierLiabilityParty` 待 IC-2） |
+| `fn_compute_moderation_order_refund` / finalize / saga | carrier / inconclusive 結算規則 |
+| Integration | **I-H15** / **I-H16** |
 
-### 3B — Fault 擴充（可選，同一 PR 或 follow-up）
+### 3C — Admin 金額 preview（待做）
 
-| 任務 | 說明 |
-|------|------|
-| `DisputeDetailClient` | 加 carrier、inconclusive |
-| `fn_compute_moderation_order_refund` | inconclusive：eligible 全退、fee 50/50 記帳（或 platform absorb — 與 policy 一致） |
-| Integration | I-H15 / I-H16 煙霧 case |
-
-### 3C — Admin 金額 preview（可選）
-
-- Resolve 前 RPC 或 action 返回 breakdown（§2.1 五欄）
-- 只讀，唔改裁定邏輯
+- Resolve 前唯讀 §2.1 breakdown（`fn_preview_moderation_order_refund_breakdown`）
+- 詳見 [pr3b_pr3c_remaining.plan.md](../../../.cursor/plans/pr3b_pr3c_remaining.plan.md)（含 **IC-1–IC-3** intent checks）
 
 ### 驗收
 
-- [ ] `test:integration:moderation` 全綠
-- [ ] Manual：member_auth resolve → saga → `refund_status = refunded`（staging + Stripe test）
-- [ ] `refund-policy.md` §12 member finalize ✅
+| 子項 | 狀態 |
+|------|------|
+| 3A `test:integration:moderation` + I-H10 | ✅ |
+| 3A §12 member finalize | ✅ |
+| 3B I-H15/I-H16 + carrier/inconclusive UI | ⬜ |
+| 3C preview panel | ⬜ |
 
 ### 風險
 
@@ -205,7 +208,7 @@ flowchart LR
 ```text
 … 20260911140000  (existing moderation prepare bypass)
 → 20260912xxxx    (PR2 grading fail buyer fault)
-→ 20260912yyyy    (PR3 member finalize bypass)
+→ 20260913140000  (PR3A member finalize/retry bypass)
 ```
 
 ---

@@ -380,6 +380,84 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
       expect(order?.escrow_status).toBe("refunded");
     });
 
+    it("I-H10 member_auth finalize via admin session sets terminal state", async () => {
+      const seed = await seedMemberAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H10",
+      });
+      phaseHMemberSellerId = seed.sellerId;
+      await wipeModerationMatrixPair({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+      });
+
+      const { caseId } = await seedModerationCaseWithMemberOrderContext({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+        orderId: seed.orderId,
+        runId,
+        suffix: "I-H10",
+      });
+
+      const admin = createServiceRoleClient();
+      const { data: orderBefore } = await admin
+        .from("member_orders")
+        .select("stripe_payment_intent_id")
+        .eq("id", seed.orderId)
+        .single();
+
+      const paymentIntentId = orderBefore?.stripe_payment_intent_id;
+      expect(paymentIntentId).toBeTruthy();
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { error: prepareError } = await client.rpc(
+          "rpc_prepare_moderation_order_refund",
+          {
+            p_case_id: caseId,
+            p_order_id: seed.orderId,
+            p_fault_party: "seller",
+          },
+        );
+        expect(prepareError).toBeNull();
+
+        const { error: finalizeError } = await client.rpc(
+          "rpc_finalize_moderation_order_refund",
+          {
+            p_order_id: seed.orderId,
+            p_payment_intent_id: paymentIntentId!,
+            p_refund_id: "re_phase_h_I-H10",
+            p_refund_cents: 10000,
+            p_stripe_fee_hkd: 3.5,
+            p_case_id: caseId,
+          },
+        );
+        expect(finalizeError).toBeNull();
+      });
+
+      const { data: order } = await admin
+        .from("member_orders")
+        .select("refund_status, escrow_status, status, fault_party")
+        .eq("id", seed.orderId)
+        .single();
+
+      expect(order?.refund_status).toBe("refunded");
+      expect(order?.escrow_status).toBe("cancelled");
+      expect(order?.status).toBe("cancelled");
+      expect(order?.fault_party).toBe("seller");
+
+      const { data: receivable } = await admin
+        .from("seller_receivables")
+        .select("order_id, amount_hkd, status")
+        .eq("order_kind", "member")
+        .eq("order_id", seed.orderId)
+        .maybeSingle();
+
+      expect(receivable).not.toBeNull();
+      expect(Number(receivable?.amount_hkd ?? 0)).toBeGreaterThan(0);
+    });
+
     it("I-H12 failed + in-window excluded from payout candidates", async () => {
       const seed = await seedMerchantDirectRefundEligibleOrder({
         buyerId: buyerId(),

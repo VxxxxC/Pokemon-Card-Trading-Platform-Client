@@ -75,7 +75,7 @@ seller_recovery_hkd     … 向賣家／商戶追償總額（含 fee 若 seller 
 | 規則 | 狀態 |
 |------|------|
 | S1 buyer fault single 留 D | ✅ `20260912120000` |
-| S3 member_auth finalize（真 Stripe） | ⚠️ **PR3** — prepare bypass only |
+| S3 member_auth finalize（真 Stripe） | ✅ `20260913140000` — **I-H10** admin session finalize |
 | carrier / inconclusive on resolve UI | ❌ **PR3** |
 
 詳表：[refund-policy §12](../../refund-policy.md#12-實作對照與缺口)
