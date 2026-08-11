@@ -27,7 +27,9 @@
 | 物流損毀（賣家安排寄件） | **carrier**（承擔方 = seller） |
 | 證據不足 | **inconclusive** |
 
-Grading fail 與 Phase H 共用 `grading_fault_party` enum。Resolve UI 現僅 seller / buyer / platform。
+Grading fail 與 Phase H 共用 `grading_fault_party` enum。Resolve UI 支援 seller / buyer / platform / carrier / inconclusive。
+
+**裁定前預覽（PR3C）：** 勾選售後退款並選好訂單 + fault 後，工作台顯示唯讀 breakdown（政策估算；Stripe fee 於 finalize 讀取）。
 
 ---
 

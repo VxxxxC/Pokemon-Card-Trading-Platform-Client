@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   adjustAdminModerationCaseScore,
+  previewModerationOrderRefund,
   resolveAdminModerationCase,
   retryModerationOrderRefund,
 } from "@/app/actions/admin-moderation";
@@ -43,6 +44,7 @@ import {
 import type {
   AdminModerationCaseBundle,
   AdminSubjectModerationHistory,
+  ModerationRefundBreakdownPreview,
   ViolationPersona,
 } from "@/lib/moderation/types";
 import ModerationChatThreadPanel from "./ModerationChatThreadPanel";
@@ -102,9 +104,94 @@ export default function DisputeDetailClient({
   const [carrierLiabilityParty, setCarrierLiabilityParty] = useState<
     "seller" | "platform" | ""
   >("");
+  const [refundPreview, setRefundPreview] =
+    useState<ModerationRefundBreakdownPreview | null>(null);
+  const [refundPreviewError, setRefundPreviewError] = useState<string | null>(
+    null,
+  );
+  const [previewFetchGeneration, setPreviewFetchGeneration] = useState(0);
+  const [previewResolvedGeneration, setPreviewResolvedGeneration] = useState(0);
   const [isRetryPending, startRetryTransition] = useTransition();
 
   const eligibleRefundOrders = relatedOrders.filter((order) => order.refundEligible);
+
+  const canPreviewRefund =
+    executeOrderRefund &&
+    Boolean(refundOrderId) &&
+    Boolean(faultParty) &&
+    (faultParty !== "carrier" || Boolean(carrierLiabilityParty)) &&
+    (faultParty !== "platform" || Boolean(platformFaultReason.trim()));
+
+  useEffect(() => {
+    if (!canPreviewRefund || !faultParty) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setPreviewFetchGeneration((value) => value + 1);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    canPreviewRefund,
+    refundOrderId,
+    faultParty,
+    platformFaultReason,
+    carrierLiabilityParty,
+  ]);
+
+  useEffect(() => {
+    if (!canPreviewRefund || !faultParty || previewFetchGeneration === 0) {
+      return;
+    }
+
+    const generation = previewFetchGeneration;
+    let cancelled = false;
+
+    void previewModerationOrderRefund({
+      orderId: refundOrderId,
+      faultParty,
+      ...(faultParty === "platform"
+        ? { platformFaultReason: platformFaultReason.trim() }
+        : {}),
+      ...(faultParty === "carrier" && carrierLiabilityParty
+        ? { carrierLiabilityParty }
+        : {}),
+    }).then((result) => {
+      if (cancelled) {
+        return;
+      }
+      if (!result.success) {
+        setRefundPreview(null);
+        setRefundPreviewError(result.error);
+        setPreviewResolvedGeneration(generation);
+        return;
+      }
+      setRefundPreview(result.data);
+      setRefundPreviewError(null);
+      setPreviewResolvedGeneration(generation);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    previewFetchGeneration,
+    canPreviewRefund,
+    refundOrderId,
+    faultParty,
+    platformFaultReason,
+    carrierLiabilityParty,
+  ]);
+
+  const visibleRefundPreview = canPreviewRefund ? refundPreview : null;
+  const visibleRefundPreviewError = canPreviewRefund ? refundPreviewError : null;
+  const visibleRefundPreviewLoading =
+    canPreviewRefund &&
+    previewFetchGeneration > 0 &&
+    previewFetchGeneration !== previewResolvedGeneration;
 
   const handleSaveScoreAdjustment = () => {
     const adjustment = Number(scoreAdjustment);
@@ -728,6 +815,32 @@ export default function DisputeDetailClient({
                               }
                               disabled={isResolvePending}
                             />
+                          ) : null}
+                          {canPreviewRefund ? (
+                            <div data-testid="moderation-refund-preview">
+                              {visibleRefundPreviewLoading ? (
+                                <p>載入退款預覽中…</p>
+                              ) : visibleRefundPreviewError ? (
+                                <p>{visibleRefundPreviewError}</p>
+                              ) : visibleRefundPreview ? (
+                                <div>
+                                  <p>政策可退基數：{visibleRefundPreview.eligiblePolicyHkd} HKD</p>
+                                  <p>
+                                    Stripe 手續費：{visibleRefundPreview.stripeFeeNote}
+                                  </p>
+                                  <p>退買家：{visibleRefundPreview.refundToBuyerHkd} HKD</p>
+                                  <p>
+                                    鑑定費留平台：{visibleRefundPreview.authFeeRetainedHkd} HKD
+                                  </p>
+                                  <p>
+                                    賣家追償：{visibleRefundPreview.sellerRecoveryHkd} HKD
+                                  </p>
+                                  <p>
+                                    平台承擔：{visibleRefundPreview.platformAbsorbHkd} HKD
+                                  </p>
+                                </div>
+                              ) : null}
+                            </div>
                           ) : null}
                         </>
                       ) : null}

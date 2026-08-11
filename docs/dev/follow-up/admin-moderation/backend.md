@@ -306,6 +306,22 @@ RPC: `admin_get_moderation_chat_thread(p_case_id, p_room_id, p_limit, p_before)`
 
 `carrierLiabilityParty` persisted in order `auth_notes` as `carrier_liability: seller|platform` for retry/finalize.
 
+#### `previewModerationOrderRefund(input)` (PR3C — read-only)
+
+```typescript
+{
+  orderId: string;
+  faultParty: "buyer" | "seller" | "platform" | "carrier" | "inconclusive";
+  platformFaultReason?: string;  // required when faultParty === "platform"
+  carrierLiabilityParty?: "seller" | "platform";  // required when faultParty === "carrier"
+}
+```
+
+- Admin guard + `fn_moderation_order_refund_eligible` gate (via RPC).
+- RPC `fn_preview_moderation_order_refund_breakdown` — **no order writes, no Stripe**.
+- IC-3: `stripeFeeHkd` always `null`; `stripeFeeNote` = finalize 時從 Stripe 讀取；buyer/seller recovery uses policy fee estimate internally.
+- Returns `ModerationRefundBreakdownPreview` (§2.1 fields).
+
 Side effects when `resolution === upheld` and sanction present:
 
 | `scope` + `type` | Enforcement |

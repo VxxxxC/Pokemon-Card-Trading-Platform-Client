@@ -128,7 +128,7 @@ flowchart LR
 | Tests **I-H10** | ✅ admin session member_auth finalize |
 | Plan | [pr3a_member_finalize_7f5511af.plan.md](../../../.cursor/plans/pr3a_member_finalize_7f5511af.plan.md) |
 
-### 3B — Fault 擴充（待做）
+### 3B — Fault 擴充（✅ 已完成）
 
 **IC 已鎖定（2026-08-11）：** IC-1 50/50 fee · IC-2 `carrierLiabilityParty` UI · 詳見 [pr3b_pr3c_remaining.plan.md](../../../.cursor/plans/pr3b_pr3c_remaining.plan.md#decisions-locked)
 
@@ -138,11 +138,11 @@ flowchart LR
 | `fn_compute` / prepare / finalize / saga | `feeRecoveryMode`（inconclusive → fee_half） |
 | Integration | **I-H15** / **I-H16**（+ optional I-H15b carrier/platform） |
 
-### 3C — Admin 金額 preview（待做）
+### 3C — Admin 金額 preview（✅ 已完成）
 
 **IC-3 已鎖定：** 政策估算 preview（唔 call Stripe）
 
-- `fn_preview_moderation_order_refund_breakdown` + 唯讀 UI panel
+- `fn_preview_moderation_order_refund_breakdown` + 唯讀 UI panel + **I-H17**
 
 ### 驗收
 
@@ -150,8 +150,8 @@ flowchart LR
 |------|------|
 | 3A `test:integration:moderation` + I-H10 | ✅ |
 | 3A §12 member finalize | ✅ |
-| 3B I-H15/I-H16 + carrier/inconclusive UI | ⬜ |
-| 3C preview panel | ⬜ |
+| 3B I-H15/I-H16 + carrier/inconclusive UI | ✅ |
+| 3C preview panel + I-H17 | ✅ |
 
 ### Execution gate（閘門式流水線）
 

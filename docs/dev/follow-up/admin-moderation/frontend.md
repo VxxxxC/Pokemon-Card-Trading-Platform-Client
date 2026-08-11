@@ -223,6 +223,8 @@ interface UserReportModalProps {
 
 Phase H resolve UI：`orderRefund` checkbox + `fault_party`（seller / buyer / platform / **carrier** / **inconclusive**）— 見 [backend.md](./backend.md) Phase H。Carrier 須選 `carrierLiabilityParty`（seller / platform）。
 
+**PR3C refund preview:** When refund checkbox + order + fault selected, debounced `previewModerationOrderRefund` shows read-only §2.1 breakdown (`data-testid="moderation-refund-preview"`). Loading / error states; hidden when inputs incomplete.
+
 **Violation persona:** select `member` / `merchant` / `both` / `unknown` (required on upheld).
 
 **Submit:** `resolveAdminModerationCase` → toast → redirect to list or refresh.

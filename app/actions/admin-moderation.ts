@@ -24,12 +24,14 @@ import type {
   AdminSubjectSanctionHistoryRow,
   ModerationResolution,
   ReportCategorySlug,
+  ModerationRefundBreakdownPreview,
   ResolveAdminModerationCaseInput,
   SanctionScope,
   SanctionType,
   SearchAdminModerationCasesInput,
   ViolationPersona,
 } from "@/lib/moderation/types";
+import { parseModerationRefundBreakdownPreview } from "@/lib/moderation/refund-breakdown-preview";
 import {
   buildListingCdnUrl,
   getBunnyStorageConfig,
@@ -39,6 +41,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
 import {
   isGradingFaultParty,
+  type GradingFaultParty,
 } from "@/lib/payments/auth-grading-fail-void-saga";
 import {
   parsePrepareModerationOrderRefundPayload,
@@ -70,6 +73,10 @@ type AdminModerationRpcClient = {
   rpc(
     fn: "rpc_resolve_moderation_case",
     args: Database["public"]["Functions"]["rpc_resolve_moderation_case"]["Args"],
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "fn_preview_moderation_order_refund_breakdown",
+    args: Database["public"]["Functions"]["fn_preview_moderation_order_refund_breakdown"]["Args"],
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "admin_get_subject_moderation_history",
@@ -1050,6 +1057,73 @@ export async function resolveAdminModerationCase(input: {
   } catch (error) {
     console.error("[resolveAdminModerationCase]", error);
     return { success: false, error: "無法完成裁定" };
+  }
+}
+
+export async function previewModerationOrderRefund(input: {
+  orderId: string;
+  faultParty: GradingFaultParty;
+  platformFaultReason?: string;
+  carrierLiabilityParty?: "seller" | "platform";
+}): Promise<ActionResult<ModerationRefundBreakdownPreview>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const orderId = input.orderId.trim();
+  if (!orderId) {
+    return { success: false, error: "請選擇退款訂單" };
+  }
+
+  if (!isGradingFaultParty(input.faultParty)) {
+    return { success: false, error: "無效的退款責任方" };
+  }
+
+  if (
+    input.faultParty === "carrier" &&
+    input.carrierLiabilityParty !== "seller" &&
+    input.carrierLiabilityParty !== "platform"
+  ) {
+    return { success: false, error: "物流責任必須指定承擔方" };
+  }
+
+  if (
+    input.faultParty === "platform" &&
+    !input.platformFaultReason?.trim()
+  ) {
+    return { success: false, error: "平台責任退款必須填寫原因" };
+  }
+
+  try {
+    const supabase = asAdminModerationRpcClient(await createClient());
+    const { data, error } = await supabase.rpc(
+      "fn_preview_moderation_order_refund_breakdown",
+      {
+        p_order_id: orderId,
+        p_fault_party: input.faultParty,
+        p_platform_fault_reason: input.platformFaultReason?.trim() || undefined,
+        p_carrier_liability_party:
+          input.faultParty === "carrier"
+            ? input.carrierLiabilityParty
+            : undefined,
+      },
+    );
+
+    if (error) {
+      console.error("[previewModerationOrderRefund]", error.message);
+      return { success: false, error: mapRpcError(error.message) };
+    }
+
+    const preview = parseModerationRefundBreakdownPreview(data);
+    if (!preview) {
+      return { success: false, error: "無法解析退款預覽" };
+    }
+
+    return { success: true, data: preview };
+  } catch (error) {
+    console.error("[previewModerationOrderRefund]", error);
+    return { success: false, error: "無法載入退款預覽" };
   }
 }
 

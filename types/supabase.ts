@@ -2957,6 +2957,15 @@ export type Database = {
         }
         Returns: Json
       }
+      fn_preview_moderation_order_refund_breakdown: {
+        Args: {
+          p_carrier_liability_party?: string
+          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
+          p_order_id: string
+          p_platform_fault_reason?: string
+        }
+        Returns: Json
+      }
       fn_compute_platform_subsidy: {
         Args: {
           p_buyer_id: string

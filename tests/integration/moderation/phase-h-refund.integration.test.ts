@@ -742,5 +742,30 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
       const ids = (data ?? []).map((row: { order_id: string }) => row.order_id);
       expect(ids).not.toContain(seed.orderId);
     });
+
+    it("I-H17 preview RPC returns breakdown without mutating order", async () => {
+      const seed = await seedMemberAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H17",
+      });
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data, error } = await client.rpc(
+          "fn_preview_moderation_order_refund_breakdown",
+          {
+            p_order_id: seed.orderId,
+            p_fault_party: "seller",
+          },
+        );
+        expect(error).toBeNull();
+        expect(Number(data?.eligiblePolicyHkd ?? 0)).toBeGreaterThan(0);
+        expect(data?.stripeFeeHkd == null).toBe(true);
+        expect(data?.stripeFeeNote).toMatch(/Stripe/);
+      });
+
+      expect(await getMemberOrderRefundStatus(seed.orderId)).toBe("none");
+    });
   },
 );

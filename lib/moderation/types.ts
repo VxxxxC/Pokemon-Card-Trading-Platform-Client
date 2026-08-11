@@ -1,6 +1,9 @@
 import type { ReportCategorySlug } from "@/lib/moderation/category-config";
+import type { ModerationRefundBreakdownPreview } from "@/lib/moderation/refund-breakdown-preview";
 import type { GradingFaultParty } from "@/lib/payments/auth-grading-fail-void-saga";
 import type { Database } from "@/types/supabase";
+
+export type { ModerationRefundBreakdownPreview };
 
 export type { ReportCategorySlug };
 
