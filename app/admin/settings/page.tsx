@@ -294,6 +294,13 @@ export default function AdminSettingsPage() {
         <p className="font-sans text-[12px] text-text-secondary mb-4">
           編修前台用戶服務協議、商戶提現守則及隱私政策聲明（實時發佈更新）
         </p>
+        <p className="font-sans text-[11px] text-text-disabled mb-4 border-l-2 border-brand/30 pl-3">
+          此處為營運草稿編輯器，尚未接庫；用戶正式條款以{" "}
+          <a href="/terms" className="text-brand underline-offset-2 hover:underline">
+            /terms
+          </a>{" "}
+          為準。
+        </p>
 
         <form onSubmit={handleSaveTerms} className="space-y-4">
           <div className="bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl p-3">

@@ -207,14 +207,17 @@ bun run test:moderation:gate:full
 
 ### 變更清單
 
-| 產物 | 內容 |
-|------|------|
-| **Terms / Help**（路徑按產品定） | 簡版：階段表、鑑定費、3 日窗口、P2P 無退 |
-| `PARTNER_QA_SIGNOFF.md` | 新增「退款政策 spot check」3–5 條（staging 人手） |
-| `PARTNER_QA_PENDING.md` | Migrations 列至 `20260912*`（PR2 後更新） |
-| Checkout 披露 | 鑑定費不退條款（buyer fault / pass 後）— 若已有組件則改文案 |
+| 產物 | 內容 | 狀態 |
+|------|------|------|
+| `/terms` + `/privacy` | 簡版：階段表、鑑定費、售後窗口、P2P 無退；草案 banner | ✅ |
+| Footer / checkout 披露 | 鑑定費不退 + 連結 `/terms` | ✅ |
+| `PARTNER_REFUND_SPOTCHECK.md` | 退款 spot check 4 條（staging 人手） | ✅ |
+| `PARTNER_QA_PENDING.md` | Migrations 列至 `20260915120000`；§4 spot check handoff | ✅ |
+| `PARTNER_QA_SIGNOFF.md` | Migration 字串更新；spot check **唔**入 P1 必做 | ✅ |
 
-### Partner spot check（建議）
+### Partner spot check（post-push / Partner）
+
+> 詳見 [PARTNER_REFUND_SPOTCHECK.md](./refund-policy/PARTNER_REFUND_SPOTCHECK.md)。**PR4 唔執行** — staging push 後與 P1 一次過簽。
 
 1. Seller fault 鑑定 fail → 買家全額收回（含鑑定費）
 2. Buyer fault 鑑定 fail → 買家收卡+運，鑑定費留平台
@@ -223,9 +226,10 @@ bun run test:moderation:gate:full
 
 ### 驗收
 
-- [ ] 法務／產品 sign-off on 對外文案
-- [ ] Partner P1 清單包含退款 spot check
-- [ ] 無 code regression（文案 PR 可獨立）
+- [ ] 法務／產品 sign-off on 對外文案（草案已上 `/terms`、`/privacy`）
+- [x] Partner handoff 清單（spot check 獨立 doc，push 後簽）
+- [x] 無 code regression（文案 PR；`build:ci` + tsc + lint）
+- [ ] **Post-push：** Partner P1 + spot check（staging）
 
 ### 依賴
 

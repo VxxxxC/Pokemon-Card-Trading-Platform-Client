@@ -50,6 +50,13 @@ describe("mapResolutionOptionToInput", () => {
     expect(input.sanction?.reason).toBe("管理員裁定：限制 Merchant 上架");
   });
 
+  it("maps upheld_warn_only to upheld without sanction", () => {
+    const input = mapResolutionOptionToInput("upheld_warn_only", "member");
+    expect(input.resolution).toBe("upheld");
+    expect(input.violationPersona).toBe("member");
+    expect(input.sanction).toBeUndefined();
+  });
+
   it("maps freeze_payout sanction", () => {
     const input = mapResolutionOptionToInput("freeze_payout", "both");
     expect(input.sanction?.type).toBe("freeze_payout");
@@ -65,6 +72,7 @@ describe("isUpheldResolutionOption", () => {
   });
 
   it("returns true for sanction options", () => {
+    expect(isUpheldResolutionOption("upheld_warn_only")).toBe(true);
     expect(isUpheldResolutionOption("suspend_7d")).toBe(true);
     expect(isUpheldResolutionOption("ban_permanent")).toBe(true);
     expect(isUpheldResolutionOption("freeze_payout")).toBe(true);
@@ -80,7 +88,9 @@ describe("MODERATION_RESOLUTION_OPTIONS invariants", () => {
       );
       if (option.requiresUpheld) {
         expect(input.resolution).toBe("upheld");
-        expect(input.sanction).toBeTruthy();
+        if (option.value !== "upheld_warn_only") {
+          expect(input.sanction).toBeTruthy();
+        }
       } else {
         expect(input.resolution).toBe(option.value);
         expect(input.sanction).toBeUndefined();
@@ -102,6 +112,7 @@ describe("MODERATION_RESOLUTION_OPTIONS invariants", () => {
     expect(MODERATION_RESOLUTION_OPTIONS.map((option) => option.label)).toEqual([
       "駁回舉報",
       "證據不足",
+      "裁定成立（僅警告／可選退款）",
       "凍結帳戶 7 日",
       "永久封禁",
       "限制 Member 上架",

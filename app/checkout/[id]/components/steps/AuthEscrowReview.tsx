@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { CheckoutCouponPicker } from "@/app/checkout/[id]/components/CheckoutCouponPicker";
 import type { CheckoutSession } from "@/lib/checkout/types";
@@ -35,6 +36,13 @@ export function AuthEscrowReview({
           <li>款項全額託管於平台，鑑定通過前賣方無法提現</li>
           <li>鑑定費用已計入訂單總額</li>
         </ul>
+        <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
+          平台確認收到卡牌後鑑定服務視為已開始，鑑定費一般不予退還；售後窗口與退款規則見{" "}
+          <Link href="/terms" className="text-brand hover:underline">
+            服務條款
+          </Link>
+          。
+        </p>
       </section>
 
       {isMember ? (

@@ -1,7 +1,7 @@
 # Partner QA — 待簽收總覽
 
 > **SSOT：** 各 flow 詳細步驟見下方連結；本頁只列 **仍未簽收** 的項目。  
-> **更新：** 2026-08-10（v2 決策見 [admin-moderation/v2-plan.md](./follow-up/admin-moderation/v2-plan.md)）
+> **更新：** 2026-08-11（v2 決策見 [admin-moderation/v2-plan.md](./follow-up/admin-moderation/v2-plan.md)）
 
 ---
 
@@ -9,9 +9,9 @@
 
 | 狀態 | 說明 |
 |------|------|
-| 自動化 | ✅ `test:moderation:gate:full` 全綠 · migrations 含 `20260911140000` |
+| 自動化 | ✅ `test:moderation:gate:full` 全綠 · migrations 含 `20260915120000` |
 | Pre-release | ✅ **I-H14** `bun run test:e2e:moderation-stripe-smoke`（env-gated；取代人手 staging 退款煙霧） |
-| Partner | ⬜ **P1 staging 煙霧**（~10min）；**可與其他 flow 稍後一次過簽** |
+| Partner | ⬜ **P1 staging 煙霧**（~10min）；**push 後與退款 spot check 一次過簽** |
 
 **清單：** [follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md) — **只含人手項**；logic 靠 stable gate + [Automation backlog](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md#automation-backlog)
 
@@ -40,19 +40,29 @@
 
 ---
 
-## 4. 不在 Partner QA 範圍
+## 4. 退款政策 spot check — ⬜ push 後與 P1 一次過
+
+| 狀態 | 說明 |
+|------|------|
+| Code | ✅ PR1–PR4（條款 `/terms`、checkout 披露、saga PR2–PR3C） |
+| Partner | ⬜ **staging push 後** 與 [P1 煙霧](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md) 同批簽收 |
+
+**清單：** [follow-up/refund-policy/PARTNER_REFUND_SPOTCHECK.md](./follow-up/refund-policy/PARTNER_REFUND_SPOTCHECK.md) — 4 條必做 + 可選 carrier/preview
+
+---
+
+## 5. 不在 Partner QA 範圍
 
 | 項目 | 時程 | 備註 |
 |------|------|------|
 | Phase F 自動升級 cron | v2 | [v2-plan.md](./follow-up/admin-moderation/v2-plan.md) |
 | Email / push（含被罰用戶裁定通知） | **Pre-v1 全站 batch** | Backend only；與其他通知位一次過接 |
 | 申訴 portal · listing 舉報 · carrier/inconclusive UI | v2 / PR3 | 退款 SSOT: [refund-policy.md](./refund-policy.md) |
-| 完整退款 spot check（全 orderKind × fault） | **PR4** | 見 [refund-policy-rollout-plan.md](./follow-up/refund-policy-rollout-plan.md) |
 
 ---
 
 ## 簽收優先序（建議）
 
-1. **舉報機制** → [PARTNER_QA_SIGNOFF.md](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md) **P1 staging 煙霧**
+1. **舉報機制 + 退款 spot check**（push 後同批）→ [PARTNER_QA_SIGNOFF.md](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md) P1 + [PARTNER_REFUND_SPOTCHECK.md](./follow-up/refund-policy/PARTNER_REFUND_SPOTCHECK.md)
 2. **鑑定 single capture** → [PARTNER_HANDOFF.md](./follow-up/admin-grading/PARTNER_HANDOFF.md)（若同時上線支付）
 3. **Rewards G2.6** → 積分商城限兌（可獨立）

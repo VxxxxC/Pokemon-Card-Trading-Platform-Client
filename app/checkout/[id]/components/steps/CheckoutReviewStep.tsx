@@ -15,6 +15,7 @@ type CheckoutReviewStepProps = {
   paymentLocked: boolean;
   selectedCouponId: string | null;
   onCouponChange: (couponId: string | null) => void;
+  authFee: number;
 };
 
 function ProductSummaryCard({ session }: { session: CheckoutSession }) {
@@ -62,6 +63,7 @@ export function CheckoutReviewStep({
   paymentLocked,
   selectedCouponId,
   onCouponChange,
+  authFee,
 }: CheckoutReviewStepProps) {
   if (session.variant === "merchant_direct") {
     return (
@@ -72,6 +74,7 @@ export function CheckoutReviewStep({
         paymentLocked={paymentLocked}
         selectedCouponId={selectedCouponId}
         onCouponChange={onCouponChange}
+        authFee={authFee}
       />
     );
   }

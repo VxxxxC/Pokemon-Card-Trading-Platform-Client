@@ -21,9 +21,9 @@
 ## Dev release 前提（dev 簽，partner 信）
 
 - [ ] Target branch 上 **stable gate 全綠**（見 [§Stable gate](#stable-gate-dev--ci)）
-- [ ] Staging Supabase 已 push migrations `20260806120000`–`20260911140000`（含 Phase H refund saga + I-H2/I-H3 auth seeds + member prepare bypass）
+- [ ] Staging Supabase 已 push migrations `20260806120000`–`20260915120000`（含 Phase H refund saga + PR2 grading fail + PR3A–PR3C carrier/preview）
 
-> Partner P1 可與其他 flow **稍後一次過簽**；dev gate 已覆蓋 logic。**售後退款 Stripe 煙霧**可選跑 `bun run test:e2e:moderation-stripe-smoke`（需 `STRIPE_SECRET_KEY` + webhook listener）。v2／pre-launch 分層見 [v2-plan.md](./v2-plan.md)。
+> Partner P1 可與其他 flow **稍後一次過簽**；dev gate 已覆蓋 logic。**售後退款 Stripe 煙霧**可選跑 `bun run test:e2e:moderation-stripe-smoke`（需 `STRIPE_SECRET_KEY` + webhook listener）。**退款政策 spot check** 見 [PARTNER_REFUND_SPOTCHECK.md](../refund-policy/PARTNER_REFUND_SPOTCHECK.md)（push 後與 P1 同批，唔入本頁必做項）。v2／pre-launch 分層見 [v2-plan.md](./v2-plan.md)。
 
 ### Stable gate（dev / CI）
 

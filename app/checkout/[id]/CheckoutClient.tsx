@@ -412,6 +412,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
                 paymentLocked={clientSecret !== null}
                 selectedCouponId={selectedCouponId}
                 onCouponChange={handleCouponChange}
+                authFee={pricing.authFee}
               />
             ) : (
               <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">

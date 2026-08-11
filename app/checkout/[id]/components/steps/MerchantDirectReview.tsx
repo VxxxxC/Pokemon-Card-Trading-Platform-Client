@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
 import { CheckoutCouponPicker } from "@/app/checkout/[id]/components/CheckoutCouponPicker";
 import type {
@@ -15,6 +16,7 @@ type MerchantDirectReviewProps = {
   paymentLocked: boolean;
   selectedCouponId: string | null;
   onCouponChange: (couponId: string | null) => void;
+  authFee: number;
 };
 
 export function MerchantDirectReview({
@@ -24,6 +26,7 @@ export function MerchantDirectReview({
   paymentLocked,
   selectedCouponId,
   onCouponChange,
+  authFee,
 }: MerchantDirectReviewProps) {
   const { product, counterparty } = session;
   const rarity = product.displayId ?? product.cardNumber ?? "—";
@@ -199,11 +202,18 @@ export function MerchantDirectReview({
           </p>
         ) : null}
         {form.authServiceEnabled ? (
-          <div className="mt-3 bg-[#17130f] rounded-xl p-3 border border-brand/20">
+          <div className="mt-3 bg-[#17130f] rounded-xl p-3 border border-brand/20 space-y-2">
             <p className="font-sans text-[11px] text-brand leading-relaxed">
               ✓
               鑑定服務已啟用：將由專業第三方鑑定機構對卡牌進行全面品相檢測，並提供官方認證報告。鑑定費用
-              HK$150 將計入訂單總額。
+              HK${authFee} 將計入訂單總額。
+            </p>
+            <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
+              鑑定服務開始後鑑定費一般不予退還；售後窗口與規則見{" "}
+              <Link href="/terms" className="text-brand hover:underline">
+                服務條款
+              </Link>
+              。
             </p>
           </div>
         ) : null}
