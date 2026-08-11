@@ -133,6 +133,22 @@ export async function deleteMatrixTestOrdersForSeller(
   }
 }
 
+export async function releasePhaseHStripeRefundIds(): Promise<void> {
+  const admin = createServiceRoleClient();
+  const pattern = "re_phase_h_%";
+
+  for (const table of ["member_orders", "merchant_orders"] as const) {
+    const { error } = await admin
+      .from(table)
+      .update({ stripe_refund_id: null })
+      .like("stripe_refund_id", pattern);
+
+    if (error && !error.message.includes("permission denied")) {
+      throw new Error(`[releasePhaseHStripeRefundIds:${table}] ${error.message}`);
+    }
+  }
+}
+
 export async function wipeModerationMatrixPair(params: {
   reporterId: string;
   subjectId: string;

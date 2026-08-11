@@ -187,7 +187,7 @@ Buyer fault 寄錯 → 買家收 **900**，平台留 **150** 鑑定費。
 | **platform**（有原因） | 1000 | **1000** | 退畀買家 | 30 → platform | 0 |
 | **carrier**（賣家物流） | 850 | **850** | 留平台 | 30 → seller | 850+30 |
 
-**Merchant 佣金**：Seller fault 全退時 **唔保留 8% 佣金**；不可回收 stripe fee **另計** merchant ledger（與現行政策一致）。
+**Merchant 佣金**：Seller fault 全退時 **唔保留平台佣金**；不可回收 stripe fee **另計** merchant ledger（與現行政策一致）。
 
 ### 8.3 S3 — Merchant 非鑑定（僅 A+C 併入 buyer_total）
 

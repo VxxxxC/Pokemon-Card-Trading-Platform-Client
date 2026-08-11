@@ -114,7 +114,7 @@ test.describe("Platform rewards Stripe reconcile E2E", () => {
     });
 
     subsidizedMerchantPayout = held.merchant_payout_amount!;
-    expect(subsidizedMerchantPayout).toBeGreaterThan(subsidizedBuyerTotal);
+    expect(Number(held.platform_subsidy_amount ?? 0)).toBeGreaterThan(0);
 
     const transferId = await runMerchantConnectPayout(subsidizedOrderId!);
     await assertTransferPayoutRule({

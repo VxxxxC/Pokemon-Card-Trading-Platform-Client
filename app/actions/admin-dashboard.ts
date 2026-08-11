@@ -10,6 +10,10 @@ import {
   sumInRange,
 } from "@/lib/admin-dashboard/format";
 import {
+  DEFAULT_COMMISSION_RATE,
+  formatCommissionPercentLabel,
+} from "@/lib/platform/financial-config";
+import {
   getHktMonthRange,
   getHktRollingWindowStartIso,
 } from "@/lib/admin-dashboard/hkt-month-bounds";
@@ -26,6 +30,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getPlatformStripeBalance } from "@/lib/stripe/platform-balance";
+import {
+  parseCommissionRateFromSettings,
+  PLATFORM_FINANCIAL_CONFIG_KEY,
+} from "@/lib/platform/financial-config";
 
 const ECOLOGY_COLORS = {
   user: "#D4A574",
@@ -52,6 +60,25 @@ async function requireAdmin(): Promise<
   }
 
   return { ok: true, adminId: user.id };
+}
+
+async function fetchConfiguredCommissionRateLabel(): Promise<string | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", PLATFORM_FINANCIAL_CONFIG_KEY)
+    .maybeSingle();
+
+  if (error || !data?.value) {
+    return null;
+  }
+
+  return formatCommissionPercentLabel(parseCommissionRateFromSettings(data.value));
 }
 
 async function fetchProfileCount(role?: "member" | "merchant"): Promise<number> {
@@ -312,10 +339,13 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       0,
     );
 
+    const configuredCommissionRateLabel = await fetchConfiguredCommissionRateLabel();
+
     const commissionRate =
-      recentSubtotalTotal > 0
+      configuredCommissionRateLabel ??
+      (recentSubtotalTotal > 0
         ? formatPercentRate(recentCommissionTotal / recentSubtotalTotal)
-        : "8.0%";
+        : formatCommissionPercentLabel(DEFAULT_COMMISSION_RATE));
 
     const appraisalFeePerCard =
       capturedAuthFees.length > 0

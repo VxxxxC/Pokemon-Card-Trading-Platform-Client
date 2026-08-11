@@ -432,6 +432,16 @@ bun run test:e2e e2e/admin-moderation.spec.ts --project=guest
 bun run test:e2e e2e/admin-moderation.spec.ts
 ```
 
+### Prelaunch gate（H1 / H2 前人手 QA 前）
+
+Rewards + 舉報 + 鑑定 fail + Stripe E2E 的統一順序見 **[prelaunch-gate.md](./prelaunch-gate.md)**。
+
+```bash
+bun run test:prelaunch:gate:1a
+bun run stripe:webhook:listen   # 另一 terminal
+PRELAUNCH_RUN_1B=1 bun run test:prelaunch:gate
+```
+
 ### Moderation release gate (`MODERATION_GATE`)
 
 Full pre-release bundle (same env as integration + E2E above):
@@ -447,7 +457,7 @@ Full pre-release bundle (same env as integration + E2E above):
 # Fast: tsc + integration (31) + unit/PBT helpers
 bun run test:moderation:gate
 
-# Full: fast + PBT + Stryker mutation + E2E (user-report, admin-moderation, report-outcome-notification)
+# Full: fast + PBT + Stryker mutation + seed + E2E (user-report, admin-moderation, report-outcome-notification; includes seller project)
 MODERATION_GATE=1 bun run test:moderation:gate:full
 ```
 

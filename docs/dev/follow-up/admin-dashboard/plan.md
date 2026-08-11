@@ -66,11 +66,11 @@
 #### Commission (浮動)
 
 - **Recognized revenue:** `SUM(commission_amount)` where `escrow_status = 'completed_and_transferred'` and `commission_amount IS NOT NULL`.
-- **Per-order rate:** `commission_rate_applied` (snapshot at payout prep; today hardcoded 8% in `rpc_prepare_merchant_order_payout`).
+- **Per-order rate:** `commission_rate_applied` (snapshot at buyer confirm via `rpc_confirm_merchant_buyer_receipt`; rate from `fn_platform_commission_rate()`).
 - **Dashboard display rate:**
-  - **Preferred:** `platform_settings.key = 'platform_financial_config'` → `value.commissionRate` (when settings wired).
+  - **Preferred:** `platform_settings.key = 'platform_financial_config'` → `value.commissionRate` (wired via `/admin/settings`).
   - **Fallback:** weighted avg `SUM(commission_amount) / SUM(item_subtotal)` over last 90d completed orders, or static copy 「現行預設 8%」.
-- **Do not** use mock UI `5.0%` or settings page local state.
+- Settings page commission field reads/writes `platform_settings` (no mock `5.0%` local state).
 
 #### Appraisal / auth fee (浮動)
 

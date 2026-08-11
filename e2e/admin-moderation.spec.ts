@@ -118,13 +118,12 @@ test.describe("Admin moderation — admin flows", () => {
       page.getByRole("heading", { name: "舉報與爭議仲裁工作台" }),
     ).toBeVisible({ timeout: 20_000 });
 
-    await expect(page.getByText(openCase.case_number)).toBeVisible({
-      timeout: 20_000,
-    });
-
-    await page.getByText(openCase.case_number).click();
+    const caseRow = page.locator("tr", { hasText: openCase.case_number }).first();
+    await expect(caseRow).toBeVisible({ timeout: 20_000 });
+    await caseRow.locator("button", { hasText: "查看詳情" }).click();
     await expect(page).toHaveURL(
       new RegExp(`/admin/disputes/${openCase.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      { timeout: 20_000 },
     );
     await expect(page.getByText(openCase.case_number)).toBeVisible({
       timeout: 15_000,

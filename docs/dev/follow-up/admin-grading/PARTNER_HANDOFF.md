@@ -26,6 +26,8 @@
 
 **唔使驗：** Playwright `member-auth-escrow.spec.ts` 只係 mock 付款，**唔代表** Stripe capture 已通。
 
+**自動化：** `bun run test:integration:grading:pass-stripe-smoke`（G-BP-S1）覆蓋 member single-capture pass 真 PI；Partner H2 可專注 webhook UI + Merchant B2C。
+
 ---
 
 ## 環境 checklist（開測前）

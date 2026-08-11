@@ -13,7 +13,7 @@ import {
   findMemberListingForIntegration,
   findMerchantListingForIntegration,
 } from "../rewards/helpers/checkout-fixture";
-import { wipeModerationMatrixPair } from "./helpers/cleanup";
+import { wipeModerationMatrixPair, releasePhaseHStripeRefundIds } from "./helpers/cleanup";
 import { getSellerId, hasFullModerationIntegrationEnv } from "./helpers/env";
 import {
   countSanctionsForCase,
@@ -58,6 +58,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
     });
 
     beforeEach(async () => {
+      await releasePhaseHStripeRefundIds();
       await wipeModerationMatrixPair({
         reporterId: buyerId(),
         subjectId: getSellerId(),
@@ -362,7 +363,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
         {
           p_order_id: seed.orderId,
           p_payment_intent_id: "pi_phase_h_I-H9",
-          p_refund_id: "re_phase_h_fake",
+          p_refund_id: `re_phase_h_fake_${runId}`,
           p_refund_cents: 10000,
           p_stripe_fee_hkd: 3.5,
           p_case_id: caseId,
@@ -427,7 +428,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
           {
             p_order_id: seed.orderId,
             p_payment_intent_id: paymentIntentId!,
-            p_refund_id: "re_phase_h_I-H10",
+            p_refund_id: `re_phase_h_I-H10_${runId}`,
             p_refund_cents: 10000,
             p_stripe_fee_hkd: 3.5,
             p_case_id: caseId,
@@ -506,7 +507,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
           {
             p_order_id: seed.orderId,
             p_payment_intent_id: paymentIntentId!,
-            p_refund_id: "re_phase_h_I-H15",
+            p_refund_id: `re_phase_h_I-H15_${runId}`,
             p_refund_cents: 10000,
             p_stripe_fee_hkd: 3.5,
             p_case_id: caseId,
@@ -584,7 +585,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
           {
             p_order_id: seed.orderId,
             p_payment_intent_id: paymentIntentId!,
-            p_refund_id: "re_phase_h_I-H15b",
+            p_refund_id: `re_phase_h_I-H15b_${runId}`,
             p_refund_cents: 10000,
             p_stripe_fee_hkd: 3.5,
             p_case_id: caseId,
@@ -664,7 +665,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
           {
             p_order_id: seed.orderId,
             p_payment_intent_id: paymentIntentId!,
-            p_refund_id: "re_phase_h_I-H16",
+            p_refund_id: `re_phase_h_I-H16_${runId}`,
             p_refund_cents: 10000,
             p_stripe_fee_hkd: mockStripeFeeHkd / 2,
             p_case_id: caseId,

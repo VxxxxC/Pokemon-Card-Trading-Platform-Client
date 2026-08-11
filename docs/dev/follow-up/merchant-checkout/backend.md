@@ -1,7 +1,7 @@
 # Merchant Checkout — 平台 Stripe 收款與 Connect 撥款（Milestone 1–2）
 
 > B2C 商戶訂單真實收款：買家全額付款 → 資金 100% 入**平台** Stripe 帳戶託管 → webhook 確認後 `payment_held`。
-> 買家確認收貨後，以 separate charge + transfer 將卡價扣固定 8% 佣金及買家支付運費撥至 Merchant Connect；鑑定費全數留平台。
+> 買家確認收貨後，以 separate charge + transfer 將卡價扣平台佣金（`platform_settings` SSOT，每單 confirm 時 snapshot）及買家支付運費撥至 Merchant Connect；鑑定費全數留平台。
 
 ## 1. 託管狀態機
 
@@ -65,7 +65,7 @@ pending_payment ──▶ payment_held ──▶ shipped ──▶ buyer confirm
 | `total_amount` | 託管總額 = 三者之和 |
 | `paid_at` | webhook 確認收款時間 |
 | `stripe_payment_intent_id` | 既有欄位，本階段開始實際使用（partial index） |
-| `commission_rate_applied` / `commission_amount` | 本單固定佣金 snapshot（第一版 8%） |
+| `commission_rate_applied` / `commission_amount` | 買家確認收貨時 snapshot（費率來自 `platform_settings.platform_financial_config`） |
 | `merchant_payout_amount` | `item_subtotal - commission + shipping_fee` |
 | `stripe_transfer_id` / `stripe_destination_account_id` | Connect transfer 對帳資料 |
 | `buyer_confirmed_at` / `payout_status` | 買家確認及 `pending/held/processing/paid/failed/frozen` saga 狀態 |
@@ -229,7 +229,7 @@ bun run stripe:webhook:listen   # 本機；見 lib/stripe/webhook-events.ts
 | 3 | Webhook `payment_intent.succeeded` | `payment_held`，`paid_at`，ledger `escrow_payment` ×1 |
 | 4 | 商戶 `/profile/merchant/orderDetail/[id]` → SF 填單號或面交確認 | `escrow_status = shipped` |
 | 5 | 買家 `/profile/user/trading` → 確認完成 | `completeMerchantOrder`（gate: `shipped`） |
-| 6 | Stripe Dashboard | Transfer 至 Connect；金額 = 卡價 − 8% + 運費 |
+| 6 | Stripe Dashboard | Transfer 至 Connect；金額 = 卡價 − 本單佣金 snapshot + 運費 |
 | 7 | DB | `completed_and_transferred`；`commission_deduction` + `payout` ledger 各一筆 |
 | 8 | Webhook replay | `already_applied`，無重複 ledger |
 
@@ -294,7 +294,7 @@ Vitest：`coupon-webhook.integration.test.ts`（I-P0-1b / I-R04）；unit `tests
 ## 9. 已知缺口
 
 - ~~`pending_payment` 訂單**無過期 / 取消機制**~~ → `rpc_finalize_merchant_pending_payment_expiry` + cron（見 migration `20260731120000`）
-- 佣金率暫固定 8%，未接 `platform_settings` / Admin 動態設定
+- ~~佣金率暫固定 8%，未接 `platform_settings` / Admin 動態設定~~ → migration **`20260916120000`** + `/admin/settings`；見 [variable-commission](../variable-commission/plan.md)
 - ~~優惠券未接後端，checkout 券選單暫時 disabled，總額不折扣~~ → Phase 2 已接駁；見 `test:rewards:gate`
 - 收件資料（電話 / 順豐櫃 / 面交備註 / 買家備註）仍只留前端 state，未有 DB 欄位
 - Refund / transfer reversal 尚未落地；Member C2C payout 屬另一流程

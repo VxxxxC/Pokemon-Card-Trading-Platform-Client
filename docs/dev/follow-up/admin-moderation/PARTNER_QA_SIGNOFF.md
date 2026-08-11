@@ -29,14 +29,16 @@
 
 ```bash
 bun run test:moderation:gate:full
-# 或逐步：
+# 或逐步（除錯用）：
 bun run test:integration:moderation:pbt
 bun run test:moderation:mutation
-MODERATION_GATE=1 bun run test:e2e e2e/user-report.spec.ts e2e/report-outcome-notification.spec.ts --project=setup --project=buyer
+MODERATION_GATE=1 bun run test:e2e e2e/user-report.spec.ts e2e/report-outcome-notification.spec.ts --project=setup --project=guest --project=buyer
 bun run seed:moderation-e2e
 MODERATION_GATE=1 bun run test:e2e e2e/admin-moderation.spec.ts --project=setup --project=guest --project=buyer --project=seller
 bun run build:ci
 ```
+
+**Pre-H1/H2 完整順序：** [prelaunch-gate.md](../../prelaunch-gate.md) · `bun run test:prelaunch:gate:1a` + `test:prelaunch:gate:1b`
 
 詳情：[6phase-test-plan.md](./6phase-test-plan.md) · [e2e.md](../../e2e.md)
 

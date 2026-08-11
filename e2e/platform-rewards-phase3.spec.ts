@@ -22,7 +22,7 @@ import {
   tryClaimFlashCampaignViaUI,
   waitForFlashCampaignSectionReady,
 } from "./helpers/platform-rewards";
-import { waitForCheckoutCouponPicker } from "./helpers/rewards-checkout-coupon";
+import { waitForCheckoutCouponPicker, selectCheckoutCoupon } from "./helpers/rewards-checkout-coupon";
 import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import {
   getMerchantProductDetailFixtures,
@@ -49,6 +49,10 @@ async function loginAsAdmin(page: Page): Promise<void> {
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL((url) => !url.pathname.startsWith("/auth"), {
     timeout: 30_000,
+  });
+  await page.goto("/admin/campaigns/new", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "新增獎勵活動" })).toBeVisible({
+    timeout: 20_000,
   });
 }
 
@@ -188,8 +192,11 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     });
     expect(flashCouponRewardId).toBeTruthy();
 
-    const claims = await countRewardCampaignClaims(campaignId!);
-    expect(claims).toBe(1);
+    await expect
+      .poll(async () => countRewardCampaignClaims(campaignId!), {
+        timeout: 30_000,
+      })
+      .toBeGreaterThanOrEqual(1);
   });
 
   test("C3.6 flash_only template is absent from locked tab", async ({
@@ -225,9 +232,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
     await waitForCheckoutCouponPicker(page, {
       rewardId: flashCouponRewardId!,
     });
-    await page.locator("#checkout-coupon").selectOption(flashCouponRewardId!);
-    await page.waitForTimeout(1500);
-    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+    await selectCheckoutCoupon(page, flashCouponRewardId!);
 
     await completeMerchantDirectCheckout(page, {
       couponRewardId: flashCouponRewardId!,

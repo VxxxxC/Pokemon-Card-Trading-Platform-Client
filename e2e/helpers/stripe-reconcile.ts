@@ -10,8 +10,11 @@ import {
   findActiveMerchantListingForE2e,
   reactivateListingForE2e,
 } from "./platform-rewards";
-
-const COMMISSION_RATE = 0.08;
+import {
+  DEFAULT_COMMISSION_RATE,
+  parseCommissionRateFromSettings,
+  PLATFORM_FINANCIAL_CONFIG_KEY,
+} from "@/lib/platform/financial-config";
 
 export type MerchantOrderReconcileSnapshot = {
   id: string;
@@ -257,15 +260,34 @@ export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export function expectedMerchantPayoutFromGross(params: {
+export async function getPlatformCommissionRate(): Promise<number> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", PLATFORM_FINANCIAL_CONFIG_KEY)
+    .maybeSingle();
+
+  if (error || !data?.value) {
+    return DEFAULT_COMMISSION_RATE;
+  }
+
+  return parseCommissionRateFromSettings(data.value);
+}
+
+export async function expectedMerchantPayoutFromGross(params: {
   itemSubtotal: number;
   shippingFee: number;
-}): number {
-  const commission = roundMoney(params.itemSubtotal * COMMISSION_RATE);
+  commissionRate?: number;
+}): Promise<number> {
+  const commissionRate = params.commissionRate ?? (await getPlatformCommissionRate());
+  const commission = roundMoney(params.itemSubtotal * commissionRate);
   return roundMoney(params.itemSubtotal - commission + params.shippingFee);
 }
 
-export function assertMerchantPayoutGross(snapshot: MerchantOrderReconcileSnapshot): void {
+export async function assertMerchantPayoutGross(
+  snapshot: MerchantOrderReconcileSnapshot,
+): Promise<void> {
   const itemSubtotal = snapshot.item_subtotal ?? 0;
   const shippingFee = snapshot.shipping_fee ?? 0;
   const payout = snapshot.merchant_payout_amount;
@@ -273,15 +295,16 @@ export function assertMerchantPayoutGross(snapshot: MerchantOrderReconcileSnapsh
   const subsidy = snapshot.platform_subsidy_amount ?? 0;
 
   expect(payout).not.toBeNull();
-  const expected = expectedMerchantPayoutFromGross({
+  const expected = await expectedMerchantPayoutFromGross({
     itemSubtotal,
     shippingFee,
   });
   expect(Math.abs(Number(payout) - expected)).toBeLessThanOrEqual(0.02);
 
-  if (subsidy > 0) {
-    expect(Number(payout)).toBeGreaterThan(buyerTotal);
-  }
+  // Subsidized orders may still have merchant_payout <= buyer_total when subsidy < commission;
+  // execute-connect-payout binds source_transaction in that case (see assertTransferPayoutRule).
+  void buyerTotal;
+  void subsidy;
 }
 
 export async function assertPaymentIntentMatchesBuyerTotal(
@@ -458,7 +481,7 @@ export async function advanceOrderToPayoutReady(params: {
     .then(async () => getMerchantOrderReconcileSnapshot(params.orderId));
 
   expect(held).toBeTruthy();
-  assertMerchantPayoutGross(held!);
+  await assertMerchantPayoutGross(held!);
 
   await backdatePayoutHold(params.orderId);
   return held!;

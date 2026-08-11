@@ -25,6 +25,18 @@ export type PrepareGradingFailPayload = {
   escrow_capture_model?: string;
 };
 
+export type PrepareGradingPassPayload = {
+  success?: boolean;
+  already_applied?: boolean;
+  order_kind?: string;
+  order_id?: string;
+  payment_intent_id?: string;
+  goods_cents?: number;
+  capture_cents?: number;
+  admin_id?: string;
+  escrow_capture_model?: string;
+};
+
 function createStripeClient(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
   if (!secretKey) {
@@ -151,6 +163,9 @@ export async function seedGradingFailStripeSmokeOrder(): Promise<GradingFailStri
   };
 }
 
+/** Same seed path as fail smoke — authorized single-capture order in grading. */
+export const seedGradingPassStripeSmokeOrder = seedGradingFailStripeSmokeOrder;
+
 export async function prepareAuthGradingFail(
   client: SupabaseClient<Database>,
   params: {
@@ -245,4 +260,106 @@ export async function retrievePaymentIntent(
 ): Promise<Stripe.PaymentIntent> {
   const stripe = createStripeClient();
   return stripe.paymentIntents.retrieve(paymentIntentId);
+}
+
+export async function prepareAuthGradingPass(
+  client: SupabaseClient<Database>,
+  params: {
+    orderId: string;
+    gradingCompany: string;
+    gradingScore: string | null;
+    notes?: string;
+  },
+): Promise<PrepareGradingPassPayload> {
+  const { data, error } = await client.rpc("rpc_prepare_goods_capture", {
+    p_order_kind: "member",
+    p_order_id: params.orderId,
+    p_notes: params.notes,
+    p_auth_grading_company: params.gradingCompany,
+    p_auth_grading_score: params.gradingScore ?? undefined,
+  });
+
+  if (error) {
+    throw new Error(`[prepareAuthGradingPass] ${error.message}`);
+  }
+
+  return data as PrepareGradingPassPayload;
+}
+
+export async function executeGradingPassStripeLeg(
+  prepared: PrepareGradingPassPayload,
+  orderId: string,
+  grading: { company: string; score: string | null },
+): Promise<Stripe.PaymentIntent> {
+  const paymentIntentId = prepared.payment_intent_id;
+  const adminId = prepared.admin_id;
+  const captureCents = prepared.capture_cents ?? prepared.goods_cents ?? 0;
+
+  if (!paymentIntentId || !adminId) {
+    throw new Error(
+      "[executeGradingPassStripeLeg] missing payment_intent_id or admin_id",
+    );
+  }
+
+  if (captureCents <= 0) {
+    throw new Error("[executeGradingPassStripeLeg] invalid capture_cents");
+  }
+
+  const isSingleCapture = prepared.escrow_capture_model === "single";
+  const captureStage = isSingleCapture ? "full" : "goods";
+  const idempotencyKey = `goods-capture:${captureStage}:member:${orderId}:stripe-smoke`;
+
+  const stripe = createStripeClient();
+  const captureParams: Stripe.PaymentIntentCaptureParams = {
+    amount_to_capture: captureCents,
+    metadata: {
+      capture_stage: captureStage,
+      admin_id: adminId,
+      order_kind: "member_auth",
+      order_id: orderId,
+      auth_grading_company: grading.company,
+      ...(grading.score ? { auth_grading_score: grading.score } : {}),
+      ...(prepared.escrow_capture_model
+        ? { escrow_capture_model: prepared.escrow_capture_model }
+        : {}),
+    },
+  };
+
+  if (!isSingleCapture) {
+    captureParams.final_capture = true;
+  }
+
+  return stripe.paymentIntents.capture(
+    paymentIntentId,
+    captureParams,
+    { idempotencyKey },
+  );
+}
+
+export async function finalizeAuthGradingPass(
+  client: SupabaseClient<Database>,
+  params: {
+    orderId: string;
+    paymentIntentId: string;
+    capturedAmountCents: number;
+    adminId: string;
+    gradingCompany: string;
+    gradingScore: string | null;
+    notes?: string;
+  },
+): Promise<void> {
+  const { error } = await client.rpc("rpc_finalize_goods_capture", {
+    p_order_kind: "member",
+    p_order_id: params.orderId,
+    p_payment_intent_id: params.paymentIntentId,
+    p_captured_amount_cents: params.capturedAmountCents,
+    p_admin_id: params.adminId,
+    p_notes: params.notes,
+    p_auth_grading_company: params.gradingCompany,
+    p_auth_grading_score: params.gradingScore ?? undefined,
+  });
+
+  if (error) {
+    throw new Error(`[finalizeAuthGradingPass] ${error.message}`);
+  }
 }

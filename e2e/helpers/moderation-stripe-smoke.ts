@@ -87,6 +87,46 @@ export async function assertOrderRefundEligible(orderId: string): Promise<void> 
   expect(payload?.orderKind).toBe("merchant_direct");
 }
 
+export async function getMerchantOrderNumber(orderId: string): Promise<string> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("merchant_orders")
+    .select("order_number")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getMerchantOrderNumber] ${error.message}`);
+  }
+
+  const orderNumber = data?.order_number?.trim();
+  expect(orderNumber, `missing order_number for ${orderId}`).toBeTruthy();
+  return orderNumber!;
+}
+
+export async function assertCaseBundleHasEligibleRefundOrder(
+  caseId: string,
+  orderId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { data: report, error: reportError } = await admin
+    .from("reports")
+    .select("id, context_id, context_type")
+    .eq("case_id", caseId)
+    .eq("context_id", orderId)
+    .maybeSingle();
+
+  if (reportError) {
+    throw new Error(`[assertCaseBundleHasEligibleRefundOrder:report] ${reportError.message}`);
+  }
+
+  expect(report, `case ${caseId} missing merchant_order report for ${orderId}`).toBeTruthy();
+  expect(report?.context_type).toBe("merchant_order");
+
+  await assertOrderRefundEligible(orderId);
+}
+
 export async function advanceOrderToModerationRefundEligible(params: {
   orderId: string;
   sellerId: string;
@@ -243,31 +283,34 @@ export async function assertModerationRefundTerminal(orderId: string): Promise<v
   const admin = createE2eAdminClient();
 
   await expect
-    .poll(async () => {
-      const { data, error } = await admin
-        .from("merchant_orders")
-        .select("refund_status, escrow_status, stripe_refund_id")
-        .eq("id", orderId)
-        .maybeSingle();
+    .poll(
+      async () => {
+        const { data, error } = await admin
+          .from("merchant_orders")
+          .select("refund_status, escrow_status, stripe_refund_id")
+          .eq("id", orderId)
+          .maybeSingle();
 
-      if (error) {
-        throw new Error(`[assertModerationRefundTerminal] ${error.message}`);
-      }
+        if (error) {
+          throw new Error(`[assertModerationRefundTerminal] ${error.message}`);
+        }
 
-      if (!data) {
-        return null;
-      }
+        if (!data) {
+          return null;
+        }
 
-      if (
-        data.refund_status !== "refunded" ||
-        data.escrow_status !== "refunded" ||
-        !data.stripe_refund_id?.trim()
-      ) {
-        return null;
-      }
+        if (
+          data.refund_status !== "refunded" ||
+          data.escrow_status !== "refunded" ||
+          !data.stripe_refund_id?.trim()
+        ) {
+          return null;
+        }
 
-      return data;
-    })
+        return data;
+      },
+      { timeout: 90_000 },
+    )
     .toBeTruthy();
 }
 

@@ -12,10 +12,12 @@ import {
 import { ensureCourierShippingSelected } from "./helpers/rewards-checkout-coupon";
 import {
   advanceOrderToModerationRefundEligible,
+  assertCaseBundleHasEligibleRefundOrder,
   assertModerationRefundTerminal,
   assertOrderRefundEligible,
   assertStripeRefundForOrder,
   cleanupModerationStripeSmokeCase,
+  getMerchantOrderNumber,
   getModerationStripeSmokeBuyerCreds,
   hasModerationStripeSmokeEnv,
   seedModerationCaseForStripeSmoke,
@@ -52,12 +54,53 @@ async function loginAsAdmin(page: Page): Promise<void> {
   });
 }
 
+async function resolveAdminDisputeWithRefund(
+  page: Page,
+  params: { caseId: string; orderId: string; orderNumber: string },
+): Promise<void> {
+  await loginAsAdmin(page);
+  await page.goto(`/admin/disputes/${params.caseId}`);
+  await expect(
+    page.getByRole("heading", { name: "仲裁判定動作" }),
+  ).toBeVisible({ timeout: 20_000 });
+
+  await expect(
+    page.getByRole("heading", { name: "關聯訂單" }),
+  ).toBeVisible({ timeout: 20_000 });
+
+  await page
+    .getByRole("combobox")
+    .filter({ hasText: /請選擇一項仲裁判定動作/ })
+    .click();
+  await page
+    .getByRole("option", { name: "裁定成立（僅警告／可選退款）" })
+    .click();
+
+  await page
+    .getByRole("combobox")
+    .filter({ hasText: /請選擇違規身分/ })
+    .click();
+  await page.getByRole("option", { name: "Merchant" }).click();
+
+  await page.locator('input[name="executeOrderRefund"]').check();
+
+  const refundOrderRadio = page.getByRole("radio", {
+    name: params.orderNumber,
+  });
+  await expect(refundOrderRadio).toBeVisible({ timeout: 20_000 });
+  await refundOrderRadio.check();
+
+  await page.locator('select[name="faultParty"]').selectOption("seller");
+  await page.getByRole("button", { name: "執行最終仲裁裁決" }).click();
+
+  await expect(page).toHaveURL(/\/admin\/disputes\?status=completed/, {
+    timeout: 60_000,
+  });
+}
+
 test.describe("I-H14 moderation Stripe refund smoke", () => {
   const runId = String(Date.now());
-  let orderId: string | null = null;
   let sellerId: string | null = null;
-  let buyerId: string | null = null;
-  let caseId: string | null = null;
 
   test.beforeAll(async () => {
     test.skip(!hasModerationStripeSmokeEnv(), "Missing moderation Stripe smoke env");
@@ -73,14 +116,14 @@ test.describe("I-H14 moderation Stripe refund smoke", () => {
     }
   });
 
-  test("H14a merchant_direct checkout and refund-eligible order", async ({
+  test("I-H14 merchant_direct checkout → admin moderation refund saga", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer project only");
     test.skip(!hasModerationStripeSmokeEnv(), "Missing moderation Stripe smoke env");
 
     const fixtures = getMerchantProductDetailFixtures();
-    buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
+    const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
     expect(buyerId).toBeTruthy();
 
     const merchantListing = await resolveReconcileMerchantListing({
@@ -88,7 +131,7 @@ test.describe("I-H14 moderation Stripe refund smoke", () => {
     });
     sellerId = merchantListing.sellerId;
 
-    orderId = await buyMerchantListingAndReachCheckout(
+    const orderId = await buyMerchantListingAndReachCheckout(
       page,
       merchantListing.sellerId,
       merchantListing.listingId,
@@ -114,40 +157,16 @@ test.describe("I-H14 moderation Stripe refund smoke", () => {
       buyerId: buyerId!,
       runId,
     });
-    caseId = seed.caseId;
-  });
+    await assertCaseBundleHasEligibleRefundOrder(seed.caseId, orderId);
+    const orderNumber = await getMerchantOrderNumber(orderId);
 
-  test("H14b admin resolve with moderation refund saga", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "buyer", "Buyer project only");
-    test.skip(!orderId || !caseId || !sellerId, "H14a order/case missing");
-
-    await loginAsAdmin(page);
-    await page.goto(`/admin/disputes/${caseId}`);
-    await expect(
-      page.getByRole("heading", { name: "仲裁判定動作" }),
-    ).toBeVisible({ timeout: 20_000 });
-
-    await page
-      .getByRole("combobox")
-      .filter({ hasText: /請選擇一項仲裁判定動作/ })
-      .click();
-    await page
-      .getByRole("option", { name: "裁定成立（僅警告／可選退款）" })
-      .click();
-
-    await page.getByRole("combobox").filter({ hasText: /請選擇違規身分/ }).click();
-    await page.getByRole("option", { name: "Merchant" }).click();
-
-    await page.locator('input[name="executeOrderRefund"]').check();
-    await page.locator(`input[name="refundOrderId"][value="${orderId}"]`).check();
-    await page.locator('select[name="faultParty"]').selectOption("seller");
-    await page.getByRole("button", { name: "執行最終仲裁裁決" }).click();
-
-    await expect(page).toHaveURL(/\/admin\/disputes\?status=completed/, {
-      timeout: 60_000,
+    await resolveAdminDisputeWithRefund(page, {
+      caseId: seed.caseId,
+      orderId,
+      orderNumber,
     });
 
-    await assertModerationRefundTerminal(orderId!);
-    await assertStripeRefundForOrder(orderId!);
+    await assertModerationRefundTerminal(orderId);
+    await assertStripeRefundForOrder(orderId);
   });
 });

@@ -36,12 +36,18 @@
     "test:integration:moderation": "vitest run --config vitest.config.mts tests/integration/moderation",
     "test:integration:grading": "vitest run --config vitest.config.mts tests/integration/grading/auth-grading-fail-single.integration.test.ts tests/unit/payments/auth-grading-fail-void-saga.test.ts",
     "test:integration:grading:stripe-smoke": "vitest run --config vitest.config.mts tests/integration/grading/auth-grading-fail-stripe-smoke.integration.test.ts",
+    "test:integration:grading:pass-stripe-smoke": "vitest run --config vitest.config.mts tests/integration/grading/auth-grading-pass-stripe-smoke.integration.test.ts",
     "test:integration:moderation:pbt": "vitest run --config vitest.config.mts tests/unit/moderation/compute-report-contribution.pbt.test.ts tests/unit/moderation/moderation-pbt.test.ts",
     "test:moderation:mutation": "stryker run stryker.moderation.config.json",
-    "test:e2e:moderation-gate": "playwright test e2e/user-report.spec.ts e2e/admin-moderation.spec.ts e2e/report-outcome-notification.spec.ts --project=setup --project=guest --project=buyer",
+    "test:e2e:moderation-gate": "playwright test e2e/user-report.spec.ts e2e/admin-moderation.spec.ts e2e/report-outcome-notification.spec.ts --project=setup --project=guest --project=buyer --project=seller",
     "test:moderation:gate": "bash scripts/moderation-release-gate.sh",
     "test:moderation:gate:full": "bash scripts/moderation-release-gate-full.sh",
-    "seed:moderation-e2e": "bun run scripts/seed-moderation-e2e.ts"
+    "seed:moderation-e2e": "bun run scripts/seed-moderation-e2e.ts",
+    "test:prelaunch:check-env": "bash scripts/prelaunch-check-env.sh",
+    "test:prelaunch:check-env:stripe": "bash scripts/prelaunch-check-env.sh --with-stripe-e2e",
+    "test:prelaunch:gate:1a": "bash scripts/prelaunch-gate-1a.sh",
+    "test:prelaunch:gate:1b": "bash scripts/prelaunch-gate-1b.sh",
+    "test:prelaunch:gate": "bash scripts/prelaunch-gate.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

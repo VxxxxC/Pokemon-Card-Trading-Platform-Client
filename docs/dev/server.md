@@ -99,7 +99,7 @@ await stripe.paymentIntents.create({
 
 | 項目 | 計算 | 說明 |
 |------|------|------|
-| 平台佣金 | `round(itemSubtotal × 8%, 2)` | 第一版固定 8%；每單 snapshot，動態 `platform_settings` 後續落地 |
+| 平台佣金 | `round(itemSubtotal × rate, 2)` | 費率來自 `platform_settings.platform_financial_config`；買家確認收貨時 snapshot 至 `commission_rate_applied` / `commission_amount` |
 | 運費補貼 | 使用免運券時，由平台佣金扣除定額補貼給賣家 | 對齊 `requirement.md` 1.5 — ⏳ 未落地 |
 | 鑑定費 | HK$150（`authFee`） | 可選增值服務，獨立行項，不入賣家分賬本金 |
 | 賣家實收 | `itemSubtotal − 平台佣金 + shippingFee` | 買家確認收貨時以 `transfers.create` 撥至 Merchant Connect |
@@ -131,7 +131,7 @@ await stripe.paymentIntents.create({
 
 Merchant B2C 的 `completeMerchantOrder` 執行可重試 saga：
 
-1. `rpc_prepare_merchant_order_payout` 驗證 buyer、付款狀態、KYC/Connect，鎖定 8% 佣金及 payout snapshot。
+1. `rpc_prepare_merchant_order_payout` 驗證 buyer、付款狀態、KYC/Connect，鎖定佣金率（confirm 快照或當前 settings）及 payout snapshot。
 2. 從 succeeded PaymentIntent 取得 `latest_charge`，用 `source_transaction` + `merchant-order-payout:<orderId>` idempotency key 建立 transfer。
 3. service-role `rpc_finalize_merchant_order_payout` 核對 amount/destination，寫 `commission_deduction` / `payout` ledger，最後進入 `completed_and_transferred`。
 4. `transfer.created` webhook 呼叫同一 finalize RPC，補償 transfer 成功後 server 中斷。

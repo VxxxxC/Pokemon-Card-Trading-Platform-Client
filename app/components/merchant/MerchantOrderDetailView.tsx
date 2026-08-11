@@ -1,6 +1,7 @@
 "use client";
 
 import { formatPaymentDeadline } from "@/lib/merchant-checkout/pending-payment-expiry";
+import { DEFAULT_COMMISSION_RATE } from "@/lib/platform/financial-config";
 
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ type MerchantOrderDetailViewProps = {
   order: MerchantOrderDetail;
   onRefresh: () => void;
   onOpenReview?: (orderId: string, revieweeId: string) => void;
+  defaultCommissionRate?: number;
 };
 
 async function runSubmitInboundTracking(
@@ -75,6 +77,7 @@ export function MerchantOrderDetailView({
   order: merchantOrder,
   onOpenReview,
   onRefresh,
+  defaultCommissionRate = DEFAULT_COMMISSION_RATE,
 }: MerchantOrderDetailViewProps) {
   const router = useRouter();
   const order = mapMerchantOrderDetailToSaleOrder(merchantOrder);
@@ -106,7 +109,8 @@ export function MerchantOrderDetailView({
   }, [merchantOrder]);
 
   const stripeDisplay = useMemo(() => {
-    const commissionRate = merchantOrder.commissionRateApplied ?? 0.08;
+    const commissionRate =
+      merchantOrder.commissionRateApplied ?? defaultCommissionRate;
     const estimatedCommission = Math.round(
       merchantOrder.itemSubtotal * commissionRate * 100,
     ) / 100;
@@ -135,7 +139,7 @@ export function MerchantOrderDetailView({
       payoutStatus: merchantOrder.payoutStatus,
       authFee: merchantOrder.authFee,
     };
-  }, [merchantOrder]);
+  }, [merchantOrder, defaultCommissionRate]);
 
   return (
     <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-6 space-y-5 animate-fadeIn lg:mx-[20%]">

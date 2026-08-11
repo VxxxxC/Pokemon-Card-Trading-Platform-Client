@@ -23,6 +23,7 @@ import {
 } from "./fixtures/test-data";
 import {
   ensureCourierShippingSelected,
+  selectCheckoutCoupon,
   waitForCheckoutCouponClearedAfterAuthToggle,
   waitForCheckoutCouponPicker,
 } from "./helpers/rewards-checkout-coupon";
@@ -51,6 +52,10 @@ async function loginAsAdmin(page: Page): Promise<void> {
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL((url) => !url.pathname.startsWith("/auth"), {
     timeout: 30_000,
+  });
+  await page.goto("/admin/campaigns/new", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "新增獎勵活動" })).toBeVisible({
+    timeout: 20_000,
   });
 }
 
@@ -199,9 +204,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
 
     await ensureCourierShippingSelected(page);
     await waitForCheckoutCouponPicker(page, { rewardId: couponRewardId! });
-    await page.locator("#checkout-coupon").selectOption(couponRewardId!);
-    await page.waitForTimeout(1500);
-    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+    await selectCheckoutCoupon(page, couponRewardId!);
     await expect(page.getByText(/- HK\$/)).toBeVisible();
 
     await completeMerchantDirectCheckout(page, {
@@ -246,6 +249,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
       merchantListing.listingId,
     );
 
+    await ensureCourierShippingSelected(page);
     await waitForCheckoutCouponPicker(page);
 
     const ineligibleOption = page.locator(
@@ -255,9 +259,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     const ineligibleLabel = (await ineligibleOption.textContent()) ?? "";
     expect(ineligibleLabel).toMatch(/未達優惠券最低消費門檻/);
 
-    await page.locator("#checkout-coupon").selectOption(eligibleRewardId);
-    await page.waitForTimeout(1500);
-    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+    await selectCheckoutCoupon(page, eligibleRewardId);
   });
 
   test("B3.4 switching coupon A to B updates selection", async ({
@@ -405,9 +407,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     );
 
     await waitForCheckoutCouponPicker(page, { rewardId });
-    await page.locator("#checkout-coupon").selectOption(rewardId);
-    await page.waitForTimeout(1500);
-    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+    await selectCheckoutCoupon(page, rewardId);
 
     await completeMerchantAuthCheckout(page, { couponRewardId: rewardId });
 
@@ -461,9 +461,7 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     );
 
     await waitForCheckoutCouponPicker(page, { rewardId });
-    await page.locator("#checkout-coupon").selectOption(rewardId);
-    await page.waitForTimeout(1500);
-    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+    await selectCheckoutCoupon(page, rewardId);
 
     await completeMerchantAuthCheckout(page, { couponRewardId: rewardId });
 

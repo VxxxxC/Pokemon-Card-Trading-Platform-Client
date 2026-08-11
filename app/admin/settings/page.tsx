@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  getPlatformFinancialConfig,
+  updatePlatformFinancialConfig,
+} from "@/app/actions/admin-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +14,9 @@ import { LogoutModal } from "@/app/components/profile/LogoutModal";
 
 export default function AdminSettingsPage() {
   // Financial inputs
-  const [commissionRate, setCommissionRate] = useState(5.0);
+  const [commissionRate, setCommissionRate] = useState(8.0);
+  const [isLoadingFinancials, setIsLoadingFinancials] = useState(true);
+  const [isSavingFinancials, setIsSavingFinancials] = useState(false);
   const [appraisalFee, setAppraisalFee] = useState(150);
   const [fpsFee, setFpsFee] = useState(0);
 
@@ -20,7 +26,7 @@ export default function AdminSettingsPage() {
 
   // Platform policy terms
   const [termsText, setTermsText] = useState(
-    `歡迎使用 HKCardVault TCG 交易與收藏保管平台。\n\n本平台之交易服務條款修訂如下：\n1. 凡本平台之認證商戶（MERCHANT），每筆交易將扣除 5.0% 的佣金（不包含 Stripe 聯網信用卡通道之 1.4% 第三方交易費）。\n2. 鑑定服務由本平台專業鑑定團隊承接，PSA / BGS 標準單卡鑑定費用為固定 HK$150/張。\n3. 所有提現結算統一於每週五進行人工 FPS 劃撥，目前免除任何銀行轉賬手續費。\n4. 若單筆交易金額超過 HK$10,000，或累計提現達到此金額，用戶必須強制通過 Stripe KYC 與政府證件審批程序，方可繼續發送提現。`,
+    `歡迎使用 HKCardVault TCG 交易與收藏保管平台。\n\n本平台之交易服務條款修訂如下：\n1. 凡本平台之認證商戶（MERCHANT），每筆交易將按平台當時公布之佣金費率扣除（由管理員於平台設定調整；不含 Stripe 聯網信用卡通道之 1.4% 第三方交易費）。\n2. 鑑定服務由本平台專業鑑定團隊承接，PSA / BGS 標準單卡鑑定費用為固定 HK$150/張。\n3. 所有提現結算統一於每週五進行人工 FPS 劃撥，目前免除任何銀行轉賬手續費。\n4. 若單筆交易金額超過 HK$10,000，或累計提現達到此金額，用戶必須強制通過 Stripe KYC 與政府證件審批程序，方可繼續發送提現。`,
   );
 
   // Security settings (admin credentials)
@@ -31,9 +37,44 @@ export default function AdminSettingsPage() {
   const sectionClass =
     "bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5";
 
-  const handleSaveFinancials = (e: React.FormEvent) => {
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const result = await getPlatformFinancialConfig();
+      if (cancelled) {
+        return;
+      }
+
+      if (result.success) {
+        setCommissionRate(result.data.commissionRatePercent);
+      } else {
+        toast.error(result.error);
+      }
+      setIsLoadingFinancials(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSaveFinancials = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("✅ 核心財務變數已更新！新費率與費用參數已寫入系統核心表。");
+    setIsSavingFinancials(true);
+
+    const result = await updatePlatformFinancialConfig({
+      commissionRatePercent: commissionRate,
+    });
+    setIsSavingFinancials(false);
+
+    if (!result.success) {
+      toast.error(result.error);
+      return;
+    }
+
+    setCommissionRate(result.data.commissionRatePercent);
+    toast.success("✅ 平台佣金率已更新，新訂單確認收貨後將套用新費率。");
   };
 
   const handleSaveSecurity = (e: React.FormEvent) => {
@@ -107,6 +148,9 @@ export default function AdminSettingsPage() {
         <p className="font-sans text-[12px] text-text-secondary mb-4">
           設定全平台抽佣比例、單張保管鑑定費用，以及 FPS 人手劃撥銷帳手續費
         </p>
+        <p className="font-sans text-[11px] text-text-disabled mb-4 border-l-2 border-brand/30 pl-3">
+          目前僅「平台基本交易佣金率」已接庫；鑑定費／FPS 尚未接庫。
+        </p>
 
         <form onSubmit={handleSaveFinancials} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -128,6 +172,7 @@ export default function AdminSettingsPage() {
                   min={1}
                   max={20}
                   step={0.1}
+                  disabled={isLoadingFinancials || isSavingFinancials}
                   className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-[13px] text-text-primary px-0"
                 />
                 <span className="font-mono text-[11px] text-text-disabled">
@@ -135,7 +180,9 @@ export default function AdminSettingsPage() {
                 </span>
               </div>
               <p className="font-mono text-[9px] text-text-disabled mt-1">
-                目前費率：5.0%
+                {isLoadingFinancials
+                  ? "載入中…"
+                  : `目前費率：${commissionRate.toFixed(1)}%`}
               </p>
             </div>
 
@@ -194,9 +241,10 @@ export default function AdminSettingsPage() {
 
           <Button
             type="submit"
+            disabled={isLoadingFinancials || isSavingFinancials}
             className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
           >
-            儲存財務設定
+            {isSavingFinancials ? "儲存中…" : "儲存佣金設定"}
           </Button>
         </form>
       </section>

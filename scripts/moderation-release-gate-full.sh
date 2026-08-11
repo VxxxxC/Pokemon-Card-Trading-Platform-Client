@@ -8,6 +8,7 @@ steps=(
   "bash scripts/moderation-release-gate.sh"
   "bun run test:integration:moderation:pbt"
   "bun run test:moderation:mutation"
+  "bun run seed:moderation-e2e"
   "MODERATION_GATE=1 bun run test:e2e:moderation-gate"
 )
 

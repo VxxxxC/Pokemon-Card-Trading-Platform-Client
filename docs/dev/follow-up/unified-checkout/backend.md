@@ -59,7 +59,7 @@ See [member-fps-payout/backend.md](../member-fps-payout/backend.md).
 ### Merchant Connect + T+7 (detail)
 
 1. Buyer confirm → `payout_status = held`, `payout_hold_until = now() + 7 days`, **no** `stripe_transfer_id`
-2. Cron → `executeMerchantConnectPayout` → Connect transfer (卡價 − 8% 佣金 + 運費；鑑定費留平台)
+2. Cron → `executeMerchantConnectPayout` → Connect transfer (卡價 − 本單佣金 snapshot + 運費；鑑定費留平台)
 3. `payout_status = paid`, `escrow_status = completed_and_transferred`
 
 See [merchant-connect-payout-hold/backend.md](../merchant-connect-payout-hold/backend.md) · [merchant-checkout/backend.md](../merchant-checkout/backend.md).
