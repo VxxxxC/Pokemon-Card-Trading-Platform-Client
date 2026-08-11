@@ -236,7 +236,7 @@ Buyer fault 寄錯 → 買家收 **900**，平台留 **150** 鑑定費。
 | 物流損毀（賣家安排寄件） | **carrier**（承擔方 = seller） |
 | 證據不足 | **inconclusive**（售後 UI 若未開則 PR3） |
 
-Grading fail 與 Phase H **共用** `grading_fault_party` enum；售後 UI 現僅 seller / buyer / platform（carrier / inconclusive 屬 PR3）。
+Grading fail 與 Phase H **共用** `grading_fault_party` enum；售後 UI 支援 seller / buyer / platform / carrier / inconclusive（carrier 須選承擔方）。
 
 ---
 
@@ -250,7 +250,7 @@ Grading fail 與 Phase H **共用** `grading_fault_party` enum；售後 UI 現�
 | S1 Seller fault single cancel 全退 + 追償 | ✅ | ✅ 大致一致 |
 | **S1 Buyer fault single 留 D** | ✅ | ✅ `capture_auth_fee_only` saga（`20260912120000`） |
 | S1 Platform / carrier / inconclusive | ✅ | ⚠️ enum 有；grading UI 未必全暴露 |
-| S3 carrier / inconclusive | ✅ | ❌ 舉報 UI 未接 |
+| S3 carrier / inconclusive | ✅ | ✅ `20260914120000` + DisputeDetailClient |
 | Member S3 finalize（真 Stripe） | ✅ | ✅ `20260913140000` finalize/retry bypass |
 | 政策文案 §2.1 vs §6 矛盾 | — | ❌ 以 **本文件** 為準 |
 

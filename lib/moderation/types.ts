@@ -1,4 +1,5 @@
 import type { ReportCategorySlug } from "@/lib/moderation/category-config";
+import type { GradingFaultParty } from "@/lib/payments/auth-grading-fail-void-saga";
 import type { Database } from "@/types/supabase";
 
 export type { ReportCategorySlug };
@@ -105,8 +106,9 @@ export type ResolveAdminModerationCaseInput = {
   orderRefund?: {
     enabled: boolean;
     orderId: string;
-    faultParty: "buyer" | "seller" | "platform";
+    faultParty: GradingFaultParty;
     platformFaultReason?: string;
+    carrierLiabilityParty?: "seller" | "platform";
   };
 };
 

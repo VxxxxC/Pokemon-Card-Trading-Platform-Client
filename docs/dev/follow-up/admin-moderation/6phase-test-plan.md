@@ -107,8 +107,11 @@ Requires migration `20260911120000` (`payment_capture_status = fully_captured` o
 | **I-H2** | `merchant_auth` seed → eligible → resolve + `orderRefund` → `refund_status = processing` (fake PI) | `phase-h-refund.integration.test.ts` |
 | **I-H3** | `member_auth` seed → eligible → resolve + `orderRefund` → `refund_status = processing` (fake PI) | `phase-h-refund.integration.test.ts` |
 | **I-H10** | `member_auth` prepare + **admin session** finalize (fake refund id) → `refunded` + receivable | `phase-h-refund.integration.test.ts` |
+| **I-H15** | `member_auth` carrier(seller logistics) → prepare + finalize → `refunded` + seller receivable (fee + refund) | `phase-h-refund.integration.test.ts` |
+| **I-H15b** | `member_auth` carrier(platform logistics) → finalize → `refunded`, **no** seller receivable | `phase-h-refund.integration.test.ts` |
+| **I-H16** | `member_auth` inconclusive → finalize → seller receivable = `stripe_fee/2` only (`fee_half`) | `phase-h-refund.integration.test.ts` |
 
-Requires migration `20260911130000`. Real Stripe path remains **I-H14** (`merchant_direct` only). Member refund prepare also requires `20260911140000` (trigger bypass).
+Requires migration `20260911130000`. Real Stripe path remains **I-H14** (`merchant_direct` only). Member refund prepare also requires `20260911140000` (trigger bypass). PR3B carrier/inconclusive requires `20260914120000`.
 
 Tests **skip gracefully** when env is missing (`describe.skipIf`, `test.skip`) — gate script should treat skip-as-pass only when documented; prefer full env on staging.
 
@@ -133,7 +136,7 @@ Use **staging / dev** only. Wipe pair via `wipeModerationMatrixPair` / `deletePe
 | S1 seller fault fail single | §7.2 | Partner smoke / [admin-grading verify #4](../admin-grading/backend.md#verify-backend) — **無 grading IT** |
 | S1 buyer fault fail single | §7.2 | **G-BF1–G-BF4** (`test:integration:grading`) · **G-BF-S1/S2** real Stripe (`test:integration:grading:stripe-smoke`) |
 | S3 member_auth finalize (real Stripe) | §12 | **I-H10** (`test:integration:moderation`); real Stripe E2E optional follow-up |
-| carrier / inconclusive on resolve | §11 | **PR3**（UI 未接） |
+| carrier / inconclusive on resolve | §11 | **I-H15** / **I-H16** (`test:integration:moderation`) |
 
 ---
 

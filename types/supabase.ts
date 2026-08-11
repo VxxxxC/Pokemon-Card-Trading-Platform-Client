@@ -2950,6 +2950,7 @@ export type Database = {
       }
       fn_compute_moderation_order_refund: {
         Args: {
+          p_carrier_liability_party?: string
           p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
           p_order_id: string
           p_platform_fault_reason?: string
@@ -3804,6 +3805,7 @@ export type Database = {
       }
       rpc_prepare_moderation_order_refund: {
         Args: {
+          p_carrier_liability_party?: string
           p_case_id: string
           p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
           p_order_id: string

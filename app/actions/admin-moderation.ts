@@ -38,6 +38,9 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
 import {
+  isGradingFaultParty,
+} from "@/lib/payments/auth-grading-fail-void-saga";
+import {
   parsePrepareModerationOrderRefundPayload,
   runModerationOrderRefundRetry,
   runModerationOrderRefundSaga,
@@ -877,12 +880,27 @@ function buildResolvePayload(
   payload.notifyReporter = input.notifyReporter !== false;
 
   if (input.orderRefund?.enabled) {
+    const { orderRefund } = input;
+    if (!isGradingFaultParty(orderRefund.faultParty)) {
+      throw new Error("無效的退款責任方");
+    }
+    if (
+      orderRefund.faultParty === "carrier" &&
+      orderRefund.carrierLiabilityParty !== "seller" &&
+      orderRefund.carrierLiabilityParty !== "platform"
+    ) {
+      throw new Error("物流責任必須指定承擔方");
+    }
+
     payload.orderRefund = {
       enabled: true,
-      orderId: input.orderRefund.orderId,
-      faultParty: input.orderRefund.faultParty,
-      ...(input.orderRefund.platformFaultReason?.trim()
-        ? { platformFaultReason: input.orderRefund.platformFaultReason.trim() }
+      orderId: orderRefund.orderId,
+      faultParty: orderRefund.faultParty,
+      ...(orderRefund.platformFaultReason?.trim()
+        ? { platformFaultReason: orderRefund.platformFaultReason.trim() }
+        : {}),
+      ...(orderRefund.faultParty === "carrier" && orderRefund.carrierLiabilityParty
+        ? { carrierLiabilityParty: orderRefund.carrierLiabilityParty }
         : {}),
     };
   }
@@ -982,6 +1000,7 @@ export async function resolveAdminModerationCase(input: {
         paymentIntentId: payload.paymentIntentId,
         refundCents: payload.refundCents,
         settlementRequired: payload.settlementRequired,
+        feeRecoveryMode: payload.feeRecoveryMode,
         faultParty: payload.faultParty,
       });
 

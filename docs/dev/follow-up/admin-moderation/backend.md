@@ -283,8 +283,28 @@ RPC: `admin_get_moderation_chat_thread(p_case_id, p_room_id, p_limit, p_before)`
     reason: string;
   };
   notifyReporter?: boolean;  // default true — in-app outcome for reporters; false skips queue
+  orderRefund?: {
+    enabled: boolean;
+    orderId: string;
+    faultParty: "buyer" | "seller" | "platform" | "carrier" | "inconclusive";
+    platformFaultReason?: string;  // required when faultParty === "platform"
+    carrierLiabilityParty?: "seller" | "platform";  // required when faultParty === "carrier"
+  };
 }
 ```
+
+**Phase H fault matrix (PR3B):**
+
+| `faultParty` | Buyer refund | `feeRecoveryMode` | Seller receivable |
+|--------------|--------------|-------------------|-------------------|
+| `seller` | full eligible | `full` | refund + stripe fee |
+| `carrier` + `carrierLiabilityParty: seller` | full eligible | `full` | refund + stripe fee |
+| `carrier` + `carrierLiabilityParty: platform` | full eligible | `none` | none (platform absorbs fee) |
+| `inconclusive` | full eligible | `fee_half` | `stripe_fee / 2` only |
+| `buyer` | eligible − stripe fee | `none` | none |
+| `platform` | eligible + auth fee (D) | `none` | none |
+
+`carrierLiabilityParty` persisted in order `auth_notes` as `carrier_liability: seller|platform` for retry/finalize.
 
 Side effects when `resolution === upheld` and sanction present:
 
@@ -523,4 +543,4 @@ Covers `merchant_auth` and `member_auth` prepare paths with fake `pi_phase_h_*` 
 |------|------|
 | [refund-policy.md](../../refund-policy.md) | 退款 SSOT（S0–S4、breakdown、fault_party） |
 | [REFUND_ADMIN_PLAYBOOK.md](./REFUND_ADMIN_PLAYBOOK.md) | Admin 操作速查 |
-| [refund-policy §12](../../refund-policy.md#12-實作對照與缺口) | Target vs code 缺口（PR3B carrier/inconclusive UI） |
+| [refund-policy §12](../../refund-policy.md#12-實作對照與缺口) | Target vs code 缺口（PR3C preview） |

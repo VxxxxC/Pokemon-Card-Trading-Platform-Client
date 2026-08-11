@@ -25,7 +25,7 @@
 | 買家寄錯卡、調包 | **buyer** |
 | 鑑定中心操作錯誤 | **platform**（須原因） |
 | 物流損毀（賣家安排寄件） | **carrier**（承擔方 = seller） |
-| 證據不足 | **inconclusive**（售後 UI → **PR3**） |
+| 證據不足 | **inconclusive** |
 
 Grading fail 與 Phase H 共用 `grading_fault_party` enum。Resolve UI 現僅 seller / buyer / platform。
 
@@ -76,7 +76,7 @@ seller_recovery_hkd     … 向賣家／商戶追償總額（含 fee 若 seller 
 |------|------|
 | S1 buyer fault single 留 D | ✅ `20260912120000` |
 | S3 member_auth finalize（真 Stripe） | ✅ `20260913140000` — **I-H10** admin session finalize |
-| carrier / inconclusive on resolve UI | ❌ **PR3** |
+| carrier / inconclusive on resolve UI | ✅ **PR3B** (`DisputeDetailClient` + `carrierLiabilityParty`) |
 
 詳表：[refund-policy §12](../../refund-policy.md#12-實作對照與缺口)
 

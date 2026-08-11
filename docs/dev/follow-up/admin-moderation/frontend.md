@@ -2,7 +2,7 @@
 
 > **Status:** ✅ Phase A–E+ wired · Phase G subject history · reporter outcome modal  
 > **Planned:** Phase F auto-escalation → [v2-plan.md](./v2-plan.md)  
-> **v2:** Appeal portal · listing 舉報 · carrier/inconclusive fault UI（PR3）  
+> **v2:** Appeal portal · listing 舉報 · admin refund preview（PR3C）  
 > **Backend contract:** [backend.md](./backend.md)  
 > **Routes:** `/admin/disputes`, `/admin/disputes/[id]`  
 > **Policy:** [refund-policy.md](../../refund-policy.md) · [escrow-payment-policy.md](../../escrow-payment-policy.md)（capture／出款）
@@ -221,7 +221,7 @@ interface UserReportModalProps {
 | 限制 Merchant 店鋪 | `upheld` + `restrict_listing` + `scope: merchant_persona` |
 | 凍結出款 | `upheld` + `freeze_payout` |
 
-Phase H resolve UI：`orderRefund` checkbox + `fault_party`（seller / buyer / platform）— 見 [backend.md](./backend.md) Phase H。Carrier / inconclusive → **PR3**。
+Phase H resolve UI：`orderRefund` checkbox + `fault_party`（seller / buyer / platform / **carrier** / **inconclusive**）— 見 [backend.md](./backend.md) Phase H。Carrier 須選 `carrierLiabilityParty`（seller / platform）。
 
 **Violation persona:** select `member` / `merchant` / `both` / `unknown` (required on upheld).
 
@@ -356,7 +356,7 @@ Do not call Supabase in client without env at build — follow existing admin pa
 
 - Accused-user **appeal portal**（制裁申訴 + 窗口內訂單申訴）
 - Listing 頁直接舉報
-- **carrier / inconclusive** `fault_party` UI on resolve（PR3）
+- Admin refund amount **preview** panel on resolve（PR3C）
 - Phase F auto-escalation cron
 
 ### 其他 deferred

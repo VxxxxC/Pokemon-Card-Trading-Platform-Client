@@ -95,10 +95,13 @@ export default function DisputeDetailClient({
   const [notifyReporter, setNotifyReporter] = useState(true);
   const [executeOrderRefund, setExecuteOrderRefund] = useState(false);
   const [refundOrderId, setRefundOrderId] = useState("");
-  const [faultParty, setFaultParty] = useState<"seller" | "buyer" | "platform" | "">(
-    "",
-  );
+  const [faultParty, setFaultParty] = useState<
+    "seller" | "buyer" | "platform" | "carrier" | "inconclusive" | ""
+  >("");
   const [platformFaultReason, setPlatformFaultReason] = useState("");
+  const [carrierLiabilityParty, setCarrierLiabilityParty] = useState<
+    "seller" | "platform" | ""
+  >("");
   const [isRetryPending, startRetryTransition] = useTransition();
 
   const eligibleRefundOrders = relatedOrders.filter((order) => order.refundEligible);
@@ -171,6 +174,10 @@ export default function DisputeDetailClient({
         toast.error("平台責任退款必須填寫原因");
         return;
       }
+      if (faultParty === "carrier" && !carrierLiabilityParty) {
+        toast.error("物流責任必須指定承擔方");
+        return;
+      }
     }
 
     const resolveInput = mapResolutionOptionToInput(
@@ -189,6 +196,9 @@ export default function DisputeDetailClient({
         faultParty,
         ...(faultParty === "platform"
           ? { platformFaultReason: platformFaultReason.trim() }
+          : {}),
+        ...(faultParty === "carrier" && carrierLiabilityParty
+          ? { carrierLiabilityParty }
           : {}),
       };
     }
@@ -671,6 +681,8 @@ export default function DisputeDetailClient({
                                     | "seller"
                                     | "buyer"
                                     | "platform"
+                                    | "carrier"
+                                    | "inconclusive"
                                     | "",
                                 )
                               }
@@ -680,8 +692,31 @@ export default function DisputeDetailClient({
                               <option value="seller">賣家責任</option>
                               <option value="buyer">買家責任</option>
                               <option value="platform">平台責任</option>
+                              <option value="carrier">物流責任</option>
+                              <option value="inconclusive">無法判定</option>
                             </select>
                           </div>
+                          {faultParty === "carrier" ? (
+                            <div>
+                              <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
+                                物流承擔方
+                              </label>
+                              <select
+                                name="carrierLiabilityParty"
+                                value={carrierLiabilityParty}
+                                onChange={(event) =>
+                                  setCarrierLiabilityParty(
+                                    event.target.value as "seller" | "platform" | "",
+                                  )
+                                }
+                                disabled={isResolvePending}
+                              >
+                                <option value="">請選擇</option>
+                                <option value="seller">賣家安排物流</option>
+                                <option value="platform">平台安排物流</option>
+                              </select>
+                            </div>
+                          ) : null}
                           {faultParty === "platform" ? (
                             <textarea
                               name="platformFaultReason"

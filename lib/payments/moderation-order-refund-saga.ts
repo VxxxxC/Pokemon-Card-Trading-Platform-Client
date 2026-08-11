@@ -11,6 +11,8 @@ export type ModerationOrderKind =
   | "merchant_auth"
   | "member_auth";
 
+export type FeeRecoveryMode = "none" | "full" | "fee_half";
+
 export type PrepareModerationOrderRefundPayload = {
   success: boolean;
   orderKind: ModerationOrderKind;
@@ -19,9 +21,32 @@ export type PrepareModerationOrderRefundPayload = {
   refundCents: number;
   refundHkd?: number;
   settlementRequired: boolean;
+  feeRecoveryMode?: FeeRecoveryMode;
   faultParty: GradingFaultParty;
   adminId?: string;
 };
+
+const VALID_FEE_RECOVERY_MODES = new Set<FeeRecoveryMode>([
+  "none",
+  "full",
+  "fee_half",
+]);
+
+function isFeeRecoveryMode(value: string): value is FeeRecoveryMode {
+  return VALID_FEE_RECOVERY_MODES.has(value as FeeRecoveryMode);
+}
+
+function resolveFeeRecoveryMode(
+  payload: Record<string, unknown>,
+  settlementRequired: boolean,
+): FeeRecoveryMode {
+  const raw =
+    payload.feeRecoveryMode ?? payload.fee_recovery_mode;
+  if (typeof raw === "string" && isFeeRecoveryMode(raw)) {
+    return raw;
+  }
+  return settlementRequired ? "full" : "none";
+}
 
 type ModerationRefundRpcClient = {
   rpc(
@@ -107,6 +132,9 @@ export function parsePrepareModerationOrderRefundPayload(
 
   const refundCents = Number(payload.refundCents ?? payload.refund_cents ?? 0);
 
+  const settlementRequired =
+    payload.settlementRequired === true || payload.settlement_required === true;
+
   return {
     success: payload.success === true,
     orderKind,
@@ -119,8 +147,8 @@ export function parsePrepareModerationOrderRefundPayload(
         : payload.refund_hkd !== undefined
           ? Number(payload.refund_hkd)
           : undefined,
-    settlementRequired:
-      payload.settlementRequired === true || payload.settlement_required === true,
+    settlementRequired,
+    feeRecoveryMode: resolveFeeRecoveryMode(payload, settlementRequired),
     faultParty,
     adminId:
       typeof payload.adminId === "string"
@@ -230,6 +258,17 @@ export async function runModerationOrderRefundSaga(input: {
         ? stripeFeeCents / 100
         : await extractStripeFeeHkd(refund.id);
 
+    const feeRecoveryMode =
+      prepared.feeRecoveryMode ??
+      (prepared.settlementRequired ? "full" : "none");
+
+    let stripeFeeForFinalize = 0;
+    if (feeRecoveryMode === "full") {
+      stripeFeeForFinalize = stripeFeeHkd;
+    } else if (feeRecoveryMode === "fee_half") {
+      stripeFeeForFinalize = stripeFeeHkd / 2;
+    }
+
     const { error: finalizeError } = await rpc.rpc(
       "rpc_finalize_moderation_order_refund",
       {
@@ -237,7 +276,7 @@ export async function runModerationOrderRefundSaga(input: {
         p_payment_intent_id: prepared.paymentIntentId,
         p_refund_id: refund.id,
         p_refund_cents: refundCents,
-        p_stripe_fee_hkd: prepared.settlementRequired ? stripeFeeHkd : 0,
+        p_stripe_fee_hkd: stripeFeeForFinalize,
         p_case_id: caseId,
       },
     );

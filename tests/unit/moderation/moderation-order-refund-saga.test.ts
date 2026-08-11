@@ -121,4 +121,32 @@ describe("moderation-order-refund-saga", () => {
       expect.any(Object),
     );
   });
+
+  it("passes stripe fee/2 for inconclusive fee_half recovery", async () => {
+    const result = await runModerationOrderRefundSaga({
+      caseId: "case-3",
+      prepared: {
+        success: true,
+        orderKind: "member_auth",
+        orderId: "order-3",
+        paymentIntentId: "pi_test",
+        refundCents: 10000,
+        settlementRequired: true,
+        feeRecoveryMode: "fee_half",
+        faultParty: "inconclusive",
+        adminId: "admin-1",
+      },
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(stripeMocks.refundsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 10000 }),
+      expect.any(Object),
+    );
+    expect(finalizeRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        p_stripe_fee_hkd: 1.75,
+      }),
+    );
+  });
 });

@@ -7,6 +7,52 @@
 
 ---
 
+## Execution gate (gated pipeline)
+
+**Rule:** Do **not** start PR3C implementation until **Gate 1** passes. No exceptions.
+
+### Gate 1 — PR3B complete → unlock PR3C
+
+Run **sequentially** after PR3B code is done (migration, saga, UI, I-H15/I-H16):
+
+```bash
+bunx supabase db push
+bun run test:integration:moderation
+bunx tsc --noEmit
+bun run lint
+```
+
+| Outcome | Action |
+|---------|--------|
+| **All pass** (exit 0; integration includes **I-H15**, **I-H16**) | ✅ Unlock PR3C implementation |
+| **Any fail** | Fix PR3B only — **do not** start PR3C |
+
+### Gate 2 — PR3C complete
+
+Run after PR3C code is done (preview RPC, action, UI panel, unit tests):
+
+```bash
+bun run test:integration:moderation          # + I-H17 if added
+bunx vitest run tests/unit/moderation/refund-preview.test.ts
+bunx tsc --noEmit
+bun run lint
+```
+
+| Outcome | Action |
+|---------|--------|
+| **All pass** | PR3C ready for merge / PR4 handoff |
+| **Any fail** | Fix PR3C; re-run Gate 2 |
+
+### Optional pre-release gate
+
+After Gate 1 + Gate 2 both pass (staging / release candidate):
+
+```bash
+bun run test:moderation:gate:full
+```
+
+---
+
 ## Gap assessment (post-PR3A)
 
 | Area | SSOT target | Current code | Gap |
@@ -263,18 +309,11 @@ PR3A (done)
 
 ```text
 … 20260913140000  (PR3A — done)
-→ 20260914xxxx    (PR3B — fault expansion)
-→ 20260915xxxx    (PR3C — preview fn; can same day as 3B if combined, but separate PR preferred)
+→ 20260914xxxx    (PR3B — fault expansion; Gate 1 db push)
+→ 20260915xxxx    (PR3C — preview fn; Gate 2; separate PR preferred)
 ```
 
-**CI gate (unchanged):**
-
-```bash
-bunx supabase db push
-bun run test:integration:moderation
-bun run test:moderation:gate:full   # pre-release
-bunx tsc --noEmit && bun run lint
-```
+See **Execution gate** above — Gate 1 must pass before PR3C work starts; `test:moderation:gate:full` is optional pre-release only.
 
 ---
 

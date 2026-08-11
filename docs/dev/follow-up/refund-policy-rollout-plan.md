@@ -153,6 +153,43 @@ flowchart LR
 | 3B I-H15/I-H16 + carrier/inconclusive UI | ⬜ |
 | 3C preview panel | ⬜ |
 
+### Execution gate（閘門式流水線）
+
+**規則：** PR3C **不得**在 Gate 1 通過前開工。詳見 [pr3b_pr3c_remaining.plan.md](../../../.cursor/plans/pr3b_pr3c_remaining.plan.md#execution-gate-gated-pipeline)。
+
+#### Gate 1 — PR3B 完成 → 解鎖 PR3C
+
+PR3B 代碼就緒後**依序**執行：
+
+```bash
+bunx supabase db push
+bun run test:integration:moderation
+bunx tsc --noEmit
+bun run lint
+```
+
+| 結果 | 動作 |
+|------|------|
+| 全部通過（含 **I-H15**、**I-H16**） | ✅ 可開始 PR3C |
+| 任一失敗 | 只修 PR3B，**禁止**開 PR3C |
+
+#### Gate 2 — PR3C 完成
+
+```bash
+bun run test:integration:moderation          # + I-H17（若已加）
+bunx vitest run tests/unit/moderation/refund-preview.test.ts
+bunx tsc --noEmit
+bun run lint
+```
+
+#### 可選 — 發布前全閘
+
+Gate 1 + Gate 2 皆通過後：
+
+```bash
+bun run test:moderation:gate:full
+```
+
 ### 風險
 
 - Trigger bypass 過寬 → 僅在 RPC 內 set_config，同 freeze_payout 模式
@@ -212,6 +249,8 @@ flowchart LR
 … 20260911140000  (existing moderation prepare bypass)
 → 20260912xxxx    (PR2 grading fail buyer fault)
 → 20260913140000  (PR3A member finalize/retry bypass)
+→ 20260914120000–20260914120200  (PR3B carrier/inconclusive + fee_half)
+→ 20260915xxxx    (PR3C refund preview RPC)
 ```
 
 ---

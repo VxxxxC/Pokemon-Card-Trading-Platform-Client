@@ -458,6 +458,242 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
       expect(Number(receivable?.amount_hkd ?? 0)).toBeGreaterThan(0);
     });
 
+    it("I-H15 member_auth carrier(seller): finalize creates seller receivable", async () => {
+      const seed = await seedMemberAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H15",
+      });
+      phaseHMemberSellerId = seed.sellerId;
+      await wipeModerationMatrixPair({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+      });
+
+      const { caseId } = await seedModerationCaseWithMemberOrderContext({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+        orderId: seed.orderId,
+        runId,
+        suffix: "I-H15",
+      });
+
+      const admin = createServiceRoleClient();
+      const { data: orderBefore } = await admin
+        .from("member_orders")
+        .select("stripe_payment_intent_id")
+        .eq("id", seed.orderId)
+        .single();
+
+      const paymentIntentId = orderBefore?.stripe_payment_intent_id;
+      expect(paymentIntentId).toBeTruthy();
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { error: prepareError } = await client.rpc(
+          "rpc_prepare_moderation_order_refund",
+          {
+            p_case_id: caseId,
+            p_order_id: seed.orderId,
+            p_fault_party: "carrier",
+            p_carrier_liability_party: "seller",
+          },
+        );
+        expect(prepareError).toBeNull();
+
+        const { error: finalizeError } = await client.rpc(
+          "rpc_finalize_moderation_order_refund",
+          {
+            p_order_id: seed.orderId,
+            p_payment_intent_id: paymentIntentId!,
+            p_refund_id: "re_phase_h_I-H15",
+            p_refund_cents: 10000,
+            p_stripe_fee_hkd: 3.5,
+            p_case_id: caseId,
+          },
+        );
+        expect(finalizeError).toBeNull();
+      });
+
+      const { data: order } = await admin
+        .from("member_orders")
+        .select("refund_status, fault_party")
+        .eq("id", seed.orderId)
+        .single();
+
+      expect(order?.refund_status).toBe("refunded");
+      expect(order?.fault_party).toBe("carrier");
+
+      const { data: receivable } = await admin
+        .from("seller_receivables")
+        .select("order_id, amount_hkd, stripe_fee_hkd, status")
+        .eq("order_kind", "member")
+        .eq("order_id", seed.orderId)
+        .maybeSingle();
+
+      expect(receivable).not.toBeNull();
+      expect(Number(receivable?.amount_hkd ?? 0)).toBeGreaterThan(0);
+      expect(Number(receivable?.stripe_fee_hkd ?? 0)).toBe(3.5);
+    });
+
+    it("I-H15b member_auth carrier(platform): finalize has no seller receivable", async () => {
+      const seed = await seedMemberAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H15b",
+      });
+      phaseHMemberSellerId = seed.sellerId;
+      await wipeModerationMatrixPair({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+      });
+
+      const { caseId } = await seedModerationCaseWithMemberOrderContext({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+        orderId: seed.orderId,
+        runId,
+        suffix: "I-H15b",
+      });
+
+      const admin = createServiceRoleClient();
+      const { data: orderBefore } = await admin
+        .from("member_orders")
+        .select("stripe_payment_intent_id")
+        .eq("id", seed.orderId)
+        .single();
+
+      const paymentIntentId = orderBefore?.stripe_payment_intent_id;
+      expect(paymentIntentId).toBeTruthy();
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { error: prepareError } = await client.rpc(
+          "rpc_prepare_moderation_order_refund",
+          {
+            p_case_id: caseId,
+            p_order_id: seed.orderId,
+            p_fault_party: "carrier",
+            p_carrier_liability_party: "platform",
+          },
+        );
+        expect(prepareError).toBeNull();
+
+        const { error: finalizeError } = await client.rpc(
+          "rpc_finalize_moderation_order_refund",
+          {
+            p_order_id: seed.orderId,
+            p_payment_intent_id: paymentIntentId!,
+            p_refund_id: "re_phase_h_I-H15b",
+            p_refund_cents: 10000,
+            p_stripe_fee_hkd: 3.5,
+            p_case_id: caseId,
+          },
+        );
+        expect(finalizeError).toBeNull();
+      });
+
+      const { data: order } = await admin
+        .from("member_orders")
+        .select("refund_status, fault_party")
+        .eq("id", seed.orderId)
+        .single();
+
+      expect(order?.refund_status).toBe("refunded");
+      expect(order?.fault_party).toBe("carrier");
+
+      const { data: receivable } = await admin
+        .from("seller_receivables")
+        .select("order_id")
+        .eq("order_kind", "member")
+        .eq("order_id", seed.orderId)
+        .maybeSingle();
+
+      expect(receivable).toBeNull();
+    });
+
+    it("I-H16 member_auth inconclusive: seller receivable is stripe_fee/2 only", async () => {
+      const mockStripeFeeHkd = 4.0;
+      const seed = await seedMemberAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H16",
+      });
+      phaseHMemberSellerId = seed.sellerId;
+      await wipeModerationMatrixPair({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+      });
+
+      const { caseId } = await seedModerationCaseWithMemberOrderContext({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+        orderId: seed.orderId,
+        runId,
+        suffix: "I-H16",
+      });
+
+      const admin = createServiceRoleClient();
+      const { data: orderBefore } = await admin
+        .from("member_orders")
+        .select("stripe_payment_intent_id")
+        .eq("id", seed.orderId)
+        .single();
+
+      const paymentIntentId = orderBefore?.stripe_payment_intent_id;
+      expect(paymentIntentId).toBeTruthy();
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data: prepareData, error: prepareError } = await client.rpc(
+          "rpc_prepare_moderation_order_refund",
+          {
+            p_case_id: caseId,
+            p_order_id: seed.orderId,
+            p_fault_party: "inconclusive",
+          },
+        );
+        expect(prepareError).toBeNull();
+        expect(prepareData).toMatchObject({
+          success: true,
+          feeRecoveryMode: "fee_half",
+        });
+
+        const { error: finalizeError } = await client.rpc(
+          "rpc_finalize_moderation_order_refund",
+          {
+            p_order_id: seed.orderId,
+            p_payment_intent_id: paymentIntentId!,
+            p_refund_id: "re_phase_h_I-H16",
+            p_refund_cents: 10000,
+            p_stripe_fee_hkd: mockStripeFeeHkd / 2,
+            p_case_id: caseId,
+          },
+        );
+        expect(finalizeError).toBeNull();
+      });
+
+      const { data: order } = await admin
+        .from("member_orders")
+        .select("refund_status, fault_party")
+        .eq("id", seed.orderId)
+        .single();
+
+      expect(order?.refund_status).toBe("refunded");
+      expect(order?.fault_party).toBe("inconclusive");
+
+      const { data: receivable } = await admin
+        .from("seller_receivables")
+        .select("order_id, amount_hkd, stripe_fee_hkd")
+        .eq("order_kind", "member")
+        .eq("order_id", seed.orderId)
+        .maybeSingle();
+
+      expect(receivable).not.toBeNull();
+      expect(Number(receivable?.amount_hkd ?? 0)).toBe(mockStripeFeeHkd / 2);
+      expect(receivable?.stripe_fee_hkd).toBeNull();
+    });
+
     it("I-H12 failed + in-window excluded from payout candidates", async () => {
       const seed = await seedMerchantDirectRefundEligibleOrder({
         buyerId: buyerId(),
