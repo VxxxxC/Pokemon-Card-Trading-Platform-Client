@@ -12,6 +12,7 @@ import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
 import { Badge } from "@/components/ui/badge";
 import { getAnnouncementStatus } from "@/lib/announcements/status";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
+import { AnnouncementDetailLink } from "@/lib/announcements/announcement-detail-link";
 
 type AnnouncementsPageClientProps = {
   announcements: PlatformAnnouncement[];
@@ -185,11 +186,14 @@ export function AnnouncementsPageClient({
                     </div>
                   </div>
 
-                  <div className="px-5 pb-4 pt-0 flex items-center justify-end">
+                  <div className="px-5 pb-4 pt-0 flex items-center justify-between gap-3">
                     <div className="py-1 font-mono text-[11px] text-text-disabled flex items-center gap-1">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                       <span>官方消息</span>
                     </div>
+                    {item.linkUrl ? (
+                      <AnnouncementDetailLink linkUrl={item.linkUrl} />
+                    ) : null}
                   </div>
                 </div>
               );

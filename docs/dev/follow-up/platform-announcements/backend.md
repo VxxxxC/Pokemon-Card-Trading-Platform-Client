@@ -50,7 +50,9 @@ File: `app/actions/admin-announcements.ts`
 
 ## Domain module
 
-`lib/announcements/*` — types, HKT date SSOT (`hkt-dates.ts`), status, validation, client upload helper, `use-has-active-announcements` hook for nav badge.
+`lib/announcements/*` — types, HKT date SSOT (`hkt-dates.ts`), status, validation, client upload helper, `use-has-active-announcements` hook for nav badge, `announcement-detail-link` CTA helper.
+
+**Public visibility (Scheme A):** Out-of-window announcements are hidden on the homepage modal via server `activeOnly` query; DB `is_active` is not auto-flipped on expiry.
 
 ## Verify
 

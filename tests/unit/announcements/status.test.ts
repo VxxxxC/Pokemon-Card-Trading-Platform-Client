@@ -99,4 +99,23 @@ describe("announcement status", () => {
     const active = getActiveAnnouncements(announcements, now);
     expect(active.map((item) => item.id)).toEqual(["c", "b", "a"]);
   });
+
+  it("excludes expired announcements from active list even when isActive is true", () => {
+    const announcements = [
+      buildAnnouncement({
+        id: "active",
+        startDate: "2026-08-01",
+        endDate: "2026-08-31",
+      }),
+      buildAnnouncement({
+        id: "expired",
+        startDate: "2026-07-01",
+        endDate: "2026-08-01",
+        isActive: true,
+      }),
+    ];
+
+    const active = getActiveAnnouncements(announcements, now);
+    expect(active.map((item) => item.id)).toEqual(["active"]);
+  });
 });

@@ -108,6 +108,9 @@ test.describe("Admin announcements workflow", () => {
     await page
       .getByPlaceholder("請輸入公告詳細說明、活動辦法、限制條件等...")
       .fill("E2E announcement body for automated workflow verification.");
+    await page
+      .getByPlaceholder("例如: /catalog 或 https://...")
+      .fill("/catalog");
 
     await page.getByRole("button", { name: "新增公告" }).click();
     await expect(page.getByText("已成功新增公告！")).toBeVisible({
@@ -132,9 +135,24 @@ test.describe("Admin announcements workflow", () => {
       sessionStorage.removeItem("hasSeenAnnouncementsModal");
     });
     await guestPage.goto("/");
-    await expect(guestPage.getByRole("dialog")).toContainText(updatedTitle, {
+    const dialog = guestPage.getByRole("dialog");
+    await expect(dialog).toContainText(updatedTitle, {
       timeout: 5_000,
     });
+
+    const announcementSlide = dialog
+      .locator("div")
+      .filter({ hasText: updatedTitle })
+      .first();
+    const detailLink = announcementSlide.getByRole("link", {
+      name: "查看詳情",
+    });
+    await expect(detailLink).toBeVisible();
+    await detailLink.click();
+    await guestPage.waitForURL((url) => url.pathname.includes("/catalog"), {
+      timeout: 10_000,
+    });
+
     await guestContext.close();
   });
 });
