@@ -536,6 +536,86 @@ export async function findMemberListingForIntegration(params?: {
   excludeBuyerId?: string;
 }): Promise<MemberListingFixture> {
   const admin = createServiceRoleClient();
+  const envListingId = process.env.E2E_LISTING_ID?.trim();
+  const envSellerId = process.env.E2E_SELLER_ID?.trim();
+
+  async function resolveListing(
+    listing: {
+      id: string;
+      seller_id: string;
+      price: number | null;
+      seller_persona: string | null;
+      status: string | null;
+    },
+  ): Promise<MemberListingFixture | null> {
+    if (
+      listing.seller_persona !== "member" ||
+      !listing.seller_id ||
+      (params?.excludeBuyerId && listing.seller_id === params.excludeBuyerId)
+    ) {
+      return null;
+    }
+
+    if (listing.status !== "active") {
+      const { error: activateError } = await admin
+        .from("listings")
+        .update({ status: "active" })
+        .eq("id", listing.id);
+      if (activateError) {
+        throw new Error(
+          `[findMemberListingForIntegration] reactivate listing: ${activateError.message}`,
+        );
+      }
+    }
+
+    return {
+      listingId: listing.id,
+      sellerId: listing.seller_id,
+      price: Number(listing.price ?? 0),
+    };
+  }
+
+  if (envListingId) {
+    const { data: envListing, error: envError } = await admin
+      .from("listings")
+      .select("id, seller_id, price, seller_persona, status")
+      .eq("id", envListingId)
+      .maybeSingle();
+
+    if (envError) {
+      throw new Error(`[findMemberListingForIntegration] ${envError.message}`);
+    }
+
+    if (envListing) {
+      const resolved = await resolveListing(envListing);
+      if (resolved) {
+        return resolved;
+      }
+    }
+  }
+
+  if (envSellerId && (!params?.excludeBuyerId || envSellerId !== params.excludeBuyerId)) {
+    const { data: sellerListing, error: sellerError } = await admin
+      .from("listings")
+      .select("id, seller_id, price, seller_persona, status")
+      .eq("seller_id", envSellerId)
+      .eq("seller_persona", "member")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sellerError) {
+      throw new Error(`[findMemberListingForIntegration] ${sellerError.message}`);
+    }
+
+    if (sellerListing) {
+      const resolved = await resolveListing(sellerListing);
+      if (resolved) {
+        return resolved;
+      }
+    }
+  }
+
   let query = admin
     .from("listings")
     .select("id, seller_id, price, seller_persona, status")

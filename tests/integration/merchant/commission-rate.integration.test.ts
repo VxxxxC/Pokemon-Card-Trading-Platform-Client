@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { findMerchantListingForIntegration } from "../rewards/helpers/checkout-fixture";
+import { seedMerchantOrderReadyForBuyerConfirm } from "./helpers/merchant-order-fixture";
 import {
   clearSessionCache,
   getBuyerClient,
@@ -36,34 +36,6 @@ async function readPlatformCommissionRate(): Promise<number> {
     throw new Error(`[readPlatformCommissionRate] ${error.message}`);
   }
   return Number(data);
-}
-
-async function seedMerchantOrderReadyForBuyerConfirm(params: {
-  buyerId: string;
-  suffix: string;
-  itemSubtotal?: number;
-}): Promise<{ orderId: string; merchantId: string; itemSubtotal: number }> {
-  const admin = createServiceRoleClient();
-  const { listingId, sellerId: merchantId } = await findMerchantListingForIntegration();
-  const itemSubtotal = params.itemSubtotal ?? 100;
-
-  const { data: orderId, error: seedError } = await admin.rpc(
-    "rpc_e2e_seed_merchant_shipped_awaiting_confirm",
-    {
-      p_listing_id: listingId,
-      p_buyer_id: params.buyerId,
-      p_payment_intent_suffix: params.suffix,
-      p_item_subtotal: itemSubtotal,
-    },
-  );
-
-  if (seedError || !orderId) {
-    throw new Error(
-      `[seedMerchantOrderReadyForBuyerConfirm] ${seedError?.message ?? "missing order id"}`,
-    );
-  }
-
-  return { orderId, merchantId, itemSubtotal };
 }
 
 describe.skipIf(!hasBaseIntegrationEnv()).sequential(

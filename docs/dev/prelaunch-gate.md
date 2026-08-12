@@ -1,6 +1,6 @@
 # Prelaunch gate — H1 / H2 前人手 QA 前測試順序
 
-> Dev 跑完 gate 全綠後，Partner 跟 **[PARTNER_QA.md](./PARTNER_QA.md)** 簽收（M1–M5 必做）。
+> Dev 跑完 gate 全綠後，Partner 跟 **[PARTNER_QA.md](./PARTNER_QA.md)** 簽收（M1–M7 必做）。
 
 ## 一鍵命令
 
@@ -26,7 +26,7 @@ bun run test:prelaunch:gate:1b
 ## Phase 0 — 前置
 
 1. `git pull` + `bun install`
-2. `bunx supabase db push`（與 staging 對齊）
+2. `bunx supabase db push`（與 staging 對齊；本次 release 至 **`20260924150000`**）
 3. `bun run test:prelaunch:check-env`（1b 前用 `test:prelaunch:check-env:stripe`）
 
 | 變數 | 用途 |
@@ -41,7 +41,7 @@ bun run test:prelaunch:gate:1b
 
 ---
 
-## Phase 1a — 無 webhook（~45–90 min）
+## Phase 1a — 無 webhook（~50–95 min）
 
 由 [scripts/prelaunch-gate-1a.sh](../scripts/prelaunch-gate-1a.sh) 順序執行：
 
@@ -50,7 +50,9 @@ bun run test:prelaunch:gate:1b
 3. `bun run test:integration:grading:stripe-smoke`（fail 真 PI，唔經 webhook）
 4. `bun run test:integration:grading:pass-stripe-smoke`（pass 全額 capture 真 PI）
 5. `bun run test:moderation:gate:full`（含 `seed:moderation-e2e` + seller project E2E）
-6. `bun run build:ci`
+6. `bun run test:integration:fps-payout`（Member FPS 1A→1B→admin 銷帳 integration）
+7. `bun run test:integration:merchant-connect-payout`（Merchant Connect held/failed/retry integration）
+8. `bun run build:ci`
 
 **可 skip：** `test:auth-escrow:gate`（1b `rewards-gate` 已含 B2b）
 
@@ -85,19 +87,28 @@ Gate 全綠後進行；**唔重跑** 舉報／退款／券 logic。
 | 退款 spot check | **M3** |
 | 條款／checkout | **M4** |
 | 首頁 P0 | **M5** |
+| FPS 出賬 | **M6** |
+| Merchant Connect 出賬 | **M7** |
 | H2 鑑定 pass staging | **O1**（可選；G-BP-S1 已驗 capture） |
 
 ---
 
 ## Dev sign-off
 
+```bash
+bunx supabase db push   # 對齊至 20260924150000
+bun run test:integration:fps-payout
+bun run test:integration:merchant-connect-payout
+bun run test:prelaunch:gate:1a   # 含上述兩項 + tsc + grading + moderation + build:ci
+```
+
 | Step | 命令 | Webhook |
 |------|------|---------|
-| 0 | `supabase db push` + `test:prelaunch:check-env` | — |
+| 0 | `supabase db push`（至 **`20260924150000`**）+ `test:prelaunch:check-env` | — |
 | 1a | `test:prelaunch:gate:1a` | 唔需要 |
 | 1b | `test:prelaunch:gate:1b` | **要** |
 | 8b | staging 重跑 I-H14 | Dashboard |
-| H1 | Partner M1（見 PARTNER_QA.md） | — |
+| H1 | Partner M1–M7（見 PARTNER_QA.md） | — |
 | H2 | Partner O1 可選 | 唔需要（G-BP-S1） |
 
 ---
@@ -109,5 +120,7 @@ Gate 全綠後進行；**唔重跑** 舉報／退款／券 logic。
 | 獎勵 | `bun run test:rewards:gate` |
 | 舉報 | `bun run test:moderation:gate:full` |
 | 鑑定用券 | `bun run test:auth-escrow:gate` |
+| FPS 出賬 | `bun run test:fps-payout:gate`（獨立 full gate；1a 只跑 `test:integration:fps-payout`） |
+| Merchant Connect 出賬 | `bun run test:integration:merchant-connect-payout`（1a 已含；無獨立 release gate） |
 
 詳見 [e2e.md](./e2e.md) · **[PARTNER_QA.md](./PARTNER_QA.md)** · [PARTNER_QA_SIGNOFF](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md)（dev automation）

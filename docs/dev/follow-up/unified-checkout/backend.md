@@ -1,7 +1,7 @@
 # Unified Checkout Wizard — Backend
 
 > Frontend handoff: [frontend.md](./frontend.md).  
-> Policy SSOT: [escrow-payment-policy.md](../../escrow-payment-policy.md).
+> Policy SSOT: [escrow-payment-policy.md](../../escrow-payment-policy.md) · Capture 模型: [capture-policy.md](../../capture-policy.md).
 
 ## Checkout entry
 
@@ -22,7 +22,7 @@ Checkout 只負責**入款**；出款見下方 § Payout。
 | Route | Variants | PI | Status |
 |-------|----------|-----|--------|
 | **A — Normal automatic** | `merchant_direct`（`useAuth=false`） | `capture_method: automatic` | ✅ **Ready to test** — 付款即 capture 入平台 |
-| **B — Auth manual + multicapture** | `merchant_auth`, `merchant_direct` + 鑑定 toggle, `member_auth` | `capture_method: manual` + `request_multicapture: if_available` | 🟡 **Partner QA** — Stripe online multicapture 已開通；見 [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md) |
+| **B — Auth manual** | `merchant_auth`, `merchant_direct` + 鑑定 toggle, `member_auth` | 新單：**single capture at pass**；legacy：`manual` + `request_multicapture` | 🟡 **Partner QA** — 見 [capture-policy](../../capture-policy.md) · [PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md) |
 
 Branch in `createMerchantOrderPaymentIntent`:
 
@@ -37,7 +37,7 @@ Webhook:
 - Route A → `payment_intent.succeeded` → merchant `payment_held` / member custody flow
 - Route B → `amount_capturable_updated` → `authorized`; staged partial capture via admin grading sagas
 
-**Route B E2E:** Stripe multicapture enabled — partner QA via [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md). Use **new auth orders** only. Route A (non-auth merchant) remains independently validated.
+**Route B E2E:** 新鑑定單 `escrow_capture_model = 'single'` — [capture-policy](../../capture-policy.md) · [PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md). Legacy multicapture 在途單仍支援。Route A (non-auth merchant) remains independently validated.
 
 ---
 

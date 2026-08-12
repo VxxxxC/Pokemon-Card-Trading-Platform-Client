@@ -13,6 +13,8 @@ steps=(
   "bun run test:integration:grading:stripe-smoke"
   "bun run test:integration:grading:pass-stripe-smoke"
   "bun run test:moderation:gate:full"
+  "bun run test:integration:fps-payout"
+  "bun run test:integration:merchant-connect-payout"
   "bun run build:ci"
 )
 

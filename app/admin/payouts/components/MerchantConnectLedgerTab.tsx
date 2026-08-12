@@ -3,7 +3,9 @@
 import {
   listAdminMerchantTransfers,
   listAdminMerchantTransfersForExport,
+  retryAdminMerchantConnectPayout,
 } from "@/app/actions/admin-payouts";
+import { getMerchantTransferRowId } from "@/lib/admin-payouts/merchant-transfer-row-id";
 import {
   Table,
   TableBody,
@@ -99,6 +101,7 @@ export default function MerchantConnectLedgerTab({
 }: MerchantConnectLedgerTabProps) {
   const [isPending, startTransition] = useTransition();
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
 
   const [pageData, setPageData] = useState<MerchantTransferPage>(initialPage);
   const [search, setSearch] = useState("");
@@ -217,7 +220,7 @@ export default function MerchantConnectLedgerTab({
       setSelectedIds(new Set());
     } else {
       setSelectedIds(
-        new Set(pageData.rows.map((row) => row.stripeTransferId)),
+        new Set(pageData.rows.map((row) => getMerchantTransferRowId(row))),
       );
     }
   };
@@ -250,7 +253,7 @@ export default function MerchantConnectLedgerTab({
       let targetRows = result.data.rows;
       if (exportSelectedOnly) {
         targetRows = targetRows.filter((row) =>
-          selectedIds.has(row.stripeTransferId),
+          selectedIds.has(getMerchantTransferRowId(row)),
         );
       }
 
@@ -301,6 +304,29 @@ export default function MerchantConnectLedgerTab({
     } finally {
       setIsExportingCsv(false);
     }
+  };
+
+  const handleRetryPayout = (orderId: string) => {
+    setRetryingOrderId(orderId);
+    startTransition(async () => {
+      try {
+        const result = await retryAdminMerchantConnectPayout(orderId);
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+        toast.success(
+          result.data.transferId
+            ? `撥款重試成功（${result.data.transferId}）`
+            : "撥款重試成功",
+        );
+        fetchPage({ page: pageData.page });
+      } catch {
+        toast.error("重試撥款失敗，請稍後再試");
+      } finally {
+        setRetryingOrderId(null);
+      }
+    });
   };
 
   const displayError = loadError ?? fetchError;
@@ -533,7 +559,8 @@ export default function MerchantConnectLedgerTab({
           </TableHeader>
           <TableBody>
             {pageData.rows.map((row) => {
-              const isSelected = selectedIds.has(row.stripeTransferId);
+              const rowId = getMerchantTransferRowId(row);
+              const isSelected = selectedIds.has(rowId);
               const statusBadge = (
                 <span
                   className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${getPayoutStatusBadgeClass(row.payoutStatus)}`}
@@ -544,7 +571,7 @@ export default function MerchantConnectLedgerTab({
 
               return (
                 <TableRow
-                  key={row.stripeTransferId}
+                  key={rowId}
                   className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
                     isSelected
                       ? "bg-[rgba(212,165,116,0.08)]"
@@ -555,7 +582,7 @@ export default function MerchantConnectLedgerTab({
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => toggleSelectRow(row.stripeTransferId)}
+                      onChange={() => toggleSelectRow(rowId)}
                       className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
                     />
                   </TableCell>
@@ -690,6 +717,15 @@ export default function MerchantConnectLedgerTab({
                     )}
                   </TableCell>
                   <TableCell className="text-right py-3 whitespace-nowrap">
+                    {row.payoutStatus === "failed" ? (
+                      <button
+                        type="button"
+                        disabled={retryingOrderId === row.orderId || isPending}
+                        onClick={() => handleRetryPayout(row.orderId)}
+                      >
+                        重試撥款
+                      </button>
+                    ) : null}
                     <a
                       href={`/profile/merchant/orderDetail/${row.orderId}`}
                       target="_blank"

@@ -1,8 +1,10 @@
 # Member FPS Payout Pipeline — Backend
 
-> **Status:** ✅ Ready (Phase 1A / 1B / 1C) · 🟡 Partner QA（multicapture 後段）  
-> **Migration:** `supabase/migrations/20260802120000_member_fps_payout_pipeline.sql`  
-> **P0 capture QA:** [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)
+> **Status:** ✅ Ready (Phase 1A / 1B / 1C) · 🟡 Partner QA（M6 FPS 後段）  
+> **Capture 模型：** [capture-policy.md](../../capture-policy.md)（新單 single；legacy multicapture 只影響入款前段）  
+> **Migration:** `supabase/migrations/20260802120000_member_fps_payout_pipeline.sql` · admin 銷帳 `20260923120000`  
+> **P0 capture QA:** [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)  
+> **Gate:** `bun run test:integration:fps-payout`
 
 ## Overview
 

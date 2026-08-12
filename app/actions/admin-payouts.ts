@@ -1,6 +1,7 @@
 "use server";
 
 import { getNextBatchSchedule } from "@/lib/admin-payouts/fps-batch-config";
+import { isFpsPayoutBlockedForComplete } from "@/lib/admin-payouts/fps-payout-guards";
 import { formatAdminDateTime } from "@/lib/admin-payouts/format";
 import type {
   AdminPayoutsPageData,
@@ -38,11 +39,12 @@ import {
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { executeMerchantConnectPayout } from "@/lib/merchant-order/execute-connect-payout";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import { getPlatformStripeBalance } from "@/lib/stripe/platform-balance";
 import { getPlatformStripeTodayInflow } from "@/lib/stripe/platform-today-inflow";
-import type { Tables, TablesUpdate } from "@/types/supabase";
+import type { Tables } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 
 type MerchantOrderRow = Pick<
@@ -1154,7 +1156,7 @@ export async function listAdminPayoutRequestsForExport(
 
 export async function updateAdminPayoutRequestStatus(input: {
   requestId: string;
-  status: "processing" | "completed" | "failed";
+  status: "completed" | "failed";
   adminFpsReference?: string;
 }): Promise<{ success: true } | { success: false; error: string }> {
   const guard = await requireAdmin();
@@ -1162,40 +1164,39 @@ export async function updateAdminPayoutRequestStatus(input: {
     return { success: false, error: guard.error };
   }
 
-  const admin = createAdminClient();
-  const now = new Date().toISOString();
-
-  const updatePayload: TablesUpdate<"payout_requests"> = {
-    status: input.status,
-    updated_at: now,
-  };
-
-  if (input.status === "completed") {
-    updatePayload.paid_at = now;
-    updatePayload.paid_by = guard.adminId;
-    if (input.adminFpsReference?.trim()) {
-      updatePayload.admin_fps_reference = input.adminFpsReference.trim();
-    }
+  if (input.status === "completed" && !input.adminFpsReference?.trim()) {
+    return { success: false, error: "請填寫 FPS 轉帳參考號" };
   }
 
-  const { data, error } = await admin
-    .from("payout_requests")
-    .update(updatePayload)
-    .eq("id", input.requestId)
-    .in("status", [...FPS_INCOMPLETE_STATUSES])
-    .select("id")
-    .maybeSingle();
+  const admin = createAdminClient();
+
+  const { data, error } = await admin.rpc(
+    "rpc_admin_set_fps_payout_request_status",
+    {
+      p_request_id: input.requestId,
+      p_status: input.status,
+      p_admin_id: guard.adminId,
+      p_admin_fps_reference: input.adminFpsReference?.trim() || undefined,
+    },
+  );
 
   if (error) {
     console.error("[updateAdminPayoutRequestStatus]", error);
-    return { success: false, error: "無法更新提現單狀態" };
+    return {
+      success: false,
+      error: error.message || "無法更新提現單狀態",
+    };
   }
 
-  if (!data) {
-    return { success: false, error: "提現單不存在或已結案" };
-  }
+  const payload = data as {
+    order_number?: string | null;
+  } | null;
 
   revalidatePath("/admin/payouts");
+  if (payload?.order_number) {
+    revalidatePath(`/profile/user/orderDetail/${payload.order_number}`);
+  }
+
   return { success: true };
 }
 
@@ -1216,25 +1217,122 @@ export async function batchCompleteAdminPayoutRequests(input: {
   }
 
   const admin = createAdminClient();
-  const now = new Date().toISOString();
 
-  const { data, error } = await admin
+  const { data: rows, error: fetchError } = await admin
     .from("payout_requests")
-    .update({
-      status: "completed",
-      paid_at: now,
-      paid_by: guard.adminId,
-      updated_at: now,
-    })
-    .in("id", requestIds)
-    .in("status", [...FPS_INCOMPLETE_STATUSES])
-    .select("id");
+    .select("id, status, fps_id_snapshot, fps_name_snapshot")
+    .in("id", requestIds);
+
+  if (fetchError) {
+    console.error("[batchCompleteAdminPayoutRequests] prefetch", fetchError);
+    return { success: false, error: "無法載入提現單" };
+  }
+
+  if ((rows?.length ?? 0) !== requestIds.length) {
+    return { success: false, error: "部分提現單不存在" };
+  }
+
+  for (const row of rows ?? []) {
+    if (
+      isFpsPayoutBlockedForComplete({
+        status: normalizeFpsPayoutStatus(row.status),
+        fpsId: row.fps_id_snapshot,
+        fpsName: row.fps_name_snapshot,
+      })
+    ) {
+      return {
+        success: false,
+        error: "所選提現單包含待賣家補充 FPS 的記錄，無法批量銷帳",
+      };
+    }
+  }
+
+  const { data, error } = await admin.rpc(
+    "rpc_admin_batch_complete_fps_payout_requests",
+    {
+      p_request_ids: requestIds,
+      p_admin_id: guard.adminId,
+    },
+  );
 
   if (error) {
     console.error("[batchCompleteAdminPayoutRequests]", error);
-    return { success: false, error: "批量銷帳失敗" };
+    return {
+      success: false,
+      error: error.message || "批量銷帳失敗",
+    };
+  }
+
+  const payload = data as {
+    completed_count?: number;
+    order_numbers?: string[];
+  } | null;
+
+  revalidatePath("/admin/payouts");
+  for (const orderNumber of payload?.order_numbers ?? []) {
+    if (orderNumber) {
+      revalidatePath(`/profile/user/orderDetail/${orderNumber}`);
+    }
+  }
+
+  return {
+    success: true,
+    completedCount: payload?.completed_count ?? 0,
+  };
+}
+
+export type RetryAdminMerchantConnectPayoutResult =
+  | { success: true; data: { transferId?: string; alreadyApplied?: boolean } }
+  | { success: false; error: string };
+
+export async function retryAdminMerchantConnectPayout(
+  orderId: string,
+): Promise<RetryAdminMerchantConnectPayoutResult> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const trimmedOrderId = orderId.trim();
+  if (!trimmedOrderId) {
+    return { success: false, error: "訂單 ID 無效" };
+  }
+
+  const admin = createAdminClient();
+  const { error: resetError } = await admin.rpc(
+    "rpc_admin_reset_merchant_connect_payout_retry",
+    {
+      p_order_id: trimmedOrderId,
+      p_admin_id: guard.adminId,
+    },
+  );
+
+  if (resetError) {
+    console.error("[retryAdminMerchantConnectPayout] reset", resetError);
+    return {
+      success: false,
+      error: resetError.message || "無法重設撥款狀態",
+    };
+  }
+
+  const payoutResult = await executeMerchantConnectPayout(trimmedOrderId);
+  if (!payoutResult.success) {
+    return {
+      success: false,
+      error:
+        payoutResult.error === "撥款服務尚未設定"
+          ? payoutResult.error
+          : payoutResult.error || "撥款重試失敗",
+    };
   }
 
   revalidatePath("/admin/payouts");
-  return { success: true, completedCount: data?.length ?? 0 };
+
+  return {
+    success: true,
+    data: {
+      transferId: payoutResult.transferId,
+      alreadyApplied: payoutResult.alreadyApplied,
+    },
+  };
 }

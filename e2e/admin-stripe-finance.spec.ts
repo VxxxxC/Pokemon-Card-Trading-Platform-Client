@@ -2,6 +2,8 @@ import { test, expect, type Page, type ConsoleMessage } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
 
+// Optional: `bun run seed:fps-payout-e2e` seeds a ready payout row for deterministic 銷帳 dialog test.
+
 const SCREENSHOT_DIR = path.join(process.cwd(), "test-results", "admin-stripe-finance-screenshots");
 
 test.beforeAll(() => {
@@ -135,6 +137,7 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     expect(fpsLedgerHeaderTexts).toContain("用戶名稱");
     expect(fpsLedgerHeaderTexts).toContain("FPS ID");
     expect(fpsLedgerHeaderTexts).toContain("狀態");
+    expect(fpsLedgerHeaderTexts).toContain("FPS 參考");
 
     await expect(
       page.locator("h3", { hasText: "Stripe Log — 平台放款紀錄" }),
@@ -151,6 +154,26 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     if (fpsLedgerRowCount > 0) {
       await expect(fpsLedgerPagingText).toContainText("顯示第 1 -");
       await expect(fpsLedgerPagingText).toContainText("筆資料");
+    }
+
+    const completeBtn = page.locator("button", { hasText: "✓ 銷帳" }).first();
+    if ((await completeBtn.count()) > 0) {
+      await completeBtn.click();
+      const referenceInput = page.locator('input[name="adminFpsReference"]');
+      await expect(referenceInput).toBeVisible();
+      await referenceInput.fill("E2E-FPS-REF-001");
+      await page.locator("button", { hasText: "確認銷帳" }).click();
+      await expect(page.getByText("手動銷帳成功").first()).toBeVisible({
+        timeout: 15000,
+      });
+    }
+
+    const pendingHint = page.getByText("待賣家補 FPS");
+    if ((await pendingHint.count()) > 0) {
+      const pendingRow = pendingHint.first().locator("xpath=ancestor::tr");
+      await expect(pendingRow.locator("button", { hasText: "✓ 銷帳" })).toHaveCount(
+        0,
+      );
     }
 
     // Take screenshot of Desktop Payouts FPS tab

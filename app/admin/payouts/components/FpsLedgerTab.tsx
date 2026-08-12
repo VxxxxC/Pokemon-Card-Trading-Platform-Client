@@ -7,6 +7,14 @@ import {
   updateAdminPayoutRequestStatus,
 } from "@/app/actions/admin-payouts";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -14,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { isFpsPayoutBlockedForComplete } from "@/lib/admin-payouts/fps-payout-guards";
 import {
   formatAdminHkd,
   formatFpsPayoutStatusLabel,
@@ -86,6 +95,10 @@ export default function FpsLedgerTab({
   const [sort, setSort] = useState<FpsPayoutSort>("submittedAt-desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [completeDialogRequestId, setCompleteDialogRequestId] = useState<
+    string | null
+  >(null);
+  const [adminFpsReference, setAdminFpsReference] = useState("");
   const skipFilterFetchRef = useRef(true);
 
   useEffect(() => {
@@ -172,10 +185,25 @@ export default function FpsLedgerTab({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === pageData.rows.length) {
+    const selectableIds = pageData.rows
+      .filter(
+        (row) =>
+          isFpsPayoutIncomplete(row.status) &&
+          !isFpsPayoutBlockedForComplete({
+            status: row.status,
+            fpsId: row.fpsId,
+            fpsName: row.fpsName,
+          }),
+      )
+      .map((row) => row.requestId);
+
+    if (
+      selectableIds.length > 0 &&
+      selectableIds.every((id) => selectedIds.has(id))
+    ) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(pageData.rows.map((row) => row.requestId)));
+      setSelectedIds(new Set(selectableIds));
     }
   };
 
@@ -249,9 +277,47 @@ export default function FpsLedgerTab({
     }
   };
 
+  const handleCompleteSubmit = async () => {
+    if (!completeDialogRequestId) return;
+
+    const reference = adminFpsReference.trim();
+    if (!reference) {
+      toast.error("請填寫 FPS 轉帳參考號");
+      return;
+    }
+
+    setIsMutating(true);
+    try {
+      const result = await updateAdminPayoutRequestStatus({
+        requestId: completeDialogRequestId,
+        status: "completed",
+        adminFpsReference: reference,
+      });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(
+        `${formatRequestId(completeDialogRequestId)} 手動銷帳成功`,
+      );
+      setCompleteDialogRequestId(null);
+      setAdminFpsReference("");
+      setSelectedIds((prev) => {
+        if (!prev.has(completeDialogRequestId)) return prev;
+        const next = new Set(prev);
+        next.delete(completeDialogRequestId);
+        return next;
+      });
+      fetchPage({});
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   const handleStatusUpdate = async (
     requestId: string,
-    status: "completed" | "failed",
+    status: "failed",
   ) => {
     setIsMutating(true);
     try {
@@ -261,7 +327,7 @@ export default function FpsLedgerTab({
         return;
       }
 
-      const actionLabel = status === "completed" ? "手動銷帳成功" : "已標記失敗";
+      const actionLabel = "已標記失敗";
       toast.success(`${formatRequestId(requestId)} ${actionLabel}`);
       setSelectedIds((prev) => {
         if (!prev.has(requestId)) return prev;
@@ -277,6 +343,11 @@ export default function FpsLedgerTab({
 
   const handleBatchComplete = async () => {
     if (selectedIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      "批量銷帳不記錄 FPS 參考號，確認繼續？",
+    );
+    if (!confirmed) return;
 
     setIsMutating(true);
     try {
@@ -311,6 +382,22 @@ export default function FpsLedgerTab({
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   }, [pageData.page, totalPages]);
 
+  const selectableRowIds = useMemo(
+    () =>
+      pageData.rows
+        .filter(
+          (row) =>
+            isFpsPayoutIncomplete(row.status) &&
+            !isFpsPayoutBlockedForComplete({
+              status: row.status,
+              fpsId: row.fpsId,
+              fpsName: row.fpsName,
+            }),
+        )
+        .map((row) => row.requestId),
+    [pageData.rows],
+  );
+
   const displayError = loadError ?? fetchError;
 
   return (
@@ -321,6 +408,49 @@ export default function FpsLedgerTab({
           isExportingCsv ? "正在導出 FPS Payout CSV…" : "正在更新提現單狀態…"
         }
       />
+
+      <Dialog
+        open={completeDialogRequestId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCompleteDialogRequestId(null);
+            setAdminFpsReference("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>FPS 銷帳確認</DialogTitle>
+            <DialogDescription>
+              請輸入銀行／轉數快轉帳參考號以完成銷帳。
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            name="adminFpsReference"
+            value={adminFpsReference}
+            onChange={(event) => setAdminFpsReference(event.target.value)}
+            placeholder="FPS 轉帳參考號"
+          />
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => {
+                setCompleteDialogRequestId(null);
+                setAdminFpsReference("");
+              }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={handleCompleteSubmit}
+              disabled={isMutating || !adminFpsReference.trim()}
+            >
+              確認銷帳
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {displayError ? (
         <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 font-sans text-[12px] text-warning">
@@ -423,11 +553,12 @@ export default function FpsLedgerTab({
                 <input
                   type="checkbox"
                   checked={
-                    pageData.rows.length > 0 &&
-                    selectedIds.size === pageData.rows.length
+                    selectableRowIds.length > 0 &&
+                    selectableRowIds.every((id) => selectedIds.has(id))
                   }
                   onChange={toggleSelectAll}
-                  className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                  disabled={selectableRowIds.length === 0}
+                  className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer disabled:opacity-40"
                 />
               </TableHead>
               <TableHead className="font-mono text-[11px] text-text-secondary h-10">
@@ -454,6 +585,9 @@ export default function FpsLedgerTab({
               <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
                 狀態
               </TableHead>
+              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+                FPS 參考
+              </TableHead>
               <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
                 操作
               </TableHead>
@@ -463,6 +597,12 @@ export default function FpsLedgerTab({
             {pageData.rows.map((row) => {
               const isSelected = selectedIds.has(row.requestId);
               const canAct = isFpsPayoutIncomplete(row.status);
+              const blockedForComplete = isFpsPayoutBlockedForComplete({
+                status: row.status,
+                fpsId: row.fpsId,
+                fpsName: row.fpsName,
+              });
+              const canSelect = canAct && !blockedForComplete;
 
               return (
                 <TableRow
@@ -477,8 +617,9 @@ export default function FpsLedgerTab({
                     <input
                       type="checkbox"
                       checked={isSelected}
+                      disabled={!canSelect}
                       onChange={() => toggleSelectRow(row.requestId)}
-                      className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                      className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer disabled:opacity-40"
                     />
                   </TableCell>
                   <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
@@ -528,6 +669,14 @@ export default function FpsLedgerTab({
                     >
                       {formatFpsPayoutStatusLabel(row.status)}
                     </span>
+                    {blockedForComplete ? (
+                      <div className="mt-1 font-sans text-[10px] text-text-disabled">
+                        待賣家補 FPS
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
+                    {row.adminFpsReference ?? "—"}
                   </TableCell>
                   <TableCell className="text-right py-3 whitespace-nowrap">
                     <div className="flex justify-end items-center gap-1.5">
@@ -541,16 +690,19 @@ export default function FpsLedgerTab({
                       </a>
                       {canAct ? (
                         <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleStatusUpdate(row.requestId, "completed")
-                            }
-                            disabled={isMutating}
-                            className="min-h-[44px] h-9 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform disabled:opacity-50"
-                          >
-                            ✓ 銷帳
-                          </button>
+                          {!blockedForComplete ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCompleteDialogRequestId(row.requestId);
+                                setAdminFpsReference("");
+                              }}
+                              disabled={isMutating}
+                              className="min-h-[44px] h-9 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform disabled:opacity-50"
+                            >
+                              ✓ 銷帳
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() =>

@@ -38,21 +38,31 @@
 
 ### 2.2 PaymentIntent 策略
 
+> **Capture 模型 SSOT：** [capture-policy.md](./capture-policy.md) — 新單 `escrow_capture_model = 'single'`；legacy `NULL` 仍 multicapture。
+
 | 類型 | PI 策略 |
 |------|---------|
 | 1 P2P | 無 PI |
-| 2、4 鑑定 | **單一 PI，`capture_method: manual`**，分階段 partial capture |
+| 2、4 鑑定（**新單 single**） | **單一 PI，`capture_method: manual`**，authorize 全額 → pass 一次 capture |
+| 2、4 鑑定（**legacy multicapture**） | **單一 PI，`capture_method: manual`**，分階段 partial capture |
 | 3 非鑑定 | **單一 PI，`capture_method: automatic`**（付款即 capture 入平台） |
 
-**鑑定類 PI 授權總額** = `item_subtotal + shipping_fee（如有）+ auth_fee`
+**鑑定類 PI 授權總額** = `item_subtotal + inbound/outbound shipping + auth_fee`（v2 四行；見 auth-escrow-v2）
 
-#### 分階段 capture 時序
+#### Single capture 時序（新單，預設）
 
-1. **Checkout**：建立 PI，authorize 全額 → `requires_capture` → `payment_capture_status = authorized`
-2. **Admin 確認入庫**：`capture(auth_fee)` → `auth_fee_captured`；進入 **鑑定鎖定期**
-3. **鑑定通過**：`capture(item_subtotal + shipping_fee)` → `fully_captured`
-4. **鑑定失敗（入庫後）**：依 `fault_party` 處理 D 與釋放餘額 — 見 [refund-policy §7](./refund-policy.md#7-s1--鑑定失敗grading-fail)。Legacy staged：已 capture D 視 fault 留／退；single 新單多為 `PI.cancel` 或 capture D only（buyer fault，**PR2**）
-5. **入庫前取消**：`payment_intent.cancel`；全額未 capture → 無 processing fee
+1. **Checkout**：authorize 全額 → `authorized`
+2. **Admin 入庫**：**不 capture**（必要時 re-auth）
+3. **鑑定通過**：一次 `capture(buyer_total_amount)` → `fully_captured`
+4. **鑑定失敗**：見 [refund-policy §7.2](./refund-policy.md)
+
+#### Legacy 分階段 capture 時序（`escrow_capture_model IS NULL`）
+
+1. **Checkout**：authorize 全額 → `authorized`
+2. **Admin 確認入庫**：`capture(auth_fee)` → `auth_fee_captured`
+3. **鑑定通過**：`capture(item_subtotal + shipping)` → `fully_captured`
+4. **鑑定失敗（入庫後）**：依 `fault_party` — 見 [refund-policy §7.1](./refund-policy.md)
+5. **入庫前取消**：`payment_intent.cancel`
 
 ### 2.3 Unified checkout 與兩條出款路（2026-07 sync）
 

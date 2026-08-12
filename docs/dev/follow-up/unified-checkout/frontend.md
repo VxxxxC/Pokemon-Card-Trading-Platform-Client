@@ -19,10 +19,10 @@ P2P member orders → checkout rejects with「此訂單不支援線上結帳付�
 | Checkout | Inbound (checkout) | Outbound (after buyer confirm) |
 |----------|-------------------|----------------------------------|
 | `merchant_direct` no auth | Automatic capture ✅ | T+7 → **Stripe Connect** |
-| `merchant_auth` / direct + auth toggle | Manual multicapture 🟡 Partner QA | T+7 → **Stripe Connect** |
-| `member_auth` | Manual multicapture 🟡 Partner QA | T+3 → **FPS `payout_requests`** (not Connect) |
+| `merchant_auth` / direct + auth toggle | Single capture（新單）🟡 Partner QA | T+7 → **Stripe Connect** |
+| `member_auth` | Single capture（新單）🟡 Partner QA | T+3 → **FPS `payout_requests`** (not Connect) |
 
-Auth multicapture E2E: [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md). Non-auth merchant checkout + T+7 Connect can be tested independently.
+Auth E2E: [capture-policy.md](../../capture-policy.md) · [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md). FPS gate: `bun run test:integration:fps-payout`.
 
 ## Component map
 

@@ -23,7 +23,7 @@
 ## Architecture
 
 - **Member FPS:** platform pool → manual bank FPS (weekly batch)
-- **Merchant Connect:** auto `transfers.create` on buyer confirm — admin tab is reconciliation/monitoring
+- **Merchant Connect:** T+7 hourly cron auto `transfers.create` — admin tab is reconciliation/monitoring (+ manual retry for `failed`)
 
 ## Files
 

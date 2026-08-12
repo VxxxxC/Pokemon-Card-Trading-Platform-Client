@@ -45,6 +45,27 @@ function buildRecoveryApplicationsPayload(
   }));
 }
 
+async function markMerchantConnectPayoutFailed(
+  admin: MerchantPayoutAdminRpcClient,
+  orderId: string,
+  errorMessage: string,
+): Promise<void> {
+  const { error: markFailedError } = await admin.rpc(
+    "rpc_mark_merchant_order_payout_failed",
+    {
+      p_order_id: orderId,
+      p_error: errorMessage,
+    },
+  );
+  if (markFailedError) {
+    console.error(
+      "[executeMerchantConnectPayout] mark payout failed",
+      orderId,
+      markFailedError.message,
+    );
+  }
+}
+
 export async function executeMerchantConnectPayout(
   orderId: string,
 ): Promise<ExecuteMerchantConnectPayoutResult> {
@@ -138,6 +159,11 @@ export async function executeMerchantConnectPayout(
           prepared.orderId,
           finalizeError.message,
         );
+        await markMerchantConnectPayoutFailed(
+          admin,
+          prepared.orderId,
+          `finalize_failed: ${finalizeError.message}`,
+        );
         return {
           success: false,
           orderId: trimmedOrderId,
@@ -195,6 +221,11 @@ export async function executeMerchantConnectPayout(
         transfer.id,
         finalizeError.message,
       );
+      await markMerchantConnectPayoutFailed(
+        admin,
+        prepared.orderId,
+        `finalize_failed: ${finalizeError.message}`,
+      );
       return {
         success: false,
         orderId: trimmedOrderId,
@@ -210,19 +241,11 @@ export async function executeMerchantConnectPayout(
   } catch (error) {
     if (prepared && !prepared.alreadyApplied) {
       const admin = createAdminClient() as unknown as MerchantPayoutAdminRpcClient;
-      const { error: markFailedError } = await admin.rpc(
-        "rpc_mark_merchant_order_payout_failed",
-        {
-          p_order_id: prepared.orderId,
-          p_error: "stripe_transfer_failed",
-        },
+      await markMerchantConnectPayoutFailed(
+        admin,
+        prepared.orderId,
+        "stripe_transfer_failed",
       );
-      if (markFailedError) {
-        console.error(
-          "[executeMerchantConnectPayout] mark payout failed",
-          markFailedError.message,
-        );
-      }
     }
 
     const message =

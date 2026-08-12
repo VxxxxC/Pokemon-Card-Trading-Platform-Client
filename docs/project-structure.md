@@ -72,7 +72,7 @@ app/
 │   ├── offers.ts                    # 出價 / 接受 / 拒絕 / 修改 / OfferCard context
 │   ├── chat.ts                      # inbox, sendMessage, markRoomRead → RPC
 │   ├── orders.ts                    # searchUser/MerchantTradingOrders, complete/cancel, member order detail, auth escrow actions
-│   ├── member-auth-checkout.ts      # Member 鑑定單 Stripe PI（manual capture + multicapture）
+│   ├── member-auth-checkout.ts      # Member 鑑定單 Stripe PI（manual capture；新單 single / legacy multicapture）
 │   ├── merchant-checkout.ts         # Merchant B2C Stripe checkout + Connect payout saga
 │   ├── buy-now.ts                   # 立即購買 → 聊天 / 訂單
 │   ├── reviews.ts                   # 雙盲評價 + member/merchant reviewed-order batch + 公開檔案評價列表
@@ -619,7 +619,7 @@ docs/dev/
 | **聊天收件匣** | `chat.ts`, `GlobalChatConsole`, `partnerRoomKey.ts` | 🟡 DB inbox + persona 分房 + Realtime；mock 房間保留 |
 | **用戶訂單** | `orders.ts`, `UserTradingClient`, `MemberOrderDetailView` | 🟡 列表 + P2C 買家合併 + 詳情 + 完結/評價已接 |
 | **商戶訂單** | `orders.ts`, `MerchantTradingClient`, `MerchantOrderDetailView` | ✅ B2C 列表 + 詳情 + `rpc_complete_merchant_order` |
-| **鑑定託管** | `member-auth-checkout`, `admin-grading`, `MemberAuthStripePaymentPanel` | 🟡 Stripe manual capture 已接；需 test mode / multicapture |
+| **鑑定託管** | `member-auth-checkout`, `admin-grading`, `MemberAuthStripePaymentPanel` | 🟡 Single capture（新單）；legacy multicapture 在途；gate：`test:integration:fps-payout` |
 | **Member FPS payout** | `member-fps-payout` pipeline, `FpsIdCollectDialog`, cron | ✅ 1A–1C wired；E2E 待 Stripe 開通（見 e2e-checklist） |
 | **Admin 財務** | `/admin/payouts`, `admin-payouts.ts` | 🟡 Connect ledger + FPS ledger MVP ✅ |
 | **Admin 鑑定** | `/admin/grading`, capture sagas | ✅ P1 wired |

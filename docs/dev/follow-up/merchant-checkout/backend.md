@@ -110,6 +110,8 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 - `rpc_list_merchant_connect_payout_candidates(p_limit)`：cron 揀單。
 - `rpc_finalize_merchant_order_payout(...)`：service-role only；核對 transfer 金額／destination，冪等寫 ledger → `completed_and_transferred`。
 - `rpc_mark_merchant_order_payout_failed(p_order_id, p_error)`：service-role only；保留 snapshot，記錄可重試失敗。
+- `rpc_admin_reset_merchant_connect_payout_retry(p_order_id, p_admin_id)`：service-role only；`failed` → `held`（mirror candidate guards + admin audit）；供 Admin「重試撥款」。
+- **P2.5：** `executeMerchantConnectPayout` 在 `finalize_failed` 時亦 call `rpc_mark_merchant_order_payout_failed`，避免卡在 `processing`。
 
 ### Server actions / cron
 
@@ -138,7 +140,7 @@ Fail-closed：`auth.uid() = buyer_id`、必須 `pending_payment`、`p_shipping_m
 3. 訂單必須 `pending_payment`
 4. **Fail-closed**：商戶 `kyc_records` 需通過 `isMerchantPayoutReady()`（verified + charges + payouts）
 5. `rpc_prepare_merchant_order_payment` 取得權威金額
-6. PaymentIntent：`amount = total_amount × 100`、`currency: 'hkd'`、`automatic_payment_methods`、**無** `application_fee_amount` / `transfer_data`；鑑定單（`useAuth`）另設 `capture_method: manual` + `payment_method_options.card.request_multicapture: if_available`（staged partial capture）
+6. PaymentIntent：`amount = total_amount × 100`、`currency: 'hkd'`、`automatic_payment_methods`、**無** `application_fee_amount` / `transfer_data`；鑑定單（`useAuth`）設 `capture_method: manual`（新單 single capture at pass；legacy 另設 `request_multicapture: if_available`）— 見 [capture-policy.md](../../capture-policy.md)
 7. 已有 PI 則 retrieve：`succeeded` / `processing` 直接擋（防重複收款）；`canceled` 重新建立；其餘 `update` amount
 8. `rpc_attach_merchant_order_payment_intent` 回寫 PI id
 
@@ -235,7 +237,7 @@ bun run stripe:webhook:listen   # 本機；見 lib/stripe/webhook-events.ts
 
 > 既有 `payment_held` 非鑑定訂單（migration 前建立）需商戶手動發貨一次才可測買家確認。
 
-> 鑑定單（`useAuth=true`）：Stripe online multicapture 已開通 → partner QA 見 [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)。
+> 鑑定單（`useAuth=true`）：新單 single capture — 見 [capture-policy.md](../../capture-policy.md) · [admin-grading PARTNER_HANDOFF](../admin-grading/PARTNER_HANDOFF.md)。
 
 ## 10. `pending_payment` 48h 逾時 — 手動驗證（cron）
 

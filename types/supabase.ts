@@ -3167,6 +3167,14 @@ export type Database = {
       fn_platform_commission_rate: { Args: never; Returns: number }
       fn_platform_financial_config: { Args: never; Returns: Json }
       fn_platform_fps_manual_transfer_fee_hkd: { Args: never; Returns: number }
+      fn_fps_payout_blocked_for_complete: {
+        Args: {
+          p_fps_id_snapshot: string
+          p_fps_name_snapshot: string
+          p_status: Database["public"]["Enums"]["payout_request_status"]
+        }
+        Returns: boolean
+      }
       fn_preview_moderation_order_refund_breakdown: {
         Args: {
           p_carrier_liability_party?: string
@@ -3456,6 +3464,27 @@ export type Database = {
       }
       rpc_admin_set_reward_template_status: {
         Args: { p_status: string; p_template_id: string }
+        Returns: Json
+      }
+      rpc_e2e_set_merchant_order_payout_retry_test_state: {
+        Args: { p_order_id: string; p_scenario: string }
+        Returns: Json
+      }
+      rpc_admin_reset_merchant_connect_payout_retry: {
+        Args: { p_admin_id: string; p_order_id: string }
+        Returns: Json
+      }
+      rpc_admin_set_fps_payout_request_status: {
+        Args: {
+          p_admin_fps_reference?: string
+          p_admin_id: string
+          p_request_id: string
+          p_status: Database["public"]["Enums"]["payout_request_status"]
+        }
+        Returns: Json
+      }
+      rpc_admin_batch_complete_fps_payout_requests: {
+        Args: { p_admin_id: string; p_request_ids: string[] }
         Returns: Json
       }
       rpc_admin_submit_grading_outbound: {

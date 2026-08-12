@@ -1,6 +1,7 @@
 # Admin Payouts — Backend
 
-> **Status:** Phase A ✅ · Phase B ✅ · Merchant ledger ✅ · Phase C MVP ✅ (FPS list/mutations) · Pipeline ✅ (1A–1C)  
+> **Status:** Phase A ✅ · Phase B ✅ · Merchant ledger ✅ · Phase C ✅ (FPS finalize RPC + order sync) · Pipeline ✅ (1A–1C)  
+> **Capture / FPS SSOT:** [capture-policy.md](../../capture-policy.md) · **Gate:** `bun run test:integration:fps-payout`  
 > **Route:** `/admin/payouts`
 
 ## Phase A — Server actions
@@ -24,7 +25,7 @@ type ListAdminMerchantTransfersInput = {
   page?: number;           // default 1
   pageSize?: number;       // default 10, max 50
   search?: string;
-  statusFilter?: "all" | "paid" | "failed" | "processing" | "pending";
+  statusFilter?: "all" | "paid" | "failed" | "processing" | "pending" | "held" | "frozen";
   sort?: "transferred_at-desc" | "transferred_at-asc" | "merchantName-asc" | "merchantName-desc";
   dateFrom?: string;       // ISO, transferred_at >=
   dateTo?: string;
@@ -36,13 +37,13 @@ type ListAdminMerchantTransfersInput = {
   page: number,
   pageSize: number,
   totalPages: number,
-  statusCounts: { all, paid, processing, pending, failed },
+  statusCounts: { all, paid, processing, pending, failed, held, frozen },
 }}
 ```
 
 - Base query: `merchant_orders` where `stripe_transfer_id IS NOT NULL` **OR** `buyer_confirmed_at IS NOT NULL` (includes T+7 `held` before Connect transfer)
 - Server pagination: `.select(..., { count: "exact" }).range(offset, offset + pageSize - 1)`
-- **`statusCounts`**: 5 parallel head-count queries with same search/date filters (ignores active `statusFilter`)
+- **`statusCounts`**: 7 parallel head-count queries with same search/date filters (ignores active `statusFilter`)
 - Extended fields: `item_subtotal`, `commission_rate_applied`, `auth_fee`, `buyer_confirmed_at`, `payout_hold_until`, `stripe_payment_intent_id`, `requires_authentication`
 - Join enrichment: `merchant_shops`, `kyc_records`, `profiles`, `merchant_ledgers` reconciliation
 - `merchantName` sort: in-memory sort up to `MERCHANT_NAME_SORT_FETCH_CAP` (5000), then slice
@@ -54,6 +55,24 @@ type ListAdminMerchantTransfersInput = {
 ### `refreshAdminStripeBalance()`
 
 - `revalidatePath('/admin/payouts')`
+
+### `retryAdminMerchantConnectPayout(orderId)`
+
+```ts
+{ success: true, data: { transferId?: string, alreadyApplied?: boolean } }
+| { success: false, error: string }
+```
+
+1. `requireAdmin()` → `p_admin_id`
+2. `rpc_admin_reset_merchant_connect_payout_retry` — mirrors `rpc_list_merchant_connect_payout_candidates` guards (incl. moderation refund window)
+3. `executeMerchantConnectPayout(orderId)` — prepare → Stripe transfer → finalize
+4. `revalidatePath('/admin/payouts')`
+
+**P2.5:** `executeMerchantConnectPayout` marks `failed` on `finalize_failed` so admin retry button can recover stuck `processing` rows.
+
+Migration: `20260924120000_admin_merchant_connect_payout_retry.sql`
+
+**Verify:** `bun run test:integration:merchant-connect-payout` (unit P2.5 finalize_failed mocks + integration M2b)
 
 ### `getAdminFpsBatchSchedule()`
 
@@ -117,16 +136,58 @@ type ListAdminPayoutRequestsInput = {
 ### `updateAdminPayoutRequestStatus(input)`
 
 ```ts
-{ requestId, status: "processing" | "completed" | "failed", adminFpsReference?: string }
+{ requestId, status: "completed" | "failed", adminFpsReference?: string }
 ```
 
-- `completed`: sets `paid_at`, `paid_by`, optional `admin_fps_reference`
-- Guard: only from `pending|ready|processing`
-- `revalidatePath('/admin/payouts')`
+- `completed`: requires `adminFpsReference`; calls `rpc_admin_set_fps_payout_request_status`
+- `failed`: calls same RPC without reference
+- Revalidates `/admin/payouts` + order detail path
 
 ### `batchCompleteAdminPayoutRequests({ requestIds })`
 
-- Bulk mark `completed` with `paid_at` / `paid_by`
+- TS pre-check via `isFpsPayoutBlockedForComplete`
+- Calls `rpc_admin_batch_complete_fps_payout_requests` (single DB transaction)
+- Bulk `completed` without per-row `admin_fps_reference`
+- Revalidates `/admin/payouts` + each affected order detail path
+
+### Admin finalize RPCs — migration `20260923120000_admin_fps_payout_finalize.sql`
+
+#### `rpc_admin_set_fps_payout_request_status`
+
+```ts
+{ p_request_id, p_status: 'completed' | 'failed', p_admin_id, p_admin_fps_reference? }
+// returns { request_id, order_id, order_number, status }
+```
+
+| `p_status` | Source `payout_requests.status` | Guards |
+|------------|----------------------------------|--------|
+| `completed` | `ready` \| `processing` only | Reject `pending` / `PENDING_FPS*` snapshots; require non-empty `p_admin_fps_reference`; reject `member_orders.seller_payout_status = frozen` |
+| `failed` | `pending` \| `ready` \| `processing` | Reject frozen; allow pending reject |
+
+Side effects:
+
+- `completed` → `payout_requests.status=completed`, `paid_at`, `paid_by`, `admin_fps_reference`; `member_orders.seller_payout_status=paid`
+- `failed` → `payout_requests.status=failed`; `member_orders.seller_payout_status=failed`
+
+#### `rpc_admin_batch_complete_fps_payout_requests`
+
+```ts
+{ p_request_ids: uuid[], p_admin_id }
+// returns { completed_count, order_numbers }
+```
+
+- Pre-validates all rows; any guard failure → entire batch rolls back
+- No per-row `admin_fps_reference`
+
+#### `fn_fps_payout_blocked_for_complete(status, fps_id_snapshot, fps_name_snapshot)`
+
+- SQL mirror of `lib/admin-payouts/fps-payout-guards.ts`
+
+### Still deferred
+
+1. `seller_payable` ledger / fee deduction from payout amount
+2. Dispute → auto-block **existing** `payout_requests` rows on freeze
+3. `payout_batches` weekly audit workflow
 
 ## Phase C — Pipeline ✅ (1A / 1B / 1C)
 
@@ -135,18 +196,12 @@ Migration **`20260802120000_member_fps_payout_pipeline.sql`**:
 | Piece | Status |
 |-------|--------|
 | **1A** `rpc_confirm_buyer_received` | Sets `buyer_confirmed_at`, `payout_hold_until = now() + 3 days`, `seller_payout_status = 'held'` (auth orders only) |
-| **1B** Cron + RPCs | `rpc_list_member_fps_payout_ready_candidates`, `rpc_finalize_member_fps_payout_ready` → insert `payout_requests` (`amount = final_price`, `fps_id_snapshot`, `ready`/`pending`) |
-| **1C** `profiles.fps_id` | `getUserSettings` / `updateUserProfile` / `updateUserFpsId`; seller dialog + banner on auth order detail |
+| **1B** Cron + RPCs | `rpc_list_member_fps_payout_ready_candidates`, `rpc_finalize_member_fps_payout_ready` → insert `payout_requests` |
+| **1C** `profiles.fps_id` + `fps_name` | `updateUserFpsId`; seller dialog + banner on auth order detail |
 
 ### Cron route
 
 `GET /api/cron/member-fps-payout-ready` — hourly (`vercel.json`). See [server.md](../../server.md) §9.
-
-### Still deferred
-
-1. `seller_payable` ledger / fee deduction from payout amount
-2. Dispute → `seller_payout_status = frozen` automation
-3. Admin `admin_fps_reference` input on 銷帳 UI
 
 ### Merchant T+7 held ledger ✅
 
