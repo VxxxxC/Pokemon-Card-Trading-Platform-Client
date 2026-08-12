@@ -19,16 +19,16 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  MOCK_ANNOUNCEMENTS,
-  getActiveAnnouncements,
-  type Announcement,
-} from "@/app/lib/mockAnnouncements";
+import type { PlatformAnnouncement } from "@/lib/announcements/types";
 
-export function AnnouncementModal() {
+type AnnouncementModalProps = {
+  announcements: PlatformAnnouncement[];
+};
+
+export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
   const [open, setOpen] = useState(false);
   const [activeAnnouncements, setActiveAnnouncements] = useState<
-    Announcement[]
+    PlatformAnnouncement[]
   >([]);
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -40,23 +40,17 @@ export function AnnouncementModal() {
   );
 
   useEffect(() => {
-    // Check if user has already seen the popup modal in the current session
     const hasSeenModal = sessionStorage.getItem("hasSeenAnnouncementsModal");
+    setActiveAnnouncements(announcements);
 
-    // TODO: [Supabase Integration] Fetch active announcements via Server Action / Supabase query where startDate <= NOW() and endDate >= NOW()
-    const now = new Date();
-    const activeList = getActiveAnnouncements(MOCK_ANNOUNCEMENTS, now);
-
-    setActiveAnnouncements(activeList);
-
-    if (!hasSeenModal && activeList.length > 0) {
+    if (!hasSeenModal && announcements.length > 0) {
       // Small timeout to allow smooth home page render before popping modal
       const timer = setTimeout(() => {
         setOpen(true);
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [announcements]);
 
   // Update carousel slide counter & indicator state
   useEffect(() => {

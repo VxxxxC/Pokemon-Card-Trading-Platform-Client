@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { HomePageShell } from "@/app/HomePageShell";
+import { getActiveAnnouncementsForDisplay } from "@/app/actions/admin-announcements";
 import { getWishlistFavoredKeysForUser } from "@/app/actions/wishlist";
 import { HomeC2cSectionData } from "@/app/home/HomeC2cSectionData";
 import { HomeMerchantSectionData } from "@/app/home/HomeMerchantSectionData";
@@ -17,9 +18,18 @@ export default async function HomePage() {
   const currentUserId = user?.id ?? null;
   const favoredKeys =
     user != null ? await getWishlistFavoredKeysForUser(user.id) : [];
+  const activeAnnouncementsResult = isSupabaseConfigured()
+    ? await getActiveAnnouncementsForDisplay()
+    : { success: true as const, data: [] };
+  const activeAnnouncements = activeAnnouncementsResult.success
+    ? activeAnnouncementsResult.data
+    : [];
 
   return (
-    <HomePageShell currentUserId={currentUserId}>
+    <HomePageShell
+      currentUserId={currentUserId}
+      activeAnnouncements={activeAnnouncements}
+    >
       {user ? (
         <Suspense fallback={<WishlistSectionSkeleton />}>
           <HomeWishlistSectionData userId={user.id} />

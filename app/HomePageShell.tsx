@@ -12,6 +12,7 @@ import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
 import { AnnouncementModal } from "@/app/components/announcements/AnnouncementModal";
 import { markHomeClientMount } from "@/app/lib/home/perf-log-client";
+import type { PlatformAnnouncement } from "@/lib/announcements/types";
 
 const PwaInstallPrompt = dynamic(
   () =>
@@ -23,11 +24,13 @@ const PwaInstallPrompt = dynamic(
 
 export type HomePageShellProps = {
   currentUserId: string | null;
+  activeAnnouncements: PlatformAnnouncement[];
   children: ReactNode;
 };
 
 export function HomePageShell({
   currentUserId,
+  activeAnnouncements,
   children,
 }: HomePageShellProps) {
   const showCheckIn = currentUserId != null;
@@ -43,7 +46,7 @@ export function HomePageShell({
       <PwaInlineBanner />
       <PriceTicker />
       <PwaInstallPrompt />
-      <AnnouncementModal />
+      <AnnouncementModal announcements={activeAnnouncements} />
 
       <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
         <HeroSearch showCheckIn={showCheckIn} />

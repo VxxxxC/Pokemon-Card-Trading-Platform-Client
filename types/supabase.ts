@@ -1628,6 +1628,62 @@ export type Database = {
           },
         ]
       }
+      platform_announcements: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          image_object_key: string | null
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          priority: number
+          start_date: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          end_date: string
+          id?: string
+          image_object_key?: string | null
+          image_url: string
+          is_active?: boolean
+          link_url?: string | null
+          priority?: number
+          start_date: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          end_date?: string
+          id?: string
+          image_object_key?: string | null
+          image_url?: string
+          is_active?: boolean
+          link_url?: string | null
+          priority?: number
+          start_date?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_settings: {
         Row: {
           key: string
@@ -3081,6 +3137,30 @@ export type Database = {
       fn_p2p_aml_meetup_max_new_account_hkd: { Args: never; Returns: number }
       fn_p2p_aml_meetup_max_no_market_hkd: { Args: never; Returns: number }
       fn_p2p_aml_new_account_grace_days: { Args: never; Returns: number }
+      fn_platform_active_announcements: {
+        Args: never
+        Returns: {
+          content: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          image_object_key: string | null
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          priority: number
+          start_date: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "platform_announcements"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       fn_platform_auth_escrow_config: { Args: never; Returns: Json }
       fn_platform_auth_fee_hkd: { Args: never; Returns: number }
       fn_platform_auth_sf_leg_fee: { Args: never; Returns: number }

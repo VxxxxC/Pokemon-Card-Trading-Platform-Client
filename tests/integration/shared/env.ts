@@ -18,6 +18,15 @@ export function hasGradingStripeSmokeEnv(): boolean {
   return hasBaseIntegrationEnv() && Boolean(readEnv("STRIPE_SECRET_KEY"));
 }
 
+export function hasBunnyIntegrationEnv(): boolean {
+  return (
+    hasBaseIntegrationEnv() &&
+    Boolean(readEnv("BUNNY_STORAGE_ZONE_NAME")) &&
+    Boolean(readEnv("BUNNY_STORAGE_ACCESS_KEY")) &&
+    Boolean(readEnv("BUNNY_CDN_HOSTNAME"))
+  );
+}
+
 export function getIntegrationEnv() {
   const url = readEnv("NEXT_PUBLIC_SUPABASE_URL");
   const anonKey = readEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");

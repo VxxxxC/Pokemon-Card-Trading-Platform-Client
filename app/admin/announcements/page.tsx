@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -33,15 +33,23 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  MOCK_ANNOUNCEMENTS,
+  createPlatformAnnouncement,
+  deletePlatformAnnouncement,
+  getAnnouncementsForAdmin,
+  togglePlatformAnnouncementActive,
+  updatePlatformAnnouncement,
+} from "@/app/actions/admin-announcements";
+import { DEFAULT_ANNOUNCEMENT_POSTER_URL } from "@/lib/announcements/defaults";
+import { uploadAnnouncementPosterImage } from "@/lib/announcements/client-upload";
+import {
   getAnnouncementStatus,
-  type Announcement,
-} from "@/app/lib/mockAnnouncements";
+} from "@/lib/announcements/status";
+import type { PlatformAnnouncement } from "@/lib/announcements/types";
 
 export default function AdminAnnouncementsPage() {
-  // Announcements state initialized with mock data
-  const [announcements, setAnnouncements] =
-    useState<Announcement[]>(MOCK_ANNOUNCEMENTS);
+  const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([]);
+  const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(true);
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,10 +66,36 @@ export default function AdminAnnouncementsPage() {
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
   );
   const [isActive, setIsActive] = useState(true);
+  const [priority, setPriority] = useState(0);
+  const [pendingAnnouncementId, setPendingAnnouncementId] = useState(() =>
+    crypto.randomUUID(),
+  );
+  const [imageObjectKey, setImageObjectKey] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // File upload preview state
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      const result = await getAnnouncementsForAdmin();
+      if (cancelled) return;
+
+      if (result.success) {
+        setAnnouncements(result.data);
+      } else {
+        setFeedbackMessage(result.error);
+      }
+      setIsLoadingAnnouncements(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Compute status summary counts
   const stats = useMemo(() => {
@@ -111,14 +145,13 @@ export default function AdminAnnouncementsPage() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFileName(file.name);
-      // Create local object URL for preview
+      setSelectedFile(file);
       const previewUrl = URL.createObjectURL(file);
       setImageUrl(previewUrl);
     }
   };
 
-  // Populate form for editing
-  const handleEdit = (announcement: Announcement) => {
+  const handleEdit = (announcement: PlatformAnnouncement) => {
     setEditingId(announcement.id);
     setTitle(announcement.title);
     setContent(announcement.content);
@@ -127,6 +160,10 @@ export default function AdminAnnouncementsPage() {
     setStartDate(new Date(announcement.startDate + "T00:00:00"));
     setEndDate(new Date(announcement.endDate + "T23:59:59"));
     setIsActive(announcement.isActive);
+    setPriority(announcement.priority);
+    setPendingAnnouncementId(announcement.id);
+    setImageObjectKey(announcement.imageObjectKey ?? null);
+    setSelectedFile(null);
     setSelectedFileName("");
     // Scroll smoothly to form section on mobile
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -142,106 +179,119 @@ export default function AdminAnnouncementsPage() {
     setStartDate(new Date());
     setEndDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
     setIsActive(true);
+    setPriority(announcements.length + 1);
+    setPendingAnnouncementId(crypto.randomUUID());
+    setImageObjectKey(null);
+    setSelectedFile(null);
     setSelectedFileName("");
   };
 
-  // Form submission handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSavingAnnouncement(true);
 
-    if (!title.trim()) {
-      showToast("請輸入公告標題");
-      return;
-    }
+    try {
+      if (!title.trim()) {
+        showToast("請輸入公告標題");
+        return;
+      }
 
-    if (!content.trim()) {
-      showToast("請輸入公告內容詳情");
-      return;
-    }
+      if (!content.trim()) {
+        showToast("請輸入公告內容詳情");
+        return;
+      }
 
-    const formattedStartDate = format(startDate, "yyyy-MM-dd");
-    const formattedEndDate = format(endDate, "yyyy-MM-dd");
+      const formattedStartDate = format(startDate, "yyyy-MM-dd");
+      const formattedEndDate = format(endDate, "yyyy-MM-dd");
 
-    if (startDate > endDate) {
-      showToast("下架日期不能早於上架日期");
-      return;
-    }
+      if (startDate > endDate) {
+        showToast("下架日期不能早於上架日期");
+        return;
+      }
 
-    // TODO: [Supabase Integration] Connect with announcements table / Server Actions for CRUD operations
-    if (editingId) {
-      // Update existing
-      setAnnouncements((prev) =>
-        prev.map((item) =>
-          item.id === editingId
-            ? {
-                ...item,
-                title: title.trim(),
-                content: content.trim(),
-                imageUrl:
-                  imageUrl.trim() ||
-                  "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?q=80&w=1200&auto=format&fit=crop",
-                linkUrl: linkUrl.trim(),
-                startDate: formattedStartDate,
-                endDate: formattedEndDate,
-                isActive,
-                updatedAt: new Date().toISOString(),
-              }
-            : item
-        )
-      );
-      showToast("已成功更新公告！");
-    } else {
-      // Create new
-      const newAnnouncement: Announcement = {
-        id: `ann-${Date.now()}`,
+      const announcementId = editingId ?? pendingAnnouncementId;
+      let nextImageUrl = imageUrl.trim();
+      let nextObjectKey = imageObjectKey;
+
+      if (selectedFile) {
+        const upload = await uploadAnnouncementPosterImage(
+          selectedFile,
+          announcementId,
+        );
+        nextImageUrl = upload.cdnUrl;
+        nextObjectKey = upload.objectKey;
+      }
+
+      if (!nextImageUrl || nextImageUrl.startsWith("blob:")) {
+        nextImageUrl = DEFAULT_ANNOUNCEMENT_POSTER_URL;
+        nextObjectKey = null;
+      }
+
+      const payload = {
         title: title.trim(),
         content: content.trim(),
-        imageUrl:
-          imageUrl.trim() ||
-          "https://images.unsplash.com/photo-1613771404784-3a5686aa2be3?q=80&w=1200&auto=format&fit=crop",
+        imageUrl: nextImageUrl,
+        imageObjectKey: nextObjectKey,
         linkUrl: linkUrl.trim(),
         startDate: formattedStartDate,
         endDate: formattedEndDate,
         isActive,
-        priority: announcements.length + 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        priority,
       };
-      setAnnouncements((prev) => [newAnnouncement, ...prev]);
-      showToast("已成功新增公告！");
+
+      const result = editingId
+        ? await updatePlatformAnnouncement(editingId, payload)
+        : await createPlatformAnnouncement({ ...payload, id: announcementId });
+
+      if (!result.success) {
+        showToast(result.error);
+        return;
+      }
+
+      const reload = await getAnnouncementsForAdmin();
+      if (reload.success) {
+        setAnnouncements(reload.data);
+      }
+
+      showToast(editingId ? "已成功更新公告！" : "已成功新增公告！");
+      handleResetForm();
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "儲存公告失敗，請稍後再試",
+      );
+    } finally {
+      setIsSavingAnnouncement(false);
+    }
+  };
+
+  const handleToggleActive = async (id: string) => {
+    const result = await togglePlatformAnnouncementActive(id);
+    if (!result.success) {
+      showToast(result.error);
+      return;
     }
 
-    handleResetForm();
-  };
-
-  // Toggle announcement active status
-  const handleToggleActive = (id: string) => {
-    // TODO: [Supabase Integration] Connect with announcements table / Server Actions for CRUD operations
     setAnnouncements((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updatedState = !item.isActive;
-          showToast(updatedState ? "公告已重新上架" : "公告已下架");
-          return {
-            ...item,
-            isActive: updatedState,
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return item;
-      })
+      prev.map((item) => (item.id === id ? result.data : item)),
     );
+    showToast(result.data.isActive ? "公告已重新上架" : "公告已下架");
   };
 
-  // Delete announcement
-  const handleDelete = (id: string) => {
-    if (window.confirm("確定要刪除此公告嗎？此操作無法復原。")) {
-      // TODO: [Supabase Integration] Connect with announcements table / Server Actions for CRUD operations
-      setAnnouncements((prev) => prev.filter((item) => item.id !== id));
-      showToast("公告已刪除");
-      if (editingId === id) {
-        handleResetForm();
-      }
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("確定要刪除此公告嗎？此操作無法復原。")) {
+      return;
+    }
+
+    const result = await deletePlatformAnnouncement(id);
+    if (!result.success) {
+      showToast(result.error);
+      return;
+    }
+
+    setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+    showToast("公告已刪除");
+    if (editingId === id) {
+      handleResetForm();
     }
   };
 
@@ -382,6 +432,8 @@ export default function AdminAnnouncementsPage() {
                       onChange={(e) => {
                         setImageUrl(e.target.value);
                         setSelectedFileName("");
+                        setSelectedFile(null);
+                        setImageObjectKey(null);
                       }}
                       className="h-8 text-xs border-[rgba(237,232,224,0.12)] bg-[#17130f] text-text-primary"
                     />
@@ -403,6 +455,8 @@ export default function AdminAnnouncementsPage() {
                       onClick={() => {
                         setImageUrl("");
                         setSelectedFileName("");
+                        setSelectedFile(null);
+                        setImageObjectKey(null);
                       }}
                       className="absolute top-2 right-2 rounded-full bg-black/70 p-1 text-white hover:bg-black"
                     >
@@ -507,9 +561,14 @@ export default function AdminAnnouncementsPage() {
               <div className="flex items-center gap-2 pt-2">
                 <Button
                   type="submit"
+                  disabled={isLoadingAnnouncements || isSavingAnnouncement}
                   className="flex-1 bg-brand text-[#17130f] font-bold hover:bg-[#e8b896] active:scale-[0.98] transition-transform"
                 >
-                  {editingId ? "儲存變更" : "新增公告"}
+                  {isSavingAnnouncement
+                    ? "儲存中…"
+                    : editingId
+                      ? "儲存變更"
+                      : "新增公告"}
                 </Button>
                 <Button
                   type="button"
@@ -576,7 +635,11 @@ export default function AdminAnnouncementsPage() {
 
           {/* Announcements Cards / List */}
           <div className="space-y-3">
-            {filteredAnnouncements.length === 0 ? (
+            {isLoadingAnnouncements ? (
+              <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-8 text-center text-sm text-text-secondary">
+                載入公告中…
+              </div>
+            ) : filteredAnnouncements.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[rgba(237,232,224,0.12)] bg-[#26211C] p-10 text-center">
                 <Megaphone className="h-10 w-10 text-text-disabled mb-2" />
                 <p className="font-sans text-sm font-semibold text-text-primary">

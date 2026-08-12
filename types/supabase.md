@@ -143,6 +143,7 @@ type UserRole = Enums<"user_role">;
 | `fn_p2p_aml_meetup_max_new_account_hkd` | `never;` | `number` |
 | `fn_p2p_aml_meetup_max_no_market_hkd` | `never;` | `number` |
 | `fn_p2p_aml_new_account_grace_days` | `never;` | `number` |
+| `fn_platform_active_announcements` | `never` | `{ content: string created_at: string created_by: string | null end_date: string id: string image_ob…` |
 | `fn_platform_auth_escrow_config` | `never;` | `Json` |
 | `fn_platform_auth_fee_hkd` | `never;` | `number` |
 | `fn_platform_auth_sf_leg_fee` | `never;` | `number` |
@@ -863,6 +864,28 @@ type UserRole = Enums<"user_role">;
 
 ---
 
+### `platform_announcements`
+
+| Column | Type | Nullable |
+|--------|------|----------|
+| `content` | `string` | No |
+| `created_at` | `string` | No |
+| `created_by` | `string | null` | Yes |
+| `end_date` | `string` | No |
+| `id` | `string` | No |
+| `image_object_key` | `string | null` | Yes |
+| `image_url` | `string` | No |
+| `is_active` | `boolean` | No |
+| `link_url` | `string | null` | Yes |
+| `priority` | `number` | No |
+| `start_date` | `string` | No |
+| `title` | `string` | No |
+| `updated_at` | `string` | No |
+
+**Foreign keys:** `created_by` → `profiles`
+
+---
+
 ### `platform_settings`
 
 | Column | Type | Nullable |
@@ -1255,7 +1278,7 @@ type UserRole = Enums<"user_role">;
 
 ## Table Index
 
-**42 tables**
+**43 tables**
 
 | Table | Domain |
 |-------|--------|
@@ -1282,6 +1305,7 @@ type UserRole = Enums<"user_role">;
 | `offers` | Negotiation |
 | `payout_batches` | — |
 | `payout_requests` | — |
+| `platform_announcements` | — |
 | `platform_settings` | — |
 | `point_ledger` | — |
 | `product_catalog` | Catalog |

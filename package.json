@@ -28,6 +28,8 @@
     "test:e2e:member-auth-escrow": "playwright test e2e/member-auth-escrow.spec.ts e2e/member-auth-inbound.spec.ts e2e/member-order-detail-auth.spec.ts --project=setup --project=member-trading",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:announcements": "playwright test e2e/admin-announcements.spec.ts --project=guest",
+    "test:announcements:gate": "bunx vitest run tests/unit/announcements/ tests/integration/announcements/ && bun run test:e2e:announcements",
     "test:integration:rewards": "vitest run --config vitest.config.mts tests/integration/rewards tests/unit/rewards/redeem-points-catalog-action.test.ts",
     "test:integration:rewards:pbt": "vitest run --config vitest.config.mts tests/integration/rewards/coupon-pbt.integration.test.ts",
     "test:rewards:gate": "bash scripts/rewards-release-gate.sh",
