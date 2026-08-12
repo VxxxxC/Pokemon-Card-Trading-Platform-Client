@@ -38,6 +38,7 @@ export type CheckoutSessionBase = {
   product: CheckoutProduct;
   counterparty: CheckoutCounterparty;
   pricing: CheckoutPricing;
+  platformAuthFeeHkd: number;
 };
 
 export type MerchantDirectCheckoutSession = CheckoutSessionBase & {

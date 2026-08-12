@@ -253,5 +253,6 @@ bun run test:auth-escrow:gate
 
 | Date | Change |
 |------|--------|
+| 2026-09-18 | **`20260918120000`** — `fn_release_member_order_coupon` skips no-op `member_orders` UPDATE when coupon state already cleared; fixes buyer **no-coupon** `rpc_prepare_member_auth_order_payment` (`保安攔截：買家操作不合法`). Tests: `member-auth-coupon` I-F0/I-F0b, `auth-fee` Case G. |
 | 2026-08-08 | Phase B — checkout amounts, multicapture split, payout inbound, checkout UI |
 | 2026-08-08 | Phase A — migration + backend handoff |

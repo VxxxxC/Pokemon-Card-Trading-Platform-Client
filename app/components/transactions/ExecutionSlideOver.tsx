@@ -11,6 +11,7 @@ import { completeBuyNowFlow } from "@/lib/chat/complete-buy-now-flow";
 import { trackListingView } from "@/lib/listings/track-listing-view";
 import { Switch } from "@/components/ui/switch";
 import { BUYER_AUTH_DISABLED_COPY } from "@/lib/listings/auth-service-copy";
+import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
@@ -50,6 +51,7 @@ export function ExecutionSlideOver({
   const [useAuthentication, setUseAuthentication] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const authServiceFeeHkd = usePlatformAuthFee();
 
   // ImageViewer integration states
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -429,7 +431,7 @@ export function ExecutionSlideOver({
                   </span>
                   <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
                     {listingAcceptsBuyerAuth
-                      ? "啟用後由平台第三方鑑定機構複驗品相與真偽（HK$150）"
+                      ? `啟用後由平台第三方鑑定機構複驗品相與真偽（HK$${authServiceFeeHkd}）`
                       : BUYER_AUTH_DISABLED_COPY}
                   </p>
                 </div>

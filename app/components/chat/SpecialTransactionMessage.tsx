@@ -1,6 +1,7 @@
 "use client";
 
 import type { OfferCardContext } from "@/app/actions/offers";
+import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
 import type { SpecialTransactionData } from "@/app/store/useHkCardVaultStore";
 import { OfferCard, type OfferCardMessage } from "./OfferCard";
 
@@ -55,6 +56,7 @@ function buildHydratedContext(
     imageUrl: props.imageUrl,
     buyerName: props.buyerName,
     sellerId: props.sellerId,
+    authServiceFeeHkd: DEFAULT_AUTH_FEE_HKD,
   };
 }
 

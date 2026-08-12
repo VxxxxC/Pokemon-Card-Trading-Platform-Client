@@ -848,6 +848,7 @@ export function MemberOrderDetailView({
             status={order.status}
             buyerTotalAmount={order.buyerTotalAmount}
             platformSubsidyAmount={order.platformSubsidyAmount}
+            authFee={order.authFeeAuth}
           />
         )}
 

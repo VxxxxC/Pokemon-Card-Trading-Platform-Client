@@ -522,7 +522,9 @@ export function MerchantOrderDetailView({
               </div>
               <div className="flex justify-between border-t border-white/5 pt-2">
                 <span>鑑定服務費用</span>
-                <span className="text-brand font-bold">HK$ 150</span>
+                <span className="text-brand font-bold">
+                  HK$ {stripeDisplay.authFee.toLocaleString("zh-TW")}
+                </span>
               </div>
             </div>
           </div>

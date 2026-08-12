@@ -123,6 +123,58 @@ describe.skipIf(!hasRewardsIntegrationEnv()).sequential(
       await clearSessionCache();
     });
 
+    it("I-F0: no-coupon prepare succeeds on fresh pending order", async () => {
+      const buyerId = getBuyerUserId();
+      const [orderId] = await seedPendingMemberAuthOrders(buyerId, listingId, 1);
+      tracked.orderIds.push(orderId);
+
+      const prepared = await invokeMemberAuthPreparePayment(
+        getBuyerClient(),
+        orderId,
+      );
+      expect(prepared.success).toBe(true);
+
+      const row = await getMemberOrderAuthEscrowRow(orderId);
+      expect(row).toBeTruthy();
+      expectMemberAuthEscrowSnapshot(row!);
+      expect(row!.coupon_user_reward_id).toBeNull();
+      expect(Number(row!.platform_subsidy_amount)).toBe(0);
+    });
+
+    it("I-F0b: re-prepare without coupon detaches prior free_shipping", async () => {
+      const buyerId = getBuyerUserId();
+      const [orderId] = await seedPendingMemberAuthOrders(buyerId, listingId, 1);
+      tracked.orderIds.push(orderId);
+
+      const couponId = await grantCouponForCheckout({
+        userId: buyerId,
+        templateId: freeShippingTemplateId,
+      });
+      tracked.userRewardIds.push(couponId);
+
+      const withCoupon = await invokeMemberAuthPreparePayment(
+        getBuyerClient(),
+        orderId,
+        couponId,
+      );
+      expect(withCoupon.success).toBe(true);
+
+      const withSubsidy = await getMemberOrderAuthEscrowRow(orderId);
+      expect(withSubsidy?.coupon_user_reward_id).toBe(couponId);
+      expect(Number(withSubsidy?.platform_subsidy_amount)).toBeGreaterThan(0);
+
+      const withoutCoupon = await invokeMemberAuthPreparePayment(
+        getBuyerClient(),
+        orderId,
+      );
+      expect(withoutCoupon.success).toBe(true);
+
+      const detached = await getMemberOrderAuthEscrowRow(orderId);
+      expect(detached?.coupon_user_reward_id).toBeNull();
+      expect(Number(detached?.platform_subsidy_amount)).toBe(0);
+      expectMemberAuthEscrowSnapshot(detached!);
+    });
+
     it("I-F1: member prepare + free_shipping writes outbound subsidy snapshot", async () => {
       const buyerId = getBuyerUserId();
       const [orderId] = await seedPendingMemberAuthOrders(buyerId, listingId, 1);

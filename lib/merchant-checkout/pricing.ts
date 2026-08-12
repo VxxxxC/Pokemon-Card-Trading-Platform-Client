@@ -6,11 +6,13 @@
  */
 
 import { PLATFORM_DEFAULT_COURIER_SHIPPING_FEE } from "@/lib/merchant/shipping-fee";
+import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
 
 /** @deprecated Use shop `base_courier_shipping_fee`; kept for legacy references. */
 export const SF_SHIPPING_FEE = PLATFORM_DEFAULT_COURIER_SHIPPING_FEE;
 export const MEETUP_SHIPPING_FEE = 0;
-export const AUTHENTICATION_FEE = 150;
+/** @deprecated Use fetchPlatformAuthFeeHkd() or order snapshot auth_fee. */
+export const AUTHENTICATION_FEE = DEFAULT_AUTH_FEE_HKD;
 
 export const MERCHANT_SHIPPING_METHODS = ["sf", "meetup"] as const;
 export type MerchantShippingMethod = (typeof MERCHANT_SHIPPING_METHODS)[number];
@@ -63,6 +65,7 @@ export function computeMerchantCheckoutAmounts(input: {
   useAuth: boolean;
   baseCourierShippingFee?: number;
   listingExtraShippingFee?: number;
+  authFeeHkd?: number;
 }): MerchantCheckoutAmounts {
   const itemSubtotal = Math.max(Math.round(input.itemSubtotal), 0);
   const shippingFee = computeCourierShippingFee({
@@ -70,7 +73,7 @@ export function computeMerchantCheckoutAmounts(input: {
     baseFee: input.baseCourierShippingFee ?? PLATFORM_DEFAULT_COURIER_SHIPPING_FEE,
     extraFee: input.listingExtraShippingFee ?? 0,
   });
-  const authFee = input.useAuth ? AUTHENTICATION_FEE : 0;
+  const authFee = input.useAuth ? (input.authFeeHkd ?? DEFAULT_AUTH_FEE_HKD) : 0;
 
   return {
     itemSubtotal,

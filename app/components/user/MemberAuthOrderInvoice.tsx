@@ -2,9 +2,9 @@
 
 import {
   MEMBER_AUTH_PLATFORM_SUBSIDY,
-  MEMBER_AUTH_SERVICE_FEE,
   MEMBER_AUTH_SHIPPING_FEE,
 } from "@/app/lib/member-order/p2p";
+import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 import { cn } from "@/lib/utils";
 
 type MemberAuthOrderInvoiceProps = {
@@ -17,6 +17,7 @@ type MemberAuthOrderInvoiceProps = {
   payoutId?: string;
   releasedAmount?: number;
   platformFee?: number;
+  authFee?: number;
   releaseStatus?: "pending" | "completed" | "rejected" | string;
   buyerTotalAmount?: number;
   platformSubsidyAmount?: number;
@@ -32,11 +33,15 @@ export function MemberAuthOrderInvoice({
   payoutId,
   releasedAmount,
   platformFee,
+  authFee,
   releaseStatus: explicitReleaseStatus,
   buyerTotalAmount,
   platformSubsidyAmount,
 }: MemberAuthOrderInvoiceProps) {
-  const totalAmount = finalPrice + MEMBER_AUTH_SERVICE_FEE;
+  const configuredAuthFee = usePlatformAuthFee();
+  const resolvedAuthFee =
+    authFee != null ? authFee : (platformFee ?? configuredAuthFee);
+  const totalAmount = finalPrice + resolvedAuthFee;
   const resolvedSubsidy = platformSubsidyAmount ?? MEMBER_AUTH_PLATFORM_SUBSIDY;
   const resolvedBuyerTotal = buyerTotalAmount ?? totalAmount;
 
@@ -45,7 +50,7 @@ export function MemberAuthOrderInvoice({
     payoutId ??
     `PO-${orderNumber ? orderNumber.replace("ORD-", "") : orderId ? orderId.slice(0, 8).toUpperCase() : "20260721-881"}`;
   const displayReleasedAmount = releasedAmount ?? finalPrice;
-  const displayPlatformFee = platformFee ?? MEMBER_AUTH_SERVICE_FEE;
+  const displayPlatformFee = platformFee ?? resolvedAuthFee;
 
   const currentReleaseStatus = (() => {
     if (explicitReleaseStatus) return explicitReleaseStatus;
@@ -117,10 +122,9 @@ export function MemberAuthOrderInvoice({
           </span>
         </div>
         <div className="flex justify-between text-brand">
-          {/* TODO: depends on admin settings for authentication charge */}
           <span>鑑定服務費</span>
           <span className="font-bold">
-            {"HK$ " + MEMBER_AUTH_SERVICE_FEE.toLocaleString("zh-TW")}
+            {"HK$ " + displayPlatformFee.toLocaleString("zh-TW")}
           </span>
         </div>
 
@@ -129,12 +133,11 @@ export function MemberAuthOrderInvoice({
           <span className="text-brand font-mono text-[18px] md:text-[24px]">
             {isSeller
               ? "HK$ " +
-                (totalAmount - MEMBER_AUTH_SERVICE_FEE).toLocaleString("zh-TW")
+                (totalAmount - displayPlatformFee).toLocaleString("zh-TW")
               : "HK$ " + resolvedBuyerTotal.toLocaleString("zh-TW")}
           </span>
         </div>
 
-        {/* Detailed Escrow Release to Seller Section */}
         {isSeller ? (
           <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] bg-[#17130f]/60 rounded-xl p-3.5 space-y-2.5">
             <div className="flex items-center justify-between pb-1 border-b border-white/5">
@@ -157,7 +160,6 @@ export function MemberAuthOrderInvoice({
             </div>
             <div className="flex justify-between items-center text-[11.5px]">
               <span className="text-text-secondary">鑑定服務費</span>
-              {/* TODO: depends on admin settings for authentication charge */}
               <span className="font-mono text-text-primary">
                 {"HK$ " + displayPlatformFee.toLocaleString("zh-TW")}
               </span>

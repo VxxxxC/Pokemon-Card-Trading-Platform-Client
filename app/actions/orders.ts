@@ -43,7 +43,10 @@ import {
   merchantBuyerOrderMatchesTab,
 } from "@/lib/merchant-order/load-buyer-merchant-orders";
 import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
-import { AUTHENTICATION_FEE } from "@/lib/merchant-checkout/pricing";
+import {
+  fetchPlatformAuthFeeHkd,
+  resolveAuthFeeFromRow,
+} from "@/lib/platform/resolve-display-auth-fee";
 import {
   getMerchantBuyerActionFlags,
   mapMerchantEscrowToMemberEscrowStatus,
@@ -1683,6 +1686,7 @@ function mapBuyerMerchantOrderDetailRow(
   row: BuyerMerchantOrderDetailQueryRow,
   shop: BuyerMerchantShopSnippet | null,
   hasReviewedByMe: boolean,
+  platformAuthFeeHkd: number,
 ): MemberOrderDetail {
   const catalog = row.listings.product_catalog;
   const listingImageUrls = parseListingImageUrls(row.listings.images);
@@ -1716,10 +1720,11 @@ function mapBuyerMerchantOrderDetailRow(
   const itemSubtotal = Number(row.item_subtotal ?? row.final_price);
   const shippingFee = Number(row.shipping_fee ?? 0);
   const authFeeFromRow = Number(row.auth_fee ?? 0);
-  const authFee =
-    useAuthentication && authFeeFromRow <= 0
-      ? AUTHENTICATION_FEE
-      : authFeeFromRow;
+  const authFee = resolveAuthFeeFromRow(
+    authFeeFromRow,
+    useAuthentication,
+    platformAuthFeeHkd,
+  );
   const totalFromRow = Number(row.total_amount ?? 0);
   const totalAmount =
     useAuthentication && totalFromRow <= itemSubtotal
@@ -1922,6 +1927,7 @@ async function getBuyerMerchantOrderDetail(
     }
 
     const hasReviewedByMe = (reviewRows?.length ?? 0) > 0;
+    const platformAuthFeeHkd = await fetchPlatformAuthFeeHkd();
 
     return {
       success: true,
@@ -1929,6 +1935,7 @@ async function getBuyerMerchantOrderDetail(
         row,
         (shopRow as BuyerMerchantShopSnippet | null) ?? null,
         hasReviewedByMe,
+        platformAuthFeeHkd,
       ),
     };
   } catch (error) {

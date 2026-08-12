@@ -13,6 +13,8 @@ import {
   DEFAULT_COMMISSION_RATE,
   formatCommissionPercentLabel,
 } from "@/lib/platform/financial-config";
+import { formatAuthFeeLabel } from "@/lib/platform/auth-escrow-config";
+import { fetchPlatformAuthFeeHkd } from "@/lib/platform/resolve-display-auth-fee";
 import {
   getHktMonthRange,
   getHktRollingWindowStartIso,
@@ -347,10 +349,12 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
         ? formatPercentRate(recentCommissionTotal / recentSubtotalTotal)
         : formatCommissionPercentLabel(DEFAULT_COMMISSION_RATE));
 
+    const configuredAuthFeeLabel = formatAuthFeeLabel(await fetchPlatformAuthFeeHkd());
+
     const appraisalFeePerCard =
       capturedAuthFees.length > 0
         ? formatHkd(totalAppraisal / capturedAuthFees.length)
-        : "HK$ 150";
+        : configuredAuthFeeLabel;
 
     const ecologyDenominator = memberCount + merchantCount + pendingKycCount;
     const distribution: AdminDashboardEcologySegment[] = [

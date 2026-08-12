@@ -27,6 +27,7 @@ export function mapMerchantCheckoutToSession(
       authFee: order.authFee,
       totalAmount: order.totalAmount,
     },
+    platformAuthFeeHkd: order.platformAuthFeeHkd,
   };
 
   if (order.requiresAuthentication) {

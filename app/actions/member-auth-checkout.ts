@@ -7,9 +7,12 @@ import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { AUTH_ESCROW_CAPTURE_MODEL_SINGLE } from "@/lib/payments/escrow-payment-intent";
 import { calculateMemberAuthPaymentTotal } from "@/lib/payments/member-auth-payment";
 import {
-  AUTH_ESCROW_AUTH_FEE_HKD,
   AUTH_ESCROW_SF_LEG_FEE_HKD,
 } from "@/lib/auth-escrow/defaults";
+import {
+  fetchPlatformAuthFeeHkd,
+  resolveAuthFeeFromRow,
+} from "@/lib/platform/resolve-display-auth-fee";
 import { resolveMemberOrderIdForUser } from "@/lib/member-order/resolve-order-id";
 import { getStripeClient, getStripePublishableKey } from "@/lib/stripe/env";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -35,6 +38,7 @@ export type MemberAuthCheckoutOrder = {
   buyerTotalAmount: number;
   paymentAmount: number;
   useAuthentication: boolean;
+  platformAuthFeeHkd: number;
   seller: {
     id: string;
     displayName: string;
@@ -268,10 +272,15 @@ function mapCheckoutSnapshot(
   row: MemberAuthCheckoutRow,
   viewerId: string,
   seller: { display_name: string; username: string | null },
+  platformAuthFeeHkd: number,
 ): MemberAuthCheckoutOrder {
   const isBuyer = row.buyer_id === viewerId;
   const itemSubtotal = Number(row.item_subtotal ?? row.final_price);
-  const authFee = Number(row.auth_fee ?? AUTH_ESCROW_AUTH_FEE_HKD);
+  const authFee = resolveAuthFeeFromRow(
+    Number(row.auth_fee ?? 0),
+    Boolean(row.use_authentication),
+    platformAuthFeeHkd,
+  );
   const inboundShippingFee = Number(
     row.inbound_shipping_fee ?? AUTH_ESCROW_SF_LEG_FEE_HKD,
   );
@@ -313,6 +322,7 @@ function mapCheckoutSnapshot(
     buyerTotalAmount,
     paymentAmount: buyerTotalAmount,
     useAuthentication: row.use_authentication,
+    platformAuthFeeHkd,
     seller: {
       id: row.seller_id,
       displayName:
@@ -371,12 +381,15 @@ export async function loadMemberAuthCheckoutOrder(
       .eq("id", rowResult.data.seller_id)
       .maybeSingle<Pick<Tables<"profiles">, "display_name" | "username">>();
 
+    const platformAuthFeeHkd = await fetchPlatformAuthFeeHkd();
+
     return {
       success: true,
       data: mapCheckoutSnapshot(
         rowResult.data,
         user.id,
         sellerProfile ?? { display_name: "賣家", username: null },
+        platformAuthFeeHkd,
       ),
     };
   } catch (error) {

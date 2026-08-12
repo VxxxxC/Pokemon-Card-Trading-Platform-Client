@@ -24,5 +24,6 @@ export function mapMemberCheckoutToSession(
       authFee: order.authFee,
       totalAmount: order.buyerTotalAmount,
     },
+    platformAuthFeeHkd: order.platformAuthFeeHkd,
   };
 }

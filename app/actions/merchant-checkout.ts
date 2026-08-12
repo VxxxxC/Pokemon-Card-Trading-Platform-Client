@@ -7,16 +7,18 @@ import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { PLATFORM_DEFAULT_COURIER_SHIPPING_FEE } from "@/lib/merchant/shipping-fee";
 import { computeMerchantPaymentExpiresAt } from "@/lib/merchant-checkout/pending-payment-expiry";
 import {
-  AUTHENTICATION_FEE,
   computeCourierShippingFee,
   isMerchantShippingMethod,
   type MerchantShippingMethod,
 } from "@/lib/merchant-checkout/pricing";
 import {
-  AUTH_ESCROW_AUTH_FEE_HKD,
   AUTH_ESCROW_SF_LEG_FEE_HKD,
   estimateAuthEscrowCheckoutTotal,
 } from "@/lib/auth-escrow/defaults";
+import {
+  fetchPlatformAuthFeeHkd,
+  resolveAuthFeeFromRow,
+} from "@/lib/platform/resolve-display-auth-fee";
 import { resolveMerchantOrderIdForBuyer } from "@/lib/merchant-order/resolve-order-id";
 import {
   AUTH_ESCROW_CAPTURE_MODEL_SINGLE,
@@ -53,6 +55,7 @@ export type MerchantCheckoutOrder = {
   shippingMethod: MerchantShippingMethod | null;
   requiresAuthentication: boolean;
   listingAcceptsAuthentication: boolean;
+  platformAuthFeeHkd: number;
   merchant: {
     id: string;
     shopName: string;
@@ -417,6 +420,8 @@ export async function loadMerchantCheckoutOrder(
       return { success: false, error: "請先登入後再結帳" };
     }
 
+    const platformAuthFeeHkd = await fetchPlatformAuthFeeHkd();
+
     const rowResult = await loadCheckoutRow(
       supabase,
       orderIdOrNumber,
@@ -468,14 +473,11 @@ export async function loadMerchantCheckoutOrder(
     const authFeeFromRow = Number(row.auth_fee ?? 0);
     const inboundFromRow = Number(row.inbound_shipping_fee ?? 0);
     const outboundFromRow = Number(row.outbound_shipping_fee ?? 0);
-    const authFee =
-      requiresAuthentication && authFeeFromRow <= 0
-        ? AUTH_ESCROW_AUTH_FEE_HKD
-        : authFeeFromRow > 0
-          ? authFeeFromRow
-          : requiresAuthentication
-            ? AUTHENTICATION_FEE
-            : 0;
+    const authFee = resolveAuthFeeFromRow(
+      authFeeFromRow,
+      requiresAuthentication,
+      platformAuthFeeHkd,
+    );
     const inboundShippingFee =
       requiresAuthentication && inboundFromRow <= 0
         ? AUTH_ESCROW_SF_LEG_FEE_HKD
@@ -488,7 +490,7 @@ export async function loadMerchantCheckoutOrder(
     const totalAmount = requiresAuthentication
       ? totalFromRow > itemSubtotal
         ? totalFromRow
-        : estimateAuthEscrowCheckoutTotal(itemSubtotal)
+        : estimateAuthEscrowCheckoutTotal(itemSubtotal, platformAuthFeeHkd)
       : Number(row.total_amount ?? itemSubtotal);
     const displayShippingFee = requiresAuthentication ? 0 : shippingFee;
 
@@ -515,6 +517,7 @@ export async function loadMerchantCheckoutOrder(
         listingAcceptsAuthentication: Boolean(
           row.listings?.use_authentication,
         ),
+        platformAuthFeeHkd,
         merchant: {
           id: row.merchant_id,
           shopName: shop?.shop_name?.trim() || "認證商戶",

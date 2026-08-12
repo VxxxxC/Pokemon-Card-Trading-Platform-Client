@@ -52,9 +52,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  LISTING_AUTH_SERVICE_TOOLTIP_BODY,
   LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
+  buildAuthServiceTooltipBody,
 } from "@/lib/listings/auth-service-copy";
+import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 import {
   catalogItemKindFromType,
   defaultSealedProductScore,
@@ -136,6 +137,7 @@ export function AddAssetModal() {
   const addAssetSellerPersona = useUIStore((state) => state.addAssetSellerPersona);
   const closeAddAssetModal = useUIStore((state) => state.closeAddAssetModal);
   const isMemberPersonaActive = useIsMemberPersonaActive();
+  const authServiceFeeHkd = usePlatformAuthFee();
 
   // 模式 Toggle 狀態
   const [mode, setMode] = useState<"hobby" | "merch">("hobby");
@@ -722,7 +724,7 @@ export function AddAssetModal() {
                 <span className="font-bold block mb-1">
                   {LISTING_AUTH_SERVICE_TOOLTIP_TITLE}
                 </span>
-                {LISTING_AUTH_SERVICE_TOOLTIP_BODY}
+                {buildAuthServiceTooltipBody(authServiceFeeHkd)}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -734,8 +736,8 @@ export function AddAssetModal() {
         />
       </div>
       <p className="text-[11px] text-text-secondary leading-relaxed">
-        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$150
-        由買家承擔）。
+        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$
+        {authServiceFeeHkd} 由買家承擔）。
       </p>
     </div>
   ) : null;

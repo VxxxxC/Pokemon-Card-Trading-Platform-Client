@@ -41,7 +41,7 @@ import {
   isCatalogImageUrl,
   isValidOfferCardImageUrl,
 } from "@/app/lib/chat/offerCardImage";
-import { MEMBER_AUTH_SERVICE_FEE } from "@/app/lib/member-order/p2p";
+import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
 import type { Tables } from "@/types/supabase";
 
 export type OfferCardMessage = {
@@ -203,6 +203,8 @@ export function OfferCardComponent({
   const [isAccepting, setIsAccepting] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+
+  const authServiceFeeHkd = context?.authServiceFeeHkd ?? DEFAULT_AUTH_FEE_HKD;
 
   const applyFetchedContext = useCallback((data: OfferCardContext) => {
     setContext(data);
@@ -545,7 +547,7 @@ export function OfferCardComponent({
           <Alert className="border-brand/35 bg-brand/15 text-brand shadow-sm">
             <AlertDescription className="text-[12px] font-semibold leading-relaxed">
               🔍 買家要求平台鑑定加購服務（HK$
-              {MEMBER_AUTH_SERVICE_FEE.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
+              {authServiceFeeHkd.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
             </AlertDescription>
           </Alert>
         ) : null}
@@ -569,7 +571,7 @@ export function OfferCardComponent({
             {useAuthentication ? (
               <p className="inline-flex items-center gap-1 rounded border border-brand/25 bg-brand/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand">
                 🔍 含平台鑑定加購 (HK${" "}
-                {MEMBER_AUTH_SERVICE_FEE.toLocaleString()})
+                {authServiceFeeHkd.toLocaleString()})
               </p>
             ) : null}
             <button
@@ -665,7 +667,7 @@ export function OfferCardComponent({
                       <>
                         {" "}
                         此出價含平台鑑定加購（HK${" "}
-                        {MEMBER_AUTH_SERVICE_FEE.toLocaleString()}），成交後將啟動託管鑑定流程。
+                        {authServiceFeeHkd.toLocaleString()}），成交後將啟動託管鑑定流程。
                       </>
                     ) : null}
                   </p>

@@ -48,6 +48,7 @@ export default function AdminSettingsPage() {
 
       if (result.success) {
         setCommissionRate(result.data.commissionRatePercent);
+        setAppraisalFee(result.data.appraisalFeeHkd);
       } else {
         toast.error(result.error);
       }
@@ -65,6 +66,7 @@ export default function AdminSettingsPage() {
 
     const result = await updatePlatformFinancialConfig({
       commissionRatePercent: commissionRate,
+      appraisalFeeHkd: appraisalFee,
     });
     setIsSavingFinancials(false);
 
@@ -74,7 +76,10 @@ export default function AdminSettingsPage() {
     }
 
     setCommissionRate(result.data.commissionRatePercent);
-    toast.success("✅ 平台佣金率已更新，新訂單確認收貨後將套用新費率。");
+    setAppraisalFee(result.data.appraisalFeeHkd);
+    toast.success(
+      "✅ 平台財務設定已更新：新訂單結帳將套用新鑑定費；確認收貨後將套用新佣金率。",
+    );
   };
 
   const handleSaveSecurity = (e: React.FormEvent) => {
@@ -149,7 +154,7 @@ export default function AdminSettingsPage() {
           設定全平台抽佣比例、單張保管鑑定費用，以及 FPS 人手劃撥銷帳手續費
         </p>
         <p className="font-sans text-[11px] text-text-disabled mb-4 border-l-2 border-brand/30 pl-3">
-          目前僅「平台基本交易佣金率」已接庫；鑑定費／FPS 尚未接庫。
+          佣金率與鑑定費已接庫；FPS 手續費尚未接庫。
         </p>
 
         <form onSubmit={handleSaveFinancials} className="space-y-4">
@@ -244,7 +249,7 @@ export default function AdminSettingsPage() {
             disabled={isLoadingFinancials || isSavingFinancials}
             className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
           >
-            {isSavingFinancials ? "儲存中…" : "儲存佣金設定"}
+            {isSavingFinancials ? "儲存中…" : "儲存財務設定"}
           </Button>
         </form>
       </section>

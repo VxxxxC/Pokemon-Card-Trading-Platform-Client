@@ -1,5 +1,4 @@
 import {
-  AUTH_ESCROW_AUTH_FEE_HKD,
   AUTH_ESCROW_SF_LEG_FEE_HKD,
   estimateAuthEscrowCheckoutTotal,
 } from "@/lib/auth-escrow/defaults";
@@ -23,6 +22,7 @@ export function computeMerchantDirectPricing(
   platformSubsidy: number;
   totalAmount: number;
 } {
+  const platformAuthFeeHkd = session.platformAuthFeeHkd;
   const showDirectDelivery = !form.authServiceEnabled;
   const shippingFee =
     !showDirectDelivery || form.shippingType !== "sf"
@@ -38,11 +38,12 @@ export function computeMerchantDirectPricing(
   const outboundShippingFee = form.authServiceEnabled
     ? AUTH_ESCROW_SF_LEG_FEE_HKD
     : 0;
-  const authFee = form.authServiceEnabled
-    ? AUTH_ESCROW_AUTH_FEE_HKD
-    : 0;
+  const authFee = form.authServiceEnabled ? platformAuthFeeHkd : 0;
   const grossTotalAmount = form.authServiceEnabled
-    ? estimateAuthEscrowCheckoutTotal(session.pricing.itemSubtotal)
+    ? estimateAuthEscrowCheckoutTotal(
+        session.pricing.itemSubtotal,
+        platformAuthFeeHkd,
+      )
     : session.pricing.itemSubtotal + shippingFee + authFee;
   const platformSubsidy = Math.max(0, Number(options?.platformSubsidy ?? 0));
   const totalAmount = Math.max(0, grossTotalAmount - platformSubsidy);
@@ -71,7 +72,10 @@ function resolveAuthCheckoutPricing(session: CheckoutSession): {
     session.pricing.inboundShippingFee ?? AUTH_ESCROW_SF_LEG_FEE_HKD;
   const outboundShippingFee =
     session.pricing.outboundShippingFee ?? AUTH_ESCROW_SF_LEG_FEE_HKD;
-  const authFee = session.pricing.authFee;
+  const authFee =
+    session.pricing.authFee > 0
+      ? session.pricing.authFee
+      : session.platformAuthFeeHkd;
   const grossTotalAmount =
     session.pricing.itemSubtotal +
     authFee +

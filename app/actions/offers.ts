@@ -7,6 +7,11 @@ import {
 } from "@/app/lib/chat/offerCardImage";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
+import {
+  formatAuthOfferMessageContent,
+  formatStandardOfferMessageContent,
+} from "@/lib/listings/auth-service-copy";
+import { fetchPlatformAuthFeeHkd } from "@/lib/platform/resolve-display-auth-fee";
 import type { Tables } from "@/types/supabase";
 import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 
@@ -112,6 +117,7 @@ export type OfferCardContext = {
   imageUrl?: string;
   buyerName: string;
   sellerId: string;
+  authServiceFeeHkd: number;
   orderId?: string | null;
   orderKind?: "merchant" | "member";
   pendingPayment?: boolean;
@@ -250,11 +256,6 @@ async function resolveAcceptedOfferOrderContext(
 
   return {};
 }
-
-import {
-  formatAuthOfferMessageContent,
-  formatStandardOfferMessageContent,
-} from "@/lib/listings/auth-service-copy";
 
 function formatModifyOfferMessageContent(newPrice: number): string {
   return `修改了出價需求：HK$ ${newPrice.toLocaleString()}`;
@@ -441,6 +442,7 @@ export async function getOfferCardContext(
       data.id,
       data.status,
     );
+    const authServiceFeeHkd = await fetchPlatformAuthFeeHkd();
 
     return {
       success: true,
@@ -466,6 +468,7 @@ export async function getOfferCardContext(
         ),
         buyerName: buyerProfile?.display_name?.trim() || "買家",
         sellerId: room.seller_id,
+        authServiceFeeHkd,
         ...orderContext,
       },
     };
@@ -519,12 +522,16 @@ export async function makeOffer(
       return { success: false, error: SELF_OFFER_ERROR_MESSAGE };
     }
 
+    const authServiceFeeHkd = useAuthentication
+      ? await fetchPlatformAuthFeeHkd()
+      : 0;
+
     const rpcArgs: RpcMakeOfferArgs = {
       p_listing_id: trimmedListingId,
       p_buyer_id: user.id,
       p_offer_price: offerPrice,
       p_content: useAuthentication
-        ? formatAuthOfferMessageContent(offerPrice)
+        ? formatAuthOfferMessageContent(offerPrice, authServiceFeeHkd)
         : formatStandardOfferMessageContent(offerPrice),
       p_use_authentication: useAuthentication,
     };
