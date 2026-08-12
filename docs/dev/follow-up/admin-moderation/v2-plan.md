@@ -102,5 +102,5 @@ Gate 實作應檢查：`buyer_confirmed_at`、`payout_hold_until`、`escrow_stat
 ## 參考
 
 - [6phase-test-plan.md §1.2](./6phase-test-plan.md) — v1 closure out of scope  
-- [PARTNER_QA_PENDING.md](../../PARTNER_QA_PENDING.md) — Partner／pre-launch 分層  
+- [PARTNER_QA.md](../../PARTNER_QA.md) — Partner 上線前唯一人手清單  
 - [subject-history-plan.md](./subject-history-plan.md) — Phase G（已完成，與 Phase F 獨立）

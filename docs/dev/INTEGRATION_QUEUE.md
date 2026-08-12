@@ -1,7 +1,8 @@
 # Integration Queue
 
 > Single dashboard for backend ↔ frontend handoffs.  
-> Update a row when backend is ready or frontend is wired.
+> Update a row when backend is ready or frontend is wired.  
+> **Partner 上線前人手簽收（唯一清單）：** [PARTNER_QA.md](./PARTNER_QA.md) — 唔再逐 flow 重跑 Partner checklist。
 
 | Flow | Backend | Frontend | Backend files | UI touchpoint | Follow-up |
 |------|---------|----------|---------------|---------------|-----------|

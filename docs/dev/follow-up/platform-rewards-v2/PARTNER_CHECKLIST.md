@@ -1,5 +1,8 @@
 # Partner Checklist — 平台獎勵 v2（人手 QA）
 
+> **已合併至 SSOT：** [PARTNER_QA.md](../../PARTNER_QA.md)（M1 rewards 頁、R3 G2.6、R4 券肉眼）  
+> Gate `test:rewards:gate` 已覆蓋 logic；本頁保留歷史 Admin UI 步驟參考。
+
 **對象：** Frontend / Partner  
 **後端：** Aaron（actions、RPC、payout）  
 **詳細步驟：** [QA_CHECKLIST.md](./QA_CHECKLIST.md) · E2E 覆蓋：[QA_MATRIX_RESULTS.md](./QA_MATRIX_RESULTS.md)

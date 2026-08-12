@@ -1,5 +1,8 @@
 # Partner QA — Auth Escrow v2 + 鑑定用券（Phase D）
 
+> **人手清單已合併：** [PARTNER_QA.md](../../PARTNER_QA.md)（M3 退款、O1/O2 鑑定、R4 券肉眼）  
+> 本頁保留歷史簽收記錄；新 Partner session 請只用 PARTNER_QA.md。
+
 > **Owner:** Partner / Frontend QA  
 > **Backend track:** `aaron-backend-wired`  
 > **Automated gate (backend dev):** `bun run test:auth-escrow:gate` — 34 Vitest + B2b E2E；**Partner 唔使跑** unless regression怀疑

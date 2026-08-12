@@ -211,8 +211,9 @@ bun run test:moderation:gate:full
 |------|------|------|
 | `/terms` + `/privacy` | 簡版：階段表、鑑定費、售後窗口、P2P 無退；草案 banner | ✅ |
 | Footer / checkout 披露 | 鑑定費不退 + 連結 `/terms` | ✅ |
-| `PARTNER_REFUND_SPOTCHECK.md` | 退款 spot check 4 條（staging 人手） | ✅ |
-| `PARTNER_QA_PENDING.md` | Migrations 列至 `20260915120000`；§4 spot check handoff | ✅ |
+| `PARTNER_QA.md` | 唯一 Partner 人手清單（M1–M5 必做） | ✅ |
+| `PARTNER_QA_PENDING.md` | 已 redirect → PARTNER_QA.md | ✅ |
+| `PARTNER_REFUND_SPOTCHECK.md` | 已 redirect → PARTNER_QA.md § M3 | ✅ |
 | `PARTNER_QA_SIGNOFF.md` | Migration 字串更新；spot check **唔**入 P1 必做 | ✅ |
 
 ### Partner spot check（post-push / Partner）

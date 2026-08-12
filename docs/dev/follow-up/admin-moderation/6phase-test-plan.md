@@ -539,7 +539,7 @@ Main CI (`.github/workflows/ci.yml`) runs tsc + lint + `build` only.
 > **Partner 人手：** [PARTNER_QA_SIGNOFF.md](./PARTNER_QA_SIGNOFF.md) — **P1 staging 煙霧**（必做）、**P2 UX**（可選）。  
 > **Logic：** stable gate（§Stable gate in signoff doc）— dev 負責，partner 唔重跑。  
 > **Test gaps：** [Automation backlog](./PARTNER_QA_SIGNOFF.md#automation-backlog) — dev backlog，唔入 partner 清單。  
-> **全專案待簽：** [PARTNER_QA_PENDING.md](../../PARTNER_QA_PENDING.md)
+> **全專案待簽：** [PARTNER_QA.md](../../PARTNER_QA.md)
 
 | # | Check | Covered by |
 |---|-------|------------|

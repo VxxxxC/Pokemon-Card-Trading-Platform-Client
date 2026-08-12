@@ -1,5 +1,8 @@
 # Partner Handoff — 鑑定 Single Capture E2E
 
+> **Partner 人手清單：** [PARTNER_QA.md](../../PARTNER_QA.md) O1（pass 可選）、O2（fail 追償）  
+> 本頁為鑑定操作細節；唔再作獨立 Partner 必做 checklist。
+
 **Date:** 2026-08-08  
 **Branch:** `aaron-backend-wired`（pull 最新後再測）  
 **Scope:** Member C2C 鑑定單 · Stripe manual PI · **single full capture at pass** · Admin 鑑定工作台  

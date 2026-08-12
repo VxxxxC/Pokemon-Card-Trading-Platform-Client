@@ -1,6 +1,7 @@
-# Partner QA Sign-off — 舉報與仲裁（Admin Moderation）
+# Partner QA Sign-off — 舉報與仲裁（Dev / Automation）
 
-> **Status:** ⬜ 待 Partner 簽收  
+> **Partner 人手清單（唯一 SSOT）：** [PARTNER_QA.md](../../PARTNER_QA.md) — M2、M3  
+> **Status:** ⬜ 待 Partner 簽收（見 PARTNER_QA.md）  
 > **Feature:** Phase A–E+ · Phase G · G+（reporter outcome）  
 > **環境：** staging only · 勿用 production 真實用戶
 
@@ -12,7 +13,7 @@
 |----|------|------|
 | **Logic / regression** | Dev / CI | Stable moderation gate（見下） |
 | **可寫 test 但未寫** | Dev backlog | [§Automation backlog](#automation-backlog) — **唔入** Partner 清單 |
-| **Partner 人手** | Staging 部署驗證 +（可選）UX 觀感 | **§Partner 簽收**（≤2 項必做／可選） |
+| **Partner 人手** | Staging 部署驗證 + UX | **[PARTNER_QA.md](../../PARTNER_QA.md)** M2（必做）、R1（可選） |
 
 **Logic 已由自動化覆蓋；Partner 唔重跑業務規則。**
 
@@ -23,7 +24,7 @@
 - [ ] Target branch 上 **stable gate 全綠**（見 [§Stable gate](#stable-gate-dev--ci)）
 - [ ] Staging Supabase 已 push migrations `20260806120000`–`20260915120000`（含 Phase H refund saga + PR2 grading fail + PR3A–PR3C carrier/preview）
 
-> Partner P1 可與其他 flow **稍後一次過簽**；dev gate 已覆蓋 logic。**售後退款 Stripe 煙霧**可選跑 `bun run test:e2e:moderation-stripe-smoke`（需 `STRIPE_SECRET_KEY` + webhook listener）。**退款政策 spot check** 見 [PARTNER_REFUND_SPOTCHECK.md](../refund-policy/PARTNER_REFUND_SPOTCHECK.md)（push 後與 P1 同批，唔入本頁必做項）。v2／pre-launch 分層見 [v2-plan.md](./v2-plan.md)。
+> Partner 簽收見 [PARTNER_QA.md](../../PARTNER_QA.md) M2 + M3。售後退款 Stripe 已由 1b I-H14 覆蓋。v2 見 [v2-plan.md](./v2-plan.md)。
 
 ### Stable gate（dev / CI）
 
@@ -44,36 +45,9 @@ bun run build:ci
 
 ---
 
-## Partner 簽收（人手）
+## Partner 簽收
 
-### 測試帳號（staging）
-
-| 角色 | 來源 |
-|------|------|
-| 舉報人（buyer） | `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` |
-| 被舉報人（seller） | `E2E_SELLER_ID` |
-| Admin | `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` |
-
-### P1 — Staging 煙霧測試（必做，~10 分鐘）
-
-在 **staging URL**（唔係本機 `localhost`）用上述帳號走一條主線：
-
-1. **Buyer** — chat 或 profile 舉報 seller（惡意欺詐）→「舉報信號已受理」
-2. **Admin** — `/admin/disputes` → 開該案 →「駁回舉報」→ 執行裁定
-3. **Buyer** — `/profile/user` →「舉報結果通知」modal →「我知道了」→ reload 唔再彈
-
-**預期：** 無 5xx／白屏；流程與 dev gate 一致。
-
-| 簽收 | ⬜ |
-
-### P2 — UX / 文案抽查（可選，~5 分鐘）
-
-舉報 dialog、admin 工作台、結果 modal：中文清晰、按鈕位置合理。  
-（唔驗業務規則 — 規則已由 integration / E2E 覆蓋。）
-
-| 簽收 | ⬜ |
-
-**Partner 簽名：** _______________ **日期：** ___________
+人手步驟已移至 **[PARTNER_QA.md](../../PARTNER_QA.md)**（M2 舉報、M3 退款 spot check）。請勿使用本頁舊 P1/P2 清單。
 
 ---
 
@@ -127,4 +101,4 @@ bun run build:ci
 
 ## 參考
 
-- [6phase-test-plan.md](./6phase-test-plan.md) · [backend.md](./backend.md) · [frontend.md](./frontend.md) · [v2-plan.md](./v2-plan.md) · [e2e.md](../../e2e.md) · [PARTNER_QA_PENDING.md](../../PARTNER_QA_PENDING.md)
+- [6phase-test-plan.md](./6phase-test-plan.md) · [backend.md](./backend.md) · [frontend.md](./frontend.md) · [v2-plan.md](./v2-plan.md) · [e2e.md](../../e2e.md) · [PARTNER_QA.md](../../PARTNER_QA.md)

@@ -1,6 +1,6 @@
 # Prelaunch gate — H1 / H2 前人手 QA 前測試順序
 
-> Dev 跑完 gate 全綠後，Partner 才做 [H1 staging 煙霧](#phase-3--partner-人手) + [H2 鑑定 pass](#h2--鑑定-pass-主線)。
+> Dev 跑完 gate 全綠後，Partner 跟 **[PARTNER_QA.md](./PARTNER_QA.md)** 簽收（M1–M5 必做）。
 
 ## 一鍵命令
 
@@ -76,16 +76,16 @@ PLAYWRIGHT_BASE_URL=https://<staging-host> bun run test:e2e:moderation-stripe-sm
 
 Gate 全綠後進行；**唔重跑** 舉報／退款／券 logic。
 
-### H1 — Staging 煙霧（~3 min）
+**唯一清單：** [PARTNER_QA.md](./PARTNER_QA.md)
 
-- Admin + buyer login
-- 開 `/admin/disputes`、`/admin/grading`、`/profile/user/rewards` — 無 5xx／白屏
-
-### H2 — 鑑定 pass 主線（可選 / ~10 min）
-
-見 [admin-grading/PARTNER_HANDOFF.md](./follow-up/admin-grading/PARTNER_HANDOFF.md) P0。
-
-Phase 1a #4 `test:integration:grading:pass-stripe-smoke` 已自動驗 **member_auth single-capture pass**（authorize → admin pass → full capture）。H2 可降為 **可選** staging 煙霧：Webhook UI 路徑、Merchant B2C、出庫／買家確認。
+| 舊代號 | 新對應 |
+|--------|--------|
+| H1 三頁煙霧 | **M1** |
+| 舉報主線 | **M2** |
+| 退款 spot check | **M3** |
+| 條款／checkout | **M4** |
+| 首頁 P0 | **M5** |
+| H2 鑑定 pass staging | **O1**（可選；G-BP-S1 已驗 capture） |
 
 ---
 
@@ -97,8 +97,8 @@ Phase 1a #4 `test:integration:grading:pass-stripe-smoke` 已自動驗 **member_a
 | 1a | `test:prelaunch:gate:1a` | 唔需要 |
 | 1b | `test:prelaunch:gate:1b` | **要** |
 | 8b | staging 重跑 I-H14 | Dashboard |
-| H1 | Partner 三頁 | — |
-| H2 | Partner 鑑定 pass | **要** |
+| H1 | Partner M1（見 PARTNER_QA.md） | — |
+| H2 | Partner O1 可選 | 唔需要（G-BP-S1） |
 
 ---
 
@@ -110,4 +110,4 @@ Phase 1a #4 `test:integration:grading:pass-stripe-smoke` 已自動驗 **member_a
 | 舉報 | `bun run test:moderation:gate:full` |
 | 鑑定用券 | `bun run test:auth-escrow:gate` |
 
-詳見 [e2e.md](./e2e.md) · [PARTNER_QA_SIGNOFF](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md)
+詳見 [e2e.md](./e2e.md) · **[PARTNER_QA.md](./PARTNER_QA.md)** · [PARTNER_QA_SIGNOFF](./follow-up/admin-moderation/PARTNER_QA_SIGNOFF.md)（dev automation）
