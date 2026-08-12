@@ -200,7 +200,9 @@ WHERE pr.order_id = '<order_id>';
 
 | 欄位 | 預期 |
 |------|------|
-| `amount` | `= member_orders.final_price` |
+| `gross_payout_hkd` | `item_subtotal + inbound_shipping_fee` |
+| `fps_transfer_fee_hkd` | `fn_platform_fps_manual_transfer_fee_hkd()` (default 0) |
+| `amount` | `gross_payout_hkd - fps_transfer_fee_hkd` (net) |
 | `fps_id_snapshot` | Seller A 的 `profiles.fps_id` |
 | `fps_name_snapshot` | Seller A 的 `profiles.fps_name` |
 | `pr.status` | `'ready'` |
@@ -248,7 +250,7 @@ WHERE pr.order_id = '<order_id>';
 
 - [ ] Stripe multicapture 全流程：authorized → auth_fee_captured → **fully_captured**
 - [ ] 買家確認收貨 → `held` + T+3
-- [ ] Cron → `payout_requests`（金額 = `final_price`）
+- [ ] Cron → `payout_requests`（`gross_payout_hkd` = item + inbound；`amount` = net）
 - [ ] 有 FPS：**ready** + 正確 snapshot；無 FPS：**pending** + `PENDING_*`
 - [ ] Admin FPS tab 可 list / 搜尋 / 銷帳
 - [ ] 1C：姓名 + ID dialog／設定／soft remind 行為正確

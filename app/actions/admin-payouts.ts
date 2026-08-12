@@ -656,6 +656,8 @@ type PayoutRequestRow = Pick<
   | "order_id"
   | "seller_id"
   | "amount"
+  | "gross_payout_hkd"
+  | "fps_transfer_fee_hkd"
   | "fps_id_snapshot"
   | "fps_name_snapshot"
   | "status"
@@ -666,7 +668,7 @@ type PayoutRequestRow = Pick<
 >;
 
 const PAYOUT_REQUEST_SELECT =
-  "id, order_id, seller_id, amount, fps_id_snapshot, fps_name_snapshot, status, ready_at, created_at, admin_fps_reference, paid_at";
+  "id, order_id, seller_id, amount, gross_payout_hkd, fps_transfer_fee_hkd, fps_id_snapshot, fps_name_snapshot, status, ready_at, created_at, admin_fps_reference, paid_at";
 
 function normalizeFpsPayoutStatus(
   status: string | null,
@@ -878,6 +880,10 @@ async function enrichFpsPayoutRows(
       sellerId: request.seller_id,
       sellerName: sellerNameById.get(request.seller_id) ?? "未知用戶",
       amount: Number(request.amount ?? 0),
+      grossPayoutHkd: Number(
+        request.gross_payout_hkd ?? request.amount ?? 0,
+      ),
+      fpsTransferFeeHkd: Number(request.fps_transfer_fee_hkd ?? 0),
       fpsId: request.fps_id_snapshot,
       fpsName: request.fps_name_snapshot,
       status: normalizeFpsPayoutStatus(request.status),

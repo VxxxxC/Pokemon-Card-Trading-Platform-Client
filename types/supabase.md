@@ -121,7 +121,7 @@ type UserRole = Enums<"user_role">;
 | `fn_chat_party_profile_snippet` | `{ p_persona: Database["public"]["Enums"]["seller_persona_type"] p_profile_id: string }` | `Json` |
 | `fn_claim_mission_points` | `{ p_description?: string; p_mission_id: string; p_points: number }` | `Json` |
 | `fn_compute_auth_escrow_amounts` | `{ p_item_subtotal: number }` | `{ auth_fee: number buyer_total_amount: number inbound_shipping_fee: number outbound_shipping_fee: n…` |
-| `fn_compute_moderation_order_refund` | `{ p_fault_party: Database["public"]["Enums"]["grading_fault_party"] p_order_id: string p_platform_f…` | `Json` |
+| `fn_compute_moderation_order_refund` | `{ p_carrier_liability_party?: string p_fault_party: Database["public"]["Enums"]["grading_fault_part…` | `Json` |
 | `fn_compute_platform_subsidy` | `{ p_buyer_id: string p_item_subtotal: number p_order_id?: string p_order_kind?: string p_shipping_f…` | `{ coupon_type: Database["public"]["Enums"]["reward_type"] subsidy_amount: number }[]` |
 | `fn_compute_seller_grading_fail_liability` | `{ p_order_id: string; p_order_kind: string }` | `Json` |
 | `fn_effective_check_in_streak` | `{ p_user_id: string }` | `number` |
@@ -140,9 +140,16 @@ type UserRole = Enums<"user_role">;
 | `fn_moderation_case_links_order` | `{ p_case_id: string; p_order_id: string }` | `boolean` |
 | `fn_moderation_derive_order_kind` | `{ p_order_id: string }` | `string` |
 | `fn_moderation_order_refund_eligible` | `{ p_order_id: string }` | `Json` |
+| `fn_p2p_aml_meetup_max_new_account_hkd` | `never;` | `number` |
+| `fn_p2p_aml_meetup_max_no_market_hkd` | `never;` | `number` |
+| `fn_p2p_aml_new_account_grace_days` | `never;` | `number` |
 | `fn_platform_auth_escrow_config` | `never;` | `Json` |
 | `fn_platform_auth_fee_hkd` | `never;` | `number` |
 | `fn_platform_auth_sf_leg_fee` | `never;` | `number` |
+| `fn_platform_commission_rate` | `never;` | `number` |
+| `fn_platform_financial_config` | `never;` | `Json` |
+| `fn_platform_fps_manual_transfer_fee_hkd` | `never;` | `number` |
+| `fn_preview_moderation_order_refund_breakdown` | `{ p_carrier_liability_party?: string p_fault_party: Database["public"]["Enums"]["grading_fault_part…` | `Json` |
 | `fn_recalculate_member_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_recalculate_merchant_reputation_tags` | `{ p_user_id: string }` | `undefined` |
 | `fn_recalculate_reputation_tags` | `{ p_user_id: string }` | `undefined` |
@@ -229,7 +236,11 @@ type UserRole = Enums<"user_role">;
 | `rpc_e2e_backdate_merchant_payout_hold` | `{ p_order_id: string }` | `Json` |
 | `rpc_e2e_reset_listing_trading_fixture` | `{ p_buyer_id: string; p_listing_id: string; p_seller_id: string }` | `Json` |
 | `rpc_e2e_seed_member_auth_pending_payment_order` | `{ p_buyer_id: string; p_listing_id: string }` | `string` |
+| `rpc_e2e_seed_member_auth_refund_eligible_order` | `{ p_buyer_id: string p_listing_id: string p_payment_intent_suffix?: string }` | `string` |
+| `rpc_e2e_seed_merchant_auth_refund_eligible_order` | `{ p_buyer_id: string p_listing_id: string p_payment_intent_suffix?: string }` | `string` |
+| `rpc_e2e_seed_merchant_direct_refund_eligible_order` | `{ p_buyer_id: string p_listing_id: string p_payment_intent_suffix?: string }` | `string` |
 | `rpc_e2e_seed_merchant_pending_payment_order` | `{ p_buyer_id: string; p_listing_id: string }` | `string` |
+| `rpc_e2e_seed_merchant_shipped_awaiting_confirm` | `{ p_buyer_id: string p_item_subtotal?: number p_listing_id: string p_payment_intent_suffix?: string…` | `string` |
 | `rpc_fail_member_auth_order` | `{ p_order_id: string }` | `Json` |
 | `rpc_finalize_auth_fee_capture` | `{ p_admin_id?: string p_captured_amount_cents: number p_order_id: string p_order_kind: string p_pay…` | `Json` |
 | `rpc_finalize_auth_grading_fail` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
@@ -271,7 +282,7 @@ type UserRole = Enums<"user_role">;
 | `rpc_prepare_member_auth_order_payment` | `{ p_order_id: string; p_user_reward_id?: string }` | `Json` |
 | `rpc_prepare_merchant_order_payment` | `{ p_order_id: string p_shipping_method: string p_use_auth?: boolean }` | `Json } | { Args: { p_buyer_phone?: string p_buyer_remark?: string p_meetup_detail?: string p_order_…` |
 | `rpc_prepare_merchant_order_payout` | `{ p_order_id: string }` | `Json` |
-| `rpc_prepare_moderation_order_refund` | `{ p_case_id: string p_fault_party: Database["public"]["Enums"]["grading_fault_party"] p_order_id: s…` | `Json` |
+| `rpc_prepare_moderation_order_refund` | `{ p_carrier_liability_party?: string p_case_id: string p_fault_party: Database["public"]["Enums"]["…` | `Json` |
 | `rpc_redeem_points_catalog_item` | `{ p_catalog_id: string }` | `Json` |
 | `rpc_refresh_auth_escrow_payment_intent` | `{ p_order_id: string p_order_kind: string p_payment_intent_id: string }` | `Json` |
 | `rpc_reject_offer` | `{ p_offer_id: string; p_seller_id: string }` | `Json` |
@@ -837,6 +848,8 @@ type UserRole = Enums<"user_role">;
 | `created_at` | `string` | No |
 | `fps_id_snapshot` | `string` | No |
 | `fps_name_snapshot` | `string | null` | Yes |
+| `fps_transfer_fee_hkd` | `number` | No |
+| `gross_payout_hkd` | `number` | No |
 | `id` | `string` | No |
 | `order_id` | `string` | No |
 | `paid_at` | `string | null` | Yes |

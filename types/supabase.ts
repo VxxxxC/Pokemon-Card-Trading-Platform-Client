@@ -1550,6 +1550,8 @@ export type Database = {
           created_at: string
           fps_id_snapshot: string
           fps_name_snapshot: string | null
+          fps_transfer_fee_hkd: number
+          gross_payout_hkd: number
           id: string
           order_id: string
           paid_at: string | null
@@ -1566,6 +1568,8 @@ export type Database = {
           created_at?: string
           fps_id_snapshot: string
           fps_name_snapshot?: string | null
+          fps_transfer_fee_hkd?: number
+          gross_payout_hkd?: number
           id?: string
           order_id: string
           paid_at?: string | null
@@ -1582,6 +1586,8 @@ export type Database = {
           created_at?: string
           fps_id_snapshot?: string
           fps_name_snapshot?: string | null
+          fps_transfer_fee_hkd?: number
+          gross_payout_hkd?: number
           id?: string
           order_id?: string
           paid_at?: string | null
@@ -2957,15 +2963,6 @@ export type Database = {
         }
         Returns: Json
       }
-      fn_preview_moderation_order_refund_breakdown: {
-        Args: {
-          p_carrier_liability_party?: string
-          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
-          p_order_id: string
-          p_platform_fault_reason?: string
-        }
-        Returns: Json
-      }
       fn_compute_platform_subsidy: {
         Args: {
           p_buyer_id: string
@@ -3081,9 +3078,24 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      fn_p2p_aml_meetup_max_new_account_hkd: { Args: never; Returns: number }
+      fn_p2p_aml_meetup_max_no_market_hkd: { Args: never; Returns: number }
+      fn_p2p_aml_new_account_grace_days: { Args: never; Returns: number }
       fn_platform_auth_escrow_config: { Args: never; Returns: Json }
       fn_platform_auth_fee_hkd: { Args: never; Returns: number }
       fn_platform_auth_sf_leg_fee: { Args: never; Returns: number }
+      fn_platform_commission_rate: { Args: never; Returns: number }
+      fn_platform_financial_config: { Args: never; Returns: Json }
+      fn_platform_fps_manual_transfer_fee_hkd: { Args: never; Returns: number }
+      fn_preview_moderation_order_refund_breakdown: {
+        Args: {
+          p_carrier_liability_party?: string
+          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
+          p_order_id: string
+          p_platform_fault_reason?: string
+        }
+        Returns: Json
+      }
       fn_recalculate_member_reputation_tags: {
         Args: { p_user_id: string }
         Returns: undefined
@@ -3500,6 +3512,15 @@ export type Database = {
       }
       rpc_e2e_seed_merchant_pending_payment_order: {
         Args: { p_buyer_id: string; p_listing_id: string }
+        Returns: string
+      }
+      rpc_e2e_seed_merchant_shipped_awaiting_confirm: {
+        Args: {
+          p_buyer_id: string
+          p_item_subtotal?: number
+          p_listing_id: string
+          p_payment_intent_suffix?: string
+        }
         Returns: string
       }
       rpc_fail_member_auth_order: {

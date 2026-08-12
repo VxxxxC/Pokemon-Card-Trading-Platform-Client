@@ -12,7 +12,7 @@ Auth C2C orders (`member_orders.use_authentication = true`):
 2. Hourly cron lists eligible orders → inserts `payout_requests` → `seller_payout_status = 'ready'`
 3. Seller `profiles.fps_id` collected via settings / order-detail dialog (soft remind only)
 
-Payout amount (v1): `payout_requests.amount = member_orders.final_price`.
+Payout amount: `gross_payout_hkd = item_subtotal + inbound_shipping_fee`; `fps_transfer_fee_hkd = fn_platform_fps_manual_transfer_fee_hkd()`; `amount` (net) = gross - fee. See [fps-manual-transfer-fee](../fps-manual-transfer-fee/plan.md).
 
 ## 1A — `rpc_confirm_buyer_received` patch
 
@@ -49,10 +49,10 @@ Returns `{ order_id }[]` where:
 Idempotent (`ON CONFLICT (order_id) DO NOTHING`):
 
 1. Re-validates candidate conditions
-2. Loads `seller_id`, `final_price`, `profiles.fps_id`
+2. Loads `seller_id`, gross (`item_subtotal + inbound_shipping_fee`), `profiles.fps_id` / `fps_name`
 3. `INSERT INTO payout_requests`:
-   - `amount := final_price`
-   - `fps_id_snapshot := COALESCE(NULLIF(TRIM(fps_id), ''), 'PENDING_FPS')`
+   - `gross_payout_hkd`, `fps_transfer_fee_hkd`, `amount` (net)
+   - `fps_id_snapshot` / `fps_name_snapshot`
    - `status := 'ready'` if fps_id **and** fps_name present else `'pending'`
 4. `UPDATE member_orders SET seller_payout_status = 'ready'`
 

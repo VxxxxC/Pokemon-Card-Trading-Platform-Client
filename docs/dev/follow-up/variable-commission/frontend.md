@@ -11,10 +11,10 @@
 ## Acceptance checklist
 
 - [ ] `/admin/settings` shows DB rate (8% after seed), not mock 5%
-- [ ]「儲存財務設定」persists commission + appraisal fee; FPS still mock
+- [ ]「儲存財務設定」persists commission + appraisal fee
 - [ ] Merchant order detail: estimate before confirm matches current settings; after confirm shows snapshot fields
 - [ ] Admin dashboard commission rate label reflects settings when available
 
 ## Out of scope (this flow)
 
-- Member FPS fee on settings page — toast-only until separate flow lands. Appraisal fee: see [variable-appraisal-fee](../variable-appraisal-fee/plan.md).
+- FPS manual transfer fee on settings page — read-only from `lib/platform/fps-payout-config.ts` (see [fps-manual-transfer-fee](../fps-manual-transfer-fee/plan.md)). Appraisal fee: see [variable-appraisal-fee](../variable-appraisal-fee/plan.md).

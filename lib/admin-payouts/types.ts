@@ -161,6 +161,8 @@ export type FpsPayoutRow = {
   sellerId: string;
   sellerName: string;
   amount: number;
+  grossPayoutHkd: number;
+  fpsTransferFeeHkd: number;
   fpsId: string;
   fpsName: string | null;
   status: FpsPayoutRequestStatus;

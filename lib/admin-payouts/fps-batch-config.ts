@@ -1,5 +1,9 @@
 import type { FpsBatchScheduleInfo } from "@/lib/admin-payouts/types";
 
+/**
+ * FPS weekly batch schedule — **code SSOT** (not `platform_settings`).
+ * `fps_payout_config` DB row was removed; use defaults / `FPS_BATCH_WEEKDAY` env only.
+ */
 const HKT_TIME_ZONE = "Asia/Hong_Kong";
 
 /** ISO weekday: Monday = 1 … Sunday = 7 */

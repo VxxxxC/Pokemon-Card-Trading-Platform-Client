@@ -505,7 +505,13 @@ export default function FpsLedgerTab({
                     </Link>
                   </TableCell>
                   <TableCell className="font-mono font-bold text-[13px] text-text-primary text-right py-3 whitespace-nowrap">
-                    {formatAdminHkd(row.amount)}
+                    <div>{formatAdminHkd(row.amount)}</div>
+                    {row.fpsTransferFeeHkd > 0 ? (
+                      <div className="font-mono text-[10px] font-normal text-text-disabled">
+                        毛額 {formatAdminHkd(row.grossPayoutHkd)} · 手續費{" "}
+                        {formatAdminHkd(row.fpsTransferFeeHkd)}
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="font-sans text-[12px] text-text-primary py-3 whitespace-nowrap">
                     {row.fpsName ?? "—"}

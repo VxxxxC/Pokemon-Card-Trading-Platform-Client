@@ -46,6 +46,10 @@ import {
   formatSellerPayoutStatusLabel,
 } from "@/lib/member-order/seller-payout";
 import {
+  computeFpsGrossPayoutHkd,
+  computeFpsNetPayoutAmount,
+} from "@/lib/platform/fps-payout-config";
+import {
   formatMerchantPayoutHoldUntilLabel,
   formatMerchantPayoutStatusLabel,
 } from "@/lib/merchant-order/merchant-payout-hold";
@@ -411,6 +415,19 @@ export function MemberOrderDetailView({
             order.sellerPayoutStatus === "ready") ? (
             <p className="text-[11px] font-mono text-text-disabled">
               撥款解凍時間：{payoutHoldUntilLabel}
+            </p>
+          ) : null}
+          {order.itemSubtotalAuth != null &&
+          (order.sellerPayoutStatus === "held" ||
+            order.sellerPayoutStatus === "ready") ? (
+            <p className="text-[11px] font-mono text-text-disabled">
+              預計 FPS 到賬：HK${" "}
+              {computeFpsNetPayoutAmount(
+                computeFpsGrossPayoutHkd(
+                  order.itemSubtotalAuth,
+                  order.inboundShippingFeeAuth ?? 0,
+                ),
+              ).toLocaleString("zh-TW")}
             </p>
           ) : null}
         </div>
