@@ -59,7 +59,9 @@ async function resolveAdminDisputeWithRefund(
   params: { caseId: string; orderId: string; orderNumber: string },
 ): Promise<void> {
   await loginAsAdmin(page);
-  await page.goto(`/admin/disputes/${params.caseId}`);
+  await page.goto(`/admin/disputes/${params.caseId}`, {
+    waitUntil: "domcontentloaded",
+  });
   await expect(
     page.getByRole("heading", { name: "仲裁判定動作" }),
   ).toBeVisible({ timeout: 20_000 });

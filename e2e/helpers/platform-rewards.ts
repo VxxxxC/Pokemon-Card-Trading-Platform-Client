@@ -1080,6 +1080,7 @@ async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
 
   await page.waitForURL((url) => url.pathname === "/admin/campaigns", {
     timeout: 30_000,
+    waitUntil: "commit",
   });
 }
 
