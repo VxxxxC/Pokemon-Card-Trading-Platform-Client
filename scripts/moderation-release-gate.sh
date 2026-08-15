@@ -7,6 +7,7 @@ cd "$ROOT"
 steps=(
   "bunx tsc --noEmit"
   "bun run test:integration:moderation"
+  "bun run test:integration:grading"
   "bunx vitest run --config vitest.config.mts tests/unit/moderation"
 )
 

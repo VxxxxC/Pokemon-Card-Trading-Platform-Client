@@ -1,11 +1,16 @@
 # Prelaunch gate — H1 / H2 前人手 QA 前測試順序
 
+> **長期 SSOT（覆蓋範圍 + audit）：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md)  
+> 本頁保留 **1a/1b 跑法**；與 Production Gate 對照見 PRODUCTION_GATE 附錄 D。
+
 > Dev 跑完 gate 全綠後，Partner 跟 **[PARTNER_QA.md](./PARTNER_QA.md)** 簽收（M1–M7 必做）。
 
 ## 一鍵命令
 
 | 階段 | 命令 |
 |------|------|
+| **Merge Full v2（infra）** | `bun run test:production:gate` |
+| **Merge Full v2（sign-off）** | `bun run test:production:gate:signoff` |
 | Env 檢查（1a） | `bun run test:prelaunch:check-env` |
 | Env 檢查（1b + Stripe） | `bun run test:prelaunch:check-env:stripe` |
 | Phase 1a（無 webhook） | `bun run test:prelaunch:gate:1a` |
@@ -26,18 +31,22 @@ bun run test:prelaunch:gate:1b
 ## Phase 0 — 前置
 
 1. `git pull` + `bun install`
-2. `bunx supabase db push`（與 staging 對齊；本次 release 至 **`20260924150000`**）
+2. `bunx supabase db push`（與 staging 對齊；本次 grading release 至 **`20260927120000`**，含 `20260926120000`–`20260926150000` grading hardening / coupon / carrier batch）
 3. `bun run test:prelaunch:check-env`（1b 前用 `test:prelaunch:check-env:stripe`）
 
 | 變數 | 用途 |
 |------|------|
 | `NEXT_PUBLIC_SUPABASE_URL` / `ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Integration + E2E |
 | `E2E_ADMIN_*` / `E2E_BUYER_*` / `E2E_SELLER_*` | 測試帳號 |
-| `E2E_SELLER_ID` / `E2E_LISTING_ID` | Merchant checkout / reconcile |
+| `E2E_SELLER_ID` / `E2E_LISTING_ID` | Merchant checkout / reconcile / **grading G-W2M,G-BF4M,G-CONF1M** |
 | `STRIPE_SECRET_KEY` / `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Phase 1b |
 | `STRIPE_WEBHOOK_SECRET` | 與 `bun run stripe:webhook:listen` 一致 |
 
 腳本：[scripts/prelaunch-check-env.sh](../scripts/prelaunch-check-env.sh)
+
+**Merchant grading（G-W2M / G-BF*M / G-CONF1M）：** `E2E_SELLER_EMAIL` 登入 user id 必須等於 `E2E_SELLER_ID`，且 `E2E_LISTING_ID` 屬於該 merchant（`seller_persona=merchant`、`use_authentication=true`）。`test:integration:grading` / `test:integration:merchant-connect-payout` 在 env 未對齊時 **member pass + merchant skip**；`test:prelaunch:check-env` / `verify:merchant-grading-e2e` 仍 **必須綠** 才能 merge。
+
+**P0 ops checklist：** `discover:merchant-grading-e2e`（或 `preflight:merchant-grading-e2e` 診斷）→ 修 KYC/listing → 更新 secrets → `bunx supabase db push`（至 `20260927120000`）→ `verify:merchant-grading-e2e` 綠。`test:prelaunch:check-env` verify 失敗時會自動印 discover JSON（含 `nextSteps`）。
 
 ---
 
@@ -65,8 +74,9 @@ bun run test:prelaunch:gate:1b
 1. `bun run test:rewards:gate`
 2. `bun run test:e2e:moderation-stripe-smoke`（I-H14）
 
-**本機：** `bun run stripe:webhook:listen` → localhost  
-**Staging：** Stripe Dashboard webhook → staging URL（唔用 listen）
+**Playwright：** 若未手動起 `next start`，預設 `webServer` 用 `dev`；**Production Gate 請用** `bun run test:production:gate`（`PRODUCTION_GATE=1` + `next start`）。
+
+**本機：** `bun run stripe:webhook:listen` → localhost（**I-H14 專用**；C1 route integration 唔使 listen）
 
 ```bash
 PLAYWRIGHT_BASE_URL=https://<staging-host> bun run test:e2e:moderation-stripe-smoke

@@ -1,6 +1,14 @@
 import Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import {
+  buildAuthFeeOnlyCaptureParams,
+  buildAuthGradingFailIdempotencyKey,
+  buildCaptureZeroParams,
+  buildGoodsCaptureIdempotencyKey,
+  buildGoodsCaptureParams,
+  resolveGoodsCaptureStage,
+} from "@/lib/payments/stripe-capture-policy";
 import { createServiceRoleClient } from "../../shared/supabase-admin";
 import {
   ensureMemberListingAcceptsAuthentication,
@@ -166,6 +174,36 @@ export async function seedGradingFailStripeSmokeOrder(): Promise<GradingFailStri
 /** Same seed path as fail smoke — authorized single-capture order in grading. */
 export const seedGradingPassStripeSmokeOrder = seedGradingFailStripeSmokeOrder;
 
+export async function promoteStripeSmokeOrderToLegacyGrading(
+  ctx: GradingFailStripeSmokeContext,
+): Promise<void> {
+  const stripe = createStripeClient();
+  const admin = createServiceRoleClient();
+
+  await stripe.paymentIntents.capture(ctx.paymentIntentId, {
+    amount_to_capture: ctx.authFeeCents,
+    final_capture: false,
+    metadata: {
+      capture_stage: "auth_fee",
+      order_kind: "auth_grading_member",
+      order_id: ctx.orderId,
+      integration_smoke: "legacy_intake",
+    },
+  });
+
+  const { error } = await admin
+    .from("member_orders")
+    .update({
+      escrow_capture_model: null,
+      payment_capture_status: "auth_fee_captured",
+    })
+    .eq("id", ctx.orderId);
+
+  if (error) {
+    throw new Error(`[promoteStripeSmokeOrderToLegacyGrading] ${error.message}`);
+  }
+}
+
 export async function prepareAuthGradingFail(
   client: SupabaseClient<Database>,
   params: {
@@ -207,7 +245,10 @@ export async function executeGradingFailStripeLeg(
   prepared: PrepareGradingFailPayload,
   orderId: string,
 ): Promise<void> {
-  const voidMode = prepared.void_mode ?? "capture_zero";
+  const voidMode = (prepared.void_mode ?? "capture_zero") as
+    | "cancel"
+    | "capture_zero"
+    | "capture_auth_fee_only";
   const paymentIntentId = prepared.payment_intent_id;
   const adminId = prepared.admin_id;
 
@@ -216,7 +257,13 @@ export async function executeGradingFailStripeLeg(
   }
 
   const stripe = createStripeClient();
-  const idempotencyKey = `auth-grading-fail:${voidMode}:member:${orderId}:stripe-smoke`;
+  const idempotencyKey = buildAuthGradingFailIdempotencyKey({
+    voidMode,
+    orderKind: "member",
+    orderId,
+    escrowCaptureModel: prepared.escrow_capture_model,
+    suffix: "stripe-smoke",
+  });
 
   if (voidMode === "capture_auth_fee_only") {
     const captureCents = prepared.capture_cents ?? 0;
@@ -226,16 +273,19 @@ export async function executeGradingFailStripeLeg(
 
     await stripe.paymentIntents.capture(
       paymentIntentId,
-      {
-        amount_to_capture: captureCents,
-        final_capture: true,
+      buildAuthFeeOnlyCaptureParams({
+        escrowCaptureModel: prepared.escrow_capture_model,
+        amountCents: captureCents,
         metadata: {
           capture_stage: "auth_grading_fail",
           order_kind: "auth_grading_member",
           order_id: orderId,
           admin_id: adminId,
+          ...(prepared.escrow_capture_model
+            ? { escrow_capture_model: prepared.escrow_capture_model }
+            : {}),
         },
-      },
+      }),
       { idempotencyKey },
     );
     return;
@@ -250,7 +300,12 @@ export async function executeGradingFailStripeLeg(
 
   await stripe.paymentIntents.capture(
     paymentIntentId,
-    { amount_to_capture: 0, final_capture: true },
+    buildCaptureZeroParams({
+      capture_stage: "auth_grading_fail",
+      order_kind: "auth_grading_member",
+      order_id: orderId,
+      admin_id: adminId,
+    }),
     { idempotencyKey },
   );
 }
@@ -305,33 +360,32 @@ export async function executeGradingPassStripeLeg(
     throw new Error("[executeGradingPassStripeLeg] invalid capture_cents");
   }
 
-  const isSingleCapture = prepared.escrow_capture_model === "single";
-  const captureStage = isSingleCapture ? "full" : "goods";
-  const idempotencyKey = `goods-capture:${captureStage}:member:${orderId}:stripe-smoke`;
+  const captureStage = resolveGoodsCaptureStage(prepared.escrow_capture_model);
+  const idempotencyKey = buildGoodsCaptureIdempotencyKey({
+    escrowCaptureModel: prepared.escrow_capture_model,
+    orderKind: "member",
+    orderId,
+    suffix: "stripe-smoke",
+  });
 
   const stripe = createStripeClient();
-  const captureParams: Stripe.PaymentIntentCaptureParams = {
-    amount_to_capture: captureCents,
-    metadata: {
-      capture_stage: captureStage,
-      admin_id: adminId,
-      order_kind: "member_auth",
-      order_id: orderId,
-      auth_grading_company: grading.company,
-      ...(grading.score ? { auth_grading_score: grading.score } : {}),
-      ...(prepared.escrow_capture_model
-        ? { escrow_capture_model: prepared.escrow_capture_model }
-        : {}),
-    },
-  };
-
-  if (!isSingleCapture) {
-    captureParams.final_capture = true;
-  }
-
   return stripe.paymentIntents.capture(
     paymentIntentId,
-    captureParams,
+    buildGoodsCaptureParams({
+      escrowCaptureModel: prepared.escrow_capture_model,
+      amountCents: captureCents,
+      metadata: {
+        capture_stage: captureStage,
+        admin_id: adminId,
+        order_kind: "member_auth",
+        order_id: orderId,
+        auth_grading_company: grading.company,
+        ...(grading.score ? { auth_grading_score: grading.score } : {}),
+        ...(prepared.escrow_capture_model
+          ? { escrow_capture_model: prepared.escrow_capture_model }
+          : {}),
+      },
+    }),
     { idempotencyKey },
   );
 }

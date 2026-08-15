@@ -189,6 +189,63 @@ export async function acceptOfferViaSellerRpc(
   }
 }
 
+export async function submitChatReportViaBuyerRpc(params: {
+  sellerId: string;
+  roomId: string;
+  details: string;
+  category?: Database["public"]["Enums"]["report_category"];
+}): Promise<
+  | { success: true; reportId: string; caseId: string }
+  | { success: false; error: string }
+> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const email = process.env.E2E_BUYER_EMAIL?.trim();
+  const password = process.env.E2E_BUYER_PASSWORD?.trim();
+
+  if (!url || !anonKey || !email || !password) {
+    throw new Error(
+      "Missing Supabase public env or E2E buyer credentials for chat report RPC",
+    );
+  }
+
+  const client = createClient<Database>(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { error: signInError } = await client.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (signInError) {
+    throw new Error(
+      `[submitChatReportViaBuyerRpc] sign-in failed: ${signInError.message}`,
+    );
+  }
+
+  const { data, error } = await client.rpc("rpc_submit_user_report_v2", {
+    p_target_id: params.sellerId,
+    p_category: params.category ?? "fraud",
+    p_details: params.details,
+    p_chat_room_id: params.roomId,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const payload = data as { report_id?: string; case_id?: string } | null;
+  if (!payload?.report_id || !payload?.case_id) {
+    return { success: false, error: "提交舉報回傳資料格式異常" };
+  }
+
+  return {
+    success: true,
+    reportId: payload.report_id,
+    caseId: payload.case_id,
+  };
+}
+
 export async function simulateMemberAuthOrderPayment(
   memberOrderId: string,
 ): Promise<void> {
@@ -1668,7 +1725,7 @@ export async function getLatestModerationCaseWithChatRoom(
       .eq("case_id", moderationCase.id)
       .eq("context_type", "chat_room")
       .not("context_id", "is", null)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -1685,6 +1742,28 @@ export async function getLatestModerationCaseWithChatRoom(
   }
 
   return null;
+}
+
+export async function resolveModerationCaseChatRoomId(
+  caseId: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+
+  const { data, error } = await admin
+    .from("reports")
+    .select("context_id")
+    .eq("case_id", caseId)
+    .eq("context_type", "chat_room")
+    .not("context_id", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[resolveModerationCaseChatRoomId] ${error.message}`);
+  }
+
+  return data?.context_id ?? null;
 }
 
 export async function getLatestOpenModerationCaseForSubject(

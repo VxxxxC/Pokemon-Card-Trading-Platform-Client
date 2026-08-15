@@ -73,3 +73,15 @@ if [[ "$require_phase1b" -eq 1 ]]; then
 else
   echo "Phase 1a vars present. For Phase 1b, re-run with --with-stripe-e2e after stripe:webhook:listen."
 fi
+
+echo ""
+echo ">> bun run verify:merchant-grading-e2e"
+if ! bun run verify:merchant-grading-e2e; then
+  echo "=== Prelaunch env check: FAILED (merchant grading E2E alignment) ===" >&2
+  echo "" >&2
+  echo ">> bun run discover:merchant-grading-e2e (diagnostics)" >&2
+  bun run discover:merchant-grading-e2e || true
+  echo "" >&2
+  echo "Fix env per nextSteps above, then re-run: bun run test:prelaunch:check-env" >&2
+  exit 1
+fi

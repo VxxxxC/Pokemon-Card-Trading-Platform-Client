@@ -36,12 +36,12 @@ describe.skipIf(!hasGradingStripeSmokeEnv()).sequential(
     });
 
     afterAll(async () => {
-      clearSessionCache();
       await wipeCouponFsmRun({
         orderIds: tracked.orderIds,
         userRewardIds: [],
         templateIds: [],
       });
+      await clearSessionCache();
     });
 
     it("G-BP-S1: member_auth single-capture pass captures full buyer total on real Stripe PI", async () => {

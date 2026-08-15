@@ -389,6 +389,46 @@ export async function confirmMerchantBuyerReceipt(params: {
   }
 }
 
+export async function getUnsettledGradingRecoveryTotal(
+  sellerId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin.rpc(
+    "fn_merchant_unsettled_grading_recovery",
+    { p_merchant_id: sellerId },
+  );
+
+  if (error) {
+    throw new Error(`[getUnsettledGradingRecoveryTotal] ${error.message}`);
+  }
+
+  return (data ?? []).reduce(
+    (sum, row) => sum + Number(row.remaining_hkd ?? 0),
+    0,
+  );
+}
+
+/** Settles grading_fail_recovery debt left by integration grading on E2E_SELLER_ID. */
+export async function clearUnsettledGradingRecoveryForE2e(
+  sellerId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await (
+    admin as unknown as {
+      rpc: (
+        fn: "rpc_e2e_clear_unsettled_grading_recovery",
+        args: { p_merchant_id: string },
+      ) => Promise<{ error: { message: string } | null }>;
+    }
+  ).rpc("rpc_e2e_clear_unsettled_grading_recovery", {
+    p_merchant_id: sellerId,
+  });
+
+  if (error) {
+    throw new Error(`[clearUnsettledGradingRecoveryForE2e] ${error.message}`);
+  }
+}
+
 export async function backdatePayoutHold(orderId: string): Promise<void> {
   const admin = createE2eAdminClient();
   const { error } = await (
@@ -424,7 +464,9 @@ export async function runMerchantConnectPayout(
     return snapshot.stripe_transfer_id;
   }
   if (!result.transferId) {
-    throw new Error(`[runMerchantConnectPayout] missing transferId for ${orderId}`);
+    throw new Error(
+      `[runMerchantConnectPayout] zero-net payout (grading recovery likely exceeded gross) for ${orderId}`,
+    );
   }
   return result.transferId;
 }

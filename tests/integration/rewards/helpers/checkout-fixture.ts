@@ -34,13 +34,29 @@ export async function findMerchantListingForIntegration(): Promise<MerchantListi
       throw new Error(`[findMerchantListingForIntegration] ${error.message}`);
     }
 
-    if (data?.seller_persona === "merchant" && data.seller_id) {
-      return {
-        listingId: data.id,
-        sellerId: data.seller_id,
-        price: data.price,
-      };
+    if (!data) {
+      throw new Error(
+        `[findMerchantListingForIntegration] E2E_LISTING_ID not found: ${envListingId}`,
+      );
     }
+
+    if (data.seller_persona !== "merchant" || !data.seller_id) {
+      throw new Error(
+        `[findMerchantListingForIntegration] E2E_LISTING_ID must be a merchant listing (got persona=${String(data.seller_persona)})`,
+      );
+    }
+
+    if (data.seller_id !== envSellerId) {
+      throw new Error(
+        `[findMerchantListingForIntegration] E2E_LISTING_ID seller_id must equal E2E_SELLER_ID (listing ${data.seller_id}, expected ${envSellerId})`,
+      );
+    }
+
+    return {
+      listingId: data.id,
+      sellerId: data.seller_id,
+      price: data.price,
+    };
   }
 
   const { data: kycRows, error: kycError } = await admin
@@ -222,11 +238,35 @@ export async function backdateMerchantOrderCreatedAt(
   }
 }
 
+export type MerchantPendingPaymentExpiryCandidate = {
+  order_id: string;
+  stripe_payment_intent_id: string | null;
+  listing_id: string;
+};
+
+export async function listMerchantPendingPaymentExpiryCandidates(
+  limit = 50,
+): Promise<MerchantPendingPaymentExpiryCandidate[]> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin.rpc(
+    "rpc_list_merchant_pending_payment_expiry_candidates",
+    { p_limit: limit },
+  );
+
+  if (error) {
+    throw new Error(
+      `[listMerchantPendingPaymentExpiryCandidates] ${error.message}`,
+    );
+  }
+
+  return (data ?? []) as MerchantPendingPaymentExpiryCandidate[];
+}
+
 export async function finalizeMerchantPendingPaymentExpiry(
   orderId: string,
-): Promise<void> {
+): Promise<{ success: boolean; already_applied: boolean; escrow_status: string }> {
   const admin = createServiceRoleClient();
-  const { error } = await admin.rpc(
+  const { data, error } = await admin.rpc(
     "rpc_finalize_merchant_pending_payment_expiry",
     { p_order_id: orderId },
   );
@@ -234,6 +274,18 @@ export async function finalizeMerchantPendingPaymentExpiry(
   if (error) {
     throw new Error(`[finalizeMerchantPendingPaymentExpiry] ${error.message}`);
   }
+
+  const payload = data as {
+    success?: boolean;
+    already_applied?: boolean;
+    escrow_status?: string;
+  };
+
+  return {
+    success: payload.success === true,
+    already_applied: payload.already_applied === true,
+    escrow_status: payload.escrow_status ?? "",
+  };
 }
 
 export async function restoreMerchantOrderCouponOnVoid(

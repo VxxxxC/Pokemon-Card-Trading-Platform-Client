@@ -2,7 +2,7 @@ import {
   listAdminRewardActivities,
   setAdminRewardActivityStatus,
 } from "@/app/actions/admin-reward-activities";
-import { runAsAdmin } from "../../shared/auth-context";
+import { getAdminClient, runAsAdmin, warmSession } from "../../shared/auth-context";
 import { createServiceRoleClient } from "../../shared/supabase-admin";
 
 async function listTemplateIdsByTitlePrefix(
@@ -92,8 +92,30 @@ export async function cleanupMatrixRun(
 export async function wipeCouponFsmRun(params: {
   orderIds: string[];
   userRewardIds: string[];
+  templateIds?: string[];
 }): Promise<void> {
   const admin = createServiceRoleClient();
+
+  if (params.templateIds && params.templateIds.length > 0) {
+    await warmSession("admin");
+    await runAsAdmin(async () => {
+      const client = getAdminClient();
+      for (const templateId of params.templateIds ?? []) {
+        const { error } = await client.rpc(
+          "rpc_admin_set_reward_activity_status",
+          {
+            p_template_id: templateId,
+            p_status: "archived",
+          },
+        );
+        if (error) {
+          throw new Error(
+            `[wipeCouponFsmRun] archive template ${templateId}: ${error.message}`,
+          );
+        }
+      }
+    });
+  }
 
   for (const orderId of params.orderIds) {
     const { error: merchantReleaseError } = await admin.rpc(

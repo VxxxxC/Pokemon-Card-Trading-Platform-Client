@@ -39,6 +39,8 @@ loadEnvFile(".env");
 loadEnvFile(".env.local");
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+const productionGate = process.env.PRODUCTION_GATE === "1";
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === "1";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -52,15 +54,18 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL,
+    timezoneId: "Asia/Hong_Kong",
     trace: "on-first-retry",
     actionTimeout: 30_000,
   },
-  webServer: {
-    command: "bun run dev",
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: skipWebServer
+    ? undefined
+    : {
+        command: productionGate ? "bun run start" : "bun run dev",
+        url: baseURL,
+        reuseExistingServer: productionGate || !process.env.CI,
+        timeout: 120_000,
+      },
   projects: [
     {
       name: "setup",

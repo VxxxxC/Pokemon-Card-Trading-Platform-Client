@@ -80,7 +80,11 @@ function localDateTimeToIso(value: string): string {
   if (!value.trim()) {
     return "";
   }
-  const date = new Date(value);
+  const trimmed = value.trim();
+  const withHongKongOffset = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmed)
+    ? `${trimmed}:00+08:00`
+    : trimmed;
+  const date = new Date(withHongKongOffset);
   if (Number.isNaN(date.getTime())) {
     return "";
   }

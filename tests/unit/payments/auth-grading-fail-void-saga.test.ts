@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const stripeMocks = vi.hoisted(() => ({
   cancel: vi.fn(),
   capture: vi.fn(),
+  retrieve: vi.fn(),
   refundsCreate: vi.fn(),
+}));
+
+const refreshMocks = vi.hoisted(() => ({
+  ensureAuthEscrowAuthorizationFresh: vi.fn(),
 }));
 
 vi.mock("@/lib/stripe", () => ({
@@ -11,11 +16,16 @@ vi.mock("@/lib/stripe", () => ({
     paymentIntents: {
       cancel: stripeMocks.cancel,
       capture: stripeMocks.capture,
+      retrieve: stripeMocks.retrieve,
     },
     refunds: {
       create: stripeMocks.refundsCreate,
     },
   },
+}));
+
+vi.mock("@/lib/payments/auth-authorization-refresh", () => ({
+  ensureAuthEscrowAuthorizationFresh: refreshMocks.ensureAuthEscrowAuthorizationFresh,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -60,7 +70,12 @@ describe("auth-grading-fail-void-saga", () => {
 
     stripeMocks.cancel.mockResolvedValue({ id: "pi_cancelled" });
     stripeMocks.capture.mockResolvedValue({ id: "pi_captured" });
+    stripeMocks.retrieve.mockResolvedValue({ id: "pi_test", amount: 105000 });
     stripeMocks.refundsCreate.mockResolvedValue({ id: "re_test" });
+    refreshMocks.ensureAuthEscrowAuthorizationFresh.mockResolvedValue({
+      ok: true,
+      paymentIntentId: "pi_refreshed",
+    });
   });
 
   it("buyer fault single captures auth_fee only", async () => {
@@ -88,22 +103,27 @@ describe("auth-grading-fail-void-saga", () => {
     });
 
     expect(result).toEqual({ ok: true });
-    expect(stripeMocks.capture).toHaveBeenCalledWith(
-      "pi_test",
+    expect(refreshMocks.ensureAuthEscrowAuthorizationFresh).toHaveBeenCalled();
+    const captureCall = stripeMocks.capture.mock.calls[0];
+    expect(captureCall?.[0]).toBe("pi_refreshed");
+    expect(captureCall?.[1]).toMatchObject({
+      amount_to_capture: 15000,
+      metadata: expect.objectContaining({ capture_stage: "auth_grading_fail" }),
+    });
+    expect(captureCall?.[1]).not.toHaveProperty("final_capture");
+    expect(captureCall?.[2]).toMatchObject({
+      idempotencyKey:
+        "auth-grading-fail:capture_auth_fee_only:single:member:order-buyer",
+    });
+    expect(stripeMocks.cancel).not.toHaveBeenCalled();
+    expect(finalizeRpc).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount_to_capture: 15000,
-        final_capture: true,
-        metadata: expect.objectContaining({ capture_stage: "auth_grading_fail" }),
-      }),
-      expect.objectContaining({
-        idempotencyKey: "auth-grading-fail:capture_auth_fee_only:member:order-buyer",
+        p_payment_intent_id: "pi_refreshed",
       }),
     );
-    expect(stripeMocks.cancel).not.toHaveBeenCalled();
-    expect(finalizeRpc).toHaveBeenCalled();
   });
 
-  it("seller fault single cancels payment intent", async () => {
+  it("seller fault single cancels payment intent without refresh", async () => {
     prepareRpc.mockResolvedValue({
       data: {
         success: true,
@@ -128,6 +148,7 @@ describe("auth-grading-fail-void-saga", () => {
     });
 
     expect(result).toEqual({ ok: true });
+    expect(refreshMocks.ensureAuthEscrowAuthorizationFresh).not.toHaveBeenCalled();
     expect(stripeMocks.cancel).toHaveBeenCalled();
     expect(stripeMocks.capture).not.toHaveBeenCalled();
   });

@@ -18,6 +18,10 @@ export function hasGradingStripeSmokeEnv(): boolean {
   return hasBaseIntegrationEnv() && Boolean(readEnv("STRIPE_SECRET_KEY"));
 }
 
+export function hasStripeWebhookRouteEnv(): boolean {
+  return hasGradingStripeSmokeEnv();
+}
+
 export function hasBunnyIntegrationEnv(): boolean {
   return (
     hasBaseIntegrationEnv() &&

@@ -1,5 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect } from "vitest";
 import { seedMerchantOrderReadyForBuyerConfirm } from "./helpers/merchant-order-fixture";
+import {
+  hasMerchantGradingEnvVars,
+  merchantIt,
+  warmMerchantGradingEnv,
+} from "../grading/helpers/grading-merchant-env";
 import {
   clearSessionCache,
   getBuyerClient,
@@ -46,6 +51,9 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
 
     beforeAll(async () => {
       await warmSession("buyer");
+      if (hasMerchantGradingEnvVars()) {
+        await warmMerchantGradingEnv();
+      }
       await setPlatformCommissionRate(DEFAULT_COMMISSION_RATE);
     });
 
@@ -58,7 +66,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       await clearSessionCache();
     });
 
-    it("snapshots configured rate on buyer confirm", async () => {
+    merchantIt("snapshots configured rate on buyer confirm", async () => {
       await setPlatformCommissionRate(0.1);
       expect(await readPlatformCommissionRate()).toBe(0.1);
 
@@ -90,7 +98,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(order?.payout_status).toBe("held");
     });
 
-    it("prepare honours snapshot after settings change during T+7 hold", async () => {
+    merchantIt("prepare honours snapshot after settings change during T+7 hold", async () => {
       await setPlatformCommissionRate(DEFAULT_COMMISSION_RATE);
 
       const buyerId = getBuyerUserId();
@@ -143,7 +151,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(afterPrepare?.payout_status).toBe("processing");
     });
 
-    it("does not rewrite commission snapshot on completed orders when settings change", async () => {
+    merchantIt("does not rewrite commission snapshot on completed orders when settings change", async () => {
       const admin = createServiceRoleClient();
       const priorOrderId = createdOrderIds[0];
       expect(priorOrderId).toBeTruthy();

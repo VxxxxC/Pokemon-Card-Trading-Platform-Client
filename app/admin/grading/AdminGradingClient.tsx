@@ -181,6 +181,9 @@ export function AdminGradingClient({
   const [gradingOptionId, setGradingOptionId] = useState("");
   const [failReason, setFailReason] = useState("");
   const [faultParty, setFaultParty] = useState<AdminGradingFaultParty | "">("");
+  const [carrierLiabilityParty, setCarrierLiabilityParty] = useState<
+    "seller" | "platform" | ""
+  >("");
   const [outboundTracking, setOutboundTracking] = useState("");
   const [fpsReference, setFpsReference] = useState("");
   const [settlementNotes, setSettlementNotes] = useState("");
@@ -660,6 +663,22 @@ export function AdminGradingClient({
                     <option value="carrier">物流</option>
                     <option value="inconclusive">無法判定</option>
                   </select>
+                  {faultParty === "carrier" ? (
+                    <select
+                      name="carrierLiabilityParty"
+                      value={carrierLiabilityParty}
+                      onChange={(event) =>
+                        setCarrierLiabilityParty(
+                          event.target.value as "seller" | "platform" | "",
+                        )
+                      }
+                      className="mt-2 h-10 w-full rounded-lg border border-white/10 bg-[#1A1612] px-3 text-xs text-text-primary"
+                    >
+                      <option value="">物流承擔方（必填）</option>
+                      <option value="seller">賣家物流</option>
+                      <option value="platform">平台物流</option>
+                    </select>
+                  ) : null}
                   <textarea
                     value={failReason}
                     onChange={(event) => setFailReason(event.target.value)}
@@ -670,18 +689,31 @@ export function AdminGradingClient({
                     type="button"
                     variant="destructive"
                     className="mt-2"
-                    disabled={isPending || !faultParty}
+                    disabled={
+                      isPending ||
+                      !faultParty ||
+                      (faultParty === "carrier" && !carrierLiabilityParty)
+                    }
                     onClick={() =>
                       runMutation(
                         async () => {
                           if (!faultParty) {
                             return { success: false, error: "請選擇責任方" };
                           }
+                          if (faultParty === "carrier" && !carrierLiabilityParty) {
+                            return {
+                              success: false,
+                              error: "物流責任請選擇承擔方",
+                            };
+                          }
                           const result = await adminFailGradingAndRefund({
                             orderKind: selected.order_kind,
                             orderId: selected.order_id,
                             faultParty,
                             reason: failReason,
+                            ...(faultParty === "carrier" && carrierLiabilityParty
+                              ? { carrierLiabilityParty }
+                              : {}),
                           });
                           return result.success
                             ? { success: true }

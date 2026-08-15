@@ -4,11 +4,13 @@ import {
   assertPaymentIntentMatchesBuyerTotal,
   assertSellerListingAlignment,
   assertTransferPayoutRule,
+  clearUnsettledGradingRecoveryForE2e,
   hasStripeReconcileEnv,
   resolveReconcileMerchantListing,
   runMerchantConnectPayout,
   waitForMerchantOrderPaymentHeld,
 } from "./helpers/stripe-reconcile";
+import { getChatRealtimeFixtures } from "./fixtures/chat-test-data";
 import {
   buyMerchantListingAndReachCheckout,
   completeMerchantDirectCheckout,
@@ -47,6 +49,10 @@ test.describe("Platform rewards Stripe reconcile E2E", () => {
     test.skip(!hasBuyerAuthFixtures() || !hasCoreMerchantFixtures(), "Missing buyer/merchant fixtures");
     test.skip(!hasSellerAuthFixtures(), "Missing E2E_SELLER_EMAIL or E2E_SELLER_PASSWORD");
     await assertSellerListingAlignment();
+    const sellerId = getChatRealtimeFixtures().sellerId?.trim();
+    if (sellerId) {
+      await clearUnsettledGradingRecoveryForE2e(sellerId);
+    }
   });
 
   test("R1 PI amount matches buyer_total (free-shipping coupon)", async ({

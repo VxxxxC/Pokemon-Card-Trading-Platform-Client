@@ -7,6 +7,8 @@ export type MerchantSellerActionFlags = {
   canSubmitLogistics: boolean;
   /** Non-auth orders: mark shipped / meetup done at payment_held. */
   canSubmitDirectFulfillment: boolean;
+  /** Auth orders: cancel before platform intake (G-CAN1M). */
+  canCancelAuthOrder: boolean;
   canReviewBuyer: boolean;
 };
 
@@ -16,6 +18,8 @@ export function getMerchantSellerActionFlags(input: {
   requiresAuthentication?: boolean | null;
   shippingMethod?: string | null;
   buyerConfirmedAt?: string | null;
+  paymentCaptureStatus?: Tables<"merchant_orders">["payment_capture_status"] | null;
+  platformReceivedAt?: string | null;
 }): MerchantSellerActionFlags {
   const {
     escrowStatus,
@@ -23,6 +27,8 @@ export function getMerchantSellerActionFlags(input: {
     requiresAuthentication,
     shippingMethod,
     buyerConfirmedAt,
+    paymentCaptureStatus,
+    platformReceivedAt,
   } = input;
   const isAuth = Boolean(requiresAuthentication);
   const canReview =
@@ -35,6 +41,11 @@ export function getMerchantSellerActionFlags(input: {
       !isAuth &&
       escrowStatus === "payment_held" &&
       shippingMethod !== "meetup",
+    canCancelAuthOrder:
+      isAuth &&
+      escrowStatus === "payment_held" &&
+      paymentCaptureStatus === "authorized" &&
+      !platformReceivedAt,
     canReviewBuyer: canReview && !hasReviewedByMe,
   };
 }

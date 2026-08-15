@@ -487,6 +487,7 @@ export async function adminFailGradingAndRefund(input: {
   orderId: string;
   faultParty: GradingFaultParty;
   reason?: string;
+  carrierLiabilityParty?: "seller" | "platform";
 }): Promise<ActionResult<{ applied: true }>> {
   const guard = await requireAdmin();
   if (!guard.ok) {
@@ -502,12 +503,25 @@ export async function adminFailGradingAndRefund(input: {
     return { success: false, error: "請選擇責任方" };
   }
 
+  if (
+    input.faultParty === "carrier" &&
+    input.carrierLiabilityParty !== "seller" &&
+    input.carrierLiabilityParty !== "platform"
+  ) {
+    return { success: false, error: "物流責任請選擇承擔方（賣家或平台）" };
+  }
+
+  if (input.faultParty === "platform" && !input.reason?.trim()) {
+    return { success: false, error: "平台責任請填寫原因" };
+  }
+
   try {
     const result = await runAuthGradingFailVoidSaga({
       orderKind: input.orderKind,
       orderId,
       faultParty: input.faultParty,
       reason: input.reason,
+      carrierLiabilityParty: input.carrierLiabilityParty,
     });
 
     if (!result.ok) {

@@ -184,7 +184,7 @@ describe.skipIf(!hasRewardsIntegrationEnv()).sequential(
   it("I-F3: future flash campaign cannot claim before starts_at", async () => {
     const title = uniqueTitle("I-F3", runId);
     const campaignName = `${titlePrefix} I-F3 Flash`;
-    await publishActivity(buildFutureFlashFreeShipInput(title, campaignName));
+    await publishActivity(buildFutureFlashFreeShipInput(title, campaignName, 24));
 
     const templateId = await getTemplateIdByTitle(title);
     expect(templateId).toBeTruthy();

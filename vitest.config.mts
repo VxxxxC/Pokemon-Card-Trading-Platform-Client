@@ -4,12 +4,10 @@ import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
+const env = loadEnv(process.env.MODE ?? "test", rootDir, "");
+Object.assign(process.env, env);
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, rootDir, "");
-  Object.assign(process.env, env);
-
-  return {
+export default defineConfig({
     resolve: {
       alias: {
         "@": rootDir,
@@ -26,5 +24,4 @@ export default defineConfig(({ mode }) => {
       testTimeout: 120_000,
       hookTimeout: 120_000,
     },
-  };
 });

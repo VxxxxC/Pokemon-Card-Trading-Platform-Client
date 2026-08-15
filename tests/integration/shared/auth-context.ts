@@ -89,6 +89,14 @@ export function getBuyerUserId(): string {
   return cached.user.id;
 }
 
+export function getSellerUserId(): string {
+  const cached = sessionCache.get("seller");
+  if (!cached?.user.id) {
+    throw new Error("Seller session not warmed; call warmSession('seller') in beforeAll");
+  }
+  return cached.user.id;
+}
+
 export function getAdminUserId(): string {
   const cached = sessionCache.get("admin");
   if (!cached?.user.id) {

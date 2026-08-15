@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { SEED_REWARD_TEMPLATE_IDS } from "@/lib/constants/rewards";
 import {
   buildFlashCampaignScheduleForE2e,
+  buildOpenActivityWindowForE2e,
   clearUserRewardsForTemplateForE2e,
   ensureE2eFlashBuyer,
   findLatestUserRewardForTemplate,
@@ -46,14 +47,7 @@ async function loginAsAdmin(page: Page): Promise<void> {
 }
 
 function buildOpenActivityWindow() {
-  const now = Date.now();
-  const pad = (value: number) => String(value).padStart(2, "0");
-  const toLocal = (date: Date) =>
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  return {
-    startsAt: toLocal(new Date(now - 2 * 60 * 60 * 1000)),
-    endsAt: toLocal(new Date(now + 48 * 60 * 60 * 1000)),
-  };
+  return buildOpenActivityWindowForE2e();
 }
 
 test.describe.configure({ mode: "serial" });

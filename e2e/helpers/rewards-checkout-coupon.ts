@@ -227,14 +227,38 @@ export async function waitForMerchantDirectCheckoutReady(
   const summaryHeading = page.getByRole("heading", {
     name: /訂單財務明細總結/,
   });
-  const couponSection = page.getByText("平台優惠券");
-  await expect(summaryHeading.or(couponSection).first()).toBeVisible({
-    timeout: 30_000,
-  });
-  await expect(summaryHeading).toBeVisible({ timeout: 30_000 });
-  await expect(
-    checkoutOrderSummary(page).getByText("卡牌商品總額", { exact: true }),
-  ).toBeVisible({ timeout: 30_000 });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (!page.url().includes("/checkout/")) {
+      await page.waitForURL(/\/checkout\//, { timeout: 15_000 }).catch(() => {});
+    }
+
+    try {
+      await expect
+        .poll(
+          async () => {
+            const hasHeading = await summaryHeading.isVisible().catch(() => false);
+            if (!hasHeading) {
+              return "pending";
+            }
+            const hasSubtotal = await checkoutOrderSummary(page)
+              .getByText("卡牌商品總額", { exact: true })
+              .isVisible()
+              .catch(() => false);
+            return hasSubtotal ? "ready" : "pending";
+          },
+          { timeout: 45_000 },
+        )
+        .toBe("ready");
+      return;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1_000);
+    }
+  }
 }
 
 type CheckoutCouponPickerPollState =

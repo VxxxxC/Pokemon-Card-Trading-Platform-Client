@@ -1,11 +1,18 @@
 import { createServiceRoleClient } from "../../shared/supabase-admin";
 
-export async function promoteMemberAuthOrderToGrading(
-  orderId: string,
-  paymentIntentId: string,
-): Promise<void> {
-  const admin = createServiceRoleClient();
+export type MemberAuthPipelineAmounts = {
+  itemSubtotal: number;
+  authFee: number;
+  inbound: number;
+  outbound: number;
+  buyerTotal: number;
+  buyerTotalCents: number;
+};
 
+export async function readMemberAuthPipelineAmounts(
+  orderId: string,
+): Promise<MemberAuthPipelineAmounts> {
+  const admin = createServiceRoleClient();
   const { data: existing, error: readError } = await admin
     .from("member_orders")
     .select("final_price, item_subtotal, auth_fee")
@@ -14,7 +21,7 @@ export async function promoteMemberAuthOrderToGrading(
 
   if (readError || !existing) {
     throw new Error(
-      `[promoteMemberAuthOrderToGrading] read: ${readError?.message ?? "missing order"}`,
+      `[readMemberAuthPipelineAmounts] read: ${readError?.message ?? "missing order"}`,
     );
   }
 
@@ -23,6 +30,143 @@ export async function promoteMemberAuthOrderToGrading(
   const inbound = 30;
   const outbound = 30;
   const buyerTotal = itemSubtotal + authFee + inbound + outbound;
+
+  return {
+    itemSubtotal,
+    authFee,
+    inbound,
+    outbound,
+    buyerTotal,
+    buyerTotalCents: Math.round(buyerTotal * 100),
+  };
+}
+
+export async function authorizeMemberAuthOrderForPipeline(
+  orderId: string,
+  paymentIntentId: string,
+): Promise<MemberAuthPipelineAmounts> {
+  const admin = createServiceRoleClient();
+  const amounts = await readMemberAuthPipelineAmounts(orderId);
+
+  const { error: amountsError } = await admin
+    .from("member_orders")
+    .update({
+      item_subtotal: amounts.itemSubtotal,
+      auth_fee: amounts.authFee,
+      inbound_shipping_fee: amounts.inbound,
+      outbound_shipping_fee: amounts.outbound,
+      total_amount: amounts.buyerTotal,
+      buyer_total_amount: amounts.buyerTotal,
+      escrow_capture_model: "single",
+      use_authentication: true,
+    })
+    .eq("id", orderId);
+
+  if (amountsError) {
+    throw new Error(`[authorizeMemberAuthOrderForPipeline] amounts: ${amountsError.message}`);
+  }
+
+  const { error: authError } = await admin.rpc(
+    "rpc_mark_member_auth_order_authorized",
+    {
+      p_order_id: orderId,
+      p_payment_intent_id: paymentIntentId,
+      p_amounts: {},
+    },
+  );
+  if (authError) {
+    throw new Error(`[authorizeMemberAuthOrderForPipeline] authorize: ${authError.message}`);
+  }
+
+  return amounts;
+}
+
+export async function getMemberOrderSellerId(orderId: string): Promise<string> {
+  const admin = createServiceRoleClient();
+  const { data, error } = await admin
+    .from("member_orders")
+    .select("seller_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error || !data?.seller_id) {
+    throw new Error(`[getMemberOrderSellerId] ${error?.message ?? "missing seller"}`);
+  }
+
+  return data.seller_id;
+}
+
+export async function promoteMemberAuthOrderToGradingLegacy(
+  orderId: string,
+  paymentIntentId: string,
+): Promise<MemberAuthPipelineAmounts> {
+  const admin = createServiceRoleClient();
+  const amounts = await readMemberAuthPipelineAmounts(orderId);
+
+  const { error: amountsError } = await admin
+    .from("member_orders")
+    .update({
+      item_subtotal: amounts.itemSubtotal,
+      auth_fee: amounts.authFee,
+      inbound_shipping_fee: amounts.inbound,
+      outbound_shipping_fee: amounts.outbound,
+      total_amount: amounts.buyerTotal,
+      buyer_total_amount: amounts.buyerTotal,
+      escrow_capture_model: null,
+      use_authentication: true,
+    })
+    .eq("id", orderId);
+
+  if (amountsError) {
+    throw new Error(`[promoteMemberAuthOrderToGradingLegacy] amounts: ${amountsError.message}`);
+  }
+
+  const { error: authError } = await admin.rpc(
+    "rpc_mark_member_auth_order_authorized",
+    {
+      p_order_id: orderId,
+      p_payment_intent_id: paymentIntentId,
+      p_amounts: {},
+    },
+  );
+  if (authError) {
+    throw new Error(`[promoteMemberAuthOrderToGradingLegacy] authorize: ${authError.message}`);
+  }
+
+  const { error } = await admin
+    .from("member_orders")
+    .update({
+      escrow_status: "grading",
+      platform_received_at: new Date().toISOString(),
+      inbound_tracking_no: `SF-LEGACY-${orderId.slice(0, 8)}`,
+      payment_capture_status: "auth_fee_captured",
+      escrow_capture_model: null,
+      refund_status: "none",
+      refund_error: null,
+      auth_result: null,
+      fault_party: null,
+    })
+    .eq("id", orderId);
+
+  if (error) {
+    throw new Error(`[promoteMemberAuthOrderToGradingLegacy] update: ${error.message}`);
+  }
+
+  return amounts;
+}
+
+export async function promoteMemberAuthOrderToGrading(
+  orderId: string,
+  paymentIntentId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+
+  const amounts = await readMemberAuthPipelineAmounts(orderId);
+  const itemSubtotal = amounts.itemSubtotal;
+  const authFee = amounts.authFee;
+  const inbound = amounts.inbound;
+  const outbound = amounts.outbound;
+  const buyerTotal = amounts.buyerTotal;
 
   const { error: amountsError } = await admin
     .from("member_orders")
@@ -129,4 +273,27 @@ export async function getSellerReceivableForOrder(orderId: string) {
   }
 
   return data;
+}
+
+export async function promoteMemberAuthOrderToShippedPassed(
+  orderId: string,
+  paymentIntentId: string,
+): Promise<void> {
+  await promoteMemberAuthOrderToGrading(orderId, paymentIntentId);
+
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("member_orders")
+    .update({
+      use_authentication: true,
+      status: "pending",
+      escrow_status: "shipped",
+      auth_result: "passed",
+      payment_capture_status: "fully_captured",
+    })
+    .eq("id", orderId);
+
+  if (error) {
+    throw new Error(`[promoteMemberAuthOrderToShippedPassed] ${error.message}`);
+  }
 }

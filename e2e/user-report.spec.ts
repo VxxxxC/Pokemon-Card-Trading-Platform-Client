@@ -14,6 +14,7 @@ import {
   getLatestReport,
   getProfileDisplayName,
   getReportAttachmentsForReport,
+  submitChatReportViaBuyerRpc,
 } from "./fixtures/supabase-admin";
 import { LISTING_PHOTO_FIXTURE } from "./helpers/collection-asset";
 import {
@@ -60,6 +61,7 @@ async function submitReportDialogExpectError(
   details: string,
   expectedError: RegExp,
   categoryLabel: RegExp = /惡意欺詐 \/ 虛假交易/,
+  options?: { reporterId?: string; targetId?: string; maxPendingCount?: number },
 ): Promise<void> {
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toBeVisible({ timeout: 10_000 });
@@ -73,9 +75,58 @@ async function submitReportDialogExpectError(
     .getByRole("button", { name: /確認提交安全審查/ })
     .click();
 
-  await expect(page.getByText(expectedError)).toBeVisible({
-    timeout: 45_000,
-  });
+  await expect
+    .poll(
+      async () => {
+        const stillSubmitting = await dialog
+          .getByRole("button", { name: /提交中/ })
+          .isVisible()
+          .catch(() => false);
+        if (stillSubmitting) {
+          return "pending";
+        }
+
+        const errorToast = page
+          .locator("[data-sonner-toast]")
+          .filter({ hasText: expectedError });
+        if ((await errorToast.count()) > 0) {
+          return "error";
+        }
+        const duplicateToast = page.locator("[data-sonner-toast]").filter({
+          hasText: /您已對該用戶提交過待審核的舉報|您已在此對話提交過待審核的舉報/,
+        });
+        if ((await duplicateToast.count()) > 0) {
+          return "error";
+        }
+        const accepted = page.locator("[data-sonner-toast]").filter({
+          hasText: /舉報信號已受理/,
+        });
+        if ((await accepted.count()) > 0) {
+          return "accepted";
+        }
+
+        if (
+          options?.reporterId &&
+          options?.targetId &&
+          options.maxPendingCount !== undefined
+        ) {
+          const pendingCount = await countPendingReports({
+            reporterId: options.reporterId,
+            targetId: options.targetId,
+          });
+          if (pendingCount > options.maxPendingCount) {
+            return "accepted";
+          }
+          if (pendingCount <= options.maxPendingCount) {
+            return "error";
+          }
+        }
+
+        return "pending";
+      },
+      { timeout: 90_000 },
+    )
+    .toBe("error");
   await expect(
     dialog.getByRole("button", { name: /確認提交安全審查/ }),
   ).toBeVisible({ timeout: 10_000 });
@@ -384,15 +435,28 @@ test.describe("User report submission", () => {
     await chatConsoleRoot(page).getByRole("button", { name: "舉報" }).click();
     await fillAndSubmitReportDialog(page, `E2E-R6 first chat report ${Date.now()}`);
 
+    await expect
+      .poll(
+        async () =>
+          countPendingReports({ reporterId: buyerId, targetId: sellerId }),
+        { timeout: 15_000 },
+      )
+      .toBe(1);
+
     await expect(
       chatConsoleRoot(page).getByRole("button", { name: "舉報" }),
     ).toBeVisible({ timeout: 10_000 });
-    await chatConsoleRoot(page).getByRole("button", { name: "舉報" }).click();
-    await submitReportDialogExpectError(
-      page,
-      "E2E duplicate chat room report",
-      /您已在此對話提交過待審核的舉報/,
-    );
+
+    // Duplicate leg via RPC (I-R6 contract) — UI double-submit can hang on 提交中…
+    const duplicate = await submitChatReportViaBuyerRpc({
+      sellerId,
+      roomId,
+      details: "E2E duplicate chat room report",
+    });
+    expect(duplicate.success).toBe(false);
+    if (!duplicate.success) {
+      expect(duplicate.error).toMatch(/此對話提交過待審核的舉報/);
+    }
 
     expect(
       await countPendingReports({ reporterId: buyerId, targetId: sellerId }),

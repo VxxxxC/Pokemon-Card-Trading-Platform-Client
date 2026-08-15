@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { IoChevronBack } from "react-icons/io5";
 import {
+  cancelMerchantAuthOrder,
   submitMerchantDirectFulfillment,
   submitMerchantLogistics,
   type MerchantOrderDetail,
@@ -70,6 +71,19 @@ async function runSubmitDirectFulfillment(
     return;
   }
   toast.success(trackingNo ? "物流單號已提交" : "已確認面交完成");
+  onSuccess?.();
+}
+
+async function runCancelMerchantAuthOrder(
+  orderId: string,
+  onSuccess?: () => void,
+): Promise<void> {
+  const result = await cancelMerchantAuthOrder(orderId);
+  if (!result.success) {
+    toast.error(result.error);
+    return;
+  }
+  toast.success("訂單已取消");
   onSuccess?.();
 }
 
@@ -281,6 +295,19 @@ export function MerchantOrderDetailView({
               ) : null}
             </div>
           )}
+
+          {merchantOrder.canCancelAuthOrder ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void runCancelMerchantAuthOrder(order.id, refreshAfterLogistics);
+                }}
+              >
+                取消訂單
+              </button>
+            </div>
+          ) : null}
 
           {merchantOrder.canSubmitLogistics &&
             !merchantOrder.inboundTrackingNo && (

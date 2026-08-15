@@ -154,9 +154,11 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(orderRow?.status).toBe("completed");
 
       const holdUntil = new Date(orderRow!.payout_hold_until!).getTime();
+      const confirmedAt = new Date(orderRow!.buyer_confirmed_at!).getTime();
       const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-      expect(holdUntil).toBeGreaterThan(Date.now() + threeDaysMs - 5 * 60 * 1000);
-      expect(holdUntil).toBeLessThan(Date.now() + threeDaysMs + 5 * 60 * 1000);
+      const toleranceMs = 5 * 60 * 1000;
+      expect(holdUntil).toBeGreaterThan(confirmedAt + threeDaysMs - toleranceMs);
+      expect(holdUntil).toBeLessThan(confirmedAt + threeDaysMs + toleranceMs);
     });
 
     it("1B: lists ready candidates after hold elapses", async () => {

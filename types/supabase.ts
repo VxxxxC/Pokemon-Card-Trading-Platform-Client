@@ -3043,6 +3043,14 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      fn_fps_payout_blocked_for_complete: {
+        Args: {
+          p_fps_id_snapshot: string
+          p_fps_name_snapshot: string
+          p_status: Database["public"]["Enums"]["payout_request_status"]
+        }
+        Returns: boolean
+      }
       fn_get_check_in_daily_points: {
         Args: { p_cycle_day: number }
         Returns: number
@@ -3167,14 +3175,6 @@ export type Database = {
       fn_platform_commission_rate: { Args: never; Returns: number }
       fn_platform_financial_config: { Args: never; Returns: Json }
       fn_platform_fps_manual_transfer_fee_hkd: { Args: never; Returns: number }
-      fn_fps_payout_blocked_for_complete: {
-        Args: {
-          p_fps_id_snapshot: string
-          p_fps_name_snapshot: string
-          p_status: Database["public"]["Enums"]["payout_request_status"]
-        }
-        Returns: boolean
-      }
       fn_preview_moderation_order_refund_breakdown: {
         Args: {
           p_carrier_liability_party?: string
@@ -3411,6 +3411,10 @@ export type Database = {
         Args: { p_adjustment: number; p_case_id: string; p_reason?: string }
         Returns: Json
       }
+      rpc_admin_batch_complete_fps_payout_requests: {
+        Args: { p_admin_id: string; p_request_ids: string[] }
+        Returns: Json
+      }
       rpc_admin_clear_seller_settlement: {
         Args: {
           p_fps_reference?: string
@@ -3454,22 +3458,6 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string; p_reason?: string }
         Returns: Json
       }
-      rpc_admin_set_reward_activity_status: {
-        Args: { p_status: string; p_template_id: string }
-        Returns: Json
-      }
-      rpc_admin_set_reward_campaign_status: {
-        Args: { p_campaign_id: string; p_status: string }
-        Returns: Json
-      }
-      rpc_admin_set_reward_template_status: {
-        Args: { p_status: string; p_template_id: string }
-        Returns: Json
-      }
-      rpc_e2e_set_merchant_order_payout_retry_test_state: {
-        Args: { p_order_id: string; p_scenario: string }
-        Returns: Json
-      }
       rpc_admin_reset_merchant_connect_payout_retry: {
         Args: { p_admin_id: string; p_order_id: string }
         Returns: Json
@@ -3483,8 +3471,16 @@ export type Database = {
         }
         Returns: Json
       }
-      rpc_admin_batch_complete_fps_payout_requests: {
-        Args: { p_admin_id: string; p_request_ids: string[] }
+      rpc_admin_set_reward_activity_status: {
+        Args: { p_status: string; p_template_id: string }
+        Returns: Json
+      }
+      rpc_admin_set_reward_campaign_status: {
+        Args: { p_campaign_id: string; p_status: string }
+        Returns: Json
+      }
+      rpc_admin_set_reward_template_status: {
+        Args: { p_status: string; p_template_id: string }
         Returns: Json
       }
       rpc_admin_submit_grading_outbound: {
@@ -3548,6 +3544,10 @@ export type Database = {
       }
       rpc_cancel_member_order: {
         Args: { p_order_id: string; p_user_id: string }
+        Returns: Json
+      }
+      rpc_cancel_merchant_auth_order: {
+        Args: { p_order_id: string; p_merchant_id: string }
         Returns: Json
       }
       rpc_claim_flash_reward: { Args: { p_campaign_id: string }; Returns: Json }
@@ -3619,6 +3619,14 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_e2e_seed_merchant_auth_confirm_guard_order: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_payment_intent_suffix?: string
+        }
+        Returns: string
+      }
       rpc_e2e_seed_merchant_pending_payment_order: {
         Args: { p_buyer_id: string; p_listing_id: string }
         Returns: string
@@ -3631,6 +3639,10 @@ export type Database = {
           p_payment_intent_suffix?: string
         }
         Returns: string
+      }
+      rpc_e2e_set_merchant_order_payout_retry_test_state: {
+        Args: { p_order_id: string; p_scenario: string }
+        Returns: Json
       }
       rpc_fail_member_auth_order: {
         Args: { p_order_id: string }
@@ -3877,6 +3889,7 @@ export type Database = {
       }
       rpc_prepare_auth_grading_fail: {
         Args: {
+          p_carrier_liability_party?: string
           p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
           p_order_id: string
           p_order_kind: string

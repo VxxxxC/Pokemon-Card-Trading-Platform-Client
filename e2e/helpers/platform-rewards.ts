@@ -30,6 +30,8 @@ export type MerchantOrderCouponSnapshot = {
   merchant_payout_amount: number | null;
   escrow_status: string | null;
   escrow_capture_model: string | null;
+  payment_capture_status: string | null;
+  requires_authentication: boolean | null;
 };
 
 type RewardTemplateAuditSnapshot = {
@@ -173,7 +175,7 @@ export async function getMerchantOrderCouponSnapshot(
   const { data, error } = await admin
     .from("merchant_orders")
     .select(
-      "id, item_subtotal, auth_fee, shipping_fee, inbound_shipping_fee, outbound_shipping_fee, total_amount, buyer_total_amount, platform_subsidy_amount, coupon_user_reward_id, coupon_type, merchant_payout_amount, escrow_status, escrow_capture_model",
+      "id, item_subtotal, auth_fee, shipping_fee, inbound_shipping_fee, outbound_shipping_fee, total_amount, buyer_total_amount, platform_subsidy_amount, coupon_user_reward_id, coupon_type, merchant_payout_amount, escrow_status, escrow_capture_model, payment_capture_status, requires_authentication",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -655,7 +657,10 @@ export async function completeMerchantAuthCheckout(
   await fillStripePaymentElement(page);
   await page.getByRole("button", { name: /確認支付 HK\$/ }).click();
 
-  await page.waitForURL(/\/checkout\/[^/]+\/success/, { timeout: 120_000 });
+  await page.waitForURL(/\/checkout\/[^/]+\/success/, {
+    timeout: 120_000,
+    waitUntil: "commit",
+  });
 }
 
 export async function completeMerchantDirectCheckout(
@@ -670,16 +675,36 @@ export async function completeMerchantDirectCheckout(
     await page.waitForTimeout(1500);
   }
 
-  await page.getByRole("button", { name: /繼續付款/ }).click();
-  await page.getByRole("button", { name: /確認支付 HK\$/ }).waitFor({
-    state: "visible",
-    timeout: 60_000,
-  });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.getByRole("button", { name: /繼續付款/ }).click();
+    try {
+      await page.getByRole("button", { name: /確認支付 HK\$/ }).waitFor({
+        state: "visible",
+        timeout: 60_000,
+      });
+      break;
+    } catch (error) {
+      if (attempt === 1) {
+        throw error;
+      }
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForMerchantDirectCheckoutReady(page);
+      await page.locator("#p-tel").fill("91234567");
+      await page.locator("#p-addr").fill("E2E 九龍塘順豐智能櫃");
+      if (options?.couponRewardId) {
+        await page.locator("#checkout-coupon").selectOption(options.couponRewardId);
+        await page.waitForTimeout(1500);
+      }
+    }
+  }
 
   await fillStripePaymentElement(page);
   await page.getByRole("button", { name: /確認支付 HK\$/ }).click();
 
-  await page.waitForURL(/\/checkout\/[^/]+\/success/, { timeout: 120_000 });
+  await page.waitForURL(/\/checkout\/[^/]+\/success/, {
+    timeout: 120_000,
+    waitUntil: "commit",
+  });
 }
 
 export async function buyMerchantListingWithAuthAndReachCheckout(
@@ -748,10 +773,31 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
 }
 
 export async function gotoAdminRewardActivityForm(page: Page): Promise<void> {
-  await page.goto("/admin/campaigns/new", { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { name: "新增獎勵活動" })).toBeVisible({
-    timeout: 20_000,
-  });
+  const heading = page.getByRole("heading", { name: "新增獎勵活動" });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      if (attempt > 0) {
+        await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
+        const newActivityButton = page
+          .getByRole("button", { name: "新增活動" })
+          .or(page.getByRole("button", { name: "新增一般券" }));
+        if (await newActivityButton.first().isVisible().catch(() => false)) {
+          await newActivityButton.first().click();
+        }
+      } else {
+        await page.goto("/admin/campaigns/new", { waitUntil: "domcontentloaded" });
+      }
+
+      await expect(heading).toBeVisible({ timeout: 20_000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+      await page.waitForTimeout(1_500);
+    }
+  }
 }
 
 /** @deprecated Use gotoAdminRewardActivityForm */
@@ -761,8 +807,26 @@ export async function openRewardTemplateWizard(page: Page) {
 }
 
 function toDatetimeLocalValue(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+export function buildOpenActivityWindowForE2e() {
+  const now = Date.now();
+  return {
+    startsAt: toDatetimeLocalValue(new Date(now - 2 * 60 * 60 * 1000)),
+    endsAt: toDatetimeLocalValue(new Date(now + 48 * 60 * 60 * 1000)),
+  };
 }
 
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
@@ -861,7 +925,7 @@ export function buildFlashCampaignScheduleForE2e(params?: {
   maxClaimsPerUser: number;
 } {
   const now = Date.now();
-  const startsAt = new Date(now - 2 * 60 * 60 * 1000);
+  const startsAt = new Date(now - 48 * 60 * 60 * 1000);
   const endsAt = new Date(now + 48 * 60 * 60 * 1000);
 
   // datetime-local + `new Date(value)` in the admin wizard use the browser's local
@@ -1045,6 +1109,14 @@ async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
   await expect
     .poll(
       async () => {
+        const onCampaignsList =
+          page.url().includes("/admin/campaigns") &&
+          !page.url().includes("/admin/campaigns/new");
+        if (onCampaignsList) {
+          outcome = "success";
+          return "success";
+        }
+
         const successVisible = await page
           .locator("[data-sonner-toast]")
           .filter({ hasText: ADMIN_REWARD_PUBLISH_SUCCESS_TOAST })
@@ -1068,7 +1140,7 @@ async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
 
         return "pending";
       },
-      { timeout: 30_000 },
+      { timeout: 60_000 },
     )
     .not.toBe("pending");
 
@@ -1078,10 +1150,15 @@ async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
     );
   }
 
-  await page.waitForURL((url) => url.pathname === "/admin/campaigns", {
-    timeout: 30_000,
-    waitUntil: "commit",
-  });
+  if (
+    !page.url().includes("/admin/campaigns") ||
+    page.url().includes("/admin/campaigns/new")
+  ) {
+    await page.waitForURL((url) => url.pathname === "/admin/campaigns", {
+      timeout: 30_000,
+      waitUntil: "commit",
+    });
+  }
 }
 
 async function selectTriggerKind(
@@ -1435,9 +1512,18 @@ export async function buyMerchantListingAndReachCheckout(
   sellerId: string,
   listingId: string,
 ): Promise<string> {
-  await page.goto(`/marketplace/${sellerId}/product/${listingId}`, {
-    waitUntil: "domcontentloaded",
-  });
+  const productPath = `/marketplace/${sellerId}/product/${listingId}`;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(productPath, { waitUntil: "domcontentloaded" });
+      break;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+      await page.waitForTimeout(1_000);
+    }
+  }
   await waitForMerchantProductDetailReady(page);
 
   const buyButton = page.getByRole("button", { name: /立即購買/ });

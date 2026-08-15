@@ -1,6 +1,6 @@
 import { isMerchantOrderBuyerConfirmed } from "@/lib/merchant-order/display-status";
 import type { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/types/supabase";
+import type { Database, Tables } from "@/types/supabase";
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -11,6 +11,9 @@ export type RpcPrepareMerchantOrderPayoutArgs = {
 export type RpcConfirmMerchantBuyerReceiptArgs = {
   p_order_id: string;
 };
+
+export type RpcCancelMerchantAuthOrderArgs =
+  Database["public"]["Functions"]["rpc_cancel_merchant_auth_order"]["Args"];
 
 type RpcResult = {
   data: unknown;
@@ -25,6 +28,10 @@ type TypedRpcClient = {
   rpc(
     fn: "rpc_confirm_merchant_buyer_receipt",
     args: RpcConfirmMerchantBuyerReceiptArgs,
+  ): Promise<RpcResult>;
+  rpc(
+    fn: "rpc_cancel_merchant_auth_order",
+    args: RpcCancelMerchantAuthOrderArgs,
   ): Promise<RpcResult>;
 };
 
@@ -50,6 +57,13 @@ export async function rpcConfirmMerchantBuyerReceipt(
     "rpc_confirm_merchant_buyer_receipt",
     args,
   );
+}
+
+export async function rpcCancelMerchantAuthOrder(
+  supabase: ServerSupabaseClient,
+  args: RpcCancelMerchantAuthOrderArgs,
+): Promise<RpcResult> {
+  return asTypedRpcClient(supabase).rpc("rpc_cancel_merchant_auth_order", args);
 }
 
 export function mapMerchantEscrowToMemberStatus(

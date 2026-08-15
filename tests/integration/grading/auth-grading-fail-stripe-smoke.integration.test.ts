@@ -30,12 +30,12 @@ describe.skipIf(!hasGradingStripeSmokeEnv()).sequential(
     });
 
     afterAll(async () => {
-      clearSessionCache();
       await wipeCouponFsmRun({
         orderIds: tracked.orderIds,
         userRewardIds: [],
         templateIds: [],
       });
+      await clearSessionCache();
     });
 
     it("G-BF-S1: buyer fault captures auth_fee only on real Stripe PI", async () => {
@@ -118,6 +118,37 @@ describe.skipIf(!hasGradingStripeSmokeEnv()).sequential(
       const receivable = await getSellerReceivableForOrder(ctx.orderId);
       expect(receivable).not.toBeNull();
       expect(Number(receivable?.amount_hkd ?? 0)).toBeGreaterThan(0);
+    });
+
+    it("G-BF-S3: webhook finalize helper completes buyer fault after Stripe capture", async () => {
+      const { finalizeAuthGradingFailFromWebhook } = await import(
+        "@/lib/payments/auth-grading-fail-void-saga"
+      );
+      const ctx = await seedGradingFailStripeSmokeOrder();
+      tracked.orderIds.push(ctx.orderId);
+
+      const prepared = await runAsAdmin(async () => {
+        const client = getAdminClient();
+        return prepareAuthGradingFail(client, {
+          orderId: ctx.orderId,
+          faultParty: "buyer",
+          reason: "stripe smoke webhook finalize",
+        });
+      });
+
+      await executeGradingFailStripeLeg(prepared, ctx.orderId);
+
+      const pi = await retrievePaymentIntent(ctx.paymentIntentId);
+      const result = await finalizeAuthGradingFailFromWebhook({
+        orderKind: "member",
+        orderId: ctx.orderId,
+        paymentIntent: pi,
+      });
+      expect(result).toEqual({ ok: true });
+
+      const row = await getMemberOrderGradingFailRow(ctx.orderId);
+      expect(row?.auth_result).toBe("failed");
+      expect(row?.payment_capture_status).toBe("auth_fee_captured");
     });
   },
 );

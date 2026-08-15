@@ -53,6 +53,7 @@ import {
 } from "@/lib/merchant-order/buyer-actions";
 import {
   mapMerchantEscrowToMemberStatus,
+  rpcCancelMerchantAuthOrder,
   rpcConfirmMerchantBuyerReceipt,
 } from "@/lib/merchant-order/merchant-order-rpc";
 import { ensureMemberOrderListingUuid } from "@/lib/member-order/repair-listing-id";
@@ -1208,6 +1209,7 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   authFee: number;
   canSubmitLogistics: boolean;
   canSubmitDirectFulfillment: boolean;
+  canCancelAuthOrder: boolean;
   canReviewBuyer: boolean;
   stripePaymentIntentId: string | null;
   stripeTransferId: string | null;
@@ -1267,6 +1269,8 @@ type MerchantOrderDetailQueryRow = {
   buyer_remark: string | null;
   buyer_confirmed_at: string | null;
   payout_hold_until: string | null;
+  payment_capture_status: Tables<"merchant_orders">["payment_capture_status"];
+  platform_received_at: string | null;
   seller_settlement_status: Tables<"merchant_orders">["seller_settlement_status"];
   listings: {
     grading_company: string;
@@ -1303,6 +1307,8 @@ function mapMerchantOrderDetailRow(
     requiresAuthentication: row.requires_authentication,
     shippingMethod: row.shipping_method,
     buyerConfirmedAt: row.buyer_confirmed_at,
+    paymentCaptureStatus: row.payment_capture_status,
+    platformReceivedAt: row.platform_received_at,
   });
   const createdAt = row.created_at ?? new Date().toISOString();
   const paymentExpiresAt =
@@ -1356,6 +1362,7 @@ function mapMerchantOrderDetailRow(
     authFee: Number(row.auth_fee ?? 0),
     canSubmitLogistics: sellerFlags.canSubmitLogistics,
     canSubmitDirectFulfillment: sellerFlags.canSubmitDirectFulfillment,
+    canCancelAuthOrder: sellerFlags.canCancelAuthOrder,
     canReviewBuyer: sellerFlags.canReviewBuyer,
     stripePaymentIntentId: row.stripe_payment_intent_id,
     stripeTransferId: row.stripe_transfer_id,
@@ -1477,6 +1484,8 @@ export async function getMerchantOrderDetail(
           payout_status,
           buyer_confirmed_at,
           payout_hold_until,
+          payment_capture_status,
+          platform_received_at,
           seller_settlement_status,
           sf_locker_code,
           sf_address,
@@ -2231,6 +2240,106 @@ export async function cancelMemberOrder(
     const message =
       error instanceof Error ? error.message : "取消訂單時發生錯誤";
     console.error("[cancelMemberOrder]", error);
+    return { success: false, error: message };
+  }
+}
+
+export async function cancelMerchantAuthOrder(
+  orderId: string,
+): Promise<MemberOrderActionResult> {
+  try {
+    const invalidId = rejectNonUuidMutationOrderId(orderId);
+    if (invalidId) {
+      return invalidId;
+    }
+    const trimmedOrderId = orderId.trim();
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再取消訂單" };
+    }
+
+    const invalidRpcIdentity = rejectInvalidRpcIdentity(
+      trimmedOrderId,
+      user.id,
+    );
+    if (invalidRpcIdentity) {
+      return invalidRpcIdentity;
+    }
+
+    const { data: orderRowData, error: orderLookupError } = await supabase
+      .from("merchant_orders")
+      .select(
+        "requires_authentication, payment_capture_status, stripe_payment_intent_id, merchant_id",
+      )
+      .eq("id", trimmedOrderId)
+      .eq("merchant_id", user.id)
+      .maybeSingle();
+
+    if (orderLookupError) {
+      console.error("[cancelMerchantAuthOrder] lookup", orderLookupError.message);
+      return { success: false, error: "無法讀取訂單狀態" };
+    }
+
+    const orderRow = orderRowData as {
+      requires_authentication: boolean | null;
+      payment_capture_status: string | null;
+      stripe_payment_intent_id: string | null;
+      merchant_id: string;
+    } | null;
+
+    if (!orderRow?.requires_authentication) {
+      return { success: false, error: "此訂單不支援商戶取消" };
+    }
+
+    if (
+      orderRow.payment_capture_status === "authorized" &&
+      orderRow.stripe_payment_intent_id
+    ) {
+      try {
+        const stripe = await getStripeClient();
+        if (!stripe) {
+          return { success: false, error: "付款服務尚未設定，請稍後再試" };
+        }
+        await stripe.paymentIntents.cancel(
+          orderRow.stripe_payment_intent_id,
+          {},
+          {
+            idempotencyKey: `merchant-auth-void:${trimmedOrderId}`,
+          },
+        );
+      } catch (stripeError) {
+        const message =
+          stripeError instanceof Error
+            ? stripeError.message
+            : "取消付款授權失敗";
+        console.error("[cancelMerchantAuthOrder] stripe void", message);
+        return { success: false, error: message };
+      }
+    }
+
+    const { error } = await rpcCancelMerchantAuthOrder(supabase, {
+      p_order_id: trimmedOrderId,
+      p_merchant_id: user.id,
+    });
+
+    if (error) {
+      console.error("[cancelMerchantAuthOrder] rpc", error.message);
+      return { success: false, error: mapOrderRpcError(error.message) };
+    }
+
+    revalidatePath("/marketplace");
+    revalidateMerchantOrderPaths(trimmedOrderId);
+
+    return { success: true };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "取消訂單時發生錯誤";
+    console.error("[cancelMerchantAuthOrder]", error);
     return { success: false, error: message };
   }
 }

@@ -362,7 +362,7 @@ test.describe("Platform rewards Phase 3 — flash not started", () => {
     const templateTitle = `E2E Phase3 Future ${Date.now()}`;
     const futureSchedule = buildFutureFlashCampaignScheduleForE2e({
       campaignName: templateTitle,
-      hoursAhead: 2,
+      hoursAhead: 24,
     });
 
     const adminContext = await browser.newContext();

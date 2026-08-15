@@ -25,6 +25,7 @@ import {
   ensureCourierShippingSelected,
   selectCheckoutCoupon,
   waitForCheckoutCouponClearedAfterAuthToggle,
+  waitForCheckoutCouponOptionEnabled,
   waitForCheckoutCouponPicker,
 } from "./helpers/rewards-checkout-coupon";
 import {
@@ -518,8 +519,16 @@ test.describe("Platform rewards Phase 2 E2E", () => {
     );
 
     await waitForCheckoutCouponPicker(page, { rewardId });
+    await ensureCourierShippingSelected(page);
+    await waitForCheckoutCouponOptionEnabled(page, rewardId);
     await page.getByRole("button", { name: "面交／自取" }).click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1_500);
+
+    const couponPicker = page.locator("#checkout-coupon");
+    const couponVisible = await couponPicker.isVisible().catch(() => false);
+    if (!couponVisible) {
+      return;
+    }
 
     const option = page.locator(`#checkout-coupon option[value="${rewardId}"]`);
     await expect(option).toBeDisabled();

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import {
+  finalizeAuthGradingFailFromWebhook,
+  isAuthGradingFailCapturePaymentIntent,
+  parseAuthGradingFailWebhookOrderKind,
+} from "@/lib/payments/auth-grading-fail-void-saga";
+import {
   finalizeAuthFeeCaptureFromWebhook,
   isAuthFeeCapturePaymentIntent,
 } from "@/lib/payments/auth-capture-saga";
@@ -67,6 +72,7 @@ type MerchantPayoutRpcClient = {
       p_transfer_id: string;
       p_transfer_amount_cents: number;
       p_destination_account_id: string;
+      p_recovery_applications?: unknown;
     },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
@@ -298,10 +304,41 @@ async function handleGoodsCaptureSucceeded(
   return { ok: true };
 }
 
+async function handleAuthGradingFailCaptureSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const orderKind = parseAuthGradingFailWebhookOrderKind(paymentIntent.metadata);
+  const orderId = paymentIntent.metadata?.order_id?.trim();
+  if (!orderKind || !orderId) {
+    return { ok: true };
+  }
+
+  const result = await finalizeAuthGradingFailFromWebhook({
+    orderKind,
+    orderId,
+    paymentIntent,
+  });
+
+  if (!result.ok) {
+    console.error(
+      "[stripe/webhook] rpc_finalize_auth_grading_fail",
+      orderId,
+      result.error,
+    );
+    return { ok: false, error: "auth grading fail finalize failed" };
+  }
+
+  return { ok: true };
+}
+
 async function handlePaymentIntentSucceeded(
   admin: AdminSupabaseClient,
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isAuthGradingFailCapturePaymentIntent(paymentIntent)) {
+    return handleAuthGradingFailCaptureSucceeded(paymentIntent);
+  }
+
   const orderKind = paymentIntent.metadata?.order_kind?.trim();
 
   if (orderKind === "member_auth") {
@@ -430,6 +467,7 @@ async function handleMerchantPayoutTransferCreated(
       p_transfer_id: transfer.id,
       p_transfer_amount_cents: transfer.amount,
       p_destination_account_id: destination,
+      p_recovery_applications: [],
     },
   );
 

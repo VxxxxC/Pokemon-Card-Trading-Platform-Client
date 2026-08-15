@@ -59,12 +59,12 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
     });
 
     afterAll(async () => {
-      clearSessionCache();
       await wipeCouponFsmRun({
         orderIds: tracked.orderIds,
         userRewardIds: [],
         templateIds: [],
       });
+      await clearSessionCache();
     });
 
     it("G-BF1: prepare buyer fault single → capture_auth_fee_only", async () => {
@@ -184,6 +184,60 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       const receivable = await getSellerReceivableForOrder(sellerOrderId);
       expect(receivable).not.toBeNull();
       expect(Number(receivable?.amount_hkd ?? 0)).toBeGreaterThan(0);
+    });
+
+    it("G-BF5: finalize succeeds when voided before finalize (cancel race)", async () => {
+      const listing = await findMemberListingForIntegration();
+      await ensureMemberListingAcceptsAuthentication(listing.listingId);
+      const buyerId = getBuyerUserId();
+      const [raceOrderId] = await seedPendingMemberAuthOrders(
+        buyerId,
+        listing.listingId,
+        1,
+      );
+      tracked.orderIds.push(raceOrderId);
+      await promoteMemberAuthOrderToGrading(raceOrderId, paymentIntentId);
+
+      await resetMemberAuthOrderGradingFailState(raceOrderId);
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { error: prepareError } = await client.rpc(
+          "rpc_prepare_auth_grading_fail",
+          {
+            p_order_kind: "member",
+            p_order_id: raceOrderId,
+            p_fault_party: "seller",
+            p_reason: "voided before finalize",
+          },
+        );
+        expect(prepareError).toBeNull();
+      });
+
+      const admin = (await import("../shared/supabase-admin")).createServiceRoleClient();
+      const { error: voidError } = await admin
+        .from("member_orders")
+        .update({ payment_capture_status: "voided" })
+        .eq("id", raceOrderId)
+        .eq("refund_status", "processing");
+      expect(voidError).toBeNull();
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { error: finalizeError } = await client.rpc(
+          "rpc_finalize_auth_grading_fail",
+          {
+            p_order_kind: "member",
+            p_order_id: raceOrderId,
+            p_payment_intent_id: paymentIntentId,
+          },
+        );
+        expect(finalizeError).toBeNull();
+      });
+
+      const row = await getMemberOrderGradingFailRow(raceOrderId);
+      expect(row?.auth_result).toBe("failed");
+      expect(row?.payment_capture_status).toBe("voided");
     });
   },
 );

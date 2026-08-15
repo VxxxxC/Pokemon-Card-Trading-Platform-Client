@@ -4,6 +4,12 @@ import {
   gradingOptionToFields,
   isAuthPassGradingOptionId,
 } from "@/lib/grading/options";
+import {
+  buildGoodsCaptureIdempotencyKey,
+  buildGoodsCaptureParams,
+  resolveGoodsCaptureStage,
+} from "@/lib/payments/stripe-capture-policy";
+import { ensureAuthEscrowAuthorizationFresh } from "@/lib/payments/auth-authorization-refresh";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -146,15 +152,42 @@ export async function runGoodsCaptureSaga(input: {
     return { ok: false, error: "扣款金額異常" };
   }
 
-  const isSingleCapture = prepared.escrow_capture_model === "single";
-  const captureStage = isSingleCapture ? "full" : "goods";
-  const idempotencyKey = `goods-capture:${captureStage}:${input.orderKind}:${input.orderId}`;
+  const captureStage = resolveGoodsCaptureStage(prepared.escrow_capture_model);
+  const idempotencyKey = buildGoodsCaptureIdempotencyKey({
+    escrowCaptureModel: prepared.escrow_capture_model,
+    orderKind: input.orderKind,
+    orderId: input.orderId,
+  });
+
+  let paymentIntentId = prepared.payment_intent_id;
+
+  if (prepared.escrow_capture_model === "single") {
+    const refreshResult = await ensureAuthEscrowAuthorizationFresh({
+      orderKind: input.orderKind,
+      orderId: input.orderId,
+      paymentIntentId,
+      buyerTotalCents: captureCents,
+      metadata: {
+        capture_stage: captureStage,
+        admin_id: prepared.admin_id,
+        order_kind: stripeOrderKind(input.orderKind),
+        order_id: input.orderId,
+        auth_grading_company: grading.company,
+        ...(grading.score ? { auth_grading_score: grading.score } : {}),
+        escrow_capture_model: "single",
+      },
+    });
+
+    if (!refreshResult.ok) {
+      return refreshResult;
+    }
+
+    paymentIntentId = refreshResult.paymentIntentId;
+  }
 
   let capturedIntent: Stripe.PaymentIntent;
   try {
-    const existingIntent = await stripe.paymentIntents.retrieve(
-      prepared.payment_intent_id,
-    );
+    const existingIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     if (existingIntent.status !== "requires_capture") {
       return { ok: false, error: "付款狀態不允許扣款，請聯絡技術支援" };
     }
@@ -166,28 +199,23 @@ export async function runGoodsCaptureSaga(input: {
       };
     }
 
-    const captureParams: Stripe.PaymentIntentCaptureParams = {
-      amount_to_capture: captureCents,
-      metadata: {
-        capture_stage: captureStage,
-        admin_id: prepared.admin_id,
-        order_kind: stripeOrderKind(input.orderKind),
-        order_id: input.orderId,
-        auth_grading_company: grading.company,
-        ...(grading.score ? { auth_grading_score: grading.score } : {}),
-        ...(prepared.escrow_capture_model
-          ? { escrow_capture_model: prepared.escrow_capture_model }
-          : {}),
-      },
-    };
-
-    if (!isSingleCapture) {
-      captureParams.final_capture = true;
-    }
-
     capturedIntent = await stripe.paymentIntents.capture(
-      prepared.payment_intent_id,
-      captureParams,
+      paymentIntentId,
+      buildGoodsCaptureParams({
+        escrowCaptureModel: prepared.escrow_capture_model,
+        amountCents: captureCents,
+        metadata: {
+          capture_stage: captureStage,
+          admin_id: prepared.admin_id,
+          order_kind: stripeOrderKind(input.orderKind),
+          order_id: input.orderId,
+          auth_grading_company: grading.company,
+          ...(grading.score ? { auth_grading_score: grading.score } : {}),
+          ...(prepared.escrow_capture_model
+            ? { escrow_capture_model: prepared.escrow_capture_model }
+            : {}),
+        },
+      }),
       { idempotencyKey },
     );
   } catch (error) {
@@ -204,7 +232,7 @@ export async function runGoodsCaptureSaga(input: {
   const { error: finalizeError } = await rpc.rpc("rpc_finalize_goods_capture", {
     p_order_kind: input.orderKind,
     p_order_id: input.orderId,
-    p_payment_intent_id: prepared.payment_intent_id,
+    p_payment_intent_id: paymentIntentId,
     p_captured_amount_cents: capturedCents,
     p_admin_id: prepared.admin_id,
     p_notes: prepared.notes?.trim() || input.notes?.trim() || null,

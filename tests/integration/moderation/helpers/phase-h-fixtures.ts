@@ -107,6 +107,52 @@ export async function seedMemberAuthRefundEligibleOrder(params: {
   return { orderId, listingId, sellerId };
 }
 
+export async function seedMemberP2pMeetupOrder(params: {
+  buyerId: string;
+  sellerId: string;
+  listingId: string;
+  runId: string;
+  suffix: string;
+}): Promise<string> {
+  const admin = createServiceRoleClient();
+  const orderNumber = `E2E-P2P-${params.runId}-${params.suffix}`;
+
+  const { data, error } = await admin
+    .from("member_orders")
+    .insert({
+      buyer_id: params.buyerId,
+      seller_id: params.sellerId,
+      listing_id: params.listingId,
+      final_price: 100,
+      total_amount: 100,
+      buyer_total_amount: 100,
+      use_authentication: false,
+      status: "completed",
+      escrow_status: "released",
+      payment_capture_status: "fully_captured",
+      refund_status: "none",
+      seller_payout_status: "ready",
+      seller_settlement_status: "cleared",
+      order_number: orderNumber,
+      expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      extended_count: 0,
+      auth_fee: 0,
+      inbound_shipping_fee: 0,
+      outbound_shipping_fee: 0,
+      platform_subsidy_amount: 0,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data?.id) {
+    throw new Error(
+      `[seedMemberP2pMeetupOrder] ${error?.message ?? "missing order id"}`,
+    );
+  }
+
+  return data.id;
+}
+
 export async function seedModerationCaseWithMerchantOrderContext(params: {
   reporterId: string;
   subjectId: string;

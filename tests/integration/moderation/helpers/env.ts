@@ -29,5 +29,9 @@ export function hasSellerIntegrationCreds(): boolean {
 }
 
 export function hasFullModerationIntegrationEnv(): boolean {
-  return hasModerationIntegrationEnv() && hasSellerIntegrationCreds();
+  return (
+    hasModerationIntegrationEnv() &&
+    hasSellerIntegrationCreds() &&
+    Boolean(readEnv("E2E_LISTING_ID"))
+  );
 }

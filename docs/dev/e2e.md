@@ -1,5 +1,7 @@
 # Playwright E2E
 
+> **Production Gate（Merge Full E2E）：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) §2 — 用 `bun run start`，唔用 `bun run dev`。
+
 End-to-end tests for:
 
 1. **Merchant product detail** — `/marketplace/[id]/product/[productId]`
@@ -30,7 +32,7 @@ Add these to **`.env`** (`playwright.config.ts` loads `.env` / `.env.local` for 
 |----------|--------------|-------------|
 | `E2E_SELLER_ID` | Core happy-path tests | Seller `profiles.id` (UUID) |
 | `E2E_SELLER_USERNAME` | Username route test (A2) | Same seller's `profiles.username` |
-| `E2E_LISTING_ID` | Core happy-path tests | Active `listings.id` owned by seller |
+| `E2E_LISTING_ID` | Core happy-path tests | Active `listings.id` owned by `E2E_SELLER_ID` (merchant grading: same user as `E2E_SELLER_EMAIL` session; run `bun run discover:merchant-grading-e2e`) |
 | `E2E_LISTING_DISPLAY_ID` | Display ID route test (A3) | `product_catalog.display_id` for that listing (not used for marketplace search keyword) |
 | `E2E_LISTING_PRODUCT_ID` | Product ID route test (A4) | `product_catalog.id` / `listings.product_id` |
 | `E2E_BUYER_EMAIL` | Buyer auth setup | Member account email |
@@ -47,6 +49,20 @@ Add these to **`.env`** (`playwright.config.ts` loads `.env` / `.env.local` for 
 | `E2E_WRONG_SELLER_ID` | Cross-seller test (B3) | Another valid seller UUID who does **not** own `E2E_LISTING_ID` |
 
 When required variables are missing, tests call `test.skip()` with a reason instead of failing the suite.
+
+### Merchant grading integration (G-W2M / G-BF*M)
+
+For Vitest merchant grading + connect payout + commission-rate cases, `E2E_LISTING_ID` must be a **merchant** listing owned by `E2E_SELLER_ID` with `use_authentication=true`, and `E2E_SELLER_EMAIL` must sign in as that user. Misaligned env: integration tests **skip** merchant cases; `bun run verify:merchant-grading-e2e` still **fails** (prelaunch blocker).
+
+```bash
+bun run discover:merchant-grading-e2e      # diagnose (ok=false when env misaligned)
+bun run preflight:merchant-grading-e2e     # discover + verify (diagnostic loop)
+bun run verify:merchant-grading-e2e        # must pass before merge
+```
+
+`discover` sets `ok` only when KYC ready, a recommended listing exists, **and** `E2E_LISTING_ID` (if set) is env-aligned (`envAligned`). `test:prelaunch:check-env` runs verify and auto-prints discover JSON on failure.
+
+After fixing listing/KYC: `bunx supabase db push` through migration `20260927120000`.
 
 ## How to collect fixture IDs
 
@@ -175,7 +191,7 @@ Keyword search on `/marketplace` → verify grid `lowestPrice` → click card li
 
 | Variable | Notes |
 |----------|-------|
-| `E2E_SELLER_ID` / `E2E_LISTING_ID` | Active listing owned by seller |
+| `E2E_SELLER_ID` / `E2E_LISTING_ID` | `E2E_LISTING_ID` must belong to `E2E_SELLER_ID`; merchant grading also requires `E2E_SELLER_EMAIL` session = same id |
 | `E2E_BUYER_EMAIL` / `E2E_BUYER_PASSWORD` | Buyer project only (`setup` auth) |
 | `SUPABASE_SERVICE_ROLE_KEY` | `getListingMarketplaceFixture` + offer DB assert |
 
@@ -462,6 +478,14 @@ MODERATION_GATE=1 bun run test:moderation:gate:full
 ```
 
 E2E order in gate: `user-report` → `admin-moderation` → `report-outcome-notification` (E2E-N1 is self-contained on buyer project). New cases: **E2E-R6**, **E2E-G5**, **E2E-N1**, **E2E-AB5a/b**, **E2E-AB6**, **E2E-AB7**, **E2E-AB8**.
+
+**E2E-R6（duplicate chat report）：** UI 提交首報；duplicate 斷言用 `submitChatReportViaBuyerRpc`（同 I-R6 integration 契約）— 唔再 double-submit UI（避免 `提交中…` hang）。
+
+**Admin grading smoke（v2 PR-C）：** `e2e/admin-grading.spec.ts` — `bun run test:e2e:admin-grading`（`--project=setup --project=guest`）；fixture 對齊 `verify:merchant-grading-e2e`。
+
+**Production Gate rewards E2E：** 預設 `test:e2e:rewards-gate:production`（exclude matrix M-A1）；全量加 `PRODUCTION_GATE_INCLUDE_MATRIX=1`。
+
+**Production Gate E2E harness：** `bun run test:production:gate` 會起 `next start` 並設 `PLAYWRIGHT_SKIP_WEBSERVER=1`；本地單跑 Playwright 預設仍用 `dev`，除非設 `PRODUCTION_GATE=1`。
 
 CI: [`.github/workflows/moderation-integration.yml`](../../.github/workflows/moderation-integration.yml) (label `moderation`, nightly, or manual dispatch) runs `bun run test:integration:moderation` with full `E2E_*` secrets.
 

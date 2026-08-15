@@ -28,16 +28,23 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { runModerationOrderRefundSaga } from "@/lib/payments/moderation-order-refund-saga";
+import {
+  runModerationOrderRefundRetry,
+  runModerationOrderRefundSaga,
+} from "@/lib/payments/moderation-order-refund-saga";
 
 describe("moderation-order-refund-saga", () => {
   const finalizeRpc = vi.fn();
   const markFailedRpc = vi.fn();
+  const retryPrepareRpc = vi.fn();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    const rpcClient = {
+  function buildRpcClient(
+    overrides?: Partial<{
+      retryPrepareError: string | null;
+      retryPrepareData: Record<string, unknown> | null;
+    }>,
+  ) {
+    return {
       rpc: vi.fn((fn: string, args: Record<string, unknown>) => {
         if (fn === "rpc_finalize_moderation_order_refund") {
           finalizeRpc(args);
@@ -47,9 +54,38 @@ describe("moderation-order-refund-saga", () => {
           markFailedRpc(args);
           return Promise.resolve({ data: { success: true }, error: null });
         }
+        if (fn === "rpc_retry_moderation_order_refund_prepare") {
+          retryPrepareRpc(args);
+          if (overrides?.retryPrepareError) {
+            return Promise.resolve({
+              data: null,
+              error: { message: overrides.retryPrepareError },
+            });
+          }
+          return Promise.resolve({
+            data:
+              overrides?.retryPrepareData ??
+              ({
+                success: true,
+                orderKind: "merchant_direct",
+                orderId: args.p_order_id,
+                paymentIntentId: "pi_retry",
+                refundCents: 10000,
+                settlementRequired: true,
+                faultParty: "seller",
+              } as Record<string, unknown>),
+            error: null,
+          });
+        }
         return Promise.resolve({ data: null, error: null });
       }),
     };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    const rpcClient = buildRpcClient();
 
     vi.mocked(createClient).mockResolvedValue(rpcClient as never);
     vi.mocked(createAdminClient).mockReturnValue(rpcClient as never);
@@ -148,5 +184,42 @@ describe("moderation-order-refund-saga", () => {
         p_stripe_fee_hkd: 1.75,
       }),
     );
+  });
+
+  it("C7-U1: retry prepare then runs saga and finalizes", async () => {
+    const result = await runModerationOrderRefundRetry({
+      caseId: "case-retry-1",
+      orderId: "order-retry-1",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(retryPrepareRpc).toHaveBeenCalledWith({
+      p_case_id: "case-retry-1",
+      p_order_id: "order-retry-1",
+    });
+    expect(stripeMocks.refundsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_intent: "pi_retry",
+        amount: 10000,
+      }),
+      expect.objectContaining({
+        idempotencyKey: "moderation-refund:case-retry-1:order-retry-1",
+      }),
+    );
+    expect(finalizeRpc).toHaveBeenCalled();
+  });
+
+  it("C7-U2: retry prepare RPC error returns structured failure", async () => {
+    const rpcClient = buildRpcClient({ retryPrepareError: "retry blocked" });
+    vi.mocked(createClient).mockResolvedValue(rpcClient as never);
+    vi.mocked(createAdminClient).mockReturnValue(rpcClient as never);
+
+    const result = await runModerationOrderRefundRetry({
+      caseId: "case-retry-2",
+      orderId: "order-retry-2",
+    });
+
+    expect(result).toEqual({ ok: false, error: "retry blocked" });
+    expect(stripeMocks.refundsCreate).not.toHaveBeenCalled();
   });
 });

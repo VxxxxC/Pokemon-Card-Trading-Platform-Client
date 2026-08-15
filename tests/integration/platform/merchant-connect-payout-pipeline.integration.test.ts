@@ -6,12 +6,26 @@ import {
 } from "../merchant/helpers/merchant-order-fixture";
 import {
   clearSessionCache,
+  getAdminClient,
   getAdminUserId,
+  getBuyerClient,
   getBuyerUserId,
+  getSellerClient,
+  runAsAdmin,
   warmSession,
 } from "../shared/auth-context";
 import { hasBaseIntegrationEnv } from "../shared/env";
 import { createServiceRoleClient } from "../shared/supabase-admin";
+import {
+  getMerchantGradingContext,
+  hasMerchantGradingEnvVars,
+  merchantIt,
+  warmMerchantGradingEnv,
+} from "../grading/helpers/grading-merchant-env";
+import {
+  getMerchantLedgerGradingFailRecovery,
+  seedMerchantAuthOrderAtAuthenticating,
+} from "../grading/helpers/grading-merchant-fixture";
 
 async function seedHeldMerchantOrderReadyForPayout(
   runId: string,
@@ -79,6 +93,9 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
     beforeAll(async () => {
       await warmSession("buyer");
       await warmSession("admin");
+      if (hasMerchantGradingEnvVars()) {
+        await warmMerchantGradingEnv();
+      }
     });
 
     afterAll(async () => {
@@ -89,7 +106,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       await clearSessionCache();
     });
 
-    it("M1 held expired order meets connect payout candidate criteria", async () => {
+    merchantIt("M1 held expired order meets connect payout candidate criteria", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m1");
       createdOrderIds.push(orderId);
 
@@ -103,7 +120,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error).toBeNull();
     });
 
-    it("M2 resets failed payout and allows prepare again", async () => {
+    merchantIt("M2 resets failed payout and allows prepare again", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m2");
       createdOrderIds.push(orderId);
 
@@ -156,7 +173,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(afterPrepare?.payout_status).toBe("processing");
     });
 
-    it("M2b recovers from processing after finalize_failed mark (P2.5)", async () => {
+    merchantIt("M2b recovers from processing after finalize_failed mark (P2.5)", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m2b");
       createdOrderIds.push(orderId);
 
@@ -212,7 +229,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(afterRetry?.payout_error).toBeNull();
     });
 
-    it("M3 rejects reset when payout is frozen", async () => {
+    merchantIt("M3 rejects reset when payout is frozen", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m3-frozen");
       createdOrderIds.push(orderId);
 
@@ -238,7 +255,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error?.message).toMatch(/凍結/);
     });
 
-    it("M3 rejects reset when hold has not elapsed", async () => {
+    merchantIt("M3 rejects reset when hold has not elapsed", async () => {
       const buyerId = getBuyerUserId();
       const { orderId } = await seedMerchantOrderReadyForBuyerConfirm({
         buyerId,
@@ -265,7 +282,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error?.message).toMatch(/保留期/);
     });
 
-    it("M3 rejects reset when stripe_transfer_id exists", async () => {
+    merchantIt("M3 rejects reset when stripe_transfer_id exists", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(
         runId,
         "m3-transfer",
@@ -294,7 +311,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error?.message).toMatch(/Stripe Transfer/);
     });
 
-    it("M3 rejects reset for failed refund inside hold window (I-H12)", async () => {
+    merchantIt("M3 rejects reset for failed refund inside hold window (I-H12)", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m3-i-h12");
       createdOrderIds.push(orderId);
 
@@ -318,6 +335,126 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
 
       expect(error).not.toBeNull();
       expect(error?.message).toMatch(/退款失敗保留期/);
+    });
+  },
+);
+
+describe.skipIf(!hasMerchantGradingEnvVars()).sequential(
+  "Merchant Connect payout grading recovery deduction",
+  () => {
+    const runId = String(Date.now());
+    const createdOrderIds: string[] = [];
+    let listingId = "";
+    let sellerId = "";
+
+    beforeAll(async () => {
+      await warmSession("buyer");
+      await warmSession("admin");
+      await warmSession("seller");
+      await warmMerchantGradingEnv();
+      const ctx = getMerchantGradingContext();
+      if (ctx) {
+        listingId = ctx.listingId;
+        sellerId = ctx.sellerId;
+      }
+    });
+
+    afterAll(async () => {
+      const admin = createServiceRoleClient();
+      for (const orderId of createdOrderIds) {
+        await admin.from("merchant_ledgers").delete().eq("order_id", orderId);
+        await admin.from("merchant_orders").delete().eq("id", orderId);
+      }
+      await clearSessionCache();
+    });
+
+    merchantIt("M4: seller-fault grading recovery deducts from connect payout prepare", async () => {
+      const recoverySeed = await seedMerchantAuthOrderAtAuthenticating({
+        listingId,
+        buyerId: getBuyerUserId(),
+        sellerId,
+        suffix: `m4-recovery-${runId}`,
+        buyerClient: getBuyerClient(),
+        sellerClient: getSellerClient(),
+        adminClient: getAdminClient(),
+      });
+      createdOrderIds.push(recoverySeed.orderId);
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { error: prepareError } = await client.rpc(
+          "rpc_prepare_auth_grading_fail",
+          {
+            p_order_kind: "merchant",
+            p_order_id: recoverySeed.orderId,
+            p_fault_party: "seller",
+            p_reason: "integration M4 seller fault recovery",
+          },
+        );
+        expect(prepareError).toBeNull();
+
+        const { error: finalizeError } = await client.rpc(
+          "rpc_finalize_auth_grading_fail",
+          {
+            p_order_kind: "merchant",
+            p_order_id: recoverySeed.orderId,
+            p_payment_intent_id: recoverySeed.paymentIntentId,
+          },
+        );
+        expect(finalizeError).toBeNull();
+
+        const { error: clearError } = await client.rpc(
+          "rpc_admin_clear_seller_settlement",
+          {
+            p_order_kind: "merchant",
+            p_order_id: recoverySeed.orderId,
+          },
+        );
+        expect(clearError).toBeNull();
+      });
+
+      const recoveryLedger = await getMerchantLedgerGradingFailRecovery(
+        recoverySeed.orderId,
+      );
+      expect(recoveryLedger).not.toBeNull();
+      const recoveryAmount = Math.abs(Number(recoveryLedger?.amount ?? 0));
+      expect(recoveryAmount).toBeGreaterThan(0);
+
+      const payoutOrderId = await seedHeldMerchantOrderReadyForPayout(runId, "m4-payout");
+      createdOrderIds.push(payoutOrderId);
+
+      const admin = createServiceRoleClient();
+      const { data: preparePayload, error: prepareError } = await admin.rpc(
+        "rpc_prepare_merchant_order_payout",
+        { p_order_id: payoutOrderId },
+      );
+
+      expect(prepareError).toBeNull();
+      expect(preparePayload).toMatchObject({ success: true });
+
+      const deductionTotal = Number(
+        (preparePayload as { recovery_deduction_total?: number })
+          .recovery_deduction_total ?? 0,
+      );
+      const payoutGross = Number(
+        (preparePayload as { merchant_payout_gross?: number })
+          .merchant_payout_gross ?? 0,
+      );
+      const payoutNet = Number(
+        (preparePayload as { merchant_payout_amount?: number })
+          .merchant_payout_amount ?? 0,
+      );
+
+      expect(deductionTotal).toBeGreaterThan(0);
+      expect(deductionTotal).toBeLessThanOrEqual(recoveryAmount);
+      expect(payoutNet).toBeCloseTo(payoutGross - deductionTotal, 2);
+
+      const applications =
+        (preparePayload as { recovery_applications?: Array<{ recovery_order_id: string }> })
+          .recovery_applications ?? [];
+      expect(
+        applications.some((row) => row.recovery_order_id === recoverySeed.orderId),
+      ).toBe(true);
     });
   },
 );
