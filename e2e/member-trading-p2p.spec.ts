@@ -108,6 +108,8 @@ test.describe("Member P2P trading closure", () => {
           offerLabel,
           buyerPage,
           sellerDisplayName,
+          sellerId,
+          buyerId,
         );
       });
 

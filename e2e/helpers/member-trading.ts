@@ -112,6 +112,13 @@ export function chatConsoleRoot(page: Page) {
   return page.locator('[data-chat-console="true"].fixed.bottom-6');
 }
 
+/** Chat input placeholder is truncated (`回覆給 {name}...`); merchant partners use shop_name, not profile display_name. */
+export function chatReplyInput(page: Page) {
+  return chatConsoleRoot(page).locator(
+    'input[type="text"][placeholder^="回覆給 "]',
+  );
+}
+
 async function openChatViaInbox(
   page: Page,
   roomId: string,
@@ -221,10 +228,7 @@ export async function openChatRoom(
           },
         );
         await selectChatRoomInConsole(page, partnerName, roomId);
-        return chatConsoleRoot(page)
-          .getByPlaceholder(new RegExp(`回覆給 ${escapeRegex(partnerName)}`))
-          .isVisible()
-          .catch(() => false);
+        return chatReplyInput(page).isVisible().catch(() => false);
       },
       { timeout: 45_000 },
     )
@@ -258,7 +262,7 @@ export async function ensureChatRoomActive(
         const input = consoleEl?.querySelector("input[type='text']");
         return (
           input instanceof HTMLInputElement &&
-          input.placeholder.includes(targetPartnerName)
+          input.placeholder.startsWith("回覆給 ")
         );
       },
       {
@@ -278,11 +282,7 @@ export async function ensureChatRoomActive(
     }
     await openChatViaInbox(page, roomId, partnerName, partnerId);
     await selectChatRoomInConsole(page, partnerName, roomId);
-    await expect(
-      chatConsoleRoot(page).getByPlaceholder(
-        new RegExp(`回覆給 ${escapeRegex(partnerName)}`),
-      ),
-    ).toBeVisible({ timeout: 20_000 });
+    await expect(chatReplyInput(page)).toBeVisible({ timeout: 20_000 });
   }
 }
 
@@ -1020,10 +1020,7 @@ export async function acceptOfferAsSeller(
           await dismissBlockingOverlays(sellerPage);
           await expandChatConsole(sellerPage);
 
-          const chatInputVisible = await chatConsoleRoot(sellerPage)
-            .getByPlaceholder(
-              new RegExp(`回覆給 ${escapeRegex(buyerDisplayName)}`),
-            )
+          const chatInputVisible = await chatReplyInput(sellerPage)
             .isVisible()
             .catch(() => false);
 

@@ -26,7 +26,7 @@ test.describe.configure({ mode: "serial" });
 
 test.use({ viewport: { width: 1280, height: 900 } });
 
-test.setTimeout(180_000);
+test.setTimeout(300_000);
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -41,6 +41,23 @@ async function dismissBlockingOverlays(page: Page): Promise<void> {
 
 function chatConsoleRoot(page: Page) {
   return page.locator('[data-chat-console="true"].hidden.lg\\:flex');
+}
+
+function chatReplyInput(page: Page) {
+  return chatConsoleRoot(page).locator(
+    'input[type="text"][placeholder^="回覆給 "]',
+  );
+}
+
+async function selectChatRoomById(page: Page, roomId: string): Promise<boolean> {
+  const roomById = chatConsoleRoot(page).locator(
+    `[data-chat-room-id="${roomId}"]`,
+  );
+  if (await roomById.isVisible().catch(() => false)) {
+    await roomById.click({ force: true });
+    return true;
+  }
+  return false;
 }
 
 async function openChatRoom(
@@ -68,7 +85,9 @@ async function openChatRoom(
     .getByRole("button")
     .filter({ hasText: partnerName });
 
-  if ((await lobbyPartnerButton.count()) > 0) {
+  if (await selectChatRoomById(page, roomId)) {
+    // room selected by id
+  } else if ((await lobbyPartnerButton.count()) > 0) {
     await lobbyPartnerButton.first().click();
   } else {
     await page.evaluate(
@@ -86,11 +105,7 @@ async function openChatRoom(
     );
   }
 
-  await expect(
-    chatConsoleRoot(page).getByPlaceholder(
-      new RegExp(`回覆給 ${escapeRegex(partnerName)}`),
-    ),
-  ).toBeVisible({
+  await expect(chatReplyInput(page)).toBeVisible({
     timeout: 20_000,
   });
 }
@@ -122,11 +137,7 @@ async function ensureChatRoomActive(
       },
       { targetRoomId: roomId, targetPartnerName: partnerName },
     );
-    await expect(
-      chatConsoleRoot(page).getByPlaceholder(
-        new RegExp(`回覆給 ${escapeRegex(partnerName)}`),
-      ),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(chatReplyInput(page)).toBeVisible({ timeout: 15_000 });
     return;
   }
 

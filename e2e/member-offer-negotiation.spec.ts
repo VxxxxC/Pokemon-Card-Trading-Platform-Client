@@ -8,6 +8,7 @@ import {
   getOfferStatus,
   getProfileDisplayName,
   getProfileIdByEmail,
+  isBuyerWithinP2pNewAccountGrace,
   resetE2eListingTradingFixture,
   resolveE2eMarketplaceFixture,
 } from "./fixtures/supabase-admin";
@@ -285,6 +286,13 @@ test.describe("Member offer negotiation", () => {
     const buyerId = await getProfileIdByEmail(buyerEmail);
     if (!buyerId) {
       test.skip(true, `Could not resolve buyer profile for ${buyerEmail}`);
+      return;
+    }
+    if (!(await isBuyerWithinP2pNewAccountGrace(buyerId))) {
+      test.skip(
+        true,
+        "E2E buyer is older than 14 days — AML HK$300 cap no longer applies",
+      );
       return;
     }
 

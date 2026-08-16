@@ -333,6 +333,24 @@ export async function getProfileDisplayName(profileId: string): Promise<string> 
   return data?.display_name?.trim() || "對話夥伴";
 }
 
+export async function isBuyerWithinP2pNewAccountGrace(
+  profileId: string,
+): Promise<boolean> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("created_at")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (error || !data?.created_at) {
+    return false;
+  }
+
+  const ageMs = Date.now() - new Date(data.created_at).getTime();
+  return ageMs < 14 * 24 * 60 * 60 * 1000;
+}
+
 export type ListingMarketplaceFixture = {
   listingId: string;
   productId: string;
