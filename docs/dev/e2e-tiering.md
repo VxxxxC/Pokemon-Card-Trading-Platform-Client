@@ -1,7 +1,8 @@
 # E2E tiering — Gate / Nightly / Manual
 
 > **目的：** 避免誤稱「repo 內每個 e2e spec 都已入 production gate」。  
-> **SSOT 簽收：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) · Partner：[PARTNER_QA.md](./PARTNER_QA.md)
+> **SSOT 簽收：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) · Partner：[PARTNER_QA.md](./PARTNER_QA.md)  
+> **Post v2.1 覆蓋進度：** [test-coverage-ssot.md](./test-coverage-ssot.md)
 
 ## Gate（`bun run test:production:gate:signoff`）
 
@@ -14,15 +15,21 @@
 
 ## Nightly / PR optional（v2.2+）
 
-唔阻 v2.1 merge；建議 CI nightly 或 label 觸發。
+唔阻 v2.1 merge。CI：[`.github/workflows/nightly-test-coverage.yml`](../../.github/workflows/nightly-test-coverage.yml)（**03:00 HKT** 串行 `bun run test:nightly:coverage`）或 PR label。
 
-| 優先 | Spec | 說明 |
-|------|------|------|
-| P2 | `member-trading-p2p.spec.ts` · `member-offer-negotiation.spec.ts` | C2C 主流程 |
+| 觸發 | 跑咩 |
+|------|------|
+| `schedule` / `workflow_dispatch` | L2 platform vitest → L1 P2 E2E → L3 matrix E2E + integration（**串行**，防 staging fixture 衝突） |
+| PR label `platform` | L2 only：`bun run test:integration:platform` |
+| PR label `nightly-e2e` | L1 only：`bun run test:e2e:nightly:p2` |
+
+| 優先 | Spec / 指令 | 說明 |
+|------|-------------|------|
+| P2 | `test:e2e:nightly:p2` · `member-trading-p2p` · `member-offer-negotiation` | C2C 主流程 |
 | P2 | `global-chat-realtime.spec.ts` | Chat realtime |
-| P3 | `merchant-product-detail.spec.ts` · `marketplace-search-offer.spec.ts` | 瀏覽/下單入口 |
-| P3 | `admin-announcements.spec.ts` · `member-dashboard.spec.ts` | Admin/用戶周邊 |
-| P3 | `member-collection-*.spec.ts` · `member-inventory.spec.ts` | Collection 周邊 |
+| L3 | `test:e2e:nightly:matrix` · `test:integration:rewards-matrix` | Matrix soak（只計 nightly job；見 SSOT §9） |
+
+**Rewards regression（無 matrix）：** [`.github/workflows/rewards.yml`](../../.github/workflows/rewards.yml) schedule **05:00 HKT** 跑 `test:e2e:rewards-gate:production`。Full gate（含 matrix）保留 `workflow_dispatch` / PR label `rewards`。
 
 ## Manual（Partner）
 

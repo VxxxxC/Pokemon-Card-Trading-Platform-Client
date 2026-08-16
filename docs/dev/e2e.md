@@ -487,7 +487,11 @@ E2E order in gate: `user-report` → `admin-moderation` → `report-outcome-noti
 
 **Production Gate E2E harness：** `bun run test:production:gate` 會起 `next start` 並設 `PLAYWRIGHT_SKIP_WEBSERVER=1`；本地單跑 Playwright 預設仍用 `dev`，除非設 `PRODUCTION_GATE=1`。
 
-CI: [`.github/workflows/moderation-integration.yml`](../../.github/workflows/moderation-integration.yml) (label `moderation`, nightly, or manual dispatch) runs `bun run test:integration:moderation` with full `E2E_*` secrets.
+CI:
+
+- [`.github/workflows/moderation-integration.yml`](../../.github/workflows/moderation-integration.yml) — label `moderation`, nightly, or `workflow_dispatch`; `bun run test:integration:moderation` + full `E2E_*` secrets.
+- [`.github/workflows/nightly-test-coverage.yml`](../../.github/workflows/nightly-test-coverage.yml) — **03:00 HKT** serial `bun run test:nightly:coverage` (L2 platform → L1 P2 E2E → L3 matrix soak); PR labels `platform` / `nightly-e2e`. SSOT: [test-coverage-ssot.md](./test-coverage-ssot.md) §8–§9.
+- [`.github/workflows/rewards.yml`](../../.github/workflows/rewards.yml) — **05:00 HKT** schedule: vitest rewards + `test:e2e:rewards-gate:production` (no matrix); dispatch / PR label `rewards` runs full `test:e2e:rewards-gate`.
 
 ### Moderation Stripe refund smoke (I-H14, pre-release)
 

@@ -346,6 +346,7 @@ bun run seed:moderation-e2e
 | [refund-policy.md](./refund-policy.md) | S0–S4 政策 SSOT |
 | [capture-policy.md](./capture-policy.md) | Single vs legacy capture |
 | [e2e.md](./e2e.md) | Playwright 帳號與 env |
+| [test-coverage-ssot.md](./test-coverage-ssot.md) | Post v2.1 全站覆蓋進度（gate 以外） |
 
 ---
 
