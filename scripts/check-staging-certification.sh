@@ -1,20 +1,43 @@
 #!/usr/bin/env bash
-# Validates docs/dev/system-feature-registry.md — all in-scope features ☑ for Staging.
-# Also validates docs/dev/staging-certification.md §2 gate rows (SC-G*, SC-S*).
+# Validates docs/dev/system-feature-registry.md progress for Staging.
+#
+# Modes:
+#   (default)  F-M/C/A/S feature rows must be ☑ — prerequisite to run test:staging:certify
+#   --strict   Also requires SC-FX-ALL + staging-certification SC-G*/SC-S* rows ☑
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FEATURE_REGISTRY="$ROOT/docs/dev/system-feature-registry.md"
 STAGING_MANIFEST="$ROOT/docs/dev/staging-certification.md"
 
+STRICT=0
+for arg in "$@"; do
+  if [[ "$arg" == "--strict" ]]; then
+    STRICT=1
+  fi
+done
+
 fail=0
 
-check_progress_column() {
+check_incomplete_rows() {
   local file="$1"
   local label="$2"
+  local mode="$3"
   local incomplete
-  incomplete="$(awk '
-    /^\| \*\*(F-[MCSA]-|SC-FX-|SC-G|SC-S)/ {
+  incomplete="$(awk -v mode="$mode" '
+    function is_row() {
+      if (mode == "features") {
+        return /^\| \*\*F-M-/ || /^\| \*\*F-C-/ || /^\| \*\*F-S-/ || /^\| \*\*F-A-/
+      }
+      if (mode == "sc_fx") {
+        return /^\| \*\*SC-FX-/
+      }
+      if (mode == "sc_gates") {
+        return /^\| \*\*SC-G/ || /^\| \*\*SC-S/
+      }
+      return 0
+    }
+    is_row() {
       n = split($0, a, "|")
       if (n >= 2) {
         progress = a[n-1]
@@ -37,17 +60,35 @@ if [[ ! -f "$FEATURE_REGISTRY" ]]; then
   exit 1
 fi
 
-check_progress_column "$FEATURE_REGISTRY" "System Feature Registry (Member/Merchant/Admin/System)"
+check_incomplete_rows "$FEATURE_REGISTRY" \
+  "System Feature Registry (F-M/C/A/S features)" \
+  "features"
 
-if [[ -f "$STAGING_MANIFEST" ]]; then
-  check_progress_column "$STAGING_MANIFEST" "Staging gate rows (SC-G / SC-S in staging-certification §2.1/2.6)"
+if [[ "$STRICT" -eq 1 ]]; then
+  check_incomplete_rows "$FEATURE_REGISTRY" \
+    "System Feature Registry (SC-FX-ALL)" \
+    "sc_fx"
+
+  if [[ -f "$STAGING_MANIFEST" ]]; then
+    check_incomplete_rows "$STAGING_MANIFEST" \
+      "Staging gate rows (SC-G / SC-S in staging-certification §2.1/2.6)" \
+      "sc_gates"
+  fi
 fi
 
 if [[ "$fail" -ne 0 ]]; then
-  echo "Fix: complete tests/CI, update 進度 to ☑ in system-feature-registry.md"
-  echo "See docs/dev/system-feature-registry.md §5 SC-FX-ALL"
+  if [[ "$STRICT" -eq 1 ]]; then
+    echo "Fix: complete tests/CI, update 進度 to ☑ in system-feature-registry.md and staging-certification.md"
+    echo "See docs/dev/system-feature-registry.md §5 SC-FX-ALL"
+  else
+    echo "Fix: complete in-scope feature tests, update F-M/C/A/S 進度 to ☑ in system-feature-registry.md"
+  fi
   exit 1
 fi
 
-echo "=== Staging checklist: all in-scope features ☑ ==="
+if [[ "$STRICT" -eq 1 ]]; then
+  echo "=== Staging checklist: features + gates all ☑ ==="
+else
+  echo "=== Staging checklist: all in-scope features (F-M/C/A/S) ☑ ==="
+fi
 exit 0

@@ -17,12 +17,13 @@ done
 
 echo "=== Staging Certification START $(date '+%Y-%m-%d %H:%M:%S') ==="
 
-bash scripts/check-staging-certification.sh
-
 if [[ "$CHECK_SSOT_ONLY" -eq 1 ]]; then
+  bash scripts/check-staging-certification.sh --strict
   echo "=== --check-ssot only; skipping test suites ==="
   exit 0
 fi
+
+bash scripts/check-staging-certification.sh
 
 if [[ -f .env.local ]]; then
   set -a
