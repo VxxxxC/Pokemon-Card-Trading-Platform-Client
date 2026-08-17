@@ -30,11 +30,13 @@ import {
 async function seedHeldMerchantOrderReadyForPayout(
   runId: string,
   suffix: string,
+  merchantId?: string,
 ): Promise<string> {
   const buyerId = getBuyerUserId();
   const { orderId } = await seedMerchantOrderReadyForBuyerConfirm({
     buyerId,
     suffix: `${runId}-${suffix}`,
+    merchantId,
   });
   await confirmMerchantBuyerReceipt(orderId);
   await backdateMerchantPayoutHold(orderId);
@@ -72,9 +74,13 @@ async function assertOrderIsConnectPayoutCandidate(orderId: string): Promise<voi
   expect(row?.payout_status).toBe("held");
   expect(row?.buyer_confirmed_at).toBeTruthy();
   expect(row?.payout_hold_until).toBeTruthy();
-  expect(new Date(row!.payout_hold_until!).getTime()).toBeLessThanOrEqual(
-    Date.now(),
+
+  const { data: holdElapsed, error: holdElapsedError } = await admin.rpc(
+    "rpc_e2e_is_merchant_payout_hold_elapsed",
+    { p_order_id: orderId },
   );
+  expect(holdElapsedError).toBeNull();
+  expect(holdElapsed).toBe(true);
   expect(row?.stripe_transfer_id).toBeNull();
   expect(Number(row?.merchant_payout_amount ?? 0)).toBeGreaterThan(0);
   expect(row?.stripe_payment_intent_id?.trim()).toBeTruthy();
@@ -174,8 +180,15 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
     });
 
     merchantIt("M2b recovers from processing after finalize_failed mark (P2.5)", async () => {
-      const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m2b");
+      const buyerId = getBuyerUserId();
+      const { orderId } = await seedMerchantOrderReadyForBuyerConfirm({
+        buyerId,
+        suffix: `${runId}-m2b`,
+        itemSubtotal: 500,
+      });
       createdOrderIds.push(orderId);
+      await confirmMerchantBuyerReceipt(orderId);
+      await backdateMerchantPayoutHold(orderId);
 
       const admin = createServiceRoleClient();
       const adminId = getAdminUserId();
@@ -202,6 +215,8 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
         },
       );
       expect(failError).toBeNull();
+
+      await backdateMerchantPayoutHold(orderId);
 
       const { error: resetError } = await admin.rpc(
         "rpc_admin_reset_merchant_connect_payout_retry",
@@ -369,6 +384,13 @@ describe.skipIf(!hasMerchantGradingEnvVars()).sequential(
     });
 
     merchantIt("M4: seller-fault grading recovery deducts from connect payout prepare", async () => {
+      const admin = createServiceRoleClient();
+      const { error: clearPriorError } = await admin.rpc(
+        "rpc_e2e_clear_unsettled_grading_recovery",
+        { p_merchant_id: sellerId },
+      );
+      expect(clearPriorError).toBeNull();
+
       const recoverySeed = await seedMerchantAuthOrderAtAuthenticating({
         listingId,
         buyerId: getBuyerUserId(),
@@ -420,10 +442,13 @@ describe.skipIf(!hasMerchantGradingEnvVars()).sequential(
       const recoveryAmount = Math.abs(Number(recoveryLedger?.amount ?? 0));
       expect(recoveryAmount).toBeGreaterThan(0);
 
-      const payoutOrderId = await seedHeldMerchantOrderReadyForPayout(runId, "m4-payout");
+      const payoutOrderId = await seedHeldMerchantOrderReadyForPayout(
+        runId,
+        "m4-payout",
+        sellerId,
+      );
       createdOrderIds.push(payoutOrderId);
 
-      const admin = createServiceRoleClient();
       const { data: preparePayload, error: prepareError } = await admin.rpc(
         "rpc_prepare_merchant_order_payout",
         { p_order_id: payoutOrderId },
@@ -453,7 +478,10 @@ describe.skipIf(!hasMerchantGradingEnvVars()).sequential(
         (preparePayload as { recovery_applications?: Array<{ recovery_order_id: string }> })
           .recovery_applications ?? [];
       expect(
-        applications.some((row) => row.recovery_order_id === recoverySeed.orderId),
+        applications.some(
+          (row) =>
+            String(row.recovery_order_id) === String(recoverySeed.orderId),
+        ),
       ).toBe(true);
     });
   },

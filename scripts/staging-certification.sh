@@ -32,6 +32,14 @@ if [[ -f .env.local ]]; then
   set +a
 fi
 
+# shellcheck disable=SC1091
+source "$ROOT/scripts/e2e-production-server.sh"
+
+cleanup_certify() {
+  e2e_stop_production_server
+}
+trap cleanup_certify EXIT
+
 failed=0
 run_step() {
   local name="$1"
@@ -49,6 +57,7 @@ run_step() {
 run_step "production gate signoff" env PRODUCTION_GATE_SIGNOFF=1 bun run test:production:gate:signoff
 run_step "nightly coverage" bun run test:nightly:coverage
 run_step "rewards integration" bun run test:integration:rewards
+run_step "start production server for rewards E2E" e2e_start_production_server
 run_step "rewards E2E production gate" env REWARDS_GATE=1 bun run test:e2e:rewards-gate:production
 run_step "coupon security" bunx vitest run --config vitest.config.mts tests/integration/rewards/coupon-security.integration.test.ts
 run_step "coupon pbt" bun run test:integration:rewards:pbt

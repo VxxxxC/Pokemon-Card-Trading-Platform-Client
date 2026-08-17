@@ -11,6 +11,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# shellcheck disable=SC1091
+source "$ROOT/scripts/e2e-production-server.sh"
+
 if [[ -f .env.local ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -21,14 +24,10 @@ fi
 export PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:3000}"
 export PRODUCTION_GATE=1
 
-SERVER_PID=""
 failed=0
 
 cleanup() {
-  if [[ -n "$SERVER_PID" ]]; then
-    kill "$SERVER_PID" 2>/dev/null || true
-    wait "$SERVER_PID" 2>/dev/null || true
-  fi
+  e2e_stop_production_server
 }
 trap cleanup EXIT
 
@@ -45,41 +44,6 @@ run_step() {
   fi
 }
 
-wait_for_http() {
-  local url="$1"
-  local attempts="${2:-90}"
-  for _ in $(seq 1 "$attempts"); do
-    if curl -m 3 -s -o /dev/null -w "%{http_code}" "$url" | grep -qE '^[23]'; then
-      return 0
-    fi
-    sleep 2
-  done
-  return 1
-}
-
-start_production_server() {
-  local pid_on_port
-  pid_on_port="$(lsof -t -i:3000 2>/dev/null || true)"
-  if [[ -n "$pid_on_port" ]]; then
-    echo "Stopping existing process on :3000 (pid $pid_on_port)"
-    kill "$pid_on_port" 2>/dev/null || true
-    sleep 2
-  fi
-
-  echo ">> bun run build (production bundle for E2E)"
-  bun run build
-
-  bun run start &
-  SERVER_PID=$!
-  export PLAYWRIGHT_SKIP_WEBSERVER=1
-
-  if ! wait_for_http "$PLAYWRIGHT_BASE_URL/"; then
-    echo "Production server did not become ready at $PLAYWRIGHT_BASE_URL" >&2
-    return 1
-  fi
-  echo "Production server ready (pid $SERVER_PID)"
-}
-
 echo "=== Nightly test coverage START $(date '+%Y-%m-%d %H:%M:%S') ==="
 
 run_step "check-nightly-env" bash scripts/check-nightly-env.sh
@@ -88,7 +52,7 @@ if [[ "$failed" -ne 0 ]]; then exit 1; fi
 run_step "L2 platform integration" bun run test:integration:platform
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
-run_step "start production server for E2E" start_production_server
+run_step "start production server for E2E" e2e_start_production_server
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
 run_step "L1 P2 E2E (TC-E01–E03)" bun run test:e2e:nightly:p2

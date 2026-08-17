@@ -1,14 +1,18 @@
 import { findMerchantListingForIntegration } from "../../rewards/helpers/checkout-fixture";
+import { findMerchantListingForSellerIntegration } from "../../grading/helpers/grading-merchant-fixture";
 import { createServiceRoleClient } from "../../shared/supabase-admin";
 
 export async function seedMerchantOrderReadyForBuyerConfirm(params: {
   buyerId: string;
   suffix: string;
   itemSubtotal?: number;
+  merchantId?: string;
 }): Promise<{ orderId: string; merchantId: string; itemSubtotal: number }> {
   const admin = createServiceRoleClient();
-  const { listingId, sellerId: merchantId } =
-    await findMerchantListingForIntegration();
+  const listingFixture = params.merchantId
+    ? await findMerchantListingForSellerIntegration(params.merchantId)
+    : await findMerchantListingForIntegration();
+  const { listingId, sellerId: merchantId } = listingFixture;
   const itemSubtotal = params.itemSubtotal ?? 100;
 
   const { data: orderId, error: seedError } = await admin.rpc(
