@@ -44,6 +44,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local DB dumps (scripts/dev/backup-db.sh)
+/backups/
+
 # vercel
 .vercel
 

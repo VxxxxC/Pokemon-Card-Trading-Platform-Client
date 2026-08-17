@@ -9,6 +9,7 @@ import {
   getLatestOfferForListing,
   getListingMarketplaceFixture,
   getProfileIdByEmail,
+  resolveE2eMarketplaceFixture,
   type ListingMarketplaceFixture,
 } from "./fixtures/supabase-admin";
 
@@ -66,7 +67,7 @@ test.describe("Marketplace search + make offer", () => {
     }
 
     const { listingId } = getMerchantProductDetailFixtures();
-    const result = await getListingMarketplaceFixture(listingId!);
+    const result = await resolveE2eMarketplaceFixture();
     if (!result.ok) {
       testInstance.skip(true, result.skipReason);
       return null;
@@ -160,7 +161,12 @@ test.describe("Marketplace search + make offer", () => {
     });
 
     await test.step("Step 5 — navigate via card link to public product page", async () => {
-      await fixtureGridCardLink(page, fixture).click();
+      const cardLink = fixtureGridCardLink(page, fixture);
+      const productHref = await cardLink.getAttribute("href");
+      expect(productHref).toMatch(
+        new RegExp(`/marketplace/product/${escapeRegex(fixture.productId)}`),
+      );
+      await page.goto(productHref!, { waitUntil: "domcontentloaded" });
 
       await expect(page).toHaveURL(
         new RegExp(
@@ -191,7 +197,9 @@ test.describe("Marketplace search + make offer", () => {
       await expect(slideOver).toBeVisible({ timeout: 15_000 });
       await expect(slideOver.getByText("對接賣家商號")).toBeVisible();
       await expect(
-        slideOver.getByText(new RegExp(escapeRegex(formatHkd(fixture.listingPrice)))),
+        slideOver
+          .getByText(new RegExp(escapeRegex(formatHkd(fixture.listingPrice))))
+          .first(),
       ).toBeVisible();
       await expect(slideOver.locator("#exe-negotiation-price")).toBeVisible();
     });

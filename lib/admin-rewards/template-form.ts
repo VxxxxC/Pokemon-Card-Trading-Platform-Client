@@ -1,5 +1,6 @@
 import {
   DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+  type AdminRewardTemplateRestrictions,
   type AdminRedemptionCatalogInput,
   type AdminRewardActivityRow,
   type AdminRewardActivityUpsertInput,
@@ -440,6 +441,73 @@ export function formatStock(row: AdminRewardTemplateRow): string {
     return "無限";
   }
   return `${row.claimed_count} / ${row.max_claims ?? 0}`;
+}
+
+export type OrderKindsScope = "merchant" | "member" | "both";
+
+export const ORDER_KINDS_SCOPE_LABELS: Record<OrderKindsScope, string> = {
+  merchant: "僅商戶訂單 (B2C)",
+  member: "僅會員訂單 (C2C)",
+  both: "商戶 + 會員 (B2C & C2C)",
+};
+
+export function orderKindsToScope(
+  orderKinds: ("merchant" | "member")[],
+): OrderKindsScope {
+  const hasMerchant = orderKinds.includes("merchant");
+  const hasMember = orderKinds.includes("member");
+  if (hasMerchant && hasMember) {
+    return "both";
+  }
+  if (hasMember) {
+    return "member";
+  }
+  return "merchant";
+}
+
+export function scopeToOrderKinds(
+  scope: OrderKindsScope,
+): ("merchant" | "member")[] {
+  if (scope === "both") {
+    return ["merchant", "member"];
+  }
+  if (scope === "member") {
+    return ["member"];
+  }
+  return ["merchant"];
+}
+
+/** Checkout-facing defaults: free_shipping spans B2C + C2C auth; discount stays B2C-only. */
+export function defaultRestrictionsForRewardType(
+  type: AdminRewardTemplateType,
+): AdminRewardTemplateRestrictions {
+  if (type === "free_shipping") {
+    return {
+      ...DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+      order_kinds: ["merchant", "member"],
+    };
+  }
+  return { ...DEFAULT_ADMIN_REWARD_RESTRICTIONS };
+}
+
+export function restrictionsForTypeChange(
+  type: AdminRewardTemplateType,
+  current?: AdminRewardTemplateRestrictions,
+): AdminRewardTemplateRestrictions {
+  const defaults = defaultRestrictionsForRewardType(type);
+  if (!current) {
+    return defaults;
+  }
+
+  const scope = orderKindsToScope(current.order_kinds);
+  if (type === "free_shipping" && scope === "merchant") {
+    return { ...current, order_kinds: defaults.order_kinds };
+  }
+
+  return {
+    ...current,
+    order_kinds: current.order_kinds.length > 0 ? current.order_kinds : defaults.order_kinds,
+  };
 }
 
 export function rewardValueForType(

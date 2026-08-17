@@ -43,7 +43,9 @@ test.describe("Member P2P trading closure", () => {
       );
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture();
+    const fixtureResult = await resolveE2eMarketplaceFixture({
+      requiredSellerPersona: "member",
+    });
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -61,7 +63,9 @@ test.describe("Member P2P trading closure", () => {
       return;
     }
 
-    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    let offerId: string | null = null;
+    let memberOrderId: string | null = null;
+    let roomId = await ensureDbChatRoom(buyerId, sellerId);
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),
@@ -77,9 +81,6 @@ test.describe("Member P2P trading closure", () => {
     const buyerPage = await buyerContext.newPage();
     const sellerPage = await sellerContext.newPage();
 
-    let offerId: string | null = null;
-    let memberOrderId: string | null = null;
-
     try {
       await test.step("Step 1 — buyer submits P2P offer without authentication", async () => {
         const offerState = await ensurePendingP2pOffer({
@@ -93,6 +94,7 @@ test.describe("Member P2P trading closure", () => {
           buyerDisplayName,
         });
         offerId = offerState.offerId;
+        roomId = offerState.roomId;
       });
 
       await test.step("Step 2 — seller accepts offer in chat", async () => {
@@ -114,7 +116,10 @@ test.describe("Member P2P trading closure", () => {
       });
 
       await test.step("Step 3 — member_orders row is P2P pending", async () => {
-        memberOrderId = await pollMemberOrderIdForOffer(offerId!);
+        memberOrderId = await pollMemberOrderIdForOffer(offerId!, {
+          listingId,
+          buyerId,
+        });
 
         const order = await getLatestMemberOrderForListing({
           listingId,
@@ -184,6 +189,10 @@ test.describe("Member P2P trading closure", () => {
       });
 
       await test.step("Step 7 — buyer submits review", async () => {
+        if (!memberOrderId) {
+          throw new Error("Missing memberOrderId before review");
+        }
+        await gotoOrderDetail(buyerPage, memberOrderId);
         await submitFiveStarReview(buyerPage);
 
         const review = memberOrderId

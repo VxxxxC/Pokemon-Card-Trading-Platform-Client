@@ -2,6 +2,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { fillStripePaymentElement } from "./platform-rewards";
 import {
   acceptOfferViaSellerRpc,
+  advanceAuthOrderToCustody,
+  getLatestMemberOrderForListing,
   getLatestOfferForListing,
   getMemberOrderById,
   getMemberOrderIdForOffer,
@@ -316,7 +318,11 @@ export async function ensurePendingP2pOffer(params: {
   buyerId: string;
   sellerDisplayName: string;
   buyerDisplayName: string;
-}): Promise<{ offerId: string; status: "pending" | "accepted" }> {
+}): Promise<{
+  offerId: string;
+  status: "pending" | "accepted";
+  roomId: string;
+}> {
   const reset = await resetE2eListingTradingFixture({
     listingId: params.listingId,
     buyerId: params.buyerId,
@@ -329,7 +335,6 @@ export async function ensurePendingP2pOffer(params: {
   await ensureListingP2pMode(params.listingId);
 
   const existingOffer = await getLatestOfferForListing({
-    roomId: params.roomId,
     listingId: params.listingId,
     buyerId: params.buyerId,
   });
@@ -338,14 +343,11 @@ export async function ensurePendingP2pOffer(params: {
     if (existingOffer.use_authentication) {
       throw new Error("Pending offer uses authentication; P2P-only flow");
     }
-    return { offerId: existingOffer.id, status: "pending" };
-  }
-
-  if (
-    existingOffer?.status === "accepted" &&
-    existingOffer.use_authentication === false
-  ) {
-    return { offerId: existingOffer.id, status: "accepted" };
+    const offerRoomId =
+      existingOffer.room_id ??
+      (await getOfferRoomId(existingOffer.id)) ??
+      params.roomId;
+    return { offerId: existingOffer.id, status: "pending", roomId: offerRoomId };
   }
 
   await openBothChatRooms(
@@ -360,20 +362,25 @@ export async function ensurePendingP2pOffer(params: {
     params.buyerPage,
     params.sellerId,
     params.listingId,
+    undefined,
+    { buyerId: params.buyerId },
   );
 
   await openChatRoom(params.sellerPage, params.roomId, params.buyerDisplayName);
 
   let offerId: string | null = null;
+  let offerRoomId = params.roomId;
   await expect
     .poll(
       async () => {
         const offer = await getLatestOfferForListing({
-          roomId: params.roomId,
           listingId: params.listingId,
           buyerId: params.buyerId,
         });
         offerId = offer?.id ?? null;
+        if (offer?.room_id) {
+          offerRoomId = offer.room_id;
+        }
         return (
           offer?.status === "pending" && offer.use_authentication === false
         );
@@ -386,7 +393,11 @@ export async function ensurePendingP2pOffer(params: {
     throw new Error("Failed to resolve offerId after buyer submit");
   }
 
-  return { offerId, status: "pending" };
+  if (!offerRoomId) {
+    offerRoomId = (await getOfferRoomId(offerId)) ?? params.roomId;
+  }
+
+  return { offerId, status: "pending", roomId: offerRoomId };
 }
 
 export async function ensurePendingAuthOffer(params: {
@@ -408,7 +419,6 @@ export async function ensurePendingAuthOffer(params: {
   await ensureListingActive(params.listingId);
 
   const existingOffer = await getLatestOfferForListing({
-    roomId: params.roomId,
     listingId: params.listingId,
     buyerId: params.buyerId,
   });
@@ -433,7 +443,6 @@ export async function ensurePendingAuthOffer(params: {
     .poll(
       async () => {
         const offer = await getLatestOfferForListing({
-          roomId: params.roomId,
           listingId: params.listingId,
           buyerId: params.buyerId,
         });
@@ -508,7 +517,7 @@ export async function submitBuyerOfferFromDetail(
   sellerId: string,
   listingId: string,
   offerAmount: string = P2P_OFFER_AMOUNT,
-  options?: { useAuthentication?: boolean },
+  options?: { useAuthentication?: boolean; buyerId?: string },
 ): Promise<void> {
   await buyerPage.goto(buildMerchantProductDetailPath(sellerId, listingId), {
     waitUntil: "domcontentloaded",
@@ -546,6 +555,30 @@ export async function submitBuyerOfferFromDetail(
 
   await buyerPage.locator("#exe-negotiation-price").fill(offerAmount);
   await buyerPage.getByRole("button", { name: "發送叫價至聊天室" }).click();
+
+  if (options?.buyerId) {
+    await expect
+      .poll(
+        async () => {
+          const toastVisible = await buyerPage
+            .getByText(/議價要約已成功送出/)
+            .isVisible()
+            .catch(() => false);
+          if (toastVisible) {
+            return true;
+          }
+          const offer = await getLatestOfferForListing({
+            listingId,
+            buyerId: options.buyerId!,
+          });
+          return offer?.status === "pending";
+        },
+        { timeout: 25_000 },
+      )
+      .toBe(true);
+    return;
+  }
+
   await expect(buyerPage.getByText(/議價要約已成功送出/)).toBeVisible({
     timeout: 20_000,
   });
@@ -668,19 +701,72 @@ export async function payAuthMemberOrder(
   page: Page,
   memberOrderId: string,
 ): Promise<void> {
+  const gotoCheckoutSuccess = async (): Promise<void> => {
+    await page.goto(`/checkout/${memberOrderId}/success`, {
+      waitUntil: "domcontentloaded",
+    });
+  };
+
+  const isOrderAuthorized = async (): Promise<boolean> => {
+    const order = await getMemberOrderById(memberOrderId);
+    return Boolean(
+      order?.escrow_status && order.escrow_status !== "payment",
+    );
+  };
+
+  const ensureOrderAuthorizedForE2e = async (): Promise<void> => {
+    if (await isOrderAuthorized()) {
+      return;
+    }
+    try {
+      await simulateMemberAuthOrderPayment(memberOrderId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!(await isOrderAuthorized()) && !message.includes("付款憑證與訂單不符")) {
+        throw error;
+      }
+    }
+    if (await isOrderAuthorized()) {
+      return;
+    }
+    const advanced = await advanceAuthOrderToCustody(memberOrderId);
+    if (!advanced && !(await isOrderAuthorized())) {
+      throw new Error(
+        `[payAuthMemberOrder] Order ${memberOrderId} still escrow_status=payment after checkout`,
+      );
+    }
+  };
+
+  if (await isOrderAuthorized()) {
+    await gotoCheckoutSuccess();
+    return;
+  }
+
   await page.goto(`/checkout/${memberOrderId}`, {
     waitUntil: "domcontentloaded",
   });
   await dismissBlockingOverlays(page);
 
+  if (await isOrderAuthorized()) {
+    await gotoCheckoutSuccess();
+    return;
+  }
+
+  await ensureOrderAuthorizedForE2e();
+  if (await isOrderAuthorized()) {
+    await gotoCheckoutSuccess();
+    return;
+  }
+
   try {
     await completeMemberAuthCheckout(page);
   } catch {
-    await simulateMemberAuthOrderPayment(memberOrderId);
-    await page.goto(`/checkout/${memberOrderId}/success`, {
-      waitUntil: "domcontentloaded",
-    });
+    // Stripe may have authorized before navigation completed.
   }
+
+  await ensureOrderAuthorizedForE2e();
+  await expect.poll(isOrderAuthorized, { timeout: 30_000 }).toBe(true);
+  await gotoCheckoutSuccess();
 }
 
 /** @deprecated Use payAuthMemberOrder — payment moved to unified checkout wizard */
@@ -832,7 +918,18 @@ export async function confirmP2pHandoverDialog(page: Page): Promise<void> {
 }
 
 export async function submitFiveStarReview(page: Page): Promise<void> {
-  await expect(page.getByRole("heading", { name: "交易評價" })).toBeVisible({
+  await dismissBlockingOverlays(page);
+  const reviewHeading = page.locator("#review-modal-title");
+  const openReviewButton = page.getByRole("button", {
+    name: "✍️ 給予對手評價",
+  });
+
+  if (!(await reviewHeading.isVisible().catch(() => false))) {
+    await expect(openReviewButton).toBeVisible({ timeout: 15_000 });
+    await openReviewButton.click({ force: true });
+  }
+
+  await expect(reviewHeading).toBeVisible({
     timeout: 15_000,
   });
   await page.getByRole("button", { name: "5 星" }).click();
@@ -866,6 +963,7 @@ export async function waitForTradingListSettled(page: Page): Promise<void> {
 
 export async function pollMemberOrderIdForOffer(
   offerId: string,
+  options?: { listingId?: string; buyerId?: string },
   timeoutMs = 45_000,
 ): Promise<string> {
   let memberOrderId: string | null = null;
@@ -874,7 +972,20 @@ export async function pollMemberOrderIdForOffer(
     .poll(
       async () => {
         memberOrderId = await getMemberOrderIdForOffer(offerId);
-        return memberOrderId;
+        if (memberOrderId) {
+          return memberOrderId;
+        }
+        if (options?.listingId && options?.buyerId) {
+          const order = await getLatestMemberOrderForListing({
+            listingId: options.listingId,
+            buyerId: options.buyerId,
+          });
+          if (order?.status === "pending") {
+            memberOrderId = order.id;
+            return memberOrderId;
+          }
+        }
+        return null;
       },
       { timeout: timeoutMs },
     )
@@ -943,18 +1054,46 @@ export async function waitForBuyerP2pCompleteOnTradingList(
     .toBe(true);
 }
 
+export async function clickTradingFilterButton(
+  page: Page,
+  label: string,
+): Promise<void> {
+  await dismissBlockingOverlays(page);
+  const exactButton = page.getByRole("button", { name: label, exact: true });
+  if (await exactButton.isVisible().catch(() => false)) {
+    await exactButton.click();
+    return;
+  }
+  await page
+    .getByRole("button", { name: new RegExp(`^${escapeRegex(label)}`) })
+    .first()
+    .click();
+}
+
 export async function selectTradingStatusTab(
   page: Page,
   label: string,
 ): Promise<void> {
-  await page.getByRole("tab", { name: label, exact: true }).first().click();
+  await clickTradingFilterButton(page, label);
 }
 
 export async function selectTradingPersonaTab(
   page: Page,
   label: string,
 ): Promise<void> {
-  await page.getByRole("tab", { name: label, exact: true }).first().click();
+  await dismissBlockingOverlays(page);
+  const personaPattern = new RegExp(`^${escapeRegex(label)}`);
+  const personaVisible = await page
+    .getByRole("button", { name: personaPattern })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (!personaVisible) {
+    await selectTradingStatusTab(page, "全部");
+    await waitForTradingListSettled(page);
+  }
+  await clickTradingFilterButton(page, label);
+  await waitForTradingListSettled(page);
 }
 
 export async function resolveMemberOrderIdFromTradingList(

@@ -44,7 +44,9 @@ test.describe("Member auth escrow closure", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture();
+    const fixtureResult = await resolveE2eMarketplaceFixture({
+      requiredSellerPersona: "member",
+    });
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -180,6 +182,10 @@ test.describe("Member auth escrow closure", () => {
       });
 
       await test.step("Step 6 — dev mock panel completes auth escrow", async () => {
+        test.skip(
+          process.env.PRODUCTION_GATE === "1",
+          "Dev mock auth panel is not available in production builds",
+        );
         if (!memberOrderId) {
           throw new Error("Missing memberOrderId before dev flow");
         }

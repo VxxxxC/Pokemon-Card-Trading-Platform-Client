@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Full staging certification: SSOT §2 all ☑ + production signoff + nightly + security suites.
+# Usage:
+#   bun run test:staging:certify              # full
+#   bun run test:staging:certify --check-ssot # manifest only
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+CHECK_SSOT_ONLY=0
+for arg in "$@"; do
+  if [[ "$arg" == "--check-ssot" ]]; then
+    CHECK_SSOT_ONLY=1
+  fi
+done
+
+echo "=== Staging Certification START $(date '+%Y-%m-%d %H:%M:%S') ==="
+
+bash scripts/check-staging-certification.sh
+
+if [[ "$CHECK_SSOT_ONLY" -eq 1 ]]; then
+  echo "=== --check-ssot only; skipping test suites ==="
+  exit 0
+fi
+
+if [[ -f .env.local ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env.local
+  set +a
+fi
+
+failed=0
+run_step() {
+  local name="$1"
+  shift
+  echo ""
+  echo "=== $name ==="
+  if "$@"; then
+    echo ">>> PASS: $name"
+  else
+    echo ">>> FAIL: $name"
+    failed=1
+  fi
+}
+
+run_step "production gate signoff" env PRODUCTION_GATE_SIGNOFF=1 bun run test:production:gate:signoff
+run_step "nightly coverage" bun run test:nightly:coverage
+run_step "rewards integration" bun run test:integration:rewards
+run_step "rewards E2E production gate" env REWARDS_GATE=1 bun run test:e2e:rewards-gate:production
+run_step "coupon security" bunx vitest run --config vitest.config.mts tests/integration/rewards/coupon-security.integration.test.ts
+run_step "coupon pbt" bun run test:integration:rewards:pbt
+run_step "moderation pbt" bun run test:integration:moderation:pbt
+run_step "rewards mutation" bun run test:rewards:mutation
+run_step "moderation mutation" bun run test:moderation:mutation
+
+echo ""
+if [[ "$failed" -eq 0 ]]; then
+  echo "=== Staging Certification PASS $(date '+%Y-%m-%d %H:%M:%S') ==="
+  echo "Next: deploy staging + Partner M0 (PARTNER_QA.md)"
+else
+  echo "=== Staging Certification FAIL $(date '+%Y-%m-%d %H:%M:%S') ==="
+  exit 1
+fi

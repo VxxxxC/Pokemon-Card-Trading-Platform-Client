@@ -27,7 +27,7 @@
 
 ### Out of scope（寫入 audit 為 `OutOfScope`）
 
-Auction mock、申訴 portal、Listing 頁舉報、Moderation Phase F cron、全站 Email/Push、P2P 面交訂單平台退款。
+Auction mock（≠ make offer）、申訴 portal、Listing 頁舉報、Moderation Phase F cron、全站 Email/Push。
 
 ---
 

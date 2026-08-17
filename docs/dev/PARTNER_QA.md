@@ -4,9 +4,9 @@
 > **更新：** 2026-08-16  
 > **環境：** staging only · 勿用 production 真實用戶
 
-**Dev 前提：** [`test:production:gate:signoff`](./PRODUCTION_GATE.md) 全綠 · staging `bunx supabase db push` 至 **`20260928150000`**（或 repo 最新 migration）
+**Dev 前提：** [system-feature-registry.md](./system-feature-registry.md) **全 ☑** + `test:staging:certify` 綠
 
-Logic／回歸由 [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) 覆蓋；Partner **唔**重跑 integration / E2E 業務規則。
+Logic／回歸／安全由 [staging-certification.md](./staging-certification.md) 覆蓋；Partner **唔**重跑 integration / E2E。
 
 ---
 
@@ -20,7 +20,9 @@ Logic／回歸由 [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) 覆蓋；Partner **
 
 ---
 
-## 每次 staging deploy（必做 ~5 min）
+## 每次 staging deploy（必做 ~5 min）— **M0**
+
+> 僅當工程已跑 `bun run test:staging:certify` 綠。未認證時請聯絡工程，**唔**自行 deep regression。
 
 | ⬜ | 步驟 | 預期 |
 |----|------|------|
@@ -43,14 +45,12 @@ Logic／回歸由 [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) 覆蓋；Partner **
 
 ---
 
-## 唔使人手做（Gate 已驗）
+## 唔使人手做（Staging 認證已驗）
 
-退款規則 · 券 FSM · 鑑定 fail/pass · FPS / Connect 出賬 · moderation Stripe · rewards E2E · home/legal smoke · merchant 未付款過期（S0-05）· 退款 retry（C7）
-
-日常 **唔使** 跑舉報全鏈、退款 spot check、FPS/Connect 全鏈、首頁 P0 深度 — 見 [e2e-tiering.md](./e2e-tiering.md) · [v2.1-deferred.md](./v2.1-deferred.md)
+見 [staging-certification.md](./staging-certification.md) SC 表 — 券／退款／鑑定／FPS／Connect／moderation Stripe／rewards E2E／security mutation 等。
 
 ---
 
 ## 不在 Partner 範圍
 
-Auction · 申訴 portal · 全站 Email/Push · Moderation Phase F cron — 見 [v2.1-deferred.md](./v2.1-deferred.md)
+見 [v3-deferred.md](./v3-deferred.md)

@@ -1,222 +1,500 @@
-# Test Coverage SSOT — Post v2.1 進度
+# Test Coverage & Solidity SSOT — v2.4
 
-> **更新：** 2026-08-16  
-> **用途：** 追蹤 **v2.1 production gate 以外** 嘅功能／logic flow 測試覆蓋與 backlog 進度。  
-> **唔取代：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) 附錄 A（v2.1 商業主線簽收）· [v2.1-deferred.md](./v2.1-deferred.md)（v2.1 專項）· [e2e-tiering.md](./e2e-tiering.md)（E2E 分層）
+> **版本：** v2.4 · **更新：** 2026-08-16  
+> **終極 Checklist（功能全表）：** [system-feature-registry.md](./system-feature-registry.md) — Member / Merchant / Admin / System。  
+> **North star：** 功能表 **全 ☑** + [staging-certification.md](./staging-certification.md) `test:staging:certify` 綠 = **Staging 可俾人用**。  
+> **本文件：** 旅程（J-）、技術項（TC-）、矩陣、CC、安全 — 與功能表 ID 對照（registry §6）。
 
 ---
 
-## 狀態圖例
+## 0. Staging 認證契約（v2.4 核心）
+
+| 問題 | 答案 |
+|------|------|
+| 邊度係「全功能」清單？ | **[system-feature-registry.md](./system-feature-registry.md)**（F-M/C/A/S） |
+| 點樣試？ | §0 深度 T0–T3；金流/券要 T1+T3；其餘 T2 主旅程 |
+| 人手？ | 認證後每次 deploy 只做 **M0 ~5min** |
+| 完成線？ | 功能表全 ☑ + `test:staging:certify` + Partner M0 |
+| v3 唔計？ | [v3-deferred.md](./v3-deferred.md)（Auction mock ≠ make offer） |
+
+**現況：** 約 **27/67** 功能 ☑（+6 ◐）— **未達 Staging 認證**。
+
+**宏觀防線：** [config-contract-registry.md](./config-contract-registry.md)  
+**唔取代：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) · [test-solidity-plan.md](./test-solidity-plan.md) · [e2e-tiering.md](./e2e-tiering.md)
+
+---
+
+## 0.5 宏觀防線 — Config Contract Parity（全站）
+
+> **Registry SSOT：** [config-contract-registry.md](./config-contract-registry.md)
+
+| 域 | 代表風險 | CC-INT | CC-E2E | Backlog |
+|----|----------|--------|--------|---------|
+| **Rewards 券** | `restrictions.*` / `min_spend` 缺 UI / default 錯 | ☑ `admin-publish-defaults` | ☑ TC-E13 · C2C-ADM-1b | CC-RWD-03 hidden keys |
+| **Platform 鑑定費** | test 直寫 DB、Partner 用 Admin | ☑ `auth-fee` | ☐ | **CC-PLAT-01** |
+| **Platform 佣金** | payout snapshot | ☑ `commission-rate` | ☐ | **CC-PLAT-02** |
+| **Moderation** | 退款規則 | ☑ matrix | ☑ J-MOD-01 | — |
+| **Grading** | Admin 操作 | ☑ integration | ◐ | **CC-GRD-01** |
+| **Cron HTTP** | route≠RPC | ☐ | — | TC-M01+ |
+
+**新 PR：** 新 runtime 配置鍵 → 更新 registry + CC-UNIT + CC-INT（P0 加 CC-E2E）。
+
+---
+
+## 0. v2 核心改動（相對 v1）
+
+| v1 問題 | v2 做法 |
+|---------|---------|
+| 「Gate = 視為 solid」 | Gate = **logic 簽收**；solidity 另用 **S0–S2** |
+| 以 spec 檔打勾 | 以 **user journey** + 驗收句打勾 |
+| 冇區分 fixture / partner path | 每條 P0/P1 標 **Path** + **In CI** |
+| 組合覆蓋無處記 | **§7 Eligibility 矩陣** |
+| ☑ = 有 test | ☑ = **Staging 認證用**：`Solid ≥ 目標` + `In CI` 非 Manual + 可更新 [staging-certification.md](./staging-certification.md) SC 行 |
+
+**Incident 類型：** Config Contract Parity Gap（例 2026-08-16 `order_kinds`）— 見 registry · CC 三件套 §1.7。
+
+---
+
+## 1. 雙軸定義
+
+### 1.1 Coverage（有冇自動化）
 
 | Status | 意思 |
 |--------|------|
 | **Gate** | 已納入 `test:production:gate:signoff` |
-| **Partial** | 有 test，但未完整或 opt-in / mock only |
-| **HasTest** | repo 有 spec，**未**入 gate（建議 nightly / PR optional） |
+| **Partial** | 有 test，但未完整 / opt-in / mock only |
+| **HasTest** | repo 有 spec，未入 gate（nightly / PR optional） |
 | **Missing** | 無 meaningful 自動化 |
 | **Ops** | 人手／Dashboard，唔預期自動化 |
-| **N/A** | 刻意不做（政策／零在途／out of scope） |
-| **OutOfScope** | v2+ 功能，唔阻 launch |
+| **N/A** | 政策／零在途／out of scope |
 
-**進度欄：** `☐` 未做 · `◐` 進行中 · `☑` 完成 · `—` 不適用
+### 1.2 Solidity（可否代替 Partner regression）
 
----
+| 級 | 名稱 | 含義 | Partner skip regression |
+|----|------|------|------------------------|
+| **S0** | Spec exists | 有 test file；可能 fixture-only 或未入 CI | ❌ |
+| **S1** | Matrix / logic | Eligibility **矩陣**（含 **negative**）或等價 integration FSM | 邏輯層可以 |
+| **S2** | Partner-path | **(A)** Eligibility journey：**(S1 或等價 integration) 且** Partner E2E；**(B)** 非 eligibility journey：**全鏈 Partner E2E**（唔使矩陣） | ✅（該 journey + CI 綠） |
 
-## 1. v2.1 商業主線（Gate — 視為 solid）
+**Repo 級定義：** [test-solidity-plan.md §7](./test-solidity-plan.md)。
 
-`test:production:gate:signoff` 全綠 = 下列域 **logic 已簽收**（詳見 PRODUCTION_GATE 附錄 A）。
+**非 eligibility journey（例：J-TRD、J-AUTH 全鏈）：** 唔需要 TC-N05 矩陣；**S2 = Partner E2E 覆蓋完整旅程**。
 
-| 域 | 涵蓋 |
+### 1.3 Path
+
+| Path | 意思 |
+|------|------|
+| **Fixture** | `buildXxxInput()`、service role、DB seed |
+| **Partner** | 產品 UI／正常用戶操作 |
+| **Both** | Fixture 矩陣 + ≥1 Partner E2E |
+
+⚠️ Fixture-only **永遠唔計 S2**。
+
+### 1.4 In CI（邊個 job 守回歸）
+
+| 值 | 意思 |
 |----|------|
-| S0–S1 鑑定 | cancel · fail 矩陣 · pass · merchant 對稱 · stripe smoke |
-| S3 售後 | Phase H member/merchant · I-H14 E2E · C7 retry |
-| S4 出款 | FPS pipeline · Connect held/retry/failed |
-| Coupon / checkout | FSM · member auth coupon · E2E reconcile · baseline C8 |
-| Moderation | matrix integration · admin/report E2E · mutation |
-| Webhook | C1 HTTP route integration |
-| Smoke | home P0 · legal pages · admin grading guest |
+| **Gate** | `test:production:gate:signoff` |
+| **Nightly** | `test:nightly:coverage`（03:00 HKT） |
+| **Rewards** | `rewards.yml` → integration: `test:integration:rewards`；E2E: `test:e2e:rewards-gate` / `:production`（05:00 HKT） |
+| **Manual** | 僅本地／`workflow_dispatch`；**唔算 S2 達標** |
+| **—** | 未接入 |
 
-Partner 人手：[PARTNER_QA.md](./PARTNER_QA.md) M1 only。
+### 1.5 進度欄（☐ / ◐ / ☑）
 
----
+| 符號 | 條件 |
+|------|------|
+| **☑** | `Solid ≥ Solid 目標` **且** `In CI` ∈ Gate / Nightly / Rewards **且** 對應 [staging-certification.md](./staging-certification.md) SC 可標 ☑ |
+| **◐** | 有 spec 或 CI 有跑，但未達認證 ☑（soak、Manual、缺 E2E、CC 缺口） |
+| **☐** | 未開始或 Missing — **阻塞 Staging 認證** |
 
-## 2. v2.1 範圍內仍 Partial（可選收緊）
+### 1.6 Partner 人手政策
 
-| ID | Flow | Status | Artifact | 進度 | Next action |
-|----|------|--------|----------|------|-------------|
-| **TC-P01** | Coupon release on `PI.cancel`（全 HTTP webhook） | Partial | `coupon-webhook.integration.test.ts` | ☐ | 擴 C1 / coupon-webhook 事件 |
-| **TC-P02** | Grading fail webhook finalize 全鏈 | Partial | `auth-grading-fail-webhook.test.ts` (unit) | ☐ | E2E 或 webhook-route 加 event |
-| **TC-P03** | S2 pass 後、確認前 dispute | Partial | workflow + happy-path 間接 | ☐ | 專項 integration 或標 OutOfScope |
-| **TC-P04** | Connect payout 全 block 零 skip | Partial | `merchant-connect-payout-pipeline` | ☐ | verify 綠後消滅 skip |
-| **TC-P05** | Rewards matrix M-A1 | Partial | `platform-rewards-matrix.spec.ts` | ◐ | soak 後 `PRODUCTION_GATE_INCLUDE_MATRIX=1` |
-| **TC-P06** | Staging webhook Dashboard replay | Ops | — | — | PG-WH-03 人手 checklist |
-| **TC-P07** | Legacy 非 seller fail (C6) | N/A | G-LF1/LF2 only | — | 零 legacy 在途 |
+| 場景 | 要求 |
+|------|------|
+| **Staging 已認證** deploy | Partner **M0 only**（~5 min） |
+| Staging deploy（未認證） | M0 + 工程跟 SC ☐ 清單 |
+| Journey 已 **☑ + In CI 綠** | Partner **唔** regression 該 journey |
+| Nightly / Rewards 紅 | 工程修 |
+| 新功能首次 | 探索性 QA |
 
----
+### 1.7 Config Contract 三件套（CC）
 
-## 3. 有 test、未入 Gate（Nightly / PR optional）
+| 代號 | 驗證 | Artifact |
+|------|------|----------|
+| **CC-UNIT** | Form default / type-change | `template-form-catalog.test.ts` |
+| **CC-INT** | `publishActivity(defaultForm)` 無 fixture override | `admin-publish-defaults.integration.test.ts` |
+| **CC-E2E** | Admin UI → 用戶（可測 default 唔 click 欄位） | `member-auth-coupon-admin` |
 
-### 3.1 Integration（有檔、未串 `production-gate.sh`）
-
-| ID | 模組 | Spec | 進度 | 建議 |
-|----|------|------|------|------|
-| **TC-N01** | Platform legal SSOT | `tests/integration/platform/platform-legal.integration.test.ts` | ◐ | PR label `platform` 或 nightly |
-| **TC-N02** | Auth fee 設定 | `tests/integration/platform/auth-fee.integration.test.ts` | ◐ | 同上 |
-| **TC-N03** | P2P AML limits | `tests/integration/platform/p2p-aml-limits.integration.test.ts` | ◐ | 同上 |
-| **TC-N04** | Announcements | `tests/integration/announcements/*` + `test:announcements:gate` | ☐ | 獨立 gate script 已有 |
-| **TC-N05** | Rewards matrix (integration) | `tests/integration/rewards/rewards-matrix.integration.test.ts` | ◐ | 與 E2E matrix 一齊 soak |
-
-### 3.2 E2E（spec 存在、見 [e2e-tiering.md](./e2e-tiering.md)）
-
-| ID | 優先 | Spec | 進度 | 說明 |
-|----|------|------|------|------|
-| **TC-E01** | P2 | `member-trading-p2p.spec.ts` | ◐ | C2C 主流程 |
-| **TC-E02** | P2 | `member-offer-negotiation.spec.ts` | ◐ | 議價 |
-| **TC-E03** | P2 | `global-chat-realtime.spec.ts` | ◐ | Chat realtime |
-| **TC-E04** | P3 | `marketplace-search-offer.spec.ts` · `marketplace-storefront.spec.ts` | ☐ | 瀏覽／搜尋 |
-| **TC-E05** | P3 | `merchant-product-detail.spec.ts` | ☐ | Buy-now UI |
-| **TC-E06** | P3 | `member-dashboard.spec.ts` | ☐ | 簽到／dashboard |
-| **TC-E07** | P3 | `member-collection-*.spec.ts` · `member-inventory.spec.ts` | ☐ | Collection |
-| **TC-E08** | P3 | `member-auth-escrow.spec.ts` · `member-auth-inbound.spec.ts` · `member-order-detail-auth.spec.ts` | ☐ | Member 鑑定 UI 鏈 |
-| **TC-E09** | P3 | `admin-announcements.spec.ts` · `admin-settings.spec.ts` · `admin-catalog.spec.ts` · `admin-user-control.spec.ts` · `admin-stripe-finance.spec.ts` | ☐ | Admin 周邊 |
-| **TC-E10** | P3 | `member-rewards-redeem.spec.ts` · `rewards-order-detail.spec.ts` | ☐ | production gate 未含 order-detail |
-| **TC-E11** | P3 | `member-merchant-trading.spec.ts` · `member-trading-filters.spec.ts` · `member-trading-smoke.spec.ts` | ☐ | 交易列表 |
-| **TC-E12** | P3 | `member-order-detail-p2p.spec.ts` · `public-profile-page.spec.ts` · `member-rating-page.spec.ts` | ☐ | 訂單／profile |
-
-**建議落地：** [`.github/workflows/nightly-test-coverage.yml`](../../.github/workflows/nightly-test-coverage.yml)（03:00 HKT 串行）或 PR label `platform` / `nightly-e2e`；唔擴 production gate 除非 soak 穩定。
+Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 ---
 
-## 4. 薄覆蓋／Missing（真正 backlog）
+## 2. v2.1 商業主線 — Gate re-audit
 
-### 4.1 Cron HTTP（RPC 有測、route 多數無）
+`test:production:gate:signoff` = **認證必要步驟（SC-G01）** · 單獨跑唔等於 Staging 已認證（尚需 §2 SC 全 ☑ + nightly/security）。
 
-| ID | Route | RPC / 備註 | Status | 進度 |
-|----|-------|------------|--------|------|
-| **TC-M01** | `/api/cron/expire-merchant-pending-payment` | S0-05 測 RPC | Missing (HTTP) | ☐ |
-| **TC-M02** | `/api/cron/release-stale-coupon-reserves` | — | Missing | ☐ |
-| **TC-M03** | `/api/cron/member-fps-payout-ready` | pipeline integration 間接 | Missing (HTTP) | ☐ |
-| **TC-M04** | `/api/cron/merchant-connect-payout-ready` | 同上 | Missing (HTTP) | ☐ |
-| **TC-M05** | `/api/cron/ingest-platform-trades` | — | Missing | ☐ |
-| **TC-M06** | `/api/cron/aggregate-prices` | — | Missing | ☐ |
+| 域 | Gate 涵蓋 | Solid | Path | Gap / next |
+|----|-----------|-------|------|------------|
+| S0–S1 鑑定 | cancel · fail 矩陣 · pass · merchant 對稱 · stripe smoke | S1 | Fixture | Admin 入庫 partner E2E 薄 |
+| S3 售後 | Phase H · I-H14 · C7 | S1–S2 | Both | 部分 admin 配置缺 partner-path |
+| S4 出款 | FPS · Connect pipeline | S1 | Fixture | TC-M10 |
+| **Coupon / checkout** | FSM · member auth coupon · reconcile · C8 | **S1–S2** | Both | matrix soak；CC-PLAT 等其他域 |
+| Moderation | matrix · E2E · mutation | S1–S2 | Both | — |
+| Webhook | C1 HTTP | S1 | Fixture | TC-P01 |
+| Smoke | home · legal · admin grading guest | S2 | Partner | M1 重疊 |
 
-### 4.2 Stripe Connect / KYC
+**Re-audit：** ◐（2026-08-16 起）
 
-| ID | Flow | Status | 進度 |
-|----|------|--------|------|
-| **TC-M10** | `/api/stripe/connect/onboard` · `return` · `dashboard` | Missing | ☐ |
-| **TC-M11** | `admin-kyc` · `merchant-kyc` actions + `kyc/upload-document` | Missing | ☐ |
+---
 
-### 4.3 交易／社交（actions 為主）
+## 3. P0 / P1 旅程登記表
 
-| ID | Flow | Status | 進度 | 備註 |
-|----|------|--------|------|------|
-| **TC-M20** | P2P 面交全鏈（成交→完成） | HasTest (E2E only) | ☐ | integration 只得 dispute 無退款 |
-| **TC-M21** | Chat server actions | Missing (integration) | ☐ | E2E realtime only |
-| **TC-M22** | Reviews / 評價 | Missing | ☐ | |
-| **TC-M23** | Collection / wishlist / inventory CRUD | HasTest (E2E only) | ☐ | |
-| **TC-M24** | Merchant 直購 checkout→paid（非鑑定） | Partial | ☐ | E2E dialog；無專項 integration |
-| **TC-M25** | Member 非鑑定訂單 complete/cancel | Missing | ☐ | |
+| ID | Journey | 目標 | Path | In CI | Artifact（Partner / 邊界） | Solid | 進度 |
+|----|---------|------|------|-------|---------------------------|-------|------|
+| **J-CPN-01** | Admin 發布免運 → B2C 直購 checkout 可用 | S2 | Partner | Rewards | **Partner:** `platform-rewards-phase2` · **邊界:** `rewards-checkout-coupon`（min spend / meetup；免運或 reuse audit template） | S2 | ☑ |
+| **J-CPN-02** | Admin 發布免運 → B2C 鑑定 checkout 可用 | S2 | Partner | Rewards | `platform-rewards-phase2` B2b.2 | S2 | ☑ |
+| **J-CPN-03** | Admin 發布免運（含 C2C）→ C2C 鑑定 checkout eligible | S2 | Partner | **Rewards** | **Partner:** `member-auth-coupon-admin`（TC-E13）· *唔計 S2:* `member-auth-coupon.integration`（fixture `order_kinds`） | S2 | ☑ |
+| **J-CPN-04** | C2C 鑑定 + 折扣券 → checkout **必須灰** | S1 | Fixture | Gate integration | `member-auth-coupon.integration` | S1 | ☑ |
+| **J-CPN-05** | Flash 搶券 → wallet → merchant checkout | S2 | Partner | Rewards | `platform-rewards-phase3` C3.7 | S2 | ☑ |
+| **J-CPN-06** | 積分兌換 → wallet → checkout | S2 | Partner | Rewards | `platform-rewards-phase4`（checkout 未完整） | S1 | ◐ |
+| **J-CPN-07** | **Default Admin form** publish → DB `restrictions` 正確（無 fixture override） | S1 | Fixture | Rewards | `admin-publish-defaults.integration` | S1 | ☑ |
+| **J-MOD-01** | 舉報 → Admin 退款 → Stripe reconcile | S2 | Partner | Gate | `moderation-stripe-refund-smoke` | S2 | ☑ |
+| **J-AUTH-01** | C2C 鑑定 offer → accept → pay → escrow | S2 | Partner | Manual‡ | `member-auth-escrow` 等 | S1 | ◐ |
+| **J-TRD-01** | C2P 面交全鏈 | S2 | Partner | Nightly | `member-trading-p2p` | S2 | ☑ |
+| **J-TRD-02** | 議價 offer | S2 | Partner | Nightly | `member-offer-negotiation` | S2 | ☑ |
 
-### 4.4 Upload / 媒體 API
+---
+
+## 4. Partial（Gate 收緊候選）
+
+| ID | Flow | Coverage | 目標 | Path | In CI | Artifact | Solid | 進度 | Next |
+|----|------|----------|------|------|-------|----------|-------|------|------|
+| **TC-P01** | Coupon release on `PI.cancel` HTTP | Partial | S1 | Fixture | Gate partial | `coupon-webhook.integration` | S0 | ☐ | 擴 C1 |
+| **TC-P02** | Grading fail webhook 全鏈 | Partial | S1 | Fixture | — | unit | S0 | ☐ | webhook E2E |
+| **TC-P03** | S2 pass 前 dispute | Partial | S1 | Fixture | — | indirect | S0 | ☐ | 專項 |
+| **TC-P04** | Connect payout 零 skip | Partial | S1 | Fixture | Gate | pipeline | S0 | ☐ | 消滅 skip |
+| **TC-P05** | Rewards matrix E2E | Partial | S1 | Fixture | Nightly + Rewards dispatch | `platform-rewards-matrix` | S1† | ◐ | soak 3/3 |
+| **TC-P06** | Staging webhook replay | Ops | — | — | — | — | — | — | PG-WH-03 |
+| **TC-P07** | Legacy C6 | N/A | — | — | — | — | — | — | — |
+
+† **TC-P05 / TC-N05：** matrix **cases 已有** → Solid **S1**；**進度 ◐** = nightly soak 未 3/3，未預設入 production gate。
+
+---
+
+## 5. Nightly / PR optional
+
+### 5.1 Integration
+
+| ID | 模組 | 目標 | Path | In CI | Spec | Solid | 進度 |
+|----|------|------|------|-------|------|-------|------|
+| **TC-N01** | Platform legal | S1 | Fixture | Nightly | `platform-legal.integration` | S0 | ◐ |
+| **TC-N02** | Auth fee | S1 | Fixture | Nightly | `auth-fee.integration` | S0 | ◐ |
+| **TC-N03** | P2P AML | S1 | Fixture | Nightly | `p2p-aml-limits.integration` | S0 | ◐ |
+| **TC-N04** | Announcements | S2 | Partner | announcements gate | `test:announcements:gate` | S1 | ☐ |
+| **TC-N05** | Rewards eligibility 矩陣 | S1 | Fixture | Nightly | `rewards-matrix.integration`（**B2C 為主**） | S1† | ◐ |
+
+### 5.2 E2E
+
+| ID | 優先 | Journey | 目標 | Path | In CI | Spec | Solid | 進度 |
+|----|------|---------|------|------|-------|------|-------|------|
+| **TC-E01** | P2 | C2P 面交 | S2 | Partner | Nightly | `member-trading-p2p` | S2 | ☑ |
+| **TC-E02** | P2 | 議價 | S2 | Partner | Nightly | `member-offer-negotiation` | S2 | ☑ |
+| **TC-E03** | P2 | Chat realtime | S1 | Partner | Nightly | `global-chat-realtime` | S1 | ☑ |
+| **TC-E04** | P3 | 市集搜尋 | S1 | Partner | — | `marketplace-search-offer` 等 | S0 | ☐ |
+| **TC-E05** | P3 | Buy-now UI | S1 | Partner | — | `merchant-product-detail` | S0 | ☐ |
+| **TC-E06** | P3 | Dashboard | S1 | Partner | — | `member-dashboard` | S0 | ☐ |
+| **TC-E07** | P3 | Collection | S1 | Partner | — | `member-collection-*` | S0 | ☐ |
+| **TC-E08** | P2 | C2C 鑑定 escrow | S2 | Partner | Manual‡ | `member-auth-escrow` 等 | S1 | ◐ |
+| **TC-E09** | P3 | Admin 周邊 | S1 | Partner | — | `admin-*` | S0 | ☐ |
+| **TC-E10** | P2 | 積分／訂單詳情券 | S2 | Partner | Rewards partial | `member-rewards-redeem` 等 | S0 | ☐ |
+| **TC-E11** | P2 | Trading smoke／filters | S2 | Partner | Manual‡ | `member-trading-smoke` 等 | S1 | ◐ |
+| **TC-E12** | P3 | 訂單詳情／profile | S1 | Partner | Manual‡ | `member-order-detail-p2p` 等 | S1 | ◐ |
+| **TC-E13** | P1 | Admin 建券 → C2C 鑑定 checkout eligible | S2 | Partner | **Rewards** | `member-auth-coupon-admin` | S2 | ☑ |
+
+‡ `member-trading` project specs — **未**入 `test:nightly:coverage`；要 ☑ 需接入 nightly 或 rewards gate。
+
+---
+
+## 6. Missing backlog
+
+### 6.1 Cron HTTP
+
+| ID | Route | Status | 目標 | 進度 |
+|----|-------|--------|------|------|
+| **TC-M01** | `/api/cron/expire-merchant-pending-payment` | Missing (HTTP) | S1 | ☐ |
+| **TC-M02** | `/api/cron/release-stale-coupon-reserves` | Missing | S1 | ☐ |
+| **TC-M03** | `/api/cron/member-fps-payout-ready` | Missing (HTTP) | S1 | ☐ |
+| **TC-M04** | `/api/cron/merchant-connect-payout-ready` | Missing (HTTP) | S1 | ☐ |
+| **TC-M05** | `/api/cron/ingest-platform-trades` | Missing | S0 | ☐ |
+| **TC-M06** | `/api/cron/aggregate-prices` | Missing | S0 | ☐ |
+
+### 6.2–6.5 詳表
+
+見 **附錄 A**（Connect/KYC、交易社交、Upload、Admin）。
+
+---
+
+## 7. Eligibility 與合約覆蓋
+
+> **分兩層：** (A) **CC-INT/E2E** = Admin 配置會否寫入 DB（防 order_kinds 類）；(B) **Matrix** = 組合／negative（`rewards-matrix` 等）。  
+> **C2C `order_kinds`：** Matrix **唔 cover**；靠 **CC-INT + TC-E13**（registry §3.1）。
+
+### 7.1 Rewards checkout — 合約 (CC) + 組合 (Matrix)
+
+| 維度 | CC-INT default | CC-E2E Partner | Matrix B2C (TC-N05) | Negative |
+|------|----------------|----------------|---------------------|----------|
+| `order_kinds` (incl. C2C) | ☑ J-CPN-07 | ☑ TC-E13 · C2C-ADM-1b | —（無 member） | C2C+僅 merchant→灰 |
+| `type` | ☑ | phase2 · J-CPN-04 | ☑ | C2C+discount→灰 |
+| `requires_authentication` | ◐ default inherit | phase2 auth toggle | ☑ | 僅非鑑定+auth→灰 |
+| `shipping_methods` | ◐ default only | B3.3 · rewards-checkout | ☑ | meetup+僅 sf→灰 |
+| `min_spend` / `max_subsidy` | ☑ | rewards-checkout-coupon | ☑ | 未達標→灰 |
+| reserve / expiry / used | — | E2E-C4 | ☑ integration FSM | 過期→灰 |
+
+**Soak：** ◐ 1/3（§10）— 只影響 matrix **穩定度**，唔影響 CC-INT 已 ☑ 嘅合約。
+
+### 7.2 Moderation refund — eligibility + finalize 矩陣
+
+> **Journey：** J-MOD-01（Partner E2E）· **Logic：** `phase-h-refund.integration` · **Sanctions／舉報：** `moderation-matrix.integration`（唔係退款矩陣）  
+> **政策 SSOT：** [refund-policy.md](./refund-policy.md) · **Gate：** `moderation-release-gate.sh` + signoff `moderation-stripe-refund-smoke`（I-H14）
+
+#### 7.2.1 訂單種類 × prepare / finalize
+
+| 維度 | Integration（`phase-h-refund`） | E2E Partner | Negative / edge | 進度 |
+|------|--------------------------------|-------------|-----------------|------|
+| `merchant_direct` eligible + prepare | ☑ I-H1 | ☑ I-H14 `moderation-stripe-refund-smoke` | I-H7 無關訂單 | ☑ |
+| `merchant_auth` eligible + prepare | ☑ I-H2 | ☐ | — | ◐ |
+| `merchant_auth` admin finalize + ledger | ☑ I-H2M | ☐ | — | ◐ |
+| `member_auth` eligible + prepare | ☑ I-H3 | ☐ | — | ◐ |
+| `member_auth` admin finalize | ☑ I-H10 | ☐ | — | ◐ |
+| 退款時窗外 | ☑ I-H4 | — | prepare 拒絕 | ☑ |
+| resolve 唔選退款 | ☑ I-H5 | — | `refund_status` 不變 | ☑ |
+| `upheld_warn_only` + refund | ☑ I-H6b | — | 無 sanction | ☑ |
+| payout 候選排除 failed refund | ☑ I-H12 | — | — | ☑ |
+| preview 唔 mutate | ☑ I-H17 | — | — | ☑ |
+| failed refund retry（C7） | ☑ I-H18 | — | saga replay | ☑ |
+
+#### 7.2.2 Fault / carrier / inconclusive（member ↔ merchant_auth 對稱）
+
+| `fault_party` | `carrier_liability` | member_auth | merchant_auth | 進度 |
+|---------------|---------------------|-------------|---------------|------|
+| `carrier` | `seller` | ☑ I-H15（seller receivable） | ☑ I-H15M（merchant ledger recovery） | ☑ |
+| `carrier` | `platform` | ☑ I-H15b | ☑ I-H15bM | ☑ |
+| `inconclusive` | — | ☑ I-H16（`stripe_fee/2`） | ☑ I-H16M | ☑ |
+| `seller`（default prepare） | — | ☑ I-H3 / I-H10 | ☑ I-H2 / I-H2M | ☑ |
+| `buyer` fault | — | ☐ 專項 | ☐ 專項 | ☐ |
+
+**Gap / next：** E2E 目前只得 **merchant_direct** 全鏈（I-H14）；`merchant_auth` / `member_auth` refund 仍靠 integration。**P2P 面交**永不平台退款 = 永久政策（F-S-13 · `p2p-dispute-no-refund`）。
+
+---
+
+### 7.3 Auth escrow FSM — grading fail / pass / cancel
+
+> **Logic Gate：** `test:integration:grading`（`auth-grading-*`）· **Stripe smoke：** `grading:stripe-smoke` · `grading:pass-stripe-smoke` · **E2E：** `admin-grading`（guest smoke）· `verify:merchant-grading-e2e`（merchant，opt-in）  
+> **政策 SSOT：** [refund-policy.md §7.2–7.3](./refund-policy.md) · [escrow-payment-policy.md](./escrow-payment-policy.md)
+
+#### 7.3.1 Happy path + admin ops
+
+| 維度 | member_auth | merchant_auth | E2E Partner | 進度 |
+|------|-------------|---------------|-------------|------|
+| custody → pass → outbound → confirm | ☑ G-W2 | ☑ G-W2M | ◐ `admin-grading` guest | ◐ |
+| admin outbound / tracking（G-W1） | ☑ | ☑ | ☐ | ◐ |
+| buyer confirm guard（未 fully captured） | ☑ G-CONF1 | ☑ G-CONF1M | ☐ | ◐ |
+| pass + real Stripe capture | ☑ G-BP-S1 | ☐ | ☐ | ◐ |
+
+#### 7.3.2 Fail fault 矩陣（`escrow_capture_model = single`）
+
+| `fault_party` | member_auth | merchant_auth | Stripe smoke | 進度 |
+|---------------|-------------|---------------|--------------|------|
+| `buyer` prepare + finalize | ☑ G-BF1 · G-BF3 | ☑ G-BF1M · G-BF3M | ☑ G-BF-S1 | ☑ |
+| `seller` prepare | ☑ G-BF2 | ☐（缺 G-BF2M） | — | ◐ |
+| `seller` finalize | ☑ G-BF4 | ☑ G-BF4M | ☑ G-BF-S2 | ☑ |
+| `carrier` + `seller` liability | ☑ G-BF6 | ☑ G-BF6M | — | ☑ |
+| `carrier` + `platform` liability | ☑ G-BF7 | ☑ G-BF7M | — | ☑ |
+| `carrier` 缺 liability | ☑ G-BF8 | ☑ G-BF8M | — | ☑ |
+| `platform` | ☑ G-BF10 | ☑ G-BF10M | — | ☑ |
+| `inconclusive` | ☑ G-BF11 | ☑ G-BF11M | — | ☑ |
+| cancel race（void before finalize） | ☑ G-BF5 | ☑ G-BF5M | — | ☑ |
+| coupon restore（seller fault） | ☑ G-C1 | ☑ G-C1M | — | ☑ |
+
+#### 7.3.3 Legacy staged + cancel FSM
+
+| 維度 | Coverage | Artifact | 進度 |
+|------|----------|----------|------|
+| Legacy seller fault `capture_zero` | ☑ | G-LF1 · G-LF2（real PI） | ☑ |
+| Seller cancel before intake | ☑ | G-CAN1–G-CAN3 | ☑ |
+| Merchant cancel symmetry | ☑ | `auth-grading-merchant-cancel` | ☑ |
+
+**Gap / next（CC-GRD-01 · §2 re-audit）：**
+
+- **Partner-path 薄：** Admin grading UI 主要靠 integration；E2E 只得 guest `admin-grading` + opt-in `verify:merchant-grading-e2e`（非 nightly）。
+- **member ↔ merchant 對稱 ◐：** 缺 **G-BF2M**（seller prepare）；merchant **pass** Stripe smoke 未覆蓋。
+- **唔屬 CC 域：** grading fault 由 Admin dispute UI 選項驅動（`mapResolutionOptionToInput`），唔係 `reward_templates` 類 config parity；防線係 **FSM integration 矩陣**，唔係 CC-INT。
+
+---
+
+## 8. 實施順序（= Staging 認證必經路徑）
+
+> **Exit：** [staging-certification.md](./staging-certification.md) §2 全 ☑ + `bun run test:staging:certify`。
+
+| Phase | 目標 | IDs | SC | 進度 |
+|-------|------|-----|-----|------|
+| **L0** | SSOT v2.3 + registry + certify 腳本 | §0 · registry · scripts | SC-L00 | ◐ |
+| **L1** | Nightly P2 E2E 穩定 | TC-E01–E03 | SC-T03 | ☑ |
+| **L2** | Platform integration nightly | TC-N01–N03 | SC-T02 | ◐ |
+| **L3** | Matrix soak → gate | TC-P05 · TC-N05 | SC-G05 · SC-T01 | ◐ 1/3 |
+| **L4** | Cron HTTP | TC-M01–M04 | SC-M01 | ☐ |
+| **L5** | Connect/KYC | TC-M10–M11 | SC-M02 | ☐ |
+| **L6** | Member-trading 入 CI | TC-E08 · E11 · J-AUTH-01 | SC-J05 · SC-T03 | ◐ |
+| **L7** | Admin default contract (CC-INT) | J-CPN-07 | SC-J03 | ☑ |
+| **L8** | 全站 CC | CC-PLAT/RWD/GRD | SC-CC01–04 | ☐ |
+| **L9** | 功能表全 ☑（registry §1–4） | F-M/C/A/S | SC-FX-ALL | ☐ |
+| **L10** | Security mutation 入 certify | SEC-S03 · S06 | SC-S03 · SC-S06 | ☐ |
+| **L11** | Nightly 接入所有 Nightly† spec | registry † 行 | SC-G02 | ☐ |
+
+---
+
+## 9. CI 分工
+
+| Workflow | Schedule | 內容 | 相關 TC |
+|----------|----------|------|---------|
+| **nightly-test-coverage** | 03:00 HKT | L2 platform INT → L1 P2 E2E → L3 matrix（**唔含** `test:integration:rewards`） | E01–E03 · P05 · N01–N03 · N05 |
+| **rewards.yml** `rewards-integration` | 05:00 HKT 前 | `test:integration:rewards`（**CC-INT**） | J-CPN-07 · member-auth-coupon |
+| **rewards.yml** `rewards-e2e` | 05:00 HKT | `test:e2e:rewards-gate:production`（**TC-E13** · C2C-ADM-1b） | J-CPN-01–05 |
+| **rewards.yml** dispatch / PR `rewards` | on-demand | `test:e2e:rewards-gate`（full + matrix） | + P05 matrix |
+| **production-gate** | sign-off | 見 PRODUCTION_GATE | Gate 域 |
+
+本地：`bun run test:nightly:coverage` · `bun run test:e2e:rewards-gate:production`
+
+---
+
+## 10. TC-P05 Matrix soak tracker
+
+| # | Date (HKT) | Run | Streak |
+|---|------------|-----|--------|
+| 1 | 2026-08-16 | local `test:nightly:coverage` ✅ | **1/3** |
+| 2 | — | — | |
+| 3 | — | — | |
+
+**Exit：** 3/3 → `PRODUCTION_GATE_INCLUDE_MATRIX=1` signoff。
+
+---
+
+## 11. L6 Member-trading 診斷
+
+| Spec | In CI | Solid | 進度 |
+|------|-------|-------|------|
+| `test:e2e:nightly:member`（bundle） | Nightly L6 | — | ◐ |
+| `member-trading-smoke` | Nightly L6 | S1 | ◐ |
+| `member-trading-filters` | Nightly L6 | S1 | ◐ |
+| `member-order-detail-p2p` | Nightly L6 | S1 | ◐ |
+| `member-order-detail-auth` | Nightly L6 | S1 | ◐ |
+| `member-auth-inbound` | Nightly L6 | S1 | ◐ |
+| `member-auth-escrow` | Nightly L6 | S1 | ◐ |
+| `merchant-product-detail` | Nightly L6 | — | ☑ |
+
+**2026-08-16 L6 再跑：** `test:e2e:nightly:member` → **61 passed · 15 failed · 96 skipped**（~12 min）。  
+仍 fail：dashboard、auth-settings、makeOffer journey、escrow/order-detail 全鏈、username profile、部分 wishlist。
+
+‡ 要 registry ☑ → nightly 綠 + 更新 `system-feature-registry.md` 該行。
+
+---
+
+## 12. PR checklist
+
+Touch **任何** Admin 配置或 runtime eligibility：
+
+- [ ] 更新 [config-contract-registry.md](./config-contract-registry.md) 列
+- [ ] CC-UNIT（form default）
+- [ ] CC-INT（default publish，無 fixture override）
+- [ ] P0：CC-E2E + **In CI** 欄
+- [ ] Fixture override 標 `@rpc-edge-only`
+- [ ] Changelog §13
+
+詳細：[test-solidity-plan.md §3](./test-solidity-plan.md) · [registry §6](./config-contract-registry.md)
+
+---
+
+## 13. Changelog
+
+| 日期 | 變更 |
+|------|------|
+| 2026-08-16 | **v2.4：** [system-feature-registry.md](./system-feature-registry.md) 全功能終極表 Member/Merchant/Admin/System |
+| 2026-08-16 | **v2.3：** staging-certification · certify 腳本 |
+| 2026-08-16 | **v2.2：** §7.2/7.3 矩陣 · registry macro |
+| 2026-08-16 | **v2.1 修訂：** In CI · ☑ 定義 · TC-E13 → rewards-gate:production |
+| 2026-08-16 | **v2：** Coverage ≠ Solidity · Journey 表 · §7 矩陣 |
+| 2026-08-16 | C2C coupon · TC-E13 · test-solidity-plan |
+| 2026-08-16 | v1 nightly CI · L6 診斷 |
+
+---
+
+## 14. 相關文件
+
+| 文件 | 角色 |
+|------|------|
+| [config-contract-registry.md](./config-contract-registry.md) | **全站** Admin↔Runtime 合約明細 |
+| [test-solidity-plan.md](./test-solidity-plan.md) | Fixture parity · 三層防禦 |
+| [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) | v2.1 logic 簽收 |
+| [v2.1-deferred.md](./v2.1-deferred.md) | v2.1 專項 |
+| [e2e-tiering.md](./e2e-tiering.md) | Gate vs nightly spec 清單 |
+| [system-feature-registry.md](./system-feature-registry.md) | **終極功能 Checklist（Staging exit）** |
+| [staging-certification.md](./staging-certification.md) | 認證執行契約 + gate 跑數 |
+| [v3-deferred.md](./v3-deferred.md) | 唔計認證嘅 v3+ 功能 |
+| [PARTNER_QA.md](./PARTNER_QA.md) | M0 smoke（認證後） |
+
+---
+
+## 15. 安全 / 濫用防線（Staging 認證必達）
+
+| ID | 威脅 | Artifact | In CI | Solid | 進度 | SC |
+|----|------|----------|-------|-------|------|-----|
+| **SEC-01** | 券濫用 R-01..R-03 | `coupon-security.integration` | Gate | S1 | ☑ | SC-S01 |
+| **SEC-02** | 券 FSM 邊界 PBT | `coupon-pbt.integration` | Gate partial | S1 | ☑ | SC-S02 |
+| **SEC-03** | Rewards mutation 存活 | `test:rewards:mutation` | Certify | S1 | ☐ | SC-S03 |
+| **SEC-04** | Moderation mutation | `test:moderation:mutation` | Signoff | S1 | ☑ | SC-S04 |
+| **SEC-05** | Moderation PBT | `test:integration:moderation:pbt` | Gate | S1 | ☑ | SC-S05 |
+| **SEC-06** | E2E 關鍵 skip = 假綠 | TC-E13 fail-if-env-missing | Rewards | S2 | ☐ | SC-S06 |
+| **SEC-07** | Admin↔Runtime parity | CC 三件套 + registry | Gate/Rewards | S1 | ◐ | SC-CC01 |
+
+---
+
+## 附錄 A — Missing 詳表 · Out of scope
+
+### A.1 Stripe Connect / KYC
+
+| ID | Flow | Status | Solid 目標 | 進度 |
+|----|------|--------|------------|------|
+| **TC-M10** | `/api/stripe/connect/onboard` · `return` · `dashboard` | Missing | S1 | ☐ |
+| **TC-M11** | `admin-kyc` · `merchant-kyc` · `kyc/upload-document` | Missing | S1 | ☐ |
+
+### A.2 交易／社交
+
+| ID | Flow | Status | Solid 目標 | 進度 | 備註 |
+|----|------|--------|------------|------|------|
+| **TC-M20** | P2P 面交全鏈 | HasTest (E2E) | S2 | ◐ | J-TRD-01；缺 integration |
+| **TC-M21** | Chat server actions | Missing (integration) | S1 | ☐ | E2E realtime only |
+| **TC-M22** | Reviews / 評價 | Missing | S1 | ☐ | |
+| **TC-M23** | Collection / wishlist / inventory | HasTest (E2E) | S1 | ☐ | |
+| **TC-M24** | Merchant 直購 checkout→paid | Partial | S2 | ◐ | J-CPN-01 重疊 |
+| **TC-M25** | Member 非鑑定 complete/cancel | Missing | S1 | ☐ | |
+
+### A.3 Upload / 媒體 API
 
 | ID | Route | Status | 進度 |
 |----|-------|--------|------|
 | **TC-M30** | `profile/upload-avatar` · `listings/upload-image` | Missing | ☐ |
 | **TC-M31** | `reports/upload-evidence` · `merchant/upload-*` | Missing | ☐ |
-| **TC-M32** | `admin/upload-announcement-image` | HasTest | ☑ | announcements gate |
+| **TC-M32** | `admin/upload-announcement-image` | HasTest | ☑ |
 
-### 4.5 Admin / 營運
+### A.4 Admin / 營運
 
 | ID | Flow | Status | 進度 |
 |----|------|--------|------|
 | **TC-M40** | `admin-member-orders` | Missing | ☐ |
-| **TC-M41** | Daily check-in program（獨立於 matrix tab） | Partial | ☐ |
-| **TC-M42** | `merchant-finance` · merchant/member dashboards | Missing | ☐ |
+| **TC-M41** | Daily check-in program | Partial | ☐ |
+| **TC-M42** | `merchant-finance` · dashboards | Missing | ☐ |
 
----
+### A.5 v3+ Deferred（唔計 Staging 認證）
 
-## 5. Out of scope（v2+，唔計入 launch 缺口）
-
-| 項目 | 追蹤 |
-|------|------|
-| Auction mock | OutOfScope |
-| 申訴 portal | OutOfScope |
-| Listing 頁舉報 | OutOfScope |
-| Moderation Phase F 自動升級 cron | OutOfScope |
-| 全站 Email / Push | OutOfScope |
-| P2P 面交平台退款 | OutOfScope（有 `p2p-dispute-no-refund` 證明唔退） |
-| S2 一般售後（政策） | OutOfScope · refund-policy §3 |
-
----
-
-## 6. 建議實施順序（post-launch test program）
-
-| Phase | 目標 | IDs |
-|-------|------|-----|
-| **L1** | Nightly E2E 接入 CI | TC-E01–E03 |
-| **L2** | Platform integration 入 PR optional | TC-N01–N03 |
-| **L3** | Matrix soak → 預設 gate | TC-P05 |
-| **L4** | Cron HTTP smoke（CRON_SECRET + 1 order fixture） | TC-M01–M04 |
-| **L5** | Connect/KYC onboarding smoke | TC-M10–M11 |
-| **L6** | 其餘 P3 E2E nightly | TC-E04–E12 |
-| **L7** | Upload / reviews / chat integration | TC-M21–M31 |
-
----
-
-## 8. Nightly CI（locked）
-
-| 項目 | 值 |
-|------|-----|
-| Workflow | [`.github/workflows/nightly-test-coverage.yml`](../../.github/workflows/nightly-test-coverage.yml) |
-| Schedule | `0 19 * * *` UTC = **03:00 HKT** |
-| 觸發 | `schedule` · `workflow_dispatch` · PR label `platform`（L2）· `nightly-e2e`（L1） |
-| Env | Staging Supabase + `E2E_*` GitHub Secrets（同 moderation/rewards workflows） |
-| 執行策略 | **串行**：`nightly-coverage` job 跑 `bun run test:nightly:coverage`（L2 → L1 → L3；一次 build + server） |
-| Fail policy | 只通知（GitHub watch email）；**唔**阻 PR merge |
-
-### Rewards E2E regression 分工
-
-| Workflow | Job | Schedule | 內容 | Matrix |
-|----------|-----|----------|------|--------|
-| **nightly-test-coverage** | `nightly-coverage` | 03:00 HKT | L2 + L1 + L3 matrix soak | ✅ schedule only |
-| **rewards.yml** | `rewards-integration` | 05:00 HKT | vitest rewards | — |
-| **rewards.yml** | `rewards-e2e` | 05:00 HKT（needs integration） | `test:e2e:rewards-gate:production` | ❌ |
-| **rewards.yml** | `rewards-e2e` | dispatch / PR `rewards` | `test:e2e:rewards-gate`（full） | ✅ |
-
-本地：`bun run test:nightly:coverage`（需 `.env.local`；輕量 env check，唔跑 `verify:merchant-grading-e2e`）。
-
----
-
-## 9. TC-P05 Matrix soak tracker
-
-**計數單位：** `nightly-test-coverage` workflow 的 **`nightly-coverage` job 整體綠**（L3 E2E matrix + TC-N05 integration 都要過）。
-
-| # | Date (HKT) | Workflow run | `nightly-coverage` | Streak |
-|---|------------|--------------|--------------------|--------|
-| 1 | — | — | — | **0/3** |
-| 2 | — | — | — | |
-| 3 | — | — | — | |
-
-**Exit criteria：** streak **3/3** → 人手 `PRODUCTION_GATE_INCLUDE_MATRIX=1 bun run test:production:gate:signoff` → 先至改 `production-gate.sh` 預設 include matrix。
-
----
-
-## 10. Changelog
-
-| 日期 | 變更 |
-|------|------|
-| 2026-08-16 | Phase 1 nightly CI：L1/L2/L3 串行 workflow；rewards schedule 改 production E2E subset @ 05:00 HKT |
-| 2026-08-16 | 初版：post v2.1 gate signoff 後覆蓋審計；S0-05/C7 done；C6 N/A；PARTNER_QA 精簡為 M1 |
-
----
-
-## 相關文件
-
-| 文件 | 角色 |
-|------|------|
-| [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) | v2.1 商業 logic 簽收 SSOT |
-| [v2.1-deferred.md](./v2.1-deferred.md) | v2.1 專項 done/deferred |
-| [e2e-tiering.md](./e2e-tiering.md) | E2E gate vs nightly |
-| [PARTNER_QA.md](./PARTNER_QA.md) | Partner 人手 M1 |
-| [prelaunch-1a-gap-checklist.md](./prelaunch-1a-gap-checklist.md) | 1a 跑 log 對照（audit 已併入 PRODUCTION_GATE 附錄 A） |
+見 **[v3-deferred.md](./v3-deferred.md)** — 唔再佔本 SSOT「全表完成」分母。

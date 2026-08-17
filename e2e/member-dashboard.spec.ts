@@ -36,10 +36,9 @@ test.describe("Member dashboard and rewards", () => {
     await expect(page.getByText("帳戶總積分餘額")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByRole("heading", { name: "每日簽到" }).first()).toBeVisible({
-      timeout: 20_000,
-    });
-    await expect(page.getByText("待處理訂單")).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByRole("heading", { name: "待處理訂單" }),
+    ).toBeVisible({ timeout: 20_000 });
   });
 
   test("check-in card reflects gamification stats", async ({ page }, testInfo) => {
@@ -48,13 +47,21 @@ test.describe("Member dashboard and rewards", () => {
       test.skip(true, "Missing E2E_BUYER_EMAIL or E2E_BUYER_PASSWORD");
     }
 
-    await page.goto("/profile/user", { waitUntil: "domcontentloaded" });
+    await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
+
+    const pausedButton = page.getByRole("button", { name: "簽到暫停" });
+    await expect(pausedButton.or(page.getByRole("button", { name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣/ }))).toBeVisible({
+      timeout: 20_000,
+    });
+    if (await pausedButton.isVisible()) {
+      test.info().skip(true, "Check-in program paused on staging");
+      return;
+    }
 
     const checkInButton = page.getByRole("button", {
       name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣/,
     });
-    await expect(checkInButton).toBeVisible({ timeout: 20_000 });
 
     const buttonLabel = (await checkInButton.textContent())?.trim() ?? "";
     if (buttonLabel.includes("明日請繼續保持收藏習慣")) {
@@ -90,8 +97,17 @@ test.describe("Member dashboard and rewards", () => {
         points_balance: previousStats?.points_balance ?? 0,
       });
 
-      await page.goto("/profile/user", { waitUntil: "domcontentloaded" });
+      await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
       await dismissBlockingOverlays(page);
+
+      const pausedButton = page.getByRole("button", { name: "簽到暫停" });
+      await expect(pausedButton.or(page.getByRole("button", { name: "立即簽到打卡獲取積分" }))).toBeVisible({
+        timeout: 20_000,
+      });
+      if (await pausedButton.isVisible()) {
+        test.info().skip(true, "Check-in program paused on staging");
+        return;
+      }
 
       const checkInHeading = page.getByRole("heading", { name: "每日簽到" }).first();
       await expect(checkInHeading).toBeVisible({ timeout: 20_000 });

@@ -10,13 +10,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  orderKindsToScope,
+  ORDER_KINDS_SCOPE_LABELS,
+  restrictionsForTypeChange,
+  rewardValueForType,
+  scopeToOrderKinds,
+  type OrderKindsScope,
+} from "@/lib/admin-rewards/template-form";
+import {
   DEFAULT_ADMIN_REWARD_RESTRICTIONS,
   type AdminRewardEventOnceEvent,
   type AdminRewardTemplateType,
   type AdminRewardTemplateUpsertInput,
   type AdminRewardTriggerKind,
 } from "@/lib/admin-rewards/types";
-import { rewardValueForType } from "@/lib/admin-rewards/template-form";
 
 type RewardTemplateDefinitionStepProps = {
   form: AdminRewardTemplateUpsertInput;
@@ -63,6 +70,10 @@ export function RewardTemplateDefinitionStep({
       ...form,
       type,
       reward_value: rewardValueForType(type),
+      restrictions: restrictionsForTypeChange(
+        type,
+        form.restrictions ?? DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+      ),
     });
   };
 
@@ -286,6 +297,34 @@ export function RewardTemplateDefinitionStep({
             此簽到獎勵已遷移至「簽到計劃」分頁；此活動已封存，無法編輯。
           </p>
         ) : null}
+
+        <div>
+          <Label>適用訂單</Label>
+          <Select
+            value={orderKindsToScope(
+              form.restrictions?.order_kinds ??
+                DEFAULT_ADMIN_REWARD_RESTRICTIONS.order_kinds,
+            )}
+            onValueChange={(value) =>
+              updateRestrictions({
+                order_kinds: scopeToOrderKinds(value as OrderKindsScope),
+              })
+            }
+          >
+            <SelectTrigger id="reward-order-kinds">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(ORDER_KINDS_SCOPE_LABELS) as OrderKindsScope[]).map(
+                (scope) => (
+                  <SelectItem key={scope} value={scope}>
+                    {ORDER_KINDS_SCOPE_LABELS[scope]}
+                  </SelectItem>
+                ),
+              )}
+            </SelectContent>
+          </Select>
+        </div>
 
         <div>
           <Label>適用鑑定</Label>

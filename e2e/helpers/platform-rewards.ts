@@ -145,6 +145,51 @@ export async function getRewardTemplateIdByTitle(
   return templateId;
 }
 
+export async function getRewardTemplateRestrictions(
+  templateId: string,
+): Promise<Record<string, unknown> | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("reward_templates")
+    .select("restrictions")
+    .eq("id", templateId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getRewardTemplateRestrictions] ${error.message}`);
+  }
+
+  if (!data?.restrictions || typeof data.restrictions !== "object") {
+    return null;
+  }
+
+  return data.restrictions as Record<string, unknown>;
+}
+
+export async function seedMemberAuthPendingOrderForE2e(params: {
+  listingId: string;
+  buyerId: string;
+}): Promise<string> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin.rpc(
+    "rpc_e2e_seed_member_auth_pending_payment_order",
+    {
+      p_listing_id: params.listingId,
+      p_buyer_id: params.buyerId,
+    },
+  );
+
+  if (error) {
+    throw new Error(`[seedMemberAuthPendingOrderForE2e] ${error.message}`);
+  }
+
+  if (!data || typeof data !== "string") {
+    throw new Error("[seedMemberAuthPendingOrderForE2e] missing order id");
+  }
+
+  return data;
+}
+
 export async function grantUserRewardForE2e(params: {
   userId: string;
   templateId: string;
@@ -1178,6 +1223,9 @@ export type PublishRewardActivityParams = {
   title: string;
   type: "discount_coupon" | "free_shipping" | "points";
   distributionMode?: "auto_grant" | "flash_only";
+  /** When false, do not touch #reward-order-kinds (tests Admin default / type-change only). */
+  applyOrderKindsScope?: boolean;
+  orderKindsScope?: "merchant" | "member" | "both";
   trigger?:
     | { kind: "trade_count"; role: "buyer" | "merchant"; count: number }
     | { kind: "event_once"; event: string };
@@ -1221,9 +1269,11 @@ export async function publishRewardActivityViaAdmin(
 
   if (params.type === "discount_coupon") {
     await page.locator("#reward-amount").fill(String(params.amount ?? 10));
-    await page
-      .locator("#reward-min-spend")
-      .fill(String(params.minSpend ?? 0));
+    if (params.minSpend != null) {
+      await page
+        .locator("#reward-min-spend")
+        .fill(String(params.minSpend));
+    }
   }
 
   if (params.type === "free_shipping") {
@@ -1235,6 +1285,20 @@ export async function publishRewardActivityViaAdmin(
         .locator("#reward-shipping-min")
         .fill(String(params.minSpend));
     }
+  }
+
+  if (
+    params.applyOrderKindsScope !== false &&
+    (params.type === "free_shipping" || params.type === "discount_coupon")
+  ) {
+    const scope = params.orderKindsScope ?? (params.type === "free_shipping" ? "both" : "merchant");
+    const scopeLabels: Record<"merchant" | "member" | "both", string> = {
+      merchant: "僅商戶訂單 (B2C)",
+      member: "僅會員訂單 (C2C)",
+      both: "商戶 + 會員 (B2C & C2C)",
+    };
+    await page.locator("#reward-order-kinds").click();
+    await page.getByRole("option", { name: scopeLabels[scope] }).click();
   }
 
   if (params.type === "points") {
@@ -1324,9 +1388,15 @@ export async function openAdminCheckInTab(page: Page): Promise<void> {
   await page.goto("/admin/campaigns?tab=check-in", {
     waitUntil: "domcontentloaded",
   });
-  await expect(page.getByRole("heading", { name: "簽到計劃" })).toBeVisible({
+  await expect(page.getByRole("button", { name: "簽到計劃" })).toBeVisible({
     timeout: 20_000,
   });
+  await expect(
+    page
+      .getByRole("heading", { name: "簽到計劃" })
+      .or(page.getByRole("button", { name: /儲存簽到計劃/ }))
+      .or(page.getByText("找不到簽到計劃")),
+  ).toBeVisible({ timeout: 20_000 });
 }
 
 export async function invokeAutoGrantForUser(userId: string): Promise<void> {

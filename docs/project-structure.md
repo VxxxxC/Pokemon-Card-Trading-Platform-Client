@@ -247,7 +247,7 @@ app/
     ├── profile/                     # ProfileAvatar, PublicPersonaProfileHeader, ProfileHeaderWithChat…
     ├── rewards/                     # CheckInCard, RewardUnlockedModal, UserProfileDashboardShell…
     ├── transactions/
-    │   ├── GlobalTxButtons.tsx      # BuyButton（→ 全域 slide-over）、AuctionButton（mock）
+    │   ├── GlobalTxButtons.tsx      # BuyButton（→ 全域 slide-over）
     │   ├── ExecutionSlideOverHost.tsx
     │   ├── ExecutionSlideOver.tsx
     │   ├── MemberAuthMockPaymentPanel.tsx   # dev：mock 付款

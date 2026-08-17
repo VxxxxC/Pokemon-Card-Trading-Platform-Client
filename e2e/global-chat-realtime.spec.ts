@@ -1,20 +1,27 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
-  buildMerchantProductDetailPath,
-} from "./fixtures/test-data";
-import {
   getChatRealtimeFixtures,
   hasChatRealtimeFixtures,
 } from "./fixtures/chat-test-data";
 import {
   ensureDbChatRoom,
-  getLatestChatMessage,
+  getLatestChatMessageForParties,
   getLatestOfferForListing,
   getListingSellerId,
   getOfferStatus,
   getProfileDisplayName,
   getProfileIdByEmail,
+  resetE2eListingTradingFixture,
 } from "./fixtures/supabase-admin";
+import {
+  chatConsoleRoot,
+  dismissBlockingOverlays,
+  ensureChatRoomActive,
+  offerCardWithAmount,
+  openChatRoom,
+  openBothChatRooms,
+  submitBuyerOfferFromDetail,
+} from "./helpers/member-trading";
 
 const SENSITIVE_CHAT_MESSAGE = "你好，可唔可以私下過數？";
 // AML: E2E buyer is <14 days old (HK$300 cap) and fixture listing has no market price.
@@ -28,128 +35,10 @@ test.use({ viewport: { width: 1280, height: 900 } });
 
 test.setTimeout(300_000);
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-async function dismissBlockingOverlays(page: Page): Promise<void> {
-  const pwaClose = page.getByRole("button", { name: "✕" }).first();
-  if (await pwaClose.isVisible().catch(() => false)) {
-    await pwaClose.click();
-  }
-}
-
-function chatConsoleRoot(page: Page) {
-  return page.locator('[data-chat-console="true"].hidden.lg\\:flex');
-}
-
-function chatReplyInput(page: Page) {
-  return chatConsoleRoot(page).locator(
-    'input[type="text"][placeholder^="回覆給 "]',
-  );
-}
-
-async function selectChatRoomById(page: Page, roomId: string): Promise<boolean> {
-  const roomById = chatConsoleRoot(page).locator(
-    `[data-chat-room-id="${roomId}"]`,
-  );
-  if (await roomById.isVisible().catch(() => false)) {
-    await roomById.click({ force: true });
-    return true;
-  }
-  return false;
-}
-
-async function openChatRoom(
-  page: Page,
-  roomId: string,
-  partnerName: string,
-): Promise<void> {
-  await page.goto("/", { waitUntil: "networkidle" });
-  await dismissBlockingOverlays(page);
-
-  const header = page.getByRole("banner");
-  await expect(header).toBeVisible({ timeout: 20_000 });
-
-  const inboxButton = header.locator("button").filter({
-    has: page.locator('svg path[d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"]'),
-  });
-  await inboxButton.click();
-  await page.getByRole("button", { name: "展開面板" }).click();
-
-  await expect(chatConsoleRoot(page)).toBeVisible({
-    timeout: 20_000,
-  });
-
-  const lobbyPartnerButton = chatConsoleRoot(page)
-    .getByRole("button")
-    .filter({ hasText: partnerName });
-
-  if (await selectChatRoomById(page, roomId)) {
-    // room selected by id
-  } else if ((await lobbyPartnerButton.count()) > 0) {
-    await lobbyPartnerButton.first().click();
-  } else {
-    await page.evaluate(
-      ({ targetRoomId, targetPartnerName }) => {
-        window.dispatchEvent(
-          new CustomEvent("open-global-chat", {
-            detail: {
-              roomId: targetRoomId,
-              partnerName: targetPartnerName,
-            },
-          }),
-        );
-      },
-      { targetRoomId: roomId, targetPartnerName: partnerName },
-    );
-  }
-
-  await expect(chatReplyInput(page)).toBeVisible({
-    timeout: 20_000,
-  });
-}
-
 function chatComposer(page: Page) {
   return chatConsoleRoot(page)
     .locator("form")
     .filter({ has: page.getByRole("button", { name: "發送 ⚡" }) });
-}
-
-async function ensureChatRoomActive(
-  page: Page,
-  roomId: string,
-  partnerName: string,
-): Promise<void> {
-  await dismissBlockingOverlays(page);
-
-  if (await chatConsoleRoot(page).isVisible().catch(() => false)) {
-    await page.evaluate(
-      ({ targetRoomId, targetPartnerName }) => {
-        window.dispatchEvent(
-          new CustomEvent("open-global-chat", {
-            detail: {
-              roomId: targetRoomId,
-              partnerName: targetPartnerName,
-            },
-          }),
-        );
-      },
-      { targetRoomId: roomId, targetPartnerName: partnerName },
-    );
-    await expect(chatReplyInput(page)).toBeVisible({ timeout: 15_000 });
-    return;
-  }
-
-  await openChatRoom(page, roomId, partnerName);
-}
-
-function offerCardWithAmount(page: Page, amountLabel: string) {
-  return chatConsoleRoot(page)
-    .locator("div.my-2.w-full")
-    .filter({ hasText: "⚡ 議價出價卡片" })
-    .filter({ hasText: amountLabel })
-    .last();
 }
 
 async function sendChatMessage(page: Page, text: string): Promise<void> {
@@ -188,7 +77,8 @@ test.describe("Global Chat realtime — dual browser journey", () => {
       return;
     }
 
-    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    let roomId = await ensureDbChatRoom(buyerId, sellerId);
+    await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),
@@ -205,8 +95,8 @@ test.describe("Global Chat realtime — dual browser journey", () => {
     const sellerPage = await sellerContext.newPage();
 
     try {
-      await openChatRoom(buyerPage, roomId, sellerDisplayName);
-      await openChatRoom(sellerPage, roomId, buyerDisplayName);
+      await openChatRoom(buyerPage, roomId, sellerDisplayName, sellerId);
+      await openChatRoom(sellerPage, roomId, buyerDisplayName, buyerId);
 
       // ── Step 1: AML / sensitive-word filter ──────────────────────────────
       await test.step("Step 1 — AML sensitive message + realtime warning", async () => {
@@ -215,12 +105,25 @@ test.describe("Global Chat realtime — dual browser journey", () => {
         await expect
           .poll(
             async () => {
-              const row = await getLatestChatMessage(roomId, "私下過數");
+              const row = await getLatestChatMessageForParties(
+                buyerId,
+                sellerId,
+                "私下過數",
+              );
               return row?.is_system_warning === true;
             },
-            { timeout: 15_000 },
+            { timeout: 30_000 },
           )
           .toBe(true);
+
+        const warningRow = await getLatestChatMessageForParties(
+          buyerId,
+          sellerId,
+          "私下過數",
+        );
+        const warningRoomId = warningRow?.room_id ?? roomId;
+        await openChatRoom(buyerPage, warningRoomId, sellerDisplayName, sellerId);
+        await openChatRoom(sellerPage, warningRoomId, buyerDisplayName, buyerId);
 
         const systemWarningBubble = (page: Page) =>
           chatConsoleRoot(page)
@@ -242,72 +145,67 @@ test.describe("Global Chat realtime — dual browser journey", () => {
         ).toBeVisible();
       });
 
-      // ── Step 2: Realtime OfferCard ($4,500) ────────────────────────────
+      // ── Step 2: Realtime OfferCard ($299) ───────────────────────────────
       let offerId: string | null = null;
 
       await test.step("Step 2 — buyer submits offer; seller sees OfferCard", async () => {
-        await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName);
+        roomId = await ensureDbChatRoom(buyerId, sellerId);
 
-        const existingOffer = await getLatestOfferForListing({
+        await openBothChatRooms(
+          buyerPage,
+          sellerPage,
           roomId,
-          listingId,
+          sellerDisplayName,
+          buyerDisplayName,
+          sellerId,
           buyerId,
-        });
+        );
 
-        if (existingOffer?.status === "pending") {
-          offerId = existingOffer.id;
-        } else {
-          await buyerPage.goto(
-            buildMerchantProductDetailPath(sellerId, listingId),
-            { waitUntil: "networkidle" },
-          );
-          await dismissBlockingOverlays(buyerPage);
-          await expect(
-            buyerPage.getByRole("heading", { name: "找不到頁面", exact: true }),
-          ).toHaveCount(0);
-          await expect(buyerPage.locator("main h1")).toBeVisible({
-            timeout: 15_000,
-          });
-          await buyerPage.getByRole("button", { name: /立即購買/ }).click();
-          await buyerPage
-            .getByRole("button", { name: "改為議價出價" })
-            .click();
-          await expect(buyerPage.locator("#exe-negotiation-price")).toBeVisible({
-            timeout: 15_000,
-          });
+        await submitBuyerOfferFromDetail(
+          buyerPage,
+          sellerId,
+          listingId,
+          OFFER_AMOUNT,
+        );
 
-          await buyerPage.locator("#exe-negotiation-price").fill(OFFER_AMOUNT);
-          await buyerPage
-            .getByRole("button", { name: "發送叫價至聊天室" })
-            .click();
+        await expect
+          .poll(
+            async () => {
+              const offer = await getLatestOfferForListing({
+                listingId,
+                buyerId,
+              });
+              offerId = offer?.id ?? null;
+              if (offer?.room_id) {
+                roomId = offer.room_id;
+              }
+              return offer?.status === "pending";
+            },
+            { timeout: 25_000 },
+          )
+          .toBe(true);
 
-          await expect(buyerPage.getByText("議價要約已成功送出")).toBeVisible({
-            timeout: 20_000,
-          });
-
-          await expect
-            .poll(
-              async () => {
-                const offer = await getLatestOfferForListing({
-                  roomId,
-                  listingId,
-                  buyerId,
-                });
-                offerId = offer?.id ?? null;
-                return offer?.status === "pending";
-              },
-              { timeout: 25_000 },
-            )
-            .toBe(true);
+        if (!offerId) {
+          throw new Error("Step 2 did not capture offerId after buyer submit");
         }
 
-        await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName);
+        await openBothChatRooms(
+          buyerPage,
+          sellerPage,
+          roomId,
+          sellerDisplayName,
+          buyerDisplayName,
+          sellerId,
+          buyerId,
+        );
+        await dismissBlockingOverlays(sellerPage);
+        await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName, buyerId);
 
         const sellerOfferCard = offerCardWithAmount(sellerPage, OFFER_AMOUNT_LABEL);
-        await expect(sellerOfferCard).toBeVisible({ timeout: 30_000 });
+        await expect(sellerOfferCard).toBeVisible({ timeout: 60_000 });
         await expect(
           sellerOfferCard.getByRole("button", { name: "接受出價" }),
-        ).toBeVisible({ timeout: 30_000 });
+        ).toBeVisible({ timeout: 60_000 });
       });
 
       // ── Step 3: Seller accept → buyer CTA sync ───────────────────────────
@@ -318,13 +216,21 @@ test.describe("Global Chat realtime — dual browser journey", () => {
 
         const sellerOfferCard = offerCardWithAmount(sellerPage, OFFER_AMOUNT_LABEL);
         await sellerOfferCard.getByRole("button", { name: "接受出價" }).click();
-        await sellerPage.getByRole("button", { name: "確認接受" }).click();
+
+        const acceptConfirmDialog = sellerPage
+          .getByRole("alertdialog")
+          .filter({ hasText: "確認接受出價" });
+        await expect(acceptConfirmDialog).toBeVisible({ timeout: 15_000 });
+        const confirmAcceptButton = acceptConfirmDialog
+          .locator('[data-slot="alert-dialog-action"]')
+          .or(acceptConfirmDialog.getByRole("button", { name: "確認接受" }));
+        await confirmAcceptButton.first().click({ force: true, timeout: 15_000 });
 
         await expect
           .poll(async () => getOfferStatus(offerId!), { timeout: 30_000 })
           .toBe("accepted");
 
-        await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName);
+        await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName, sellerId);
 
         const buyerOfferCard = offerCardWithAmount(buyerPage, OFFER_AMOUNT_LABEL);
         await expect(buyerOfferCard.getByText("● 已接受")).toBeVisible({

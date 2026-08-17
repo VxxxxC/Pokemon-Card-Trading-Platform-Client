@@ -1,14 +1,13 @@
 # E2E tiering — Gate / Nightly / Manual
 
 > **目的：** 避免誤稱「repo 內每個 e2e spec 都已入 production gate」。  
-> **SSOT 簽收：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) · Partner：[PARTNER_QA.md](./PARTNER_QA.md)  
-> **Post v2.1 覆蓋進度：** [test-coverage-ssot.md](./test-coverage-ssot.md)
+> **SSOT 簽收：** [PRODUCTION_GATE.md](./PRODUCTION_GATE.md) · **Coverage + Solidity v2：** [test-coverage-ssot.md](./test-coverage-ssot.md) · Partner：[PARTNER_QA.md](./PARTNER_QA.md)
 
 ## Gate（`bun run test:production:gate:signoff`）
 
 | 套件 | Spec 範例 |
 |------|-----------|
-| Rewards | `platform-rewards-phase2/3/4` · `rewards-checkout-coupon` · `merchant-auth-baseline-checkout` ·（opt-in）`platform-rewards-matrix` |
+| Rewards | `platform-rewards-phase2/3/4` · `rewards-checkout-coupon` · `member-auth-coupon-admin`（TC-E13）· `merchant-auth-baseline-checkout` ·（opt-in）`platform-rewards-matrix` |
 | Moderation | `user-report` · `admin-moderation` · `report-outcome-notification` |
 | Smoke | `home-p0-smoke` · `legal-pages-smoke` |
 | Grading / Stripe | `admin-grading` · `moderation-stripe-refund-smoke` |
@@ -29,7 +28,7 @@
 | P2 | `global-chat-realtime.spec.ts` | Chat realtime |
 | L3 | `test:e2e:nightly:matrix` · `test:integration:rewards-matrix` | Matrix soak（只計 nightly job；見 SSOT §9） |
 
-**Rewards regression（無 matrix）：** [`.github/workflows/rewards.yml`](../../.github/workflows/rewards.yml) schedule **05:00 HKT** 跑 `test:e2e:rewards-gate:production`。Full gate（含 matrix）保留 `workflow_dispatch` / PR label `rewards`。
+**Rewards regression（無 matrix）：** [`.github/workflows/rewards.yml`](../../.github/workflows/rewards.yml) schedule **05:00 HKT** 跑 `test:e2e:rewards-gate:production`（含 **C2C Admin 券 TC-E13**）。Full gate（含 matrix）保留 `workflow_dispatch` / PR label `rewards`。
 
 ## Manual（Partner）
 

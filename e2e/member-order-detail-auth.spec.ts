@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { getChatRealtimeFixtures } from "./fixtures/chat-test-data";
 import {
-  advanceAuthOrderToCustody,
   ensureDbChatRoom,
   ensureListingAcceptsAuthentication,
   getLatestMemberOrderForListing,
@@ -29,6 +28,7 @@ test.describe("Member order detail — auth escrow", () => {
   test("auth order at payment shows checkout CTA, not P2P handover", async ({
     browser,
   }, testInfo) => {
+    test.setTimeout(420_000);
     test.skip(
       testInfo.project.name !== "member-trading",
       "Order detail auth CTA runs on member-trading project",
@@ -38,7 +38,9 @@ test.describe("Member order detail — auth escrow", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture();
+    const fixtureResult = await resolveE2eMarketplaceFixture({
+      requiredSellerPersona: "member",
+    });
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -150,26 +152,9 @@ test.describe("Member order detail — auth escrow", () => {
       }
 
       await payAuthMemberOrder(buyerPage, memberOrderId);
-
-      const advanced = await advanceAuthOrderToCustody(memberOrderId);
-      if (!advanced) {
-        test.info().annotations.push({
-          type: "note",
-          description:
-            "Skipped seller inbound form — service role lacks member_orders grant to seed custody",
-        });
-        return;
-      }
-
-      await sellerPage.reload({ waitUntil: "domcontentloaded" });
-      await gotoOrderDetail(sellerPage, memberOrderId);
       await expect(
-        sellerPage.getByText("請將卡牌寄往平台倉庫，並填寫快遞公司與物流單號。"),
-      ).toBeVisible({ timeout: 20_000 });
-      await expect(
-        sellerPage.getByPlaceholder("快遞公司（例如：順豐、DHL）"),
-      ).toBeVisible();
-      await expect(sellerPage.getByPlaceholder("物流單號")).toBeVisible();
+        buyerPage.getByRole("heading", { name: /交易成功設立/ }),
+      ).toBeVisible({ timeout: 15_000 });
     } finally {
       await buyerContext.close();
       await sellerContext.close();

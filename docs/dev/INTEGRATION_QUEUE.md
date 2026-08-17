@@ -249,7 +249,7 @@ FROM search_marketplace_products(p_page := 1, p_page_size := 10);
 9. Order detail: auth orders → `MemberAuthOrderTimeline` + `MemberAuthOrderInvoice`; meetup-only → P2P timeline + simplified invoice.
 10. **Own listing** — grid / home C2C buy button hidden or no-op; order book row not clickable (`sellerId === currentUserId`).
 11. **Guest** — slide-over opens; guest gate inside `ExecutionSlideOver` redirects to `/auth?redirect=...`.
-12. **`AuctionButton`** — still mock (`injectSpecialTransaction`); out of scope for this wiring pass.
+12. **Auction** — product backlog; listing offers use `makeOffer` / `BuyButton`.
 
 See [offers-negotiation](./follow-up/offers-negotiation/backend.md) · [chat-offers-inbox backend](./follow-up/chat-offers-inbox/backend.md) · [chat-offers-inbox frontend](./follow-up/chat-offers-inbox/frontend.md).
 

@@ -209,6 +209,7 @@ export function buildAuthFreeShippingInput(
   );
 }
 
+/** @rpc-edge-only — C2C member checkout RPC cases; not Admin default-form contract (see admin-publish-defaults.integration). */
 export function buildMemberAuthFreeShippingInput(
   title: string,
 ): AdminRewardActivityUpsertInput {

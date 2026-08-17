@@ -57,7 +57,7 @@ test.describe("Member offer negotiation", () => {
       return;
     }
 
-    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
 
@@ -104,11 +104,13 @@ test.describe("Member offer negotiation", () => {
       await expect
         .poll(async () => {
           const offer = await getLatestOfferForListing({
-            roomId,
             listingId,
             buyerId,
           });
           offerId = offer?.id ?? null;
+          if (offer?.room_id) {
+            roomId = offer.room_id;
+          }
           return offer?.status === "pending" && !offer.use_authentication;
         }, { timeout: 25_000 })
         .toBe(true);
@@ -117,19 +119,26 @@ test.describe("Member offer negotiation", () => {
         throw new Error("Missing offerId for reject flow");
       }
 
-      await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName);
+      await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName, buyerId);
       const sellerOfferCard = offerCardWithAmount(sellerPage, offerLabel).filter({
         has: sellerPage.getByRole("button", { name: "拒絕出價" }),
       });
       await expect(sellerOfferCard).toBeVisible({ timeout: 45_000 });
       await sellerOfferCard.getByRole("button", { name: "拒絕出價" }).click();
-      await sellerPage.getByRole("button", { name: "確認拒絕" }).click();
+      const rejectConfirmDialog = sellerPage
+        .getByRole("alertdialog")
+        .filter({ hasText: "確認拒絕出價" });
+      await expect(rejectConfirmDialog).toBeVisible({ timeout: 15_000 });
+      const confirmRejectButton = rejectConfirmDialog
+        .locator('[data-slot="alert-dialog-action"]')
+        .or(rejectConfirmDialog.getByRole("button", { name: "確認拒絕" }));
+      await confirmRejectButton.first().click({ force: true, timeout: 15_000 });
 
       await expect
         .poll(async () => getOfferStatus(offerId!), { timeout: 30_000 })
         .toBe("rejected");
 
-      await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName);
+      await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName, sellerId);
       const buyerOfferCard = offerCardWithAmount(buyerPage, offerLabel);
       await expect(buyerOfferCard.getByText("● 已拒絕")).toBeVisible({
         timeout: 30_000,
@@ -167,7 +176,7 @@ test.describe("Member offer negotiation", () => {
       return;
     }
 
-    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
 
@@ -204,7 +213,6 @@ test.describe("Member offer negotiation", () => {
       );
 
       const existingOffer = await getLatestOfferForListing({
-        roomId,
         listingId,
         buyerId,
       });
@@ -223,10 +231,12 @@ test.describe("Member offer negotiation", () => {
         await expect
           .poll(async () => {
             const offer = await getLatestOfferForListing({
-              roomId,
               listingId,
               buyerId,
             });
+            if (offer?.room_id) {
+              roomId = offer.room_id;
+            }
             return offer?.status === "pending" && !offer.use_authentication;
           }, { timeout: 25_000 })
           .toBe(true);
@@ -296,7 +306,7 @@ test.describe("Member offer negotiation", () => {
       return;
     }
 
-    const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
 
@@ -334,10 +344,12 @@ test.describe("Member offer negotiation", () => {
       await expect
         .poll(async () => {
           const offer = await getLatestOfferForListing({
-            roomId,
             listingId,
             buyerId,
           });
+          if (offer?.room_id) {
+            roomId = offer.room_id;
+          }
           return offer?.status === "pending" && !offer.use_authentication;
         }, { timeout: 25_000 })
         .toBe(true);

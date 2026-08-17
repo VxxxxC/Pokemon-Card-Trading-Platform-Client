@@ -6,6 +6,33 @@ import { parseRewardCouponCenter } from "@/lib/rewards/mapUserRewardCoupon";
 import { runAsAdmin } from "../../shared/auth-context";
 import { createServiceRoleClient } from "../../shared/supabase-admin";
 
+export async function getRewardTemplateRowByTitle(title: string): Promise<{
+  id: string;
+  type: string;
+  restrictions: Record<string, unknown>;
+  reward_value: Record<string, unknown>;
+} | null> {
+  const templateId = await getTemplateIdByTitle(title);
+  if (!templateId) {
+    return null;
+  }
+
+  return runAsAdmin(async () => {
+    const activity = await getAdminRewardActivity(templateId);
+    if (!activity.success) {
+      throw new Error(`[getRewardTemplateRowByTitle] ${activity.error}`);
+    }
+
+    const row = activity.data;
+    return {
+      id: row.id,
+      type: row.type,
+      restrictions: { ...row.restrictions },
+      reward_value: row.reward_value,
+    };
+  });
+}
+
 export async function getTemplateIdByTitle(title: string): Promise<string | null> {
   return runAsAdmin(async () => {
     const list = await listAdminRewardActivities({

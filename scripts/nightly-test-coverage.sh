@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Phase 1 nightly test coverage — serial L2 → L1 → L3 on staging fixtures.
-# SSOT: docs/dev/test-coverage-ssot.md §8
+# SSOT: docs/dev/test-coverage-ssot.md §9
 #
 # Prerequisites: Supabase + E2E_* in .env.local or CI secrets (see check-nightly-env.sh).
 # Does NOT require Stripe webhook listen or merchant-grading verify.
@@ -92,6 +92,9 @@ run_step "start production server for E2E" start_production_server
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
 run_step "L1 P2 E2E (TC-E01–E03)" bun run test:e2e:nightly:p2
+if [[ "$failed" -ne 0 ]]; then exit 1; fi
+
+run_step "L6 member-trading E2E (TC-E08 · E11 · J-AUTH-01)" bun run test:e2e:nightly:member
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
 run_step "L3a matrix E2E (TC-P05)" env REWARDS_GATE=1 bun run test:e2e:nightly:matrix

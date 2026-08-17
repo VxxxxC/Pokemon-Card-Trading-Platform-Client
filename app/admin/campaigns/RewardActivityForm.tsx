@@ -27,9 +27,14 @@ import {
   FORM_FLOW_DESCRIPTIONS,
   FORM_FLOW_LABELS,
   isCatalogEligibleRewardType,
+  orderKindsToScope,
+  ORDER_KINDS_SCOPE_LABELS,
+  restrictionsForTypeChange,
   rewardValueForType,
+  scopeToOrderKinds,
   shouldShowAutoGrantTriggers,
   type AdminRewardFormFlow,
+  type OrderKindsScope,
 } from "@/lib/admin-rewards/template-form";
 import type {
   AdminRewardActivityUpsertInput,
@@ -469,6 +474,46 @@ export function RewardActivityForm({
           <section className="space-y-3">
             <h2 className={blockTitle}>使用限制與有效期</h2>
             <div className="grid gap-3 md:grid-cols-2">
+              {isCatalogEligibleRewardType(form.type) ? (
+                <div className="space-y-2">
+                  <Label htmlFor="reward-order-kinds" className={fieldLabel}>
+                    適用訂單
+                  </Label>
+                  <Select
+                    value={orderKindsToScope(
+                      form.restrictions?.order_kinds ??
+                        DEFAULT_ADMIN_REWARD_RESTRICTIONS.order_kinds,
+                    )}
+                    onValueChange={(value) =>
+                      handleChange({
+                        ...form,
+                        restrictions: {
+                          ...(form.restrictions ?? DEFAULT_ADMIN_REWARD_RESTRICTIONS),
+                          order_kinds: scopeToOrderKinds(value as OrderKindsScope),
+                        },
+                      })
+                    }
+                  >
+                    <SelectTrigger id="reward-order-kinds" className={fieldSelect}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(ORDER_KINDS_SCOPE_LABELS) as OrderKindsScope[]).map(
+                        (scope) => (
+                          <SelectItem key={scope} value={scope}>
+                            {ORDER_KINDS_SCOPE_LABELS[scope]}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {form.type === "discount_coupon" ? (
+                    <p className="font-sans text-[11px] text-text-secondary">
+                      C2C 鑑定結帳僅支援免運券；折扣券請選商戶或兩者皆可（會員端仍會灰顯）。
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label className={fieldLabel}>適用鑑定</Label>
                 <Select
@@ -715,6 +760,10 @@ export function RewardActivityForm({
                       ...form,
                       type: nextType,
                       reward_value: rewardValueForType(nextType),
+                      restrictions: restrictionsForTypeChange(
+                        nextType,
+                        form.restrictions ?? DEFAULT_ADMIN_REWARD_RESTRICTIONS,
+                      ),
                       redemption_catalog: isCatalogEligibleRewardType(nextType)
                         ? form.redemption_catalog
                         : undefined,

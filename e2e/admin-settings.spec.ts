@@ -1,6 +1,7 @@
 import { test, expect, type Page, type ConsoleMessage } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
+import { hasAdminAuthFixtures, loginAsAdmin, gotoAdminPage } from "./helpers/admin-auth";
 
 const SCREENSHOT_DIR = path.join(process.cwd(), "test-results", "admin-settings-screenshots");
 
@@ -10,18 +11,12 @@ test.beforeAll(() => {
   }
 });
 
-async function loginAsAdmin(page: Page) {
-  await page.goto("/auth");
-  await page.locator('input[name="email"]').fill("admin@t.com");
-  await page.locator('input[name="password"]').fill("Password123!");
-  await page.locator('form button[type="submit"]').click();
-  await page.waitForURL((url) => url.pathname.startsWith("/admin"), { timeout: 15000 });
-}
-
 test.describe("Phase 3 Admin Settings Acceptance", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+  test.setTimeout(120_000);
 
   test("Route 2: /admin/settings Full Acceptance Test Flow", async ({ page }) => {
+    test.skip(!hasAdminAuthFixtures(), "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
     const consoleErrors: string[] = [];
     const hydrationWarnings: string[] = [];
 
@@ -38,9 +33,8 @@ test.describe("Phase 3 Admin Settings Acceptance", () => {
     await loginAsAdmin(page);
 
     // Navigate to /admin/settings
-    await page.goto("/admin/settings");
-    await page.waitForLoadState("networkidle");
-
+    await gotoAdminPage(page, "/admin/settings");
+    
     // 1. 無 console error、無 hydration warning
     expect(consoleErrors, `Console errors found: ${consoleErrors.join("\n")}`).toHaveLength(0);
     expect(hydrationWarnings, `Hydration warnings found: ${hydrationWarnings.join("\n")}`).toHaveLength(0);
@@ -147,12 +141,12 @@ test.describe("Phase 3 Admin Settings Acceptance", () => {
   });
 
   test("Mobile (390x844 iPhone 14) Visual & Responsiveness Verification", async ({ page }) => {
+    test.skip(!hasAdminAuthFixtures(), "Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsAdmin(page);
 
-    await page.goto("/admin/settings");
-    await page.waitForLoadState("networkidle");
-
+    await gotoAdminPage(page, "/admin/settings");
+    
     // Mobile Screenshot
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, "mobile-settings.png"), fullPage: true });
 

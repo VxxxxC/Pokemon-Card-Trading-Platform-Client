@@ -1,6 +1,13 @@
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
-import type { ListingMarketplaceFixture } from "../fixtures/supabase-admin";
+import { ACTIVE_LISTING_PERSONA_STORAGE_KEY } from "@/lib/listings/active-listing-persona";
+import {
+  countActiveListingsForSellerProduct,
+  clearListingsForSellerProduct,
+  getBuyerProfileIdFromEnv,
+  seedProductWatchlistForUser,
+  type ListingMarketplaceFixture,
+} from "../fixtures/supabase-admin";
 
 export const LISTING_PHOTO_FIXTURE = path.resolve(
   __dirname,
@@ -14,7 +21,15 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
   }
 }
 
+export async function ensureMemberPersona(page: Page): Promise<void> {
+  await page.addInitScript((storageKey) => {
+    window.sessionStorage.setItem(storageKey, "member");
+    document.cookie = "hkcv_active_listing_persona=member; Path=/; SameSite=Lax";
+  }, ACTIVE_LISTING_PERSONA_STORAGE_KEY);
+}
+
 export async function gotoCollectionPage(page: Page): Promise<void> {
+  await ensureMemberPersona(page);
   await page.goto("/profile/user/collection", { waitUntil: "domcontentloaded" });
   await dismissBlockingOverlays(page);
 }
@@ -110,6 +125,17 @@ export async function ensureProductInWishlist(
   page: Page,
   fixture: ListingMarketplaceFixture,
 ): Promise<void> {
+  const buyerId = await getBuyerProfileIdFromEnv();
+  if (buyerId) {
+    await seedProductWatchlistForUser(buyerId, fixture.productId);
+    await gotoCollectionPage(page);
+    await expect(
+      wishlistSection(page).getByText(fixture.productName).first(),
+    ).toBeVisible({ timeout: 20_000 });
+    return;
+  }
+
+  await ensureMemberPersona(page);
   await page.goto("/marketplace", { waitUntil: "domcontentloaded" });
   await dismissBlockingOverlays(page);
 
@@ -132,8 +158,8 @@ export async function ensureProductInWishlist(
   const wishlistLabel = (await wishlistButton.getAttribute("aria-label")) ?? "";
   if (wishlistLabel.includes("加入願望清單")) {
     await wishlistButton.click();
-    await expect(page.getByText("已加入願望清單")).toBeVisible({
-      timeout: 15_000,
+    await expect(wishlistButton).toHaveAttribute("aria-label", "從願望清單移除", {
+      timeout: 20_000,
     });
   }
 }
@@ -163,12 +189,19 @@ export function holdingsRowByPurchasePrice(
   page: Page,
   productName: string,
   purchasePrice: string | number,
+  options?: { gradingLabel?: string },
 ): ReturnType<typeof holdingsRow> {
   const normalized = String(purchasePrice).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return holdingsSection(page)
+  let row = holdingsSection(page)
     .locator("tbody tr")
-    .filter({ hasText: productName })
-    .filter({ hasText: normalized })
+    .filter({ hasText: productName });
+  if (options?.gradingLabel) {
+    row = row.filter({ hasText: options.gradingLabel });
+  }
+  return row
+    .filter({
+      has: page.locator("td").nth(2).locator("p").first().getByText(normalized),
+    })
     .last();
 }
 
@@ -189,24 +222,63 @@ export async function openHoldingsRowMenu(
   await row.getByRole("button").filter({ hasText: "⋯" }).click();
 }
 
+export async function selectHobbyGrading(
+  page: Page,
+  optionLabel: string,
+): Promise<void> {
+  const modal = addAssetModalForm(page);
+  await modal.getByRole("combobox").click();
+  const option = page.getByRole("option", { name: optionLabel, exact: true });
+  await expect(option).toBeVisible({ timeout: 10_000 });
+  await option.click();
+}
+
+export async function selectHobbyRawGrading(page: Page): Promise<void> {
+  await selectHobbyGrading(page, "裸卡 A");
+}
+
 export async function addHobbyHoldingForFixture(
   page: Page,
   fixture: ListingMarketplaceFixture,
   purchasePrice = "12345",
+  options?: { gradingOptionLabel?: string },
 ): Promise<string> {
+  const gradingOptionLabel = options?.gradingOptionLabel ?? "裸卡 A";
+  const gradingRowLabel = gradingOptionLabel.startsWith("裸卡")
+    ? "RAW"
+    : gradingOptionLabel.split(" ")[0] ?? gradingOptionLabel;
+  const buyerId = await getBuyerProfileIdFromEnv();
+  if (buyerId) {
+    await clearListingsForSellerProduct(buyerId, fixture.productId);
+    await expect
+      .poll(
+        async () =>
+          countActiveListingsForSellerProduct(buyerId, fixture.productId),
+        { timeout: 30_000 },
+      )
+      .toBe(0);
+  }
+
   await gotoCollectionPage(page);
   await expect(page.locator("#cards-heading")).toBeVisible({
     timeout: 20_000,
   });
   await openHobbyAddAssetModal(page);
   await searchAndSelectCatalogForFixture(page, fixture);
+  await selectHobbyGrading(page, gradingOptionLabel);
   await addAssetModalForm(page).getByPlaceholder("0").fill(purchasePrice);
   await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();
   await expect(
     page.getByText("已成功收錄進您的私藏愛好清單"),
   ).toBeVisible({ timeout: 20_000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#cards-heading")).toBeVisible({
+    timeout: 20_000,
+  });
   await expect(
-    holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice),
+    holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice, {
+      gradingLabel: gradingRowLabel,
+    }).getByText("持有中"),
   ).toBeVisible({
     timeout: 20_000,
   });

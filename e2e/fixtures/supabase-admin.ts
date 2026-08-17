@@ -65,16 +65,19 @@ export async function ensureDbChatRoom(
 ): Promise<string> {
   const admin = createE2eAdminClient();
 
-  const { data: existing, error: selectError } = await admin
+  const { data: existingRows, error: selectError } = await admin
     .from("chat_rooms")
     .select("id")
     .eq("buyer_id", buyerId)
     .eq("seller_id", sellerId)
-    .maybeSingle();
+    .order("updated_at", { ascending: false })
+    .limit(1);
 
   if (selectError) {
     throw new Error(`[ensureDbChatRoom] ${selectError.message}`);
   }
+
+  const existing = existingRows?.[0];
 
   if (existing?.id) {
     return existing.id;
@@ -108,6 +111,51 @@ export async function getLatestChatMessage(
 
   if (error) {
     throw new Error(`[getLatestChatMessage] ${error.message}`);
+  }
+
+  const rows = (data ?? []) as ChatMessageAuditRow[];
+  if (rows.length === 0) {
+    return null;
+  }
+
+  if (contentContains) {
+    return rows.find((row) => row.content.includes(contentContains)) ?? null;
+  }
+
+  return rows[0] ?? null;
+}
+
+export async function getLatestChatMessageForParties(
+  buyerId: string,
+  sellerId: string,
+  contentContains?: string,
+): Promise<ChatMessageAuditRow | null> {
+  const admin = createE2eAdminClient();
+
+  const { data: rooms, error: roomsError } = await admin
+    .from("chat_rooms")
+    .select("id")
+    .eq("buyer_id", buyerId)
+    .eq("seller_id", sellerId);
+
+  if (roomsError) {
+    throw new Error(`[getLatestChatMessageForParties] ${roomsError.message}`);
+  }
+
+  const roomIds = (rooms ?? []).map((room) => room.id).filter(Boolean);
+  if (roomIds.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await admin
+    .from("chat_messages")
+    .select("id, room_id, content, created_at, sender_id, is_system_warning")
+    .in("room_id", roomIds)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    throw new Error(`[getLatestChatMessageForParties] ${error.message}`);
   }
 
   const rows = (data ?? []) as ChatMessageAuditRow[];
@@ -250,7 +298,20 @@ export async function simulateMemberAuthOrderPayment(
   memberOrderId: string,
 ): Promise<void> {
   const admin = createE2eAdminClient();
-  const paymentIntentId = `pi_e2e_${memberOrderId.replace(/-/g, "").slice(0, 24)}`;
+
+  const { data: order, error: orderError } = await admin
+    .from("member_orders")
+    .select("stripe_payment_intent_id")
+    .eq("id", memberOrderId)
+    .maybeSingle<{ stripe_payment_intent_id: string | null }>();
+
+  if (orderError) {
+    throw new Error(`[simulateMemberAuthOrderPayment] ${orderError.message}`);
+  }
+
+  const paymentIntentId =
+    order?.stripe_payment_intent_id?.trim() ||
+    `pi_e2e_${memberOrderId.replace(/-/g, "").slice(0, 24)}`;
 
   const { error } = await (
     admin as unknown as {
@@ -354,6 +415,7 @@ export async function isBuyerWithinP2pNewAccountGrace(
 export type ListingMarketplaceFixture = {
   listingId: string;
   productId: string;
+  displayId: string | null;
   sellerId: string;
   sellerName: string;
   productName: string;
@@ -373,6 +435,8 @@ export type GetListingMarketplaceFixtureOptions = {
   expectedSellerId?: string;
   /** When set, preferred over catalog fields for `searchKeyword`. */
   preferredSearchKeyword?: string;
+  /** When set, skips listings whose `seller_persona` does not match. */
+  requiredSellerPersona?: "member" | "merchant";
 };
 
 type ProductCatalogSummary = {
@@ -389,6 +453,7 @@ type ListingCatalogJoinRow = {
   status: string;
   product_id: string;
   seller_id: string;
+  seller_persona: "member" | "merchant" | null;
   profiles: { display_name: string } | { display_name: string }[] | null;
   product_catalog: ProductCatalogSummary | ProductCatalogSummary[] | null;
 };
@@ -538,6 +603,7 @@ export async function getListingMarketplaceFixture(
       status,
       product_id,
       seller_id,
+      seller_persona,
       profiles!fk_listings_seller_id (
         display_name
       ),
@@ -570,6 +636,16 @@ export async function getListingMarketplaceFixture(
     return {
       ok: false,
       skipReason: `Listing ${normalizedListingId} is not active (status=${row.status})`,
+    };
+  }
+
+  if (
+    options.requiredSellerPersona &&
+    row.seller_persona !== options.requiredSellerPersona
+  ) {
+    return {
+      ok: false,
+      skipReason: `Listing ${normalizedListingId} seller_persona=${row.seller_persona ?? "unknown"} (expected ${options.requiredSellerPersona})`,
     };
   }
 
@@ -637,6 +713,7 @@ export async function getListingMarketplaceFixture(
     fixture: {
       listingId: row.id,
       productId: row.product_id,
+      displayId: catalog.display_id?.trim() ?? null,
       sellerId: row.seller_id,
       sellerName,
       productName: resolveProductName(catalog),
@@ -648,21 +725,118 @@ export async function getListingMarketplaceFixture(
   };
 }
 
+/**
+ * Seeds a minimal active listing when staging wipe removed E2E fixtures.
+ * Uses the first catalog row with a Chinese name for reliable marketplace search.
+ */
+export async function seedE2eMarketplaceListingForSeller(
+  sellerId: string,
+  sellerPersona: "member" | "merchant" = "member",
+): Promise<string | null> {
+  if (!hasE2eAdminEnv()) {
+    return null;
+  }
+
+  const admin = createE2eAdminClient();
+  const { data: catalog, error: catalogError } = await admin
+    .from("product_catalog")
+    .select("id, display_id, name_zh, card_number")
+    .not("name_zh", "is", null)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (catalogError) {
+    throw new Error(`[seedE2eMarketplaceListingForSeller] ${catalogError.message}`);
+  }
+
+  if (!catalog?.id) {
+    return null;
+  }
+
+  const useAuthentication = sellerPersona === "merchant";
+  const { data, error } = await admin
+    .from("listings")
+    .insert({
+      seller_id: sellerId,
+      product_id: catalog.id,
+      price: 299,
+      status: "active",
+      seller_persona: sellerPersona,
+      grading_company: "RAW",
+      seller_description: "E2E marketplace fixture listing (auto-seeded)",
+      images: [],
+      use_authentication: useAuthentication,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`[seedE2eMarketplaceListingForSeller] ${error.message}`);
+  }
+
+  return data.id;
+}
+
+export async function getProfileUsername(profileId: string): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("profiles")
+    .select("username")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getProfileUsername] ${error.message}`);
+  }
+
+  return data?.username?.trim() ?? null;
+}
+
 async function findActiveListingIdForSeller(
   admin: ReturnType<typeof createE2eAdminClient>,
   sellerId: string,
+  sellerPersona?: "member" | "merchant",
 ): Promise<string | null> {
-  const { data, error } = await admin
+  let query = admin
     .from("listings")
     .select("id")
     .eq("seller_id", sellerId)
-    .eq("status", "active")
+    .eq("status", "active");
+
+  if (sellerPersona) {
+    query = query.eq("seller_persona", sellerPersona);
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
     throw new Error(`[findActiveListingIdForSeller] ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
+async function findRecyclableListingIdForSeller(
+  admin: ReturnType<typeof createE2eAdminClient>,
+  sellerId: string,
+  sellerPersona: "member" | "merchant",
+): Promise<string | null> {
+  const { data, error } = await admin
+    .from("listings")
+    .select("id")
+    .eq("seller_id", sellerId)
+    .eq("seller_persona", sellerPersona)
+    .in("status", ["active", "sold", "inactive"])
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[findRecyclableListingIdForSeller] ${error.message}`);
   }
 
   return data?.id ?? null;
@@ -699,9 +873,43 @@ export async function resolveE2eMarketplaceFixture(
   }
 
   const admin = createE2eAdminClient();
-  const fallbackListingId = await findActiveListingIdForSeller(admin, sellerId);
+  const fallbackListingId = await findActiveListingIdForSeller(
+    admin,
+    sellerId,
+    options.requiredSellerPersona,
+  );
   if (!fallbackListingId || fallbackListingId === configuredListingId) {
-    return primary;
+    if (!options.requiredSellerPersona) {
+      const seededListingId = await seedE2eMarketplaceListingForSeller(
+        sellerId,
+        "member",
+      );
+      if (seededListingId) {
+        await ensureListingActive(seededListingId);
+        return getListingMarketplaceFixture(seededListingId, options);
+      }
+      return primary;
+    }
+
+    const recycledListingId = await findRecyclableListingIdForSeller(
+      admin,
+      sellerId,
+      options.requiredSellerPersona,
+    );
+    if (!recycledListingId || recycledListingId === configuredListingId) {
+      const seededListingId = await seedE2eMarketplaceListingForSeller(
+        sellerId,
+        options.requiredSellerPersona,
+      );
+      if (seededListingId) {
+        await ensureListingActive(seededListingId);
+        return getListingMarketplaceFixture(seededListingId, options);
+      }
+      return primary;
+    }
+
+    await ensureListingActive(recycledListingId);
+    return getListingMarketplaceFixture(recycledListingId, options);
   }
 
   return getListingMarketplaceFixture(fallbackListingId, options);
@@ -723,22 +931,28 @@ function isSupabaseAccessDenied(
 }
 
 export async function getLatestOfferForListing(params: {
-  roomId: string;
   listingId: string;
   buyerId: string;
+  roomId?: string;
 }): Promise<{
   id: string;
   status: string | null;
   use_authentication: boolean | null;
+  room_id?: string;
 } | null> {
   const admin = createE2eAdminClient();
 
-  const { data, error } = await admin
+  let query = admin
     .from("offers")
-    .select("id, status, use_authentication")
-    .eq("room_id", params.roomId)
+    .select("id, status, use_authentication, room_id")
     .eq("listing_id", params.listingId)
-    .eq("buyer_id", params.buyerId)
+    .eq("buyer_id", params.buyerId);
+
+  if (params.roomId) {
+    query = query.eq("room_id", params.roomId);
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -873,6 +1087,34 @@ export async function getLatestMemberOrderForListing(params: {
   }
 
   return data as MemberOrderAuditRow | null;
+}
+
+export async function cancelMemberOrderViaRpc(
+  orderId: string,
+  userId: string,
+): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { error } = await (
+    admin as unknown as {
+      rpc: (
+        fn: "rpc_cancel_member_order",
+        args: { p_order_id: string; p_user_id: string },
+      ) => Promise<{ error: { message: string } | null }>;
+    }
+  ).rpc("rpc_cancel_member_order", {
+    p_order_id: orderId,
+    p_user_id: userId,
+  });
+
+  if (error) {
+    if (isAdminPermissionDenied(error)) {
+      return false;
+    }
+    throw new Error(`[cancelMemberOrderViaRpc] ${error.message}`);
+  }
+
+  return true;
 }
 
 export async function getMemberOrderById(
@@ -1031,11 +1273,28 @@ export async function deleteProductWatchlistsForUser(
     .eq("user_id", userId)
     .eq("product_id", productId);
 
-  if (error) {
-    if (isSupabaseAccessDenied(error, status)) {
-      return;
-    }
+  if (error && !isSupabaseAccessDenied(error, status)) {
     throw new Error(`[deleteProductWatchlistsForUser] ${error.message}`);
+  }
+}
+
+export async function seedProductWatchlistForUser(
+  userId: string,
+  productId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  await deleteProductWatchlistsForUser(userId, productId);
+
+  const { error, status } = await admin.from("product_watchlists").insert({
+    user_id: userId,
+    product_id: productId,
+    grading_company: "RAW",
+    grading_score: "A",
+    alert_enabled: true,
+  });
+
+  if (error) {
+    throw new Error(`[seedProductWatchlistForUser] ${error.message}`);
   }
 }
 
@@ -1343,6 +1602,27 @@ export async function deactivateActiveListingsForSellerProduct(
     if (row.id) {
       await setListingStatusInactive(row.id);
     }
+  }
+}
+
+export async function clearListingsForSellerProduct(
+  sellerId: string,
+  productId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+
+  const { error, status } = await admin
+    .from("listings")
+    .delete()
+    .eq("seller_id", sellerId)
+    .eq("product_id", productId);
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      await deactivateActiveListingsForSellerProduct(sellerId, productId);
+      return;
+    }
+    throw new Error(`[clearListingsForSellerProduct] ${error.message}`);
   }
 }
 

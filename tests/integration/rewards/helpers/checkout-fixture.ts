@@ -18,15 +18,128 @@ const DEFAULT_PREPARE_ARGS = {
   p_buyer_remark: null,
 } as const;
 
+async function seedMerchantListingForIntegration(
+  sellerId: string,
+): Promise<string | null> {
+  const admin = createServiceRoleClient();
+  const { data: catalog, error: catalogError } = await admin
+    .from("product_catalog")
+    .select("id")
+    .not("name_zh", "is", null)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (catalogError) {
+    throw new Error(
+      `[seedMerchantListingForIntegration] ${catalogError.message}`,
+    );
+  }
+
+  if (!catalog?.id) {
+    return null;
+  }
+
+  const { data, error } = await admin
+    .from("listings")
+    .insert({
+      seller_id: sellerId,
+      product_id: catalog.id,
+      price: 299,
+      status: "active",
+      seller_persona: "merchant",
+      grading_company: "RAW",
+      seller_description: "Integration merchant auth-fee fixture (auto-seeded)",
+      images: [],
+      use_authentication: true,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`[seedMerchantListingForIntegration] ${error.message}`);
+  }
+
+  return data.id;
+}
+
 export async function findMerchantListingForIntegration(): Promise<MerchantListingFixture> {
   const envListingId = process.env.E2E_LISTING_ID?.trim();
+  const envMerchantListingId = process.env.E2E_MERCHANT_LISTING_ID?.trim();
   const envSellerId = process.env.E2E_SELLER_ID?.trim();
   const admin = createServiceRoleClient();
+
+  async function resolveMerchantListing(
+    listing: {
+      id: string;
+      seller_id: string | null;
+      price: number | null;
+      seller_persona: string | null;
+      status: string | null;
+    },
+  ): Promise<MerchantListingFixture | null> {
+    if (listing.seller_persona !== "merchant" || !listing.seller_id) {
+      return null;
+    }
+
+    if (listing.status !== "active") {
+      const { error: activateError } = await admin
+        .from("listings")
+        .update({ status: "active" })
+        .eq("id", listing.id);
+      if (activateError) {
+        throw new Error(
+          `[findMerchantListingForIntegration] reactivate listing: ${activateError.message}`,
+        );
+      }
+    }
+
+    return {
+      listingId: listing.id,
+      sellerId: listing.seller_id,
+      price: Number(listing.price ?? 0),
+    };
+  }
+
+  async function loadListingById(
+    listingId: string,
+  ): Promise<MerchantListingFixture | null> {
+    const { data, error } = await admin
+      .from("listings")
+      .select("id, seller_id, price, seller_persona, status")
+      .eq("id", listingId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`[findMerchantListingForIntegration] ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return resolveMerchantListing(data);
+  }
+
+  if (envMerchantListingId) {
+    const resolved = await loadListingById(envMerchantListingId);
+    if (!resolved) {
+      throw new Error(
+        `[findMerchantListingForIntegration] E2E_MERCHANT_LISTING_ID must be a merchant listing: ${envMerchantListingId}`,
+      );
+    }
+    if (envSellerId && resolved.sellerId !== envSellerId) {
+      throw new Error(
+        `[findMerchantListingForIntegration] E2E_MERCHANT_LISTING_ID seller_id must equal E2E_SELLER_ID (listing ${resolved.sellerId}, expected ${envSellerId})`,
+      );
+    }
+    return resolved;
+  }
 
   if (envListingId && envSellerId) {
     const { data, error } = await admin
       .from("listings")
-      .select("id, seller_id, price, seller_persona")
+      .select("id, seller_id, price, seller_persona, status")
       .eq("id", envListingId)
       .maybeSingle();
 
@@ -40,23 +153,52 @@ export async function findMerchantListingForIntegration(): Promise<MerchantListi
       );
     }
 
-    if (data.seller_persona !== "merchant" || !data.seller_id) {
-      throw new Error(
-        `[findMerchantListingForIntegration] E2E_LISTING_ID must be a merchant listing (got persona=${String(data.seller_persona)})`,
-      );
+    if (data.seller_persona === "merchant") {
+      if (!data.seller_id) {
+        throw new Error(
+          `[findMerchantListingForIntegration] E2E_LISTING_ID merchant listing missing seller_id`,
+        );
+      }
+      if (data.seller_id !== envSellerId) {
+        throw new Error(
+          `[findMerchantListingForIntegration] E2E_LISTING_ID seller_id must equal E2E_SELLER_ID (listing ${data.seller_id}, expected ${envSellerId})`,
+        );
+      }
+      const resolved = await resolveMerchantListing(data);
+      if (resolved) {
+        return resolved;
+      }
+    }
+  }
+
+  if (envSellerId) {
+    const { data: sellerListings, error: sellerError } = await admin
+      .from("listings")
+      .select("id, seller_id, price, seller_persona, status")
+      .eq("seller_id", envSellerId)
+      .eq("seller_persona", "merchant")
+      .in("status", ["active", "inactive", "sold"])
+      .order("updated_at", { ascending: false })
+      .limit(5);
+
+    if (sellerError) {
+      throw new Error(`[findMerchantListingForIntegration] ${sellerError.message}`);
     }
 
-    if (data.seller_id !== envSellerId) {
-      throw new Error(
-        `[findMerchantListingForIntegration] E2E_LISTING_ID seller_id must equal E2E_SELLER_ID (listing ${data.seller_id}, expected ${envSellerId})`,
-      );
+    for (const row of sellerListings ?? []) {
+      const resolved = await resolveMerchantListing(row);
+      if (resolved) {
+        return resolved;
+      }
     }
 
-    return {
-      listingId: data.id,
-      sellerId: data.seller_id,
-      price: data.price,
-    };
+    const seededListingId = await seedMerchantListingForIntegration(envSellerId);
+    if (seededListingId) {
+      const resolved = await loadListingById(seededListingId);
+      if (resolved) {
+        return resolved;
+      }
+    }
   }
 
   const { data: kycRows, error: kycError } = await admin

@@ -12,7 +12,7 @@ async function dismissBlockingOverlays(page: import("@playwright/test").Page) {
 }
 
 test.describe("Member rewards coupons", () => {
-  test("buyer sees redeemable coupon cards or empty state", async ({
+  test("buyer sees points store or coupon inventory on rewards page", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer-only rewards redeem");
@@ -27,18 +27,11 @@ test.describe("Member rewards coupons", () => {
       timeout: 20_000,
     });
 
-    const couponCard = page.locator("#redeem-list").getByText("VOUCHER TOKEN").first();
-    const emptyState = page.getByText(/暫無可領取|尚無折價券/);
-
-    const hasCoupon = await couponCard.isVisible().catch(() => false);
-    const isEmpty = await emptyState.isVisible().catch(() => false);
-
-    if (!hasCoupon && !isEmpty) {
-      test.skip(true, "Rewards page has no coupon cards and no empty-state copy");
-    }
-
-    if (hasCoupon) {
-      await expect(couponCard).toBeVisible();
-    }
+    await expect(
+      page.getByRole("heading", { name: "🪙 積分商城" }),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByRole("heading", { name: "🎟️ 我的全域平台折價券中心" }),
+    ).toBeVisible({ timeout: 20_000 });
   });
 });

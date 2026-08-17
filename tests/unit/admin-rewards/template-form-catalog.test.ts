@@ -3,10 +3,15 @@ import {
   applyFormFlow,
   buildDefaultActivityForm,
   buildDefaultPointsMallActivityForm,
+  defaultRestrictionsForRewardType,
   deriveFormFlow,
   isCatalogEligibleRewardType,
+  orderKindsToScope,
   resolveActivityTriggerConditions,
+  restrictionsForTypeChange,
+  rewardValueForType,
   sanitizeRedemptionCatalogForType,
+  scopeToOrderKinds,
   shouldShowAutoGrantTriggers,
   shouldShowRedemptionCatalog,
 } from "@/lib/admin-rewards/template-form";
@@ -112,5 +117,34 @@ describe("admin reward catalog form helpers", () => {
       "points_mall",
     );
     expect(switched.redemption_catalog?.max_redemptions_per_user).toBe(3);
+  });
+
+  it("defaults free_shipping order_kinds to merchant + member (C2C parity)", () => {
+    const freeShip = defaultRestrictionsForRewardType("free_shipping");
+    expect(freeShip.order_kinds).toEqual(["merchant", "member"]);
+
+    const discount = defaultRestrictionsForRewardType("discount_coupon");
+    expect(discount.order_kinds).toEqual(["merchant"]);
+  });
+
+  it("upgrades merchant-only scope when switching type to free_shipping", () => {
+    const next = restrictionsForTypeChange("free_shipping", {
+      order_kinds: ["merchant"],
+      requires_authentication: "any",
+      shipping_methods: ["sf"],
+      min_item_subtotal_hkd: 0,
+    });
+    expect(next.order_kinds).toEqual(["merchant", "member"]);
+  });
+
+  it("defaults discount min_spend_hkd to 100 (CC-UNIT)", () => {
+    expect(buildDefaultActivityForm().reward_value.min_spend_hkd).toBe(100);
+    expect(rewardValueForType("discount_coupon").min_spend_hkd).toBe(100);
+    expect(rewardValueForType("free_shipping").min_spend_hkd).toBe(0);
+  });
+
+  it("round-trips order kind scope helpers", () => {
+    expect(orderKindsToScope(["merchant", "member"])).toBe("both");
+    expect(scopeToOrderKinds("member")).toEqual(["member"]);
   });
 });

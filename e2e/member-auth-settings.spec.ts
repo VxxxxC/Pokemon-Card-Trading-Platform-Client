@@ -5,6 +5,7 @@ import {
   hasBuyerAuthFixtures,
   hasCoreMerchantFixtures,
 } from "./fixtures/test-data";
+import { resolveE2eMarketplaceFixture } from "./fixtures/supabase-admin";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
@@ -25,11 +26,16 @@ test.describe("Member auth redirect and settings", () => {
       test.skip(true, "Missing listing or buyer auth fixtures for redirect flow");
     }
 
-    const { sellerId, listingId, buyerEmail, buyerPassword } =
-      getMerchantProductDetailFixtures();
-    const detailPath = buildMerchantProductDetailPath(sellerId!, listingId!);
+    const fixtureResult = await resolveE2eMarketplaceFixture();
+    if (!fixtureResult.ok) {
+      test.skip(true, fixtureResult.skipReason);
+      return;
+    }
+    const { sellerId, listingId } = fixtureResult.fixture;
+    const { buyerEmail, buyerPassword } = getMerchantProductDetailFixtures();
+    const detailPath = buildMerchantProductDetailPath(sellerId, listingId);
 
-    await page.goto(detailPath, { waitUntil: "networkidle" });
+    await page.goto(detailPath, { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
     await expect(page.locator("main h1")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("店主獨立出讓一口價")).toBeVisible({
@@ -40,13 +46,16 @@ test.describe("Member auth redirect and settings", () => {
     await expect(page.getByText("您目前正以遊客身份觀盤")).toBeVisible({
       timeout: 15_000,
     });
-    const guestLockPanel = page
-      .getByText("請先登入會員以活化平台第三方雙向鑑定與託管出價機制。")
-      .locator("..");
-    const loginLink = guestLockPanel.getByRole("link", { name: "登入 / 註冊" });
+    await expect(
+      page.getByText("請先登入會員以活化平台第三方雙向鑑定與託管出價機制。"),
+    ).toBeVisible();
+    const loginLink = page.getByRole("alertdialog").getByText("登入 / 註冊");
     await expect(loginLink).toBeVisible();
 
-    const href = await loginLink.getAttribute("href");
+    const href = await loginLink.evaluate((el) => {
+      const anchor = el.closest("a");
+      return anchor?.getAttribute("href") ?? el.getAttribute("href");
+    });
     expect(href).toContain("/auth?redirect=");
 
     await page.goto("/auth", { waitUntil: "domcontentloaded" });
@@ -90,7 +99,7 @@ test.describe("Member auth redirect and settings", () => {
     );
     await page.getByRole("button", { name: "儲存更改" }).click();
 
-    await expect(page.getByText("個人資料已更新")).toBeVisible({
+    await expect(page.getByText("個人資料及收款資料已更新")).toBeVisible({
       timeout: 20_000,
     });
 

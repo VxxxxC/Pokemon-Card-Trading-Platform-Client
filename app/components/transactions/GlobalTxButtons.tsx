@@ -7,7 +7,6 @@ import { mapMarketplaceListingToExecutionPayload } from "@/lib/marketplace/map-l
 import { prefetchMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
 import { buildSellerListingDetailHref } from "@/lib/marketplace/listing-detail-href";
 import { type MarketplaceListing } from "../marketplace/MarketplaceCard";
-import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
   BuyNowConfirmDialog,
   BuyNowGuestLockDialog,
@@ -20,10 +19,6 @@ interface GlobalButtonProps {
   /** When provided, skips per-button profile fetch (pass from grid parent). */
   currentUserId?: string | null;
 }
-
-// TODO [BACKEND]: Replace mock buyer fields with authed session user identity
-const MOCK_BUYER_NAME = "九龍灣卡王";
-const MOCK_BUYER_ID = "USR-BUYER-MOCK-001";
 
 export function BuyButton({
   listing,
@@ -142,35 +137,5 @@ function BuyButtonView({
         redirectPath={guestRedirectPath}
       />
     </>
-  );
-}
-
-// 🔨 立即競投按鈕 — 注入 pending 議價要約，開啟聊天室議價通道
-export function AuctionButton({ listing, className = "" }: GlobalButtonProps) {
-  const injectSpecialTransaction = useHkCardVaultStore(
-    (state) => state.injectSpecialTransaction,
-  );
-
-  const handleAuction = () => {
-    injectSpecialTransaction({
-      sellerName: listing.seller,
-      sellerId: listing.sellerId ?? "HKCV-SELLER-UNKNOWN",
-      cardName: listing.name,
-      cardId: listing.id,
-      offerPrice: listing.price,
-      buyerName: MOCK_BUYER_NAME,
-      buyerId: MOCK_BUYER_ID,
-      isInstantTake: false,
-    });
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleAuction}
-      className={`h-9 px-4 bg-transparent border border-[#d4a574]/50 text-[#d4a574] font-sans font-bold text-[11px] sm:text-[12px] tracking-wide whitespace-nowrap truncate rounded-xl hover:bg-[#d4a574]/10 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${className}`}
-    >
-      🔨 立即競投
-    </button>
   );
 }

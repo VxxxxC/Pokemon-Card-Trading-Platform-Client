@@ -50,8 +50,11 @@ test.describe("Public rating list page", () => {
     });
     await dismissBlockingOverlays(page);
 
-    await page.getByRole("link", { name: "查看更多評價 →" }).click();
-    await expect(page).toHaveURL(/\/rating/);
+    const ratingLink = page.getByRole("link", { name: "查看更多評價 →" });
+    await expect(ratingLink).toBeVisible({ timeout: 20_000 });
+    const ratingHref = await ratingLink.getAttribute("href");
+    expect(ratingHref).toMatch(/\/rating/);
+    await page.goto(ratingHref!, { waitUntil: "domcontentloaded" });
     await expect(page.getByText("全量信用評價歷史")).toBeVisible({
       timeout: 20_000,
     });

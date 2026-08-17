@@ -226,17 +226,6 @@ interface HkCardVaultStore {
     partnerPersona?: ChatPartnerPersona,
   ) => void;
 
-  injectSpecialTransaction: (payload: {
-    sellerName: string;
-    sellerId: string;
-    cardName: string;
-    cardId: string;
-    offerPrice: number;
-    buyerName: string;
-    buyerId: string;
-    isInstantTake: boolean;
-  }) => void;
-
   openOfferChatSession: (payload: {
     roomId: string;
     partnerId: string;
@@ -519,83 +508,6 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         }
 
         updatedChats = [newSession, ...state.chats];
-      }
-
-      return {
-        chats: updatedChats,
-        activeRoomId: canonicalRoomId,
-        isChatOpen: true,
-        mobileView: "CHAT",
-      };
-    }),
-
-  injectSpecialTransaction: (payload) =>
-    set((state) => {
-      const canonicalRoomId = generateDeterministicRoomId(
-        payload.buyerId,
-        "member",
-        payload.sellerId,
-        "member",
-      );
-
-      const status = payload.isInstantTake ? "accepted" : "pending";
-      const msgText = payload.isInstantTake
-        ? "⚡【立即購買】" + payload.buyerName + " 已接受一口價購入並成功預留資產！"
-        : "📩【議價要約】" + payload.buyerName + " 向您提報了 HK$ " + payload.offerPrice.toLocaleString() + " 的預期出價。";
-
-      const specialMsg = createSpecialTransactionMessage(
-        "me",
-        {
-          cardName: payload.cardName,
-          cardId: payload.cardId,
-          offerPrice: payload.offerPrice,
-          buyerName: payload.buyerName,
-          buyerId: payload.buyerId,
-          sellerId: payload.sellerId,
-          sellerName: payload.sellerName,
-          initialStatus: status,
-        },
-        msgText,
-      );
-
-      const exists = state.chats.some((c) => c.id === canonicalRoomId);
-      let updatedChats = [...state.chats];
-
-      if (exists) {
-        updatedChats = state.chats.map((room) => {
-          if (room.id === canonicalRoomId) {
-            return {
-              ...room,
-              lastMessage: specialMsg.text,
-              messages: [...room.messages, specialMsg],
-              unreadCount: 0,
-            };
-          }
-          return room;
-        });
-      } else {
-        const newRoom: ChatRoom = {
-          id: canonicalRoomId,
-          partnerId: payload.sellerId,
-          partnerPersona: "member",
-          viewerPersona: "member",
-          partnerName: payload.sellerName,
-          partnerAvatarUrl: DEFAULT_AVATAR_URL,
-          partnerTier: "認證賣家",
-          lastMessage: specialMsg.text,
-          unreadCount: 0,
-          timestamp: new Date().toISOString(),
-          messages: [
-            {
-              id: "sys-" + Date.now(),
-              sender: "system",
-              text: "🔒 已建立與 " + payload.sellerName + " 的安全中介蒗管交易通道。",
-              timestamp: new Date().toISOString(),
-            },
-            specialMsg,
-          ],
-        };
-        updatedChats = [newRoom, ...state.chats];
       }
 
       return {
