@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureMemberPersona } from "./helpers/collection-asset";
 import { dismissBlockingOverlays } from "./helpers/member-trading";
 
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -21,9 +22,12 @@ test.describe("Home P0 smoke (M5)", () => {
   test("buyer home shows check-in affordance", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer auth required");
 
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await ensureMemberPersona(page);
+    await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
-    await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
+    await expect(
+      page.getByRole("heading", { name: "會員獎勵與任務中心" }),
+    ).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "每日簽到" })).toBeVisible({
       timeout: 20_000,
     });

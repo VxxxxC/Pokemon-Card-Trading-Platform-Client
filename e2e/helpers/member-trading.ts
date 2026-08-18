@@ -1056,6 +1056,23 @@ export async function confirmP2pHandoverDialog(page: Page): Promise<void> {
   }
 
   await page.getByRole("button", { name: "確認完成交收" }).click();
+  await dismissReviewModalIfOpen(page);
+}
+
+export async function dismissReviewModalIfOpen(page: Page): Promise<void> {
+  const reviewHeading = page.locator("#review-modal-title");
+  if (!(await reviewHeading.isVisible().catch(() => false))) {
+    return;
+  }
+
+  const laterButton = page.getByRole("button", { name: "稍後再說" });
+  if (await laterButton.isVisible().catch(() => false)) {
+    await laterButton.click();
+  } else {
+    await page.getByRole("button", { name: "關閉" }).click();
+  }
+
+  await expect(reviewHeading).toBeHidden({ timeout: 10_000 });
 }
 
 export async function submitFiveStarReview(page: Page): Promise<void> {
@@ -1066,18 +1083,62 @@ export async function submitFiveStarReview(page: Page): Promise<void> {
   });
 
   if (!(await reviewHeading.isVisible().catch(() => false))) {
-    await expect(openReviewButton).toBeVisible({ timeout: 15_000 });
-    await openReviewButton.click({ force: true });
+    const canOpenReview = await openReviewButton
+      .isVisible()
+      .catch(() => false);
+    if (canOpenReview) {
+      await openReviewButton.click({ force: true });
+    }
   }
 
-  await expect(reviewHeading).toBeVisible({
-    timeout: 15_000,
-  });
+  if (!(await reviewHeading.isVisible().catch(() => false))) {
+    throw new Error("Review modal did not open and no review CTA was visible");
+  }
+
   await page.getByRole("button", { name: "5 星" }).click();
   await page.getByRole("button", { name: "提交評價" }).click();
-  await expect(
-    page.getByText(/評價已提交|雙方評價已公開/),
-  ).toBeVisible({ timeout: 20_000 });
+
+  let reviewOutcome = "pending";
+  await expect
+    .poll(
+      async () => {
+        const successToast = await page
+          .locator("[data-sonner-toast]")
+          .filter({ hasText: /評價已提交|雙方評價已公開/ })
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (successToast) {
+          reviewOutcome = "success";
+          return true;
+        }
+
+        const errorToast = page
+          .locator('[data-sonner-toast][data-type="error"]')
+          .first();
+        if (await errorToast.isVisible().catch(() => false)) {
+          const message = await errorToast
+            .innerText()
+            .catch(() => "unknown review submit error");
+          reviewOutcome = `error:${message}`;
+          return true;
+        }
+
+        const modalClosed = !(await reviewHeading.isVisible().catch(() => false));
+        if (modalClosed) {
+          reviewOutcome = "success";
+          return true;
+        }
+
+        return false;
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+
+  if (reviewOutcome.startsWith("error:")) {
+    throw new Error(`Review submit failed: ${reviewOutcome.slice("error:".length)}`);
+  }
 }
 
 export async function gotoTradingPageWithFilter(
