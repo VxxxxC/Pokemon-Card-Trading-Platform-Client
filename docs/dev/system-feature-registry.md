@@ -2,7 +2,8 @@
 
 > **角色：** Member · Merchant · Admin · System — **in-scope 全部上線功能**（除 [v3-deferred.md](./v3-deferred.md)）。  
 > **North star：** 本表 **每一行 `進度` = ☑** + [staging-certification.md](./staging-certification.md) `test:staging:certify` 綠 = **Staging 可俾人用**。  
-> **主 SSOT：** [test-coverage-ssot.md](./test-coverage-ssot.md) v2.4（旅程 TC/J/SEC 與本表對照）
+> **主 SSOT：** [test-coverage-ssot.md](./test-coverage-ssot.md) v2.5（旅程 TC/J/SEC 與本表對照）  
+> **Partner UI：** [partner-regression.md](./partner-regression.md)（P-* 進度 · 補 T2 顯示層缺口）
 
 ---
 
@@ -14,7 +15,8 @@
 | **T1** | Logic | Integration / unit / FSM / 矩陣 negative | 按域：金流/券 **要** negative |
 | **T2** | Journey | Partner UI 全鏈 E2E | 每功能 ≥1 主旅程 |
 | **T3** | Matrix | 多參數組合 soak | 僅 P0 金流/券/eligibility |
-| **M** | Manual | Partner 肉眼 spot | **唔可**作唯一證明；認證後 M0 ~5min |
+| **P** | Partner UI | UI-first · 顯示/assert · bugs_finding | 見 [partner-regression.md](./partner-regression.md) P-* |
+| **M** | Manual | Partner 肉眼 spot | **唔可**作唯一證明；SC-P0 綠後 M0 ~5min |
 
 **人手安排（認證後日常）：**
 
@@ -131,9 +133,9 @@
 | **SC-FX-C** | §2 Merchant **全 ☑** | ☑ |
 | **SC-FX-A** | §3 Admin **全 ☑** | ☑ |
 | **SC-FX-S** | §4 System **全 ☑** | ☑ |
-| **SC-FX-ALL** | 上列四項全 ☑ + `test:staging:certify` 綠 + Partner M0 | ☐ |
+| **SC-FX-ALL** | 上列四項全 ☑ + `test:staging:certify` 綠 + **SC-P0** + Partner M0 | ☐ |
 
-**統計（2026-08-17）：** Member **26/26 ☑** · Merchant **13/13 ☑**（SC-FX-C）· Admin **15/15 ☑**（SC-FX-A）· System **13/13 ☑**（SC-FX-S）— **67/67 功能 ☑**；待 **SC-FX-ALL**（`test:staging:certify` 綠 + Partner M0）。
+**統計（2026-08-18）：** Member **26/26 ☑** · Merchant **13/13 ☑** · Admin **15/15 ☑** · System **13/13 ☑** — **67/67 功能 T0–T3 ☑**；待 **SC-FX-ALL**（certify 綠 + **SC-P0** + M0）。Partner P0：**0/8** — 見 [partner-regression.md](./partner-regression.md)。
 
 ---
 
@@ -149,7 +151,7 @@
 | F-S-13 | p2p-dispute-no-refund |
 | F-C-08/09 | TC-M10–M11 |
 | F-S-02 | TC-M01–M06 |
-| F-S-09 | J-CPN-07 · CC-* |
+| 本表 F-* | [partner-regression.md](./partner-regression.md) P-* |
 
 ---
 
@@ -157,7 +159,7 @@
 
 | 日期 | 變更 |
 |------|------|
-| 2026-08-17 | P6 Admin **+3 ☑**（F-A-04/07/12）· **SC-FX-A** · `admin-check-in-program` + `admin-merchants-kyc` E2E · `admin-kyc-list` + `admin-member-orders` integration |
+| 2026-08-18 | v2.5：深度 **P** · SC-FX-ALL 加 SC-P0 · 連結 partner-regression.md |
 | 2026-08-17 | P5 Merchant **+7 ☑**（F-C-05–12）· **SC-FX-C** · merchant smoke E2E + `merchant-order-detail` + upload TC-M30/31 + connect/KYC integration |
 | 2026-08-17 | P4 System **+3 ☑**（F-S-01/02/10）· **SC-FX-S** · `cron-routes` TC-M01–M06 · mutation 91.67%/95.24% |
 | 2026-08-17 | P3 System **+3 ☑**（F-S-03/04/09）· `auth-fee`+`commission-rate`+fps/connect INT 綠 · CC-INT `admin-publish-defaults`（`getRewardTemplateRowByTitle` 改 admin RPC） |

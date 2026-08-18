@@ -4,9 +4,9 @@
 > **更新：** 2026-08-16  
 > **環境：** staging only · 勿用 production 真實用戶
 
-**Dev 前提：** [system-feature-registry.md](./system-feature-registry.md) **全 ☑** + `test:staging:certify` 綠
+**Dev 前提：** [system-feature-registry.md](./system-feature-registry.md) **全 ☑** + `test:staging:certify` 綠 + **[partner-regression.md](./partner-regression.md) SC-P0 全 ☑** + `test:e2e:partner` 綠
 
-Logic／回歸／安全由 [staging-certification.md](./staging-certification.md) 覆蓋；Partner **唔**重跑 integration / E2E。
+Logic／回歸／安全由 [staging-certification.md](./staging-certification.md) 覆蓋；Partner **唔**重跑 gate integration，但 **P0 UI bug 已由 `e2e/partner` 守衛**。
 
 ---
 

@@ -241,19 +241,30 @@ export async function openHoldingsRowMenu(
   await row.getByRole("button").filter({ hasText: "⋯" }).click();
 }
 
+export async function hobbyGradingSelectTrigger(
+  page: Page,
+): Promise<ReturnType<Page["locator"]>> {
+  const modal = addAssetModalForm(page);
+  await expect(modal.getByText("鑑定／品相", { exact: true })).toBeVisible({
+    timeout: 25_000,
+  });
+  const trigger = modal
+    .locator('[data-slot="select-trigger"]')
+    .or(modal.getByRole("combobox"))
+    .first();
+  await expect(trigger).toBeVisible({ timeout: 25_000 });
+  return trigger;
+}
+
 export async function selectHobbyGrading(
   page: Page,
   optionLabel: string,
 ): Promise<void> {
   await dismissBlockingOverlays(page);
   const modal = addAssetModalForm(page);
-  const combobox = modal.getByRole("combobox");
-  await expect
-    .poll(async () => combobox.isVisible().catch(() => false), {
-      timeout: 25_000,
-    })
-    .toBe(true);
-  await combobox.click({ force: true });
+  await ensureHobbyCardItemType(page);
+  const trigger = await hobbyGradingSelectTrigger(page);
+  await trigger.click({ force: true });
   const option = page.getByRole("option", { name: optionLabel, exact: true });
   await expect(option).toBeVisible({ timeout: 10_000 });
   await option.click();

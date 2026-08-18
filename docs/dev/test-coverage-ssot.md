@@ -1,21 +1,23 @@
-# Test Coverage & Solidity SSOT — v2.4
+# Test Coverage & Solidity SSOT — v2.5
 
-> **版本：** v2.4 · **更新：** 2026-08-16  
+> **版本：** v2.5 · **更新：** 2026-08-18  
 > **終極 Checklist（功能全表）：** [system-feature-registry.md](./system-feature-registry.md) — Member / Merchant / Admin / System。  
-> **North star：** 功能表 **全 ☑** + [staging-certification.md](./staging-certification.md) `test:staging:certify` 綠 = **Staging 可俾人用**。  
+> **Partner UI 回歸：** [partner-regression.md](./partner-regression.md) — P-A/B/C · SC-P*（**L4**，補 Gate/Nightly 漏嘅 Partner-path bug）。  
+> **North star：** 功能表 **全 ☑** + `test:staging:certify` 綠 + **SC-P0 全 ☑** + Partner M0 = **Staging 可俾人用**。  
 > **本文件：** 旅程（J-）、技術項（TC-）、矩陣、CC、安全 — 與功能表 ID 對照（registry §6）。
 
 ---
 
-## 0. Staging 認證契約（v2.4 核心）
+## 0. Staging 認證契約（v2.5 核心）
 
 | 問題 | 答案 |
 |------|------|
 | 邊度係「全功能」清單？ | **[system-feature-registry.md](./system-feature-registry.md)**（F-M/C/A/S） |
-| 點樣試？ | §0 深度 T0–T3；金流/券要 T1+T3；其餘 T2 主旅程 |
-| 人手？ | 認證後每次 deploy 只做 **M0 ~5min** |
-| 完成線？ | 功能表全 ☑ + `test:staging:certify` + Partner M0 |
-| v3 唔計？ | [v3-deferred.md](./v3-deferred.md)（Auction mock ≠ make offer） |
+| 邊度係 Partner bug 清單？ | **[partner-regression.md](./partner-regression.md)**（P-A/B/C） |
+| 點樣試？ | §0 深度 T0–T3 + **P-Partner**；金流/券要 T1+T3；其餘 T2 主旅程 |
+| 人手？ | **SC-P0 綠後** M0 ~5min；探索性 bug 先入 P-* 表 |
+| 完成線？ | F-* 全 ☑ + certify 綠 + **SC-P0** + M0 |
+| v3 唔計？ | [v3-deferred.md](./v3-deferred.md) |
 
 **現況：** 約 **27/67** 功能 ☑（+6 ◐）— **未達 Staging 認證**。
 
@@ -75,6 +77,8 @@
 | **S0** | Spec exists | 有 test file；可能 fixture-only 或未入 CI | ❌ |
 | **S1** | Matrix / logic | Eligibility **矩陣**（含 **negative**）或等價 integration FSM | 邏輯層可以 |
 | **S2** | Partner-path | **(A)** Eligibility journey：**(S1 或等價 integration) 且** Partner E2E；**(B)** 非 eligibility journey：**全鏈 Partner E2E**（唔使矩陣） | ✅（該 journey + CI 綠） |
+
+**v2.5：** S2 優先由 [partner-regression.md](./partner-regression.md) **P-*** 守衛；舊 gate/nightly spec 若 Path=Fixture-only **唔計** S2。
 
 **Repo 級定義：** [test-solidity-plan.md §7](./test-solidity-plan.md)。
 
@@ -419,6 +423,7 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-18 | **v2.5：** [partner-regression.md](./partner-regression.md) L4 · SC-P* · S2 綁定 P-* |
 | 2026-08-16 | **v2.4：** [system-feature-registry.md](./system-feature-registry.md) 全功能終極表 Member/Merchant/Admin/System |
 | 2026-08-16 | **v2.3：** staging-certification · certify 腳本 |
 | 2026-08-16 | **v2.2：** §7.2/7.3 矩陣 · registry macro |
