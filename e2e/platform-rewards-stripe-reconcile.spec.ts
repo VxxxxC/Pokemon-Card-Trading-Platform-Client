@@ -36,6 +36,7 @@ test.setTimeout(300_000);
 
 test.describe("Platform rewards Stripe reconcile E2E", () => {
   let subsidizedOrderId: string | null = null;
+  let subsidizedListingId: string | null = null;
   let subsidizedSellerId: string | null = null;
   let subsidizedBuyerTotal = 0;
   let subsidizedMerchantPayout = 0;
@@ -77,6 +78,7 @@ test.describe("Platform rewards Stripe reconcile E2E", () => {
       templateId: templateId!,
     });
 
+    subsidizedListingId = merchantListing.listingId;
     subsidizedOrderId = await buyMerchantListingAndReachCheckout(
       page,
       merchantListing.sellerId,
@@ -140,6 +142,7 @@ test.describe("Platform rewards Stripe reconcile E2E", () => {
     const buyerId = await getProfileIdByEmail(fixtures.buyerEmail!);
     const merchantListing = await resolveReconcileMerchantListing({
       excludeSellerId: buyerId ?? undefined,
+      preferListingId: subsidizedListingId ?? undefined,
     });
 
     plainOrderId = await buyMerchantListingAndReachCheckout(

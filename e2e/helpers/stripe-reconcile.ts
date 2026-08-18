@@ -86,10 +86,29 @@ export async function assertSellerListingAlignment(): Promise<void> {
 
 export async function resolveReconcileMerchantListing(params?: {
   excludeSellerId?: string;
+  preferListingId?: string;
 }): Promise<{
   listingId: string;
   sellerId: string;
 }> {
+  if (params?.preferListingId) {
+    try {
+      await reactivateListingForE2e(params.preferListingId);
+      const listing = await assertListingIsActiveMerchant(params.preferListingId);
+      if (
+        !params.excludeSellerId ||
+        listing.sellerId !== params.excludeSellerId
+      ) {
+        return {
+          listingId: params.preferListingId,
+          sellerId: listing.sellerId,
+        };
+      }
+    } catch {
+      // Fall through to seller-owned merchant listing discovery.
+    }
+  }
+
   const fixtures = getChatRealtimeFixtures();
   const sellerId = fixtures.sellerId?.trim();
   const preferredListingId = fixtures.listingId?.trim();
@@ -113,7 +132,7 @@ export async function resolveReconcileMerchantListing(params?: {
       .select("id, seller_id, status, seller_persona")
       .eq("seller_id", sellerId)
       .eq("seller_persona", "merchant")
-      .in("status", ["active", "inactive"])
+      .in("status", ["active", "inactive", "sold"])
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -138,6 +157,7 @@ export async function resolveReconcileMerchantListing(params?: {
 
   const discovered = await findActiveMerchantListingForE2e({
     excludeSellerId: params?.excludeSellerId,
+    preferListingId: params?.preferListingId,
   });
   return {
     listingId: discovered.listingId,

@@ -57,11 +57,32 @@ export async function openHobbyAddAssetModal(page: Page): Promise<void> {
 
   const modal = addAssetModalForm(page);
   if (await modal.isVisible().catch(() => false)) {
+    await ensureHobbyCardItemType(page);
     return;
   }
 
   await addButton.click();
   await expect(modal).toBeVisible({ timeout: 15_000 });
+  await ensureHobbyCardItemType(page);
+}
+
+export async function ensureHobbyCardItemType(page: Page): Promise<void> {
+  const modal = addAssetModalForm(page);
+  const cardTab = modal.getByRole("button", { name: "單卡交易 (CARD)" });
+  if (!(await cardTab.isVisible().catch(() => false))) {
+    return;
+  }
+  await cardTab.click();
+}
+
+export async function waitForAddAssetCatalogSelected(
+  page: Page,
+  productName: string,
+): Promise<void> {
+  const modal = addAssetModalForm(page);
+  await expect(modal.getByText(productName, { exact: false }).first()).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 export async function searchAndSelectCatalog(
@@ -226,8 +247,13 @@ export async function selectHobbyGrading(
 ): Promise<void> {
   await dismissBlockingOverlays(page);
   const modal = addAssetModalForm(page);
-  await expect(modal.getByRole("combobox")).toBeVisible({ timeout: 15_000 });
-  await modal.getByRole("combobox").click({ force: true });
+  const combobox = modal.getByRole("combobox");
+  await expect
+    .poll(async () => combobox.isVisible().catch(() => false), {
+      timeout: 25_000,
+    })
+    .toBe(true);
+  await combobox.click({ force: true });
   const option = page.getByRole("option", { name: optionLabel, exact: true });
   await expect(option).toBeVisible({ timeout: 10_000 });
   await option.click();
@@ -265,6 +291,7 @@ export async function addHobbyHoldingForFixture(
   });
   await openHobbyAddAssetModal(page);
   await searchAndSelectCatalogForFixture(page, fixture);
+  await waitForAddAssetCatalogSelected(page, fixture.productName);
   await dismissBlockingOverlays(page);
   await selectHobbyGrading(page, gradingOptionLabel);
   await addAssetModalForm(page).getByPlaceholder("0").fill(purchasePrice);

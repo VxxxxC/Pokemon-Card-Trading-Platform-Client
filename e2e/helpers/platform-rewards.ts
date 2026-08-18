@@ -402,9 +402,34 @@ export async function getUserRewardRow(rewardId: string) {
   return data;
 }
 
+const MERCHANT_LISTING_RECYCLABLE_STATUSES = [
+  "active",
+  "inactive",
+  "sold",
+] as const;
+
 export async function findActiveMerchantListingForE2e(params?: {
   excludeSellerId?: string;
+  preferListingId?: string;
 }): Promise<{ listingId: string; sellerId: string; price: number }> {
+  if (params?.preferListingId) {
+    try {
+      await reactivateListingForE2e(params.preferListingId);
+      const listing = await assertListingIsActiveMerchant(params.preferListingId);
+      if (
+        !params.excludeSellerId ||
+        listing.sellerId !== params.excludeSellerId
+      ) {
+        return {
+          listingId: params.preferListingId,
+          sellerId: listing.sellerId,
+          price: listing.price,
+        };
+      }
+    } catch {
+      // Fall through to dynamic merchant listing discovery.
+    }
+  }
   const envListingId = process.env.E2E_LISTING_ID?.trim();
   const envSellerId = process.env.E2E_SELLER_ID?.trim();
 
@@ -449,7 +474,7 @@ export async function findActiveMerchantListingForE2e(params?: {
     .from("listings")
     .select("id, seller_id, price, status, seller_persona")
     .eq("seller_persona", "merchant")
-    .in("status", ["active", "inactive"])
+    .in("status", [...MERCHANT_LISTING_RECYCLABLE_STATUSES])
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -499,7 +524,7 @@ export async function findActiveMerchantListingForE2e(params?: {
       .from("listings")
       .select("id, seller_id, price, status, seller_persona")
       .eq("seller_persona", "merchant")
-      .in("status", ["active", "inactive"])
+      .in("status", [...MERCHANT_LISTING_RECYCLABLE_STATUSES])
       .order("created_at", { ascending: false })
       .limit(50);
 
