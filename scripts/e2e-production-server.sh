@@ -5,6 +5,19 @@ set -euo pipefail
 E2E_SERVER_PID_FILE="${E2E_SERVER_PID_FILE:-/tmp/hkcv-e2e-prod-server.pid}"
 E2E_SERVER_SKIP_BUILD="${E2E_SERVER_SKIP_BUILD:-0}"
 
+# Load .env then .env.local (later files override). Next inlines NEXT_PUBLIC_* at build time —
+# after `build:ci` (empty Supabase env) we must run `bun run build` before Playwright E2E.
+e2e_load_project_env() {
+  for env_file in .env .env.local; do
+    if [[ -f "$env_file" ]]; then
+      set -a
+      # shellcheck disable=SC1091
+      source "$env_file"
+      set +a
+    fi
+  done
+}
+
 wait_for_http() {
   local url="$1"
   local attempts="${2:-90}"
@@ -40,12 +53,20 @@ e2e_start_production_server() {
   local base_url="${PLAYWRIGHT_BASE_URL:-http://localhost:3000}"
 
   e2e_stop_production_server
+  e2e_load_project_env
+
+  if [[ "${PRODUCTION_GATE:-}" == "1" ]]; then
+    if [[ "$E2E_SERVER_SKIP_BUILD" == "1" ]]; then
+      echo ">> PRODUCTION_GATE=1: ignoring E2E_SERVER_SKIP_BUILD (rebuild after build:ci)"
+    fi
+    E2E_SERVER_SKIP_BUILD=0
+  fi
 
   if [[ "$E2E_SERVER_SKIP_BUILD" != "1" ]]; then
-    echo ">> bun run build (production bundle for E2E)"
+    echo ">> bun run build (production bundle for E2E — not build:ci)"
     bun run build
   else
-    echo ">> skipping build (E2E_SERVER_SKIP_BUILD=1)"
+    echo ">> skipping build (E2E_SERVER_SKIP_BUILD=1; only safe after bun run build with real env)"
   fi
 
   bun run start &

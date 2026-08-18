@@ -14,15 +14,11 @@ cd "$ROOT"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/e2e-production-server.sh"
 
-if [[ -f .env.local ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env.local
-  set +a
-fi
+e2e_load_project_env
 
 export PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:3000}"
 export PRODUCTION_GATE=1
+export E2E_SERVER_SKIP_BUILD=0
 
 failed=0
 

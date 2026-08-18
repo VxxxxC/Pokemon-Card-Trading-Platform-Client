@@ -8,18 +8,14 @@ import {
   seedProductWatchlistForUser,
   type ListingMarketplaceFixture,
 } from "../fixtures/supabase-admin";
+import { dismissBlockingOverlays } from "./overlays";
+
+export { dismissBlockingOverlays };
 
 export const LISTING_PHOTO_FIXTURE = path.resolve(
   __dirname,
   "../fixtures/listing-photo.png",
 );
-
-export async function dismissBlockingOverlays(page: Page): Promise<void> {
-  const pwaClose = page.getByRole("button", { name: "✕" }).first();
-  if (await pwaClose.isVisible().catch(() => false)) {
-    await pwaClose.click();
-  }
-}
 
 export async function ensureMemberPersona(page: Page): Promise<void> {
   await page.addInitScript((storageKey) => {
@@ -43,6 +39,7 @@ export function addAssetModalForm(page: Page) {
 }
 
 export async function openMerchAddAssetModal(page: Page): Promise<void> {
+  await dismissBlockingOverlays(page);
   await page.keyboard.press("Escape");
   const addButton = page.getByRole("button", { name: "新增商品" });
   await addButton.scrollIntoViewIfNeeded();
@@ -51,6 +48,7 @@ export async function openMerchAddAssetModal(page: Page): Promise<void> {
 }
 
 export async function openHobbyAddAssetModal(page: Page): Promise<void> {
+  await dismissBlockingOverlays(page);
   await page.keyboard.press("Escape");
   const addButton = page.getByRole("button", { name: "收錄新卡" });
   await expect(addButton).toBeVisible({ timeout: 10_000 });
@@ -226,8 +224,10 @@ export async function selectHobbyGrading(
   page: Page,
   optionLabel: string,
 ): Promise<void> {
+  await dismissBlockingOverlays(page);
   const modal = addAssetModalForm(page);
-  await modal.getByRole("combobox").click();
+  await expect(modal.getByRole("combobox")).toBeVisible({ timeout: 15_000 });
+  await modal.getByRole("combobox").click({ force: true });
   const option = page.getByRole("option", { name: optionLabel, exact: true });
   await expect(option).toBeVisible({ timeout: 10_000 });
   await option.click();
@@ -265,6 +265,7 @@ export async function addHobbyHoldingForFixture(
   });
   await openHobbyAddAssetModal(page);
   await searchAndSelectCatalogForFixture(page, fixture);
+  await dismissBlockingOverlays(page);
   await selectHobbyGrading(page, gradingOptionLabel);
   await addAssetModalForm(page).getByPlaceholder("0").fill(purchasePrice);
   await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();
@@ -272,6 +273,7 @@ export async function addHobbyHoldingForFixture(
     page.getByText("已成功收錄進您的私藏愛好清單"),
   ).toBeVisible({ timeout: 20_000 });
   await page.reload({ waitUntil: "domcontentloaded" });
+  await dismissBlockingOverlays(page);
   await expect(page.locator("#cards-heading")).toBeVisible({
     timeout: 20_000,
   });

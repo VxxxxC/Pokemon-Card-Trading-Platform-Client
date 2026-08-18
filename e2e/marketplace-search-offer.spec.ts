@@ -180,15 +180,19 @@ test.describe("Marketplace search + make offer", () => {
       await expect(page.locator("#live-order-book-panel")).toBeVisible({
         timeout: 20_000,
       });
-      await expect(page.getByText(fixture.sellerName, { exact: true })).toBeVisible({
-        timeout: 20_000,
-      });
+      const sellerRow = page
+        .locator("#live-order-book-panel [role='button']")
+        .filter({ hasText: fixture.sellerName })
+        .filter({ hasText: formatHkd(fixture.listingPrice) })
+        .first();
+      await expect(sellerRow).toBeVisible({ timeout: 20_000 });
     });
 
     await test.step("Step 7 — open execution slide-over from seller row", async () => {
       const sellerRow = page
         .locator("#live-order-book-panel [role='button']")
         .filter({ hasText: fixture.sellerName })
+        .filter({ hasText: formatHkd(fixture.listingPrice) })
         .first();
       await expect(sellerRow).toBeVisible({ timeout: 15_000 });
       await sellerRow.click();

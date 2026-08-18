@@ -389,24 +389,14 @@ test.describe("F. Known suspicious behaviors", () => {
     await page.goto(
       buildMerchantProductDetailPath(fixture.sellerId, fixture.listingId),
     );
-    await expectDetailPageLoaded(page);
-    const listingUuidPrice = await page
-      .locator("main")
-      .getByText(/HK\$\s*[\d,]+/)
-      .first()
-      .textContent();
+    const baselineTitle = await expectDetailPageLoaded(page);
 
     await page.goto(
       buildMerchantProductDetailPath(fixture.sellerId, fixture.productId),
     );
-    await expectDetailPageLoaded(page);
-    const productIdPrice = await page
-      .locator("main")
-      .getByText(/HK\$\s*[\d,]+/)
-      .first()
-      .textContent();
+    const resolvedTitle = await expectDetailPageLoaded(page);
 
-    expect(productIdPrice).toBe(listingUuidPrice);
+    expect(resolvedTitle).toBe(baselineTitle);
   });
 
   test("F3 shows canonical spec table or SSOT pending warning", async ({

@@ -1,8 +1,10 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 import { parseRewardCouponCenter } from "@/lib/rewards/mapUserRewardCoupon";
 import type { Database } from "@/types/supabase";
+import { dismissBlockingOverlays as dismissGlobalBlockingOverlays } from "./overlays";
 
 function createE2eAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -229,6 +231,161 @@ export async function getMerchantOrderCouponSnapshot(
     throw new Error(`[getMerchantOrderCouponSnapshot] ${error.message}`);
   }
   return data;
+}
+
+function createE2eStripeClient(): Stripe | null {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secretKey) {
+    return null;
+  }
+  return new Stripe(secretKey, {
+    apiVersion: "2023-10-16" as Stripe.LatestApiVersion,
+  });
+}
+
+function readPaymentIntentAmounts(
+  paymentIntent: Stripe.PaymentIntent,
+): Record<string, string> {
+  const amounts: Record<string, string> = {};
+  for (const key of [
+    "item_subtotal",
+    "shipping_fee",
+    "auth_fee",
+    "total_amount",
+    "buyer_total_amount",
+    "platform_subsidy_amount",
+    "shipping_method",
+  ] as const) {
+    const value = paymentIntent.metadata?.[key];
+    if (typeof value === "string" && value.trim()) {
+      amounts[key] = value.trim();
+    }
+  }
+  return amounts;
+}
+
+export async function trySyncMerchantOrderPaymentFromStripe(
+  orderId: string,
+): Promise<void> {
+  const stripe = createE2eStripeClient();
+  if (!stripe) {
+    return;
+  }
+
+  const admin = createE2eAdminClient();
+  const { data: orderRow, error } = await admin
+    .from("merchant_orders")
+    .select("stripe_payment_intent_id, requires_authentication, escrow_status")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (error || !orderRow) {
+    return;
+  }
+
+  if (orderRow.escrow_status === "payment_held") {
+    return;
+  }
+
+  const paymentIntentId = orderRow.stripe_payment_intent_id?.trim();
+  if (!paymentIntentId) {
+    return;
+  }
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  const amounts = readPaymentIntentAmounts(paymentIntent);
+
+  if (orderRow.requires_authentication) {
+    if (
+      paymentIntent.status !== "requires_capture" ||
+      paymentIntent.amount_capturable <= 0
+    ) {
+      return;
+    }
+
+    await admin.rpc("rpc_mark_merchant_order_authorized", {
+      p_order_id: orderId,
+      p_payment_intent_id: paymentIntentId,
+      p_amounts: amounts,
+    });
+    return;
+  }
+
+  if (paymentIntent.status !== "succeeded") {
+    return;
+  }
+
+  await admin.rpc("rpc_mark_merchant_order_paid", {
+    p_order_id: orderId,
+    p_payment_intent_id: paymentIntentId,
+    p_amounts: amounts,
+  });
+}
+
+export async function waitForMerchantAuthCheckoutSettled(
+  orderId: string,
+  timeoutMs = process.env.PRODUCTION_GATE === "1" ? 180_000 : 120_000,
+): Promise<MerchantOrderCouponSnapshot> {
+  let last: MerchantOrderCouponSnapshot | null = null;
+
+  await expect
+    .poll(
+      async () => {
+        last = await getMerchantOrderCouponSnapshot(orderId);
+        if (!last) {
+          return false;
+        }
+        if (
+          last.payment_capture_status === "authorized" &&
+          last.escrow_status === "payment_held"
+        ) {
+          return true;
+        }
+        await trySyncMerchantOrderPaymentFromStripe(orderId);
+        last = await getMerchantOrderCouponSnapshot(orderId);
+        if (!last) {
+          return false;
+        }
+        return (
+          last.payment_capture_status === "authorized" &&
+          last.escrow_status === "payment_held"
+        );
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
+
+  return last!;
+}
+
+export async function waitForMerchantDirectCheckoutSettled(
+  orderId: string,
+  timeoutMs = process.env.PRODUCTION_GATE === "1" ? 180_000 : 120_000,
+): Promise<MerchantOrderCouponSnapshot> {
+  let last: MerchantOrderCouponSnapshot | null = null;
+
+  await expect
+    .poll(
+      async () => {
+        last = await getMerchantOrderCouponSnapshot(orderId);
+        if (!last) {
+          return false;
+        }
+        if (last.escrow_status === "payment_held") {
+          return true;
+        }
+        await trySyncMerchantOrderPaymentFromStripe(orderId);
+        last = await getMerchantOrderCouponSnapshot(orderId);
+        if (!last) {
+          return false;
+        }
+        return last.escrow_status === "payment_held";
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
+
+  return last!;
 }
 
 export async function getUserRewardRow(rewardId: string) {
@@ -688,16 +845,34 @@ export async function completeMerchantAuthCheckout(
   page: Page,
   options?: { couponRewardId?: string | null },
 ): Promise<void> {
-  if (options?.couponRewardId) {
-    await page.locator("#checkout-coupon").selectOption(options.couponRewardId);
-    await page.waitForTimeout(1500);
-  }
+  const applyCheckoutCoupon = async (): Promise<void> => {
+    if (options?.couponRewardId) {
+      await page.locator("#checkout-coupon").selectOption(options.couponRewardId);
+      await page.waitForTimeout(1500);
+    }
+  };
 
-  await page.getByRole("button", { name: /繼續付款/ }).click();
-  await page.getByRole("button", { name: /確認支付 HK\$/ }).waitFor({
-    state: "visible",
-    timeout: 60_000,
-  });
+  await applyCheckoutCoupon();
+  await dismissGlobalBlockingOverlays(page);
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await dismissGlobalBlockingOverlays(page);
+    await page.getByRole("button", { name: /繼續付款/ }).click({ force: true });
+    try {
+      await page.getByRole("button", { name: /確認支付 HK\$/ }).waitFor({
+        state: "visible",
+        timeout: 60_000,
+      });
+      break;
+    } catch (error) {
+      if (attempt === 1) {
+        throw error;
+      }
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForMerchantDirectCheckoutReady(page);
+      await applyCheckoutCoupon();
+    }
+  }
 
   await fillStripePaymentElement(page);
   await page.getByRole("button", { name: /確認支付 HK\$/ }).click();
@@ -706,6 +881,12 @@ export async function completeMerchantAuthCheckout(
     timeout: 120_000,
     waitUntil: "commit",
   });
+
+  const authOrderId =
+    page.url().match(/\/checkout\/([^/?#]+)\/success/)?.[1]?.trim() ?? "";
+  if (authOrderId.length > 0) {
+    await waitForMerchantAuthCheckoutSettled(authOrderId);
+  }
 }
 
 export async function completeMerchantDirectCheckout(
@@ -721,6 +902,7 @@ export async function completeMerchantDirectCheckout(
   }
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    await dismissGlobalBlockingOverlays(page);
     await page.getByRole("button", { name: /繼續付款/ }).click();
     try {
       await page.getByRole("button", { name: /確認支付 HK\$/ }).waitFor({
@@ -750,6 +932,12 @@ export async function completeMerchantDirectCheckout(
     timeout: 120_000,
     waitUntil: "commit",
   });
+
+  const directOrderId =
+    page.url().match(/\/checkout\/([^/?#]+)\/success/)?.[1]?.trim() ?? "";
+  if (directOrderId.length > 0) {
+    await waitForMerchantDirectCheckoutSettled(directOrderId);
+  }
 }
 
 export async function buyMerchantListingWithAuthAndReachCheckout(

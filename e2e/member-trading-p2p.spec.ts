@@ -11,6 +11,7 @@ import {
   resolveE2eMarketplaceFixture,
 } from "./fixtures/supabase-admin";
 import { hasMemberTradingFixtures } from "./fixtures/test-data";
+import { ensureMemberPersona } from "./helpers/collection-asset";
 import {
   acceptOfferAsSeller,
   confirmP2pHandoverDialog,
@@ -80,6 +81,7 @@ test.describe("Member P2P trading closure", () => {
 
     const buyerPage = await buyerContext.newPage();
     const sellerPage = await sellerContext.newPage();
+    await ensureMemberPersona(buyerPage);
 
     try {
       await test.step("Step 1 — buyer submits P2P offer without authentication", async () => {

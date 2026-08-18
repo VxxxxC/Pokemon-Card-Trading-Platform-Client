@@ -206,13 +206,29 @@ export async function acceptOfferViaSellerRpc(
   offerId: string,
   sellerId: string,
 ): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error: adminError } = await (
+    admin as unknown as {
+      rpc: (
+        fn: "rpc_accept_offer",
+        args: { p_offer_id: string; p_seller_id: string },
+      ) => Promise<{ error: { message?: string } | null }>;
+    }
+  ).rpc("rpc_accept_offer", {
+    p_offer_id: offerId,
+    p_seller_id: sellerId,
+  });
+  if (!adminError) {
+    return;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const { sellerEmail, sellerPassword } = getChatRealtimeFixtures();
 
   if (!url || !anonKey || !sellerEmail || !sellerPassword) {
     throw new Error(
-      "Missing Supabase public env or E2E seller credentials for RPC accept",
+      `[acceptOfferViaSellerRpc] admin RPC failed (${adminError.message ?? "unknown"}) and seller auth env is missing`,
     );
   }
 
@@ -220,21 +236,29 @@ export async function acceptOfferViaSellerRpc(
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { error: signInError } = await client.auth.signInWithPassword({
-    email: sellerEmail,
-    password: sellerPassword,
-  });
-  if (signInError) {
-    throw new Error(`[acceptOfferViaSellerRpc] sign-in failed: ${signInError.message}`);
+  let lastSignInError: { message?: string } | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { error: signInError } = await client.auth.signInWithPassword({
+      email: sellerEmail,
+      password: sellerPassword,
+    });
+    if (!signInError) {
+      const { error } = await client.rpc("rpc_accept_offer", {
+        p_offer_id: offerId,
+        p_seller_id: sellerId,
+      });
+      if (error) {
+        throw new Error(`[acceptOfferViaSellerRpc] ${error.message}`);
+      }
+      return;
+    }
+    lastSignInError = signInError;
+    await new Promise((resolve) => setTimeout(resolve, 1_500 * (attempt + 1)));
   }
 
-  const { error } = await client.rpc("rpc_accept_offer", {
-    p_offer_id: offerId,
-    p_seller_id: sellerId,
-  });
-  if (error) {
-    throw new Error(`[acceptOfferViaSellerRpc] ${error.message}`);
-  }
+  throw new Error(
+    `[acceptOfferViaSellerRpc] admin RPC failed (${adminError.message ?? "unknown"}); sign-in failed: ${lastSignInError?.message ?? JSON.stringify(lastSignInError)}`,
+  );
 }
 
 export async function submitChatReportViaBuyerRpc(params: {

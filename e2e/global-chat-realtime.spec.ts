@@ -7,6 +7,7 @@ import {
   ensureDbChatRoom,
   getLatestChatMessageForParties,
   getLatestOfferForListing,
+  getListingMarketplaceFixture,
   getListingSellerId,
   getOfferStatus,
   getProfileDisplayName,
@@ -15,19 +16,17 @@ import {
 } from "./fixtures/supabase-admin";
 import {
   chatConsoleRoot,
-  dismissBlockingOverlays,
   ensureChatRoomActive,
+  offerAmountFromListingPrice,
+  offerAmountLabelFromListingPrice,
   offerCardWithAmount,
   openChatRoom,
   openBothChatRooms,
   submitBuyerOfferFromDetail,
+  waitForSellerOfferCardVisible,
 } from "./helpers/member-trading";
 
 const SENSITIVE_CHAT_MESSAGE = "你好，可唔可以私下過數？";
-// AML: E2E buyer is <14 days old (HK$300 cap) and fixture listing has no market price.
-// Use $299 to pass rpc_make_offer guards; raise after fixture buyer ages or enable listing auth for $4500.
-const OFFER_AMOUNT = "299";
-const OFFER_AMOUNT_LABEL = "HK$ 299";
 
 test.describe.configure({ mode: "serial" });
 
@@ -79,6 +78,19 @@ test.describe("Global Chat realtime — dual browser journey", () => {
 
     let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
+    const listingFixtureResult = await getListingMarketplaceFixture(listingId, {
+      expectedSellerId: sellerId,
+    });
+    if (!listingFixtureResult.ok) {
+      test.skip(true, listingFixtureResult.skipReason);
+      return;
+    }
+    const offerAmount = offerAmountFromListingPrice(
+      listingFixtureResult.fixture.listingPrice,
+    );
+    const offerAmountLabel = offerAmountLabelFromListingPrice(
+      listingFixtureResult.fixture.listingPrice,
+    );
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),
@@ -145,7 +157,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
         ).toBeVisible();
       });
 
-      // ── Step 2: Realtime OfferCard ($299) ───────────────────────────────
+      // ── Step 2: Realtime OfferCard (listing-derived amount) ────────────
       let offerId: string | null = null;
 
       await test.step("Step 2 — buyer submits offer; seller sees OfferCard", async () => {
@@ -165,7 +177,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           buyerPage,
           sellerId,
           listingId,
-          OFFER_AMOUNT,
+          offerAmount,
         );
 
         await expect
@@ -189,20 +201,16 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           throw new Error("Step 2 did not capture offerId after buyer submit");
         }
 
-        await openBothChatRooms(
-          buyerPage,
+        await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName, buyerId);
+        await waitForSellerOfferCardVisible({
           sellerPage,
           roomId,
-          sellerDisplayName,
           buyerDisplayName,
-          sellerId,
           buyerId,
-        );
-        await dismissBlockingOverlays(sellerPage);
-        await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName, buyerId);
+          amountLabel: offerAmountLabel,
+        });
 
-        const sellerOfferCard = offerCardWithAmount(sellerPage, OFFER_AMOUNT_LABEL);
-        await expect(sellerOfferCard).toBeVisible({ timeout: 60_000 });
+        const sellerOfferCard = offerCardWithAmount(sellerPage, offerAmountLabel);
         await expect(
           sellerOfferCard.getByRole("button", { name: "接受出價" }),
         ).toBeVisible({ timeout: 60_000 });
@@ -214,7 +222,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           throw new Error("Step 2 did not capture offerId for accept flow");
         }
 
-        const sellerOfferCard = offerCardWithAmount(sellerPage, OFFER_AMOUNT_LABEL);
+        const sellerOfferCard = offerCardWithAmount(sellerPage, offerAmountLabel);
         await sellerOfferCard.getByRole("button", { name: "接受出價" }).click();
 
         const acceptConfirmDialog = sellerPage
@@ -232,7 +240,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
 
         await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName, sellerId);
 
-        const buyerOfferCard = offerCardWithAmount(buyerPage, OFFER_AMOUNT_LABEL);
+        const buyerOfferCard = offerCardWithAmount(buyerPage, offerAmountLabel);
         await expect(buyerOfferCard.getByText("● 已接受")).toBeVisible({
           timeout: 30_000,
         });

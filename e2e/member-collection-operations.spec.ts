@@ -21,6 +21,7 @@ import {
 import {
   addHobbyHoldingForFixture,
   clickCollectionFilter,
+  dismissBlockingOverlays,
   gotoCollectionPage,
   holdingsRow,
   holdingsRowByPurchasePrice,
@@ -115,6 +116,7 @@ test.describe.serial("Member collection holdings mutations", () => {
       { gradingLabel: "PSA" },
     );
 
+    await dismissBlockingOverlays(page);
     await row.getByLabel(`更改 ${fixture.productName} 鑑定規格`).click();
     await page.getByRole("menuitem", { name: "裸卡 A", exact: true }).click();
     await waitForCollectionRefresh(page);

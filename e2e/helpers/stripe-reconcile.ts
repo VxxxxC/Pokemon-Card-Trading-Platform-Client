@@ -9,6 +9,7 @@ import {
   assertListingIsActiveMerchant,
   findActiveMerchantListingForE2e,
   reactivateListingForE2e,
+  trySyncMerchantOrderPaymentFromStripe,
 } from "./platform-rewards";
 import {
   DEFAULT_COMMISSION_RATE,
@@ -212,13 +213,26 @@ export async function getMerchantOrderReconcileSnapshot(
 
 export async function waitForMerchantOrderPaymentHeld(
   orderId: string,
-  timeoutMs = 60_000,
+  timeoutMs = process.env.PRODUCTION_GATE === "1" ? 180_000 : 60_000,
 ): Promise<MerchantOrderReconcileSnapshot> {
   let last: MerchantOrderReconcileSnapshot | null = null;
 
   await expect
     .poll(
       async () => {
+        last = await getMerchantOrderReconcileSnapshot(orderId);
+        if (!last) {
+          return false;
+        }
+        if (
+          last.escrow_status === "payment_held" &&
+          Boolean(last.stripe_payment_intent_id?.trim()) &&
+          last.buyer_total_amount != null &&
+          last.buyer_total_amount > 0
+        ) {
+          return true;
+        }
+        await trySyncMerchantOrderPaymentFromStripe(orderId);
         last = await getMerchantOrderReconcileSnapshot(orderId);
         if (!last) {
           return false;

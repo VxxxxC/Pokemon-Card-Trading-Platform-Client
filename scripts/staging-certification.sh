@@ -25,15 +25,11 @@ fi
 
 bash scripts/check-staging-certification.sh
 
-if [[ -f .env.local ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env.local
-  set +a
-fi
-
 # shellcheck disable=SC1091
 source "$ROOT/scripts/e2e-production-server.sh"
+
+e2e_load_project_env
+export E2E_SERVER_SKIP_BUILD=0
 
 cleanup_certify() {
   e2e_stop_production_server

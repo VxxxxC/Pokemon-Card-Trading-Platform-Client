@@ -39,16 +39,19 @@ export async function ensureDbChatRoom(
 ): Promise<string> {
   const admin = createServiceRoleClient();
 
-  const { data: existing, error: selectError } = await admin
+  const { data: existingRows, error: selectError } = await admin
     .from("chat_rooms")
     .select("id")
     .eq("buyer_id", buyerId)
     .eq("seller_id", sellerId)
-    .maybeSingle();
+    .order("updated_at", { ascending: false })
+    .limit(1);
 
   if (selectError) {
     throw new Error(`[ensureDbChatRoom] ${selectError.message}`);
   }
+
+  const existing = existingRows?.[0];
 
   if (existing?.id) {
     return existing.id;

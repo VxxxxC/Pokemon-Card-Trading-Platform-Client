@@ -1,5 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { fillStripePaymentElement } from "./platform-rewards";
+import { ensureMemberPersona } from "./collection-asset";
+import { dismissBlockingOverlays as dismissGlobalOverlays } from "./overlays";
 import {
   acceptOfferViaSellerRpc,
   advanceAuthOrderToCustody,
@@ -67,8 +69,9 @@ async function clickDismissButton(locator: Locator): Promise<boolean> {
 
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
   await prepareE2eBrowserState(page);
+  await dismissGlobalOverlays(page);
 
-  for (let attempt = 0; attempt < 10; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     let dismissed = false;
 
     if (await page.getByText("安裝方法").isVisible().catch(() => false)) {
@@ -103,10 +106,10 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
   }
 }
 
-async function expandChatConsole(page: Page): Promise<void> {
+export async function expandChatConsole(page: Page): Promise<void> {
   const expandButton = page.getByRole("button", { name: "展開面板" });
   if (await expandButton.isVisible().catch(() => false)) {
-    await expandButton.click({ force: true });
+    await expandButton.click({ force: true }).catch(() => undefined);
   }
 }
 
@@ -289,11 +292,61 @@ export async function ensureChatRoomActive(
 }
 
 export function offerCardWithAmount(page: Page, amountLabel: string) {
+  const amountDigits = amountLabel.replace(/[^\d]/g, "");
   return chatConsoleRoot(page)
     .locator("div.my-2.w-full")
     .filter({ hasText: "⚡ 議價出價卡片" })
-    .filter({ hasText: amountLabel })
+    .filter({ hasText: new RegExp(`HK\\$\\s*${amountDigits}\\b`) })
     .last();
+}
+
+export async function waitForSellerOfferCardVisible(params: {
+  sellerPage: Page;
+  roomId: string;
+  buyerDisplayName: string;
+  buyerId: string;
+  amountLabel: string;
+  timeoutMs?: number;
+}): Promise<void> {
+  const offerCard = offerCardWithAmount(params.sellerPage, params.amountLabel);
+
+  await expect
+    .poll(
+      async () => {
+        await dismissBlockingOverlays(params.sellerPage);
+        await expandChatConsole(params.sellerPage);
+
+        const chatInputVisible = await chatReplyInput(params.sellerPage)
+          .isVisible()
+          .catch(() => false);
+
+        if (!chatInputVisible) {
+          await ensureChatRoomActive(
+            params.sellerPage,
+            params.roomId,
+            params.buyerDisplayName,
+            params.buyerId,
+          ).catch(() => undefined);
+
+          const reopened = await chatReplyInput(params.sellerPage)
+            .isVisible()
+            .catch(() => false);
+
+          if (!reopened) {
+            await openChatRoom(
+              params.sellerPage,
+              params.roomId,
+              params.buyerDisplayName,
+              params.buyerId,
+            );
+          }
+        }
+
+        return offerCard.isVisible().catch(() => false);
+      },
+      { timeout: params.timeoutMs ?? 90_000 },
+    )
+    .toBe(true);
 }
 
 export async function openBothChatRooms(
@@ -523,6 +576,7 @@ export async function submitBuyerOfferFromDetail(
     waitUntil: "domcontentloaded",
   });
   await dismissBlockingOverlays(buyerPage);
+  await ensureListingActive(listingId);
   await expect(buyerPage.locator("main h1")).toBeVisible({ timeout: 15_000 });
 
   await clickBuyNowAndOpenNegotiation(buyerPage);
@@ -943,6 +997,7 @@ export async function gotoTradingPageWithFilter(
   page: Page,
   filter: string,
 ): Promise<void> {
+  await ensureMemberPersona(page);
   await page.goto(`/profile/user/trading?filter=${encodeURIComponent(filter)}`, {
     waitUntil: "domcontentloaded",
   });
@@ -1002,6 +1057,8 @@ export async function waitForBuyerP2pCompleteOnTradingList(
   page: Page,
   options?: { orderNumber?: string | null; memberOrderId?: string | null },
 ): Promise<void> {
+  await ensureMemberPersona(page);
+
   await expect
     .poll(
       async () => {
@@ -1010,9 +1067,19 @@ export async function waitForBuyerP2pCompleteOnTradingList(
           { waitUntil: "domcontentloaded" },
         );
         await dismissBlockingOverlays(page);
-        await expect(page.locator("#user-trading-heading")).toBeVisible({
-          timeout: 20_000,
-        });
+
+        if (page.url().includes("/auth")) {
+          return false;
+        }
+
+        const headingVisible = await page
+          .locator("#user-trading-heading")
+          .isVisible()
+          .catch(() => false);
+        if (!headingVisible) {
+          return false;
+        }
+
         await waitForTradingListSettled(page);
 
         if (options?.orderNumber) {
@@ -1174,7 +1241,7 @@ export async function acceptOfferAsSeller(
 
           return acceptButton.isVisible().catch(() => false);
         },
-        { timeout: 45_000 },
+        { timeout: 25_000 },
       )
       .toBe(true);
 
@@ -1200,7 +1267,7 @@ export async function acceptOfferAsSeller(
 
   try {
     await expect
-      .poll(async () => getOfferStatus(offerId), { timeout: 45_000 })
+      .poll(async () => getOfferStatus(offerId), { timeout: 25_000 })
       .toBe("accepted");
   } catch {
     if (!sellerId) {
@@ -1210,7 +1277,7 @@ export async function acceptOfferAsSeller(
     }
     await acceptOfferViaSellerRpc(offerId, sellerId);
     await expect
-      .poll(async () => getOfferStatus(offerId), { timeout: 45_000 })
+      .poll(async () => getOfferStatus(offerId), { timeout: 25_000 })
       .toBe("accepted");
   }
 }

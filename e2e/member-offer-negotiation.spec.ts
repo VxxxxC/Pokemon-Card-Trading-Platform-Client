@@ -60,6 +60,11 @@ test.describe("Member offer negotiation", () => {
     let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
+    await expect
+      .poll(async () => (await getListingStatus(listingId)) === "active", {
+        timeout: 20_000,
+      })
+      .toBe(true);
 
     const listingStatus = await getListingStatus(listingId);
     if (listingStatus && listingStatus !== "active") {
@@ -100,6 +105,7 @@ test.describe("Member offer negotiation", () => {
         sellerId,
         listingId,
         offerAmount,
+        { buyerId },
       );
       await expect
         .poll(async () => {
@@ -179,6 +185,11 @@ test.describe("Member offer negotiation", () => {
     let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
+    await expect
+      .poll(async () => (await getListingStatus(listingId)) === "active", {
+        timeout: 20_000,
+      })
+      .toBe(true);
 
     const listingStatus = await getListingStatus(listingId);
     if (listingStatus && listingStatus !== "active") {
@@ -227,6 +238,7 @@ test.describe("Member offer negotiation", () => {
           sellerId,
           listingId,
           offerAmount,
+          { buyerId },
         );
         await expect
           .poll(async () => {
@@ -309,6 +321,11 @@ test.describe("Member offer negotiation", () => {
     let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
+    await expect
+      .poll(async () => (await getListingStatus(listingId)) === "active", {
+        timeout: 20_000,
+      })
+      .toBe(true);
 
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
@@ -339,6 +356,7 @@ test.describe("Member offer negotiation", () => {
         sellerId,
         listingId,
         P2P_OFFER_AMOUNT,
+        { buyerId },
       );
 
       await expect
