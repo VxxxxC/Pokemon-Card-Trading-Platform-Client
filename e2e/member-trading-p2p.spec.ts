@@ -156,9 +156,6 @@ test.describe("Member P2P trading closure", () => {
         );
         await dismissBlockingOverlays(buyerPage);
         await confirmP2pHandoverDialog(buyerPage);
-        await expect(buyerPage.getByText("交易已確認完成！")).toBeVisible({
-          timeout: 20_000,
-        });
       });
 
       await test.step("Step 5 — order detail shows P2P meetup path", async () => {

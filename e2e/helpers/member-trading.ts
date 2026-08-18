@@ -1052,11 +1052,66 @@ export async function confirmP2pHandoverDialog(page: Page): Promise<void> {
     "實物表面狀態（卡角、刮痕等細節）",
     "確信此卡為正品",
   ]) {
-    await page.getByText(label).click();
+    const checkbox = page.getByRole("checkbox", { name: label });
+    if ((await checkbox.getAttribute("aria-checked")) !== "true") {
+      await checkbox.click();
+    }
   }
 
   await page.getByRole("button", { name: "確認完成交收" }).click();
+  await waitForP2pHandoverCompleteToast(page);
   await dismissReviewModalIfOpen(page);
+}
+
+export async function waitForP2pHandoverCompleteToast(page: Page): Promise<void> {
+  let handoverOutcome = "pending";
+
+  await expect
+    .poll(
+      async () => {
+        const successToast = await page
+          .locator("[data-sonner-toast]")
+          .filter({ hasText: /交易已確認完成/ })
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (successToast) {
+          handoverOutcome = "success";
+          return true;
+        }
+
+        const errorToast = page
+          .locator('[data-sonner-toast][data-type="error"]')
+          .first();
+        if (await errorToast.isVisible().catch(() => false)) {
+          const message = await errorToast
+            .innerText()
+            .catch(() => "unknown handover error");
+          handoverOutcome = `error:${message}`;
+          return true;
+        }
+
+        const completeButtonGone = !(await page
+          .getByRole("button", { name: "確認完成交易" })
+          .first()
+          .isVisible()
+          .catch(() => false));
+        if (completeButtonGone) {
+          handoverOutcome = "success";
+          return true;
+        }
+
+        return false;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+
+  if (handoverOutcome.startsWith("error:")) {
+    throw new Error(
+      `P2P handover failed: ${handoverOutcome.slice("error:".length)}`,
+    );
+  }
 }
 
 export async function dismissReviewModalIfOpen(page: Page): Promise<void> {

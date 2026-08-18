@@ -3,7 +3,9 @@ import { expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { parseRewardCouponCenter } from "@/lib/rewards/mapUserRewardCoupon";
+import { ACTIVE_LISTING_PERSONA_STORAGE_KEY } from "@/lib/listings/active-listing-persona";
 import type { Database } from "@/types/supabase";
+import { ensureMemberPersona } from "./collection-asset";
 import { dismissBlockingOverlays as dismissGlobalBlockingOverlays } from "./overlays";
 
 function createE2eAdminClient() {
@@ -1146,8 +1148,15 @@ async function navigateToCheckoutAfterBuyNow(
 }
 
 export async function gotoMemberRewardsPage(page: Page): Promise<void> {
+  await ensureMemberPersona(page);
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
+    await page.evaluate((storageKey) => {
+      window.sessionStorage.setItem(storageKey, "member");
+      document.cookie = "hkcv_active_listing_persona=member; Path=/; SameSite=Lax";
+    }, ACTIVE_LISTING_PERSONA_STORAGE_KEY);
+    await page.reload({ waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
 
     const crashed = page.getByText("This page couldn't load");
@@ -1169,6 +1178,17 @@ export async function gotoMemberRewardsPage(page: Page): Promise<void> {
   await expect(
     page.getByRole("heading", { name: "會員獎勵與任務中心" }),
   ).toBeVisible({ timeout: 30_000 });
+}
+
+export async function expectCheckInAffordanceVisible(page: Page): Promise<void> {
+  const checkInHeading = page.getByText("每日簽到");
+  const checkInAction = page.getByRole("button", {
+    name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣|載入簽到狀態…|簽到暫停/,
+  });
+
+  await expect(checkInHeading.or(checkInAction)).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 export function buildFlashCampaignScheduleForE2e(params?: {
