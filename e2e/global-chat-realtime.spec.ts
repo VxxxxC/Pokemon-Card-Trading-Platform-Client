@@ -5,6 +5,7 @@ import {
 } from "./fixtures/chat-test-data";
 import {
   ensureDbChatRoom,
+  ensureListingActive,
   getLatestChatMessageForParties,
   getLatestOfferForListing,
   getListingMarketplaceFixture,
@@ -78,6 +79,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
 
     let roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
+    await ensureListingActive(listingId);
     const listingFixtureResult = await getListingMarketplaceFixture(listingId, {
       expectedSellerId: sellerId,
     });
@@ -178,6 +180,7 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           sellerId,
           listingId,
           offerAmount,
+          { buyerId },
         );
 
         await expect
@@ -201,13 +204,13 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           throw new Error("Step 2 did not capture offerId after buyer submit");
         }
 
-        await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName, buyerId);
         await waitForSellerOfferCardVisible({
           sellerPage,
           roomId,
           buyerDisplayName,
           buyerId,
           amountLabel: offerAmountLabel,
+          offerId,
         });
 
         const sellerOfferCard = offerCardWithAmount(sellerPage, offerAmountLabel);

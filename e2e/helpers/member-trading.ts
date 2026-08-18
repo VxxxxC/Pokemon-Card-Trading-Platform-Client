@@ -293,10 +293,16 @@ export async function ensureChatRoomActive(
 
 export function offerCardWithAmount(page: Page, amountLabel: string) {
   const amountDigits = amountLabel.replace(/[^\d]/g, "");
+  const numericAmount = Number(amountDigits);
+  const formattedAmount =
+    Number.isFinite(numericAmount) && numericAmount > 0
+      ? numericAmount.toLocaleString("en-US")
+      : amountDigits;
+  const amountPattern = formattedAmount.replace(/,/g, ",?");
   return chatConsoleRoot(page)
     .locator("div.my-2.w-full")
     .filter({ hasText: "⚡ 議價出價卡片" })
-    .filter({ hasText: new RegExp(`HK\\$\\s*${amountDigits}\\b`) })
+    .filter({ hasText: new RegExp(`HK\\$\\s*${amountPattern}\\b`) })
     .last();
 }
 
@@ -306,47 +312,38 @@ export async function waitForSellerOfferCardVisible(params: {
   buyerDisplayName: string;
   buyerId: string;
   amountLabel: string;
+  offerId?: string;
   timeoutMs?: number;
 }): Promise<void> {
-  const offerCard = offerCardWithAmount(params.sellerPage, params.amountLabel);
+  const offerRoomId =
+    (params.offerId ? await getOfferRoomId(params.offerId) : null) ??
+    params.roomId;
 
-  await expect
-    .poll(
-      async () => {
-        await dismissBlockingOverlays(params.sellerPage);
-        await expandChatConsole(params.sellerPage);
+  await openChatRoom(
+    params.sellerPage,
+    offerRoomId,
+    params.buyerDisplayName,
+    params.buyerId,
+  );
+  await ensureChatRoomActive(
+    params.sellerPage,
+    offerRoomId,
+    params.buyerDisplayName,
+    params.buyerId,
+  );
+  await dismissBlockingOverlays(params.sellerPage);
+  await expandChatConsole(params.sellerPage);
 
-        const chatInputVisible = await chatReplyInput(params.sellerPage)
-          .isVisible()
-          .catch(() => false);
+  const sellerOfferCard = offerCardWithAmount(
+    params.sellerPage,
+    params.amountLabel,
+  ).filter({
+    has: params.sellerPage.getByRole("button", { name: "接受出價" }),
+  });
 
-        if (!chatInputVisible) {
-          await ensureChatRoomActive(
-            params.sellerPage,
-            params.roomId,
-            params.buyerDisplayName,
-            params.buyerId,
-          ).catch(() => undefined);
-
-          const reopened = await chatReplyInput(params.sellerPage)
-            .isVisible()
-            .catch(() => false);
-
-          if (!reopened) {
-            await openChatRoom(
-              params.sellerPage,
-              params.roomId,
-              params.buyerDisplayName,
-              params.buyerId,
-            );
-          }
-        }
-
-        return offerCard.isVisible().catch(() => false);
-      },
-      { timeout: params.timeoutMs ?? 90_000 },
-    )
-    .toBe(true);
+  await expect(sellerOfferCard).toBeVisible({
+    timeout: params.timeoutMs ?? 90_000,
+  });
 }
 
 export async function openBothChatRooms(
