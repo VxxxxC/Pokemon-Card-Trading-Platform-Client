@@ -202,6 +202,21 @@ export async function getOfferRoomId(offerId: string): Promise<string | null> {
   return data?.room_id ?? null;
 }
 
+export async function hasOfferChatMessage(offerId: string): Promise<boolean> {
+  const admin = createE2eAdminClient();
+
+  const { count, error } = await admin
+    .from("chat_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("offer_id", offerId);
+
+  if (error) {
+    throw new Error(`[hasOfferChatMessage] ${error.message}`);
+  }
+
+  return (count ?? 0) > 0;
+}
+
 export async function acceptOfferViaSellerRpc(
   offerId: string,
   sellerId: string,

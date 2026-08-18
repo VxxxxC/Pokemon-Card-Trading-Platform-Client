@@ -10,7 +10,6 @@ import {
   getLatestOfferForListing,
   getListingMarketplaceFixture,
   getListingSellerId,
-  getOfferStatus,
   getProfileDisplayName,
   getProfileIdByEmail,
   resetE2eListingTradingFixture,
@@ -22,8 +21,8 @@ import {
   offerAmountLabelFromListingPrice,
   offerCardWithAmount,
   openChatRoom,
-  openBothChatRooms,
   submitBuyerOfferFromDetail,
+  waitForBuyerOfferCardAccepted,
   waitForSellerOfferCardVisible,
 } from "./helpers/member-trading";
 
@@ -157,21 +156,18 @@ test.describe("Global Chat realtime — dual browser journey", () => {
         await expect(
           chatConsoleRoot(sellerPage).getByText("🛡️ 安全聲明："),
         ).toBeVisible();
+
+        roomId = warningRoomId;
       });
 
       // ── Step 2: Realtime OfferCard (listing-derived amount) ────────────
       let offerId: string | null = null;
 
       await test.step("Step 2 — buyer submits offer; seller sees OfferCard", async () => {
-        roomId = await ensureDbChatRoom(buyerId, sellerId);
-
-        await openBothChatRooms(
-          buyerPage,
+        await ensureChatRoomActive(
           sellerPage,
           roomId,
-          sellerDisplayName,
           buyerDisplayName,
-          sellerId,
           buyerId,
         );
 
@@ -237,15 +233,17 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           .or(acceptConfirmDialog.getByRole("button", { name: "確認接受" }));
         await confirmAcceptButton.first().click({ force: true, timeout: 15_000 });
 
-        await expect
-          .poll(async () => getOfferStatus(offerId!), { timeout: 30_000 })
-          .toBe("accepted");
+        await waitForBuyerOfferCardAccepted({
+          buyerPage,
+          roomId,
+          sellerDisplayName,
+          sellerId,
+          amountLabel: offerAmountLabel,
+          offerId,
+        });
 
-        await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName, sellerId);
-
-        const buyerOfferCard = offerCardWithAmount(buyerPage, offerAmountLabel);
-        await expect(buyerOfferCard.getByText("● 已接受")).toBeVisible({
-          timeout: 30_000,
+        const buyerOfferCard = offerCardWithAmount(buyerPage, offerAmountLabel).filter({
+          has: buyerPage.getByText("● 已接受"),
         });
         await expect(
           buyerOfferCard.getByText("✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）"),
