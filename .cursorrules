@@ -101,7 +101,7 @@ You are an expert full-stack developer assisting in building a trading platform 
    // ❌ Never in page.tsx / layout.tsx without a guard
    const supabase = await createClient();
 
-```
+
 
 ### New page checklist
 
@@ -143,3 +143,8 @@ When explicitly instructed to modify or update an existing UI component (inside 
 * Never insert or remove the `"use server"` or `"use client"` directives unless explicitly commanded.
 * Do not attempt to abstract or split the UI component into sub-files; apply your backend wire-up inline within the precise boundaries requested.
 
+
+## SSOT & Testing Strict Rules
+1. **SSOT Alignment**: Before implementing any feature/fix, check `system-feature-registry.md` and `test-coverage-solidity-ssot.md`. Identify the target Feature ID (e.g., J-CPN-01).
+2. **No Mocking UI Rules**: NEVER write `test.skip` or pure fixture mocks to claim S2 completion. Every user journey must have a Playwright Partner E2E test verifying actual DOM text/state updates.
+3. **Contract First**: Any Server Action / API response must be parsed via Zod Schema before UI mapping. If schema changes, CC-INT and CC-UNIT tests MUST be updated concurrently.

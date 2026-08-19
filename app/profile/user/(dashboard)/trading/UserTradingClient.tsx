@@ -312,7 +312,7 @@ export function UserTradingClient({
                 id="user-trading-heading"
                 className="font-sans font-semibold text-[16px] text-text-primary"
               >
-                {"交易管理（" + paginationMeta.total + "）"}
+                {"交易管理（" + filterCounts.status[tabStatus] + "）"}
               </h2>
 
               <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">

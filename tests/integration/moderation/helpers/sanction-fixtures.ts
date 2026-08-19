@@ -167,18 +167,44 @@ export async function seedInsufficientEvidenceCase(params: {
   return { caseId: moderationCase.id, reportId: report.id };
 }
 
+const EXPIRED_SANCTION_ENDS_AT_ISO = () =>
+  new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
 export async function expireSanctionForCase(
   caseId: string,
   type: "suspend" | "ban" = "suspend",
 ): Promise<void> {
   const admin = createServiceRoleClient();
-  const { error } = await admin
+  const { data, error } = await admin
     .from("account_sanctions")
-    .update({ ends_at: new Date(Date.now() - 60_000).toISOString() })
+    .update({ ends_at: EXPIRED_SANCTION_ENDS_AT_ISO() })
     .eq("case_id", caseId)
-    .eq("type", type);
+    .eq("type", type)
+    .select("id");
 
   if (error) {
     throw new Error(`[expireSanctionForCase] ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(
+      `[expireSanctionForCase] no ${type} sanction updated for case ${caseId}`,
+    );
+  }
+}
+
+export async function expireAccountAccessSanctionsForUser(
+  userId: string,
+): Promise<void> {
+  const admin = createServiceRoleClient();
+  const { error } = await admin
+    .from("account_sanctions")
+    .update({ ends_at: EXPIRED_SANCTION_ENDS_AT_ISO() })
+    .eq("user_id", userId)
+    .in("type", ["suspend", "ban"])
+    .is("revoked_at", null);
+
+  if (error) {
+    throw new Error(`[expireAccountAccessSanctionsForUser] ${error.message}`);
   }
 }

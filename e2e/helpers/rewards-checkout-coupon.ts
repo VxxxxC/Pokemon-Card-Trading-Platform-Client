@@ -197,15 +197,23 @@ export async function readCheckoutSummaryAmounts(
 
 export async function expireUserRewardForE2e(userRewardId: string): Promise<void> {
   const admin = createE2eAdminClient();
-  const { error } = await admin
+  const expiredAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await admin
     .from("user_rewards")
     .update({
-      calculated_expiry: new Date(Date.now() - 60_000).toISOString(),
+      calculated_expiry: expiredAt,
     })
-    .eq("id", userRewardId);
+    .eq("id", userRewardId)
+    .select("id");
 
   if (error) {
     throw new Error(`[expireUserRewardForE2e] ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(
+      `[expireUserRewardForE2e] no user_rewards row for ${userRewardId}`,
+    );
   }
 }
 

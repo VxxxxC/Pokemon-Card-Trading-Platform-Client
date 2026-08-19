@@ -176,7 +176,10 @@ export function MemberOrderCompleteConfirmDialog({
 
         <div className="flex flex-col gap-2">
           <AlertDialogAction
-            onClick={() => void handleConfirm()}
+            onClick={(event) => {
+              event.preventDefault();
+              void handleConfirm();
+            }}
             disabled={!allChecked || isActionLoading}
             className="h-11 rounded-xl bg-success font-black text-white hover:bg-success-hover disabled:opacity-50"
           >

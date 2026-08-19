@@ -8,7 +8,7 @@ import {
   seedProductWatchlistForUser,
   type ListingMarketplaceFixture,
 } from "../fixtures/supabase-admin";
-import { dismissBlockingOverlays } from "./overlays";
+import { dismissBlockingOverlays, waitUntilNoBlockingOverlay } from "./overlays";
 
 export { dismissBlockingOverlays };
 
@@ -21,6 +21,14 @@ export async function ensureMemberPersona(page: Page): Promise<void> {
   await page.addInitScript((storageKey) => {
     window.sessionStorage.setItem(storageKey, "member");
     document.cookie = "hkcv_active_listing_persona=member; Path=/; SameSite=Lax";
+  }, ACTIVE_LISTING_PERSONA_STORAGE_KEY);
+}
+
+export async function ensureMerchantPersona(page: Page): Promise<void> {
+  await page.addInitScript((storageKey) => {
+    window.sessionStorage.setItem(storageKey, "merchant");
+    document.cookie =
+      "hkcv_active_listing_persona=merchant; Path=/; SameSite=Lax";
   }, ACTIVE_LISTING_PERSONA_STORAGE_KEY);
 }
 
@@ -260,8 +268,6 @@ export async function selectHobbyGrading(
   page: Page,
   optionLabel: string,
 ): Promise<void> {
-  await dismissBlockingOverlays(page);
-  const modal = addAssetModalForm(page);
   await ensureHobbyCardItemType(page);
   const trigger = await hobbyGradingSelectTrigger(page);
   await trigger.click({ force: true });
@@ -300,10 +306,10 @@ export async function addHobbyHoldingForFixture(
   await expect(page.locator("#cards-heading")).toBeVisible({
     timeout: 20_000,
   });
+  await waitUntilNoBlockingOverlay(page);
   await openHobbyAddAssetModal(page);
   await searchAndSelectCatalogForFixture(page, fixture);
   await waitForAddAssetCatalogSelected(page, fixture.productName);
-  await dismissBlockingOverlays(page);
   await selectHobbyGrading(page, gradingOptionLabel);
   await addAssetModalForm(page).getByPlaceholder("0").fill(purchasePrice);
   await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();

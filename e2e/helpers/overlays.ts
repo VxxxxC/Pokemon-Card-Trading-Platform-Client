@@ -10,9 +10,57 @@ async function clickIfVisible(
   return false;
 }
 
+export async function suppressTransientHomeOverlays(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    sessionStorage.setItem("hasSeenAnnouncementsModal", "true");
+    localStorage.setItem(
+      "pwa_snooze_until",
+      String(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    );
+  });
+}
+
+export async function waitUntilNoBlockingOverlay(page: Page): Promise<void> {
+  await page.waitForTimeout(700);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await dismissBlockingOverlays(page);
+    const overlayVisible = await page
+      .locator("div.fixed.inset-0.z-\\[400\\]")
+      .first()
+      .isVisible()
+      .catch(() => false);
+    const announcementOpen =
+      (await page
+        .getByRole("dialog", { name: "最新活動與公告" })
+        .count()
+        .catch(() => 0)) > 0;
+    if (!overlayVisible && !announcementOpen) {
+      return;
+    }
+    await page.waitForTimeout(300);
+  }
+}
+
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     let dismissed = false;
+
+    const announcementDialog = page.getByRole("dialog", {
+      name: "最新活動與公告",
+    });
+    if (
+      await clickIfVisible(
+        announcementDialog.getByRole("button", { name: "關閉視窗" }),
+      )
+    ) {
+      dismissed = true;
+    } else if (
+      await clickIfVisible(
+        announcementDialog.getByRole("button", { name: "Close" }),
+      )
+    ) {
+      dismissed = true;
+    }
 
     const rewardDialog = page.getByRole("dialog", { name: "恭喜解鎖獎勵" });
     if (
@@ -44,25 +92,54 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
       }
     }
 
-    if (await clickIfVisible(page.getByRole("button", { name: "關閉視窗" }))) {
-      dismissed = true;
-    }
-
-    const pwaClose = page.getByRole("button", { name: "✕" }).first();
-    if (await clickIfVisible(pwaClose)) {
-      dismissed = true;
-    }
-
-    const chatConsole = page.locator('[data-chat-console="true"].fixed.bottom-6');
-    if (await chatConsole.isVisible().catch(() => false)) {
-      const chatClose = chatConsole.locator("button").filter({ hasText: "✕" }).first();
-      if (await clickIfVisible(chatClose)) {
+    const pwaInstallModal = page
+      .locator("div.fixed.inset-0")
+      .filter({ hasText: "安裝方法" })
+      .first();
+    if (await pwaInstallModal.isVisible().catch(() => false)) {
+      const pwaClose = pwaInstallModal.getByRole("button", { name: "✕" });
+      if (await clickIfVisible(pwaClose)) {
+        dismissed = true;
+      } else {
+        await pwaInstallModal
+          .click({ position: { x: 8, y: 8 }, force: true, timeout: 3_000 })
+          .catch(() => undefined);
         dismissed = true;
       }
     }
 
-    if (!dismissed) {
+    const blockingOverlay = page.locator("div.fixed.inset-0.z-\\[400\\]").first();
+    if (await blockingOverlay.isVisible().catch(() => false)) {
+      const backdrop = blockingOverlay.locator("div.absolute.inset-0").first();
+      if (await backdrop.isVisible().catch(() => false)) {
+        await backdrop
+          .click({ force: true, timeout: 3_000 })
+          .catch(() => undefined);
+        dismissed = true;
+      }
       await page.keyboard.press("Escape").catch(() => undefined);
+      const overlayClose = blockingOverlay.getByRole("button", {
+        name: /✕|關閉視窗|Close/,
+      });
+      if (await clickIfVisible(overlayClose)) {
+        dismissed = true;
+      }
+    }
+
+    if (await clickIfVisible(page.getByRole("button", { name: "關閉視窗" }))) {
+      dismissed = true;
+    }
+
+    const chatOpen = await page
+      .locator('[data-chat-console="true"]')
+      .last()
+      .isVisible()
+      .catch(() => false);
+
+    if (!dismissed) {
+      if (!chatOpen) {
+        await page.keyboard.press("Escape").catch(() => undefined);
+      }
       break;
     }
 

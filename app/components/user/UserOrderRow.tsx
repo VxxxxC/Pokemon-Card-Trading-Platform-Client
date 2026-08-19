@@ -150,7 +150,11 @@ export function UserOrderRow({
     dbOrderContext.onRefresh();
 
     if (onOpenReview) {
-      onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
+      const reviewOrderId = dbOrderContext.orderId;
+      const revieweeId = dbOrderContext.revieweeId;
+      window.setTimeout(() => {
+        onOpenReview(reviewOrderId, revieweeId);
+      }, 0);
     }
 
     return true;
@@ -234,7 +238,10 @@ export function UserOrderRow({
           {order.createdAt ? (
             <>
               <span className="hidden sm:inline text-white/5">|</span>
-              <span className="text-[11px] font-mono tracking-tight text-text-disabled">
+              <span
+                className="text-[11px] font-mono tracking-tight text-text-disabled"
+                suppressHydrationWarning
+              >
                 {"建立時間：" + order.createdAt}
               </span>
             </>
@@ -251,6 +258,7 @@ export function UserOrderRow({
                       ? "text-warning"
                       : "text-text-disabled",
                 )}
+                suppressHydrationWarning
               >
                 {isExpired ? "付款已過期" : countdownLabel}
               </span>
@@ -346,6 +354,7 @@ export function UserOrderRow({
             {showReviewCta && (
               <button
                 type="button"
+                data-testid="order-review-cta"
                 disabled={isActionLoading}
                 onClick={handleOpenReview}
                 className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"

@@ -1005,7 +1005,7 @@ export function GlobalChatConsole({
                 <Link
                   href={"/profile/" + activeRoom.partnerId}
                   prefetch={false}
-                  onClick={onClose}
+                  data-testid="chat-partner-profile-link"
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
                   <ProfileAvatar
@@ -1293,7 +1293,7 @@ export function GlobalChatConsole({
                     <Link
                       href={"/profile/" + activeRoom.partnerId}
                       prefetch={false}
-                      onClick={onClose}
+                      data-testid="chat-partner-profile-link"
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                     >
                       <ProfileAvatar

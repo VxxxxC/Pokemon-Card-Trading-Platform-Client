@@ -46,6 +46,7 @@ import {
   hasFullModerationIntegrationEnv,
 } from "./helpers/env";
 import {
+  expireAccountAccessSanctionsForUser,
   expireSanctionForCase,
   seedInsufficientEvidenceCase,
   seedMatrixMemberListingForSeller,
@@ -668,6 +669,8 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
     });
 
     it("I-E5 expired suspend clears account access restriction", async () => {
+      await expireAccountAccessSanctionsForUser(sellerId());
+
       const details = uniqueDetails("I-E5", runId);
       let caseId = "";
 
@@ -775,6 +778,8 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
     });
 
     it("I-G2 expired suspend appears as expired in sanction history", async () => {
+      await expireAccountAccessSanctionsForUser(sellerId());
+
       const details = uniqueDetails("I-G2", runId);
       let caseId = "";
 
@@ -800,13 +805,7 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
         expect(resolve.success).toBe(true);
       });
 
-      const admin = createServiceRoleClient();
-      const { error: expireError } = await admin
-        .from("account_sanctions")
-        .update({ ends_at: new Date(Date.now() - 60_000).toISOString() })
-        .eq("case_id", caseId)
-        .eq("type", "suspend");
-      expect(expireError).toBeNull();
+      await expireSanctionForCase(caseId, "suspend");
 
       await runAsAdmin(async () => {
         const history = await getAdminSubjectModerationHistory({

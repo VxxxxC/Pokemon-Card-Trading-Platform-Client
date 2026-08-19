@@ -22,6 +22,7 @@ import {
   openBothChatRooms,
   chatConsoleRoot,
   submitBuyerOfferFromDetail,
+  waitForSellerOfferCardVisible,
   P2P_OFFER_AMOUNT,
   P2P_OFFER_AMOUNT_LABEL,
 } from "./helpers/member-trading";
@@ -40,7 +41,9 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture();
+    const fixtureResult = await resolveE2eMarketplaceFixture({
+      requiredSellerPersona: "member",
+    });
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -125,11 +128,18 @@ test.describe("Member offer negotiation", () => {
         throw new Error("Missing offerId for reject flow");
       }
 
-      await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName, buyerId);
+      await waitForSellerOfferCardVisible({
+        sellerPage,
+        roomId,
+        buyerDisplayName,
+        buyerId,
+        amountLabel: offerLabel,
+        offerId,
+      });
       const sellerOfferCard = offerCardWithAmount(sellerPage, offerLabel).filter({
         has: sellerPage.getByRole("button", { name: "拒絕出價" }),
       });
-      await expect(sellerOfferCard).toBeVisible({ timeout: 45_000 });
+      await expect(sellerOfferCard).toBeVisible({ timeout: 15_000 });
       await sellerOfferCard.getByRole("button", { name: "拒絕出價" }).click();
       const rejectConfirmDialog = sellerPage
         .getByRole("alertdialog")
@@ -164,7 +174,9 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture();
+    const fixtureResult = await resolveE2eMarketplaceFixture({
+      requiredSellerPersona: "member",
+    });
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -296,7 +308,9 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture();
+    const fixtureResult = await resolveE2eMarketplaceFixture({
+      requiredSellerPersona: "member",
+    });
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;

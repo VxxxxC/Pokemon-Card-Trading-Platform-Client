@@ -150,12 +150,26 @@ test.describe("Member P2P trading closure", () => {
       });
 
       await test.step("Step 4b — buyer completes handover from trading list", async () => {
+        const order = memberOrderId
+          ? await getMemberOrderById(memberOrderId)
+          : null;
         await buyerPage.goto(
           `/profile/user/trading?filter=${encodeURIComponent("待處理")}`,
           { waitUntil: "domcontentloaded" },
         );
         await dismissBlockingOverlays(buyerPage);
-        await confirmP2pHandoverDialog(buyerPage);
+        await confirmP2pHandoverDialog(buyerPage, {
+          orderNumber: order?.order_number ?? null,
+        });
+        await expect
+          .poll(
+            async () =>
+              memberOrderId
+                ? (await getMemberOrderById(memberOrderId))?.status ?? null
+                : null,
+            { timeout: 30_000 },
+          )
+          .toBe("completed");
       });
 
       await test.step("Step 5 — order detail shows P2P meetup path", async () => {
@@ -191,7 +205,12 @@ test.describe("Member P2P trading closure", () => {
         if (!memberOrderId) {
           throw new Error("Missing memberOrderId before review");
         }
+        const completed = await getMemberOrderById(memberOrderId);
+        expect(completed?.status).toBe("completed");
         await gotoOrderDetail(buyerPage, memberOrderId);
+        await expect(buyerPage.getByText("已完成")).toBeVisible({
+          timeout: 15_000,
+        });
         await submitFiveStarReview(buyerPage);
 
         const review = memberOrderId

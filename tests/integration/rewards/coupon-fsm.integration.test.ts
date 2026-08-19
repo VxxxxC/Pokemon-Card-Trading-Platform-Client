@@ -135,10 +135,18 @@ describe.skipIf(!hasRewardsIntegrationEnv()).sequential(
       );
       expect(prepareResult.success).toBe(true);
 
-      await setCouponExpiry(
-        couponId,
-        new Date(Date.now() - 60_000).toISOString(),
-      );
+      const boundOrder = await getMerchantOrderCouponRow(orderId);
+      expect(boundOrder?.coupon_user_reward_id).toBe(couponId);
+      expect(boundOrder?.escrow_status).toBe("pending_payment");
+
+      const expiredAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      await setCouponExpiry(couponId, expiredAt);
+
+      const expiredRow = await getUserRewardCheckoutRow(couponId);
+      expect(expiredRow?.calculated_expiry).toBeTruthy();
+      expect(
+        new Date(expiredRow?.calculated_expiry ?? 0).getTime(),
+      ).toBeLessThan(Date.now() - 60 * 60 * 1000);
 
       const paidResult = await invokeMarkPaid(orderId);
       expect(paidResult.success).toBe(false);

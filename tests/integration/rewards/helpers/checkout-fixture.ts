@@ -659,13 +659,18 @@ export async function setCouponExpiry(
   expiryIso: string,
 ): Promise<void> {
   const admin = createServiceRoleClient();
-  const { error } = await admin
+  const { data, error } = await admin
     .from("user_rewards")
     .update({ calculated_expiry: expiryIso })
-    .eq("id", userRewardId);
+    .eq("id", userRewardId)
+    .select("id");
 
   if (error) {
     throw new Error(`[setCouponExpiry] ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(`[setCouponExpiry] no user_rewards row for ${userRewardId}`);
   }
 }
 

@@ -11,6 +11,7 @@ import {
   WishlistSectionSkeleton,
 } from "@/app/home/HomeSectionSkeletons";
 import { getOptionalAuthUser } from "@/lib/auth/session";
+import { loadHomePriceTickerItems } from "@/lib/home/load-home-ticker";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export default async function HomePage() {
@@ -24,11 +25,15 @@ export default async function HomePage() {
   const activeAnnouncements = activeAnnouncementsResult.success
     ? activeAnnouncementsResult.data
     : [];
+  const tickerItems = isSupabaseConfigured()
+    ? await loadHomePriceTickerItems()
+    : [];
 
   return (
     <HomePageShell
       currentUserId={currentUserId}
       activeAnnouncements={activeAnnouncements}
+      tickerItems={tickerItems}
     >
       {user ? (
         <Suspense fallback={<WishlistSectionSkeleton />}>

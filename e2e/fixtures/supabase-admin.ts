@@ -2170,6 +2170,7 @@ export async function insertChatMessageForE2e(params: {
   roomId: string;
   senderId: string;
   content: string;
+  createdAt?: string;
 }): Promise<void> {
   const admin = createE2eAdminClient();
 
@@ -2178,6 +2179,7 @@ export async function insertChatMessageForE2e(params: {
     sender_id: params.senderId,
     content: params.content,
     is_system_warning: false,
+    ...(params.createdAt ? { created_at: params.createdAt } : {}),
   });
 
   if (error) {

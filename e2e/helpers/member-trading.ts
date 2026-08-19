@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { fillStripePaymentElement } from "./platform-rewards";
 import { ensureMemberPersona } from "./collection-asset";
-import { dismissBlockingOverlays as dismissGlobalOverlays } from "./overlays";
+import { dismissBlockingOverlays as dismissGlobalOverlays, waitUntilNoBlockingOverlay } from "./overlays";
 import {
   acceptOfferViaSellerRpc,
   advanceAuthOrderToCustody,
@@ -115,7 +115,7 @@ export async function expandChatConsole(page: Page): Promise<void> {
 }
 
 export function chatConsoleRoot(page: Page) {
-  return page.locator('[data-chat-console="true"].fixed.bottom-6');
+  return page.locator('[data-chat-console="true"]').last();
 }
 
 /** Chat input placeholder is truncated (`回覆給 {name}...`); merchant partners use shop_name, not profile display_name. */
@@ -241,6 +241,18 @@ export async function openChatRoom(
     .toBe(true);
 }
 
+export async function closeChatConsole(page: Page): Promise<void> {
+  const chatConsole = chatConsoleRoot(page);
+  if (!(await chatConsole.isVisible().catch(() => false))) {
+    return;
+  }
+  const closeButton = chatConsole
+    .locator("button")
+    .filter({ hasText: "✕" })
+    .first();
+  await closeButton.click({ force: true }).catch(() => undefined);
+}
+
 export async function ensureChatRoomActive(
   page: Page,
   roomId: string,
@@ -263,7 +275,7 @@ export async function ensureChatRoomActive(
         );
 
         const consoleEl = document.querySelector(
-          '[data-chat-console="true"].fixed.bottom-6',
+          '[data-chat-console="true"]',
         );
         const input = consoleEl?.querySelector("input[type='text']");
         return (
@@ -612,6 +624,7 @@ export function formatAuthPaymentLabel(finalPrice: number): string {
 async function clickBuyNowAndOpenNegotiation(buyerPage: Page): Promise<void> {
   const buyButton = buyerPage.getByRole("button", { name: /立即購買/ });
   await expect(buyButton).toBeEnabled({ timeout: 15_000 });
+  await waitUntilNoBlockingOverlay(buyerPage);
 
   const confirmHeading = buyerPage.getByRole("heading", {
     name: "確認立即購買",
@@ -621,7 +634,7 @@ async function clickBuyNowAndOpenNegotiation(buyerPage: Page): Promise<void> {
   });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    await dismissBlockingOverlays(buyerPage);
+    await waitUntilNoBlockingOverlay(buyerPage);
     await buyButton.click({ timeout: 15_000 });
     await dismissBlockingOverlays(buyerPage);
 
@@ -776,7 +789,16 @@ export async function gotoOrderDetail(page: Page, orderId: string): Promise<void
   await page.goto(`/profile/user/orderDetail/${orderId}`, {
     waitUntil: "domcontentloaded",
   });
-  await dismissBlockingOverlays(page);
+  await waitUntilNoBlockingOverlay(page);
+  await expect
+    .poll(
+      async () => {
+        await dismissBlockingOverlays(page);
+        return page.getByText("交易狀態").first().isVisible().catch(() => false);
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true);
 }
 
 export async function gotoCheckout(page: Page, orderId: string): Promise<void> {
@@ -1037,10 +1059,17 @@ export async function runDevAuthMockFullFlow(page: Page): Promise<boolean> {
   }
 }
 
-export async function confirmP2pHandoverDialog(page: Page): Promise<void> {
-  const completeButton = page
-    .getByRole("button", { name: "確認完成交易" })
-    .first();
+export async function confirmP2pHandoverDialog(
+  page: Page,
+  options?: { orderNumber?: string | null },
+): Promise<void> {
+  const completeButton = options?.orderNumber
+    ? page
+        .locator("div.cursor-pointer.rounded-xl")
+        .filter({ hasText: `#${options.orderNumber}` })
+        .getByRole("button", { name: "確認完成交易" })
+        .first()
+    : page.getByRole("button", { name: "確認完成交易" }).first();
   await expect(completeButton).toBeVisible({ timeout: 15_000 });
   await completeButton.click();
   await expect(
@@ -1091,16 +1120,6 @@ export async function waitForP2pHandoverCompleteToast(page: Page): Promise<void>
           return true;
         }
 
-        const completeButtonGone = !(await page
-          .getByRole("button", { name: "確認完成交易" })
-          .first()
-          .isVisible()
-          .catch(() => false));
-        if (completeButtonGone) {
-          handoverOutcome = "success";
-          return true;
-        }
-
         return false;
       },
       { timeout: 30_000 },
@@ -1121,10 +1140,14 @@ export async function dismissReviewModalIfOpen(page: Page): Promise<void> {
   }
 
   const laterButton = page.getByRole("button", { name: "稍後再說" });
-  if (await laterButton.isVisible().catch(() => false)) {
-    await laterButton.click();
-  } else {
-    await page.getByRole("button", { name: "關閉" }).click();
+  try {
+    await laterButton.first().click({ force: true, timeout: 8_000 });
+  } catch {
+    const reviewDialog = page.locator('[aria-labelledby="review-modal-title"]');
+    await reviewDialog
+      .click({ force: true, position: { x: 8, y: 8 } })
+      .catch(() => undefined);
+    await page.keyboard.press("Escape");
   }
 
   await expect(reviewHeading).toBeHidden({ timeout: 10_000 });
@@ -1133,22 +1156,31 @@ export async function dismissReviewModalIfOpen(page: Page): Promise<void> {
 export async function submitFiveStarReview(page: Page): Promise<void> {
   await dismissBlockingOverlays(page);
   const reviewHeading = page.locator("#review-modal-title");
-  const openReviewButton = page.getByRole("button", {
-    name: "✍️ 給予對手評價",
-  });
+  const openReviewButton = page
+    .getByTestId("order-review-cta")
+    .or(page.getByRole("button", { name: /給予對手評價/ }));
 
-  if (!(await reviewHeading.isVisible().catch(() => false))) {
-    const canOpenReview = await openReviewButton
-      .isVisible()
-      .catch(() => false);
-    if (canOpenReview) {
-      await openReviewButton.click({ force: true });
-    }
-  }
+  await expect
+    .poll(
+      async () => {
+        if (await reviewHeading.isVisible().catch(() => false)) {
+          return true;
+        }
 
-  if (!(await reviewHeading.isVisible().catch(() => false))) {
-    throw new Error("Review modal did not open and no review CTA was visible");
-  }
+        const canOpenReview = await openReviewButton
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (canOpenReview) {
+          await openReviewButton.first().scrollIntoViewIfNeeded();
+          await openReviewButton.first().click({ force: true });
+        }
+
+        return reviewHeading.isVisible().catch(() => false);
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(true);
 
   await page.getByRole("button", { name: "5 星" }).click();
   await page.getByRole("button", { name: "提交評價" }).click();
@@ -1286,13 +1318,15 @@ export async function waitForBuyerP2pCompleteOnTradingList(
         await waitForTradingListSettled(page);
 
         if (options?.orderNumber) {
-          const orderVisible = await page
-            .getByText(`#${options.orderNumber}`)
+          const orderRow = page
+            .locator("div.cursor-pointer.rounded-xl")
+            .filter({ hasText: `#${options.orderNumber}` });
+          const orderVisible = await orderRow
             .first()
             .isVisible()
             .catch(() => false);
           if (orderVisible) {
-            return page
+            return orderRow
               .getByRole("button", { name: "確認完成交易" })
               .first()
               .isVisible()

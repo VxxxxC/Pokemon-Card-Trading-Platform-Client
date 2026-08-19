@@ -7,6 +7,7 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { Footer } from "@/app/components/navigation/Footer";
 import { PriceTicker } from "@/app/components/ticker/PriceTicker";
+import type { HomePriceTickerItem } from "@/lib/home/load-home-ticker";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
@@ -25,12 +26,14 @@ const PwaInstallPrompt = dynamic(
 export type HomePageShellProps = {
   currentUserId: string | null;
   activeAnnouncements: PlatformAnnouncement[];
+  tickerItems?: HomePriceTickerItem[];
   children: ReactNode;
 };
 
 export function HomePageShell({
   currentUserId,
   activeAnnouncements,
+  tickerItems = [],
   children,
 }: HomePageShellProps) {
   const showCheckIn = currentUserId != null;
@@ -44,7 +47,7 @@ export function HomePageShell({
       <TopNav />
       <MobileHeader />
       <PwaInlineBanner />
-      <PriceTicker />
+      <PriceTicker data={tickerItems} />
       <PwaInstallPrompt />
       <AnnouncementModal announcements={activeAnnouncements} />
 

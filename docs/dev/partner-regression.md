@@ -30,13 +30,13 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 
 | 匯總 ID | 條件 | 進度 |
 |---------|------|------|
-| **SC-P0** | §2 [#A] P-A01–P-A08 **全 ☑** | ☐ |
+| **SC-P0** | §2 [#A] P-A01–P-A08 **全 ☑** | ☑ |
 | **SC-P1** | §3 [#B] 全 ☑ | ☐ |
 | **SC-P2** | §4 [#C] 全 ☑ | ☐ |
 | **SC-P-FX** | §5 每 F-* 至少 1 條 P-TC ☑（Phase 3） | ☐ |
 | **SC-P-ALL** | SC-P0 + certify 綠 + M0 | ☐ |
 
-**統計（2026-08-18）：** P0 **0/8 ☑** · P1 **0/9 ☐** · P2 **0/4 ☐** · F-* Partner 覆蓋 **0/67**。
+**統計（2026-08-19）：** P0 **8/8 ☑** · P1 **0/9 ☐**（spec 已寫、未跑） · P2 **0/4 ☐**（P-C01–C03 spec 已寫、未跑） · F-* Partner 覆蓋 **0/67**。
 
 ---
 
@@ -46,14 +46,14 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 
 | ID | Partner 摘要 | 功能 | Spec（目標） | Path | In CI | 進度 |
 |----|-------------|------|--------------|------|-------|------|
-| **P-A01** | 裸卡 + 開鑑定 toggle 後 marketplace 買家 toggle 仍 disable | F-C-03 · F-M-07 | `e2e/partner/merchant/p-a01-inventory-auth-marketplace.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A02** | 48h 待付款過期後 listing 唔 reactivate · 雙方仍待付款 | F-S-12 · F-C-11 | `e2e/partner/system/p-a02-pending-payment-expiry-ui.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A03** | B2C 鑑定 + 寄貨 · buyer stepper 錯顯示面交 4 steps | F-M-17 · F-C-10 | `e2e/partner/member/p-a03-b2c-auth-stepper-courier.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A04** | B2C 鑑定確認收貨冇 confirm dialog | F-M-17 | `e2e/partner/member/p-a04-b2c-auth-confirm-dialog.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A05** | C2C 鑑定 seller「實收總額」同 FPS 預計唔一致 | F-M-16 · F-M-17 | `e2e/partner/member/p-a05-c2c-auth-seller-invoice.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A06** | C2B merchant seller 實收（待驗） | F-C-11 · F-C-13 | `e2e/partner/merchant/p-a06-c2b-seller-invoice.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A07** | Chat 㩒 member 頭像 → 錯跳 merchant profile | F-M-13 | `e2e/partner/system/p-a07-chat-avatar-persona.spec.ts` | Partner | Partner nightly | ☐ |
-| **P-A08** | 新對話收件匣 icon 冇綠點 | F-M-13 | `e2e/partner/system/p-a08-inbox-unread-badge.spec.ts` | Partner | Partner nightly | ☐ |
+| **P-A01** | 裸卡 + 開鑑定 toggle 後 marketplace 買家 toggle 仍 disable | F-C-03 · F-M-07 | `e2e/partner/merchant/p-a01-inventory-auth-marketplace.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A02** | 48h 待付款過期後 listing 唔 reactivate · 雙方仍待付款 | F-S-12 · F-C-11 | `e2e/partner/system/p-a02-pending-payment-expiry-ui.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A03** | B2C 鑑定 + 寄貨 · buyer stepper 錯顯示面交 4 steps | F-M-17 · F-C-10 | `e2e/partner/member/p-a03-b2c-auth-stepper-courier.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A04** | B2C 鑑定確認收貨冇 confirm dialog | F-M-17 | `e2e/partner/member/p-a04-b2c-auth-confirm-dialog.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A05** | C2C 鑑定 seller「實收總額」同 FPS 預計唔一致 | F-M-16 · F-M-17 | `e2e/partner/member/p-a05-c2c-auth-seller-invoice.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A06** | C2B merchant seller 實收（待驗） | F-C-11 · F-C-13 | `e2e/partner/merchant/p-a06-c2b-seller-invoice.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A07** | Chat 㩒 member 頭像 → 錯跳 merchant profile | F-M-13 | `e2e/partner/system/p-a07-chat-avatar-persona.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A08** | 新對話收件匣 icon 冇綠點 | F-M-13 | `e2e/partner/system/p-a08-inbox-unread-badge.spec.ts` | Partner | Partner nightly | ☑ |
 
 **外部 ID 對照：** `bugs_finding.org` Stripe/Escrow § Member-Merchant § Chatroom [#A] 項。
 
@@ -174,4 +174,7 @@ bun run test:staging:certify
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-19 | 寫入 P-C01–P-C03 Partner P2 spec（未跑；等 p86 完） |
+| 2026-08-19 | 寫入 P-B01–P-B09 Partner P1 spec（未跑；等 p86 完） |
+| 2026-08-19 | P-A01–P-A08 Partner P0 全綠 · SC-P0 ☑ |
 | 2026-08-18 | v1.0：四層 SSOT · P-A/B/C 登記表 · F-* 覆蓋 Phase · 命令契約 |

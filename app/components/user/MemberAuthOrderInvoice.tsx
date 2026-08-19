@@ -4,6 +4,10 @@ import {
   MEMBER_AUTH_PLATFORM_SUBSIDY,
   MEMBER_AUTH_SHIPPING_FEE,
 } from "@/app/lib/member-order/p2p";
+import {
+  computeFpsGrossPayoutHkd,
+  computeFpsNetPayoutAmount,
+} from "@/lib/platform/fps-payout-config";
 import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +25,8 @@ type MemberAuthOrderInvoiceProps = {
   releaseStatus?: "pending" | "completed" | "rejected" | string;
   buyerTotalAmount?: number;
   platformSubsidyAmount?: number;
+  itemSubtotal?: number;
+  inboundShippingFee?: number;
 };
 
 export function MemberAuthOrderInvoice({
@@ -37,6 +43,8 @@ export function MemberAuthOrderInvoice({
   releaseStatus: explicitReleaseStatus,
   buyerTotalAmount,
   platformSubsidyAmount,
+  itemSubtotal,
+  inboundShippingFee,
 }: MemberAuthOrderInvoiceProps) {
   const configuredAuthFee = usePlatformAuthFee();
   const resolvedAuthFee =
@@ -44,6 +52,12 @@ export function MemberAuthOrderInvoice({
   const totalAmount = finalPrice + resolvedAuthFee;
   const resolvedSubsidy = platformSubsidyAmount ?? MEMBER_AUTH_PLATFORM_SUBSIDY;
   const resolvedBuyerTotal = buyerTotalAmount ?? totalAmount;
+  const sellerReceivedAmount = computeFpsNetPayoutAmount(
+    computeFpsGrossPayoutHkd(
+      itemSubtotal ?? finalPrice,
+      inboundShippingFee ?? 0,
+    ),
+  );
 
   // Resolve Escrow Release details
   const displayPayoutId =
@@ -116,7 +130,7 @@ export function MemberAuthOrderInvoice({
           </span>
         </div>
         <div className="flex justify-between text-[#ef4444]">
-          <span>免郵補貼</span>
+          <span>平台優惠</span>
           <span>
             {"-HK$ " + resolvedSubsidy.toLocaleString("zh-TW")}
           </span>
@@ -132,8 +146,7 @@ export function MemberAuthOrderInvoice({
           <span>{isSeller ? "最終實收總額" : "最終扣款總額"}</span>
           <span className="text-brand font-mono text-[18px] md:text-[24px]">
             {isSeller
-              ? "HK$ " +
-                (totalAmount - displayPlatformFee).toLocaleString("zh-TW")
+              ? "HK$ " + sellerReceivedAmount.toLocaleString("zh-TW")
               : "HK$ " + resolvedBuyerTotal.toLocaleString("zh-TW")}
           </span>
         </div>

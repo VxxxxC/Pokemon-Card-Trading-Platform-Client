@@ -593,7 +593,7 @@ export function MerchantOrderDetailView({
             <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
               <span>最終實收總額</span>
               <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                HK$ {merchantOrder.totalAmount.toLocaleString("zh-TW")}
+                HK$ {stripeDisplay.payoutAmount.toLocaleString("zh-TW")}
               </span>
             </div>
 

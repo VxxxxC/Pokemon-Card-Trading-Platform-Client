@@ -19,6 +19,7 @@ import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
+import { MerchantAuthSellerTimeline } from "@/app/components/merchant/MerchantAuthSellerTimeline";
 import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2cDirectTimeline";
 import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
@@ -155,6 +156,10 @@ export function MemberOrderDetailView({
   const isMerchantPaymentExpired =
     order.merchantEscrowStatus === "refunded" ||
     (isPendingEscrowPayment && isExpired);
+  const showMerchantPendingPaymentBanner =
+    isPendingEscrowPayment ||
+    (order.orderKind === "merchant" &&
+      order.merchantEscrowStatus === "refunded");
   const isMerchantBuyerOrder =
     order.orderKind === "merchant" && order.persona === "buy";
   const canCompletePurchase = isMerchantBuyerOrder
@@ -187,7 +192,11 @@ export function MemberOrderDetailView({
     onRefresh();
 
     if (onOpenReview) {
-      onOpenReview(order.id, order.counterparty.id);
+      const reviewOrderId = order.id;
+      const revieweeId = order.counterparty.id;
+      window.setTimeout(() => {
+        onOpenReview(reviewOrderId, revieweeId);
+      }, 0);
     }
 
     return true;
@@ -433,7 +442,7 @@ export function MemberOrderDetailView({
         </div>
       ) : null}
 
-      {isPendingEscrowPayment && (
+      {showMerchantPendingPaymentBanner && (
         <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
           <p className="text-[12.5px] text-text-secondary leading-relaxed">
             {isMerchantPaymentExpired
@@ -476,12 +485,19 @@ export function MemberOrderDetailView({
 
       {useMerchantB2cEscrowUi ? (
         <div className="space-y-4">
-          <MerchantB2cDirectTimeline
-            escrowStatus={order.merchantEscrowStatus ?? null}
-            perspective="buyer"
-            shippingMethod={order.shippingMethod}
-            payoutStatus={order.merchantPayoutStatus}
-          />
+          {order.useAuthentication ? (
+            <MerchantAuthSellerTimeline
+              escrowStatus={order.merchantEscrowStatus ?? null}
+              payoutStatus={order.merchantPayoutStatus}
+            />
+          ) : (
+            <MerchantB2cDirectTimeline
+              escrowStatus={order.merchantEscrowStatus ?? null}
+              perspective="buyer"
+              shippingMethod={order.shippingMethod}
+              payoutStatus={order.merchantPayoutStatus}
+            />
+          )}
 
           {isPendingEscrowPayment ? null : isBuyer &&
             order.merchantEscrowStatus === "payment_held" ? (
@@ -575,7 +591,10 @@ export function MemberOrderDetailView({
             </p>
           ) : null}
 
-          {isBuyer && canCompletePurchase && order.merchantEscrowStatus === "shipped" && (
+          {isBuyer &&
+          canCompletePurchase &&
+          (order.merchantEscrowStatus === "shipped" ||
+            order.merchantEscrowStatus === "authenticated") && (
             <div className="space-y-3">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 商戶已發貨。收到卡牌並驗貨後，請確認完成交易；款項將保留於平台 7 日後撥至商戶。
@@ -659,6 +678,7 @@ export function MemberOrderDetailView({
           {showReviewCta && (
             <button
               type="button"
+              data-testid="order-review-cta"
               disabled={isActionLoading}
               onClick={handleOpenReview}
               className="w-full h-10 font-sans font-semibold text-[13px] rounded-xl border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -830,6 +850,7 @@ export function MemberOrderDetailView({
           {showReviewCta && (
             <button
               type="button"
+              data-testid="order-review-cta"
               disabled={isActionLoading}
               onClick={handleOpenReview}
               className="w-full h-10 font-sans font-semibold text-[13px] rounded-xl border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -866,6 +887,8 @@ export function MemberOrderDetailView({
             buyerTotalAmount={order.buyerTotalAmount}
             platformSubsidyAmount={order.platformSubsidyAmount}
             authFee={order.authFeeAuth}
+            itemSubtotal={order.itemSubtotalAuth}
+            inboundShippingFee={order.inboundShippingFeeAuth}
           />
         )}
 

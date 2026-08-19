@@ -174,6 +174,7 @@ export function TopNav() {
             <div className="relative" ref={popoverRef}>
               <button
                 type="button"
+                aria-label="收件匣"
                 onClick={() => setIsInboxOpen(!isInboxOpen)}
                 className={`relative p-2 text-text-secondary hover:text-brand transition-colors rounded-xl hover:bg-[#26211C] active:scale-[0.95] ${isInboxOpen ? "text-brand bg-[#26211C]" : ""}`}
               >
