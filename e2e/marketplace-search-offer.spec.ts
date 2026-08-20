@@ -7,11 +7,11 @@ import {
 import {
   ensureDbChatRoom,
   getLatestOfferForListing,
-  getListingMarketplaceFixture,
   getProfileIdByEmail,
   resolveE2eMarketplaceFixture,
   type ListingMarketplaceFixture,
 } from "./fixtures/supabase-admin";
+import { dismissBlockingOverlays } from "./helpers/overlays";
 
 // AML: E2E buyer is <14 days old (HK$300 cap) and fixture listing has no market price.
 // Use $299 to pass rpc_make_offer guards; raise after fixture buyer ages or listing auth changes.
@@ -30,13 +30,6 @@ test.describe("Marketplace search + make offer", () => {
 
   function formatHkd(amount: number): string {
     return `HK$ ${amount.toLocaleString("en-HK")}`;
-  }
-
-  async function dismissBlockingOverlays(page: Page): Promise<void> {
-    const pwaClose = page.getByRole("button", { name: "✕" }).first();
-    if (await pwaClose.isVisible().catch(() => false)) {
-      await pwaClose.click();
-    }
   }
 
   function fixtureGridCardLink(page: Page, fixture: ListingMarketplaceFixture) {
@@ -212,9 +205,9 @@ test.describe("Marketplace search + make offer", () => {
       await page.locator("#exe-negotiation-price").fill(OFFER_AMOUNT);
       await page.getByRole("button", { name: "發送叫價至聊天室" }).click();
 
-      await expect(page.getByText("議價要約已成功送出")).toBeVisible({
-        timeout: 20_000,
-      });
+      await expect(page.locator("[data-sonner-toast]").filter({
+        hasText: "議價要約已成功送出",
+      })).toBeVisible({ timeout: 20_000 });
     });
 
     await test.step("Step 9 — DB offer row is pending", async () => {

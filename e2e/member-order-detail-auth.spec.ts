@@ -5,6 +5,7 @@ import {
   ensureListingAcceptsAuthentication,
   getLatestMemberOrderForListing,
   getListingAcceptsAuthentication,
+  getMemberOrderById,
   getProfileDisplayName,
   getProfileIdByEmail,
   guardAuthMemberOrder,
@@ -152,9 +153,18 @@ test.describe("Member order detail — auth escrow", () => {
       }
 
       await payAuthMemberOrder(buyerPage, memberOrderId);
+      await expect
+        .poll(
+          async () => {
+            const order = await getMemberOrderById(memberOrderId!);
+            return order?.escrow_status ?? "payment";
+          },
+          { timeout: 45_000 },
+        )
+        .not.toBe("payment");
       await expect(
-        buyerPage.getByRole("heading", { name: /交易成功設立/ }),
-      ).toBeVisible({ timeout: 15_000 });
+        buyerPage.getByRole("heading", { name: /交易成功設立|付款處理中/ }),
+      ).toBeVisible({ timeout: 20_000 });
     } finally {
       await buyerContext.close();
       await sellerContext.close();

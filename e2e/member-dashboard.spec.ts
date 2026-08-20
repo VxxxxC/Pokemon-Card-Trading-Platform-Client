@@ -150,7 +150,9 @@ test.describe("Member dashboard and rewards", () => {
     }
 
     await checkInButton.click();
-    await expect(page.getByText("簽到成功")).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator("[data-sonner-toast]").filter({
+      hasText: "簽到成功",
+    })).toBeVisible({ timeout: 20_000 });
     await expect(checkInButton).toHaveText(/明日請繼續保持收藏習慣/, {
       timeout: 20_000,
     });
@@ -162,7 +164,7 @@ test.describe("Member dashboard and rewards", () => {
       test.skip(true, "Missing E2E_BUYER_EMAIL or E2E_BUYER_PASSWORD");
     }
 
-    await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
+    await gotoMemberRewardsPage(page);
     await dismissBlockingOverlays(page);
 
     await expect(page.getByText("可領取 / 可使用")).toBeVisible({

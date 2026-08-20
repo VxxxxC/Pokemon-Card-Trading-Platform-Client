@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import {
   buildMerchantProductDetailPath,
   getMerchantProductDetailFixtures,
@@ -6,16 +6,10 @@ import {
   hasCoreMerchantFixtures,
 } from "./fixtures/test-data";
 import { resolveE2eMarketplaceFixture } from "./fixtures/supabase-admin";
+import { dismissBlockingOverlays } from "./helpers/overlays";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
-
-async function dismissBlockingOverlays(page: Page): Promise<void> {
-  const pwaClose = page.getByRole("button", { name: "✕" }).first();
-  if (await pwaClose.isVisible().catch(() => false)) {
-    await pwaClose.click();
-  }
-}
 
 test.describe("Member auth redirect and settings", () => {
   test("guest buy lock redirects to auth and returns after login", async ({
@@ -99,9 +93,9 @@ test.describe("Member auth redirect and settings", () => {
     );
     await page.getByRole("button", { name: "儲存更改" }).click();
 
-    await expect(page.getByText("個人資料及收款資料已更新")).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(page.locator("[data-sonner-toast]").filter({
+      hasText: "個人資料及收款資料已更新",
+    })).toBeVisible({ timeout: 20_000 });
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.locator('input[name="displayName"]')).toHaveValue(

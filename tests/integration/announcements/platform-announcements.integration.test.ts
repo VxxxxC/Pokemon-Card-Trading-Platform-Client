@@ -149,6 +149,35 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       });
     });
 
+    it("excludes out-of-window announcement from active display list", async () => {
+      expect(testAnnouncementId).toBeTruthy();
+
+      await runAsAdmin(async () => {
+        const outOfWindowStart = shiftDateString(getHktTodayDateString(), -60);
+        const outOfWindowEnd = shiftDateString(getHktTodayDateString(), -30);
+        const updateResult = await updatePlatformAnnouncement(testAnnouncementId!, {
+          title: updatedTitle,
+          content: "Integration test announcement body for platform SSOT CRUD.",
+          imageUrl: DEFAULT_ANNOUNCEMENT_POSTER_URL,
+          startDate: outOfWindowStart,
+          endDate: outOfWindowEnd,
+          isActive: true,
+          priority: 999,
+        });
+        expect(updateResult.success).toBe(true);
+      });
+
+      await runAsBuyer(async () => {
+        const result = await getActiveAnnouncementsForDisplay();
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(
+            result.data.some((item) => item.id === testAnnouncementId),
+          ).toBe(false);
+        }
+      });
+    });
+
     it("excludes toggled-off announcement from active list", async () => {
       expect(testAnnouncementId).toBeTruthy();
 

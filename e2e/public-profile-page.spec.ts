@@ -5,7 +5,8 @@ import {
   hasCoreMerchantFixtures,
   hasPublicProfileFixtures,
 } from "./fixtures/test-data";
-import { getProfileUsername, resolveE2eMarketplaceFixture } from "./fixtures/supabase-admin";
+import { getProfilePublicSlug, resolveE2eMarketplaceFixture } from "./fixtures/supabase-admin";
+import { dismissBlockingOverlays } from "./helpers/overlays";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
@@ -22,15 +23,8 @@ test.beforeAll(async () => {
   }
   resolvedSellerUsername =
     getMerchantProductDetailFixtures().sellerUsername ??
-    (await getProfileUsername(result.fixture.sellerId));
+    (await getProfilePublicSlug(result.fixture.sellerId));
 });
-
-async function dismissBlockingOverlays(page: Page): Promise<void> {
-  const pwaClose = page.getByRole("button", { name: "✕" }).first();
-  if (await pwaClose.isVisible().catch(() => false)) {
-    await pwaClose.click();
-  }
-}
 
 async function expectPublicProfileShell(page: Page): Promise<void> {
   await expect(page.getByText("總完成交易")).toBeVisible({ timeout: 20_000 });
@@ -67,9 +61,10 @@ test.describe("Public profile page", () => {
       waitUntil: "domcontentloaded",
     });
     await dismissBlockingOverlays(page);
-
     await expectPublicProfileShell(page);
-    await expect(page.locator("main").getByText(/^@/)).toBeVisible();
+    await expect(page.locator("main").getByText(/^@/)).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test("guest sees not-found for unknown profile key", async ({

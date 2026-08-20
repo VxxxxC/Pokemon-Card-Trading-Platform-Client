@@ -642,6 +642,32 @@ async function getLowestActiveListingPrice(
   return Math.min(...prices);
 }
 
+async function resolveMarketplaceSellerDisplayName(
+  admin: ReturnType<typeof createE2eAdminClient>,
+  sellerId: string,
+  sellerPersona: string | null | undefined,
+  displayName: string | undefined,
+): Promise<string | null> {
+  if (sellerPersona === "merchant") {
+    const { data: merchant, error } = await admin
+      .from("merchant_shops")
+      .select("shop_name")
+      .eq("merchant_id", sellerId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`[resolveMarketplaceSellerDisplayName] ${error.message}`);
+    }
+
+    const shopName = merchant?.shop_name?.trim();
+    if (shopName) {
+      return shopName;
+    }
+  }
+
+  return displayName?.trim() ?? null;
+}
+
 /**
  * Loads marketplace search/order-book fixture data for a listing.
  * Returns `{ ok: false, skipReason }` when env or listing state is unsuitable for E2E.
@@ -730,11 +756,16 @@ export async function getListingMarketplaceFixture(
   }
 
   const sellerProfile = unwrapJoinRow(row.profiles);
-  const sellerName = sellerProfile?.display_name?.trim();
+  const sellerName = await resolveMarketplaceSellerDisplayName(
+    admin,
+    row.seller_id,
+    row.seller_persona,
+    sellerProfile?.display_name,
+  );
   if (!sellerName) {
     return {
       ok: false,
-      skipReason: `Listing ${normalizedListingId} is missing seller display_name`,
+      skipReason: `Listing ${normalizedListingId} is missing seller display_name or shop_name`,
     };
   }
 
@@ -862,6 +893,26 @@ export async function getProfileUsername(profileId: string): Promise<string | nu
   }
 
   return data?.username?.trim() ?? null;
+}
+
+export async function getProfilePublicSlug(profileId: string): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data: merchant, error: merchantError } = await admin
+    .from("merchant_shops")
+    .select("shop_handle")
+    .eq("merchant_id", profileId)
+    .maybeSingle();
+
+  if (merchantError) {
+    throw new Error(`[getProfilePublicSlug] ${merchantError.message}`);
+  }
+
+  const shopHandle = merchant?.shop_handle?.trim();
+  if (shopHandle) {
+    return shopHandle;
+  }
+
+  return getProfileUsername(profileId);
 }
 
 async function findActiveListingIdForSeller(

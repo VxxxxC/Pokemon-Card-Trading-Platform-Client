@@ -215,7 +215,7 @@ const map = JSON.parse(readFileSync(mapPath, "utf8")) as {
 };
 
 let applied = 0;
-let missing: string[] = [];
+const missing: string[] = [];
 
 for (const feature of map.features) {
   for (const surface of feature.surfaces ?? []) {

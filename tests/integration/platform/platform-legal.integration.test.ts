@@ -140,5 +140,31 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error).toBeNull();
       expect(data).toBeNull();
     });
+
+    it("returns default terms and privacy when platform_settings rows are absent", async () => {
+      await admin.from("platform_settings").delete().eq("key", PLATFORM_TERMS_CONFIG_KEY);
+      await admin.from("platform_settings").delete().eq("key", PLATFORM_PRIVACY_CONFIG_KEY);
+
+      await runAsBuyer(async () => {
+        const [termsResult, privacyResult] = await Promise.all([
+          getPlatformTermsForDisplay(),
+          getPlatformPrivacyForDisplay(),
+        ]);
+
+        expect(termsResult.success).toBe(true);
+        if (termsResult.success) {
+          expect(termsResult.data.body).toContain(
+            DEFAULT_PLATFORM_TERMS.body.slice(0, 40),
+          );
+        }
+
+        expect(privacyResult.success).toBe(true);
+        if (privacyResult.success) {
+          expect(privacyResult.data.body).toContain(
+            DEFAULT_PLATFORM_PRIVACY.body.slice(0, 40),
+          );
+        }
+      });
+    });
   },
 );

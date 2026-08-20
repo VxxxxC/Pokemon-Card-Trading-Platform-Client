@@ -48,7 +48,7 @@
     "test:moderation:gate": "bash scripts/moderation-release-gate.sh",
     "test:moderation:gate:full": "bash scripts/moderation-release-gate-full.sh",
     "test:integration:stripe:webhook-route": "vitest run --config vitest.config.mts tests/integration/stripe/webhook-route.integration.test.ts",
-    "test:gate:partial": "vitest run --config vitest.config.mts tests/integration/stripe/webhook-route.integration.test.ts tests/integration/rewards/coupon-webhook.integration.test.ts tests/integration/platform/merchant-connect-payout-pipeline.integration.test.ts tests/unit/merchant-order/execute-connect-payout.test.ts",
+    "test:gate:partial": "vitest run --config vitest.config.mts tests/integration/stripe/webhook-route.integration.test.ts tests/integration/rewards/coupon-webhook.integration.test.ts tests/integration/platform/merchant-connect-payout-pipeline.integration.test.ts tests/integration/moderation/auth-grading-pre-confirm-dispute.integration.test.ts tests/unit/merchant-order/execute-connect-payout.test.ts",
     "test:integration:cron-routes": "vitest run --config vitest.config.mts tests/integration/platform/cron-routes.integration.test.ts",
     "test:production:gate": "bash scripts/production-gate.sh",
     "test:production:gate:signoff": "PRODUCTION_GATE_SIGNOFF=1 bash scripts/production-gate.sh",

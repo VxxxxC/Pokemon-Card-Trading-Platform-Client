@@ -31,5 +31,22 @@ describe.skipIf(!hasBaseIntegrationEnv())(
       expect(noMarketError).toBeNull();
       expect(Number(noMarketMax)).toBe(P2P_MEETUP_MAX_NO_MARKET_PRICE_HKD);
     });
+
+    it("grace-days and caps are positive integers for rpc_make_offer guards", async () => {
+      const admin = createServiceRoleClient();
+
+      const { data: graceDays } = await admin.rpc("fn_p2p_aml_new_account_grace_days");
+      const { data: newAccountMax } = await admin.rpc(
+        "fn_p2p_aml_meetup_max_new_account_hkd",
+      );
+      const { data: noMarketMax } = await admin.rpc(
+        "fn_p2p_aml_meetup_max_no_market_hkd",
+      );
+
+      expect(Number(graceDays)).toBeGreaterThan(0);
+      expect(Number(newAccountMax)).toBeGreaterThan(0);
+      expect(Number(noMarketMax)).toBeGreaterThan(0);
+      expect(Number(newAccountMax)).toBeLessThanOrEqual(Number(noMarketMax));
+    });
   },
 );

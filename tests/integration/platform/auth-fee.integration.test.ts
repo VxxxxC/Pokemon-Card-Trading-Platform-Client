@@ -90,16 +90,8 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       await ensureMerchantListingAcceptsAuthentication(listingId);
     });
 
-    afterAll(async () => {
-      const admin = createServiceRoleClient();
-      for (const orderId of createdMerchantOrderIds) {
-        await admin.from("merchant_orders").delete().eq("id", orderId);
-      }
-      for (const orderId of createdMemberOrderIds) {
-        await admin.from("member_orders").delete().eq("id", orderId);
-      }
-      await setPlatformAuthFeeHkd(DEFAULT_AUTH_FEE_HKD);
-      await clearSessionCache();
+    it("Case B: default auth fee RPC matches SSOT constant", async () => {
+      expect(await readPlatformAuthFeeHkd()).toBe(DEFAULT_AUTH_FEE_HKD);
     });
 
     it("Case A/D: settings upsert updates SQL helpers", async () => {
@@ -234,6 +226,18 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
         .maybeSingle();
 
       expect(Number(order?.auth_fee)).toBe(200);
+    });
+
+    afterAll(async () => {
+      const admin = createServiceRoleClient();
+      for (const orderId of createdMerchantOrderIds) {
+        await admin.from("merchant_orders").delete().eq("id", orderId);
+      }
+      for (const orderId of createdMemberOrderIds) {
+        await admin.from("member_orders").delete().eq("id", orderId);
+      }
+      await setPlatformAuthFeeHkd(DEFAULT_AUTH_FEE_HKD);
+      await clearSessionCache();
     });
   },
 );

@@ -176,7 +176,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 |----|------|----------|------|------|-------|----------|-------|------|------|
 | **TC-P01** | Coupon release on `PI.cancel` HTTP | Partial | S1 | Fixture | Gate partial | `webhook-route` C1-6 · `coupon-webhook` | S1 | ☑ |
 | **TC-P02** | Grading fail webhook 全鏈 | Partial | S1 | Fixture | Gate partial | `webhook-route` C1-7 · unit saga | S1 | ☑ |
-| **TC-P03** | S2 pass 前 dispute | Partial | S1 | Fixture | — | indirect | S0 | ☐ | 專項 |
+| **TC-P03** | S2 pass 前 dispute | Partial | S1 | Fixture | Gate partial | `auth-grading-pre-confirm-dispute` | S1 | ☑ |
 | **TC-P04** | Connect payout 零 skip | Partial | S1 | Fixture | Gate | `merchant-connect-payout-pipeline` M1–M4 | S1 | ☑ |
 | **TC-P05** | Rewards matrix E2E | Partial | S1 | Fixture | Nightly + Rewards dispatch | `platform-rewards-matrix` | S1† | ☑ | — |
 | **TC-P06** | Staging webhook replay | Ops | — | — | — | — | — | — | PG-WH-03 |
@@ -192,10 +192,10 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 | ID | 模組 | 目標 | Path | In CI | Spec | Solid | 進度 |
 |----|------|------|------|-------|------|-------|------|
-| **TC-N01** | Platform legal | S1 | Fixture | Nightly | `platform-legal.integration` | S0 | ◐ |
-| **TC-N02** | Auth fee | S1 | Fixture | Nightly | `auth-fee.integration` | S0 | ◐ |
-| **TC-N03** | P2P AML | S1 | Fixture | Nightly | `p2p-aml-limits.integration` | S0 | ◐ |
-| **TC-N04** | Announcements | S2 | Partner | announcements gate | `test:announcements:gate` | S1 | ☐ |
+| **TC-N01** | Platform legal | S1 | Fixture | Nightly | `platform-legal.integration` | S1 | ☑ |
+| **TC-N02** | Auth fee | S1 | Fixture | Nightly | `auth-fee.integration` | S1 | ☑ |
+| **TC-N03** | P2P AML | S1 | Fixture | Nightly | `p2p-aml-limits.integration` | S1 | ☑ |
+| **TC-N04** | Announcements | S2 | Partner | announcements gate | `test:announcements:gate` | S1 | ☑ |
 | **TC-N05** | Rewards eligibility 矩陣 | S1 | Fixture | Nightly | `rewards-matrix.integration`（**B2C 為主**） | S1† | ☑ |
 
 ### 5.2 E2E
@@ -345,7 +345,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 |-------|------|-----|-----|------|
 | **L0** | SSOT v2.3 + registry + certify 腳本 | §0 · registry · scripts | SC-L00 | ◐ |
 | **L1** | Nightly P2 E2E 穩定 | TC-E01–E03 | SC-T03 | ☑ |
-| **L2** | Platform integration nightly | TC-N01–N03 | SC-T02 | ◐ |
+| **L2** | Platform integration nightly | TC-N01–N03 | SC-T02 | ☑ |
 | **L3** | Matrix soak → gate | TC-P05 · TC-N05 | SC-G05 · SC-T01 | ☑ 3/3 |
 | **L4** | Cron HTTP | TC-M01–M06 | SC-M01 | ☑ |
 | **L5** | Connect/KYC | TC-M10–M11 | SC-M02 | ☐ |
@@ -423,7 +423,7 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
-| 2026-08-20 | **v2.13：** TC-P05 matrix soak **3/3** ☑ · L3 / SC-G05 exit |
+| 2026-08-20 | **v2.14：** TC-P03 PG-S2-02 · TC-N01–N04 platform INT 收緊 · L6 E2E fixture/toast fixes |
 | 2026-08-20 | **v2.12：** TC-P05 matrix soak **2/3**（L3 E2E + integration 全綠） |
 | 2026-08-20 | **v2.11：** TC-E09–E12 Partner journey `p-e09`–`p-e12` · `test:e2e:partner-journey` |
 | 2026-08-20 | **v2.10：** TC-E08 Partner escrow `p-e08-c2c-auth-escrow` · `test:e2e:partner-escrow` |

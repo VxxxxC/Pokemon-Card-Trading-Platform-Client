@@ -109,7 +109,7 @@ test.describe("Member order detail — P2P", () => {
         buyerPage.getByRole("button", { name: "確認完成交易" }),
       ).toBeVisible({ timeout: 15_000 });
       await expect(
-        buyerPage.getByText("測試模式 — Stripe 尚未接入"),
+        buyerPage.getByText(/尚未完成託管付款/),
       ).toHaveCount(0);
 
       await buyerPage.getByRole("link", { name: "返回交易管理" }).click();
