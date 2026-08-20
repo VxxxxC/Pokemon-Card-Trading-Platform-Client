@@ -180,6 +180,56 @@ describe.skipIf(!hasStripeWebhookRouteEnv())(
       });
     });
 
+    it("C1-6: payment_intent.canceled releases merchant direct coupon (TC-P01)", async () => {
+      const orderId = "00000000-0000-4000-8000-00000000c107";
+      const paymentIntent = {
+        id: "pi_c1_merchant_cancel",
+        object: "payment_intent",
+        status: "canceled",
+        amount: 11_500,
+        metadata: {
+          order_kind: "merchant",
+          order_id: orderId,
+          buyer_total_amount: "115",
+        },
+      } as Stripe.PaymentIntent;
+
+      const response = await postSignedWebhook(
+        buildStripeEvent("payment_intent.canceled", paymentIntent),
+      );
+
+      expect(response.status).toBe(200);
+      expect(adminRpc).toHaveBeenCalledWith("fn_release_merchant_order_coupon", {
+        p_order_id: orderId,
+      });
+    });
+
+    it("C1-7: payment_intent.succeeded finalizes auth grading fail capture (TC-P02)", async () => {
+      const orderId = "00000000-0000-4000-8000-00000000c108";
+      const paymentIntent = {
+        id: "pi_c1_auth_grading_fail",
+        object: "payment_intent",
+        status: "succeeded",
+        amount: 5_000,
+        metadata: {
+          order_kind: "auth_grading_member",
+          order_id: orderId,
+          capture_stage: "auth_grading_fail",
+        },
+      } as Stripe.PaymentIntent;
+
+      const response = await postSignedWebhook(
+        buildStripeEvent("payment_intent.succeeded", paymentIntent),
+      );
+
+      expect(response.status).toBe(200);
+      expect(adminRpc).toHaveBeenCalledWith("rpc_finalize_auth_grading_fail", {
+        p_order_kind: "member",
+        p_order_id: orderId,
+        p_payment_intent_id: "pi_c1_auth_grading_fail",
+      });
+    });
+
     it("C1-5: payment_intent.payment_failed returns 200 without RPC", async () => {
       const paymentIntent = {
         id: "pi_c1_payment_failed",

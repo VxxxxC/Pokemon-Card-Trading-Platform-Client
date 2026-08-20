@@ -174,10 +174,10 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 | ID | Flow | Coverage | 目標 | Path | In CI | Artifact | Solid | 進度 | Next |
 |----|------|----------|------|------|-------|----------|-------|------|------|
-| **TC-P01** | Coupon release on `PI.cancel` HTTP | Partial | S1 | Fixture | Gate partial | `coupon-webhook.integration` | S0 | ☐ | 擴 C1 |
-| **TC-P02** | Grading fail webhook 全鏈 | Partial | S1 | Fixture | — | unit | S0 | ☐ | webhook E2E |
+| **TC-P01** | Coupon release on `PI.cancel` HTTP | Partial | S1 | Fixture | Gate partial | `webhook-route` C1-6 · `coupon-webhook` | S1 | ☑ |
+| **TC-P02** | Grading fail webhook 全鏈 | Partial | S1 | Fixture | Gate partial | `webhook-route` C1-7 · unit saga | S1 | ☑ |
 | **TC-P03** | S2 pass 前 dispute | Partial | S1 | Fixture | — | indirect | S0 | ☐ | 專項 |
-| **TC-P04** | Connect payout 零 skip | Partial | S1 | Fixture | Gate | pipeline | S0 | ☐ | 消滅 skip |
+| **TC-P04** | Connect payout 零 skip | Partial | S1 | Fixture | Gate | `merchant-connect-payout-pipeline` M1–M4 | S1 | ☑ |
 | **TC-P05** | Rewards matrix E2E | Partial | S1 | Fixture | Nightly + Rewards dispatch | `platform-rewards-matrix` | S1† | ◐ | soak 3/3 |
 | **TC-P06** | Staging webhook replay | Ops | — | — | — | — | — | — | PG-WH-03 |
 | **TC-P07** | Legacy C6 | N/A | — | — | — | — | — | — | — |
@@ -205,10 +205,10 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **TC-E01** | P2 | C2P 面交 | S2 | Partner | Nightly | `member-trading-p2p` | S2 | ☑ |
 | **TC-E02** | P2 | 議價 | S2 | Partner | Nightly | `member-offer-negotiation` | S2 | ☑ |
 | **TC-E03** | P2 | Chat realtime | S1 | Partner | Nightly | `global-chat-realtime` | S1 | ☑ |
-| **TC-E04** | P3 | 市集搜尋 | S1 | Partner | — | `marketplace-search-offer` 等 | S0 | ☐ |
-| **TC-E05** | P3 | Buy-now UI | S1 | Partner | — | `merchant-product-detail` | S0 | ☐ |
-| **TC-E06** | P3 | Dashboard | S1 | Partner | — | `member-dashboard` | S0 | ☐ |
-| **TC-E07** | P3 | Collection | S1 | Partner | — | `member-collection-*` | S0 | ☐ |
+| **TC-E04** | P3 | 市集搜尋 | S1 | Partner | Partner UI | `p-e04-marketplace-search` | S1 | ☑ |
+| **TC-E05** | P3 | Buy-now UI | S1 | Partner | Partner UI | `p-e05-merchant-buy-now` | S1 | ☑ |
+| **TC-E06** | P3 | Dashboard | S1 | Partner | Partner UI | `p-e06-member-dashboard` | S1 | ☑ |
+| **TC-E07** | P3 | Collection | S1 | Partner | Partner UI | `p-e07-member-collection` | S1 | ☑ |
 | **TC-E08** | P2 | C2C 鑑定 escrow | S2 | Partner | Manual‡ | `member-auth-escrow` 等 | S1 | ◐ |
 | **TC-E09** | P3 | Admin 周邊 | S1 | Partner | — | `admin-*` | S0 | ☐ |
 | **TC-E10** | P2 | 積分／訂單詳情券 | S2 | Partner | Rewards partial | `member-rewards-redeem` 等 | S0 | ☐ |
@@ -423,6 +423,8 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | **v2.9：** Gate 收緊 TC-P01/P02/P04 · `test:gate:partial` · webhook C1-6/7 |
+| 2026-08-20 | **v2.8：** TC-E04–E07 Partner UI specs · `test:e2e:partner-ui` |
 | 2026-08-20 | **v2.7：** 附錄 A.2 TC-M20–M25 · A.4 TC-M40–M42 integration ☑ · `test:integration:appendix-a` |
 | 2026-08-18 | **v2.5：** [partner-regression.md](./partner-regression.md) L4 · SC-P* · S2 綁定 P-* |
 | 2026-08-16 | **v2.4：** [system-feature-registry.md](./system-feature-registry.md) 全功能終極表 Member/Merchant/Admin/System |

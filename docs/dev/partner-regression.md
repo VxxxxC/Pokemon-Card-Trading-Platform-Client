@@ -85,6 +85,15 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-C03** | 對話記錄唔完整／延遲出現 | F-M-13 | `e2e/partner/system/p-c03-chat-history-sync.spec.ts` | ☑ |
 | **P-C04** | （預留） | — | — | ☐ |
 
+### 3.1 Partner UI journeys（TC-E04–E07）
+
+| ID | Journey | 功能 | Spec | 命令 | 進度 |
+|----|---------|------|------|------|------|
+| **P-E04** | 市集搜尋 → 商品頁 | F-M-05 · 06 · 07 | `e2e/partner/member/p-e04-marketplace-search.spec.ts` | `test:e2e:partner-ui` | ☑ |
+| **P-E05** | Merchant buy-now dialog | F-M-07 · F-C-03 | `e2e/partner/member/p-e05-merchant-buy-now.spec.ts` | `test:e2e:partner-ui` | ☑ |
+| **P-E06** | Dashboard + rewards hub | F-M-09 · 20 | `e2e/partner/member/p-e06-member-dashboard.spec.ts` | `test:e2e:partner-ui` | ☑ |
+| **P-E07** | Collection + wishlist filters | F-M-10 · 11 | `e2e/partner/member/p-e07-member-collection.spec.ts` | `test:e2e:partner-ui` | ☑ |
+
 ---
 
 ## 5. Feature → Partner TC 覆蓋（Phase 3 目標）

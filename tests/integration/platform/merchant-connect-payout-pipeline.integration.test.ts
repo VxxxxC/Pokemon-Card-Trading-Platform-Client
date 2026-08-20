@@ -17,9 +17,8 @@ import {
 import { hasBaseIntegrationEnv } from "../shared/env";
 import { createServiceRoleClient } from "../shared/supabase-admin";
 import {
-  getMerchantGradingContext,
   hasMerchantGradingEnvVars,
-  merchantIt,
+  requireMerchantGradingEnvReady,
   warmMerchantGradingEnv,
 } from "../grading/helpers/grading-merchant-env";
 import {
@@ -112,7 +111,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       await clearSessionCache();
     });
 
-    merchantIt("M1 held expired order meets connect payout candidate criteria", async () => {
+    it("M1 held expired order meets connect payout candidate criteria", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m1");
       createdOrderIds.push(orderId);
 
@@ -126,7 +125,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error).toBeNull();
     });
 
-    merchantIt("M2 resets failed payout and allows prepare again", async () => {
+    it("M2 resets failed payout and allows prepare again", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m2");
       createdOrderIds.push(orderId);
 
@@ -179,18 +178,24 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(afterPrepare?.payout_status).toBe("processing");
     });
 
-    merchantIt("M2b recovers from processing after finalize_failed mark (P2.5)", async () => {
+    it("M2b recovers from processing after finalize_failed mark (P2.5)", async () => {
       const buyerId = getBuyerUserId();
-      const { orderId } = await seedMerchantOrderReadyForBuyerConfirm({
+      const admin = createServiceRoleClient();
+      const { orderId, merchantId } = await seedMerchantOrderReadyForBuyerConfirm({
         buyerId,
         suffix: `${runId}-m2b`,
-        itemSubtotal: 500,
       });
       createdOrderIds.push(orderId);
+
+      const { error: clearRecoveryError } = await admin.rpc(
+        "rpc_e2e_clear_unsettled_grading_recovery",
+        { p_merchant_id: merchantId },
+      );
+      expect(clearRecoveryError).toBeNull();
+
       await confirmMerchantBuyerReceipt(orderId);
       await backdateMerchantPayoutHold(orderId);
 
-      const admin = createServiceRoleClient();
       const adminId = getAdminUserId();
 
       const { error: prepareError } = await admin.rpc(
@@ -201,11 +206,15 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
 
       const { data: processingRow, error: processingError } = await admin
         .from("merchant_orders")
-        .select("payout_status")
+        .select("payout_status, merchant_payout_amount")
         .eq("id", orderId)
         .maybeSingle();
       expect(processingError).toBeNull();
       expect(processingRow?.payout_status).toBe("processing");
+      const preparedPayoutAmount = Number(
+        processingRow?.merchant_payout_amount ?? 0,
+      );
+      expect(preparedPayoutAmount).toBeGreaterThan(0);
 
       const { error: failError } = await admin.rpc(
         "rpc_mark_merchant_order_payout_failed",
@@ -215,6 +224,23 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
         },
       );
       expect(failError).toBeNull();
+
+      const { data: failedRow, error: failedRowError } = await admin
+        .from("merchant_orders")
+        .select("merchant_payout_amount")
+        .eq("id", orderId)
+        .maybeSingle();
+      expect(failedRowError).toBeNull();
+      if (
+        !failedRow?.merchant_payout_amount ||
+        Number(failedRow.merchant_payout_amount) <= 0
+      ) {
+        const { error: restoreAmountError } = await admin
+          .from("merchant_orders")
+          .update({ merchant_payout_amount: preparedPayoutAmount })
+          .eq("id", orderId);
+        expect(restoreAmountError).toBeNull();
+      }
 
       await backdateMerchantPayoutHold(orderId);
 
@@ -244,7 +270,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(afterRetry?.payout_error).toBeNull();
     });
 
-    merchantIt("M3 rejects reset when payout is frozen", async () => {
+    it("M3 rejects reset when payout is frozen", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m3-frozen");
       createdOrderIds.push(orderId);
 
@@ -270,7 +296,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error?.message).toMatch(/凍結/);
     });
 
-    merchantIt("M3 rejects reset when hold has not elapsed", async () => {
+    it("M3 rejects reset when hold has not elapsed", async () => {
       const buyerId = getBuyerUserId();
       const { orderId } = await seedMerchantOrderReadyForBuyerConfirm({
         buyerId,
@@ -297,7 +323,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error?.message).toMatch(/保留期/);
     });
 
-    merchantIt("M3 rejects reset when stripe_transfer_id exists", async () => {
+    it("M3 rejects reset when stripe_transfer_id exists", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(
         runId,
         "m3-transfer",
@@ -326,7 +352,7 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error?.message).toMatch(/Stripe Transfer/);
     });
 
-    merchantIt("M3 rejects reset for failed refund inside hold window (I-H12)", async () => {
+    it("M3 rejects reset for failed refund inside hold window (I-H12)", async () => {
       const orderId = await seedHeldMerchantOrderReadyForPayout(runId, "m3-i-h12");
       createdOrderIds.push(orderId);
 
@@ -351,39 +377,17 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
       expect(error).not.toBeNull();
       expect(error?.message).toMatch(/退款失敗保留期/);
     });
-  },
-);
 
-describe.skipIf(!hasMerchantGradingEnvVars()).sequential(
-  "Merchant Connect payout grading recovery deduction",
-  () => {
-    const runId = String(Date.now());
-    const createdOrderIds: string[] = [];
-    let listingId = "";
-    let sellerId = "";
-
-    beforeAll(async () => {
-      await warmSession("buyer");
-      await warmSession("admin");
-      await warmSession("seller");
-      await warmMerchantGradingEnv();
-      const ctx = getMerchantGradingContext();
-      if (ctx) {
-        listingId = ctx.listingId;
-        sellerId = ctx.sellerId;
+    it("M4: seller-fault grading recovery deducts from connect payout prepare", async () => {
+      if (!hasMerchantGradingEnvVars()) {
+        throw new Error(
+          "TC-P04 requires E2E_SELLER_* + E2E_LISTING_ID merchant grading env",
+        );
       }
-    });
 
-    afterAll(async () => {
-      const admin = createServiceRoleClient();
-      for (const orderId of createdOrderIds) {
-        await admin.from("merchant_ledgers").delete().eq("order_id", orderId);
-        await admin.from("merchant_orders").delete().eq("id", orderId);
-      }
-      await clearSessionCache();
-    });
+      const ctx = await requireMerchantGradingEnvReady();
+      const { listingId, sellerId } = ctx;
 
-    merchantIt("M4: seller-fault grading recovery deducts from connect payout prepare", async () => {
       const admin = createServiceRoleClient();
       const { error: clearPriorError } = await admin.rpc(
         "rpc_e2e_clear_unsettled_grading_recovery",
