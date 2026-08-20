@@ -226,12 +226,12 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 | ID | Route | Status | 目標 | 進度 |
 |----|-------|--------|------|------|
-| **TC-M01** | `/api/cron/expire-merchant-pending-payment` | Missing (HTTP) | S1 | ☐ |
-| **TC-M02** | `/api/cron/release-stale-coupon-reserves` | Missing | S1 | ☐ |
-| **TC-M03** | `/api/cron/member-fps-payout-ready` | Missing (HTTP) | S1 | ☐ |
-| **TC-M04** | `/api/cron/merchant-connect-payout-ready` | Missing (HTTP) | S1 | ☐ |
-| **TC-M05** | `/api/cron/ingest-platform-trades` | Missing | S0 | ☐ |
-| **TC-M06** | `/api/cron/aggregate-prices` | Missing | S0 | ☐ |
+| **TC-M01** | `/api/cron/expire-merchant-pending-payment` | `cron-routes.integration` | S1 | ☑ |
+| **TC-M02** | `/api/cron/release-stale-coupon-reserves` | `cron-routes.integration` | S1 | ☑ |
+| **TC-M03** | `/api/cron/member-fps-payout-ready` | `cron-routes.integration` | S1 | ☑ |
+| **TC-M04** | `/api/cron/merchant-connect-payout-ready` | `cron-routes.integration` | S1 | ☑ |
+| **TC-M05** | `/api/cron/ingest-platform-trades` | `cron-routes.integration` | S0 | ☑ |
+| **TC-M06** | `/api/cron/aggregate-prices` | `cron-routes.integration` | S0 | ☑ |
 
 ### 6.2–6.5 詳表
 
@@ -347,7 +347,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **L1** | Nightly P2 E2E 穩定 | TC-E01–E03 | SC-T03 | ☑ |
 | **L2** | Platform integration nightly | TC-N01–N03 | SC-T02 | ◐ |
 | **L3** | Matrix soak → gate | TC-P05 · TC-N05 | SC-G05 · SC-T01 | ◐ 1/3 |
-| **L4** | Cron HTTP | TC-M01–M04 | SC-M01 | ☐ |
+| **L4** | Cron HTTP | TC-M01–M06 | SC-M01 | ☑ |
 | **L5** | Connect/KYC | TC-M10–M11 | SC-M02 | ☐ |
 | **L6** | Member-trading 入 CI | TC-E08 · E11 · J-AUTH-01 | SC-J05 · SC-T03 | ◐ |
 | **L7** | Admin default contract (CC-INT) | J-CPN-07 | SC-J03 | ☑ |

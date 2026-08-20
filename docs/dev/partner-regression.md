@@ -189,6 +189,7 @@ bun run test:staging:certify
 | 日期 | 變更 |
 |------|------|
 | 2026-08-20 | v1.0 | Phase 3：P-F01–F05 Partner smoke 綠 · F-* **67/67** · **SC-P-FX ☑**（SC-P-ALL 仍等 M0） |
+| 2026-08-20 | v1.2 | L2+ `requiredElements` 全 67 surfaces · `test:e2e:partner-m0` 工程預檢 |
 | 2026-08-20 | v1.1 | 交叉引用 [ui-feature-map.md](./ui-feature-map.md) Solid UI L2+；CI `test:ui:check-map` · nightly `test:e2e:ui-l2` |
 | 2026-08-20 | P-B01–B09 · P-C01–C03 Partner 全綠 · SC-P1／SC-P2 ☑；P-B04 修 merchant RAW filter（SaleOrder 空 company 誤判） |
 | 2026-08-19 | 寫入 P-C01–P-C03 Partner P2 spec（未跑；等 p86 完） |

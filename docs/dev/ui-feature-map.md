@@ -41,6 +41,7 @@
 |----|------|------|
 | **SC-UI-MAP** | 67/67 F-* 在 JSON · `test:ui:check-map` 綠 | ☑ |
 | **SC-UI-L2** | `p-ui-routes` 全綠（guest + buyer + seller） | ☑ |
+| **SC-UI-L2+** | 54/54 L2 surfaces 有 `requiredElements` | ☑ |
 
 ---
 
@@ -48,6 +49,7 @@
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | v1.7：L2+ `requiredElements` 全 54 L2 surfaces 覆蓋（member / merchant / auth / legal） |
 | 2026-08-20 | v1.6：home · member-dashboard · admin workbenches L2+ `requiredElements` |
 | 2026-08-20 | v1.5：L2 env bootstrap (`seed:e2e-marketplace-listing` + nightly) · marketplace/product-detail/admin grading L2+ |
 | 2026-08-20 | v1.4：CI `test:ui:check-map` · nightly `test:e2e:ui-l2` · F-M-18/F-A-06/checkout L2+ |
