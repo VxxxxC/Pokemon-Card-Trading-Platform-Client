@@ -18,6 +18,11 @@ import {
   waitForCheckoutCouponOptionEnabled,
   waitForCheckoutCouponPicker,
 } from "./helpers/rewards-checkout-coupon";
+import {
+  guardTcE13EnvInGateMode,
+  hasTcE13Env,
+  isFailIfEnvMissingMode,
+} from "./helpers/env-guard";
 
 function readEnv(key: string): string | undefined {
   return process.env[key]?.trim() || undefined;
@@ -52,11 +57,17 @@ test.describe("Member auth coupon — admin order_kinds parity", () => {
   let couponRewardId: string | null = null;
   let memberOrderId: string | null = null;
 
+  test.beforeAll(() => {
+    guardTcE13EnvInGateMode();
+  });
+
   test("C2C-ADM-1 admin publishes free_shipping with member scope", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Runs on buyer project");
-    test.skip(!hasAdminAuthFixtures(), "Missing admin E2E credentials");
+    if (!isFailIfEnvMissingMode()) {
+      test.skip(!hasAdminAuthFixtures(), "Missing admin E2E credentials");
+    }
 
     await loginAsAdmin(page);
     await publishRewardActivityViaAdmin(page, {
@@ -82,7 +93,9 @@ test.describe("Member auth coupon — admin order_kinds parity", () => {
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Runs on buyer project");
-    test.skip(!hasAdminAuthFixtures(), "Missing admin E2E credentials");
+    if (!isFailIfEnvMissingMode()) {
+      test.skip(!hasAdminAuthFixtures(), "Missing admin E2E credentials");
+    }
 
     const defaultTitle = `E2E C2C Default Form ${Date.now()}`;
     await loginAsAdmin(page);
@@ -110,7 +123,11 @@ test.describe("Member auth coupon — admin order_kinds parity", () => {
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Runs on buyer project");
     test.skip(!templateId, "Template not published in C2C-ADM-1");
-    test.skip(!hasMemberTradingFixtures(), "Missing member trading E2E env");
+    if (!isFailIfEnvMissingMode()) {
+      test.skip(!hasMemberTradingFixtures(), "Missing member trading E2E env");
+    } else if (!hasTcE13Env()) {
+      throw new Error("[SEC-06] TC-E13 member trading env incomplete");
+    }
 
     const fixtureResult = await resolveE2eMarketplaceFixture({
       requiredSellerPersona: "member",

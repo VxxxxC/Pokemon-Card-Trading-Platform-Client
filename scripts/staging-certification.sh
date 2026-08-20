@@ -58,6 +58,7 @@ run_step "rewards E2E production gate" env REWARDS_GATE=1 bun run test:e2e:rewar
 run_step "coupon security" bunx vitest run --config vitest.config.mts tests/integration/rewards/coupon-security.integration.test.ts
 run_step "coupon pbt" bun run test:integration:rewards:pbt
 run_step "moderation pbt" bun run test:integration:moderation:pbt
+run_step "rewards mutation contract" bunx vitest run --config vitest.config.mts tests/unit/rewards/rewards-mutation-contract.test.ts
 run_step "rewards mutation" bun run test:rewards:mutation
 run_step "moderation mutation" bun run test:moderation:mutation
 

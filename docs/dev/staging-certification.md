@@ -57,10 +57,10 @@
 |----|------|----------|------|
 | **SC-S01** | 券安全 R-01..R-03 | `coupon-security.integration` | ☑ |
 | **SC-S02** | 券 FSM PBT | `coupon-pbt.integration` | ☑ |
-| **SC-S03** | Rewards mutation | `test:rewards:mutation` | ☐ |
+| **SC-S03** | Rewards mutation | `test:rewards:mutation` + `rewards-mutation-contract.test.ts` | ◐ |
 | **SC-S04** | Moderation mutation | `test:moderation:mutation` | ☑ |
 | **SC-S05** | Moderation PBT | `test:integration:moderation:pbt` | ☑ |
-| **SC-S06** | E2E 關鍵路徑不可 silent skip | TC-E13 hard-fail policy | ☐ |
+| **SC-S06** | E2E 關鍵路徑不可 silent skip | TC-E13 hard-fail policy · P-SEC06 | ◐ |
 
 ### 2.4 Partner UI 回歸（L4 — v2.5）
 

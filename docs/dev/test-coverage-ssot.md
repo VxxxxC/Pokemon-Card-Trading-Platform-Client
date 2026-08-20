@@ -267,10 +267,10 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | 維度 | Integration（`phase-h-refund`） | E2E Partner | Negative / edge | 進度 |
 |------|--------------------------------|-------------|-----------------|------|
 | `merchant_direct` eligible + prepare | ☑ I-H1 | ☑ I-H14 `moderation-stripe-refund-smoke` | I-H7 無關訂單 | ☑ |
-| `merchant_auth` eligible + prepare | ☑ I-H2 | ☐ | — | ◐ |
-| `merchant_auth` admin finalize + ledger | ☑ I-H2M | ☐ | — | ◐ |
-| `member_auth` eligible + prepare | ☑ I-H3 | ☐ | — | ◐ |
-| `member_auth` admin finalize | ☑ I-H10 | ☐ | — | ◐ |
+| `merchant_auth` eligible + prepare | ☑ I-H2 | ☑ P-E17 | — | ☑ |
+| `merchant_auth` admin finalize + ledger | ☑ I-H2M | ☑ P-E18 | — | ☑ |
+| `member_auth` eligible + prepare | ☑ I-H3 | ☑ P-E17 | — | ☑ |
+| `member_auth` admin finalize | ☑ I-H10 | ☑ P-E18 | — | ☑ |
 | 退款時窗外 | ☑ I-H4 | — | prepare 拒絕 | ☑ |
 | resolve 唔選退款 | ☑ I-H5 | — | `refund_status` 不變 | ☑ |
 | `upheld_warn_only` + refund | ☑ I-H6b | — | 無 sanction | ☑ |
@@ -286,9 +286,9 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | `carrier` | `platform` | ☑ I-H15b | ☑ I-H15bM | ☑ |
 | `inconclusive` | — | ☑ I-H16（`stripe_fee/2`） | ☑ I-H16M | ☑ |
 | `seller`（default prepare） | — | ☑ I-H3 / I-H10 | ☑ I-H2 / I-H2M | ☑ |
-| `buyer` fault | — | ☐ 專項 | ☐ 專項 | ☐ |
+| `buyer` fault | — | ☑ I-H3b | ☑ I-H2b | ☑ |
 
-**Gap / next：** E2E 目前只得 **merchant_direct** 全鏈（I-H14）；`merchant_auth` / `member_auth` refund 仍靠 integration。**P2P 面交**永不平台退款 = 永久政策（F-S-13 · `p2p-dispute-no-refund`）。
+**Gap / next：** E2E 有 **merchant_direct** 全鏈（I-H14）同 **auth** admin prepare（P-E17）；finalize + Stripe terminal 仍靠 integration。**P2P 面交**永不平台退款 = 永久政策（F-S-13 · `p2p-dispute-no-refund`）。
 
 ---
 
@@ -301,9 +301,9 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 | 維度 | member_auth | merchant_auth | E2E Partner | 進度 |
 |------|-------------|---------------|-------------|------|
-| custody → pass → outbound → confirm | ☑ G-W2 | ☑ G-W2M | ◐ `admin-grading` guest | ◐ |
-| admin outbound / tracking（G-W1） | ☑ | ☑ | ☐ | ◐ |
-| buyer confirm guard（未 fully captured） | ☑ G-CONF1 | ☑ G-CONF1M | ☐ | ◐ |
+| custody → pass → outbound → confirm | ☑ G-W2 | ☑ G-W2M | ☑ P-E14 outbound · P-E13 tabs · guest `admin-grading` | ◐ |
+| admin outbound / tracking（G-W1） | ☑ | ☑ | ☑ P-E14 | ☑ |
+| buyer confirm guard（未 fully captured） | ☑ G-CONF1 | ☑ G-CONF1M | ☑ P-E15 · P-E16 | ☑ |
 | pass + real Stripe capture | ☑ G-BP-S1 | ☑ G-BP-S1M | ☐ | ☑ |
 
 #### 7.3.2 Fail fault 矩陣（`escrow_capture_model = single`）
@@ -331,7 +331,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 **Gap / next（CC-GRD-01 · §2 re-audit）：**
 
-- **Partner-path 薄：** Admin grading UI 主要靠 integration；E2E 只得 guest `admin-grading` + opt-in `verify:merchant-grading-e2e`（非 nightly）。
+- **Partner-path 薄：** Admin grading 有 P-E13 tab smoke + P-E14 outbound + guest `admin-grading`；G-CONF1 UI guard = P-E15/P-E16；opt-in `verify:merchant-grading-e2e` 仍非 nightly。
 - **member ↔ merchant 對稱：** G-BF2M ☑ · G-BP-S1M ☑（`test:integration:grading:pass-stripe-smoke`）。
 - **唔屬 CC 域：** grading fault 由 Admin dispute UI 選項驅動（`mapResolutionOptionToInput`），唔係 `reward_templates` 類 config parity；防線係 **FSM integration 矩陣**，唔係 CC-INT。
 
@@ -464,10 +464,10 @@ Touch **任何** Admin 配置或 runtime eligibility：
 |----|------|----------|-------|-------|------|-----|
 | **SEC-01** | 券濫用 R-01..R-03 | `coupon-security.integration` | Gate | S1 | ☑ | SC-S01 |
 | **SEC-02** | 券 FSM 邊界 PBT | `coupon-pbt.integration` | Gate partial | S1 | ☑ | SC-S02 |
-| **SEC-03** | Rewards mutation 存活 | `test:rewards:mutation` | Certify | S1 | ☐ | SC-S03 |
+| **SEC-03** | Rewards mutation 存活 | `test:rewards:mutation` + contract test | Certify | S1 | ☑ P-SEC03 | SC-S03 |
 | **SEC-04** | Moderation mutation | `test:moderation:mutation` | Signoff | S1 | ☑ | SC-S04 |
 | **SEC-05** | Moderation PBT | `test:integration:moderation:pbt` | Gate | S1 | ☑ | SC-S05 |
-| **SEC-06** | E2E 關鍵 skip = 假綠 | TC-E13 fail-if-env-missing | Rewards | S2 | ☐ | SC-S06 |
+| **SEC-06** | E2E 關鍵 skip = 假綠 | TC-E13 fail-if-env-missing | Rewards | S2 | ☑ P-SEC06 | SC-S06 |
 | **SEC-07** | Admin↔Runtime parity | CC 三件套 + registry | Gate/Rewards | S1 | ◐ | SC-CC01 |
 
 ---

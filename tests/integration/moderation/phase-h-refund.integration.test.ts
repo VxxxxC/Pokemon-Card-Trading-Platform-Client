@@ -288,6 +288,124 @@ describe.skipIf(!hasFullModerationIntegrationEnv()).sequential(
       expect(await getMemberOrderRefundStatus(seed.orderId)).toBe("processing");
     });
 
+    it("I-H3b member_auth buyer fault prepares refund preview and resolve", async () => {
+      const seed = await seedMemberAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H3b",
+      });
+      await wipeModerationMatrixPair({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+      });
+      await assertModerationOrderRefundEligible(seed.orderId, "member_auth");
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data: preview, error: previewError } = await client.rpc(
+          "fn_preview_moderation_order_refund_breakdown",
+          {
+            p_order_id: seed.orderId,
+            p_fault_party: "buyer",
+          },
+        );
+        expect(previewError).toBeNull();
+        expect(Number(preview?.eligiblePolicyHkd ?? 0)).toBeGreaterThan(0);
+        expect(Number(preview?.refundToBuyerHkd ?? 0)).toBeLessThanOrEqual(
+          Number(preview?.eligiblePolicyHkd ?? 0),
+        );
+      });
+
+      const { caseId } = await seedModerationCaseWithMemberOrderContext({
+        reporterId: buyerId(),
+        subjectId: seed.sellerId,
+        orderId: seed.orderId,
+        runId,
+        suffix: "I-H3b",
+      });
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data, error } = await client.rpc("rpc_resolve_moderation_case", {
+          p_case_id: caseId,
+          p_payload: {
+            resolution: "upheld",
+            violationPersona: "member",
+            orderRefund: {
+              enabled: true,
+              orderId: seed.orderId,
+              faultParty: "buyer",
+            },
+          },
+        });
+
+        expect(error).toBeNull();
+        expect(data).toMatchObject({
+          success: true,
+          orderRefundPrepared: true,
+        });
+      });
+
+      expect(await getMemberOrderRefundStatus(seed.orderId)).toBe("processing");
+    });
+
+    it("I-H2b merchant_auth buyer fault prepares refund preview and resolve", async () => {
+      const seed = await seedMerchantAuthRefundEligibleOrder({
+        buyerId: buyerId(),
+        runId,
+        suffix: "I-H2b",
+      });
+      await assertModerationOrderRefundEligible(seed.orderId, "merchant_auth");
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data: preview, error: previewError } = await client.rpc(
+          "fn_preview_moderation_order_refund_breakdown",
+          {
+            p_order_id: seed.orderId,
+            p_fault_party: "buyer",
+          },
+        );
+        expect(previewError).toBeNull();
+        expect(Number(preview?.eligiblePolicyHkd ?? 0)).toBeGreaterThan(0);
+        expect(Number(preview?.refundToBuyerHkd ?? 0)).toBeLessThanOrEqual(
+          Number(preview?.eligiblePolicyHkd ?? 0),
+        );
+      });
+
+      const { caseId } = await seedModerationCaseWithMerchantOrderContext({
+        reporterId: buyerId(),
+        subjectId: seed.merchantId,
+        orderId: seed.orderId,
+        runId,
+        suffix: "I-H2b",
+      });
+
+      await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data, error } = await client.rpc("rpc_resolve_moderation_case", {
+          p_case_id: caseId,
+          p_payload: {
+            resolution: "upheld",
+            violationPersona: "merchant",
+            orderRefund: {
+              enabled: true,
+              orderId: seed.orderId,
+              faultParty: "buyer",
+            },
+          },
+        });
+
+        expect(error).toBeNull();
+        expect(data).toMatchObject({
+          success: true,
+          orderRefundPrepared: true,
+        });
+      });
+
+      expect(await getMerchantOrderRefundStatus(seed.orderId)).toBe("processing");
+    });
+
     it("I-H4 past window blocks prepare", async () => {
       const seed = await seedMerchantDirectRefundEligibleOrder({
         buyerId: buyerId(),

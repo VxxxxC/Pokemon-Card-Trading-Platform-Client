@@ -103,6 +103,14 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-E10** | Rewards hub + order payment row | F-M-20 · 21 | `e2e/partner/member/p-e10-rewards-coupon.spec.ts` | `test:e2e:partner-journey` | ☑ |
 | **P-E11** | Trading smoke + filter shell | F-M-18 · 26 | `e2e/partner/member/p-e11-trading-smoke-filters.spec.ts` | `test:e2e:partner-journey` | ☑ |
 | **P-E12** | Public profile + P2P order detail | F-M-08 · 14 · 19 | `e2e/partner/member/p-e12-order-detail-profile.spec.ts` | `test:e2e:partner-journey` | ☑ |
+| **P-E13** | Admin grading queue tabs | F-A-06 | `e2e/partner/admin/p-e13-admin-grading-queue.spec.ts` | `test:e2e:partner-journey` | ☑ |
+| **P-E14** | Admin grading outbound (G-W1) | F-A-06 | `e2e/partner/admin/p-e14-admin-grading-outbound.spec.ts` | `test:e2e:partner-advanced` | ☑ |
+| **P-E15** | Member auth confirm guard (G-CONF1) | F-M-17 · F-S-08 | `e2e/partner/member/p-e15-member-auth-confirm-guard.spec.ts` | `test:e2e:partner-advanced` | ☑ |
+| **P-E16** | Merchant auth confirm guard (G-CONF1M) | F-M-17 · F-C-10 | `e2e/partner/member/p-e16-merchant-auth-confirm-guard.spec.ts` | `test:e2e:partner-advanced` | ☑ |
+| **P-E17** | Moderation auth refund admin UI | F-A-02 · F-S-08 | `e2e/partner/admin/p-e17-moderation-auth-refund.spec.ts` | `test:e2e:partner-advanced` | ☑ |
+| **P-E18** | Moderation auth refund finalize (I-H2M/I-H10) | F-A-02 · F-S-08 | `e2e/partner/admin/p-e18-moderation-auth-refund-finalize.spec.ts` | `test:e2e:partner-advanced` | ☑ |
+| **P-SEC03** | Rewards mutation contract (SEC-03) | F-S-12 | `p-sec03` + `rewards-mutation-contract.test.ts` | `test:certify:contract` | ☑ |
+| **P-SEC06** | TC-E13 env fail-closed (SEC-06) | F-S-12 | `e2e/partner/system/p-sec06-tc-e13-env-guard.spec.ts` | `test:e2e:partner-advanced` | ☑ |
 
 ---
 

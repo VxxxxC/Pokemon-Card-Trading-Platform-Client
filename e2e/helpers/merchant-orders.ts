@@ -271,6 +271,42 @@ export async function seedMerchantAuthAwaitingBuyerConfirm(): Promise<{
   return { orderId, merchantId: sellerId };
 }
 
+/** G-CONF1M negative: passed + outbound but payment still authorized (no buyer confirm CTA). */
+export async function seedMerchantAuthConfirmGuardNegative(): Promise<{
+  orderId: string;
+  merchantId: string;
+}> {
+  const buyerEmail = process.env.E2E_BUYER_EMAIL?.trim();
+  if (!buyerEmail) {
+    throw new Error("Missing E2E_BUYER_EMAIL");
+  }
+
+  const buyerId = await getProfileIdByEmail(buyerEmail);
+  if (!buyerId) {
+    throw new Error(`Buyer profile not found for ${buyerEmail}`);
+  }
+
+  const { listingId, sellerId } = await resolveReconcileMerchantListing();
+  const suffix = `conf1m-${Date.now()}`;
+  const admin = createE2eAdminClient();
+  const { data: orderId, error } = await admin.rpc(
+    "rpc_e2e_seed_merchant_auth_confirm_guard_order",
+    {
+      p_listing_id: listingId,
+      p_buyer_id: buyerId,
+      p_payment_intent_suffix: suffix,
+    },
+  );
+
+  if (error || !orderId) {
+    throw new Error(
+      `[seedMerchantAuthConfirmGuardNegative] ${error?.message ?? "missing order id"}`,
+    );
+  }
+
+  return { orderId, merchantId: sellerId };
+}
+
 export async function seedMemberAuthHeldForSellerInvoice(params: {
   listingId: string;
   buyerId: string;
