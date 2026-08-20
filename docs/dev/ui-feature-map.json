@@ -97,7 +97,29 @@
           "id": "marketplace-search",
           "path": "/marketplace",
           "role": "buyer",
-          "assertions": [{ "type": "heading", "name": "大盤市場" }]
+          "assertions": [{ "type": "heading", "name": "大盤市場" }],
+          "requiredElements": [
+            {
+              "id": "market-heading",
+              "role": "heading",
+              "name": "大盤市場"
+            },
+            {
+              "id": "market-search",
+              "role": "searchbox",
+              "pattern": "搜尋官方卡牌"
+            },
+            {
+              "id": "market-sort-label",
+              "role": "text",
+              "name": "排序"
+            },
+            {
+              "id": "quick-category-all",
+              "role": "link",
+              "name": "All"
+            }
+          ]
         }
       ]
     },
@@ -114,7 +136,31 @@
           "id": "product-detail",
           "path": "/marketplace/product/{productId}",
           "role": "buyer",
-          "assertions": [{ "type": "locator", "name": "#live-order-book-panel" }]
+          "assertions": [{ "type": "locator", "name": "#live-order-book-panel" }],
+          "requiredElements": [
+            {
+              "id": "order-book-panel",
+              "role": "button",
+              "locator": "#live-order-book-panel"
+            },
+            {
+              "id": "order-book-sort",
+              "role": "text",
+              "name": "排序"
+            },
+            {
+              "id": "best-ask-price",
+              "role": "text",
+              "pattern": "最優現貨掛牌價",
+              "optional": true
+            },
+            {
+              "id": "graded-only-switch",
+              "role": "switch",
+              "name": "只顯示已鑑定",
+              "optional": true
+            }
+          ]
         }
       ]
     },
@@ -1040,6 +1086,49 @@
                 },
                 {
                   "id": "grading-tab-col-refund",
+                  "role": "columnheader",
+                  "name": "退款"
+                }
+              ]
+            },
+            {
+              "id": "intake-tab-active",
+              "setup": [
+                { "action": "click", "role": "button", "name": "待入庫" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "intake-col-inbound",
+                  "role": "columnheader",
+                  "name": "入庫物流"
+                }
+              ]
+            },
+            {
+              "id": "outbound-tab-active",
+              "setup": [
+                { "action": "click", "role": "button", "name": "待出庫" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "outbound-col-outbound",
+                  "role": "columnheader",
+                  "name": "出庫物流"
+                }
+              ]
+            },
+            {
+              "id": "settlement-tab-active",
+              "setup": [
+                {
+                  "action": "click",
+                  "role": "button",
+                  "name": "待追償／寄回"
+                }
+              ],
+              "requiredElements": [
+                {
+                  "id": "settlement-col-refund",
                   "role": "columnheader",
                   "name": "退款"
                 }

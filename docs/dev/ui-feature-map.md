@@ -48,6 +48,7 @@
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | v1.5：L2 env bootstrap (`seed:e2e-marketplace-listing` + nightly) · marketplace/product-detail/admin grading L2+ |
 | 2026-08-20 | v1.4：CI `test:ui:check-map` · nightly `test:e2e:ui-l2` · F-M-18/F-A-06/checkout L2+ |
 | 2026-08-20 | v1.3：`requiredElements` F-M-18/F-C-03/F-A-05 · merchant `stateVariants` pending 子篩選 |
 | 2026-08-20 | v1.2：guest project L2 scan · storefront assertion fix · admin login idempotent |

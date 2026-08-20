@@ -78,6 +78,10 @@ function locateRequiredElement(page: Page, element: UiRequiredElement) {
       return page.getByRole("tab", { name }).first();
     case "columnheader":
       return page.getByRole("columnheader", { name }).first();
+    case "searchbox":
+      return page.getByRole("searchbox", { name }).first();
+    case "switch":
+      return page.getByRole("switch", { name }).first();
     default:
       return page.getByRole(element.role, { name }).first();
   }

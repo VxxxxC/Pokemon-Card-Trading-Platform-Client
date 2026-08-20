@@ -20,6 +20,8 @@ const UiRequiredElementSchema = z.object({
     "tab",
     "text",
     "columnheader",
+    "searchbox",
+    "switch",
   ]),
   name: z.string().optional(),
   pattern: z.string().optional(),

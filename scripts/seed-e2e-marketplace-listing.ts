@@ -7,6 +7,10 @@ import {
   resolveE2eMarketplaceFixture,
 } from "../e2e/fixtures/supabase-admin";
 import { getMerchantProductDetailFixtures } from "../e2e/fixtures/test-data";
+import {
+  hasMerchantOrderE2eEnv,
+  seedMerchantPendingPaymentOrder,
+} from "../e2e/helpers/merchant-orders";
 
 async function main(): Promise<void> {
   const env = getMerchantProductDetailFixtures();
@@ -34,8 +38,19 @@ async function main(): Promise<void> {
   if (username) {
     console.log(`E2E_SELLER_USERNAME=${username}`);
   }
+
+  if (hasMerchantOrderE2eEnv()) {
+    const checkout = await seedMerchantPendingPaymentOrder();
+    console.log(`E2E_CHECKOUT_ORDER_ID=${checkout.orderId}`);
+  } else {
+    console.error(
+      "Skip E2E_CHECKOUT_ORDER_ID: missing buyer env for pending payment seed",
+    );
+  }
+
   console.log("");
-  console.log("Copy the lines above into .env.local / GitHub secrets if stale.");
+  console.log("Copy the E2E_* lines above into .env.local / GitHub secrets if stale.");
+  console.log("Nightly L2 scan auto-runs this via scripts/bootstrap-e2e-l2-env.sh.");
 }
 
 main().catch((error) => {

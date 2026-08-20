@@ -34,7 +34,8 @@ Add these to **`.env`** (`playwright.config.ts` loads `.env` / `.env.local` for 
 | `E2E_SELLER_USERNAME` | Username route test (A2) | Same seller's `profiles.username` |
 | `E2E_LISTING_ID` | Core happy-path tests | Active `listings.id` owned by `E2E_SELLER_ID` (merchant grading: same user as `E2E_SELLER_EMAIL` session; run `bun run discover:merchant-grading-e2e`) |
 | `E2E_LISTING_DISPLAY_ID` | Display ID route test (A3) | `product_catalog.display_id` for that listing (not used for marketplace search keyword) |
-| `E2E_LISTING_PRODUCT_ID` | Product ID route test (A4) | `product_catalog.id` / `listings.product_id` |
+| `E2E_LISTING_PRODUCT_ID` | Product ID route test (A4) · L2 `product-detail` | `product_catalog.id` / `listings.product_id` |
+| `E2E_CHECKOUT_ORDER_ID` | L2 `checkout-wizard` (`/checkout/[id]`) | Pending-payment `merchant_orders.id`; seeded by `bun run seed:e2e-marketplace-listing` |
 | `E2E_BUYER_EMAIL` | Buyer auth setup | Member account email |
 | `E2E_BUYER_PASSWORD` | Buyer auth setup | Member account password |
 | `E2E_SELLER_EMAIL` | Seller auth setup (chat-realtime) | Same seller account as `E2E_SELLER_ID` |
@@ -92,6 +93,14 @@ limit 5;
 ```
 
 For `E2E_WRONG_SELLER_ID`, pick a different `profiles.id` that is not the listing owner.
+
+### L2 UI scan bootstrap (recommended)
+
+```bash
+bun run seed:e2e-marketplace-listing
+```
+
+Prints `E2E_LISTING_PRODUCT_ID`, `E2E_CHECKOUT_ORDER_ID` (pending-payment order), and related vars. Nightly runs `scripts/bootstrap-e2e-l2-env.sh` before `test:e2e:ui-l2` so CI does not rely on stale secrets for dynamic routes.
 
 ## Route resolution (backend contract)
 

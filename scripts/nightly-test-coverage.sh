@@ -51,6 +51,9 @@ if [[ "$failed" -ne 0 ]]; then exit 1; fi
 run_step "start production server for E2E" e2e_start_production_server
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
+run_step "bootstrap L2 dynamic E2E env" bash scripts/bootstrap-e2e-l2-env.sh
+if [[ "$failed" -ne 0 ]]; then exit 1; fi
+
 run_step "L2 UI surface scan (p-ui-routes)" env PLAYWRIGHT_SKIP_WEBSERVER=1 bun run test:e2e:ui-l2
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 

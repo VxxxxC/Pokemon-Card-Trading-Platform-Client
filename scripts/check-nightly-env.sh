@@ -34,6 +34,17 @@ check_set E2E_SELLER_PASSWORD
 check_set E2E_SELLER_ID
 check_set E2E_LISTING_ID
 
+optional_missing=()
+check_optional() {
+  local key="$1"
+  if [[ -z "${!key:-}" ]]; then
+    optional_missing+=("$key")
+  fi
+}
+
+check_optional E2E_LISTING_PRODUCT_ID
+check_optional E2E_CHECKOUT_ORDER_ID
+
 if [[ ${#missing[@]} -gt 0 ]]; then
   echo "=== Nightly env check: FAILED ===" >&2
   echo "Missing required variables:" >&2
@@ -43,6 +54,14 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   echo "" >&2
   echo "See docs/dev/test-coverage-ssot.md §8 (Nightly CI)." >&2
   exit 1
+fi
+
+if [[ ${#optional_missing[@]} -gt 0 ]]; then
+  echo "=== Nightly optional L2 vars (unset; nightly bootstraps via seed): ==="
+  for key in "${optional_missing[@]}"; do
+    echo "  - $key"
+  done
+  echo "Run: bun run seed:e2e-marketplace-listing  # prints E2E_LISTING_PRODUCT_ID + E2E_CHECKOUT_ORDER_ID"
 fi
 
 echo "=== Nightly env check: OK ==="
