@@ -3,7 +3,6 @@ import type {
   MerchantTradingOrder,
 } from "@/app/actions/orders";
 import type { OrderStatus, SaleOrder } from "@/app/lib/types/trading";
-import { isMerchantOrderBuyerConfirmed } from "@/lib/merchant-order/display-status";
 import type { Tables } from "@/types/supabase";
 import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 
@@ -13,12 +12,7 @@ type MerchantEscrowStatus = NonNullable<
 
 export function mapMerchantEscrowToOrderStatus(
   escrowStatus: MerchantEscrowStatus | null,
-  buyerConfirmedAt?: string | null,
 ): OrderStatus {
-  if (isMerchantOrderBuyerConfirmed({ buyerConfirmedAt })) {
-    return "released";
-  }
-
   switch (escrowStatus) {
     case "refunded":
       return "cancelled";
@@ -28,43 +22,11 @@ export function mapMerchantEscrowToOrderStatus(
       return "grading";
     case "authenticated":
       return "shipped";
-    case "shipped":
-      return "shipped";
     case "payment_held":
-      return "payment";
-    case "pending_payment":
       return "payment";
     default:
       return "payment";
   }
-}
-
-/** Status badge / list label overrides by escrow + order kind. */
-export function resolveMerchantStatusLabelOverride(
-  escrowStatus: MerchantEscrowStatus | null,
-  requiresAuthentication?: boolean | null,
-  shippingMethod?: string | null,
-  payoutStatus?: string | null,
-): string | undefined {
-  if (payoutStatus === "held" || payoutStatus === "processing") {
-    return "款項保留中";
-  }
-  if (escrowStatus === "pending_payment") {
-    return "待買家付款";
-  }
-  if (escrowStatus === "payment_held" && !requiresAuthentication) {
-    return shippingMethod === "meetup" ? "待面交" : "待發貨";
-  }
-  if (escrowStatus === "shipped") {
-    return "運送中";
-  }
-  if (escrowStatus === "authenticating") {
-    return "鑑定中";
-  }
-  if (escrowStatus === "authenticated") {
-    return "待買家收貨";
-  }
-  return undefined;
 }
 
 function formatListingGrade(order: MerchantTradingOrder): string {
@@ -104,16 +66,7 @@ export function mapMerchantTradingOrderToSaleOrder(
     cardNo: order.product.cardNumber ?? order.product.displayId ?? "",
     grade: formatListingGrade(order),
     amount: order.finalPrice,
-    status: mapMerchantEscrowToOrderStatus(
-      order.escrowStatus,
-      order.buyerConfirmedAt,
-    ),
-    statusLabelOverride: resolveMerchantStatusLabelOverride(
-      order.escrowStatus,
-      order.requiresAuthentication,
-      order.shippingMethod,
-      order.payoutStatus,
-    ),
+    status: mapMerchantEscrowToOrderStatus(order.escrowStatus),
     createdAt: formatOrderDateTime(order.createdAt),
     orderType: "B2C",
     userContext: "SELLER",
@@ -131,13 +84,7 @@ export function mapMerchantOrderDetailToSaleOrder(
     ...base,
     orderNumber: detail.orderNumber ?? undefined,
     productListingId: detail.listingId,
-    trackingNo: detail.inboundTrackingNo ?? detail.logisticsProofPath ?? undefined,
+    trackingNo: detail.logisticsProofPath ?? undefined,
     avatarSeed: detail.buyer.id,
-    statusLabelOverride: resolveMerchantStatusLabelOverride(
-      detail.escrowStatus,
-      detail.requiresAuthentication,
-      detail.shippingMethod,
-      detail.payoutStatus,
-    ),
   };
 }

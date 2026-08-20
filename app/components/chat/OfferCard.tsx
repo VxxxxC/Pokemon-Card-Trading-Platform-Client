@@ -41,7 +41,7 @@ import {
   isCatalogImageUrl,
   isValidOfferCardImageUrl,
 } from "@/app/lib/chat/offerCardImage";
-import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
+import { MEMBER_AUTH_SERVICE_FEE } from "@/app/lib/member-order/p2p";
 import type { Tables } from "@/types/supabase";
 
 export type OfferCardMessage = {
@@ -104,15 +104,6 @@ function isTerminalOfferStatus(
   );
 }
 
-function needsAcceptedOrderContext(
-  context: OfferCardContext | null | undefined,
-): boolean {
-  if (context?.offer.status !== "accepted") {
-    return false;
-  }
-  return !context.orderId;
-}
-
 function OfferCardThumbnail({
   imageUrl,
   cardName,
@@ -171,13 +162,9 @@ export function OfferCardComponent({
     (state) => state.applyOfferRejected,
   );
 
-  const offerId = message.offer_id?.trim() ?? "";
-  const offerLedger = useHkCardVaultStore((state) =>
-    offerId ? state.offers[offerId] : undefined,
-  );
-
   const resolvedRoomId =
     roomId ?? message.room_id?.trim() ?? activeRoomId;
+  const offerId = message.offer_id?.trim() ?? "";
 
   const [context, setContext] = useState<OfferCardContext | null>(
     initialContext,
@@ -204,8 +191,6 @@ export function OfferCardComponent({
   const [isModifying, setIsModifying] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  const authServiceFeeHkd = context?.authServiceFeeHkd ?? DEFAULT_AUTH_FEE_HKD;
-
   const applyFetchedContext = useCallback((data: OfferCardContext) => {
     setContext(data);
     setOfferPrice(data.offer.offer_price);
@@ -224,7 +209,7 @@ export function OfferCardComponent({
       }
 
       const cached = readCachedOfferCardContext(offerId);
-      if (cached && !needsAcceptedOrderContext(cached)) {
+      if (cached) {
         applyFetchedContext(cached);
         setContextError(null);
         setIsLoadingContext(false);
@@ -265,19 +250,18 @@ export function OfferCardComponent({
 
     const hydrated = isRenderableOfferContext(initialContext);
     const terminal = isTerminalOfferStatus(initialContext?.offer.status);
-    const needsOrderContext = needsAcceptedOrderContext(initialContext);
 
-    if (hydrated && terminal && !needsOrderContext) {
+    if (hydrated && terminal) {
       setIsLoadingContext(false);
       return;
     }
 
-    if (hydrated && !needsOrderContext) {
+    if (hydrated) {
       setIsLoadingContext(false);
       return;
     }
 
-    void loadContext({ silent: hydrated });
+    void loadContext();
   }, [initialContext, loadContext, offerId]);
 
   const isBuyer =
@@ -486,30 +470,6 @@ export function OfferCardComponent({
 
   if (!context) return null;
 
-  const ledgerOrderId =
-    offerLedger?.orderKind === "merchant"
-      ? offerLedger.merchantOrderId
-      : offerLedger?.memberOrderId;
-  const resolvedOrderId = context.orderId ?? ledgerOrderId ?? null;
-  const resolvedOrderKind =
-    context.orderKind ?? offerLedger?.orderKind ?? undefined;
-  const ledgerPaymentHref = offerLedger?.paymentHref ?? null;
-  const resolvedPaymentHref =
-    context.paymentHref ??
-    ledgerPaymentHref ??
-    (resolvedOrderKind === "merchant" && resolvedOrderId
-      ? `/checkout/${resolvedOrderId}`
-      : (context.canPayAuth ||
-            (useAuthentication && isBuyer && resolvedOrderKind === "member")) &&
-          resolvedOrderId
-        ? `/profile/user/orderDetail/${resolvedOrderId}`
-        : null);
-  const resolvedOrderDetailHref =
-    context.orderDetailHref ??
-    (resolvedOrderId
-      ? `/profile/user/orderDetail/${resolvedOrderId}`
-      : null);
-
   const cardMeta = [
     context.setCode,
     context.cardNumber ?? context.displayId,
@@ -547,7 +507,7 @@ export function OfferCardComponent({
           <Alert className="border-brand/35 bg-brand/15 text-brand shadow-sm">
             <AlertDescription className="text-[12px] font-semibold leading-relaxed">
               🔍 買家要求平台鑑定加購服務（HK$
-              {authServiceFeeHkd.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
+              {MEMBER_AUTH_SERVICE_FEE.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
             </AlertDescription>
           </Alert>
         ) : null}
@@ -571,7 +531,7 @@ export function OfferCardComponent({
             {useAuthentication ? (
               <p className="inline-flex items-center gap-1 rounded border border-brand/25 bg-brand/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand">
                 🔍 含平台鑑定加購 (HK${" "}
-                {authServiceFeeHkd.toLocaleString()})
+                {MEMBER_AUTH_SERVICE_FEE.toLocaleString()})
               </p>
             ) : null}
             <button
@@ -587,7 +547,7 @@ export function OfferCardComponent({
           </div>
         </div>
 
-        {useAuthentication && isPending && isBuyer ? (
+        {useAuthentication && isPending && !isSeller ? (
           <Alert className="border-brand/25 bg-brand/10 text-brand">
             <AlertDescription className="text-[11.5px] leading-relaxed">
               您已加購平台第三方鑑定服務；賣家接受後將走託管鑑定流程。
@@ -599,15 +559,6 @@ export function OfferCardComponent({
           <Alert className="border-[#10b981]/30 bg-[#10b981]/10 text-[#10b981]">
             <AlertDescription className="text-[12px] font-medium leading-relaxed">
               ✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）
-              {resolvedOrderKind === "merchant" && context.pendingPayment
-                ? "；請完成託管付款以鎖定資產。"
-                : null}
-              {resolvedOrderKind === "member" &&
-              useAuthentication &&
-              isBuyer &&
-              resolvedPaymentHref
-                ? "；請完成託管付款以啟動鑑定流程。"
-                : null}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -667,16 +618,13 @@ export function OfferCardComponent({
                       <>
                         {" "}
                         此出價含平台鑑定加購（HK${" "}
-                        {authServiceFeeHkd.toLocaleString()}），成交後將啟動託管鑑定流程。
+                        {MEMBER_AUTH_SERVICE_FEE.toLocaleString()}），成交後將啟動託管鑑定流程。
                       </>
                     ) : null}
                   </p>
                   <div className="flex flex-col gap-2">
                     <AlertDialogAction
-                      onClick={(event) => {
-                        event.preventDefault();
-                        void handleAccept();
-                      }}
+                      onClick={() => void handleAccept()}
                       disabled={isAccepting}
                       className="h-11 rounded-xl bg-[#10b981] font-black text-white hover:bg-[#0fa573] disabled:opacity-50"
                     >
@@ -835,40 +783,6 @@ export function OfferCardComponent({
                 </div>
               </AlertDialogContent>
             </AlertDialog>
-          ) : null}
-        </CardFooter>
-      ) : null}
-
-      {isAccepted && isBuyer ? (
-        <CardFooter className="flex flex-col gap-2 border-t border-white/5 bg-transparent px-4 py-3">
-          {resolvedPaymentHref ? (
-            <Button
-              type="button"
-              className="h-9 w-full rounded-lg bg-brand font-bold text-[#1A1612] hover:bg-[#e8b896]"
-              onClick={() => {
-                router.push(resolvedPaymentHref);
-                setIsChatOpen(false);
-              }}
-            >
-              {resolvedOrderKind === "merchant" && context.pendingPayment
-                ? "前往託管結帳"
-                : "前往付款"}
-            </Button>
-          ) : null}
-          {resolvedOrderDetailHref && !resolvedPaymentHref ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 w-full rounded-lg border-white/15 bg-transparent text-[12px] font-bold text-brand hover:bg-brand/10"
-              onClick={() => {
-                router.push(resolvedOrderDetailHref);
-                setIsChatOpen(false);
-              }}
-            >
-              {resolvedOrderKind === "member" && !useAuthentication
-                ? "查看訂單 / 交收指引"
-                : "查看訂單詳情"}
-            </Button>
           ) : null}
         </CardFooter>
       ) : null}

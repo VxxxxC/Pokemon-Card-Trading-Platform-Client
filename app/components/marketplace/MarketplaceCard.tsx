@@ -41,10 +41,6 @@ export type MarketplaceListing = {
   sellerId?: string;
   sellerPersona?: Database["public"]["Enums"]["seller_persona_type"];
   detailHref?: string;
-  deliverySummary?: string;
-  baseCourierShippingFee?: number;
-  listingExtraShippingFee?: number;
-  courierShippingTotal?: number;
 };
 
 interface MarketplaceCardProps {
@@ -273,11 +269,6 @@ function MarketplaceCardView({
                   className="text-[11px]"
                 />
               </div>
-              {listing.deliverySummary ? (
-                <p className="font-mono text-[10px] text-[#8A8680] mt-1">
-                  {listing.deliverySummary}
-                </p>
-              ) : null}
             </div>
             <div className="text-right min-w-0 shrink-0">
               <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">

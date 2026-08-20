@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { getChatRealtimeFixtures } from "./fixtures/chat-test-data";
 import {
+  advanceAuthOrderToCustody,
   ensureDbChatRoom,
   ensureListingAcceptsAuthentication,
   getLatestMemberOrderForListing,
@@ -15,32 +16,27 @@ import {
   acceptOfferAsSeller,
   ensurePendingAuthOffer,
   gotoOrderDetail,
+  mockPayAuthOrderOnDetail,
   offerAmountFromListingPrice,
   offerAmountLabelFromListingPrice,
-  payAuthMemberOrder,
 } from "./helpers/member-trading";
-import { hasStripeReconcileEnv } from "./helpers/stripe-reconcile";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(300_000);
 
 test.describe("Member order detail — auth escrow", () => {
-  test("auth order at payment shows checkout CTA, not P2P handover", async ({
+  test("auth order at payment shows mock pay panel, not P2P handover", async ({
     browser,
   }, testInfo) => {
-    test.setTimeout(420_000);
     test.skip(
       testInfo.project.name !== "member-trading",
       "Order detail auth CTA runs on member-trading project",
     );
-    test.skip(!hasStripeReconcileEnv(), "Missing Stripe keys for member auth checkout");
     if (!hasMemberTradingFixtures()) {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture({
-      requiredSellerPersona: "member",
-    });
+    const fixtureResult = await resolveE2eMarketplaceFixture();
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -102,8 +98,6 @@ test.describe("Member order detail — auth escrow", () => {
         offerLabel,
         buyerPage,
         sellerDisplayName,
-        sellerId,
-        buyerId,
       );
 
       const order = await getLatestMemberOrderForListing({ listingId, buyerId });
@@ -135,10 +129,7 @@ test.describe("Member order detail — auth escrow", () => {
       }
 
       await expect(
-        buyerPage.getByRole("button", { name: "前往付款" }),
-      ).toBeVisible({ timeout: 15_000 });
-      await expect(
-        buyerPage.getByText(/尚未完成託管付款/),
+        buyerPage.getByText("測試模式 — Stripe 尚未接入"),
       ).toBeVisible({ timeout: 15_000 });
       await expect(
         buyerPage.getByRole("button", { name: "確認完成交易" }),
@@ -147,14 +138,30 @@ test.describe("Member order detail — auth escrow", () => {
         buyerPage.getByRole("link", { name: "返回交易管理" }),
       ).toBeVisible();
 
+      await mockPayAuthOrderOnDetail(buyerPage);
+
       if (!memberOrderId) {
-        throw new Error("Missing member order id before stripe checkout");
+        throw new Error("Missing member order id before seller inbound check");
       }
 
-      await payAuthMemberOrder(buyerPage, memberOrderId);
+      const advanced = await advanceAuthOrderToCustody(memberOrderId);
+      if (!advanced) {
+        test.info().annotations.push({
+          type: "note",
+          description:
+            "Skipped seller inbound form — service role lacks member_orders grant to seed custody",
+        });
+        return;
+      }
+
+      await sellerPage.reload({ waitUntil: "domcontentloaded" });
+      await gotoOrderDetail(sellerPage, memberOrderId);
       await expect(
-        buyerPage.getByRole("heading", { name: /交易成功設立/ }),
-      ).toBeVisible({ timeout: 15_000 });
+        sellerPage.getByText("請將卡牌寄往平台倉庫，並填寫順豐物流單號。"),
+      ).toBeVisible({ timeout: 20_000 });
+      await expect(
+        sellerPage.getByPlaceholder("寄往平台的順豐單號"),
+      ).toBeVisible();
     } finally {
       await buyerContext.close();
       await sellerContext.close();

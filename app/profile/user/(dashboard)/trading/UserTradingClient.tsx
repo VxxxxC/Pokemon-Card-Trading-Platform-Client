@@ -79,37 +79,6 @@ function isRawCardOrder(order: UserTradingOrder): boolean {
 }
 
 function renderStatusBadge(order: UserTradingOrder) {
-  if (order.pendingPayment) {
-    return (
-      <Badge variant="secondary" className="bg-amber-950 text-amber-400">
-        待付款
-      </Badge>
-    );
-  }
-
-  if (
-    order.orderKind === "merchant" &&
-    !order.useAuthentication &&
-    order.status === "pending"
-  ) {
-    switch (order.merchantEscrowStatus) {
-      case "payment_held":
-        return (
-          <Badge variant="secondary" className="bg-blue-950 text-blue-400">
-            待發貨
-          </Badge>
-        );
-      case "shipped":
-        return (
-          <Badge variant="secondary" className="bg-cyan-950 text-cyan-400">
-            運送中
-          </Badge>
-        );
-      default:
-        break;
-    }
-  }
-
   if (order.useAuthentication && order.status === "pending" && order.escrowStatus) {
     switch (order.escrowStatus) {
       case "payment":
@@ -312,7 +281,7 @@ export function UserTradingClient({
                 id="user-trading-heading"
                 className="font-sans font-semibold text-[16px] text-text-primary"
               >
-                {"交易管理（" + filterCounts.status[tabStatus] + "）"}
+                {"交易管理（" + paginationMeta.total + "）"}
               </h2>
 
               <div className="flex gap-1.5 flex-wrap justify-start sm:justify-end">
@@ -436,9 +405,6 @@ export function UserTradingClient({
                       useAuthentication: order.useAuthentication,
                       escrowStatus: order.escrowStatus,
                       canPay: authActions?.canPay ?? false,
-                      pendingPayment: order.pendingPayment,
-                      paymentExpiresAt: order.paymentExpiresAt,
-                      canCompleteMerchantPurchase: order.canCompleteMerchantPurchase,
                       canCancel:
                         authActions?.canCancel ??
                         (order.persona === "sell" &&

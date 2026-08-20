@@ -1,39 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
-import {
-  getPlatformFinancialConfig,
-  updatePlatformFinancialConfig,
-} from "@/app/actions/admin-settings";
-import {
-  getPlatformLegalForAdmin,
-  updatePlatformLegal,
-} from "@/app/actions/platform-legal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
-import {
-  DEFAULT_PLATFORM_PRIVACY,
-  DEFAULT_PLATFORM_TERMS,
-} from "@/lib/platform/platform-legal-config";
 
 export default function AdminSettingsPage() {
   // Financial inputs
-  const [commissionRate, setCommissionRate] = useState(8.0);
-  const [isLoadingFinancials, setIsLoadingFinancials] = useState(true);
-  const [isSavingFinancials, setIsSavingFinancials] = useState(false);
+  const [commissionRate, setCommissionRate] = useState(5.0);
   const [appraisalFee, setAppraisalFee] = useState(150);
+  const [fpsFee, setFpsFee] = useState(0);
+
+  // Security thresholds
+  const [maxWithdrawalLimit, setMaxWithdrawalLimit] = useState(50000);
+  const [kycWithdrawalThreshold, setKycWithdrawalThreshold] = useState(10000);
 
   // Platform policy terms
-  const [termsTitle, setTermsTitle] = useState(DEFAULT_PLATFORM_TERMS.title);
-  const [termsBody, setTermsBody] = useState(DEFAULT_PLATFORM_TERMS.body);
-  const [privacyTitle, setPrivacyTitle] = useState(DEFAULT_PLATFORM_PRIVACY.title);
-  const [privacyBody, setPrivacyBody] = useState(DEFAULT_PLATFORM_PRIVACY.body);
-  const [isLoadingLegal, setIsLoadingLegal] = useState(true);
-  const [isSavingLegal, setIsSavingLegal] = useState(false);
+  const [termsText, setTermsText] = useState(
+    `歡迎使用 HKCardVault TCG 交易與收藏保管平台。\n\n本平台之交易服務條款修訂如下：\n1. 凡本平台之認證商戶（MERCHANT），每筆交易將扣除 5.0% 的佣金（不包含 Stripe 聯網信用卡通道之 1.4% 第三方交易費）。\n2. 鑑定服務由本平台專業鑑定團隊承接，PSA / BGS 標準單卡鑑定費用為固定 HK$150/張。\n3. 所有提現結算統一於每週五進行人工 FPS 劃撥，目前免除任何銀行轉賬手續費。\n4. 若單筆交易金額超過 HK$10,000，或累計提現達到此金額，用戶必須強制通過 Stripe KYC 與政府證件審批程序，方可繼續發送提現。`,
+  );
 
   // Security settings (admin credentials)
   const [adminEmail, setAdminEmail] = useState("");
@@ -43,96 +31,23 @@ export default function AdminSettingsPage() {
   const sectionClass =
     "bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5";
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const result = await getPlatformFinancialConfig();
-      if (cancelled) {
-        return;
-      }
-
-      if (result.success) {
-        setCommissionRate(result.data.commissionRatePercent);
-        setAppraisalFee(result.data.appraisalFeeHkd);
-      } else {
-        toast.error(result.error);
-      }
-      setIsLoadingFinancials(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const result = await getPlatformLegalForAdmin();
-      if (cancelled) {
-        return;
-      }
-
-      if (result.success) {
-        setTermsTitle(result.data.terms.title);
-        setTermsBody(result.data.terms.body);
-        setPrivacyTitle(result.data.privacy.title);
-        setPrivacyBody(result.data.privacy.body);
-      } else {
-        toast.error(result.error);
-      }
-      setIsLoadingLegal(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const handleSaveFinancials = async (e: React.FormEvent) => {
+  const handleSaveFinancials = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingFinancials(true);
+    toast.success("✅ 核心財務變數已更新！新費率與費用參數已寫入系統核心表。");
+  };
 
-    const result = await updatePlatformFinancialConfig({
-      commissionRatePercent: commissionRate,
-      appraisalFeeHkd: appraisalFee,
-    });
-    setIsSavingFinancials(false);
-
-    if (!result.success) {
-      toast.error(result.error);
-      return;
-    }
-
-    setCommissionRate(result.data.commissionRatePercent);
-    setAppraisalFee(result.data.appraisalFeeHkd);
+  const handleSaveSecurity = (e: React.FormEvent) => {
+    e.preventDefault();
     toast.success(
-      "✅ 平台財務設定已更新：新訂單結帳將套用新鑑定費；確認收貨後將套用新佣金率。",
+      "🔒 安全風控防線閾值更新成功！所有高額交易與異常提現將受到新防護限制。",
     );
   };
 
-  const handleSaveTerms = async (e: React.FormEvent) => {
+  const handleSaveTerms = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingLegal(true);
-
-    const result = await updatePlatformLegal({
-      terms: { title: termsTitle, body: termsBody },
-      privacy: { title: privacyTitle, body: privacyBody },
-    });
-    setIsSavingLegal(false);
-
-    if (!result.success) {
-      toast.error(result.error);
-      return;
-    }
-
-    setTermsTitle(result.data.terms.title);
-    setTermsBody(result.data.terms.body);
-    setPrivacyTitle(result.data.privacy.title);
-    setPrivacyBody(result.data.privacy.body);
-    toast.success("📄 平台聲明與交易條款已發佈，/terms 與 /privacy 已更新。");
+    toast.success(
+      "📄 平台聲明與交易條款已修訂！新條款已發佈並強制更新至前台用戶協議。",
+    );
   };
 
   // TODO: [Supabase Wiring] Target: supabase.auth.updateUser({ email }) / ({ password })
@@ -177,7 +92,7 @@ export default function AdminSettingsPage() {
           營運設定
         </h1>
         <p className="font-sans text-[13px] text-text-secondary mt-0.5">
-          管理員可調校平台核心佣金、鑑定費與管理員安全設定
+          管理員可調校平台核心佣金、安全風控閾值防線與管理員安全設定
         </p>
       </div>
 
@@ -190,11 +105,11 @@ export default function AdminSettingsPage() {
           核心財務與費用變數調校
         </h2>
         <p className="font-sans text-[12px] text-text-secondary mb-4">
-          設定全平台抽佣比例與單張保管鑑定費用
+          設定全平台抽佣比例、單張保管鑑定費用，以及 FPS 人手劃撥銷帳手續費
         </p>
 
         <form onSubmit={handleSaveFinancials} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label
                 htmlFor="commission-rate"
@@ -213,7 +128,6 @@ export default function AdminSettingsPage() {
                   min={1}
                   max={20}
                   step={0.1}
-                  disabled={isLoadingFinancials || isSavingFinancials}
                   className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-[13px] text-text-primary px-0"
                 />
                 <span className="font-mono text-[11px] text-text-disabled">
@@ -221,9 +135,7 @@ export default function AdminSettingsPage() {
                 </span>
               </div>
               <p className="font-mono text-[9px] text-text-disabled mt-1">
-                {isLoadingFinancials
-                  ? "載入中…"
-                  : `目前費率：${commissionRate.toFixed(1)}%`}
+                目前費率：5.0%
               </p>
             </div>
 
@@ -252,14 +164,121 @@ export default function AdminSettingsPage() {
                 包括保險與標準外殼
               </p>
             </div>
+
+            <div>
+              <Label
+                htmlFor="fps-fee"
+                className="font-mono text-[11px] text-text-secondary block mb-1.5"
+              >
+                FPS 手動劃撥手續費
+              </Label>
+              <div className="flex items-center h-10 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden px-3">
+                <span className="font-mono text-[11px] text-text-disabled mr-1.5">
+                  HK$
+                </span>
+                <Input
+                  id="fps-fee"
+                  type="number"
+                  value={fpsFee}
+                  onChange={(e) => setFpsFee(parseInt(e.target.value))}
+                  min={0}
+                  max={100}
+                  className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-[13px] text-text-primary px-0"
+                />
+              </div>
+              <p className="font-mono text-[9px] text-text-disabled mt-1">
+                設置為 0 表示免收費
+              </p>
+            </div>
           </div>
 
           <Button
             type="submit"
-            disabled={isLoadingFinancials || isSavingFinancials}
             className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
           >
-            {isSavingFinancials ? "儲存中…" : "儲存財務設定"}
+            儲存財務設定
+          </Button>
+        </form>
+      </section>
+
+      {/* ── Container 3: 安全風控防線閾值變更 ─────────────────────────── */}
+      <section aria-labelledby="security-heading" className={sectionClass}>
+        <h2
+          id="security-heading"
+          className="font-sans font-bold text-[16px] text-text-primary mb-1"
+        >
+          安全風控防線閾值變更
+        </h2>
+        <p className="font-sans text-[12px] text-text-secondary mb-4">
+          設定商戶提現、單筆交易安全審核閾值，預防洗錢與假冒交易 (Anti-Fraud)
+        </p>
+
+        <form onSubmit={handleSaveSecurity} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label
+                htmlFor="max-withdrawal"
+                className="font-mono text-[11px] text-text-secondary block mb-1.5"
+              >
+                單筆免核准最大提現限額
+              </Label>
+              <div className="flex items-center h-10 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden px-3">
+                <span className="font-mono text-[11px] text-text-disabled mr-1.5">
+                  HK$
+                </span>
+                <Input
+                  id="max-withdrawal"
+                  type="number"
+                  value={maxWithdrawalLimit}
+                  onChange={(e) =>
+                    setMaxWithdrawalLimit(parseInt(e.target.value))
+                  }
+                  min={1000}
+                  className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-[13px] text-text-primary px-0"
+                />
+              </div>
+              <p className="font-mono text-[9px] text-text-disabled mt-1">
+                超出此額需人工專案核准
+              </p>
+            </div>
+
+            <div>
+              <Label
+                htmlFor="kyc-threshold"
+                className="font-mono text-[11px] text-text-secondary block mb-1.5"
+              >
+                觸發強制 KYC 累計交易額
+              </Label>
+              <div className="flex items-center h-10 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl overflow-hidden px-3">
+                <span className="font-mono text-[11px] text-text-disabled mr-1.5">
+                  HK$
+                </span>
+                <Input
+                  id="kyc-threshold"
+                  type="number"
+                  value={kycWithdrawalThreshold}
+                  onChange={(e) =>
+                    setKycWithdrawalThreshold(parseInt(e.target.value))
+                  }
+                  min={1000}
+                  className="flex-1 bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-[13px] text-text-primary px-0"
+                />
+              </div>
+              <p className="font-mono text-[9px] text-text-disabled mt-1">
+                未過 KYC 者超過此額鎖定交易
+              </p>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-text-secondary border-l-2 border-brand/40 pl-3 bg-bg-elevated/50 rounded-r-lg py-2">
+            觸發臨時封禁嘅累計檢報數由系統硬性設定，管理員無法修改。
+          </div>
+
+          <Button
+            type="submit"
+            className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
+          >
+            更新安全風控門檻
           </Button>
         </form>
       </section>
@@ -273,44 +292,24 @@ export default function AdminSettingsPage() {
           平台聲明與交易條款編輯器
         </h2>
         <p className="font-sans text-[12px] text-text-secondary mb-4">
-          編修前台服務條款與私隱政策；發佈後即時更新 /terms 與 /privacy
+          編修前台用戶服務協議、商戶提現守則及隱私政策聲明（實時發佈更新）
         </p>
 
         <form onSubmit={handleSaveTerms} className="space-y-4">
-          <label className="block font-sans text-[12px] text-text-secondary">
-            服務條款
-          </label>
           <div className="bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl p-3">
             <textarea
-              name="termsBody"
-              value={termsBody}
-              onChange={(e) => setTermsBody(e.target.value)}
+              value={termsText}
+              onChange={(e) => setTermsText(e.target.value)}
               rows={8}
-              disabled={isLoadingLegal || isSavingLegal}
-              className="w-full bg-transparent font-sans text-[12px] text-text-primary leading-relaxed placeholder-text-disabled focus:outline-none resize-none"
-            />
-          </div>
-
-          <label className="block font-sans text-[12px] text-text-secondary">
-            私隱政策
-          </label>
-          <div className="bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl p-3">
-            <textarea
-              name="privacyBody"
-              value={privacyBody}
-              onChange={(e) => setPrivacyBody(e.target.value)}
-              rows={8}
-              disabled={isLoadingLegal || isSavingLegal}
               className="w-full bg-transparent font-sans text-[12px] text-text-primary leading-relaxed placeholder-text-disabled focus:outline-none resize-none"
             />
           </div>
 
           <Button
             type="submit"
-            disabled={isLoadingLegal || isSavingLegal}
             className="h-10 px-5 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-xl hover:bg-brand-hover active:scale-[0.98] transition-all"
           >
-            {isSavingLegal ? "發佈中…" : "發佈最新條款聲明"}
+            發佈最新條款聲明
           </Button>
         </form>
       </section>

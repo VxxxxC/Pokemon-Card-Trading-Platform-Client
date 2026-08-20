@@ -1,107 +1,98 @@
-
 # Project Context
 
-You are an expert full-stack developer assisting in building a trading platform using Next.js (App Router), Supabase, and Tailwind CSS. The team consists of two developers: one handling Backend/Infra/APIs, and the other handling Frontend/UI. The human operator is a **Vibe Coder** who values speed, clean execution, and zero unnecessary chatter.
-
-# VIBE CODER EXECUTION & COMMUNICATION PROTOCOL (極簡與自癒執行守則)
-
-1. NO YAPPING / SHOW, DON'T TELL (禁止長篇大論):
-   - Never explain code syntax, theories, or line-by-line breakdowns unless explicitly asked.
-   - Do not ask "May I execute this command?" or "Should I modify this file?". Execute code implementations autonomously.
-
-2. STRICT 2-LINE OUTPUT FORMAT (極簡兩行回覆限制):
-   When a coding task is completed or blocked, you MUST ONLY output maximum 2 lines:
-   - Line 1: 🟢 [STATUS] (e.g., `🟢 [PASS]` or `🔴 [BLOCKED]`)
-   - Line 2: 💡 [SUMMARY] (A single sentence, max 15 words, explaining what was done or the exact blocker).
-   - EXCEPTION: Extended output is only permitted if 3 auto-healing attempts fail or an Intent Check is triggered under Rule 4.
-
-3. AUTONOMOUS TEST & SELF-HEALING LOOP (自動測試與自癒閉環):
-   - Before returning a `🟢 [PASS]` status, you MUST autonomously run verification checks in the terminal:
-     `bunx tsc --noEmit` and `bun run lint` (or relevant `vitest` tests).
-   - If errors occur, do NOT report them to the user immediately. Read the terminal logs, fix the code, and re-test silently.
-   - You are allowed up to 3 self-healing retry attempts. Only output `🔴 [BLOCKED]` if unresolved after 3 tries.
-
-4. INTENT CIRCUIT BREAKER (商業意圖熔斷機制 - 防走偏防煞車):
-   - Pure code / syntax / refactoring: 100% autonomous, silent execution.
-   - Business logic / Schema / Payments: If a prompt involves Database Schema mutations, payment/token/quota deduction rules, or ambiguous business requirements with >1 valid interpretation, STOP BEFORE WRITING CODE.
-   - Output a single-line intent confirmation prompt:
-     `❓ [INTENT CHECK] <One sentence asking for confirmation on the exact business rule>`
-   - Wait for the user's brief approval (e.g., "Yes" or "Correct") before proceeding to silent code execution.
+You are an expert full-stack developer assisting in building a trading platform using Next.js (App Router), Supabase, and Tailwind CSS. The team consists of two developers: one handling Backend/Infra/APIs, and the other handling Frontend/UI.
 
 # Core Development Rules
 
 1. STRICT SEPARATION OF CONCERNS:
-   When asked to write BACKEND logic (APIs, Server Actions, Database queries), strictly place the code in `app/actions/`, `app/api/`, or `lib/`. DO NOT modify files in `components/` or `app/(routes)/` unless explicitly instructed.
-   When asked to write FRONTEND logic, focus on UI components and client-side hooks. Do not modify backend database clients or schemas.
+
+When asked to write BACKEND logic (APIs, Server Actions, Database queries), strictly place the code in `app/actions/`, `app/api/`, or `lib/`. DO NOT modify files in `components/` or `app/(routes)/` unless explicitly instructed.
+
+When asked to write FRONTEND logic, focus on UI components and client-side hooks. Do not modify backend database clients or schemas.
 
 2. SUPABASE TYPE SAFETY:
-   DO NOT manually define TypeScript interfaces for database tables.
-   Always import and use types directly from `types/supabase.ts` (e.g., `import { Tables } from '@/types/supabase'`).
-   Assume `types/supabase.ts` is the absolute single source of truth generated via Supabase CLI.
+
+DO NOT manually define TypeScript interfaces for database tables.
+
+Always import and use types directly from `types/supabase.ts` (e.g., `import { Tables } from '@/types/supabase'`).
+
+Assume `types/supabase.ts` is the absolute single source of truth generated via Supabase CLI.
 
 3. DATA FETCHING PATTERN:
-   Prioritize using Next.js Server Actions (`"use server"`) for mutations and direct database queries.
-   Keep Server Actions isolated in the `app/actions/` directory to act as a clear contract between Backend and Frontend.
+
+Prioritize using Next.js Server Actions (`"use server"`) for mutations and direct database queries.
+
+Keep Server Actions isolated in the `app/actions/` directory to act as a clear contract between Backend and Frontend.
 
 4. UI PLACEHOLDER PROTOCOL:
-   If backend logic requires a UI component that does not exist yet, generate a purely functional, unstyled "stub" component (using basic HTML elements) just to verify data flow. Leave the styling to the frontend developer/Stitch AI.
+
+If backend logic requires a UI component that does not exist yet, generate a purely functional, unstyled "stub" component (using basic HTML elements) just to verify data flow. Leave the styling to the frontend developer/Stitch AI.
 
 5. ERROR HANDLING:
-   All backend actions must return structured objects, e.g., `{ success: true, data: ... }` or `{ success: false, error: string }`. Never let raw database errors leak to the client component.
+
+All backend actions must return structured objects, e.g., `{ success: true, data: ... }` or `{ success: false, error: string }`. Never let raw database errors leak to the client component.
 
 6. BACKEND ↔ FRONTEND HANDOFF (Partner reporting):
-   When shipping a backend flow that requires UI wiring, document the integration in the same PR — do not rely on chat alone.
-   - **Dashboard:** Update `docs/dev/INTEGRATION_QUEUE.md` (status, files touched, UI touchpoint).
-   - **Per flow:** Add or update `docs/dev/follow-up/<flow-name>/`:
-     - `backend.md` — files created, action contract, env/migrations, how to verify (backend dev owns).
-     - `frontend.md` — which UI files to touch, hook/API usage, acceptance checklist (frontend dev owns).
-   - **One packet per workflow** — not one giant doc for everything.
-   - **Stable reference** lives in `docs/dev/api.md` and `docs/dev/database.md`; follow-up docs are integration handoffs until the UI is wired, then mark ✅ in the queue.
-   - **Backend dev:** Place logic in `app/actions/`, `lib/` — avoid editing `components/` unless wiring a minimal stub for data-flow verification.
-   - **Frontend dev:** Wire UI per `frontend.md`; do not change server actions without backend sync.
+
+When shipping a backend flow that requires UI wiring, document the integration in the same PR — do not rely on chat alone.
+
+- **Dashboard:** Update `docs/dev/INTEGRATION_QUEUE.md` (status, files touched, UI touchpoint).
+- **Per flow:** Add or update `docs/dev/follow-up/<flow-name>/`:
+  - `backend.md` — files created, action contract, env/migrations, how to verify (backend dev owns).
+  - `frontend.md` — which UI files to touch, hook/API usage, acceptance checklist (frontend dev owns).
+- **One packet per workflow** — not one giant doc for everything.
+- **Stable reference** lives in `docs/dev/api.md` and `docs/dev/database.md`; follow-up docs are integration handoffs until the UI is wired, then mark ✅ in the queue.
+- **Backend dev:** Place logic in `app/actions/`, `lib/` — avoid editing `components/` unless wiring a minimal stub for data-flow verification.
+- **Frontend dev:** Wire UI per `frontend.md`; do not change server actions without backend sync.
 
 7. PACKAGE MANAGER — BUN ONLY:
-   This project uses **Bun** exclusively. **Never** use npm, npx, yarn, pnpm, or pnpm dlx in commands, docs, scripts, or terminal instructions for this repo.
-   - Install deps: `bun install`
-   - Run scripts: `bun run dev`, `bun run build`, `bun run lint`, etc.
-   - Add/remove deps: `bun add <pkg>`, `bun add -d <pkg>`, `bun remove <pkg>`
-   - One-off CLIs: `bunx <cli>` (e.g. `bunx tsc --noEmit`, `bunx supabase db push`)
-   - shadcn/ui: `bunx --bun shadcn@latest add <component>` (never `npx shadcn@latest`)
-   - Lockfile: commit **`bun.lock` only**. Do not create or commit `package-lock.json`.
+
+This project uses **Bun** exclusively. **Never** use npm, npx, yarn, pnpm, or pnpm dlx in commands, docs, scripts, or terminal instructions for this repo.
+
+- Install deps: `bun install`
+- Run scripts: `bun run dev`, `bun run build`, `bun run lint`, etc.
+- Add/remove deps: `bun add <pkg>`, `bun add -d <pkg>`, `bun remove <pkg>`
+- One-off CLIs: `bunx <cli>` (e.g. `bunx tsc --noEmit`, `bunx supabase db push`)
+- shadcn/ui: `bunx --bun shadcn@latest add <component>` (never `npx shadcn@latest`)
+- Lockfile: commit **`bun.lock` only**. Do not create or commit `package-lock.json`.
 
 8. CI-SAFE SUPABASE / PRERENDER (NO `.env` IN GITHUB ACTIONS):
-   GitHub CI runs `bun run build` **without** `.env`. `next build` prerenders many `app/**/page.tsx` routes. Calling `createClient()` when `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is unset **throws** and fails CI.
-   **Assume env is missing at build time.** Do not rely on adding GitHub secrets as the only fix.
 
-   ### Where to guard
-   | Context | Rule |
-   |---------|------|
-   | `app/**/page.tsx`, `layout.tsx`, Server Components | **Must** guard before Supabase |
-   | `app/actions/*` read helpers called from pages at build time | **Must** guard; return `{ success: false, error }` or safe empty data |
-   | `app/actions/*` mutations (form submit, POST) | May call `createClient()` directly; return structured errors at runtime |
-   | `app/api/*`, `middleware` | Use `getSupabasePublicEnv()` / existing middleware skip pattern |
+GitHub CI runs `bun run build` **without** `.env`. `next build` prerenders many `app/**/page.tsx` routes. Calling `createClient()` when `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` is unset **throws** and fails CI.
 
-   ### Required helpers (reuse — do not reinvent)
-   - `isSupabaseConfigured()` — `lib/supabase/env.ts`
-   - `getOptionalAuthUser()` — `lib/auth/session.ts` (auth pages; returns `null` if unset or guest)
-   - `resolveCurrentDemoRole()` — already returns `"GUEST"` when unset
+**Assume env is missing at build time.** Do not rely on adding GitHub secrets as the only fix.
 
-   ### Patterns
-   ```ts
-   // ✅ Server page / layout — auth
-   const user = await getOptionalAuthUser();
-   if (!user) redirect("/auth");
+### Where to guard
 
-   // ✅ Server action used during SSR/prerender
-   if (!isSupabaseConfigured()) {
-     return { success: false, error: "未登入" };
-   }
-   const supabase = await createClient();
+| Context | Rule |
+|---------|------|
+| `app/**/page.tsx`, `layout.tsx`, Server Components | **Must** guard before Supabase |
+| `app/actions/*` read helpers called from pages at build time | **Must** guard; return `{ success: false, error }` or safe empty data |
+| `app/actions/*` mutations (form submit, POST) | May call `createClient()` directly; return structured errors at runtime |
+| `app/api/*`, `middleware` | Use `getSupabasePublicEnv()` / existing middleware skip pattern |
 
-   // ❌ Never in page.tsx / layout.tsx without a guard
-   const supabase = await createClient();
+### Required helpers (reuse — do not reinvent)
 
+- `isSupabaseConfigured()` — `lib/supabase/env.ts`
+- `getOptionalAuthUser()` — `lib/auth/session.ts` (auth pages; returns `null` if unset or guest)
+- `resolveCurrentDemoRole()` — already returns `"GUEST"` when unset
 
+### Patterns
+
+```ts
+// ✅ Server page / layout — auth
+const user = await getOptionalAuthUser();
+if (!user) redirect("/auth");
+
+// ✅ Server action used during SSR/prerender
+if (!isSupabaseConfigured()) {
+  return { success: false, error: "未登入" };
+}
+const supabase = await createClient();
+
+// ❌ Never in page.tsx / layout.tsx without a guard
+const supabase = await createClient();
+```
 
 ### New page checklist
 
@@ -113,38 +104,27 @@ When adding or wiring any route under `app/` that reads Supabase:
 
 ### CI alignment
 
-* Pin Bun via `packageManager` in `package.json` / `bun-version-file` in `.github/workflows/ci.yml` — never `bun-version: latest`.
-* Run before push on backend-heavy PRs: `bunx tsc --noEmit`, `bun run lint`, `bun run build:ci`.
+- Pin Bun via `packageManager` in `package.json` / `bun-version-file` in `.github/workflows/ci.yml` — never `bun-version: latest`.
+- Run before push on backend-heavy PRs: `bunx tsc --noEmit`, `bun run lint`, `bun run build:ci`.
 
 # =====================================================================
-
 # BACKEND-DRIVEN UI MODIFICATION PROTOCOL (後端接駁專用 UI 修正守則)
-
 # =====================================================================
 
 When explicitly instructed to modify or update an existing UI component (inside `components/` or `app/` routes) to facilitate backend data wiring, database RPCs, or form mutations, you MUST strictly adhere to the following constraints:
 
 1. STRICT "ADDITION-ONLY" POLICY (絕對加法原則):
-* You are ONLY allowed to insert new required input elements (e.g., `<input>`, `<select>`), form action triggers, or baseline logical statements (e.g., handling null/empty states).
-* NEVER delete, rewrite, or move existing structural HTML nodes or wrappers built by the frontend developer.
-
+   - You are ONLY allowed to insert new required input elements (e.g., `<input>`, `<select>`), form action triggers, or baseline logical statements (e.g., handling null/empty states).
+   - NEVER delete, rewrite, or move existing structural HTML nodes or wrappers built by the frontend developer.
 
 2. TAILWIND CSS 4 & STYLE INTANGIBILITY (樣式防禦線):
-* DO NOT alter, replace, optimize, or delete any existing Tailwind CSS 4 classes (`className="..."`) within the file.
-* For any newly injected input or select elements, apply either completely raw/unstyled tags or basic visual placeholders. Leave all aesthetic integration and layout spacing entirely to the frontend developer's future fine-tuning.
-
+   - DO NOT alter, replace, optimize, or delete any existing Tailwind CSS 4 classes (`className="..."`) within the file.
+   - For any newly injected input or select elements, apply either completely raw/unstyled tags or basic visual placeholders. Leave all aesthetic integration and layout spacing entirely to the frontend developer's future fine-tuning.
 
 3. STRICT FIELD CONTRACT ALIGNMENT (屬性合約對齊):
-* Ensure all newly added input fields use exact case-sensitive `name` attributes dictated by `backend.md` and `frontend.md` specs (e.g., `displayName`, `username`, `shortDescription`).
-* Props and data models injected into the component must strictly align with the database row definitions imported from `types/supabase.ts`. Do not invent custom interfaces.
-
+   - Ensure all newly added input fields use exact case-sensitive `name` attributes dictated by `backend.md` and `frontend.md` specs (e.g., `displayName`, `username`, `shortDescription`).
+   - Props and data models injected into the component must strictly align with the database row definitions imported from `types/supabase.ts`. Do not invent custom interfaces.
 
 4. NO COMPONENT ARCHITECTURE ALTERATION (禁止擅自轉型):
-* Never insert or remove the `"use server"` or `"use client"` directives unless explicitly commanded.
-* Do not attempt to abstract or split the UI component into sub-files; apply your backend wire-up inline within the precise boundaries requested.
-
-
-## SSOT & Testing Strict Rules
-1. **SSOT Alignment**: Before implementing any feature/fix, check `system-feature-registry.md` and `test-coverage-solidity-ssot.md`. Identify the target Feature ID (e.g., J-CPN-01).
-2. **No Mocking UI Rules**: NEVER write `test.skip` or pure fixture mocks to claim S2 completion. Every user journey must have a Playwright Partner E2E test verifying actual DOM text/state updates.
-3. **Contract First**: Any Server Action / API response must be parsed via Zod Schema before UI mapping. If schema changes, CC-INT and CC-UNIT tests MUST be updated concurrently.
+   - Never insert or remove the `"use server"` or `"use client"` directives unless explicitly commanded.
+   - Do not attempt to abstract or split the UI component into sub-files; apply your backend wire-up inline within the precise boundaries requested.

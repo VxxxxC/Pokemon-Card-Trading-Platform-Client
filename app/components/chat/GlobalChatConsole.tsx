@@ -956,7 +956,6 @@ export function GlobalChatConsole({
                 <button
                   key={room.id}
                   type="button"
-                  data-chat-room-id={room.id}
                   onClick={() => {
                     setActiveRoomId(room.id);
                     void persistMarkRoomReadAsync(room.id, room.timestamp);
@@ -1005,7 +1004,7 @@ export function GlobalChatConsole({
                 <Link
                   href={"/profile/" + activeRoom.partnerId}
                   prefetch={false}
-                  data-testid="chat-partner-profile-link"
+                  onClick={onClose}
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
                   <ProfileAvatar
@@ -1237,8 +1236,6 @@ export function GlobalChatConsole({
                   filteredLobbyRooms.map((room: ChatRoom) => (
                   <button
                     key={room.id}
-                    type="button"
-                    data-chat-room-id={room.id}
                     onClick={() => {
                       setActiveRoomId(room.id);
                       void persistMarkRoomReadAsync(room.id, room.timestamp);
@@ -1293,7 +1290,7 @@ export function GlobalChatConsole({
                     <Link
                       href={"/profile/" + activeRoom.partnerId}
                       prefetch={false}
-                      data-testid="chat-partner-profile-link"
+                      onClick={onClose}
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                     >
                       <ProfileAvatar

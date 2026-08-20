@@ -15,7 +15,6 @@ import {
   isWishlistFavored,
 } from "@/app/components/market/WishlistButton";
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
-import { buildSellerListingDetailHref } from "@/lib/marketplace/listing-detail-href";
 
 type PremiumMarketProps = {
   listings?: HomeListingCard[];
@@ -132,20 +131,14 @@ export function PremiumMarket({
           }}
         >
           <CarouselContent className="-ml-3">
-            {listings.map((listing, index) => {
-              const detailHref = buildSellerListingDetailHref(
-                listing.sellerId,
-                listing.listingId,
-              );
-
-              return (
+            {listings.map((listing, index) => (
               <CarouselItem
                 key={listing.listingId}
                 className="pl-3 basis-full sm:basis-[40%] lg:basis-[25%]"
               >
                 <article className="flex flex-col h-full bg-bg-card rounded-xl border border-[rgba(237,232,224,0.08)] p-3 hover:bg-[#26211C] transition-colors group">
                   <Link
-                    href={detailHref}
+                    href={`/marketplace/product/${listing.productId}`}
                     className="relative w-full aspect-[5/7] max-h-[20rem] mx-auto rounded-lg overflow-hidden bg-bg-elevated block mb-2.5 border border-white/5"
                   >
                     <ListingCoverImage listing={listing} index={index} />
@@ -171,7 +164,7 @@ export function PremiumMarket({
                   <div className="flex-1 min-w-0 mb-2.5 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <Link
-                        href={detailHref}
+                        href={`/marketplace/product/${listing.productId}`}
                       >
                         <h3 className="font-sans font-bold text-[14.5px] text-text-primary truncate hover:text-brand transition-colors">
                           {listing.name}
@@ -213,8 +206,7 @@ export function PremiumMarket({
                   </div>
                 </article>
               </CarouselItem>
-              );
-            })}
+            ))}
           </CarouselContent>
         </Carousel>
       )}

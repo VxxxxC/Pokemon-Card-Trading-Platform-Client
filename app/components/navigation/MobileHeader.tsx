@@ -9,7 +9,10 @@ import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { ChatUnreadDot } from "@/app/components/chat/ChatUnreadDot";
 import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
-import { useHasActiveAnnouncements } from "@/lib/announcements/use-has-active-announcements";
+import {
+  MOCK_ANNOUNCEMENTS,
+  getActiveAnnouncements,
+} from "@/app/lib/mockAnnouncements";
 
 export function MobileHeader() {
   const isMounted = useSyncExternalStore(
@@ -17,8 +20,6 @@ export function MobileHeader() {
     () => true,
     () => false,
   );
-
-  const hasActiveAnnouncements = useHasActiveAnnouncements();
 
   // 🟢 從 Zustand 引流狀態
   const {
@@ -39,20 +40,19 @@ export function MobileHeader() {
         roomId?: string;
       }>;
       const detail = customEvent.detail;
-      if (detail?.roomId) {
-        activateRoomById(
-          detail.roomId,
-          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
-          detail.partnerId,
-        );
-        setMobileView("CHAT");
-        return;
-      }
       if (detail?.partnerId) {
         openChatWithPartner(
           detail.partnerId,
           detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
           detail.partnerPersona ?? "member",
+        );
+        setMobileView("CHAT");
+        return;
+      }
+      if (detail?.roomId) {
+        activateRoomById(
+          detail.roomId,
+          detail.partnerName || "\u672a\u77e5\u540d\u5546\u6236",
         );
         setMobileView("CHAT");
       }
@@ -110,7 +110,7 @@ export function MobileHeader() {
               className="relative p-2 text-[#d4c4b7] hover:text-brand transition-colors rounded-xl active:scale-[0.95]"
             >
               <Megaphone className="h-5 w-5" />
-              {hasActiveAnnouncements && (
+              {getActiveAnnouncements(MOCK_ANNOUNCEMENTS).length > 0 && (
                 <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-brand" />

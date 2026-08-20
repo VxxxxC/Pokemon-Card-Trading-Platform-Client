@@ -28,7 +28,6 @@ import {
   isAllowedBunnyCdnUrl,
 } from "@/lib/storage/bunny";
 import {
-  validateFpsPayoutDetails,
   validateUserProfileFields,
   type UserProfileFormErrors,
 } from "@/lib/profile/validation";
@@ -44,14 +43,7 @@ type ProfileRow = Pick<
 
 type SettingsProfileRow = Pick<
   Tables<"profiles">,
-  | "id"
-  | "display_name"
-  | "username"
-  | "short_description"
-  | "avatar_path"
-  | "role"
-  | "fps_id"
-  | "fps_name"
+  "id" | "display_name" | "username" | "short_description" | "avatar_path" | "role"
 >;
 
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -73,7 +65,6 @@ export type UserSettingsData = {
   role: Tables<"profiles">["role"];
   bankAccount?: string;
   fpsId?: string;
-  fpsName?: string;
 };
 
 export type PublicProfilePageProfile = import("@/lib/marketplace/load-seller-profile").MarketplaceSellerProfile & {
@@ -298,9 +289,7 @@ export async function getUserSettings(): Promise<
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select(
-      "id, display_name, username, short_description, avatar_path, role, fps_id, fps_name",
-    )
+    .select("id, display_name, username, short_description, avatar_path, role")
     .eq("id", user.id)
     .maybeSingle<SettingsProfileRow>();
 
@@ -318,8 +307,6 @@ export async function getUserSettings(): Promise<
       email: user.email ?? "",
       avatarUrl: resolveAvatarUrl(profile.avatar_path),
       role: profile.role,
-      fpsId: profile.fps_id ?? "",
-      fpsName: profile.fps_name ?? "",
     },
   };
 }
@@ -352,7 +339,6 @@ export async function updateUserProfile(
     ).trim(),
     bankAccount: ((formData.get("bankAccount") as string | null) ?? "").trim(),
     fpsId: ((formData.get("fpsId") as string | null) ?? "").trim(),
-    fpsName: ((formData.get("fpsName") as string | null) ?? "").trim(),
   };
 
   const errors = validateUserProfileFields(fields);
@@ -402,8 +388,6 @@ export async function updateUserProfile(
       display_name: fields.displayName,
       username: normalizedUsername,
       short_description: fields.shortDescription || null,
-      fps_id: fields.fpsId || null,
-      fps_name: fields.fpsName || null,
       updated_at: new Date().toISOString(),
     };
 
@@ -446,77 +430,6 @@ export async function updateUserProfile(
   void syncAutoGrantRewards();
 
   return null;
-}
-
-export async function updateUserFpsId(
-  fpsId: string,
-  fpsName: string,
-): Promise<{ success: true } | { success: false; error: string }> {
-  if (!isSupabaseConfigured()) {
-    return { success: false, error: "未登入" };
-  }
-
-  const fieldErrors = validateFpsPayoutDetails(fpsId, fpsName);
-  const firstError = fieldErrors.fpsId ?? fieldErrors.fpsName;
-  if (firstError) {
-    return { success: false, error: firstError };
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: "未登入" };
-  }
-
-  try {
-    const payload: ProfileUpdate = {
-      fps_id: fpsId.trim(),
-      fps_name: fpsName.trim(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const profilesClient = supabase.from("profiles") as unknown as {
-      update: (values: ProfileUpdate) => {
-        eq: (
-          column: "id",
-          value: string,
-        ) => {
-          select: (columns: "id") => Promise<{
-            data: { id: string }[] | null;
-            error: { code?: string; message?: string } | null;
-          }>;
-        };
-      };
-    };
-
-    const { data: updatedRows, error: updateError } = await profilesClient
-      .update(payload)
-      .eq("id", user.id)
-      .select("id");
-
-    if (updateError) {
-      const mapped = mapProfileUpdateError(updateError);
-      return { success: false, error: mapped.form ?? "儲存失敗，請稍後再試" };
-    }
-
-    if (!updatedRows?.length) {
-      return {
-        success: false,
-        error: "沒有權限更新資料，請確認已套用 profiles UPDATE migration",
-      };
-    }
-  } catch {
-    return { success: false, error: "儲存失敗，請稍後再試" };
-  }
-
-  revalidatePath("/profile/user/settings");
-  revalidatePath("/profile/user");
-  revalidatePath("/profile/user/trading");
-
-  return { success: true };
 }
 
 export async function updateUserAvatar(

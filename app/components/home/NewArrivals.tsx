@@ -9,7 +9,6 @@ import type { HomeListingCard } from "@/app/lib/home/types";
 import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { WishlistButton, isWishlistFavored } from "@/app/components/market/WishlistButton";
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
-import { buildSellerListingDetailHref } from "@/lib/marketplace/listing-detail-href";
 import {
   formatListingGrade,
   formatRelativeDateTime,
@@ -89,7 +88,7 @@ function toMarketplaceListing(card: HomeListingCard): MarketplaceListing {
     image: card.imageUrl,
     seller: card.sellerName,
     sellerId: card.sellerId,
-    detailHref: buildSellerListingDetailHref(card.sellerId, card.listingId),
+    detailHref: `/marketplace/product/${card.productId}`,
   };
 }
 
@@ -221,10 +220,6 @@ export function NewArrivals({
               const listedLabel = formatRelativeDateTime(
                 listingCreatedAtById.get(item.id) ?? sourceCard?.createdAt,
               );
-              const detailHref =
-                item.sellerId && item.id
-                  ? buildSellerListingDetailHref(item.sellerId, item.id)
-                  : item.detailHref ?? "/marketplace";
 
               return (
                 <article
@@ -234,7 +229,7 @@ export function NewArrivals({
                 >
                   <div>
                     <Link
-                      href={detailHref}
+                      href={`/marketplace/product/${item.productId ?? item.id}`}
                       className="block relative w-full aspect-[3/4] overflow-hidden bg-[#1A1612]"
                       onClick={(e) => {
                         if (isUserInteracting) {

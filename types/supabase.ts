@@ -39,63 +39,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_sanctions: {
-        Row: {
-          case_id: string | null
-          created_at: string
-          ends_at: string | null
-          id: string
-          reason: string | null
-          revoked_at: string | null
-          scope: Database["public"]["Enums"]["sanction_scope"]
-          source: string
-          starts_at: string
-          type: Database["public"]["Enums"]["sanction_type"]
-          user_id: string
-        }
-        Insert: {
-          case_id?: string | null
-          created_at?: string
-          ends_at?: string | null
-          id?: string
-          reason?: string | null
-          revoked_at?: string | null
-          scope: Database["public"]["Enums"]["sanction_scope"]
-          source?: string
-          starts_at?: string
-          type: Database["public"]["Enums"]["sanction_type"]
-          user_id: string
-        }
-        Update: {
-          case_id?: string | null
-          created_at?: string
-          ends_at?: string | null
-          id?: string
-          reason?: string | null
-          revoked_at?: string | null
-          scope?: Database["public"]["Enums"]["sanction_scope"]
-          source?: string
-          starts_at?: string
-          type?: Database["public"]["Enums"]["sanction_type"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "account_sanctions_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "moderation_cases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "account_sanctions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chat_messages: {
         Row: {
           content: string
@@ -239,54 +182,6 @@ export type Database = {
           },
         ]
       }
-      check_in_program: {
-        Row: {
-          completion_description: string | null
-          completion_enabled: boolean
-          completion_reward_value: Json
-          completion_title: string
-          completion_type: Database["public"]["Enums"]["reward_type"]
-          completion_type_locked: boolean
-          completion_valid_duration_days: number | null
-          cycle_length_days: number
-          daily_rewards: Json
-          id: string
-          is_active: boolean
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          completion_description?: string | null
-          completion_enabled?: boolean
-          completion_reward_value?: Json
-          completion_title?: string
-          completion_type?: Database["public"]["Enums"]["reward_type"]
-          completion_type_locked?: boolean
-          completion_valid_duration_days?: number | null
-          cycle_length_days?: number
-          daily_rewards: Json
-          id: string
-          is_active?: boolean
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          completion_description?: string | null
-          completion_enabled?: boolean
-          completion_reward_value?: Json
-          completion_title?: string
-          completion_type?: Database["public"]["Enums"]["reward_type"]
-          completion_type_locked?: boolean
-          completion_valid_duration_days?: number | null
-          cycle_length_days?: number
-          daily_rewards?: Json
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       gamification_stats: {
         Row: {
           created_at: string | null
@@ -325,201 +220,12 @@ export type Database = {
           },
         ]
       }
-      grading_audit_logs: {
-        Row: {
-          action: string
-          admin_id: string
-          created_at: string
-          from_status: string | null
-          id: string
-          notes: string | null
-          order_id: string
-          order_kind: string
-          to_status: string | null
-        }
-        Insert: {
-          action: string
-          admin_id: string
-          created_at?: string
-          from_status?: string | null
-          id?: string
-          notes?: string | null
-          order_id: string
-          order_kind: string
-          to_status?: string | null
-        }
-        Update: {
-          action?: string
-          admin_id?: string
-          created_at?: string
-          from_status?: string | null
-          id?: string
-          notes?: string | null
-          order_id?: string
-          order_kind?: string
-          to_status?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grading_audit_logs_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kyc_applications: {
-        Row: {
-          bank_account_holder: string | null
-          bank_account_masked: string | null
-          bank_account_number: string | null
-          bank_code: string | null
-          bank_name: string | null
-          br_number: string
-          branch_code: string | null
-          company_address: Json
-          company_name_en: string
-          company_name_zh: string | null
-          company_phone: string
-          created_at: string
-          id: string
-          reject_reason: string | null
-          rep_address: Json
-          rep_dob: string
-          rep_email: string
-          rep_hkid: string
-          rep_name_en: string
-          rep_name_zh: string | null
-          rep_phone: string
-          rep_title: string
-          reviewed_at: string | null
-          reviewed_by: string | null
-          status: Database["public"]["Enums"]["kyc_application_status"]
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          bank_account_holder?: string | null
-          bank_account_masked?: string | null
-          bank_account_number?: string | null
-          bank_code?: string | null
-          bank_name?: string | null
-          br_number: string
-          branch_code?: string | null
-          company_address: Json
-          company_name_en: string
-          company_name_zh?: string | null
-          company_phone: string
-          created_at?: string
-          id?: string
-          reject_reason?: string | null
-          rep_address: Json
-          rep_dob: string
-          rep_email: string
-          rep_hkid: string
-          rep_name_en: string
-          rep_name_zh?: string | null
-          rep_phone: string
-          rep_title: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["kyc_application_status"]
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          bank_account_holder?: string | null
-          bank_account_masked?: string | null
-          bank_account_number?: string | null
-          bank_code?: string | null
-          bank_name?: string | null
-          br_number?: string
-          branch_code?: string | null
-          company_address?: Json
-          company_name_en?: string
-          company_name_zh?: string | null
-          company_phone?: string
-          created_at?: string
-          id?: string
-          reject_reason?: string | null
-          rep_address?: Json
-          rep_dob?: string
-          rep_email?: string
-          rep_hkid?: string
-          rep_name_en?: string
-          rep_name_zh?: string | null
-          rep_phone?: string
-          rep_title?: string
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          status?: Database["public"]["Enums"]["kyc_application_status"]
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kyc_applications_reviewed_by_fkey"
-            columns: ["reviewed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "kyc_applications_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      kyc_documents: {
-        Row: {
-          application_id: string
-          content_type: string
-          created_at: string
-          document_type: string
-          id: string
-          storage_path: string
-          stripe_file_id: string | null
-        }
-        Insert: {
-          application_id: string
-          content_type: string
-          created_at?: string
-          document_type: string
-          id?: string
-          storage_path: string
-          stripe_file_id?: string | null
-        }
-        Update: {
-          application_id?: string
-          content_type?: string
-          created_at?: string
-          document_type?: string
-          id?: string
-          storage_path?: string
-          stripe_file_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "kyc_documents_application_id_fkey"
-            columns: ["application_id"]
-            isOneToOne: false
-            referencedRelation: "kyc_applications"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       kyc_records: {
         Row: {
           created_at: string | null
           kyc_status: Database["public"]["Enums"]["kyc_state"] | null
           merchant_id: string
           stripe_account_id: string | null
-          stripe_charges_enabled: boolean
-          stripe_payouts_enabled: boolean
           updated_at: string | null
           verified_at: string | null
         }
@@ -528,8 +234,6 @@ export type Database = {
           kyc_status?: Database["public"]["Enums"]["kyc_state"] | null
           merchant_id: string
           stripe_account_id?: string | null
-          stripe_charges_enabled?: boolean
-          stripe_payouts_enabled?: boolean
           updated_at?: string | null
           verified_at?: string | null
         }
@@ -538,8 +242,6 @@ export type Database = {
           kyc_status?: Database["public"]["Enums"]["kyc_state"] | null
           merchant_id?: string
           stripe_account_id?: string | null
-          stripe_charges_enabled?: boolean
-          stripe_payouts_enabled?: boolean
           updated_at?: string | null
           verified_at?: string | null
         }
@@ -671,7 +373,6 @@ export type Database = {
       listings: {
         Row: {
           created_at: string
-          extra_shipping_fee: number
           grading_company: string
           grading_score: string | null
           id: string
@@ -688,7 +389,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          extra_shipping_fee?: number
           grading_company?: string
           grading_score?: string | null
           id?: string
@@ -705,7 +405,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          extra_shipping_fee?: number
           grading_company?: string
           grading_score?: string | null
           id?: string
@@ -746,168 +445,77 @@ export type Database = {
       }
       member_orders: {
         Row: {
-          auth_fee: number
-          auth_fee_captured_at: string | null
-          auth_graded_at: string | null
-          auth_graded_by: string | null
-          auth_grading_company: string | null
-          auth_grading_score: string | null
-          auth_notes: string | null
           auth_result: string | null
-          buyer_confirmed_at: string | null
           buyer_id: string
-          buyer_total_amount: number | null
-          coupon_type: Database["public"]["Enums"]["reward_type"] | null
-          coupon_user_reward_id: string | null
           created_at: string | null
-          escrow_capture_model: string | null
           escrow_status:
             | Database["public"]["Enums"]["member_escrow_status"]
             | null
           expires_at: string
           extended_count: number
-          fault_party: Database["public"]["Enums"]["grading_fault_party"] | null
           final_price: number
           id: string
-          inbound_courier_name: string | null
-          inbound_shipping_fee: number
           inbound_tracking_no: string | null
-          item_subtotal: number | null
           listing_id: string
           logistics_proof_path: string | null
           meetup_details: Json | null
+          mock_payment_session_id: string | null
           order_number: string | null
-          outbound_shipping_fee: number
           outbound_tracking_no: string | null
-          payment_capture_status: Database["public"]["Enums"]["payment_capture_status"]
           payment_confirmed_at: string | null
-          payout_hold_until: string | null
           platform_received_at: string | null
-          platform_subsidy_amount: number
-          refund_amount: number | null
-          refund_attempted_at: string | null
-          refund_error: string | null
-          refund_status: string
-          refunded_at: string | null
           seller_id: string
-          seller_payout_status: Database["public"]["Enums"]["member_seller_payout_status"]
-          seller_settlement_status: Database["public"]["Enums"]["seller_settlement_status"]
           status: Database["public"]["Enums"]["member_order_state"] | null
-          stripe_payment_intent_id: string | null
-          stripe_refund_id: string | null
-          total_amount: number | null
           updated_at: string | null
           use_authentication: boolean
         }
         Insert: {
-          auth_fee?: number
-          auth_fee_captured_at?: string | null
-          auth_graded_at?: string | null
-          auth_graded_by?: string | null
-          auth_grading_company?: string | null
-          auth_grading_score?: string | null
-          auth_notes?: string | null
           auth_result?: string | null
-          buyer_confirmed_at?: string | null
           buyer_id: string
-          buyer_total_amount?: number | null
-          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
-          coupon_user_reward_id?: string | null
           created_at?: string | null
-          escrow_capture_model?: string | null
           escrow_status?:
             | Database["public"]["Enums"]["member_escrow_status"]
             | null
           expires_at?: string
           extended_count?: number
-          fault_party?:
-            | Database["public"]["Enums"]["grading_fault_party"]
-            | null
           final_price: number
           id?: string
-          inbound_courier_name?: string | null
-          inbound_shipping_fee?: number
           inbound_tracking_no?: string | null
-          item_subtotal?: number | null
           listing_id: string
           logistics_proof_path?: string | null
           meetup_details?: Json | null
+          mock_payment_session_id?: string | null
           order_number?: string | null
-          outbound_shipping_fee?: number
           outbound_tracking_no?: string | null
-          payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
           payment_confirmed_at?: string | null
-          payout_hold_until?: string | null
           platform_received_at?: string | null
-          platform_subsidy_amount?: number
-          refund_amount?: number | null
-          refund_attempted_at?: string | null
-          refund_error?: string | null
-          refund_status?: string
-          refunded_at?: string | null
           seller_id: string
-          seller_payout_status?: Database["public"]["Enums"]["member_seller_payout_status"]
-          seller_settlement_status?: Database["public"]["Enums"]["seller_settlement_status"]
           status?: Database["public"]["Enums"]["member_order_state"] | null
-          stripe_payment_intent_id?: string | null
-          stripe_refund_id?: string | null
-          total_amount?: number | null
           updated_at?: string | null
           use_authentication?: boolean
         }
         Update: {
-          auth_fee?: number
-          auth_fee_captured_at?: string | null
-          auth_graded_at?: string | null
-          auth_graded_by?: string | null
-          auth_grading_company?: string | null
-          auth_grading_score?: string | null
-          auth_notes?: string | null
           auth_result?: string | null
-          buyer_confirmed_at?: string | null
           buyer_id?: string
-          buyer_total_amount?: number | null
-          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
-          coupon_user_reward_id?: string | null
           created_at?: string | null
-          escrow_capture_model?: string | null
           escrow_status?:
             | Database["public"]["Enums"]["member_escrow_status"]
             | null
           expires_at?: string
           extended_count?: number
-          fault_party?:
-            | Database["public"]["Enums"]["grading_fault_party"]
-            | null
           final_price?: number
           id?: string
-          inbound_courier_name?: string | null
-          inbound_shipping_fee?: number
           inbound_tracking_no?: string | null
-          item_subtotal?: number | null
           listing_id?: string
           logistics_proof_path?: string | null
           meetup_details?: Json | null
+          mock_payment_session_id?: string | null
           order_number?: string | null
-          outbound_shipping_fee?: number
           outbound_tracking_no?: string | null
-          payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
           payment_confirmed_at?: string | null
-          payout_hold_until?: string | null
           platform_received_at?: string | null
-          platform_subsidy_amount?: number
-          refund_amount?: number | null
-          refund_attempted_at?: string | null
-          refund_error?: string | null
-          refund_status?: string
-          refunded_at?: string | null
           seller_id?: string
-          seller_payout_status?: Database["public"]["Enums"]["member_seller_payout_status"]
-          seller_settlement_status?: Database["public"]["Enums"]["seller_settlement_status"]
           status?: Database["public"]["Enums"]["member_order_state"] | null
-          stripe_payment_intent_id?: string | null
-          stripe_refund_id?: string | null
-          total_amount?: number | null
           updated_at?: string | null
           use_authentication?: boolean
         }
@@ -938,20 +546,6 @@ export type Database = {
             columns: ["seller_id"]
             isOneToOne: false
             referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "member_orders_auth_graded_by_fkey"
-            columns: ["auth_graded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "member_orders_coupon_user_reward_id_fkey"
-            columns: ["coupon_user_reward_id"]
-            isOneToOne: false
-            referencedRelation: "user_rewards"
             referencedColumns: ["id"]
           },
         ]
@@ -996,202 +590,45 @@ export type Database = {
       }
       merchant_orders: {
         Row: {
-          auth_fee: number
-          auth_fee_captured_at: string | null
-          auth_graded_at: string | null
-          auth_graded_by: string | null
-          auth_grading_company: string | null
-          auth_grading_score: string | null
-          auth_notes: string | null
-          auth_result: string | null
-          buyer_confirmed_at: string | null
           buyer_id: string
-          buyer_phone: string | null
-          buyer_remark: string | null
-          buyer_total_amount: number | null
-          commission_amount: number | null
-          commission_rate_applied: number | null
-          coupon_type: Database["public"]["Enums"]["reward_type"] | null
-          coupon_user_reward_id: string | null
           created_at: string | null
-          escrow_capture_model: string | null
           escrow_status: Database["public"]["Enums"]["escrow_state"] | null
-          fault_party: Database["public"]["Enums"]["grading_fault_party"] | null
           final_price: number
           id: string
-          inbound_courier_name: string | null
-          inbound_shipping_fee: number
-          inbound_tracking_no: string | null
-          item_subtotal: number | null
           listing_id: string
           logistics_proof_path: string | null
-          meetup_detail: string | null
           merchant_id: string
-          merchant_payout_amount: number | null
-          merchant_payout_gross: number | null
           order_number: string | null
-          outbound_courier_name: string | null
-          outbound_shipping_fee: number
-          outbound_tracking_no: string | null
-          paid_at: string | null
-          payment_capture_status: Database["public"]["Enums"]["payment_capture_status"]
-          payout_attempted_at: string | null
-          payout_error: string | null
-          payout_hold_until: string | null
-          payout_status: string
-          platform_received_at: string | null
-          platform_subsidy_amount: number
-          refund_amount: number | null
-          refund_attempted_at: string | null
-          refund_error: string | null
-          refund_status: string
-          refunded_at: string | null
           requires_authentication: boolean | null
-          seller_settlement_status: Database["public"]["Enums"]["seller_settlement_status"]
-          sf_address: string | null
-          sf_locker_code: string | null
-          shipping_fee: number
-          shipping_method: string | null
-          stripe_destination_account_id: string | null
           stripe_payment_intent_id: string | null
-          stripe_refund_id: string | null
-          stripe_transfer_id: string | null
-          total_amount: number | null
-          transferred_at: string | null
           updated_at: string | null
         }
         Insert: {
-          auth_fee?: number
-          auth_fee_captured_at?: string | null
-          auth_graded_at?: string | null
-          auth_graded_by?: string | null
-          auth_grading_company?: string | null
-          auth_grading_score?: string | null
-          auth_notes?: string | null
-          auth_result?: string | null
-          buyer_confirmed_at?: string | null
           buyer_id: string
-          buyer_phone?: string | null
-          buyer_remark?: string | null
-          buyer_total_amount?: number | null
-          commission_amount?: number | null
-          commission_rate_applied?: number | null
-          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
-          coupon_user_reward_id?: string | null
           created_at?: string | null
-          escrow_capture_model?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_state"] | null
-          fault_party?:
-            | Database["public"]["Enums"]["grading_fault_party"]
-            | null
           final_price: number
           id?: string
-          inbound_courier_name?: string | null
-          inbound_shipping_fee?: number
-          inbound_tracking_no?: string | null
-          item_subtotal?: number | null
           listing_id: string
           logistics_proof_path?: string | null
-          meetup_detail?: string | null
           merchant_id: string
-          merchant_payout_amount?: number | null
-          merchant_payout_gross?: number | null
           order_number?: string | null
-          outbound_courier_name?: string | null
-          outbound_shipping_fee?: number
-          outbound_tracking_no?: string | null
-          paid_at?: string | null
-          payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
-          payout_attempted_at?: string | null
-          payout_error?: string | null
-          payout_hold_until?: string | null
-          payout_status?: string
-          platform_received_at?: string | null
-          platform_subsidy_amount?: number
-          refund_amount?: number | null
-          refund_attempted_at?: string | null
-          refund_error?: string | null
-          refund_status?: string
-          refunded_at?: string | null
           requires_authentication?: boolean | null
-          seller_settlement_status?: Database["public"]["Enums"]["seller_settlement_status"]
-          sf_address?: string | null
-          sf_locker_code?: string | null
-          shipping_fee?: number
-          shipping_method?: string | null
-          stripe_destination_account_id?: string | null
           stripe_payment_intent_id?: string | null
-          stripe_refund_id?: string | null
-          stripe_transfer_id?: string | null
-          total_amount?: number | null
-          transferred_at?: string | null
           updated_at?: string | null
         }
         Update: {
-          auth_fee?: number
-          auth_fee_captured_at?: string | null
-          auth_graded_at?: string | null
-          auth_graded_by?: string | null
-          auth_grading_company?: string | null
-          auth_grading_score?: string | null
-          auth_notes?: string | null
-          auth_result?: string | null
-          buyer_confirmed_at?: string | null
           buyer_id?: string
-          buyer_phone?: string | null
-          buyer_remark?: string | null
-          buyer_total_amount?: number | null
-          commission_amount?: number | null
-          commission_rate_applied?: number | null
-          coupon_type?: Database["public"]["Enums"]["reward_type"] | null
-          coupon_user_reward_id?: string | null
           created_at?: string | null
-          escrow_capture_model?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_state"] | null
-          fault_party?:
-            | Database["public"]["Enums"]["grading_fault_party"]
-            | null
           final_price?: number
           id?: string
-          inbound_courier_name?: string | null
-          inbound_shipping_fee?: number
-          inbound_tracking_no?: string | null
-          item_subtotal?: number | null
           listing_id?: string
           logistics_proof_path?: string | null
-          meetup_detail?: string | null
           merchant_id?: string
-          merchant_payout_amount?: number | null
-          merchant_payout_gross?: number | null
           order_number?: string | null
-          outbound_courier_name?: string | null
-          outbound_shipping_fee?: number
-          outbound_tracking_no?: string | null
-          paid_at?: string | null
-          payment_capture_status?: Database["public"]["Enums"]["payment_capture_status"]
-          payout_attempted_at?: string | null
-          payout_error?: string | null
-          payout_hold_until?: string | null
-          payout_status?: string
-          platform_received_at?: string | null
-          platform_subsidy_amount?: number
-          refund_amount?: number | null
-          refund_attempted_at?: string | null
-          refund_error?: string | null
-          refund_status?: string
-          refunded_at?: string | null
           requires_authentication?: boolean | null
-          seller_settlement_status?: Database["public"]["Enums"]["seller_settlement_status"]
-          sf_address?: string | null
-          sf_locker_code?: string | null
-          shipping_fee?: number
-          shipping_method?: string | null
-          stripe_destination_account_id?: string | null
           stripe_payment_intent_id?: string | null
-          stripe_refund_id?: string | null
-          stripe_transfer_id?: string | null
-          total_amount?: number | null
-          transferred_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -1223,25 +660,10 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "merchant_orders_auth_graded_by_fkey"
-            columns: ["auth_graded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "merchant_orders_coupon_user_reward_id_fkey"
-            columns: ["coupon_user_reward_id"]
-            isOneToOne: false
-            referencedRelation: "user_rewards"
-            referencedColumns: ["id"]
-          },
         ]
       }
       merchant_shops: {
         Row: {
-          base_courier_shipping_fee: number
           business_details: Json | null
           cancelled_trades_count: number
           completed_trades_count: number
@@ -1259,7 +681,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          base_courier_shipping_fee?: number
           business_details?: Json | null
           cancelled_trades_count?: number
           completed_trades_count?: number
@@ -1277,7 +698,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          base_courier_shipping_fee?: number
           business_details?: Json | null
           cancelled_trades_count?: number
           completed_trades_count?: number
@@ -1299,135 +719,6 @@ export type Database = {
             foreignKeyName: "fk_merchant_shops_profile"
             columns: ["merchant_id"]
             isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      moderation_audit_logs: {
-        Row: {
-          action: string
-          admin_id: string
-          case_id: string
-          created_at: string
-          id: string
-          payload: Json
-        }
-        Insert: {
-          action: string
-          admin_id: string
-          case_id: string
-          created_at?: string
-          id?: string
-          payload?: Json
-        }
-        Update: {
-          action?: string
-          admin_id?: string
-          case_id?: string
-          created_at?: string
-          id?: string
-          payload?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "moderation_audit_logs_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "moderation_audit_logs_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "moderation_cases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      moderation_cases: {
-        Row: {
-          adjustment_reason: string | null
-          admin_adjustment: number
-          auto_score: number
-          case_number: string
-          created_at: string
-          final_score: number | null
-          id: string
-          primary_category:
-            | Database["public"]["Enums"]["report_category"]
-            | null
-          resolution:
-            | Database["public"]["Enums"]["moderation_resolution"]
-            | null
-          resolved_at: string | null
-          resolved_by: string | null
-          status: Database["public"]["Enums"]["moderation_case_status"]
-          subject_user_id: string
-          updated_at: string
-          violation_persona:
-            | Database["public"]["Enums"]["violation_persona"]
-            | null
-        }
-        Insert: {
-          adjustment_reason?: string | null
-          admin_adjustment?: number
-          auto_score?: number
-          case_number: string
-          created_at?: string
-          final_score?: number | null
-          id?: string
-          primary_category?:
-            | Database["public"]["Enums"]["report_category"]
-            | null
-          resolution?:
-            | Database["public"]["Enums"]["moderation_resolution"]
-            | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: Database["public"]["Enums"]["moderation_case_status"]
-          subject_user_id: string
-          updated_at?: string
-          violation_persona?:
-            | Database["public"]["Enums"]["violation_persona"]
-            | null
-        }
-        Update: {
-          adjustment_reason?: string | null
-          admin_adjustment?: number
-          auto_score?: number
-          case_number?: string
-          created_at?: string
-          final_score?: number | null
-          id?: string
-          primary_category?:
-            | Database["public"]["Enums"]["report_category"]
-            | null
-          resolution?:
-            | Database["public"]["Enums"]["moderation_resolution"]
-            | null
-          resolved_at?: string | null
-          resolved_by?: string | null
-          status?: Database["public"]["Enums"]["moderation_case_status"]
-          subject_user_id?: string
-          updated_at?: string
-          violation_persona?:
-            | Database["public"]["Enums"]["violation_persona"]
-            | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "moderation_cases_resolved_by_fkey"
-            columns: ["resolved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "moderation_cases_subject_user_id_fkey"
-            columns: ["subject_user_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1497,218 +788,6 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "chat_rooms"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payout_batches: {
-        Row: {
-          created_at: string
-          cutoff_at: string
-          id: string
-          notes: string | null
-          processed_by: string | null
-          scheduled_date: string
-          status: Database["public"]["Enums"]["payout_batch_status"]
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          cutoff_at: string
-          id?: string
-          notes?: string | null
-          processed_by?: string | null
-          scheduled_date: string
-          status?: Database["public"]["Enums"]["payout_batch_status"]
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          cutoff_at?: string
-          id?: string
-          notes?: string | null
-          processed_by?: string | null
-          scheduled_date?: string
-          status?: Database["public"]["Enums"]["payout_batch_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payout_batches_processed_by_fkey"
-            columns: ["processed_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payout_requests: {
-        Row: {
-          admin_fps_reference: string | null
-          amount: number
-          batch_id: string | null
-          created_at: string
-          fps_id_snapshot: string
-          fps_name_snapshot: string | null
-          fps_transfer_fee_hkd: number
-          gross_payout_hkd: number
-          id: string
-          order_id: string
-          paid_at: string | null
-          paid_by: string | null
-          ready_at: string | null
-          seller_id: string
-          status: Database["public"]["Enums"]["payout_request_status"]
-          updated_at: string
-        }
-        Insert: {
-          admin_fps_reference?: string | null
-          amount: number
-          batch_id?: string | null
-          created_at?: string
-          fps_id_snapshot: string
-          fps_name_snapshot?: string | null
-          fps_transfer_fee_hkd?: number
-          gross_payout_hkd?: number
-          id?: string
-          order_id: string
-          paid_at?: string | null
-          paid_by?: string | null
-          ready_at?: string | null
-          seller_id: string
-          status?: Database["public"]["Enums"]["payout_request_status"]
-          updated_at?: string
-        }
-        Update: {
-          admin_fps_reference?: string | null
-          amount?: number
-          batch_id?: string | null
-          created_at?: string
-          fps_id_snapshot?: string
-          fps_name_snapshot?: string | null
-          fps_transfer_fee_hkd?: number
-          gross_payout_hkd?: number
-          id?: string
-          order_id?: string
-          paid_at?: string | null
-          paid_by?: string | null
-          ready_at?: string | null
-          seller_id?: string
-          status?: Database["public"]["Enums"]["payout_request_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payout_requests_batch_id_fkey"
-            columns: ["batch_id"]
-            isOneToOne: false
-            referencedRelation: "payout_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "member_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_paid_by_fkey"
-            columns: ["paid_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payout_requests_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      platform_announcements: {
-        Row: {
-          content: string
-          created_at: string
-          created_by: string | null
-          end_date: string
-          id: string
-          image_object_key: string | null
-          image_url: string
-          is_active: boolean
-          link_url: string | null
-          priority: number
-          start_date: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          created_by?: string | null
-          end_date: string
-          id?: string
-          image_object_key?: string | null
-          image_url: string
-          is_active?: boolean
-          link_url?: string | null
-          priority?: number
-          start_date: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          created_by?: string | null
-          end_date?: string
-          id?: string
-          image_object_key?: string | null
-          image_url?: string
-          is_active?: boolean
-          link_url?: string | null
-          priority?: number
-          start_date?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "platform_announcements_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      platform_settings: {
-        Row: {
-          key: string
-          updated_at: string
-          updated_by: string | null
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          updated_by?: string | null
-          value: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          updated_by?: string | null
-          value?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "platform_settings_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1991,8 +1070,6 @@ export type Database = {
           completed_trades_count: number
           created_at: string
           display_name: string
-          fps_id: string | null
-          fps_name: string | null
           id: string
           rating_score: number | null
           reputation_tag: Json | null
@@ -2008,8 +1085,6 @@ export type Database = {
           completed_trades_count?: number
           created_at?: string
           display_name: string
-          fps_id?: string | null
-          fps_name?: string | null
           id: string
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -2025,8 +1100,6 @@ export type Database = {
           completed_trades_count?: number
           created_at?: string
           display_name?: string
-          fps_id?: string | null
-          fps_name?: string | null
           id?: string
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -2038,104 +1111,32 @@ export type Database = {
         }
         Relationships: []
       }
-      report_attachments: {
-        Row: {
-          byte_size: number
-          created_at: string
-          id: string
-          mime_type: string
-          report_id: string | null
-          reporter_id: string
-          storage_path: string
-        }
-        Insert: {
-          byte_size: number
-          created_at?: string
-          id?: string
-          mime_type: string
-          report_id?: string | null
-          reporter_id: string
-          storage_path: string
-        }
-        Update: {
-          byte_size?: number
-          created_at?: string
-          id?: string
-          mime_type?: string
-          report_id?: string | null
-          reporter_id?: string
-          storage_path?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_attachments_report_id_fkey"
-            columns: ["report_id"]
-            isOneToOne: false
-            referencedRelation: "reports"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "report_attachments_reporter_id_fkey"
-            columns: ["reporter_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reports: {
         Row: {
-          case_id: string | null
-          category: Database["public"]["Enums"]["report_category"] | null
-          category_weight_snapshot: number | null
-          context_id: string | null
-          context_type: string | null
-          contribution_score: number | null
           created_at: string | null
-          details: string | null
           id: string
-          outcome_acknowledged_at: string | null
           reason: string
           reporter_id: string
-          source: Database["public"]["Enums"]["report_source"] | null
           status: Database["public"]["Enums"]["report_state"] | null
           target_id: string
           target_type: string
           updated_at: string | null
         }
         Insert: {
-          case_id?: string | null
-          category?: Database["public"]["Enums"]["report_category"] | null
-          category_weight_snapshot?: number | null
-          context_id?: string | null
-          context_type?: string | null
-          contribution_score?: number | null
           created_at?: string | null
-          details?: string | null
           id?: string
-          outcome_acknowledged_at?: string | null
           reason: string
           reporter_id: string
-          source?: Database["public"]["Enums"]["report_source"] | null
           status?: Database["public"]["Enums"]["report_state"] | null
           target_id: string
           target_type: string
           updated_at?: string | null
         }
         Update: {
-          case_id?: string | null
-          category?: Database["public"]["Enums"]["report_category"] | null
-          category_weight_snapshot?: number | null
-          context_id?: string | null
-          context_type?: string | null
-          contribution_score?: number | null
           created_at?: string | null
-          details?: string | null
           id?: string
-          outcome_acknowledged_at?: string | null
           reason?: string
           reporter_id?: string
-          source?: Database["public"]["Enums"]["report_source"] | null
           status?: Database["public"]["Enums"]["report_state"] | null
           target_id?: string
           target_type?: string
@@ -2149,249 +1150,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "reports_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "moderation_cases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reward_campaign_claims: {
-        Row: {
-          campaign_id: string
-          claim_day: string
-          claimed_at: string
-          id: string
-          user_id: string
-          user_reward_id: string
-        }
-        Insert: {
-          campaign_id: string
-          claim_day: string
-          claimed_at?: string
-          id?: string
-          user_id: string
-          user_reward_id: string
-        }
-        Update: {
-          campaign_id?: string
-          claim_day?: string
-          claimed_at?: string
-          id?: string
-          user_id?: string
-          user_reward_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reward_campaign_claims_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "reward_campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reward_campaign_claims_user_reward_id_fkey"
-            columns: ["user_reward_id"]
-            isOneToOne: false
-            referencedRelation: "user_rewards"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reward_campaigns: {
-        Row: {
-          claimed_count: number
-          created_at: string
-          created_by: string | null
-          ends_at: string
-          id: string
-          max_claims: number
-          max_claims_per_user: number
-          name: string
-          override_valid_days: number | null
-          starts_at: string
-          status: Database["public"]["Enums"]["reward_campaign_status"]
-          template_id: string
-          updated_at: string
-        }
-        Insert: {
-          claimed_count?: number
-          created_at?: string
-          created_by?: string | null
-          ends_at: string
-          id?: string
-          max_claims: number
-          max_claims_per_user?: number
-          name: string
-          override_valid_days?: number | null
-          starts_at: string
-          status?: Database["public"]["Enums"]["reward_campaign_status"]
-          template_id: string
-          updated_at?: string
-        }
-        Update: {
-          claimed_count?: number
-          created_at?: string
-          created_by?: string | null
-          ends_at?: string
-          id?: string
-          max_claims?: number
-          max_claims_per_user?: number
-          name?: string
-          override_valid_days?: number | null
-          starts_at?: string
-          status?: Database["public"]["Enums"]["reward_campaign_status"]
-          template_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reward_campaigns_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "reward_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reward_redemption_catalog: {
-        Row: {
-          created_at: string
-          display_order: number
-          id: string
-          initial_stock: number | null
-          is_active: boolean
-          max_redemptions_per_user: number | null
-          points_cost: number
-          stock: number
-          template_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          display_order?: number
-          id?: string
-          initial_stock?: number | null
-          is_active?: boolean
-          max_redemptions_per_user?: number | null
-          points_cost: number
-          stock: number
-          template_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          display_order?: number
-          id?: string
-          initial_stock?: number | null
-          is_active?: boolean
-          max_redemptions_per_user?: number | null
-          points_cost?: number
-          stock?: number
-          template_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reward_redemption_catalog_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: true
-            referencedRelation: "reward_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reward_redemption_claims: {
-        Row: {
-          catalog_id: string
-          created_at: string
-          id: string
-          points_spent: number
-          user_id: string
-          user_reward_id: string | null
-        }
-        Insert: {
-          catalog_id: string
-          created_at?: string
-          id?: string
-          points_spent: number
-          user_id: string
-          user_reward_id?: string | null
-        }
-        Update: {
-          catalog_id?: string
-          created_at?: string
-          id?: string
-          points_spent?: number
-          user_id?: string
-          user_reward_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reward_redemption_claims_catalog_id_fkey"
-            columns: ["catalog_id"]
-            isOneToOne: false
-            referencedRelation: "reward_redemption_catalog"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reward_redemption_claims_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reward_redemption_claims_user_reward_id_fkey"
-            columns: ["user_reward_id"]
-            isOneToOne: false
-            referencedRelation: "user_rewards"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      reward_template_audits: {
-        Row: {
-          action: Database["public"]["Enums"]["reward_template_audit_action"]
-          admin_id: string
-          created_at: string
-          id: string
-          snapshot: Json
-          template_id: string
-        }
-        Insert: {
-          action: Database["public"]["Enums"]["reward_template_audit_action"]
-          admin_id: string
-          created_at?: string
-          id?: string
-          snapshot: Json
-          template_id: string
-        }
-        Update: {
-          action?: Database["public"]["Enums"]["reward_template_audit_action"]
-          admin_id?: string
-          created_at?: string
-          id?: string
-          snapshot?: Json
-          template_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reward_template_audits_admin_id_fkey"
-            columns: ["admin_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reward_template_audits_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "reward_templates"
-            referencedColumns: ["id"]
-          },
         ]
       }
       reward_templates: {
@@ -2399,15 +1157,12 @@ export type Database = {
           claimed_count: number
           created_at: string | null
           description: string | null
-          distribution_mode: Database["public"]["Enums"]["reward_distribution_mode"]
           fixed_expiry_date: string | null
           id: string
           is_active: boolean | null
           is_infinite: boolean | null
           max_claims: number | null
-          restrictions: Json
           reward_value: Json
-          status: Database["public"]["Enums"]["reward_template_status"]
           title: string
           trigger_conditions: Json
           type: Database["public"]["Enums"]["reward_type"]
@@ -2418,15 +1173,12 @@ export type Database = {
           claimed_count?: number
           created_at?: string | null
           description?: string | null
-          distribution_mode?: Database["public"]["Enums"]["reward_distribution_mode"]
           fixed_expiry_date?: string | null
           id?: string
           is_active?: boolean | null
           is_infinite?: boolean | null
           max_claims?: number | null
-          restrictions?: Json
           reward_value: Json
-          status?: Database["public"]["Enums"]["reward_template_status"]
           title: string
           trigger_conditions: Json
           type: Database["public"]["Enums"]["reward_type"]
@@ -2437,15 +1189,12 @@ export type Database = {
           claimed_count?: number
           created_at?: string | null
           description?: string | null
-          distribution_mode?: Database["public"]["Enums"]["reward_distribution_mode"]
           fixed_expiry_date?: string | null
           id?: string
           is_active?: boolean | null
           is_infinite?: boolean | null
           max_claims?: number | null
-          restrictions?: Json
           reward_value?: Json
-          status?: Database["public"]["Enums"]["reward_template_status"]
           title?: string
           trigger_conditions?: Json
           type?: Database["public"]["Enums"]["reward_type"]
@@ -2453,69 +1202,6 @@ export type Database = {
           valid_duration_days?: number | null
         }
         Relationships: []
-      }
-      seller_receivables: {
-        Row: {
-          amount_hkd: number
-          created_at: string
-          fps_reference: string | null
-          id: string
-          notes: string | null
-          order_id: string
-          order_kind: string
-          paid_at: string | null
-          paid_by: string | null
-          seller_id: string
-          status: Database["public"]["Enums"]["seller_receivable_status"]
-          stripe_fee_hkd: number | null
-          updated_at: string
-        }
-        Insert: {
-          amount_hkd: number
-          created_at?: string
-          fps_reference?: string | null
-          id?: string
-          notes?: string | null
-          order_id: string
-          order_kind: string
-          paid_at?: string | null
-          paid_by?: string | null
-          seller_id: string
-          status?: Database["public"]["Enums"]["seller_receivable_status"]
-          stripe_fee_hkd?: number | null
-          updated_at?: string
-        }
-        Update: {
-          amount_hkd?: number
-          created_at?: string
-          fps_reference?: string | null
-          id?: string
-          notes?: string | null
-          order_id?: string
-          order_kind?: string
-          paid_at?: string | null
-          paid_by?: string | null
-          seller_id?: string
-          status?: Database["public"]["Enums"]["seller_receivable_status"]
-          stripe_fee_hkd?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "seller_receivables_paid_by_fkey"
-            columns: ["paid_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "seller_receivables_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       transaction_reviews: {
         Row: {
@@ -2664,9 +1350,6 @@ export type Database = {
           grant_dedup_key: string
           id: string
           is_used: boolean | null
-          reserved_at: string | null
-          reserved_member_order_id: string | null
-          reserved_merchant_order_id: string | null
           template_id: string
           used_at: string | null
           user_id: string
@@ -2678,9 +1361,6 @@ export type Database = {
           grant_dedup_key?: string
           id?: string
           is_used?: boolean | null
-          reserved_at?: string | null
-          reserved_member_order_id?: string | null
-          reserved_merchant_order_id?: string | null
           template_id: string
           used_at?: string | null
           user_id: string
@@ -2692,28 +1372,11 @@ export type Database = {
           grant_dedup_key?: string
           id?: string
           is_used?: boolean | null
-          reserved_at?: string | null
-          reserved_member_order_id?: string | null
-          reserved_merchant_order_id?: string | null
           template_id?: string
           used_at?: string | null
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "user_rewards_reserved_member_order_id_fkey"
-            columns: ["reserved_member_order_id"]
-            isOneToOne: false
-            referencedRelation: "member_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_rewards_reserved_merchant_order_id_fkey"
-            columns: ["reserved_merchant_order_id"]
-            isOneToOne: false
-            referencedRelation: "merchant_orders"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "user_rewards_template_id_fkey"
             columns: ["template_id"]
@@ -2779,150 +1442,8 @@ export type Database = {
       }
     }
     Functions: {
-      _admin_sync_redemption_catalog: {
-        Args: { p_payload: Json; p_template_id: string }
-        Returns: undefined
-      }
-      _check_in_program_row_to_json: {
-        Args: { p_row: Database["public"]["Tables"]["check_in_program"]["Row"] }
-        Returns: Json
-      }
-      _find_or_create_moderation_case: {
-        Args: { p_subject_user_id: string }
-        Returns: string
-      }
-      _grading_require_admin: { Args: never; Returns: string }
-      _grading_write_audit_log: {
-        Args: {
-          p_action: string
-          p_admin_id: string
-          p_from_status: string
-          p_notes?: string
-          p_order_id: string
-          p_order_kind: string
-          p_to_status: string
-        }
-        Returns: undefined
-      }
-      _hk_today: { Args: never; Returns: string }
-      _moderation_apply_sanction_side_effects: {
-        Args: {
-          p_scope: Database["public"]["Enums"]["sanction_scope"]
-          p_type: Database["public"]["Enums"]["sanction_type"]
-          p_user_id: string
-        }
-        Returns: undefined
-      }
-      _moderation_category_label: {
-        Args: { p_category: Database["public"]["Enums"]["report_category"] }
-        Returns: string
-      }
-      _moderation_category_weight: {
-        Args: { p_category: Database["public"]["Enums"]["report_category"] }
-        Returns: number
-      }
-      _moderation_format_report_reason: {
-        Args: {
-          p_category: Database["public"]["Enums"]["report_category"]
-          p_chat_room_id: string
-          p_details: string
-          p_source: Database["public"]["Enums"]["report_source"]
-        }
-        Returns: string
-      }
-      _moderation_has_active_sanction: {
-        Args: {
-          p_scope?: Database["public"]["Enums"]["sanction_scope"]
-          p_type?: Database["public"]["Enums"]["sanction_type"]
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      _moderation_insert_account_sanction: {
-        Args: {
-          p_admin_id: string
-          p_case_id: string
-          p_ends_at: string
-          p_reason: string
-          p_scope: Database["public"]["Enums"]["sanction_scope"]
-          p_type: Database["public"]["Enums"]["sanction_type"]
-          p_user_id: string
-        }
-        Returns: string
-      }
-      _moderation_next_case_number: { Args: never; Returns: string }
-      _moderation_resolve_chat_room_for_case: {
-        Args: { p_case_id: string }
-        Returns: string
-      }
-      _moderation_write_audit_log: {
-        Args: { p_action: string; p_case_id: string; p_payload?: Json }
-        Returns: undefined
-      }
-      _recompute_moderation_case_scores: {
-        Args: { p_case_id: string }
-        Returns: undefined
-      }
-      _reward_activity_row_to_json: {
-        Args: {
-          p_campaign?: Database["public"]["Tables"]["reward_campaigns"]["Row"]
-          p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
-        }
-        Returns: Json
-      }
-      _reward_campaign_row_to_json: {
-        Args: { p_row: Database["public"]["Tables"]["reward_campaigns"]["Row"] }
-        Returns: Json
-      }
-      _reward_template_row_to_json: {
-        Args: { p_row: Database["public"]["Tables"]["reward_templates"]["Row"] }
-        Returns: Json
-      }
-      _reward_template_write_audit: {
-        Args: {
-          p_action: Database["public"]["Enums"]["reward_template_audit_action"]
-          p_admin_id: string
-          p_snapshot: Json
-          p_template_id: string
-        }
-        Returns: undefined
-      }
-      _sync_catalog_active_for_template_status: {
-        Args: { p_status: string; p_template_id: string }
-        Returns: undefined
-      }
-      acknowledge_report_outcomes: {
-        Args: { p_report_ids: string[] }
-        Returns: Json
-      }
       acknowledge_reward_grants: {
         Args: { p_user_reward_ids: string[] }
-        Returns: Json
-      }
-      admin_get_moderation_case_bundle: {
-        Args: { p_case_id: string }
-        Returns: Json
-      }
-      admin_get_moderation_chat_thread: {
-        Args: {
-          p_before?: string
-          p_case_id: string
-          p_limit?: number
-          p_room_id: string
-        }
-        Returns: Json
-      }
-      admin_get_moderation_order_context: {
-        Args: { p_case_id: string }
-        Returns: Json
-      }
-      admin_get_subject_moderation_history: {
-        Args: {
-          p_case_limit?: number
-          p_exclude_case_id?: string
-          p_sanction_limit?: number
-          p_subject_user_id: string
-        }
         Returns: Json
       }
       canonical_card_search_key: { Args: { input: string }; Returns: string }
@@ -2978,13 +1499,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      fn_build_grant_json: {
-        Args: {
-          p_template: Database["public"]["Tables"]["reward_templates"]["Row"]
-          p_user_reward_id: string
-        }
-        Returns: Json
-      }
       fn_bump_listing_offers_count: {
         Args: { p_actor_id?: string; p_listing_id: string }
         Returns: undefined
@@ -2999,61 +1513,6 @@ export type Database = {
       fn_claim_mission_points: {
         Args: { p_description?: string; p_mission_id: string; p_points: number }
         Returns: Json
-      }
-      fn_compute_auth_escrow_amounts: {
-        Args: { p_item_subtotal: number }
-        Returns: {
-          auth_fee: number
-          buyer_total_amount: number
-          inbound_shipping_fee: number
-          outbound_shipping_fee: number
-          total_amount: number
-        }[]
-      }
-      fn_compute_moderation_order_refund: {
-        Args: {
-          p_carrier_liability_party?: string
-          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
-          p_order_id: string
-          p_platform_fault_reason?: string
-        }
-        Returns: Json
-      }
-      fn_compute_platform_subsidy: {
-        Args: {
-          p_buyer_id: string
-          p_item_subtotal: number
-          p_order_id?: string
-          p_order_kind?: string
-          p_shipping_fee: number
-          p_shipping_method: string
-          p_use_auth: boolean
-          p_user_reward_id: string
-        }
-        Returns: {
-          coupon_type: Database["public"]["Enums"]["reward_type"]
-          subsidy_amount: number
-        }[]
-      }
-      fn_compute_seller_grading_fail_liability: {
-        Args: { p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
-      fn_effective_check_in_streak: {
-        Args: { p_user_id: string }
-        Returns: number
-      }
-      fn_fps_payout_blocked_for_complete: {
-        Args: {
-          p_fps_id_snapshot: string
-          p_fps_name_snapshot: string
-          p_status: Database["public"]["Enums"]["payout_request_status"]
-        }
-        Returns: boolean
-      }
-      fn_get_check_in_daily_points: {
-        Args: { p_cycle_day: number }
-        Returns: number
       }
       fn_grant_points_from_template: {
         Args: { p_template_id: string; p_user_id: string }
@@ -3079,18 +1538,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      fn_merchant_checkout_auth_fee: {
-        Args: { p_use_auth: boolean }
-        Returns: number
-      }
-      fn_merchant_checkout_shipping_fee: {
-        Args: {
-          p_listing_id: string
-          p_merchant_id: string
-          p_shipping_method: string
-        }
-        Returns: number
-      }
       fn_merchant_order_is_auth_in_progress: {
         Args: {
           p_escrow_status: Database["public"]["Enums"]["escrow_state"]
@@ -3102,87 +1549,12 @@ export type Database = {
         Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] }
         Returns: boolean
       }
-      fn_merchant_order_is_payment_stage: {
-        Args: { p_escrow_status: Database["public"]["Enums"]["escrow_state"] }
-        Returns: boolean
-      }
-      fn_merchant_order_needs_seller_action:
-        | {
-            Args: {
-              p_escrow_status: Database["public"]["Enums"]["escrow_state"]
-              p_requires_authentication: boolean
-            }
-            Returns: boolean
-          }
-        | {
-            Args: {
-              p_escrow_status: Database["public"]["Enums"]["escrow_state"]
-              p_inbound_tracking_no?: string
-              p_requires_authentication: boolean
-            }
-            Returns: boolean
-          }
-      fn_merchant_unsettled_grading_recovery: {
-        Args: { p_merchant_id: string }
-        Returns: {
-          recovery_created_at: string
-          recovery_order_id: string
-          remaining_hkd: number
-        }[]
-      }
-      fn_moderation_case_links_order: {
-        Args: { p_case_id: string; p_order_id: string }
-        Returns: boolean
-      }
-      fn_moderation_derive_order_kind: {
-        Args: { p_order_id: string }
-        Returns: string
-      }
-      fn_moderation_order_refund_eligible: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
-      fn_p2p_aml_meetup_max_new_account_hkd: { Args: never; Returns: number }
-      fn_p2p_aml_meetup_max_no_market_hkd: { Args: never; Returns: number }
-      fn_p2p_aml_new_account_grace_days: { Args: never; Returns: number }
-      fn_platform_active_announcements: {
-        Args: never
-        Returns: {
-          content: string
-          created_at: string
-          created_by: string | null
-          end_date: string
-          id: string
-          image_object_key: string | null
-          image_url: string
-          is_active: boolean
-          link_url: string | null
-          priority: number
-          start_date: string
-          title: string
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "platform_announcements"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      fn_platform_auth_escrow_config: { Args: never; Returns: Json }
-      fn_platform_auth_fee_hkd: { Args: never; Returns: number }
-      fn_platform_auth_sf_leg_fee: { Args: never; Returns: number }
-      fn_platform_commission_rate: { Args: never; Returns: number }
-      fn_platform_financial_config: { Args: never; Returns: Json }
-      fn_platform_fps_manual_transfer_fee_hkd: { Args: never; Returns: number }
-      fn_preview_moderation_order_refund_breakdown: {
+      fn_merchant_order_needs_seller_action: {
         Args: {
-          p_carrier_liability_party?: string
-          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
-          p_order_id: string
-          p_platform_fault_reason?: string
+          p_escrow_status: Database["public"]["Enums"]["escrow_state"]
+          p_requires_authentication: boolean
         }
-        Returns: Json
+        Returns: boolean
       }
       fn_recalculate_member_reputation_tags: {
         Args: { p_user_id: string }
@@ -3204,45 +1576,9 @@ export type Database = {
         }
         Returns: Json
       }
-      fn_release_member_order_coupon: {
-        Args: { p_order_id: string }
-        Returns: undefined
-      }
-      fn_release_merchant_order_coupon: {
-        Args: { p_order_id: string }
-        Returns: undefined
-      }
-      fn_reserve_user_reward_for_member_order: {
-        Args: {
-          p_buyer_id: string
-          p_order_id: string
-          p_user_reward_id: string
-        }
-        Returns: string
-      }
-      fn_reserve_user_reward_for_merchant_order: {
-        Args: {
-          p_buyer_id: string
-          p_order_id: string
-          p_user_reward_id: string
-        }
-        Returns: string
-      }
       fn_resolve_member_listing_id: {
         Args: { p_listing_ref: string; p_seller_id: string }
         Returns: string
-      }
-      fn_restore_member_order_coupon_on_void: {
-        Args: { p_order_id: string }
-        Returns: undefined
-      }
-      fn_restore_merchant_order_coupon_on_void: {
-        Args: { p_order_id: string }
-        Returns: undefined
-      }
-      fn_reward_auto_grant_in_window: {
-        Args: { p_template_id: string }
-        Returns: boolean
       }
       fn_reward_template_has_stock: {
         Args: {
@@ -3256,16 +1592,6 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
-      }
-      fn_sync_broken_check_in_streak: {
-        Args: { p_user_id: string }
-        Returns: number
-      }
-      fn_sync_check_in_program_template: {
-        Args: {
-          p_program: Database["public"]["Tables"]["check_in_program"]["Row"]
-        }
-        Returns: undefined
       }
       fn_template_is_eligible: {
         Args: {
@@ -3282,20 +1608,7 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: boolean
       }
-      fn_validate_check_in_program_payload: {
-        Args: { p_payload: Json }
-        Returns: undefined
-      }
-      fn_validate_reward_template: {
-        Args: { p_payload: Json }
-        Returns: undefined
-      }
-      generate_merchant_shop_handle: { Args: never; Returns: string }
       generate_profile_username: { Args: never; Returns: string }
-      get_admin_grading_audit_history: {
-        Args: { p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
       get_chat_room_thread:
         | { Args: { p_room_id: string }; Returns: Json }
         | {
@@ -3306,7 +1619,6 @@ export type Database = {
             }
             Returns: Json
           }
-      get_check_in_program_for_member: { Args: never; Returns: Json }
       get_gamification_stats_for_me: { Args: never; Returns: Json }
       get_marketplace_price_bounds: {
         Args: never
@@ -3364,15 +1676,11 @@ export type Database = {
         }
         Returns: Json
       }
-      get_reward_coupon_center:
-        | { Args: never; Returns: Json }
-        | { Args: { p_user_id?: string }; Returns: Json }
-      get_unacknowledged_report_outcomes_for_me: { Args: never; Returns: Json }
+      get_reward_coupon_center: { Args: never; Returns: Json }
       get_unacknowledged_reward_grants: { Args: never; Returns: Json }
       get_user_chat_inbox: { Args: never; Returns: Json }
       get_user_chat_inbox_lobby: { Args: never; Returns: Json }
       get_user_reward_coupons: { Args: never; Returns: Json }
-      is_admin: { Args: never; Returns: boolean }
       is_card_identifier_query: { Args: { p_query: string }; Returns: boolean }
       is_chat_room_member: {
         Args: { p_room_id: string; p_user_id?: string }
@@ -3382,17 +1690,6 @@ export type Database = {
       listing_grade_sort_score: {
         Args: { grading_company: string; grading_score: string }
         Returns: number
-      }
-      moderation_check_listing_allowed: {
-        Args: {
-          p_persona: Database["public"]["Enums"]["seller_persona_type"]
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      moderation_get_account_access_restriction: {
-        Args: { p_user_id: string }
-        Returns: Json
       }
       refresh_marketplace_product_summaries: { Args: never; Returns: undefined }
       resolve_listing_market_price_company: {
@@ -3407,150 +1704,10 @@ export type Database = {
         Args: { p_offer_id: string; p_seller_id: string }
         Returns: Json
       }
-      rpc_adjust_moderation_case_score: {
-        Args: { p_adjustment: number; p_case_id: string; p_reason?: string }
-        Returns: Json
-      }
-      rpc_admin_batch_complete_fps_payout_requests: {
-        Args: { p_admin_id: string; p_request_ids: string[] }
-        Returns: Json
-      }
-      rpc_admin_clear_seller_settlement: {
-        Args: {
-          p_fps_reference?: string
-          p_notes?: string
-          p_order_id: string
-          p_order_kind: string
-        }
-        Returns: Json
-      }
-      rpc_admin_confirm_grading_intake: {
-        Args: { p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
-      rpc_admin_get_check_in_program: { Args: never; Returns: Json }
-      rpc_admin_get_reward_activity: {
-        Args: { p_template_id: string }
-        Returns: Json
-      }
-      rpc_admin_list_reward_activities: {
-        Args: { p_page?: number; p_page_size?: number; p_status?: string }
-        Returns: Json
-      }
-      rpc_admin_list_reward_campaigns: {
-        Args: { p_page?: number; p_page_size?: number; p_status?: string }
-        Returns: Json
-      }
-      rpc_admin_list_reward_templates: {
-        Args: {
-          p_page?: number
-          p_page_size?: number
-          p_status?: string
-          p_type?: string
-        }
-        Returns: Json
-      }
-      rpc_admin_pass_grading: {
-        Args: { p_notes?: string; p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
-      rpc_admin_prepare_auth_refund: {
-        Args: { p_order_id: string; p_order_kind: string; p_reason?: string }
-        Returns: Json
-      }
-      rpc_admin_reset_merchant_connect_payout_retry: {
-        Args: { p_admin_id: string; p_order_id: string }
-        Returns: Json
-      }
-      rpc_admin_set_fps_payout_request_status: {
-        Args: {
-          p_admin_fps_reference?: string
-          p_admin_id: string
-          p_request_id: string
-          p_status: Database["public"]["Enums"]["payout_request_status"]
-        }
-        Returns: Json
-      }
-      rpc_admin_set_reward_activity_status: {
-        Args: { p_status: string; p_template_id: string }
-        Returns: Json
-      }
-      rpc_admin_set_reward_campaign_status: {
-        Args: { p_campaign_id: string; p_status: string }
-        Returns: Json
-      }
-      rpc_admin_set_reward_template_status: {
-        Args: { p_status: string; p_template_id: string }
-        Returns: Json
-      }
-      rpc_admin_submit_grading_outbound: {
-        Args: {
-          p_order_id: string
-          p_order_kind: string
-          p_tracking_no: string
-        }
-        Returns: Json
-      }
-      rpc_admin_submit_seller_return_tracking: {
-        Args: {
-          p_order_id: string
-          p_order_kind: string
-          p_tracking_no: string
-        }
-        Returns: Json
-      }
-      rpc_admin_upsert_check_in_program: {
-        Args: { p_payload: Json }
-        Returns: Json
-      }
-      rpc_admin_upsert_reward_activity: {
-        Args: { p_payload: Json }
-        Returns: Json
-      }
-      rpc_admin_upsert_reward_campaign: {
-        Args: { p_payload: Json }
-        Returns: Json
-      }
-      rpc_admin_upsert_reward_template: {
-        Args: { p_payload: Json }
-        Returns: Json
-      }
-      rpc_apply_account_sanction: {
-        Args: {
-          p_case_id: string
-          p_ends_at?: string
-          p_reason?: string
-          p_scope: Database["public"]["Enums"]["sanction_scope"]
-          p_type: Database["public"]["Enums"]["sanction_type"]
-          p_user_id: string
-        }
-        Returns: Json
-      }
-      rpc_attach_member_auth_order_payment_intent: {
-        Args: { p_order_id: string; p_payment_intent_id: string }
-        Returns: Json
-      }
-      rpc_attach_merchant_order_payment_intent: {
-        Args: { p_order_id: string; p_payment_intent_id: string }
-        Returns: Json
-      }
-      rpc_buy_now_listing: {
-        Args: { p_buyer_id: string; p_listing_id: string; p_use_auth?: boolean }
-        Returns: Json
-      }
-      rpc_buy_now_merchant_listing: {
-        Args: { p_buyer_id: string; p_listing_id: string; p_use_auth?: boolean }
-        Returns: Json
-      }
       rpc_cancel_member_order: {
         Args: { p_order_id: string; p_user_id: string }
         Returns: Json
       }
-      rpc_cancel_merchant_auth_order: {
-        Args: { p_order_id: string; p_merchant_id: string }
-        Returns: Json
-      }
-      rpc_claim_flash_reward: { Args: { p_campaign_id: string }; Returns: Json }
       rpc_complete_member_auth_grading: {
         Args: { p_order_id: string }
         Returns: Json
@@ -3567,23 +1724,7 @@ export type Database = {
         Args: { p_buyer_id: string; p_order_id: string }
         Returns: Json
       }
-      rpc_confirm_merchant_buyer_receipt: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
       rpc_confirm_platform_received: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
-      rpc_e2e_backdate_coupon_reserve: {
-        Args: { p_minutes_ago?: number; p_user_reward_id: string }
-        Returns: Json
-      }
-      rpc_e2e_backdate_merchant_order_created_at: {
-        Args: { p_hours_ago?: number; p_order_id: string }
-        Returns: undefined
-      }
-      rpc_e2e_backdate_merchant_payout_hold: {
         Args: { p_order_id: string }
         Returns: Json
       }
@@ -3591,157 +1732,8 @@ export type Database = {
         Args: { p_buyer_id: string; p_listing_id: string; p_seller_id: string }
         Returns: Json
       }
-      rpc_e2e_seed_member_auth_pending_payment_order: {
-        Args: { p_buyer_id: string; p_listing_id: string }
-        Returns: string
-      }
-      rpc_e2e_seed_member_auth_refund_eligible_order: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-          p_payment_intent_suffix?: string
-        }
-        Returns: string
-      }
-      rpc_e2e_seed_merchant_auth_refund_eligible_order: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-          p_payment_intent_suffix?: string
-        }
-        Returns: string
-      }
-      rpc_e2e_seed_merchant_direct_refund_eligible_order: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-          p_payment_intent_suffix?: string
-        }
-        Returns: string
-      }
-      rpc_e2e_seed_merchant_auth_confirm_guard_order: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-          p_payment_intent_suffix?: string
-        }
-        Returns: string
-      }
-      rpc_e2e_seed_merchant_pending_payment_order: {
-        Args: { p_buyer_id: string; p_listing_id: string }
-        Returns: string
-      }
-      rpc_e2e_seed_merchant_shipped_awaiting_confirm: {
-        Args: {
-          p_buyer_id: string
-          p_item_subtotal?: number
-          p_listing_id: string
-          p_payment_intent_suffix?: string
-        }
-        Returns: string
-      }
-      rpc_e2e_set_merchant_order_payout_retry_test_state: {
-        Args: { p_order_id: string; p_scenario: string }
-        Returns: Json
-      }
       rpc_fail_member_auth_order: {
         Args: { p_order_id: string }
-        Returns: Json
-      }
-      rpc_finalize_auth_fee_capture: {
-        Args: {
-          p_admin_id?: string
-          p_captured_amount_cents: number
-          p_order_id: string
-          p_order_kind: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_finalize_auth_grading_fail: {
-        Args: {
-          p_order_id: string
-          p_order_kind: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_finalize_auth_intake_confirm: {
-        Args: {
-          p_admin_id?: string
-          p_order_id: string
-          p_order_kind: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_finalize_auth_refund: {
-        Args: {
-          p_order_id: string
-          p_order_kind: string
-          p_refund_amount_cents: number
-          p_refund_id: string
-        }
-        Returns: Json
-      }
-      rpc_finalize_goods_capture: {
-        Args: {
-          p_admin_id?: string
-          p_auth_grading_company?: string
-          p_auth_grading_score?: string
-          p_captured_amount_cents: number
-          p_notes?: string
-          p_order_id: string
-          p_order_kind: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_finalize_member_fps_payout_ready: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
-      rpc_finalize_merchant_order_payout:
-        | {
-            Args: {
-              p_destination_account_id: string
-              p_order_id: string
-              p_transfer_amount_cents: number
-              p_transfer_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_destination_account_id: string
-              p_order_id: string
-              p_recovery_applications?: Json
-              p_transfer_amount_cents: number
-              p_transfer_id: string
-            }
-            Returns: Json
-          }
-      rpc_finalize_merchant_pending_payment_expiry: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
-      rpc_finalize_moderation_order_refund: {
-        Args: {
-          p_case_id?: string
-          p_order_id: string
-          p_payment_intent_id: string
-          p_refund_cents: number
-          p_refund_id: string
-          p_stripe_fee_hkd?: number
-        }
-        Returns: Json
-      }
-      rpc_finalize_stale_coupon_reserve: {
-        Args: { p_user_reward_id: string }
-        Returns: Json
-      }
-      rpc_get_auth_escrow_capture_model: {
-        Args: { p_order_id: string; p_order_kind: string }
         Returns: Json
       }
       rpc_get_user_reviewed_member_order_ids: {
@@ -3755,44 +1747,6 @@ export type Database = {
       rpc_increment_listing_view: {
         Args: { p_listing_id: string }
         Returns: undefined
-      }
-      rpc_list_active_flash_campaigns: { Args: never; Returns: Json }
-      rpc_list_checkout_eligible_coupons: {
-        Args: {
-          p_order_id: string
-          p_shipping_method?: string
-          p_use_auth?: boolean
-        }
-        Returns: Json
-      }
-      rpc_list_member_fps_payout_ready_candidates: {
-        Args: { p_limit?: number }
-        Returns: {
-          order_id: string
-        }[]
-      }
-      rpc_list_merchant_connect_payout_candidates: {
-        Args: { p_limit?: number }
-        Returns: {
-          order_id: string
-        }[]
-      }
-      rpc_list_merchant_pending_payment_expiry_candidates: {
-        Args: { p_limit?: number }
-        Returns: {
-          listing_id: string
-          order_id: string
-          stripe_payment_intent_id: string
-        }[]
-      }
-      rpc_list_points_redemption_catalog: { Args: never; Returns: Json }
-      rpc_list_stale_coupon_reserve_candidates: {
-        Args: { p_limit?: number }
-        Returns: {
-          order_id: string
-          order_kind: string
-          user_reward_id: string
-        }[]
       }
       rpc_make_offer:
         | {
@@ -3814,64 +1768,16 @@ export type Database = {
             }
             Returns: Json
           }
-      rpc_mark_auth_grading_fail_failed: {
-        Args: { p_error: string; p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
-      rpc_mark_auth_order_payment_voided: {
-        Args: {
-          p_order_id: string
-          p_order_kind: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_mark_auth_refund_failed: {
-        Args: { p_error: string; p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
       rpc_mark_chat_room_read: {
         Args: { p_read_at?: string; p_room_id: string }
         Returns: Json
       }
-      rpc_mark_member_auth_order_authorized: {
+      rpc_mock_pay_member_auth_order: {
         Args: {
-          p_amounts?: Json
+          p_buyer_id: string
+          p_mock_session_id?: string
           p_order_id: string
-          p_payment_intent_id: string
         }
-        Returns: Json
-      }
-      rpc_mark_member_auth_order_paid: {
-        Args: {
-          p_amounts?: Json
-          p_order_id: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_mark_merchant_order_authorized: {
-        Args: {
-          p_amounts?: Json
-          p_order_id: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_mark_merchant_order_paid: {
-        Args: {
-          p_amounts?: Json
-          p_order_id: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
-      rpc_mark_merchant_order_payout_failed: {
-        Args: { p_error: string; p_order_id: string }
-        Returns: Json
-      }
-      rpc_mark_moderation_order_refund_failed: {
-        Args: { p_case_id?: string; p_error: string; p_order_id: string }
         Returns: Json
       }
       rpc_modify_offer: {
@@ -3883,164 +1789,16 @@ export type Database = {
         }
         Returns: Json
       }
-      rpc_prepare_auth_fee_capture: {
-        Args: { p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
-      rpc_prepare_auth_grading_fail: {
-        Args: {
-          p_carrier_liability_party?: string
-          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
-          p_order_id: string
-          p_order_kind: string
-          p_reason?: string
-        }
-        Returns: Json
-      }
-      rpc_prepare_auth_intake_confirm: {
-        Args: { p_order_id: string; p_order_kind: string }
-        Returns: Json
-      }
-      rpc_prepare_goods_capture: {
-        Args: {
-          p_auth_grading_company?: string
-          p_auth_grading_score?: string
-          p_notes?: string
-          p_order_id: string
-          p_order_kind: string
-        }
-        Returns: Json
-      }
-      rpc_prepare_member_auth_order_payment: {
-        Args: { p_order_id: string; p_user_reward_id?: string }
-        Returns: Json
-      }
-      rpc_prepare_merchant_order_payment:
-        | {
-            Args: {
-              p_order_id: string
-              p_shipping_method: string
-              p_use_auth?: boolean
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_buyer_phone?: string
-              p_buyer_remark?: string
-              p_meetup_detail?: string
-              p_order_id: string
-              p_sf_address?: string
-              p_sf_locker_code?: string
-              p_shipping_method: string
-              p_use_auth?: boolean
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_buyer_phone?: string
-              p_buyer_remark?: string
-              p_meetup_detail?: string
-              p_order_id: string
-              p_sf_address?: string
-              p_sf_locker_code?: string
-              p_shipping_method: string
-              p_use_auth?: boolean
-              p_user_reward_id?: string
-            }
-            Returns: Json
-          }
-      rpc_prepare_merchant_order_payout: {
-        Args: { p_order_id: string }
-        Returns: Json
-      }
-      rpc_prepare_moderation_order_refund: {
-        Args: {
-          p_carrier_liability_party?: string
-          p_case_id: string
-          p_fault_party: Database["public"]["Enums"]["grading_fault_party"]
-          p_order_id: string
-          p_platform_fault_reason?: string
-          p_reason?: string
-        }
-        Returns: Json
-      }
-      rpc_redeem_points_catalog_item: {
-        Args: { p_catalog_id: string }
-        Returns: Json
-      }
-      rpc_refresh_auth_escrow_payment_intent: {
-        Args: {
-          p_order_id: string
-          p_order_kind: string
-          p_payment_intent_id: string
-        }
-        Returns: Json
-      }
       rpc_reject_offer: {
         Args: { p_offer_id: string; p_seller_id: string }
-        Returns: Json
-      }
-      rpc_resolve_moderation_case: {
-        Args: { p_case_id: string; p_payload: Json }
-        Returns: Json
-      }
-      rpc_retry_moderation_order_refund_prepare: {
-        Args: { p_case_id: string; p_order_id: string }
         Returns: Json
       }
       rpc_send_chat_message: {
         Args: { p_content: string; p_room_id: string; p_sender_id: string }
         Returns: Json
       }
-      rpc_submit_inbound_tracking:
-        | {
-            Args: {
-              p_order_id: string
-              p_seller_id: string
-              p_tracking_no: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_courier_name?: string
-              p_order_id: string
-              p_seller_id: string
-              p_tracking_no: string
-            }
-            Returns: Json
-          }
-      rpc_submit_merchant_auth_inbound_tracking:
-        | {
-            Args: {
-              p_merchant_id: string
-              p_order_id: string
-              p_tracking_no: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_courier_name?: string
-              p_merchant_id: string
-              p_order_id: string
-              p_tracking_no: string
-            }
-            Returns: Json
-          }
-      rpc_submit_merchant_direct_fulfillment: {
-        Args: {
-          p_courier_name?: string
-          p_merchant_id: string
-          p_order_id: string
-          p_tracking_no?: string
-        }
-        Returns: Json
-      }
-      rpc_submit_merchant_kyc_application: {
-        Args: { p_application: Json; p_documents: Json; p_user_id: string }
+      rpc_submit_inbound_tracking: {
+        Args: { p_order_id: string; p_seller_id: string; p_tracking_no: string }
         Returns: Json
       }
       rpc_submit_outbound_tracking: {
@@ -4057,48 +1815,7 @@ export type Database = {
         }
         Returns: Json
       }
-      rpc_submit_user_report_v2: {
-        Args: {
-          p_attachment_ids?: string[]
-          p_category: Database["public"]["Enums"]["report_category"]
-          p_chat_room_id?: string
-          p_details?: string
-          p_target_id: string
-        }
-        Returns: Json
-      }
       run_auto_grant_rewards_for_me: { Args: never; Returns: Json }
-      search_admin_grading_orders: {
-        Args: {
-          p_keyword?: string
-          p_order_kind?: string
-          p_page?: number
-          p_page_size?: number
-          p_tab: string
-        }
-        Returns: Json
-      }
-      search_admin_moderation_cases: {
-        Args: {
-          p_category?: Database["public"]["Enums"]["report_category"]
-          p_min_score?: number
-          p_page?: number
-          p_page_size?: number
-          p_search?: string
-          p_status?: string
-        }
-        Returns: Json
-      }
-      search_admin_platform_users: {
-        Args: {
-          p_keyword?: string
-          p_kyc_filter?: string
-          p_page?: number
-          p_page_size?: number
-          p_user_types?: string[]
-        }
-        Returns: Json
-      }
       search_marketplace_products: {
         Args: {
           p_card_number?: string
@@ -4378,8 +2095,6 @@ export type Database = {
           use_authentication: boolean
         }[]
       }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       catalog_type:
@@ -4390,20 +2105,11 @@ export type Database = {
         | "starter_deck"
         | "accessories"
       escrow_state:
-        | "pending_payment"
         | "payment_held"
-        | "shipped"
         | "authenticating"
         | "authenticated"
         | "completed_and_transferred"
         | "refunded"
-      grading_fault_party:
-        | "buyer"
-        | "seller"
-        | "platform"
-        | "carrier"
-        | "inconclusive"
-      kyc_application_status: "pending" | "approved" | "rejected"
       kyc_state: "pending" | "verified" | "rejected"
       listing_engagement_event_type: "view" | "offer"
       listing_status: "active" | "sold" | "inactive"
@@ -4419,56 +2125,15 @@ export type Database = {
         | "meetup_arranged"
         | "completed"
         | "cancelled"
-      member_seller_payout_status:
-        | "none"
-        | "held"
-        | "ready"
-        | "processing"
-        | "paid"
-        | "frozen"
-        | "failed"
-      moderation_case_status: "open" | "reviewing" | "resolved" | "dismissed"
-      moderation_resolution: "upheld" | "dismissed" | "insufficient_evidence"
       offer_status: "pending" | "accepted" | "rejected" | "cancelled"
-      payment_capture_status:
-        | "none"
-        | "authorized"
-        | "auth_fee_captured"
-        | "fully_captured"
-        | "voided"
-        | "refunded"
-        | "partially_refunded"
-      payout_batch_status: "draft" | "processing" | "completed"
-      payout_request_status:
-        | "pending"
-        | "ready"
-        | "processing"
-        | "completed"
-        | "failed"
-      report_category: "fraud" | "offline_trade" | "harassment" | "other"
-      report_source: "chat_room" | "profile"
       report_state: "pending" | "reviewing" | "resolved" | "dismissed"
       review_persona: "member" | "merchant"
-      reward_campaign_status: "draft" | "active" | "paused" | "ended"
-      reward_distribution_mode: "auto_grant" | "flash_only"
-      reward_template_audit_action: "create" | "update" | "publish" | "archive"
-      reward_template_status: "draft" | "active" | "archived"
       reward_type:
         | "discount_coupon"
         | "free_shipping"
         | "lucky_draw_ticket"
         | "points"
-      sanction_scope: "account" | "member_persona" | "merchant_persona"
-      sanction_type:
-        | "warn"
-        | "restrict_listing"
-        | "restrict_chat"
-        | "freeze_payout"
-        | "suspend"
-        | "ban"
       seller_persona_type: "member" | "merchant"
-      seller_receivable_status: "pending" | "paid" | "waived" | "cancelled"
-      seller_settlement_status: "none" | "pending" | "cleared" | "waived"
       sync_state: "synced" | "partial" | "needs_review"
       transaction_type:
         | "escrow_payment"
@@ -4476,10 +2141,7 @@ export type Database = {
         | "shipping_subsidy"
         | "refund"
         | "payout"
-        | "grading_fail_recovery"
-        | "grading_fail_recovery_applied"
       user_role: "admin" | "merchant" | "member"
-      violation_persona: "member" | "merchant" | "both" | "unknown"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4619,22 +2281,12 @@ export const Constants = {
         "accessories",
       ],
       escrow_state: [
-        "pending_payment",
         "payment_held",
-        "shipped",
         "authenticating",
         "authenticated",
         "completed_and_transferred",
         "refunded",
       ],
-      grading_fault_party: [
-        "buyer",
-        "seller",
-        "platform",
-        "carrier",
-        "inconclusive",
-      ],
-      kyc_application_status: ["pending", "approved", "rejected"],
       kyc_state: ["pending", "verified", "rejected"],
       listing_engagement_event_type: ["view", "offer"],
       listing_status: ["active", "sold", "inactive"],
@@ -4652,61 +2304,16 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-      member_seller_payout_status: [
-        "none",
-        "held",
-        "ready",
-        "processing",
-        "paid",
-        "frozen",
-        "failed",
-      ],
-      moderation_case_status: ["open", "reviewing", "resolved", "dismissed"],
-      moderation_resolution: ["upheld", "dismissed", "insufficient_evidence"],
       offer_status: ["pending", "accepted", "rejected", "cancelled"],
-      payment_capture_status: [
-        "none",
-        "authorized",
-        "auth_fee_captured",
-        "fully_captured",
-        "voided",
-        "refunded",
-        "partially_refunded",
-      ],
-      payout_batch_status: ["draft", "processing", "completed"],
-      payout_request_status: [
-        "pending",
-        "ready",
-        "processing",
-        "completed",
-        "failed",
-      ],
-      report_category: ["fraud", "offline_trade", "harassment", "other"],
-      report_source: ["chat_room", "profile"],
       report_state: ["pending", "reviewing", "resolved", "dismissed"],
       review_persona: ["member", "merchant"],
-      reward_campaign_status: ["draft", "active", "paused", "ended"],
-      reward_distribution_mode: ["auto_grant", "flash_only"],
-      reward_template_audit_action: ["create", "update", "publish", "archive"],
-      reward_template_status: ["draft", "active", "archived"],
       reward_type: [
         "discount_coupon",
         "free_shipping",
         "lucky_draw_ticket",
         "points",
       ],
-      sanction_scope: ["account", "member_persona", "merchant_persona"],
-      sanction_type: [
-        "warn",
-        "restrict_listing",
-        "restrict_chat",
-        "freeze_payout",
-        "suspend",
-        "ban",
-      ],
       seller_persona_type: ["member", "merchant"],
-      seller_receivable_status: ["pending", "paid", "waived", "cancelled"],
-      seller_settlement_status: ["none", "pending", "cleared", "waived"],
       sync_state: ["synced", "partial", "needs_review"],
       transaction_type: [
         "escrow_payment",
@@ -4714,11 +2321,8 @@ export const Constants = {
         "shipping_subsidy",
         "refund",
         "payout",
-        "grading_fail_recovery",
-        "grading_fail_recovery_applied",
       ],
       user_role: ["admin", "merchant", "member"],
-      violation_persona: ["member", "merchant", "both", "unknown"],
     },
   },
 } as const

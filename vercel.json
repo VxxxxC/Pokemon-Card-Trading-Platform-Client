@@ -8,22 +8,6 @@
     {
       "path": "/api/cron/aggregate-prices",
       "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/cron/expire-merchant-pending-payment",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/release-stale-coupon-reserves",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/member-fps-payout-ready",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/merchant-connect-payout-ready",
-      "schedule": "0 * * * *"
     }
   ]
 }

@@ -59,10 +59,6 @@ export function hasBuyerAuthFixtures(): boolean {
   return Boolean(fixtures.buyerEmail && fixtures.buyerPassword);
 }
 
-export function hasAdminAuthFixtures(): boolean {
-  return Boolean(readEnv("E2E_ADMIN_EMAIL") && readEnv("E2E_ADMIN_PASSWORD"));
-}
-
 export function hasWrongSellerFixture(): boolean {
   const fixtures = getMerchantProductDetailFixtures();
   return Boolean(fixtures.wrongSellerId && fixtures.listingId);

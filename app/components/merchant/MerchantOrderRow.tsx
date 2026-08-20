@@ -14,13 +14,7 @@ interface MerchantOrderRowProps {
   order: SaleOrder;
 }
 
-function OrderStatusBadge({
-  status,
-  labelOverride,
-}: {
-  status: OrderStatus;
-  labelOverride?: string;
-}) {
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const stepIdx =
     STATUS_STEP_INDEX[status as Exclude<OrderStatus, "cancelled">];
   const step = stepIdx !== undefined ? ESCROW_STEPS[stepIdx] : null;
@@ -40,9 +34,7 @@ function OrderStatusBadge({
         colorMap[status] ?? "text-text-disabled bg-bg-elevated",
       )}
     >
-      {status === "cancelled"
-        ? "已取消"
-        : (labelOverride ?? step?.label ?? status)}
+      {status === "cancelled" ? "已取消" : (step?.label ?? status)}
     </span>
   );
 }
@@ -61,10 +53,7 @@ export function MerchantOrderRow({ order }: MerchantOrderRowProps) {
           <h3 className="text-[14.5px] font-bold text-text-primary truncate max-w-[160px] sm:max-w-xs md:max-w-md">
             {order.cardName}
           </h3>
-          <OrderStatusBadge
-            status={order.status}
-            labelOverride={order.statusLabelOverride}
-          />
+          <OrderStatusBadge status={order.status} />
           <span className="font-sans text-[10px] font-black text-brand bg-brand/5 border border-brand/20 px-1.5 py-0.5 rounded">
             {order.grade}
           </span>

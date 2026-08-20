@@ -28,14 +28,7 @@ const STATUS_TAB_LABELS: TabStatusFilter[] = [
   "cancelled",
 ];
 
-function isRawMerchantOrder(order: {
-  listing?: { gradingCompany?: string | null };
-  grade?: unknown;
-  cardType?: unknown;
-  isRaw?: unknown;
-  isRawCard?: unknown;
-  gradingCompany?: unknown;
-}): boolean {
+function isRawMerchantOrder(order: Record<string, unknown>): boolean {
   if (
     order.cardType === "RAW" ||
     order.isRaw === true ||
@@ -43,30 +36,32 @@ function isRawMerchantOrder(order: {
   ) {
     return true;
   }
-
   const grade = String(order.grade ?? "").toUpperCase().trim();
-  if (/\b(PSA|BGS|CGC|ARS)\b/.test(grade)) {
-    return false;
-  }
-  if (grade.includes("RAW") || grade.includes("裸卡")) {
+  if (
+    grade.includes("RAW") ||
+    grade.includes("裸卡") ||
+    grade === "" ||
+    grade === "NONE"
+  ) {
     return true;
   }
-
   const company = String(
-    order.listing?.gradingCompany ?? order.gradingCompany ?? "",
+    order.gradingCompany ??
+      (order.listing as Record<string, unknown> | undefined)?.gradingCompany ??
+      "",
   )
     .toUpperCase()
     .trim();
-  if (["PSA", "CGC", "BGS", "ARS"].includes(company)) {
-    return false;
-  }
-  return (
+  if (
     !company ||
     company === "RAW" ||
     company === "RAW CARD" ||
     company === "NONE" ||
     company === "裸卡"
-  );
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function MerchantTradingClient({
@@ -107,9 +102,13 @@ export function MerchantTradingClient({
   const saleOrders = useMemo(() => {
     const mapped = orders.map(mapMerchantTradingOrderToSaleOrder);
     if (!onlyRawChecked) return mapped;
-    return mapped.filter((_, idx) => {
-      const source = orders[idx];
-      return Boolean(source && isRawMerchantOrder(source));
+    return mapped.filter((saleOrder, idx) => {
+      const rawOrder = orders[idx];
+      return (
+        isRawMerchantOrder(saleOrder as unknown as Record<string, unknown>) ||
+        (rawOrder &&
+          isRawMerchantOrder(rawOrder as unknown as Record<string, unknown>))
+      );
     });
   }, [orders, onlyRawChecked]);
 

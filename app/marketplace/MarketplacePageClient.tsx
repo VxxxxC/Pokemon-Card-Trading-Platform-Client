@@ -85,10 +85,6 @@ function toMarketplaceListing(
     sellerId: product.sellerId,
     sellerPersona: product.sellerPersona,
     detailHref: `/marketplace/product/${product.productId}`,
-    baseCourierShippingFee: product.baseCourierShippingFee,
-    listingExtraShippingFee: product.listingExtraShippingFee,
-    courierShippingTotal: product.courierShippingTotal,
-    deliverySummary: product.deliverySummary,
   };
 }
 

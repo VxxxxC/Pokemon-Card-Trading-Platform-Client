@@ -27,7 +27,6 @@ export interface CardInstance {
   views: number;
   offersCount?: number;
   isSealedListing?: boolean;
-  extraShippingFee?: number;
 }
 
 export interface SKUGroup {
@@ -65,14 +64,9 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
 interface CardInstanceRowProps {
   sku: Pick<SKUGroup, "cardName" | "cardNo">;
   item: CardInstance;
-  inventoryContext?: "merchant" | "member";
 }
 
-function CardInstanceRow({
-  sku,
-  item,
-  inventoryContext = "member",
-}: CardInstanceRowProps) {
+function CardInstanceRow({ sku, item }: CardInstanceRowProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { label, className } = STATUS_LABEL[item.status];
   const canEdit = !item.isSealedListing;
@@ -138,7 +132,6 @@ function CardInstanceRow({
           onOpenChange={setIsOpen}
           sku={sku}
           item={item}
-          inventoryContext={inventoryContext}
         />
       ) : null}
     </>
@@ -149,10 +142,9 @@ function CardInstanceRow({
 
 interface SkuItemsListProps {
   sku: SKUGroup;
-  inventoryContext?: "merchant" | "member";
 }
 
-function SkuItemsList({ sku, inventoryContext = "member" }: SkuItemsListProps) {
+function SkuItemsList({ sku }: SkuItemsListProps) {
   const [itemPage, setItemPage] = useState(1);
   const itemsPerPage = 5;
   const totalItemPages = Math.ceil(sku.items.length / itemsPerPage);
@@ -164,12 +156,7 @@ function SkuItemsList({ sku, inventoryContext = "member" }: SkuItemsListProps) {
   return (
     <div className="space-y-2">
       {paginatedItems.map((item) => (
-        <CardInstanceRow
-          key={item.id}
-          sku={sku}
-          item={item}
-          inventoryContext={inventoryContext}
-        />
+        <CardInstanceRow key={item.id} sku={sku} item={item} />
       ))}
 
       <Pagination
@@ -191,14 +178,9 @@ function SkuItemsList({ sku, inventoryContext = "member" }: SkuItemsListProps) {
 interface InventoryAccordionProps {
   analytics?: boolean;
   skuGroups: SKUGroup[];
-  inventoryContext?: "merchant" | "member";
 }
 
-export function InventoryAccordion({
-  skuGroups,
-  analytics = true,
-  inventoryContext = "member",
-}: InventoryAccordionProps) {
+export function InventoryAccordion({ skuGroups, analytics = true }: InventoryAccordionProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
@@ -324,7 +306,7 @@ export function InventoryAccordion({
               <div className="overflow-hidden">
                 <div className="bg-[rgba(212,165,116,0.02)] border-t border-[rgba(212,165,116,0.10)] px-4 pt-4 pb-4 space-y-3">
 
-                  <SkuItemsList sku={sku} inventoryContext={inventoryContext} />
+                  <SkuItemsList sku={sku} />
 
                   {analytics ? 
                   <div className="pt-1 border-t border-[rgba(237,232,224,0.06)]">

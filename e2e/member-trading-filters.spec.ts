@@ -36,15 +36,11 @@ test.describe("Member trading filters shell", () => {
     await gotoTradingPage(page);
 
     for (const label of ["全部", "待處理", "已完成", "已取消"]) {
-      await expect(
-        page.getByRole("button", { name: new RegExp(`^${label}`) }).first(),
-      ).toBeVisible();
+      await expect(page.getByRole("tab", { name: label }).first()).toBeVisible();
     }
 
     for (const label of ["買單", "賣單"]) {
-      await expect(
-        page.getByRole("button", { name: new RegExp(`^${label}`) }).first(),
-      ).toBeVisible();
+      await expect(page.getByRole("tab", { name: label }).first()).toBeVisible();
     }
 
     await expect(page.locator("#user-order-search")).toBeVisible();
@@ -64,9 +60,7 @@ test.describe.serial("Member trading filters with live order", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture({
-      requiredSellerPersona: "member",
-    });
+    const fixtureResult = await resolveE2eMarketplaceFixture();
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -82,7 +76,7 @@ test.describe.serial("Member trading filters with live order", () => {
       return;
     }
 
-    let roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
       getProfileDisplayName(buyerId),
@@ -109,7 +103,6 @@ test.describe.serial("Member trading filters with live order", () => {
         sellerDisplayName,
         buyerDisplayName,
       });
-      roomId = offerState.roomId;
       await acceptOfferAsSeller(
         sellerPage,
         roomId,
@@ -118,14 +111,9 @@ test.describe.serial("Member trading filters with live order", () => {
         offerLabel,
         buyerPage,
         sellerDisplayName,
-        sellerId,
-        buyerId,
       );
 
-      const memberOrderId = await pollMemberOrderIdForOffer(offerState.offerId, {
-        listingId,
-        buyerId,
-      });
+      const memberOrderId = await pollMemberOrderIdForOffer(offerState.offerId);
       const order = await getLatestMemberOrderForListing({ listingId, buyerId });
       if (order) {
         const guard = guardP2pMemberOrder(order);

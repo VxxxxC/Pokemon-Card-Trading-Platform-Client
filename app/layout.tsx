@@ -16,7 +16,6 @@ import { IosPwaModal } from "./components/pwa/IosPwaModal";
 import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import { PasswordUpdatedToast } from "@/components/auth/PasswordUpdatedToast";
 import { GlobalChatOverlay } from "@/app/components/chat/GlobalChatOverlay";
-import { ReportOutcomeNotificationHost } from "@/app/components/report/ReportOutcomeNotificationHost";
 import { ExecutionSlideOverHost } from "@/app/components/transactions/ExecutionSlideOverHost";
 
 const APP_NAME = "HKCardVault";
@@ -322,7 +321,6 @@ export default async function RootLayout({
         <AddAssetModal />
         <ListingSubmitOverlay />
         <GlobalChatOverlay />
-        <ReportOutcomeNotificationHost />
         <ExecutionSlideOverHost />
       </body>
     </html>

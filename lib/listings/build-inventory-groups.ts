@@ -27,7 +27,6 @@ export type InventoryListingRow = Pick<
   | "seller_description"
   | "created_at"
   | "use_authentication"
-  | "extra_shipping_fee"
 >;
 
 export type InventoryStatsRow = Pick<
@@ -133,7 +132,6 @@ export function groupListingsByProduct(input: {
             listing.grading_company,
             listing.grading_score,
           ),
-          extraShippingFee: Number(listing.extra_shipping_fee ?? 0),
         };
       }),
     });

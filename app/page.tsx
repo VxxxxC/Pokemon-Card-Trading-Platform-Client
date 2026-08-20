@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { HomePageShell } from "@/app/HomePageShell";
-import { getActiveAnnouncementsForDisplay } from "@/app/actions/admin-announcements";
 import { getWishlistFavoredKeysForUser } from "@/app/actions/wishlist";
 import { HomeC2cSectionData } from "@/app/home/HomeC2cSectionData";
 import { HomeMerchantSectionData } from "@/app/home/HomeMerchantSectionData";
@@ -11,7 +10,6 @@ import {
   WishlistSectionSkeleton,
 } from "@/app/home/HomeSectionSkeletons";
 import { getOptionalAuthUser } from "@/lib/auth/session";
-import { loadHomePriceTickerItems } from "@/lib/home/load-home-ticker";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 export default async function HomePage() {
@@ -19,22 +17,9 @@ export default async function HomePage() {
   const currentUserId = user?.id ?? null;
   const favoredKeys =
     user != null ? await getWishlistFavoredKeysForUser(user.id) : [];
-  const activeAnnouncementsResult = isSupabaseConfigured()
-    ? await getActiveAnnouncementsForDisplay()
-    : { success: true as const, data: [] };
-  const activeAnnouncements = activeAnnouncementsResult.success
-    ? activeAnnouncementsResult.data
-    : [];
-  const tickerItems = isSupabaseConfigured()
-    ? await loadHomePriceTickerItems()
-    : [];
 
   return (
-    <HomePageShell
-      currentUserId={currentUserId}
-      activeAnnouncements={activeAnnouncements}
-      tickerItems={tickerItems}
-    >
+    <HomePageShell currentUserId={currentUserId}>
       {user ? (
         <Suspense fallback={<WishlistSectionSkeleton />}>
           <HomeWishlistSectionData userId={user.id} />

@@ -8,7 +8,6 @@ import {
   getOfferStatus,
   getProfileDisplayName,
   getProfileIdByEmail,
-  isBuyerWithinP2pNewAccountGrace,
   resetE2eListingTradingFixture,
   resolveE2eMarketplaceFixture,
 } from "./fixtures/supabase-admin";
@@ -22,7 +21,6 @@ import {
   openBothChatRooms,
   chatConsoleRoot,
   submitBuyerOfferFromDetail,
-  waitForSellerOfferCardVisible,
   P2P_OFFER_AMOUNT,
   P2P_OFFER_AMOUNT_LABEL,
 } from "./helpers/member-trading";
@@ -41,9 +39,7 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture({
-      requiredSellerPersona: "member",
-    });
+    const fixtureResult = await resolveE2eMarketplaceFixture();
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -60,14 +56,9 @@ test.describe("Member offer negotiation", () => {
       return;
     }
 
-    let roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
-    await expect
-      .poll(async () => (await getListingStatus(listingId)) === "active", {
-        timeout: 20_000,
-      })
-      .toBe(true);
 
     const listingStatus = await getListingStatus(listingId);
     if (listingStatus && listingStatus !== "active") {
@@ -108,18 +99,15 @@ test.describe("Member offer negotiation", () => {
         sellerId,
         listingId,
         offerAmount,
-        { buyerId },
       );
       await expect
         .poll(async () => {
           const offer = await getLatestOfferForListing({
+            roomId,
             listingId,
             buyerId,
           });
           offerId = offer?.id ?? null;
-          if (offer?.room_id) {
-            roomId = offer.room_id;
-          }
           return offer?.status === "pending" && !offer.use_authentication;
         }, { timeout: 25_000 })
         .toBe(true);
@@ -128,33 +116,19 @@ test.describe("Member offer negotiation", () => {
         throw new Error("Missing offerId for reject flow");
       }
 
-      await waitForSellerOfferCardVisible({
-        sellerPage,
-        roomId,
-        buyerDisplayName,
-        buyerId,
-        amountLabel: offerLabel,
-        offerId,
-      });
+      await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName);
       const sellerOfferCard = offerCardWithAmount(sellerPage, offerLabel).filter({
         has: sellerPage.getByRole("button", { name: "拒絕出價" }),
       });
-      await expect(sellerOfferCard).toBeVisible({ timeout: 15_000 });
+      await expect(sellerOfferCard).toBeVisible({ timeout: 45_000 });
       await sellerOfferCard.getByRole("button", { name: "拒絕出價" }).click();
-      const rejectConfirmDialog = sellerPage
-        .getByRole("alertdialog")
-        .filter({ hasText: "確認拒絕出價" });
-      await expect(rejectConfirmDialog).toBeVisible({ timeout: 15_000 });
-      const confirmRejectButton = rejectConfirmDialog
-        .locator('[data-slot="alert-dialog-action"]')
-        .or(rejectConfirmDialog.getByRole("button", { name: "確認拒絕" }));
-      await confirmRejectButton.first().click({ force: true, timeout: 15_000 });
+      await sellerPage.getByRole("button", { name: "確認拒絕" }).click();
 
       await expect
         .poll(async () => getOfferStatus(offerId!), { timeout: 30_000 })
         .toBe("rejected");
 
-      await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName, sellerId);
+      await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName);
       const buyerOfferCard = offerCardWithAmount(buyerPage, offerLabel);
       await expect(buyerOfferCard.getByText("● 已拒絕")).toBeVisible({
         timeout: 30_000,
@@ -174,9 +148,7 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture({
-      requiredSellerPersona: "member",
-    });
+    const fixtureResult = await resolveE2eMarketplaceFixture();
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -194,14 +166,9 @@ test.describe("Member offer negotiation", () => {
       return;
     }
 
-    let roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
-    await expect
-      .poll(async () => (await getListingStatus(listingId)) === "active", {
-        timeout: 20_000,
-      })
-      .toBe(true);
 
     const listingStatus = await getListingStatus(listingId);
     if (listingStatus && listingStatus !== "active") {
@@ -236,6 +203,7 @@ test.describe("Member offer negotiation", () => {
       );
 
       const existingOffer = await getLatestOfferForListing({
+        roomId,
         listingId,
         buyerId,
       });
@@ -250,17 +218,14 @@ test.describe("Member offer negotiation", () => {
           sellerId,
           listingId,
           offerAmount,
-          { buyerId },
         );
         await expect
           .poll(async () => {
             const offer = await getLatestOfferForListing({
+              roomId,
               listingId,
               buyerId,
             });
-            if (offer?.room_id) {
-              roomId = offer.room_id;
-            }
             return offer?.status === "pending" && !offer.use_authentication;
           }, { timeout: 25_000 })
           .toBe(true);
@@ -308,9 +273,7 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture({
-      requiredSellerPersona: "member",
-    });
+    const fixtureResult = await resolveE2eMarketplaceFixture();
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -324,22 +287,10 @@ test.describe("Member offer negotiation", () => {
       test.skip(true, `Could not resolve buyer profile for ${buyerEmail}`);
       return;
     }
-    if (!(await isBuyerWithinP2pNewAccountGrace(buyerId))) {
-      test.skip(
-        true,
-        "E2E buyer is older than 14 days — AML HK$300 cap no longer applies",
-      );
-      return;
-    }
 
-    let roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const roomId = await ensureDbChatRoom(buyerId, sellerId);
     await resetE2eListingTradingFixture({ listingId, buyerId, sellerId });
     await ensureListingActive(listingId);
-    await expect
-      .poll(async () => (await getListingStatus(listingId)) === "active", {
-        timeout: 20_000,
-      })
-      .toBe(true);
 
     const [sellerDisplayName, buyerDisplayName] = await Promise.all([
       getProfileDisplayName(sellerId),
@@ -370,18 +321,15 @@ test.describe("Member offer negotiation", () => {
         sellerId,
         listingId,
         P2P_OFFER_AMOUNT,
-        { buyerId },
       );
 
       await expect
         .poll(async () => {
           const offer = await getLatestOfferForListing({
+            roomId,
             listingId,
             buyerId,
           });
-          if (offer?.room_id) {
-            roomId = offer.room_id;
-          }
           return offer?.status === "pending" && !offer.use_authentication;
         }, { timeout: 25_000 })
         .toBe(true);

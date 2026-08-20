@@ -67,6 +67,7 @@ export async function runMemberAuthMockFlowDev(
       .update({
         escrow_status: "custody",
         payment_confirmed_at: new Date().toISOString(),
+        mock_payment_session_id: `MOCK-DEV-${Date.now()}`,
         updated_at: new Date().toISOString(),
       })
       .eq("id", orderId)

@@ -5,9 +5,7 @@ import {
   hasCoreMerchantFixtures,
 } from "./fixtures/test-data";
 import {
-  clearListingsForSellerProduct,
-  countActiveListingsForSellerProduct,
-  countUserCollectionsForUserProduct,
+  deactivateActiveListingsForSellerProduct,
   deleteUserCollectionsForUserProduct,
   getBuyerProfileIdFromEnv,
   getLatestActiveListingForSellerProduct,
@@ -21,7 +19,6 @@ import {
 import {
   addHobbyHoldingForFixture,
   clickCollectionFilter,
-  dismissBlockingOverlays,
   gotoCollectionPage,
   holdingsRow,
   holdingsRowByPurchasePrice,
@@ -32,11 +29,12 @@ import {
 } from "./helpers/collection-asset";
 
 function uniquePurchasePrice(seed: string): string {
+  const nonce = Date.now() % 10_000;
   let hash = 0;
   for (const char of seed) {
-    hash = (hash * 31 + char.charCodeAt(0)) % 1000;
+    hash = (hash * 31 + char.charCodeAt(0)) % 10_000;
   }
-  return String(10_000 + ((hash * 97 + Date.now()) % 90_000));
+  return String(50_000 + ((hash + nonce) % 10_000));
 }
 
 async function waitForCollectionRefresh(page: import("@playwright/test").Page) {
@@ -106,38 +104,26 @@ test.describe.serial("Member collection holdings mutations", () => {
     }
 
     const purchasePrice = uniquePurchasePrice("grade");
-    await addHobbyHoldingForFixture(page, fixture, purchasePrice, {
-      gradingOptionLabel: "PSA 10",
-    });
+    await addHobbyHoldingForFixture(page, fixture, purchasePrice);
     const row = holdingsRowByPurchasePrice(
       page,
       fixture.productName,
       purchasePrice,
-      { gradingLabel: "PSA" },
     );
 
-    await dismissBlockingOverlays(page);
     await row.getByLabel(`更改 ${fixture.productName} 鑑定規格`).click();
     await page.getByRole("menuitem", { name: "裸卡 A", exact: true }).click();
     await waitForCollectionRefresh(page);
 
-    const updatedRow = holdingsRowByPurchasePrice(
-      page,
-      fixture.productName,
-      purchasePrice,
-      { gradingLabel: "RAW" },
-    );
     await expect(
-      updatedRow.getByRole("button", {
+      row.getByRole("button", {
         name: `更改 ${fixture.productName} 鑑定規格`,
       }),
     ).toContainText("裸卡 A", { timeout: 20_000 });
 
     await clickCollectionFilter(page, "未鑑定");
     await expect(
-      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice, {
-        gradingLabel: "RAW",
-      }),
+      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice),
     ).toBeVisible({
       timeout: 15_000,
     });
@@ -168,13 +154,15 @@ test.describe.serial("Member collection holdings mutations", () => {
       page,
       fixture.productName,
       purchasePrice,
-      { gradingLabel: "RAW" },
     );
     await row.getByRole("button").filter({ hasText: "⋯" }).click();
     await page.getByRole("menuitem", { name: "移除出資產庫" }).click();
 
+    await expect(page.getByText("已從資產庫移除")).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(row).toHaveCount(0, {
-      timeout: 30_000,
+      timeout: 15_000,
     });
   });
 
@@ -200,45 +188,15 @@ test.describe.serial("Member collection holdings mutations", () => {
     }
 
     await deleteUserCollectionsForUserProduct(buyerId, fixture.productId);
-    await clearListingsForSellerProduct(buyerId, fixture.productId);
-    await expect
-      .poll(
-        async () => countUserCollectionsForUserProduct(buyerId, fixture.productId),
-        { timeout: 30_000 },
-      )
-      .toBe(0);
-    await expect
-      .poll(
-        async () => countActiveListingsForSellerProduct(buyerId, fixture.productId),
-        { timeout: 30_000 },
-      )
-      .toBe(0);
+    await deactivateActiveListingsForSellerProduct(buyerId, fixture.productId);
     const purchasePrice = uniquePurchasePrice("sell");
     await addHobbyHoldingForFixture(page, fixture, purchasePrice);
-    await gotoCollectionPage(page);
-    await waitForCollectionRefresh(page);
-    let row = holdingsRowByPurchasePrice(
+    const row = holdingsRowByPurchasePrice(
       page,
       fixture.productName,
       purchasePrice,
-      { gradingLabel: "RAW" },
     );
-    await expect(row).toBeVisible({ timeout: 20_000 });
-    if (!(await row.getByText("持有中").isVisible().catch(() => false))) {
-      await clearListingsForSellerProduct(buyerId, fixture.productId);
-      await expect
-        .poll(
-          async () => countActiveListingsForSellerProduct(buyerId, fixture.productId),
-          { timeout: 30_000 },
-        )
-        .toBe(0);
-      await page.reload({ waitUntil: "domcontentloaded" });
-      await waitForCollectionRefresh(page);
-      row = holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice, {
-        gradingLabel: "RAW",
-      });
-      await expect(row.getByText("持有中")).toBeVisible({ timeout: 30_000 });
-    }
+    await expect(row.getByText("持有中")).toBeVisible({ timeout: 10_000 });
 
     const collectionId = await getLatestUserCollectionId(
       buyerId,
@@ -262,16 +220,14 @@ test.describe.serial("Member collection holdings mutations", () => {
     await gotoCollectionPage(page);
     await clickCollectionFilter(page, "已上架");
     await expect(
-      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice, {
-        gradingLabel: "RAW",
-      }),
+      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice),
     ).toBeVisible({
       timeout: 20_000,
     });
     await expect(
-      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice, {
-        gradingLabel: "RAW",
-      }).getByText("已上架"),
+      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice).getByText(
+        "已上架",
+      ),
     ).toBeVisible();
 
     let listingIdCreated: string | null = null;

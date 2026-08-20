@@ -7,7 +7,6 @@ import type {
 } from "@/app/lib/dashboard/merchant-types";
 import { formatSellerJoinDate } from "@/lib/marketplace/seller-profile";
 import { resolveAvatarUrl, resolveOptionalMediaUrl } from "@/lib/profile/avatar";
-import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
@@ -31,13 +30,7 @@ type MerchantShopRow = Pick<
   | "rating_score"
 >;
 
-type KycRow = Pick<
-  Tables<"kyc_records">,
-  | "kyc_status"
-  | "stripe_account_id"
-  | "stripe_charges_enabled"
-  | "stripe_payouts_enabled"
->;
+type KycRow = Pick<Tables<"kyc_records">, "kyc_status" | "stripe_account_id">;
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -63,7 +56,7 @@ function mapShopRow(
     completedTradesCount: shop.completed_trades_count ?? 0,
     activeListingCount,
     kycVerified: kyc?.kyc_status === "verified",
-    stripeConnected: isMerchantPayoutReady(kyc),
+    stripeConnected: Boolean(kyc?.stripe_account_id?.trim()),
   };
 }
 
@@ -172,9 +165,7 @@ export async function getMerchantDashboardOverview(): Promise<
           .maybeSingle<MerchantShopRow>(),
         supabase
           .from("kyc_records")
-          .select(
-            "kyc_status, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled",
-          )
+          .select("kyc_status, stripe_account_id")
           .eq("merchant_id", user.id)
           .maybeSingle<KycRow>(),
         fetchActiveMerchantListingCount(supabase, user.id),

@@ -9,7 +9,7 @@ const footerSections = [
     links: [
       { label: "市場瀏覽", href: "/marketplace" },
       { label: "搜尋卡牌", href: "/search" },
-      { label: "鑑定託管流程", href: "/terms#escrow" },
+      { label: "鑑定託管流程", href: "/marketplace?info=escrow" },
       { label: "賣家入駐", href: "/auth?role=merchant" },
     ],
   },
@@ -17,8 +17,8 @@ const footerSections = [
     title: "關於平台",
     links: [
       { label: "關於 HKcardvault", href: "#" },
-      { label: "服務條款", href: "/terms" },
-      { label: "私隱政策", href: "/privacy" },
+      { label: "服務條款", href: "#" },
+      { label: "私隱政策", href: "#" },
       { label: "聯絡我們", href: "#" },
     ],
   },

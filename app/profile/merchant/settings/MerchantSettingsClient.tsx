@@ -142,8 +142,6 @@ export function MerchantSettingsClient({ initialData }: Props) {
         toast.error(errors.shopHandle);
       } else if (errors.shopName) {
         toast.error(errors.shopName);
-      } else if (errors.baseCourierShippingFee) {
-        toast.error(errors.baseCourierShippingFee);
       } else if (errors.form) {
         toast.error(errors.form);
       }
@@ -329,41 +327,6 @@ export function MerchantSettingsClient({ initialData }: Props) {
                 {errors?.shopHandle && (
                   <p className="mt-1 font-sans text-[12px] text-warning">
                     {errors.shopHandle}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label
-                  htmlFor="base-courier-shipping-fee"
-                  className="font-mono text-[12px] text-text-secondary block mb-1.5"
-                >
-                  快遞運費（面交訂單不收費）
-                </label>
-                <div
-                  className={`flex items-center h-11 bg-bg-elevated border rounded-xl overflow-hidden transition-colors ${errors?.baseCourierShippingFee ? "border-warning" : "border-[rgba(237,232,224,0.12)] focus-within:border-brand/50"}`}
-                >
-                  <span className="px-3 font-mono text-[13px] text-text-disabled border-r border-[rgba(237,232,224,0.08)] bg-[#17130f]/30">
-                    HK$
-                  </span>
-                  <input
-                    id="base-courier-shipping-fee"
-                    name="baseCourierShippingFee"
-                    type="number"
-                    min={0}
-                    max={500}
-                    step={1}
-                    required
-                    defaultValue={initialData.baseCourierShippingFee}
-                    key={`baseCourierShippingFee-${initialData.baseCourierShippingFee}`}
-                    className="flex-1 h-full bg-transparent px-3 font-mono text-[13.5px] text-text-primary focus:outline-none"
-                  />
-                </div>
-                <p className="mt-1 font-mono text-[11px] text-text-disabled">
-                  買家選擇快遞配送時收取的店舖基本運費
-                </p>
-                {errors?.baseCourierShippingFee && (
-                  <p className="mt-1 font-sans text-[12px] text-warning">
-                    {errors.baseCourierShippingFee}
                   </p>
                 )}
               </div>
