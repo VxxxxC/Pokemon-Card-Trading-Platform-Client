@@ -1,6 +1,6 @@
 # Partner QA — Staging 人手簽收
 
-> **Status:** ⬜ 待 Partner 簽收  
+> **Status:** ⬜ 待 Partner 簽收（工程預檢 `test:e2e:partner-m0` 綠 · 2026-08-20）  
 > **更新：** 2026-08-16  
 > **環境：** staging only · 勿用 production 真實用戶
 
@@ -23,6 +23,8 @@ Logic／回歸／安全由 [staging-certification.md](./staging-certification.md
 ## 每次 staging deploy（必做 ~5 min）— **M0**
 
 > 僅當工程已跑 `bun run test:staging:certify` 綠。未認證時請聯絡工程，**唔**自行 deep regression。
+
+**工程預檢（本地／CI，唔代替 staging 簽名）：** `bun run test:e2e:partner-m0`
 
 | ⬜ | 步驟 | 預期 |
 |----|------|------|
