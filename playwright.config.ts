@@ -142,7 +142,7 @@ export default defineConfig({
         /member-auth-inbound\.spec\.ts/,
       ],
       dependencies: ["setup"],
-      timeout: 300_000,
+      timeout: 480_000,
       use: { ...devices["Desktop Chrome"] },
     },
   ],

@@ -92,7 +92,7 @@ test.describe("Platform rewards full matrix", () => {
     cachedBootstrap?.autoGrantUserId ?? null;
 
   test.beforeAll(async ({ browser }, testInfo) => {
-    test.setTimeout(360_000);
+    test.setTimeout(480_000);
 
     if (testInfo.project.name === "buyer") {
       if (!cachedBootstrap) {

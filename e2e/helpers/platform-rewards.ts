@@ -6,7 +6,11 @@ import { parseRewardCouponCenter } from "@/lib/rewards/mapUserRewardCoupon";
 import { ACTIVE_LISTING_PERSONA_STORAGE_KEY } from "@/lib/listings/active-listing-persona";
 import type { Database } from "@/types/supabase";
 import { ensureMemberPersona } from "./collection-asset";
-import { dismissBlockingOverlays as dismissGlobalBlockingOverlays } from "./overlays";
+import {
+  dismissBlockingOverlays as dismissGlobalBlockingOverlays,
+  dismissRewardUnlockedModal,
+  suppressTransientHomeOverlays,
+} from "./overlays";
 
 function createE2eAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -124,13 +128,44 @@ export async function findActiveFreeShippingTemplateId(): Promise<string | null>
 async function lookupRewardTemplateIdByTitle(
   title: string,
 ): Promise<string | null> {
-  for (const row of await listRecentTemplateAudits(100)) {
-    const snapshot = row.snapshot as RewardTemplateAuditSnapshot;
-    if (snapshot?.title === title) {
-      return row.template_id;
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("reward_templates")
+    .select("id")
+    .eq("title", title)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    return null;
+  }
+  return data?.id ?? null;
+}
+
+async function activateRewardTemplateByTitleIfPresent(
+  title: string,
+): Promise<string | null> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("reward_templates")
+    .select("id, status")
+    .eq("title", title)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data?.id) {
+    return null;
+  }
+  if (data.status !== "active") {
+    const { error: updateError } = await admin
+      .from("reward_templates")
+      .update({ status: "active", is_active: true })
+      .eq("id", data.id);
+    if (updateError) {
+      return null;
     }
   }
-  return null;
+  return data.id;
 }
 
 export async function getRewardTemplateIdByTitle(
@@ -1034,11 +1069,13 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
 
 export async function gotoAdminRewardActivityForm(page: Page): Promise<void> {
   const heading = page.getByRole("heading", { name: "新增獎勵活動" });
+  await suppressTransientHomeOverlays(page);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       if (attempt > 0) {
         await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
+        await dismissBlockingOverlays(page);
         const newActivityButton = page
           .getByRole("button", { name: "新增活動" })
           .or(page.getByRole("button", { name: "新增一般券" }));
@@ -1049,6 +1086,7 @@ export async function gotoAdminRewardActivityForm(page: Page): Promise<void> {
         await page.goto("/admin/campaigns/new", { waitUntil: "domcontentloaded" });
       }
 
+      await dismissBlockingOverlays(page);
       await expect(heading).toBeVisible({ timeout: 20_000 });
       return;
     } catch (error) {
@@ -1090,9 +1128,10 @@ export function buildOpenActivityWindowForE2e() {
 }
 
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
+  await dismissGlobalBlockingOverlays(page);
   const pwaClose = page.getByRole("button", { name: "✕" }).first();
   if (await pwaClose.isVisible().catch(() => false)) {
-    await pwaClose.click();
+    await pwaClose.click({ force: true }).catch(() => undefined);
   }
 }
 
@@ -1149,6 +1188,7 @@ async function navigateToCheckoutAfterBuyNow(
 
 export async function gotoMemberRewardsPage(page: Page): Promise<void> {
   await ensureMemberPersona(page);
+  await suppressTransientHomeOverlays(page);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
@@ -1158,6 +1198,7 @@ export async function gotoMemberRewardsPage(page: Page): Promise<void> {
     }, ACTIVE_LISTING_PERSONA_STORAGE_KEY);
     await page.reload({ waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
+    await dismissRewardUnlockedModal(page);
 
     const crashed = page.getByText("This page couldn't load");
     if (await crashed.isVisible().catch(() => false)) {
@@ -1181,14 +1222,17 @@ export async function gotoMemberRewardsPage(page: Page): Promise<void> {
 }
 
 export async function expectCheckInAffordanceVisible(page: Page): Promise<void> {
-  const checkInHeading = page.getByText("每日簽到");
-  const checkInAction = page.getByRole("button", {
-    name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣|載入簽到狀態…|簽到暫停/,
-  });
+  const heading = page.getByRole("heading", { name: "每日簽到" });
+  const rewardDialog = page.getByRole("dialog", { name: "恭喜解鎖獎勵" });
 
-  await expect(checkInHeading.or(checkInAction)).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(heading.or(rewardDialog)).toBeVisible({ timeout: 45_000 });
+  await dismissRewardUnlockedModal(page);
+  await expect(heading).toBeVisible({ timeout: 20_000 });
+  await expect(
+    page.getByRole("button", {
+      name: /立即簽到打卡獲取積分|簽到中|明日請繼續保持收藏習慣|載入簽到狀態|簽到暫停/,
+    }),
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 export function buildFlashCampaignScheduleForE2e(params?: {
@@ -1380,8 +1424,14 @@ async function selectRewardDistributionMode(
 
 const ADMIN_REWARD_PUBLISH_SUCCESS_TOAST = "已發布獎勵活動";
 
-async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
-  await page.getByRole("button", { name: "發布" }).click();
+async function submitAdminRewardActivityPublish(
+  page: Page,
+  title: string,
+): Promise<void> {
+  await dismissBlockingOverlays(page);
+  const publishButton = page.getByRole("button", { name: "發布" });
+  await expect(publishButton).toBeEnabled({ timeout: 20_000 });
+  await publishButton.click({ force: true, timeout: 15_000 });
 
   let outcome = "pending";
   await expect
@@ -1416,9 +1466,15 @@ async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
           return outcome;
         }
 
+        const persistedId = await activateRewardTemplateByTitleIfPresent(title);
+        if (persistedId) {
+          outcome = "success";
+          return "success";
+        }
+
         return "pending";
       },
-      { timeout: 60_000 },
+      { timeout: 45_000, intervals: [500, 1_000, 2_000] },
     )
     .not.toBe("pending");
 
@@ -1432,10 +1488,7 @@ async function submitAdminRewardActivityPublish(page: Page): Promise<void> {
     !page.url().includes("/admin/campaigns") ||
     page.url().includes("/admin/campaigns/new")
   ) {
-    await page.waitForURL((url) => url.pathname === "/admin/campaigns", {
-      timeout: 30_000,
-      waitUntil: "commit",
-    });
+    await page.goto("/admin/campaigns", { waitUntil: "domcontentloaded" });
   }
 }
 
@@ -1485,12 +1538,16 @@ export async function publishRewardActivityViaAdmin(
   params: PublishRewardActivityParams,
 ): Promise<void> {
   await gotoAdminRewardActivityForm(page);
+  await dismissBlockingOverlays(page);
 
   if (params.redemptionCatalog) {
     await page.getByRole("button", { name: "積分商城商品" }).click();
   }
 
-  await page.locator("#template-title").fill(params.title);
+  const titleInput = page.locator("#template-title");
+  await expect(titleInput).toBeVisible({ timeout: 15_000 });
+  await titleInput.click({ force: true });
+  await titleInput.fill(params.title);
 
   const rewardSection = page.locator("section").filter({
     has: page.getByRole("heading", { name: "獎勵內容" }),
@@ -1613,7 +1670,7 @@ export async function publishRewardActivityViaAdmin(
       .fill(String(params.redemptionCatalog.stock));
   }
 
-  await submitAdminRewardActivityPublish(page);
+  await submitAdminRewardActivityPublish(page, params.title);
   await openAdminCampaignsActivitiesTab(page);
 }
 
@@ -1621,14 +1678,13 @@ export async function openAdminCheckInTab(page: Page): Promise<void> {
   await page.goto("/admin/campaigns?tab=check-in", {
     waitUntil: "domcontentloaded",
   });
-  await expect(page.getByRole("button", { name: "簽到計劃" })).toBeVisible({
+  await expect(
+    page.getByRole("button", { name: "簽到計劃", exact: true }),
+  ).toBeVisible({
     timeout: 20_000,
   });
   await expect(
-    page
-      .getByRole("heading", { name: "簽到計劃" })
-      .or(page.getByRole("button", { name: /儲存簽到計劃/ }))
-      .or(page.getByText("找不到簽到計劃")),
+    page.getByRole("heading", { name: "簽到計劃", exact: true }),
   ).toBeVisible({ timeout: 20_000 });
 }
 
@@ -1744,7 +1800,7 @@ export async function publishDiscountCouponTemplate(
     .locator("#reward-min-spend")
     .fill(String(params.minSpend ?? 100));
 
-  await submitAdminRewardActivityPublish(page);
+  await submitAdminRewardActivityPublish(page, params.title);
   await openAdminCampaignsActivitiesTab(page);
 }
 

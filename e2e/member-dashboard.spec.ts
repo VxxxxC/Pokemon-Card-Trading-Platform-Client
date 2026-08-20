@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { hasBuyerAuthFixtures } from "./fixtures/test-data";
 import {
   getBuyerProfileIdFromEnv,
@@ -6,7 +6,10 @@ import {
   upsertGamificationStatsForProfile,
 } from "./fixtures/supabase-admin";
 import { dismissBlockingOverlays } from "./helpers/overlays";
-import { ensureMemberPersona } from "./helpers/collection-asset";
+import {
+  expectCheckInAffordanceVisible,
+  gotoMemberRewardsPage,
+} from "./helpers/platform-rewards";
 import { isCheckedInTodayHk } from "@/lib/rewards/check-in-streak";
 
 function daysAgoHkMiddayIso(days: number): string {
@@ -18,20 +21,6 @@ function daysAgoHkMiddayIso(days: number): string {
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
-
-async function gotoMemberRewardsPage(page: Page): Promise<void> {
-  await ensureMemberPersona(page);
-  await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
-  await page.evaluate((storageKey) => {
-    window.sessionStorage.setItem(storageKey, "member");
-    document.cookie = "hkcv_active_listing_persona=member; Path=/; SameSite=Lax";
-  }, "hkcv:activeListingPersona");
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await dismissBlockingOverlays(page);
-  await expect(page.getByRole("heading", { name: "每日簽到" })).toBeVisible({
-    timeout: 30_000,
-  });
-}
 
 test.describe("Member dashboard and rewards", () => {
   test("overview loads member dashboard shell", async ({ page }, testInfo) => {
@@ -92,8 +81,9 @@ test.describe("Member dashboard and rewards", () => {
       }
 
       await gotoMemberRewardsPage(page);
+      await expectCheckInAffordanceVisible(page);
 
-      const checkInHeading = page.getByRole("heading", { name: "每日簽到" });
+      const checkInHeading = page.getByText("每日簽到");
       const pausedButton = page.getByRole("button", { name: "簽到暫停" });
       const checkInActionButton = page.getByRole("button", {
         name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣|載入簽到狀態…/,
@@ -142,24 +132,16 @@ test.describe("Member dashboard and rewards", () => {
     }
 
     await gotoMemberRewardsPage(page);
+    await expectCheckInAffordanceVisible(page);
 
     const pausedButton = page.getByRole("button", { name: "簽到暫停" });
-    await expect(
-      pausedButton.or(
-        page.getByRole("button", {
-          name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣|載入簽到狀態…/,
-        }),
-      ),
-    ).toBeVisible({
-      timeout: 20_000,
-    });
     if (await pausedButton.isVisible()) {
       test.info().skip(true, "Check-in program paused on staging");
       return;
     }
 
     const checkInButton = page.getByRole("button", {
-      name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣/,
+      name: /立即簽到打卡獲取積分|簽到中|明日請繼續保持收藏習慣|載入簽到狀態/,
     });
 
     const buttonLabel = (await checkInButton.textContent())?.trim() ?? "";

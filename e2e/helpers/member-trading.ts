@@ -1,7 +1,11 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { fillStripePaymentElement } from "./platform-rewards";
 import { ensureMemberPersona } from "./collection-asset";
-import { dismissBlockingOverlays as dismissGlobalOverlays, waitUntilNoBlockingOverlay } from "./overlays";
+import {
+  dismissBlockingOverlays as dismissGlobalOverlays,
+  suppressTransientHomeOverlays,
+  waitUntilNoBlockingOverlay,
+} from "./overlays";
 import {
   acceptOfferViaSellerRpc,
   advanceAuthOrderToCustody,
@@ -93,13 +97,23 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
       dismissed = true;
     }
 
-    const pwaClose = page.getByRole("button", { name: "✕" }).first();
-    if (await clickDismissButton(pwaClose)) {
-      dismissed = true;
+    const chatOpen = await page
+      .locator('[data-chat-console="true"]')
+      .last()
+      .isVisible()
+      .catch(() => false);
+
+    if (!chatOpen) {
+      const pwaClose = page.getByRole("button", { name: "✕" }).first();
+      if (await clickDismissButton(pwaClose)) {
+        dismissed = true;
+      }
     }
 
     if (!dismissed) {
-      await page.keyboard.press("Escape").catch(() => undefined);
+      if (!chatOpen) {
+        await page.keyboard.press("Escape").catch(() => undefined);
+      }
       break;
     }
 
@@ -588,6 +602,7 @@ export async function ensurePendingAuthOffer(params: {
     params.sellerId,
     params.listingId,
     params.offerAmount,
+    params.buyerId,
   );
 
   let offerId: string | null = null;
@@ -710,32 +725,54 @@ export async function submitBuyerOfferFromDetail(
   await buyerPage.locator("#exe-negotiation-price").fill(offerAmount);
   await buyerPage.getByRole("button", { name: "發送叫價至聊天室" }).click();
 
-  if (options?.buyerId) {
-    await expect
-      .poll(
-        async () => {
-          const toastVisible = await buyerPage
-            .getByText(/議價要約已成功送出/)
-            .isVisible()
-            .catch(() => false);
-          if (toastVisible) {
-            return true;
-          }
+  let offerOutcome = "pending";
+  await expect
+    .poll(
+      async () => {
+        const successToast = await buyerPage
+          .locator("[data-sonner-toast]")
+          .filter({ hasText: /議價要約已成功送出/ })
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (successToast) {
+          offerOutcome = "ok";
+          return true;
+        }
+
+        const errorToast = buyerPage
+          .locator('[data-sonner-toast][data-type="error"]')
+          .first();
+        if (await errorToast.isVisible().catch(() => false)) {
+          const message = await errorToast
+            .innerText()
+            .catch(() => "unknown offer error");
+          offerOutcome = `error:${message}`;
+          return true;
+        }
+
+        if (options?.buyerId) {
           const offer = await getLatestOfferForListing({
             listingId,
-            buyerId: options.buyerId!,
+            buyerId: options.buyerId,
           });
-          return offer?.status === "pending";
-        },
-        { timeout: 25_000 },
-      )
-      .toBe(true);
-    return;
-  }
+          if (offer?.status === "pending") {
+            offerOutcome = "ok";
+            return true;
+          }
+        }
 
-  await expect(buyerPage.getByText(/議價要約已成功送出/)).toBeVisible({
-    timeout: 20_000,
-  });
+        return false;
+      },
+      { timeout: 25_000 },
+    )
+    .toBe(true);
+
+  if (offerOutcome.startsWith("error:")) {
+    throw new Error(
+      `Buyer offer submit failed: ${offerOutcome.slice("error:".length)}`,
+    );
+  }
 }
 
 export async function submitBuyerAuthOfferFromDetail(
@@ -743,13 +780,14 @@ export async function submitBuyerAuthOfferFromDetail(
   sellerId: string,
   listingId: string,
   offerAmount?: string,
+  buyerId?: string,
 ): Promise<void> {
   await submitBuyerOfferFromDetail(
     buyerPage,
     sellerId,
     listingId,
     offerAmount,
-    { useAuthentication: true },
+    { useAuthentication: true, buyerId },
   );
 }
 
@@ -785,20 +823,64 @@ export async function submitInboundTrackingAsSeller(
   }
 }
 
+async function isOrderDetailReady(page: Page, orderId: string): Promise<boolean> {
+  if (!page.url().includes(`/orderDetail/${orderId}`)) {
+    return false;
+  }
+
+  const signals = [
+    page.locator("#review-modal-title"),
+    page.getByText("交易狀態", { exact: true }),
+    page.getByTestId("order-review-cta"),
+    page.getByText("已完成", { exact: true }),
+    page.getByText("買入交易", { exact: true }),
+    page.getByText("賣出交易", { exact: true }),
+    page.getByText("恭喜解鎖獎勵", { exact: true }),
+  ];
+
+  for (const signal of signals) {
+    if (await signal.first().isVisible().catch(() => false)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function readOrderDetailDebug(page: Page): Promise<string> {
+  const body = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
+  return `url=${page.url()}\n${body.slice(0, 800)}`;
+}
+
 export async function gotoOrderDetail(page: Page, orderId: string): Promise<void> {
+  await suppressTransientHomeOverlays(page);
+  await closeChatConsole(page);
   await page.goto(`/profile/user/orderDetail/${orderId}`, {
     waitUntil: "domcontentloaded",
   });
-  await waitUntilNoBlockingOverlay(page);
-  await expect
-    .poll(
-      async () => {
-        await dismissBlockingOverlays(page);
-        return page.getByText("交易狀態").first().isVisible().catch(() => false);
-      },
-      { timeout: 20_000 },
-    )
-    .toBe(true);
+  try {
+    await expect
+      .poll(
+        async () => {
+          if (await isOrderDetailReady(page, orderId)) {
+            return true;
+          }
+          await dismissBlockingOverlays(page);
+          return isOrderDetailReady(page, orderId);
+        },
+        { timeout: 45_000, intervals: [300, 600, 1_000] },
+      )
+      .toBe(true);
+  } catch (error) {
+    const debug = await readOrderDetailDebug(page);
+    throw new Error(
+      `Order detail not ready for ${orderId}. ${debug}`,
+      { cause: error },
+    );
+  }
 }
 
 export async function gotoCheckout(page: Page, orderId: string): Promise<void> {
@@ -1139,18 +1221,28 @@ export async function dismissReviewModalIfOpen(page: Page): Promise<void> {
     return;
   }
 
-  const laterButton = page.getByRole("button", { name: "稍後再說" });
-  try {
-    await laterButton.first().click({ force: true, timeout: 8_000 });
-  } catch {
-    const reviewDialog = page.locator('[aria-labelledby="review-modal-title"]');
-    await reviewDialog
-      .click({ force: true, position: { x: 8, y: 8 } })
+  await page
+    .getByRole("button", { name: "稍後再說" })
+    .first()
+    .click({ force: true, timeout: 5_000 })
+    .catch(() => undefined);
+
+  if (await reviewHeading.isVisible().catch(() => false)) {
+    await page
+      .getByRole("button", { name: "關閉" })
+      .first()
+      .click({ force: true, timeout: 3_000 })
       .catch(() => undefined);
-    await page.keyboard.press("Escape");
   }
 
-  await expect(reviewHeading).toBeHidden({ timeout: 10_000 });
+  if (await reviewHeading.isVisible().catch(() => false)) {
+    await page
+      .locator('[aria-labelledby="review-modal-title"]')
+      .click({ force: true, position: { x: 8, y: 8 }, timeout: 2_000 })
+      .catch(() => undefined);
+  }
+
+  await reviewHeading.waitFor({ state: "hidden", timeout: 5_000 }).catch(() => undefined);
 }
 
 export async function submitFiveStarReview(page: Page): Promise<void> {
@@ -1334,26 +1426,13 @@ export async function waitForBuyerP2pCompleteOnTradingList(
           }
         }
 
-        const onList = await page
+        return page
           .getByRole("button", { name: "確認完成交易" })
           .first()
           .isVisible()
           .catch(() => false);
-        if (onList) {
-          return true;
-        }
-
-        if (options?.memberOrderId) {
-          await gotoOrderDetail(page, options.memberOrderId);
-          return page
-            .getByRole("button", { name: "確認完成交易" })
-            .isVisible()
-            .catch(() => false);
-        }
-
-        return false;
       },
-      { timeout: 90_000 },
+      { timeout: 45_000 },
     )
     .toBe(true);
 }

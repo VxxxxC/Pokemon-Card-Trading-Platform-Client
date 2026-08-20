@@ -170,7 +170,11 @@ export function CheckInCard({
 
   if (!isMounted || isLoading) {
     return (
-      <div className="w-full h-48 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl animate-pulse animate-duration-1000" />
+      <div
+        className="w-full h-48 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl animate-pulse animate-duration-1000"
+        role="status"
+        aria-label="載入簽到狀態"
+      />
     );
   }
 

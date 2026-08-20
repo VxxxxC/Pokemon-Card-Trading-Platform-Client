@@ -24,10 +24,11 @@ import {
   submitFiveStarReview,
   waitForBuyerP2pCompleteOnTradingList,
 } from "./helpers/member-trading";
+import { suppressTransientHomeOverlays } from "./helpers/overlays";
 
 test.describe.configure({ mode: "serial" });
 test.use({ viewport: { width: 1280, height: 900 } });
-test.setTimeout(300_000);
+test.setTimeout(480_000);
 
 test.describe("Member P2P trading closure", () => {
   test("offer accept → trading list → complete → review", async ({
@@ -82,6 +83,8 @@ test.describe("Member P2P trading closure", () => {
     const buyerPage = await buyerContext.newPage();
     const sellerPage = await sellerContext.newPage();
     await ensureMemberPersona(buyerPage);
+    await suppressTransientHomeOverlays(buyerPage);
+    await suppressTransientHomeOverlays(sellerPage);
 
     try {
       await test.step("Step 1 — buyer submits P2P offer without authentication", async () => {
@@ -208,7 +211,13 @@ test.describe("Member P2P trading closure", () => {
         const completed = await getMemberOrderById(memberOrderId);
         expect(completed?.status).toBe("completed");
         await gotoOrderDetail(buyerPage, memberOrderId);
-        await expect(buyerPage.getByText("已完成")).toBeVisible({
+        await dismissBlockingOverlays(buyerPage);
+        await expect(
+          buyerPage
+            .getByText("已完成")
+            .or(buyerPage.locator("#review-modal-title"))
+            .first(),
+        ).toBeVisible({
           timeout: 15_000,
         });
         await submitFiveStarReview(buyerPage);

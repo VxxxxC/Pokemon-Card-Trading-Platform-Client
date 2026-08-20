@@ -10,6 +10,25 @@ async function clickIfVisible(
   return false;
 }
 
+export async function dismissRewardUnlockedModal(page: Page): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: "恭喜解鎖獎勵" });
+  const title = page.getByText("恭喜解鎖獎勵", { exact: true });
+  const confirm = page.getByRole("button", { name: /太好了|處理中/ });
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const visible =
+      (await dialog.isVisible().catch(() => false)) ||
+      (await title.isVisible().catch(() => false));
+    if (!visible) {
+      return;
+    }
+    await confirm
+      .first()
+      .click({ force: true, timeout: 5_000 })
+      .catch(() => undefined);
+    await page.waitForTimeout(400);
+  }
+}
+
 export async function suppressTransientHomeOverlays(page: Page): Promise<void> {
   await page.addInitScript(() => {
     sessionStorage.setItem("hasSeenAnnouncementsModal", "true");
@@ -62,12 +81,13 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
       dismissed = true;
     }
 
-    const rewardDialog = page.getByRole("dialog", { name: "恭喜解鎖獎勵" });
     if (
-      await clickIfVisible(
-        rewardDialog.getByRole("button", { name: "太好了" }),
-      )
+      await clickIfVisible(page.getByRole("button", { name: "太好了" }))
     ) {
+      dismissed = true;
+    }
+
+    if (await clickIfVisible(page.getByRole("button", { name: "稍後再說" }))) {
       dismissed = true;
     }
 
