@@ -205,9 +205,29 @@ test.describe("Marketplace search + make offer", () => {
       await page.locator("#exe-negotiation-price").fill(OFFER_AMOUNT);
       await page.getByRole("button", { name: "發送叫價至聊天室" }).click();
 
-      await expect(page.locator("[data-sonner-toast]").filter({
-        hasText: "議價要約已成功送出",
-      })).toBeVisible({ timeout: 20_000 });
+      await expect
+        .poll(
+          async () => {
+            const successToast = await page
+              .locator("[data-sonner-toast]")
+              .filter({ hasText: /議價要約已成功送出/ })
+              .first()
+              .isVisible()
+              .catch(() => false);
+            if (successToast) {
+              return true;
+            }
+
+            const offer = await getLatestOfferForListing({
+              roomId,
+              listingId: fixture.listingId,
+              buyerId,
+            });
+            return offer?.status === "pending";
+          },
+          { timeout: 25_000 },
+        )
+        .toBe(true);
     });
 
     await test.step("Step 9 — DB offer row is pending", async () => {

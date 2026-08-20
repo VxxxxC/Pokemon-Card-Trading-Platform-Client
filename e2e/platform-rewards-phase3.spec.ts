@@ -207,7 +207,8 @@ test.describe("Platform rewards Phase 3 E2E", () => {
 
     await gotoMemberRewardsPage(page);
     await page.getByRole("button", { name: /可解鎖/ }).click();
-    await expect(page.getByText(templateTitle)).toHaveCount(0);
+    const couponCenter = page.locator("#redeem-list");
+    await expect(couponCenter.getByText(templateTitle)).toHaveCount(0);
   });
 
   test("C3.7 checkout with flash-claimed coupon applies subsidy", async ({

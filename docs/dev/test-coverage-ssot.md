@@ -304,7 +304,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | custody → pass → outbound → confirm | ☑ G-W2 | ☑ G-W2M | ◐ `admin-grading` guest | ◐ |
 | admin outbound / tracking（G-W1） | ☑ | ☑ | ☐ | ◐ |
 | buyer confirm guard（未 fully captured） | ☑ G-CONF1 | ☑ G-CONF1M | ☐ | ◐ |
-| pass + real Stripe capture | ☑ G-BP-S1 | ☐ | ☐ | ◐ |
+| pass + real Stripe capture | ☑ G-BP-S1 | ☑ G-BP-S1M | ☐ | ☑ |
 
 #### 7.3.2 Fail fault 矩陣（`escrow_capture_model = single`）
 
@@ -332,7 +332,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 **Gap / next（CC-GRD-01 · §2 re-audit）：**
 
 - **Partner-path 薄：** Admin grading UI 主要靠 integration；E2E 只得 guest `admin-grading` + opt-in `verify:merchant-grading-e2e`（非 nightly）。
-- **member ↔ merchant 對稱 ◐：** 缺 **G-BF2M**（seller prepare）；merchant **pass** Stripe smoke 未覆蓋。
+- **member ↔ merchant 對稱：** G-BF2M ☑ · G-BP-S1M ☑（`test:integration:grading:pass-stripe-smoke`）。
 - **唔屬 CC 域：** grading fault 由 Admin dispute UI 選項驅動（`mapResolutionOptionToInput`），唔係 `reward_templates` 類 config parity；防線係 **FSM integration 矩陣**，唔係 CC-INT。
 
 ---
@@ -423,6 +423,7 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | **v2.16：** G-BP-S1M merchant pass stripe smoke · L6 collection/offer E2E hardening |
 | 2026-08-20 | **v2.15：** CC-PLAT-01/02 admin settings contract · G-BF2M merchant fail prepare |
 | 2026-08-20 | **v2.12：** TC-P05 matrix soak **2/3**（L3 E2E + integration 全綠） |
 | 2026-08-20 | **v2.11：** TC-E09–E12 Partner journey `p-e09`–`p-e12` · `test:e2e:partner-journey` |

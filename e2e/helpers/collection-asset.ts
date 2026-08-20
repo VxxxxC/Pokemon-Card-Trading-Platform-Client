@@ -11,6 +11,7 @@ import {
 } from "../fixtures/supabase-admin";
 import {
   dismissBlockingOverlays,
+  dismissRewardUnlockedModal,
   waitUntilNoBlockingOverlay,
 } from "./overlays";
 
@@ -38,8 +39,14 @@ export async function ensureMerchantPersona(page: Page): Promise<void> {
 
 export async function gotoCollectionPage(page: Page): Promise<void> {
   await ensureMemberPersona(page);
+  const buyerId = await getBuyerProfileIdFromEnv();
+  if (buyerId) {
+    await acknowledgePendingRewardGrantsForUser(buyerId);
+  }
   await page.goto("/profile/user/collection", { waitUntil: "domcontentloaded" });
   await dismissBlockingOverlays(page);
+  await dismissRewardUnlockedModal(page);
+  await waitUntilNoBlockingOverlay(page);
 }
 
 export function addAssetModalForm(page: Page) {

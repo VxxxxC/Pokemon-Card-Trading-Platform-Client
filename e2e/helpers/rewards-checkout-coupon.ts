@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/supabase";
+import { dismissBlockingOverlays } from "./overlays";
 import {
   findActiveDiscountCouponTemplateId,
   findActiveFreeShippingTemplateId,
@@ -310,11 +311,58 @@ async function pollCheckoutCouponPickerState(
   return "pending";
 }
 
+export async function waitForCheckoutReviewReady(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await dismissBlockingOverlays(page);
+
+    try {
+      await expect
+        .poll(
+          async () => {
+            if (
+              await page
+                .getByText("找不到此結帳訂單")
+                .isVisible()
+                .catch(() => false)
+            ) {
+              throw new Error("Checkout session failed to load");
+            }
+
+            const authReview = await page
+              .getByText("鑑定託管流程說明")
+              .isVisible()
+              .catch(() => false);
+            const merchantSummary = await page
+              .getByRole("heading", { name: /訂單財務明細總結/ })
+              .isVisible()
+              .catch(() => false);
+            const continuePay = await page
+              .getByRole("button", { name: /繼續付款/ })
+              .isVisible()
+              .catch(() => false);
+
+            return authReview || merchantSummary || continuePay;
+          },
+          { timeout: 45_000 },
+        )
+        .toBe(true);
+      return;
+    } catch (error) {
+      if (attempt === 2) {
+        throw error;
+      }
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1_000);
+    }
+  }
+}
+
 export async function waitForCheckoutCouponPicker(
   page: Page,
   options?: { rewardId?: string; timeout?: number },
 ): Promise<void> {
-  const timeout = options?.timeout ?? 30_000;
+  await waitForCheckoutReviewReady(page);
+  const timeout = options?.timeout ?? 45_000;
 
   await expect
     .poll(

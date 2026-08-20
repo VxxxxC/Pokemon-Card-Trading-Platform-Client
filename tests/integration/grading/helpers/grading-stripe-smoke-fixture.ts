@@ -1,6 +1,7 @@
-import Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 import type { Database } from "@/types/supabase";
+import type { GradingCaptureOrderKind } from "@/lib/payments/stripe-capture-policy";
 import {
   buildAuthFeeOnlyCaptureParams,
   buildAuthGradingFailIdempotencyKey,
@@ -14,8 +15,14 @@ import {
   ensureMemberListingAcceptsAuthentication,
   findMemberListingForIntegration,
   seedPendingMemberAuthOrders,
+  seedPendingMerchantOrders,
 } from "../../rewards/helpers/checkout-fixture";
 import { getBuyerUserId } from "../../shared/auth-context";
+import {
+  prepareMerchantAuthOrderPayment,
+  promoteMerchantAuthOrderThroughIntake,
+  readMerchantAuthPipelineAmounts,
+} from "./grading-merchant-fixture";
 
 export type GradingFailStripeSmokeContext = {
   orderId: string;
@@ -173,6 +180,85 @@ export async function seedGradingFailStripeSmokeOrder(): Promise<GradingFailStri
 
 /** Same seed path as fail smoke — authorized single-capture order in grading. */
 export const seedGradingPassStripeSmokeOrder = seedGradingFailStripeSmokeOrder;
+
+export async function seedMerchantGradingPassStripeSmokeOrder(params: {
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  buyerClient: SupabaseClient<Database>;
+  sellerClient: SupabaseClient<Database>;
+  adminClient: SupabaseClient<Database>;
+}): Promise<GradingFailStripeSmokeContext> {
+  const [orderId] = await seedPendingMerchantOrders(
+    params.buyerId,
+    params.listingId,
+    1,
+  );
+
+  await prepareMerchantAuthOrderPayment(params.buyerClient, orderId);
+  const amounts = await readMerchantAuthPipelineAmounts(orderId);
+
+  const stripe = createStripeClient();
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amounts.buyerTotalCents,
+    currency: "hkd",
+    capture_method: "manual",
+    automatic_payment_methods: {
+      enabled: true,
+      allow_redirects: "never",
+    },
+    payment_method_options: {
+      card: {
+        request_multicapture: "if_available",
+      },
+    },
+    payment_method: "pm_card_visa",
+    confirm: true,
+    metadata: {
+      order_kind: "merchant_auth",
+      order_id: orderId,
+      integration_smoke: "grading_pass_stripe_merchant",
+    },
+  });
+
+  if (paymentIntent.status !== "requires_capture") {
+    throw new Error(
+      `[seedMerchantGradingPassStripeSmokeOrder] expected requires_capture, got ${paymentIntent.status}`,
+    );
+  }
+
+  const admin = createServiceRoleClient();
+  const { error: authError } = await admin.rpc("rpc_mark_merchant_order_authorized", {
+    p_order_id: orderId,
+    p_payment_intent_id: paymentIntent.id,
+    p_amounts: {},
+  });
+
+  if (authError) {
+    throw new Error(
+      `[seedMerchantGradingPassStripeSmokeOrder] authorize: ${authError.message}`,
+    );
+  }
+
+  await promoteMerchantAuthOrderThroughIntake({
+    orderId,
+    paymentIntentId: paymentIntent.id,
+    merchantId: params.sellerId,
+    inbound: {
+      trackingNo: `SF-MPASS-${orderId.slice(0, 8)}`,
+      courierName: "SF Express",
+    },
+    sellerClient: params.sellerClient,
+    adminClient: params.adminClient,
+  });
+
+  return {
+    orderId,
+    paymentIntentId: paymentIntent.id,
+    authFeeCents: Math.round(amounts.authFee * 100),
+    buyerTotalCents: amounts.buyerTotalCents,
+  };
+}
 
 export async function promoteStripeSmokeOrderToLegacyGrading(
   ctx: GradingFailStripeSmokeContext,
@@ -341,11 +427,71 @@ export async function prepareAuthGradingPass(
   return data as PrepareGradingPassPayload;
 }
 
+export async function prepareMerchantAuthGradingPass(
+  client: SupabaseClient<Database>,
+  params: {
+    orderId: string;
+    gradingCompany: string;
+    gradingScore: string | null;
+    notes?: string;
+  },
+): Promise<PrepareGradingPassPayload> {
+  const { data, error } = await client.rpc("rpc_prepare_goods_capture", {
+    p_order_kind: "merchant",
+    p_order_id: params.orderId,
+    p_notes: params.notes,
+    p_auth_grading_company: params.gradingCompany,
+    p_auth_grading_score: params.gradingScore ?? undefined,
+  });
+
+  if (error) {
+    throw new Error(`[prepareMerchantAuthGradingPass] ${error.message}`);
+  }
+
+  return data as PrepareGradingPassPayload;
+}
+
+export async function finalizeMerchantAuthGradingPass(
+  client: SupabaseClient<Database>,
+  params: {
+    orderId: string;
+    paymentIntentId: string;
+    capturedAmountCents: number;
+    adminId: string;
+    gradingCompany: string;
+    gradingScore: string | null;
+    notes?: string;
+  },
+): Promise<void> {
+  const { error } = await client.rpc("rpc_finalize_goods_capture", {
+    p_order_kind: "merchant",
+    p_order_id: params.orderId,
+    p_payment_intent_id: params.paymentIntentId,
+    p_captured_amount_cents: params.capturedAmountCents,
+    p_admin_id: params.adminId,
+    p_notes: params.notes,
+    p_auth_grading_company: params.gradingCompany,
+    p_auth_grading_score: params.gradingScore ?? undefined,
+  });
+
+  if (error) {
+    throw new Error(`[finalizeMerchantAuthGradingPass] ${error.message}`);
+  }
+}
+
 export async function executeGradingPassStripeLeg(
   prepared: PrepareGradingPassPayload,
   orderId: string,
   grading: { company: string; score: string | null },
+  options: {
+    orderKind?: GradingCaptureOrderKind;
+    stripeMetadataOrderKind?: "member_auth" | "merchant_auth";
+  } = {},
 ): Promise<Stripe.PaymentIntent> {
+  const orderKind = options.orderKind ?? "member";
+  const stripeMetadataOrderKind =
+    options.stripeMetadataOrderKind ??
+    (orderKind === "merchant" ? "merchant_auth" : "member_auth");
   const paymentIntentId = prepared.payment_intent_id;
   const adminId = prepared.admin_id;
   const captureCents = prepared.capture_cents ?? prepared.goods_cents ?? 0;
@@ -363,7 +509,7 @@ export async function executeGradingPassStripeLeg(
   const captureStage = resolveGoodsCaptureStage(prepared.escrow_capture_model);
   const idempotencyKey = buildGoodsCaptureIdempotencyKey({
     escrowCaptureModel: prepared.escrow_capture_model,
-    orderKind: "member",
+    orderKind,
     orderId,
     suffix: "stripe-smoke",
   });
@@ -377,7 +523,7 @@ export async function executeGradingPassStripeLeg(
       metadata: {
         capture_stage: captureStage,
         admin_id: adminId,
-        order_kind: "member_auth",
+        order_kind: stripeMetadataOrderKind,
         order_id: orderId,
         auth_grading_company: grading.company,
         ...(grading.score ? { auth_grading_score: grading.score } : {}),

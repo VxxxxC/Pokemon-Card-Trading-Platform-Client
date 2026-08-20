@@ -350,6 +350,7 @@ test.describe("Platform rewards full matrix", () => {
 
     await gotoMemberRewardsPage(page);
     await page.getByRole("button", { name: /可解鎖/ }).click();
-    await expect(page.getByText(flashFreeShipTitle)).toHaveCount(0);
+    const couponCenter = page.locator("#redeem-list");
+    await expect(couponCenter.getByText(flashFreeShipTitle)).toHaveCount(0);
   });
 });

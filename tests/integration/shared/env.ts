@@ -18,6 +18,16 @@ export function hasGradingStripeSmokeEnv(): boolean {
   return hasBaseIntegrationEnv() && Boolean(readEnv("STRIPE_SECRET_KEY"));
 }
 
+export function hasMerchantGradingStripeSmokeEnv(): boolean {
+  return (
+    hasGradingStripeSmokeEnv() &&
+    Boolean(readEnv("E2E_SELLER_ID")) &&
+    Boolean(readEnv("E2E_LISTING_ID")) &&
+    Boolean(readEnv("E2E_SELLER_EMAIL")) &&
+    Boolean(readEnv("E2E_SELLER_PASSWORD"))
+  );
+}
+
 export function hasStripeWebhookRouteEnv(): boolean {
   return hasGradingStripeSmokeEnv();
 }

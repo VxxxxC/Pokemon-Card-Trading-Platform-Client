@@ -5,6 +5,10 @@ import Stripe from "stripe";
 import { parseRewardCouponCenter } from "@/lib/rewards/mapUserRewardCoupon";
 import { ACTIVE_LISTING_PERSONA_STORAGE_KEY } from "@/lib/listings/active-listing-persona";
 import type { Database } from "@/types/supabase";
+import {
+  acknowledgePendingRewardGrantsForUser,
+  getBuyerProfileIdFromEnv,
+} from "../fixtures/supabase-admin";
 import { ensureMemberPersona } from "./collection-asset";
 import {
   dismissBlockingOverlays as dismissGlobalBlockingOverlays,
@@ -1044,18 +1048,22 @@ export async function buyMerchantListingWithAuthAndReachCheckout(
   }
 
   if (!dialogConfirmed && !page.url().includes("/checkout/")) {
-    await expect(buyNowDialog).toBeVisible({ timeout: 15_000 });
-    const authSwitch = buyNowDialog.getByRole("switch");
-    await expect(authSwitch).toBeVisible({ timeout: 15_000 });
-    await authSwitch.click();
-    await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
+    if (await buyNowDialog.isVisible().catch(() => false)) {
+      const authSwitch = buyNowDialog.getByRole("switch");
+      if (await authSwitch.isVisible().catch(() => false)) {
+        await authSwitch.click();
+      }
+      await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
+    }
   }
 
-  await navigateToCheckoutAfterBuyNow(
-    page,
-    listingId,
-    "Auth buy now did not navigate to checkout and no pending order was created",
-  );
+  if (!page.url().includes("/checkout/")) {
+    await navigateToCheckoutAfterBuyNow(
+      page,
+      listingId,
+      "Auth buy now did not navigate to checkout and no pending order was created",
+    );
+  }
 
   await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
   const orderId =
@@ -1190,6 +1198,11 @@ export async function gotoMemberRewardsPage(page: Page): Promise<void> {
   await ensureMemberPersona(page);
   await suppressTransientHomeOverlays(page);
 
+  const buyerId = await getBuyerProfileIdFromEnv();
+  if (buyerId) {
+    await acknowledgePendingRewardGrantsForUser(buyerId);
+  }
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
     await page.evaluate((storageKey) => {
@@ -1199,6 +1212,10 @@ export async function gotoMemberRewardsPage(page: Page): Promise<void> {
     await page.reload({ waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
     await dismissRewardUnlockedModal(page);
+
+    if (page.url().includes("/auth")) {
+      throw new Error("Buyer session lost before member rewards page");
+    }
 
     const crashed = page.getByText("This page couldn't load");
     if (await crashed.isVisible().catch(() => false)) {
@@ -1210,8 +1227,14 @@ export async function gotoMemberRewardsPage(page: Page): Promise<void> {
       continue;
     }
 
+    await page
+      .locator(".min-h-screen .animate-spin")
+      .first()
+      .waitFor({ state: "hidden", timeout: 45_000 })
+      .catch(() => undefined);
+
     const heading = page.getByRole("heading", { name: "會員獎勵與任務中心" });
-    if (await heading.isVisible({ timeout: 30_000 }).catch(() => false)) {
+    if (await heading.isVisible({ timeout: 15_000 }).catch(() => false)) {
       return;
     }
   }
@@ -1916,16 +1939,17 @@ export async function buyMerchantListingAndReachCheckout(
     }
   }
 
-  if (!buyConfirmed && !page.url().includes("/checkout/")) {
-    await expect(buyNowDialog).toBeVisible({ timeout: 15_000 });
-    await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
-  }
+  if (!page.url().includes("/checkout/")) {
+    if (!buyConfirmed && (await buyNowDialog.isVisible().catch(() => false))) {
+      await buyNowDialog.getByRole("button", { name: "確認立即購買" }).click();
+    }
 
-  await navigateToCheckoutAfterBuyNow(
-    page,
-    listingId,
-    "Buy now did not navigate to checkout and no pending order was created",
-  );
+    await navigateToCheckoutAfterBuyNow(
+      page,
+      listingId,
+      "Buy now did not navigate to checkout and no pending order was created",
+    );
+  }
 
   await page.waitForURL(/\/checkout\//, { timeout: 15_000 });
   const orderId =

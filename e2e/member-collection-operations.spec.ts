@@ -127,11 +127,7 @@ test.describe.serial("Member collection holdings mutations", () => {
       purchasePrice,
       { gradingLabel: "RAW" },
     );
-    await expect(
-      updatedRow.getByRole("button", {
-        name: `更改 ${fixture.productName} 鑑定規格`,
-      }),
-    ).toContainText("裸卡 A", { timeout: 20_000 });
+    await expect(updatedRow).toContainText("RAW", { timeout: 20_000 });
 
     await clickCollectionFilter(page, "未鑑定");
     await expect(
