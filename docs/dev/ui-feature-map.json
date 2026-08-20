@@ -67,7 +67,36 @@
           "id": "home",
           "path": "/",
           "role": "guest",
-          "assertions": [{ "type": "locator", "name": "[aria-label=\"即時價格走勢\"]" }]
+          "assertions": [{ "type": "locator", "name": "[aria-label=\"即時價格走勢\"]" }],
+          "requiredElements": [
+            {
+              "id": "price-ticker",
+              "role": "button",
+              "locator": "[aria-label=\"即時價格走勢\"]"
+            },
+            {
+              "id": "hero-heading",
+              "role": "heading",
+              "name": "搜尋你的目標神卡"
+            },
+            {
+              "id": "nav-marketplace",
+              "role": "link",
+              "name": "市場"
+            },
+            {
+              "id": "premium-merchant-section",
+              "role": "heading",
+              "name": "認證商家・鑑定託管保障",
+              "optional": true
+            },
+            {
+              "id": "c2c-arrivals-section",
+              "role": "heading",
+              "name": "最新 C2C 現貨上架",
+              "optional": true
+            }
+          ]
         }
       ]
     },
@@ -196,7 +225,39 @@
           "id": "member-dashboard",
           "path": "/profile/user",
           "role": "buyer",
-          "assertions": [{ "type": "text", "pattern": "帳戶總積分餘額" }]
+          "assertions": [{ "type": "text", "pattern": "帳戶總積分餘額" }],
+          "requiredElements": [
+            {
+              "id": "points-balance-label",
+              "role": "text",
+              "name": "帳戶總積分餘額"
+            },
+            {
+              "id": "stats-heading",
+              "role": "heading",
+              "name": "資產總覽"
+            },
+            {
+              "id": "stats-trades",
+              "role": "text",
+              "name": "成交次數"
+            },
+            {
+              "id": "pending-orders-heading",
+              "role": "heading",
+              "name": "待處理訂單"
+            },
+            {
+              "id": "nav-trading",
+              "role": "link",
+              "name": "交易管理"
+            },
+            {
+              "id": "rewards-link",
+              "role": "link",
+              "pattern": "獎勵及任務"
+            }
+          ]
         }
       ]
     },
@@ -904,7 +965,29 @@
           "id": "admin-dashboard",
           "path": "/admin/dashboard",
           "role": "admin",
-          "assertions": [{ "type": "text", "pattern": "平台淨營收統計" }]
+          "assertions": [{ "type": "text", "pattern": "平台淨營收統計" }],
+          "requiredElements": [
+            {
+              "id": "dashboard-heading",
+              "role": "heading",
+              "name": "數據總覽"
+            },
+            {
+              "id": "refresh-metrics",
+              "role": "button",
+              "name": "重新整理數據"
+            },
+            {
+              "id": "net-revenue",
+              "role": "text",
+              "name": "平台淨營收統計"
+            },
+            {
+              "id": "stripe-balance",
+              "role": "text",
+              "name": "Stripe 平台帳戶餘額"
+            }
+          ]
         }
       ]
     },
@@ -918,7 +1001,29 @@
           "id": "admin-settings",
           "path": "/admin/settings",
           "role": "admin",
-          "assertions": [{ "type": "text", "pattern": "單張卡牌保管鑑定費" }]
+          "assertions": [{ "type": "text", "pattern": "單張卡牌保管鑑定費" }],
+          "requiredElements": [
+            {
+              "id": "financials-heading",
+              "role": "heading",
+              "locator": "#financials-heading"
+            },
+            {
+              "id": "auth-fee-label",
+              "role": "text",
+              "name": "單張卡牌保管鑑定費"
+            },
+            {
+              "id": "terms-heading",
+              "role": "heading",
+              "locator": "#terms-heading"
+            },
+            {
+              "id": "auth-settings-heading",
+              "role": "heading",
+              "locator": "#auth-settings-heading"
+            }
+          ]
         }
       ]
     },
@@ -932,7 +1037,24 @@
           "id": "admin-campaigns",
           "path": "/admin/campaigns",
           "role": "admin",
-          "assertions": [{ "type": "heading", "name": "積分與獎勵活動" }]
+          "assertions": [{ "type": "heading", "name": "積分與獎勵活動" }],
+          "requiredElements": [
+            {
+              "id": "campaigns-heading",
+              "role": "heading",
+              "name": "積分與獎勵活動"
+            },
+            {
+              "id": "check-in-tab",
+              "role": "button",
+              "name": "簽到計劃"
+            },
+            {
+              "id": "reward-activity-list",
+              "role": "heading",
+              "locator": "#reward-activity-list-heading"
+            }
+          ]
         }
       ]
     },
@@ -945,7 +1067,19 @@
           "id": "admin-check-in",
           "path": "/admin/campaigns?tab=check-in",
           "role": "admin",
-          "assertions": [{ "type": "text", "pattern": "簽到計劃" }]
+          "assertions": [{ "type": "text", "pattern": "簽到計劃" }],
+          "requiredElements": [
+            {
+              "id": "check-in-heading",
+              "role": "heading",
+              "pattern": "簽到計劃"
+            },
+            {
+              "id": "save-check-in",
+              "role": "button",
+              "pattern": "儲存簽到計劃"
+            }
+          ]
         }
       ]
     },
@@ -1148,7 +1282,39 @@
           "id": "admin-merchants",
           "path": "/admin/merchants",
           "role": "admin",
-          "assertions": [{ "type": "heading", "name": "商戶與 KYC 審查" }]
+          "assertions": [{ "type": "heading", "name": "商戶與 KYC 審查" }],
+          "requiredElements": [
+            {
+              "id": "merchants-heading",
+              "role": "heading",
+              "name": "商戶與 KYC 審查"
+            },
+            {
+              "id": "filter-pending",
+              "role": "button",
+              "pattern": "待審核"
+            },
+            {
+              "id": "merchant-search",
+              "role": "textbox",
+              "pattern": "搜尋公司"
+            }
+          ],
+          "stateVariants": [
+            {
+              "id": "approved-filter",
+              "setup": [
+                { "action": "click", "role": "button", "pattern": "已批准" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "filter-rejected",
+                  "role": "button",
+                  "pattern": "已拒絕"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -1162,7 +1328,19 @@
           "id": "admin-user-control",
           "path": "/admin/user_control",
           "role": "admin",
-          "assertions": [{ "type": "heading", "name": "用戶管理" }]
+          "assertions": [{ "type": "heading", "name": "用戶管理" }],
+          "requiredElements": [
+            {
+              "id": "user-control-heading",
+              "role": "heading",
+              "name": "用戶管理"
+            },
+            {
+              "id": "user-search",
+              "role": "textbox",
+              "pattern": "搜尋名稱"
+            }
+          ]
         }
       ]
     },
@@ -1176,7 +1354,29 @@
           "id": "admin-catalog",
           "path": "/admin/catalog",
           "role": "admin",
-          "assertions": [{ "type": "text", "pattern": "手動錄入卡牌" }]
+          "assertions": [{ "type": "text", "pattern": "手動錄入卡牌" }],
+          "requiredElements": [
+            {
+              "id": "manual-catalog-button",
+              "role": "button",
+              "name": "手動錄入卡牌"
+            },
+            {
+              "id": "catalog-heading",
+              "role": "heading",
+              "name": "卡牌字典資料庫"
+            },
+            {
+              "id": "catalog-search",
+              "role": "textbox",
+              "pattern": "搜尋編號"
+            },
+            {
+              "id": "catalog-card-tab",
+              "role": "tab",
+              "name": "獨立卡"
+            }
+          ]
         }
       ]
     },
@@ -1192,6 +1392,23 @@
           "role": "admin",
           "assertions": [
             { "type": "heading", "name": "財務與結算管控台" }
+          ],
+          "requiredElements": [
+            {
+              "id": "payouts-heading",
+              "role": "heading",
+              "name": "財務與結算管控台"
+            },
+            {
+              "id": "fps-batch",
+              "role": "button",
+              "pattern": "FPS 批次處理"
+            },
+            {
+              "id": "connect-ledger-tab",
+              "role": "button",
+              "pattern": "商戶流水"
+            }
           ]
         }
       ]
@@ -1208,6 +1425,18 @@
           "role": "admin",
           "assertions": [
             { "type": "heading", "name": "首頁活動與公告管理" }
+          ],
+          "requiredElements": [
+            {
+              "id": "announcements-heading",
+              "role": "heading",
+              "name": "首頁活動與公告管理"
+            },
+            {
+              "id": "new-announcement",
+              "role": "button",
+              "pattern": "新增公告"
+            }
           ]
         }
       ]
