@@ -19,11 +19,26 @@ const UiRequiredElementSchema = z.object({
     "heading",
     "tab",
     "text",
+    "columnheader",
   ]),
   name: z.string().optional(),
   pattern: z.string().optional(),
   locator: z.string().optional(),
   optional: z.boolean().default(false),
+});
+
+const UiStateSetupSchema = z.object({
+  action: z.enum(["click"]),
+  role: z.enum(["button", "tab", "link"]).optional(),
+  name: z.string().optional(),
+  pattern: z.string().optional(),
+  locator: z.string().optional(),
+});
+
+const UiStateVariantSchema = z.object({
+  id: z.string(),
+  setup: z.array(UiStateSetupSchema).min(1),
+  requiredElements: z.array(UiRequiredElementSchema).min(1),
 });
 
 const UiSurfaceSchema = z.object({
@@ -32,6 +47,7 @@ const UiSurfaceSchema = z.object({
   role: z.enum(["guest", "buyer", "seller", "admin"]),
   assertions: z.array(UiAssertionSchema).min(1),
   requiredElements: z.array(UiRequiredElementSchema).optional(),
+  stateVariants: z.array(UiStateVariantSchema).optional(),
   l2: z.boolean().default(true),
 });
 
@@ -53,6 +69,8 @@ const UiFeatureMapFileSchema = z.object({
 
 export type UiAssertion = z.infer<typeof UiAssertionSchema>;
 export type UiRequiredElement = z.infer<typeof UiRequiredElementSchema>;
+export type UiStateSetup = z.infer<typeof UiStateSetupSchema>;
+export type UiStateVariant = z.infer<typeof UiStateVariantSchema>;
 export type UiSurface = z.infer<typeof UiSurfaceSchema>;
 export type UiFeature = z.infer<typeof UiFeatureSchema>;
 export type UiFeatureMapFile = z.infer<typeof UiFeatureMapFileSchema>;
@@ -253,6 +271,22 @@ export function validateUiFeatureMap(root = process.cwd()): UiMapValidationResul
           errors.push(
             `${feature.id} surface ${surface.id} element ${element.id}: requires name, pattern, or locator`,
           );
+        }
+      }
+      for (const variant of surface.stateVariants ?? []) {
+        for (const step of variant.setup) {
+          if (!step.locator && !step.name && !step.pattern) {
+            errors.push(
+              `${feature.id} surface ${surface.id} variant ${variant.id}: setup step requires name, pattern, or locator`,
+            );
+          }
+        }
+        for (const element of variant.requiredElements) {
+          if (!element.locator && !element.name && !element.pattern) {
+            errors.push(
+              `${feature.id} surface ${surface.id} variant ${variant.id} element ${element.id}: requires name, pattern, or locator`,
+            );
+          }
         }
       }
     }

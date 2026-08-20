@@ -300,7 +300,59 @@
           "id": "trading-filters",
           "path": "/profile/user/trading",
           "role": "buyer",
-          "assertions": [{ "type": "text", "pattern": "待處理" }]
+          "assertions": [{ "type": "text", "pattern": "待處理" }],
+          "requiredElements": [
+            {
+              "id": "trading-heading",
+              "role": "heading",
+              "pattern": "交易管理"
+            },
+            {
+              "id": "order-search",
+              "role": "textbox",
+              "name": "訂單搜尋"
+            },
+            {
+              "id": "raw-filter",
+              "role": "checkbox",
+              "name": "只顯示 RAW/裸卡"
+            },
+            {
+              "id": "status-all",
+              "role": "button",
+              "pattern": "全部"
+            },
+            {
+              "id": "status-pending",
+              "role": "button",
+              "pattern": "待處理"
+            },
+            {
+              "id": "status-completed",
+              "role": "button",
+              "pattern": "已完成"
+            },
+            {
+              "id": "status-cancelled",
+              "role": "button",
+              "pattern": "已取消"
+            },
+            {
+              "id": "persona-buy",
+              "role": "button",
+              "pattern": "買單"
+            },
+            {
+              "id": "persona-sell",
+              "role": "button",
+              "pattern": "賣單"
+            },
+            {
+              "id": "orders-list-section",
+              "role": "button",
+              "locator": "#orders-list"
+            }
+          ]
         }
       ]
     },
@@ -502,6 +554,26 @@
               "role": "button",
               "locator": "#orders-list"
             }
+          ],
+          "stateVariants": [
+            {
+              "id": "pending-subfilters",
+              "setup": [
+                { "action": "click", "role": "button", "name": "待處理" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "sub-payment",
+                  "role": "checkbox",
+                  "name": "待付款"
+                },
+                {
+                  "id": "sub-grading",
+                  "role": "checkbox",
+                  "name": "鑑定中"
+                }
+              ]
+            }
           ]
         }
       ]
@@ -519,7 +591,39 @@
           "id": "merchant-inventory",
           "path": "/profile/merchant/inventory",
           "role": "seller",
-          "assertions": [{ "type": "text", "pattern": "所有商品" }]
+          "assertions": [{ "type": "text", "pattern": "所有商品" }],
+          "requiredElements": [
+            {
+              "id": "summary-in-stock",
+              "role": "text",
+              "name": "現貨"
+            },
+            {
+              "id": "summary-active",
+              "role": "text",
+              "name": "上架中"
+            },
+            {
+              "id": "summary-sold",
+              "role": "text",
+              "name": "已售出"
+            },
+            {
+              "id": "sku-search",
+              "role": "textbox",
+              "name": "商品搜尋"
+            },
+            {
+              "id": "listings-heading",
+              "role": "heading",
+              "pattern": "所有商品"
+            },
+            {
+              "id": "listings-section",
+              "role": "button",
+              "locator": "#listings-heading"
+            }
+          ]
         }
       ]
     },
@@ -744,6 +848,43 @@
           "role": "admin",
           "assertions": [
             { "type": "heading", "name": "舉報與爭議仲裁工作台" }
+          ],
+          "requiredElements": [
+            {
+              "id": "disputes-heading",
+              "role": "heading",
+              "name": "舉報與爭議仲裁工作台"
+            },
+            {
+              "id": "case-search",
+              "role": "textbox",
+              "pattern": "搜尋案件"
+            },
+            {
+              "id": "tab-all",
+              "role": "tab",
+              "pattern": "全部"
+            },
+            {
+              "id": "tab-pending",
+              "role": "tab",
+              "pattern": "待處理"
+            },
+            {
+              "id": "tab-completed",
+              "role": "tab",
+              "pattern": "已完成"
+            },
+            {
+              "id": "col-case-id",
+              "role": "columnheader",
+              "name": "案件單號"
+            },
+            {
+              "id": "col-subject",
+              "role": "columnheader",
+              "name": "被舉報用戶"
+            }
           ]
         }
       ]

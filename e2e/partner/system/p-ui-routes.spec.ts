@@ -12,6 +12,7 @@ import { loginAsAdmin } from "../../helpers/admin-auth";
 import { ensureMemberPersona, ensureMerchantPersona } from "../../helpers/collection-asset";
 import {
   assertRequiredElements,
+  assertStateVariants,
   assertUiSurface,
   projectMatchesSurfaceRole,
 } from "../../helpers/ui-feature-map-playwright";
@@ -54,6 +55,9 @@ for (const surface of l2Surfaces) {
     await assertUiSurface(page, surface.assertions);
     if (surface.requiredElements?.length) {
       await assertRequiredElements(page, surface.requiredElements);
+    }
+    if (surface.stateVariants?.length) {
+      await assertStateVariants(page, surface.stateVariants);
     }
   });
 }

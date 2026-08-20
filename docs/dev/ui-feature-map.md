@@ -28,6 +28,7 @@
 | `component` / `action` | 主 UI／server action（文件用） |
 | `partnerSpecs` | 已有 L3 Partner spec 路徑 |
 | `requiredElements[]` | L2+ 必須出現嘅 interactive／anchor（`role` + `name`/`pattern` 或 `locator`） |
+| `stateVariants[]` | `setup`（click tab）→ 額外 `requiredElements`（conditional UI） |
 | `note` | headless 原因或 L3 歸屬 |
 
 動態 path：`{sellerId}` · `{productId}` · `{listingId}` 由 E2E env 解析。
@@ -47,6 +48,7 @@
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | v1.3：`requiredElements` F-M-18/F-C-03/F-A-05 · merchant `stateVariants` pending 子篩選 |
 | 2026-08-20 | v1.2：guest project L2 scan · storefront assertion fix · admin login idempotent |
 | 2026-08-20 | v1.1：`requiredElements` pilot（F-C-02 merchant trading） |
 | 2026-08-20 | v1：`ui-feature-map.json` + validate + Partner L2 route scan |

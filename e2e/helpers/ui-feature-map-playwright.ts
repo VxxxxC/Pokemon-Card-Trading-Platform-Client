@@ -1,6 +1,11 @@
 import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import type { UiAssertion, UiRequiredElement } from "@/lib/dev/ui-feature-map";
+import type {
+  UiAssertion,
+  UiRequiredElement,
+  UiStateSetup,
+  UiStateVariant,
+} from "@/lib/dev/ui-feature-map";
 
 export async function assertUiSurface(
   page: Page,
@@ -40,14 +45,42 @@ export async function assertUiSurface(
   }
 }
 
+function resolveName(
+  id: string,
+  name?: string,
+  pattern?: string,
+): string | RegExp {
+  if (pattern) {
+    return new RegExp(pattern);
+  }
+  if (!name) {
+    throw new Error(`${id} requires name or pattern`);
+  }
+  return name;
+}
+
 function resolveElementName(element: UiRequiredElement): string | RegExp {
-  if (element.pattern) {
-    return new RegExp(element.pattern);
+  return resolveName(element.id, element.name, element.pattern);
+}
+
+function locateRequiredElement(page: Page, element: UiRequiredElement) {
+  if (element.locator) {
+    return page.locator(element.locator).first();
   }
-  if (!element.name) {
-    throw new Error(`element ${element.id} requires name or pattern`);
+
+  const name = resolveElementName(element);
+  switch (element.role) {
+    case "text":
+      return page.getByText(name).first();
+    case "heading":
+      return page.getByRole("heading", { name }).first();
+    case "tab":
+      return page.getByRole("tab", { name }).first();
+    case "columnheader":
+      return page.getByRole("columnheader", { name }).first();
+    default:
+      return page.getByRole(element.role, { name }).first();
   }
-  return element.name;
 }
 
 export async function assertRequiredElements(
@@ -55,36 +88,42 @@ export async function assertRequiredElements(
   elements: UiRequiredElement[],
 ): Promise<void> {
   for (const element of elements) {
-    if (element.locator) {
-      const target = page.locator(element.locator).first();
-      if (element.optional) {
-        if ((await target.count()) === 0) continue;
-      }
-      await expect(target).toBeVisible({ timeout: 20_000 });
-      continue;
-    }
-
-    const name = resolveElementName(element);
-    let target;
-    switch (element.role) {
-      case "text":
-        target = page.getByText(name).first();
-        break;
-      case "heading":
-        target = page.getByRole("heading", { name }).first();
-        break;
-      case "tab":
-        target = page.getByRole("tab", { name }).first();
-        break;
-      default:
-        target = page.getByRole(element.role, { name }).first();
-        break;
-    }
-
+    const target = locateRequiredElement(page, element);
     if (element.optional) {
       if ((await target.count()) === 0) continue;
     }
     await expect(target).toBeVisible({ timeout: 20_000 });
+  }
+}
+
+async function applyStateSetup(page: Page, steps: UiStateSetup[]): Promise<void> {
+  for (const step of steps) {
+    if (step.action !== "click") {
+      throw new Error(`Unsupported setup action: ${step.action}`);
+    }
+
+    if (step.locator) {
+      await page.locator(step.locator).first().click();
+      continue;
+    }
+
+    const name = resolveName(
+      "setup-step",
+      step.name,
+      step.pattern,
+    );
+    const role = step.role ?? "button";
+    await page.getByRole(role, { name }).first().click();
+  }
+}
+
+export async function assertStateVariants(
+  page: Page,
+  variants: UiStateVariant[],
+): Promise<void> {
+  for (const variant of variants) {
+    await applyStateSetup(page, variant.setup);
+    await assertRequiredElements(page, variant.requiredElements);
   }
 }
 
