@@ -656,12 +656,15 @@ async function resolveMarketplaceSellerDisplayName(
       .maybeSingle();
 
     if (error) {
-      throw new Error(`[resolveMarketplaceSellerDisplayName] ${error.message}`);
-    }
-
-    const shopName = merchant?.shop_name?.trim();
-    if (shopName) {
-      return shopName;
+      const permissionDenied = /permission denied/i.test(error.message);
+      if (!permissionDenied) {
+        throw new Error(`[resolveMarketplaceSellerDisplayName] ${error.message}`);
+      }
+    } else {
+      const shopName = merchant?.shop_name?.trim();
+      if (shopName) {
+        return shopName;
+      }
     }
   }
 
@@ -903,7 +906,7 @@ export async function getProfilePublicSlug(profileId: string): Promise<string | 
     .eq("merchant_id", profileId)
     .maybeSingle();
 
-  if (merchantError) {
+  if (merchantError && !/permission denied/i.test(merchantError.message)) {
     throw new Error(`[getProfilePublicSlug] ${merchantError.message}`);
   }
 
