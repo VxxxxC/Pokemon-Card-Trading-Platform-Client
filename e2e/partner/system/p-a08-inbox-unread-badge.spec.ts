@@ -6,15 +6,19 @@ import { test, expect, type Page } from "@playwright/test";
 import { getChatRealtimeFixtures, hasChatRealtimeFixtures } from "../../fixtures/chat-test-data";
 import {
   ensureDbChatRoom,
+  getChatRoomSellerPersona,
   getProfileDisplayName,
   getProfileIdByEmail,
 } from "../../fixtures/supabase-admin";
+import {
+  ensureMemberPersona,
+  ensureMerchantPersona,
+} from "../../helpers/collection-asset";
 import {
   chatConsoleRoot,
   closeChatConsole,
   openChatRoom,
 } from "../../helpers/member-trading";
-import { ensureMemberPersona } from "../../helpers/collection-asset";
 import {
   dismissBlockingOverlays,
   suppressTransientHomeOverlays,
@@ -30,6 +34,19 @@ async function sendChatMessage(page: Page, text: string): Promise<void> {
     .filter({ has: page.getByRole("button", { name: "發送 ⚡" }) });
   await composer.locator('input[type="text"]').fill(text);
   await composer.getByRole("button", { name: "發送 ⚡" }).click();
+}
+
+async function openInboxOnce(page: Page) {
+  const inboxButton = page
+    .getByRole("banner")
+    .getByRole("button", { name: "收件匣" });
+  await expect(inboxButton).toBeVisible({ timeout: 20_000 });
+  const header = page.getByText("即時交易通知");
+  if (!(await header.isVisible().catch(() => false))) {
+    await inboxButton.click({ force: true });
+  }
+  await expect(header).toBeVisible({ timeout: 15_000 });
+  return inboxButton;
 }
 
 test.describe("P-A08 inbox unread badge", () => {
@@ -58,6 +75,7 @@ test.describe("P-A08 inbox unread badge", () => {
       getProfileDisplayName(sellerId),
     ]);
     const roomId = await ensureDbChatRoom(buyerId, sellerId);
+    const sellerPersona = await getChatRoomSellerPersona(roomId);
     const message = `P-A08 unread ${Date.now()}`;
 
     const buyerContext = await browser.newContext({
@@ -70,7 +88,11 @@ test.describe("P-A08 inbox unread badge", () => {
     const sellerPage = await sellerContext.newPage();
 
     try {
-      await ensureMemberPersona(sellerPage);
+      if (sellerPersona === "merchant") {
+        await ensureMerchantPersona(sellerPage);
+      } else {
+        await ensureMemberPersona(sellerPage);
+      }
       await suppressTransientHomeOverlays(sellerPage);
       await sellerPage.goto("/", { waitUntil: "domcontentloaded" });
       await waitUntilNoBlockingOverlay(sellerPage);
@@ -88,26 +110,36 @@ test.describe("P-A08 inbox unread badge", () => {
       await dismissBlockingOverlays(sellerPage);
       await closeChatConsole(sellerPage);
 
-      const inboxButton = sellerPage
-        .getByRole("banner")
-        .getByRole("button", { name: "收件匣" });
-      await expect(inboxButton).toBeVisible({ timeout: 20_000 });
-      await inboxButton.click({ force: true });
-      await expect(sellerPage.getByText("即時交易通知")).toBeVisible({
-        timeout: 15_000,
-      });
+      const inboxButton = await openInboxOnce(sellerPage);
 
       const inboxRow = sellerPage
         .locator("button")
         .filter({ hasText: buyerName })
+        .or(sellerPage.locator("button").filter({ hasText: message }))
         .first();
-      await expect(inboxRow).toBeVisible({ timeout: 15_000 });
-      await expect(inboxRow.getByTestId("chat-unread-dot")).toBeVisible({
-        timeout: 20_000,
+
+      await expect
+        .poll(
+          async () => {
+            const headerVisible = await sellerPage
+              .getByText("即時交易通知")
+              .isVisible()
+              .catch(() => false);
+            if (!headerVisible) {
+              await inboxButton.click({ force: true }).catch(() => undefined);
+            }
+            return inboxRow.isVisible().catch(() => false);
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(true);
+
+      await expect(inboxButton.getByTestId("chat-unread-dot")).toBeVisible({
+        timeout: 15_000,
       });
-      await expect(
-        sellerPage.getByRole("button", { name: "收件匣" }).getByTestId("chat-unread-dot"),
-      ).toBeVisible({ timeout: 20_000 });
+      await expect(inboxRow.getByTestId("chat-unread-dot")).toBeVisible({
+        timeout: 15_000,
+      });
     } finally {
       await buyerContext.close();
       await sellerContext.close();

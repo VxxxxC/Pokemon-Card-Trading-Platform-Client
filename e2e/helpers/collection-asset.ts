@@ -6,9 +6,13 @@ import {
   clearListingsForSellerProduct,
   getBuyerProfileIdFromEnv,
   seedProductWatchlistForUser,
+  acknowledgePendingRewardGrantsForUser,
   type ListingMarketplaceFixture,
 } from "../fixtures/supabase-admin";
-import { dismissBlockingOverlays, waitUntilNoBlockingOverlay } from "./overlays";
+import {
+  dismissBlockingOverlays,
+  waitUntilNoBlockingOverlay,
+} from "./overlays";
 
 export { dismissBlockingOverlays };
 
@@ -256,10 +260,7 @@ export async function hobbyGradingSelectTrigger(
   await expect(modal.getByText("鑑定／品相", { exact: true })).toBeVisible({
     timeout: 25_000,
   });
-  const trigger = modal
-    .locator('[data-slot="select-trigger"]')
-    .or(modal.getByRole("combobox"))
-    .first();
+  const trigger = modal.locator('[data-slot="select-trigger"]').first();
   await expect(trigger).toBeVisible({ timeout: 25_000 });
   return trigger;
 }
@@ -270,10 +271,25 @@ export async function selectHobbyGrading(
 ): Promise<void> {
   await ensureHobbyCardItemType(page);
   const trigger = await hobbyGradingSelectTrigger(page);
-  await trigger.click({ force: true });
-  const option = page.getByRole("option", { name: optionLabel, exact: true });
+  await trigger.click();
+  const list = page.locator('[data-slot="select-content"]').last();
+  await expect(list).toBeVisible({ timeout: 10_000 });
+  const option = page
+    .getByRole("option", { name: optionLabel, exact: true })
+    .or(
+      list
+        .locator('[data-slot="select-item"]')
+        .filter({ hasText: optionLabel })
+        .first(),
+    )
+    .first();
+  await expect(option).toBeAttached({ timeout: 15_000 });
+  await option.evaluate((el) => {
+    el.scrollIntoView({ block: "center", inline: "nearest" });
+  });
   await expect(option).toBeVisible({ timeout: 10_000 });
   await option.click();
+  await expect(addAssetModalForm(page)).toBeVisible({ timeout: 10_000 });
 }
 
 export async function selectHobbyRawGrading(page: Page): Promise<void> {
@@ -292,6 +308,7 @@ export async function addHobbyHoldingForFixture(
     : gradingOptionLabel.split(" ")[0] ?? gradingOptionLabel;
   const buyerId = await getBuyerProfileIdFromEnv();
   if (buyerId) {
+    await acknowledgePendingRewardGrantsForUser(buyerId);
     await clearListingsForSellerProduct(buyerId, fixture.productId);
     await expect
       .poll(
@@ -310,9 +327,17 @@ export async function addHobbyHoldingForFixture(
   await openHobbyAddAssetModal(page);
   await searchAndSelectCatalogForFixture(page, fixture);
   await waitForAddAssetCatalogSelected(page, fixture.productName);
+  await expect(addAssetModalForm(page)).toBeVisible({ timeout: 10_000 });
   await selectHobbyGrading(page, gradingOptionLabel);
-  await addAssetModalForm(page).getByPlaceholder("0").fill(purchasePrice);
-  await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();
+  const modal = addAssetModalForm(page);
+  await expect(modal).toBeVisible({ timeout: 10_000 });
+  await modal.getByPlaceholder("0").first().fill(purchasePrice);
+  await modal.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+  const submit = modal.getByRole("button", { name: /收錄至私藏愛好/ });
+  await expect(submit).toBeVisible({ timeout: 15_000 });
+  await submit.click();
   await expect(
     page.getByText("已成功收錄進您的私藏愛好清單"),
   ).toBeVisible({ timeout: 20_000 });

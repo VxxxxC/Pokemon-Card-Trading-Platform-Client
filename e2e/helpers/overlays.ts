@@ -14,7 +14,8 @@ export async function dismissRewardUnlockedModal(page: Page): Promise<void> {
   const dialog = page.getByRole("dialog", { name: "恭喜解鎖獎勵" });
   const title = page.getByText("恭喜解鎖獎勵", { exact: true });
   const confirm = page.getByRole("button", { name: /太好了|處理中/ });
-  for (let attempt = 0; attempt < 10; attempt += 1) {
+  const close = dialog.getByRole("button", { name: "Close" });
+  for (let attempt = 0; attempt < 20; attempt += 1) {
     const visible =
       (await dialog.isVisible().catch(() => false)) ||
       (await title.isVisible().catch(() => false));
@@ -25,6 +26,11 @@ export async function dismissRewardUnlockedModal(page: Page): Promise<void> {
       .first()
       .click({ force: true, timeout: 5_000 })
       .catch(() => undefined);
+    if (await dialog.isVisible().catch(() => false)) {
+      await close
+        .click({ force: true, timeout: 3_000 })
+        .catch(() => undefined);
+    }
     await page.waitForTimeout(400);
   }
 }
@@ -41,7 +47,7 @@ export async function suppressTransientHomeOverlays(page: Page): Promise<void> {
 
 export async function waitUntilNoBlockingOverlay(page: Page): Promise<void> {
   await page.waitForTimeout(700);
-  for (let attempt = 0; attempt < 8; attempt += 1) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
     await dismissBlockingOverlays(page);
     const overlayVisible = await page
       .locator("div.fixed.inset-0.z-\\[400\\]")
@@ -53,7 +59,13 @@ export async function waitUntilNoBlockingOverlay(page: Page): Promise<void> {
         .getByRole("dialog", { name: "最新活動與公告" })
         .count()
         .catch(() => 0)) > 0;
-    if (!overlayVisible && !announcementOpen) {
+    const rewardOpen =
+      (await page
+        .getByRole("dialog", { name: "恭喜解鎖獎勵" })
+        .isVisible()
+        .catch(() => false)) ||
+      (await page.getByText("恭喜解鎖獎勵", { exact: true }).isVisible().catch(() => false));
+    if (!overlayVisible && !announcementOpen && !rewardOpen) {
       return;
     }
     await page.waitForTimeout(300);
@@ -63,6 +75,8 @@ export async function waitUntilNoBlockingOverlay(page: Page): Promise<void> {
 export async function dismissBlockingOverlays(page: Page): Promise<void> {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     let dismissed = false;
+
+    await dismissRewardUnlockedModal(page);
 
     const announcementDialog = page.getByRole("dialog", {
       name: "最新活動與公告",
@@ -82,12 +96,8 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
     }
 
     if (
-      await clickIfVisible(page.getByRole("button", { name: "太好了" }))
+      await clickIfVisible(page.getByRole("button", { name: "稍後再說" }))
     ) {
-      dismissed = true;
-    }
-
-    if (await clickIfVisible(page.getByRole("button", { name: "稍後再說" }))) {
       dismissed = true;
     }
 

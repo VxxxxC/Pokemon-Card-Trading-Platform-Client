@@ -31,7 +31,7 @@ export function PwaInlineBanner() {
     () => false, // 伺服器端預設為 false
   );
 
-  if (promptState === "ALREADY_INSTALLED" || !isSnoozed) return null; //
+  if (promptState === "ALREADY_INSTALLED" || isSnoozed) return null;
 
   return (
     <div className="sticky top-14 lg:top-16 z-40 w-full bg-gradient-to-r from-[#d4a574] via-[#e2b98f] to-[#d4a574] text-[#17130f] shadow-[0_4px_20px_rgba(0,0,0,0.45)] border-b border-[rgba(23,19,15,0.15)] animate-fadeIn">

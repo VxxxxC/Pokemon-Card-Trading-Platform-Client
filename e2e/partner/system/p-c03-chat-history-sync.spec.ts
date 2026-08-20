@@ -2,7 +2,7 @@
 // @features F-M-13
 // @path Partner
 
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { getChatRealtimeFixtures, hasChatRealtimeFixtures } from "../../fixtures/chat-test-data";
 import {
   ensureDbChatRoom,
@@ -12,6 +12,7 @@ import {
 } from "../../fixtures/supabase-admin";
 import { chatConsoleRoot, openChatRoom } from "../../helpers/member-trading";
 import {
+  dismissBlockingOverlays,
   suppressTransientHomeOverlays,
   waitUntilNoBlockingOverlay,
 } from "../../helpers/overlays";
@@ -20,10 +21,32 @@ test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(180_000);
 
 const HISTORY_COUNT = 55;
+const SELLER_AUTH_FILE = "e2e/.auth/seller.json";
+
+async function ensureSellerSession(
+  page: Page,
+  email: string,
+  password: string,
+): Promise<void> {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  const loginLink = page.getByRole("link", { name: /登入/ });
+  if (!(await loginLink.isVisible().catch(() => false))) {
+    return;
+  }
+
+  await page.goto("/auth", { waitUntil: "domcontentloaded" });
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="password"]').fill(password);
+  await page.locator('form button[type="submit"]').click();
+  await page.waitForURL((url) => !url.pathname.startsWith("/auth"), {
+    timeout: 45_000,
+  });
+  await page.context().storageState({ path: SELLER_AUTH_FILE });
+}
 
 test.describe("P-C03 chat history hydrate", () => {
   test("opening a long thread loads latest then older messages on scroll", async ({
-    page,
+    browser,
   }, testInfo) => {
     test.skip(
       testInfo.project.name !== "seller",
@@ -35,9 +58,11 @@ test.describe("P-C03 chat history hydrate", () => {
 
     const fixtures = getChatRealtimeFixtures();
     const sellerId = fixtures.sellerId!;
+    const sellerEmail = fixtures.sellerEmail!;
+    const sellerPassword = fixtures.sellerPassword!;
     const buyerEmail = fixtures.buyerEmail!;
     const buyerId = await getProfileIdByEmail(buyerEmail);
-    if (!buyerId) {
+    if (!buyerId || !sellerPassword) {
       test.skip(true, `Could not resolve buyer profile for ${buyerEmail}`);
       return;
     }
@@ -57,25 +82,44 @@ test.describe("P-C03 chat history hydrate", () => {
       });
     }
 
-    await suppressTransientHomeOverlays(page);
-    await waitUntilNoBlockingOverlay(page);
-    await openChatRoom(page, roomId, buyerName, buyerId);
+    const context = await browser.newContext({
+      storageState: SELLER_AUTH_FILE,
+    });
+    const page = await context.newPage();
 
-    const consoleRoot = chatConsoleRoot(page);
-    await expect(consoleRoot.getByText("載入對話內容…")).toHaveCount(0, {
-      timeout: 20_000,
-    });
-    await expect(consoleRoot.getByText(newest).first()).toBeVisible({
-      timeout: 20_000,
-    });
+    try {
+      await suppressTransientHomeOverlays(page);
+      await ensureSellerSession(page, sellerEmail, sellerPassword);
+      await waitUntilNoBlockingOverlay(page);
+      await dismissBlockingOverlays(page);
+      await openChatRoom(page, roomId, buyerName, buyerId);
 
-    const thread = consoleRoot.locator(".overflow-y-auto").last();
-    await thread.evaluate((el) => {
-      el.scrollTop = 0;
-    });
+      const consoleRoot = chatConsoleRoot(page);
+      await expect(consoleRoot.getByText("載入對話內容…")).toHaveCount(0, {
+        timeout: 20_000,
+      });
+      const thread = consoleRoot.locator(".overflow-y-auto").last();
+      await expect
+        .poll(
+          async () => {
+            await thread.evaluate((el) => {
+              el.scrollTop = el.scrollHeight;
+            });
+            return consoleRoot.getByText(newest).first().isVisible();
+          },
+          { timeout: 45_000 },
+        )
+        .toBe(true);
 
-    await expect(consoleRoot.getByText(oldest).first()).toBeVisible({
-      timeout: 30_000,
-    });
+      await thread.evaluate((el) => {
+        el.scrollTop = 0;
+      });
+
+      await expect(consoleRoot.getByText(oldest).first()).toBeVisible({
+        timeout: 30_000,
+      });
+    } finally {
+      await context.close();
+    }
   });
 });

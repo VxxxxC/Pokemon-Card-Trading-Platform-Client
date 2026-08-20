@@ -26,9 +26,14 @@ test.describe("P-B08 long BGS grading label", () => {
       return;
     }
 
-    await addHobbyHoldingForFixture(page, fixtureResult.fixture, "8888", {
-      gradingOptionLabel: "BGS 10 黑",
-    });
+    await addHobbyHoldingForFixture(
+      page,
+      fixtureResult.fixture,
+      `8${String(Date.now()).slice(-6)}`,
+      {
+        gradingOptionLabel: "BGS 10 黑",
+      },
+    );
     await expect(
       page.getByText(/varchar|value too long|character varying/i),
     ).toHaveCount(0);

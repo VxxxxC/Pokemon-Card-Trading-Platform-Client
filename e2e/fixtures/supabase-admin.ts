@@ -96,6 +96,38 @@ export async function ensureDbChatRoom(
   return created.id;
 }
 
+export async function getChatRoomSellerPersona(
+  roomId: string,
+): Promise<"member" | "merchant"> {
+  const admin = createE2eAdminClient();
+  const { data, error } = await admin
+    .from("chat_rooms")
+    .select("seller_persona")
+    .eq("id", roomId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`[getChatRoomSellerPersona] ${error.message}`);
+  }
+
+  return data?.seller_persona === "merchant" ? "merchant" : "member";
+}
+
+export async function acknowledgePendingRewardGrantsForUser(
+  userId: string,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  const { error } = await admin
+    .from("user_rewards")
+    .update({ acknowledged_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .is("acknowledged_at", null);
+
+  if (error) {
+    throw new Error(`[acknowledgePendingRewardGrantsForUser] ${error.message}`);
+  }
+}
+
 export async function getLatestChatMessage(
   roomId: string,
   contentContains?: string,
