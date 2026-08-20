@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  getAuthEscrowStatusLabel,
   getAuthEscrowStepIndexFromStatus,
   type MemberEscrowStatus,
 } from "@/app/lib/member-order/auth-escrow";
@@ -12,20 +11,16 @@ import { cn } from "@/lib/utils";
 type MemberAuthOrderTimelineProps = {
   status: MemberOrderDbStatus | null | undefined;
   escrowStatus?: MemberEscrowStatus | null;
-  paymentConfirmedAt?: string | null;
 };
 
 export function MemberAuthOrderTimeline({
   status,
   escrowStatus,
-  paymentConfirmedAt,
 }: MemberAuthOrderTimelineProps) {
   const currentStepIdx = getAuthEscrowStepIndexFromStatus(
     escrowStatus,
     status,
   );
-  const isAwaitingPayment =
-    escrowStatus === "payment" && paymentConfirmedAt == null;
   const isCancelled =
     status === "cancelled" || escrowStatus === "cancelled";
 
@@ -54,14 +49,6 @@ export function MemberAuthOrderTimeline({
           {ESCROW_STEPS.map((step, idx) => {
             const isCompleted = idx < currentStepIdx;
             const isActive = idx === currentStepIdx;
-            const showAwaitingPaymentLabel =
-              isAwaitingPayment && isActive && step.id === "payment";
-            const stepLabel = showAwaitingPaymentLabel
-              ? getAuthEscrowStatusLabel("payment")
-              : step.label;
-            const stepDescription = showAwaitingPaymentLabel
-              ? "請完成卡價與鑑定服務費託管付款"
-              : step.description;
 
             return (
               <div
@@ -74,9 +61,7 @@ export function MemberAuthOrderTimeline({
                     isCompleted
                       ? "bg-success border-success text-white"
                       : isActive
-                        ? showAwaitingPaymentLabel
-                          ? "bg-amber-500 border-amber-500 animate-pulse"
-                          : "bg-brand border-brand animate-pulse"
+                        ? "bg-brand border-brand animate-pulse"
                         : "bg-[#1A1612] border-white/20",
                   )}
                 >
@@ -102,18 +87,16 @@ export function MemberAuthOrderTimeline({
                     className={cn(
                       "font-sans font-bold",
                       isActive
-                        ? showAwaitingPaymentLabel
-                          ? "text-amber-400"
-                          : "text-brand"
+                        ? "text-brand"
                         : isCompleted
                           ? "text-success"
                           : "text-text-secondary",
                     )}
                   >
-                    {stepLabel}
+                    {step.label}
                   </span>
                   <span className="text-[11px] text-text-disabled">
-                    {stepDescription}
+                    {step.description}
                   </span>
                 </div>
               </div>

@@ -4,26 +4,11 @@ import {
   getMerchantProductDetailFixtures,
   hasCoreMerchantFixtures,
   hasPublicProfileFixtures,
+  hasSellerUsernameFixture,
 } from "./fixtures/test-data";
-import { getProfileUsername, resolveE2eMarketplaceFixture } from "./fixtures/supabase-admin";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
-
-let resolvedSellerUsername: string | null = null;
-
-test.beforeAll(async () => {
-  if (!hasPublicProfileFixtures()) {
-    return;
-  }
-  const result = await resolveE2eMarketplaceFixture();
-  if (!result.ok) {
-    return;
-  }
-  resolvedSellerUsername =
-    getMerchantProductDetailFixtures().sellerUsername ??
-    (await getProfileUsername(result.fixture.sellerId));
-});
 
 async function dismissBlockingOverlays(page: Page): Promise<void> {
   const pwaClose = page.getByRole("button", { name: "✕" }).first();
@@ -59,17 +44,18 @@ test.describe("Public profile page", () => {
 
   test("guest resolves seller profile by username", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "guest", "Guest-only username route");
-    if (!resolvedSellerUsername) {
-      test.skip(true, "Could not resolve seller username for profile route");
+    if (!hasSellerUsernameFixture()) {
+      test.skip(true, "Missing E2E_SELLER_USERNAME or E2E_LISTING_ID");
     }
 
-    await page.goto(buildPublicProfilePath(resolvedSellerUsername!), {
+    const { sellerUsername } = getMerchantProductDetailFixtures();
+    await page.goto(buildPublicProfilePath(sellerUsername!), {
       waitUntil: "domcontentloaded",
     });
     await dismissBlockingOverlays(page);
 
     await expectPublicProfileShell(page);
-    await expect(page.locator("main").getByText(/^@/)).toBeVisible();
+    await expect(page.getByText(`@${sellerUsername}`)).toBeVisible();
   });
 
   test("guest sees not-found for unknown profile key", async ({

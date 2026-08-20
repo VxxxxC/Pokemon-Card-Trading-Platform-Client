@@ -60,7 +60,7 @@ export async function fetchSellerListings(
   let query = supabase
     .from("listings")
     .select(
-      "id, product_id, price, grading_company, grading_score, images, status, seller_description, created_at, use_authentication, extra_shipping_fee",
+      "id, product_id, price, grading_company, grading_score, images, status, seller_description, created_at",
     )
     .eq("seller_id", userId);
 

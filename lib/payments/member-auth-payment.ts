@@ -1,12 +1,40 @@
-import {
-  AUTH_ESCROW_AUTH_FEE_HKD,
-  AUTH_ESCROW_SF_LEG_FEE_HKD,
-  estimateAuthEscrowCheckoutTotal,
-} from "@/lib/auth-escrow/defaults";
+import { MEMBER_AUTH_SERVICE_FEE } from "@/app/lib/member-order/p2p";
 
-/** Legacy estimate when persisted buyer_total_amount is unavailable. */
+export type MemberAuthPaymentSession = {
+  sessionId: string;
+  amount: number;
+  currency: "hkd";
+  cardPrice: number;
+  authFee: number;
+  isMock: true;
+};
+
 export function calculateMemberAuthPaymentTotal(cardPrice: number): number {
-  return estimateAuthEscrowCheckoutTotal(cardPrice);
+  return cardPrice + MEMBER_AUTH_SERVICE_FEE;
 }
 
-export { AUTH_ESCROW_AUTH_FEE_HKD, AUTH_ESCROW_SF_LEG_FEE_HKD };
+export function createMemberAuthPaymentSession(input: {
+  orderId: string;
+  cardPrice: number;
+}): MemberAuthPaymentSession {
+  const sessionId = `MOCK-${input.orderId.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+  return {
+    sessionId,
+    amount: calculateMemberAuthPaymentTotal(input.cardPrice),
+    currency: "hkd",
+    cardPrice: input.cardPrice,
+    authFee: MEMBER_AUTH_SERVICE_FEE,
+    isMock: true,
+  };
+}
+
+export function confirmMemberAuthPayment(sessionId: string): {
+  sessionId: string;
+  confirmedAt: string;
+} {
+  return {
+    sessionId,
+    confirmedAt: new Date().toISOString(),
+  };
+}

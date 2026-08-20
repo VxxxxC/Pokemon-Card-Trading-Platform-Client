@@ -233,7 +233,6 @@ export function ProductDetailClient({
           sellerRating: row.sellerRating,
           reviewCount: row.sellerTotalTrades,
           customGrade: formatListingGrade(row.gradingCompany, row.gradingScore),
-          deliverySummary: row.deliverySummary,
         } satisfies SellOrder,
       })),
     [listings],

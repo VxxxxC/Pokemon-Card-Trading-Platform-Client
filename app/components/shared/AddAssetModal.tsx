@@ -52,10 +52,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  LISTING_AUTH_SERVICE_TOOLTIP_BODY,
   LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
-  buildAuthServiceTooltipBody,
 } from "@/lib/listings/auth-service-copy";
-import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 import {
   catalogItemKindFromType,
   defaultSealedProductScore,
@@ -137,7 +136,6 @@ export function AddAssetModal() {
   const addAssetSellerPersona = useUIStore((state) => state.addAssetSellerPersona);
   const closeAddAssetModal = useUIStore((state) => state.closeAddAssetModal);
   const isMemberPersonaActive = useIsMemberPersonaActive();
-  const authServiceFeeHkd = usePlatformAuthFee();
 
   // 模式 Toggle 狀態
   const [mode, setMode] = useState<"hobby" | "merch">("hobby");
@@ -176,7 +174,6 @@ export function AddAssetModal() {
 
   // 新增商品專屬欄位
   const [sellingPrice, setSellingPrice] = useState("");
-  const [extraShippingFee, setExtraShippingFee] = useState("");
   const [collectionAddPrompt, setCollectionAddPrompt] =
     useState<CollectionAddAfterListingPayload | null>(null);
 
@@ -279,7 +276,6 @@ export function AddAssetModal() {
         setSealState(defaultSealedProductScore());
         setPurchasePrice("");
         setSellingPrice("");
-        setExtraShippingFee("");
         setAcceptsBuyerAuth(false);
         setHobbyImages([]);
         resetPhotoSlots();
@@ -548,10 +544,6 @@ export function AddAssetModal() {
         imageFiles,
         photosRemark,
         sealState,
-        extraShippingFee:
-          addAssetSellerPersona === "merchant" && extraShippingFee.trim()
-            ? Number(extraShippingFee)
-            : undefined,
       });
 
       if (!result.success) {
@@ -629,10 +621,6 @@ export function AddAssetModal() {
         sellerPersona: addAssetSellerPersona,
         imageFiles,
         photosRemark,
-        extraShippingFee:
-          addAssetSellerPersona === "merchant" && extraShippingFee.trim()
-            ? Number(extraShippingFee)
-            : undefined,
       });
 
       if (!result.success) {
@@ -724,7 +712,7 @@ export function AddAssetModal() {
                 <span className="font-bold block mb-1">
                   {LISTING_AUTH_SERVICE_TOOLTIP_TITLE}
                 </span>
-                {buildAuthServiceTooltipBody(authServiceFeeHkd)}
+                {LISTING_AUTH_SERVICE_TOOLTIP_BODY}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -736,8 +724,8 @@ export function AddAssetModal() {
         />
       </div>
       <p className="text-[11px] text-text-secondary leading-relaxed">
-        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$
-        {authServiceFeeHkd} 由買家承擔）。
+        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$150
+        由買家承擔）。
       </p>
     </div>
   ) : null;
@@ -1176,23 +1164,6 @@ export function AddAssetModal() {
                   />
                 </div>
               </div>
-              {addAssetSellerPersona === "merchant" ? (
-                <div className="space-y-1.5">
-                  <label className="font-sans font-bold text-[#d4c4b7]">
-                    附加運費 (HK$)
-                  </label>
-                  <input
-                    name="extraShippingFee"
-                    type="number"
-                    min={0}
-                    max={200}
-                    step={1}
-                    placeholder="0"
-                    value={extraShippingFee}
-                    onChange={(e) => setExtraShippingFee(e.target.value)}
-                  />
-                </div>
-              ) : null}
             </div>
           )}
 

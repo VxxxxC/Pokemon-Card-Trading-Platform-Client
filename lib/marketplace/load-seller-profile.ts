@@ -3,12 +3,7 @@ import {
   resolveMemberReputationTagDisplay,
   resolveMerchantReputationTagDisplay,
 } from "@/lib/constants/titles";
-import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
-import {
-  formatSellerJoinDate,
-  isUuid,
-  resolveActivityBadgeEmoji,
-} from "@/lib/marketplace/seller-profile";
+import { formatSellerJoinDate, isUuid, resolveActivityBadgeEmoji } from "@/lib/marketplace/seller-profile";
 import { resolveAvatarUrl, resolveOptionalMediaUrl } from "@/lib/profile/avatar";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { Json, Tables } from "@/types/supabase";
@@ -113,13 +108,7 @@ function resolveLevelLabel(
   return fallback?.nameZh ?? (isMerchant ? "認證商戶" : "平台會員");
 }
 
-type KycRow = Pick<
-  Tables<"kyc_records">,
-  | "kyc_status"
-  | "stripe_account_id"
-  | "stripe_charges_enabled"
-  | "stripe_payouts_enabled"
->;
+type KycRow = Pick<Tables<"kyc_records">, "kyc_status" | "stripe_account_id">;
 
 function resolveSellerReputationTag(
   isMerchant: boolean,
@@ -195,7 +184,7 @@ function mapProfileRow(
     ...(isMerchant
       ? {
           kycVerified: kyc?.kyc_status === "verified",
-          stripeConnected: isMerchantPayoutReady(kyc),
+          stripeConnected: Boolean(kyc?.stripe_account_id?.trim()),
           topBannerUrl: resolveOptionalMediaUrl(merchantShop?.top_banner_path),
         }
       : {}),
@@ -238,9 +227,7 @@ async function fetchProfileById(
         .maybeSingle<MerchantShopRow>(),
       supabase
         .from("kyc_records")
-        .select(
-          "kyc_status, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled",
-        )
+        .select("kyc_status, stripe_account_id")
         .eq("merchant_id", profile.id)
         .maybeSingle<KycRow>(),
     ]);
@@ -256,14 +243,6 @@ async function fetchProfileById(
     } else {
       kyc = kycResult.data;
     }
-  }
-
-  if (
-    profile.role === "merchant" &&
-    kyc?.kyc_status !== "verified" &&
-    viewPersona !== "member"
-  ) {
-    return null;
   }
 
   return mapProfileRow(profile, merchantShop, kyc, viewPersona);

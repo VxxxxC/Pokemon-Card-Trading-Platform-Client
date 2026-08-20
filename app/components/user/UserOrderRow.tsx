@@ -9,7 +9,6 @@ import {
 } from "@/app/actions/orders";
 import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
-import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,21 +43,12 @@ interface UserOrderRowProps {
     useAuthentication?: boolean;
     escrowStatus?: MemberEscrowStatus | null;
     canPay?: boolean;
-    pendingPayment?: boolean;
-    paymentExpiresAt?: string | null;
-    canCompleteMerchantPurchase?: boolean;
     canCancel: boolean;
     onRefresh: () => void;
   };
 }
 
-function OrderStatusBadge({
-  status,
-  labelOverride,
-}: {
-  status: OrderStatus;
-  labelOverride?: string;
-}) {
+function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const stepIdx =
     STATUS_STEP_INDEX[status as Exclude<OrderStatus, "cancelled">];
   const step = stepIdx !== undefined ? ESCROW_STEPS[stepIdx] : null;
@@ -78,7 +68,7 @@ function OrderStatusBadge({
         colorMap[status] ?? "text-text-disabled bg-bg-elevated",
       )}
     >
-      {status === "cancelled" ? "已取消" : (labelOverride ?? step?.label ?? status)}
+      {status === "cancelled" ? "已取消" : (step?.label ?? status)}
     </span>
   );
 }
@@ -104,25 +94,13 @@ export function UserOrderRow({
   const isMerchantBuyerOrder =
     dbOrderContext?.orderKind === "merchant" && isBuyer;
   const isPendingDbOrder = dbOrderContext?.dbStatus === "pending";
-  // B2C 訂單未完成 Stripe 託管付款前，唔可以確認收貨。
-  const isPendingEscrowPayment = Boolean(dbOrderContext?.pendingPayment);
   const canCompleteOrder =
-    isPendingDbOrder &&
-    isBuyer &&
-    !isPendingEscrowPayment &&
-    (isMerchantBuyerOrder
-      ? Boolean(dbOrderContext?.canCompleteMerchantPurchase)
-      : !isAuthOrder);
+    isPendingDbOrder && isBuyer && (!isAuthOrder || isMerchantBuyerOrder);
   const canPayAuthOrder = Boolean(dbOrderContext?.canPay);
-  const canCheckoutMerchantOrder = isPendingEscrowPayment && isBuyer;
-  const { countdownLabel, isExpired, isExpiringSoon } = usePaymentCountdown(
-    isPendingEscrowPayment ? dbOrderContext?.paymentExpiresAt : null,
-  );
   const showPendingActions =
     isPendingDbOrder &&
     (canCompleteOrder ||
       canPayAuthOrder ||
-      canCheckoutMerchantOrder ||
       Boolean(dbOrderContext?.canCancel));
   const showReviewCta =
     dbOrderContext?.dbStatus === "completed" &&
@@ -150,11 +128,7 @@ export function UserOrderRow({
     dbOrderContext.onRefresh();
 
     if (onOpenReview) {
-      const reviewOrderId = dbOrderContext.orderId;
-      const revieweeId = dbOrderContext.revieweeId;
-      window.setTimeout(() => {
-        onOpenReview(reviewOrderId, revieweeId);
-      }, 0);
+      onOpenReview(dbOrderContext.orderId, dbOrderContext.revieweeId);
     }
 
     return true;
@@ -206,16 +180,7 @@ export function UserOrderRow({
               賣出
             </span>
           )}
-          {statusBadge ?? (
-            <OrderStatusBadge
-              status={order.status}
-              labelOverride={
-                dbOrderContext?.canPay || dbOrderContext?.pendingPayment
-                  ? "待付款"
-                  : order.statusLabelOverride
-              }
-            />
-          )}
+          {statusBadge ?? <OrderStatusBadge status={order.status} />}
 
           <h3 className="text-[14.5px] font-mono font-black text-brand truncate max-w-[160px] sm:max-w-xs md:max-w-md">
             {"#" + displayOrderNumber}
@@ -238,29 +203,8 @@ export function UserOrderRow({
           {order.createdAt ? (
             <>
               <span className="hidden sm:inline text-white/5">|</span>
-              <span
-                className="text-[11px] font-mono tracking-tight text-text-disabled"
-                suppressHydrationWarning
-              >
+              <span className="text-[11px] font-mono tracking-tight text-text-disabled">
                 {"建立時間：" + order.createdAt}
-              </span>
-            </>
-          ) : null}
-          {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
-            <>
-              <span className="hidden sm:inline text-white/5">|</span>
-              <span
-                className={cn(
-                  "text-[11px] font-mono tracking-tight",
-                  isExpired
-                    ? "text-warning"
-                    : isExpiringSoon
-                      ? "text-warning"
-                      : "text-text-disabled",
-                )}
-                suppressHydrationWarning
-              >
-                {isExpired ? "付款已過期" : countdownLabel}
               </span>
             </>
           ) : null}
@@ -276,22 +220,14 @@ export function UserOrderRow({
           >
             {showPendingActions && (
               <>
-                {canCheckoutMerchantOrder && !isExpired && (
-                  <button
-                    type="button"
-                    disabled={isActionLoading}
-                    onClick={() => router.push("/checkout/" + navigateOrderId)}
-                    className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                  >
-                    前往付款
-                  </button>
-                )}
                 {canPayAuthOrder && (
                   <button
                     type="button"
                     disabled={isActionLoading}
                     onClick={() =>
-                      router.push("/checkout/" + navigateOrderId)
+                      router.push(
+                        "/profile/user/orderDetail/" + navigateOrderId,
+                      )
                     }
                     className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   >
@@ -354,7 +290,6 @@ export function UserOrderRow({
             {showReviewCta && (
               <button
                 type="button"
-                data-testid="order-review-cta"
                 disabled={isActionLoading}
                 onClick={handleOpenReview}
                 className="font-sans text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"

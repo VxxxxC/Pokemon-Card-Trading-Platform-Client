@@ -1,52 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
-  getProfileUsername,
-  resolveE2eMarketplaceFixture,
-  type ListingMarketplaceFixture,
-} from "./fixtures/supabase-admin";
-import {
   buildMerchantProductDetailPath,
   getMerchantProductDetailFixtures,
   hasCoreMerchantFixtures,
+  hasListingDisplayIdFixture,
+  hasListingProductIdFixture,
+  hasSellerUsernameFixture,
   hasWrongSellerFixture,
 } from "./fixtures/test-data";
 
 const FAKE_LISTING_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-let marketplaceFixture: ListingMarketplaceFixture | null = null;
-let sellerUsername: string | null = null;
-let fixtureSkipReason = "";
-
-test.beforeAll(async () => {
-  if (!hasCoreMerchantFixtures()) {
-    fixtureSkipReason = "Missing E2E_SELLER_ID or E2E_LISTING_ID";
-    return;
-  }
-
-  const result = await resolveE2eMarketplaceFixture();
-  if (!result.ok) {
-    fixtureSkipReason = result.skipReason;
-    return;
-  }
-
-  marketplaceFixture = result.fixture;
-  const env = getMerchantProductDetailFixtures();
-  sellerUsername =
-    env.sellerUsername ??
-    (await getProfileUsername(marketplaceFixture.sellerId));
-});
-
-function requireMarketplaceFixture(
-  testInstance: typeof test,
-): ListingMarketplaceFixture {
-  if (!marketplaceFixture) {
-    testInstance.skip(true, fixtureSkipReason || "Marketplace fixture unavailable");
-  }
-  return marketplaceFixture!;
-}
-
 async function gotoAndExpectNotFound(page: Page, path: string): Promise<void> {
-  await page.goto(path, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.goto(path, { waitUntil: "networkidle" });
 
   const notFoundUi = page
     .getByRole("heading", { name: "找不到頁面", exact: true })
@@ -66,17 +32,15 @@ async function gotoAndExpectNotFound(page: Page, path: string): Promise<void> {
 
 async function expectDetailPageLoaded(page: Page): Promise<string> {
   const title = page.locator("main h1");
-  await expect(title).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText("店主獨立出讓一口價")).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(title).toBeVisible();
+  await expect(page.getByText("店主獨立出讓一口價")).toBeVisible();
   return (await title.textContent())?.trim() ?? "";
 }
 
 async function openCoreDetailPage(page: Page): Promise<string> {
-  const fixture = marketplaceFixture!;
+  const { sellerId, listingId } = getMerchantProductDetailFixtures();
   await page.goto(
-    buildMerchantProductDetailPath(fixture.sellerId, fixture.listingId),
+    buildMerchantProductDetailPath(sellerId!, listingId!),
     { waitUntil: "domcontentloaded" },
   );
   return expectDetailPageLoaded(page);
@@ -84,10 +48,13 @@ async function openCoreDetailPage(page: Page): Promise<string> {
 
 test.describe("A. Route resolution", () => {
   test("A1 resolves listing UUID for seller profile UUID", async ({ page }) => {
-    const fixture = requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
+    const { sellerId, listingId } = getMerchantProductDetailFixtures();
     await page.goto(
-      buildMerchantProductDetailPath(fixture.sellerId, fixture.listingId),
+      buildMerchantProductDetailPath(sellerId!, listingId!),
     );
 
     const title = await expectDetailPageLoaded(page);
@@ -99,13 +66,13 @@ test.describe("A. Route resolution", () => {
   });
 
   test("A2 resolves listing UUID for seller username", async ({ page }) => {
-    const fixture = requireMarketplaceFixture(test);
-    if (!sellerUsername) {
-      test.skip(true, "Missing seller username for profile route");
+    if (!hasSellerUsernameFixture()) {
+      test.skip(true, "Missing E2E_SELLER_USERNAME or E2E_LISTING_ID");
     }
 
+    const { sellerUsername, listingId } = getMerchantProductDetailFixtures();
     await page.goto(
-      buildMerchantProductDetailPath(sellerUsername!, fixture.listingId),
+      buildMerchantProductDetailPath(sellerUsername!, listingId!),
     );
 
     await expectDetailPageLoaded(page);
@@ -114,15 +81,15 @@ test.describe("A. Route resolution", () => {
   test("A3 resolves catalog display_id for the same seller listing", async ({
     page,
   }) => {
-    const fixture = requireMarketplaceFixture(test);
-    if (!fixture.displayId) {
-      test.skip(true, "Fixture listing has no catalog display_id");
+    if (!hasListingDisplayIdFixture()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_DISPLAY_ID");
     }
 
+    const { sellerId, listingDisplayId } = getMerchantProductDetailFixtures();
     const baselineTitle = await openCoreDetailPage(page);
 
     await page.goto(
-      buildMerchantProductDetailPath(fixture.sellerId, fixture.displayId!),
+      buildMerchantProductDetailPath(sellerId!, listingDisplayId!),
     );
 
     const resolvedTitle = await expectDetailPageLoaded(page);
@@ -132,11 +99,15 @@ test.describe("A. Route resolution", () => {
   test("A4 resolves catalog product_id for the same seller listing", async ({
     page,
   }) => {
-    const fixture = requireMarketplaceFixture(test);
+    if (!hasListingProductIdFixture()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_PRODUCT_ID");
+    }
+
+    const { sellerId, listingProductId } = getMerchantProductDetailFixtures();
     const baselineTitle = await openCoreDetailPage(page);
 
     await page.goto(
-      buildMerchantProductDetailPath(fixture.sellerId, fixture.productId),
+      buildMerchantProductDetailPath(sellerId!, listingProductId!),
     );
 
     const resolvedTitle = await expectDetailPageLoaded(page);
@@ -145,27 +116,29 @@ test.describe("A. Route resolution", () => {
 });
 
 test.describe("B. Negative and edge cases", () => {
-  test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== "guest", "Guest-only negative routes");
-  });
-
   test("B1 returns 404 for an invalid seller UUID", async ({ page }) => {
-    const fixture = requireMarketplaceFixture(test);
-    const { invalidSellerId } = getMerchantProductDetailFixtures();
+    const { invalidSellerId, listingId } = getMerchantProductDetailFixtures();
+    if (!listingId) {
+      test.skip(true, "Missing E2E_LISTING_ID");
+    }
 
     await gotoAndExpectNotFound(
       page,
-      buildMerchantProductDetailPath(invalidSellerId!, fixture.listingId),
+      buildMerchantProductDetailPath(invalidSellerId!, listingId!),
     );
   });
 
   test("B2 returns 404 for a valid seller with a non-existent listing UUID", async ({
     page,
   }) => {
-    const fixture = requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
     await gotoAndExpectNotFound(
       page,
-      buildMerchantProductDetailPath(fixture.sellerId, FAKE_LISTING_ID),
+      buildMerchantProductDetailPath(sellerId!, FAKE_LISTING_ID),
     );
   });
 
@@ -176,22 +149,25 @@ test.describe("B. Negative and edge cases", () => {
       test.skip(true, "Missing E2E_WRONG_SELLER_ID or E2E_LISTING_ID");
     }
 
-    const fixture = requireMarketplaceFixture(test);
-    const { wrongSellerId } = getMerchantProductDetailFixtures();
+    const { wrongSellerId, listingId } = getMerchantProductDetailFixtures();
     await gotoAndExpectNotFound(
       page,
-      buildMerchantProductDetailPath(wrongSellerId!, fixture.listingId),
+      buildMerchantProductDetailPath(wrongSellerId!, listingId!),
     );
   });
 
   test("B4 returns 404 for an extremely long malformed product segment", async ({
     page,
   }) => {
-    const fixture = requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
     const malformedProductId = "x".repeat(512);
     await gotoAndExpectNotFound(
       page,
-      buildMerchantProductDetailPath(fixture.sellerId, malformedProductId),
+      buildMerchantProductDetailPath(sellerId!, malformedProductId),
     );
   });
 });
@@ -200,7 +176,9 @@ test.describe("C. UI interactions", () => {
   test("C1 switches the hero image when a gallery thumbnail is selected", async ({
     page,
   }) => {
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
     await openCoreDetailPage(page);
 
@@ -220,7 +198,9 @@ test.describe("C. UI interactions", () => {
   test("C2 navigates to the public marketplace product page", async ({
     page,
   }) => {
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
     await openCoreDetailPage(page);
 
@@ -238,8 +218,11 @@ test.describe("C. UI interactions", () => {
   });
 
   test("C3 returns to the storefront via the back button", async ({ page }) => {
-    const fixture = requireMarketplaceFixture(test);
-    const sellerId = fixture.sellerId;
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
+
+    const { sellerId } = getMerchantProductDetailFixtures();
     await page.goto(`/marketplace/${sellerId}`, {
       waitUntil: "domcontentloaded",
     });
@@ -269,19 +252,23 @@ test.describe("D. BuyButton interactions", () => {
       "Guest-only BuyButton interaction",
     );
 
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
     await openCoreDetailPage(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
 
     await expect(page.getByText("您目前正以遊客身份觀盤")).toBeVisible();
+    const guestLockPanel = page
+      .getByText("請先登入會員以活化平台第三方雙向鑑定與託管出價機制。")
+      .locator("..");
     await expect(
-      page.getByText("請先登入會員以活化平台第三方雙向鑑定與託管出價機制。"),
+      guestLockPanel.getByRole("link", { name: "登入 / 註冊" }),
     ).toBeVisible();
-    await expect(page.getByRole("alertdialog")).toContainText("登入 / 註冊");
   });
 
-  test("D2 buyer opens the buy-now confirm dialog without guest lock", async ({
+  test("D2 buyer opens the execution slide-over without guest lock", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -289,24 +276,21 @@ test.describe("D. BuyButton interactions", () => {
       "Buyer-only BuyButton interaction",
     );
 
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
-    await openCoreDetailPage(page);
+    const productTitle = await openCoreDetailPage(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
 
     await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
     await expect(
-      page.getByRole("heading", { name: "確認立即購買" }),
+      page.getByRole("heading", { level: 2, name: productTitle }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "確認立即購買" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "改為議價出價" }),
-    ).toBeVisible();
+    await expect(page.getByText("對接賣家商號")).toBeVisible();
   });
 
-  test("D3 buyer can close the buy-now confirm dialog", async ({
+  test("D3 buyer can close the execution slide-over", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -314,19 +298,19 @@ test.describe("D. BuyButton interactions", () => {
       "Buyer-only BuyButton interaction",
     );
 
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
     await openCoreDetailPage(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
-    await expect(
-      page.getByRole("heading", { name: "確認立即購買" }),
-    ).toBeVisible();
+    await expect(page.locator("div.fixed.inset-0.z-\\[400\\]")).toBeVisible();
 
-    await page.getByRole("button", { name: "取消" }).click();
+    await page
+      .locator("div.fixed.inset-0.z-\\[400\\] .absolute.inset-0")
+      .click({ position: { x: 8, y: 8 } });
 
-    await expect(
-      page.getByRole("heading", { name: "確認立即購買" }),
-    ).toHaveCount(0);
+    await expect(page.locator("div.fixed.inset-0.z-\\[400\\]")).toHaveCount(0);
   });
 });
 
@@ -334,7 +318,9 @@ test.describe("E. Content integrity", () => {
   test("shows seller, grading, and escrow metadata on a valid listing", async ({
     page,
   }) => {
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
     await openCoreDetailPage(page);
 
@@ -356,7 +342,7 @@ test.describe("E. Content integrity", () => {
 });
 
 test.describe("F. Known suspicious behaviors", () => {
-  test("F1 buyer can open buy-now confirm dialog immediately after hard reload without guest lock", async ({
+  test("F1 buyer can open slide-over immediately after hard reload without guest lock", async ({
     page,
   }, testInfo) => {
     test.skip(
@@ -364,11 +350,12 @@ test.describe("F. Known suspicious behaviors", () => {
       "Buyer-only race regression for mockRole hydration",
     );
 
-    const fixture = requireMarketplaceFixture(test);
-    const path = buildMerchantProductDetailPath(
-      fixture.sellerId,
-      fixture.listingId,
-    );
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
+
+    const { sellerId, listingId } = getMerchantProductDetailFixtures();
+    const path = buildMerchantProductDetailPath(sellerId!, listingId!);
 
     await page.goto(path, { waitUntil: "domcontentloaded" });
     await page.reload({ waitUntil: "domcontentloaded" });
@@ -376,33 +363,49 @@ test.describe("F. Known suspicious behaviors", () => {
     await page.getByRole("button", { name: /立即購買/ }).click();
 
     await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
-    await expect(
-      page.getByRole("heading", { name: "確認立即購買" }),
-    ).toBeVisible();
+    await expect(page.locator("div.fixed.inset-0.z-\\[400\\]")).toBeVisible();
   });
 
   test("F2 product_id route resolves to the same canonical listing as listing UUID", async ({
     page,
   }) => {
-    const fixture = requireMarketplaceFixture(test);
+    if (!hasListingProductIdFixture() || !hasCoreMerchantFixtures()) {
+      test.skip(
+        true,
+        "Missing E2E_SELLER_ID, E2E_LISTING_ID, or E2E_LISTING_PRODUCT_ID",
+      );
+    }
+
+    const { sellerId, listingId, listingProductId } =
+      getMerchantProductDetailFixtures();
+
+    await page.goto(buildMerchantProductDetailPath(sellerId!, listingId!));
+    await expectDetailPageLoaded(page);
+    const listingUuidPrice = await page
+      .locator("main")
+      .getByText(/HK\$\s*[\d,]+/)
+      .first()
+      .textContent();
 
     await page.goto(
-      buildMerchantProductDetailPath(fixture.sellerId, fixture.listingId),
+      buildMerchantProductDetailPath(sellerId!, listingProductId!),
     );
-    const baselineTitle = await expectDetailPageLoaded(page);
+    await expectDetailPageLoaded(page);
+    const productIdPrice = await page
+      .locator("main")
+      .getByText(/HK\$\s*[\d,]+/)
+      .first()
+      .textContent();
 
-    await page.goto(
-      buildMerchantProductDetailPath(fixture.sellerId, fixture.productId),
-    );
-    const resolvedTitle = await expectDetailPageLoaded(page);
-
-    expect(resolvedTitle).toBe(baselineTitle);
+    expect(productIdPrice).toBe(listingUuidPrice);
   });
 
   test("F3 shows canonical spec table or SSOT pending warning", async ({
     page,
   }) => {
-    requireMarketplaceFixture(test);
+    if (!hasCoreMerchantFixtures()) {
+      test.skip(true, "Missing E2E_SELLER_ID or E2E_LISTING_ID");
+    }
 
     await openCoreDetailPage(page);
 

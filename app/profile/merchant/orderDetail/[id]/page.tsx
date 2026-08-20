@@ -7,10 +7,8 @@ import {
   getMerchantOrderDetail,
   type MerchantOrderDetail,
 } from "@/app/actions/orders";
-import { getPlatformCommissionRateForDisplay } from "@/app/actions/admin-settings";
 import { MerchantOrderDetailView } from "@/app/components/merchant/MerchantOrderDetailView";
 import { ReviewModal } from "@/app/components/trading/ReviewModal";
-import { DEFAULT_COMMISSION_RATE } from "@/lib/platform/financial-config";
 
 type ActiveReviewState = {
   orderId: string;
@@ -32,9 +30,6 @@ export default function MerchantOrderDetailPage() {
   const [loadedOrderId, setLoadedOrderId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeReview, setActiveReview] = useState<ActiveReviewState>(null);
-  const [defaultCommissionRate, setDefaultCommissionRate] = useState(
-    DEFAULT_COMMISSION_RATE,
-  );
 
   const loadOrder = useCallback(async () => {
     if (!orderId) {
@@ -60,18 +55,6 @@ export default function MerchantOrderDetailPage() {
     setLoadedOrderId(orderId);
     setFetchError(null);
   }, [orderId]);
-
-  useEffect(() => {
-    if (!isMounted) {
-      return;
-    }
-
-    void getPlatformCommissionRateForDisplay().then((result) => {
-      if (result.success) {
-        setDefaultCommissionRate(result.data.commissionRate);
-      }
-    });
-  }, [isMounted]);
 
   useEffect(() => {
   if (!isMounted) {
@@ -155,7 +138,6 @@ export default function MerchantOrderDetailPage() {
         order={order}
         onRefresh={handleRefresh}
         onOpenReview={handleOpenReview}
-        defaultCommissionRate={defaultCommissionRate}
       />
       {activeReview && (
         <ReviewModal

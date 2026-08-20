@@ -152,7 +152,7 @@ export function MerchantInventoryClient({
             暫無上架商品
           </p>
         ) : (
-          <InventoryAccordion skuGroups={skuGroups} inventoryContext="merchant" />
+          <InventoryAccordion skuGroups={skuGroups} />
         )}
 
         <div className="pt-4">

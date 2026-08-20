@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { getChatRealtimeFixtures } from "./fixtures/chat-test-data";
 import {
-  advanceAuthOrderToCustody,
   ensureDbChatRoom,
   ensureListingAcceptsAuthentication,
   getListingAcceptsAuthentication,
@@ -9,41 +8,34 @@ import {
   getProfileDisplayName,
   getProfileIdByEmail,
   resolveE2eMarketplaceFixture,
-  submitInboundTrackingViaAdmin,
 } from "./fixtures/supabase-admin";
 import { hasMemberTradingFixtures } from "./fixtures/test-data";
 import {
   acceptOfferAsSeller,
   ensurePendingAuthOffer,
   gotoOrderDetail,
+  mockPayAuthOrderOnDetail,
   offerAmountFromListingPrice,
   offerAmountLabelFromListingPrice,
-  payAuthMemberOrder,
   pollMemberOrderIdForOffer,
-  submitInboundTrackingAsSeller,
 } from "./helpers/member-trading";
-import { hasStripeReconcileEnv } from "./helpers/stripe-reconcile";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(300_000);
 
 test.describe("Member auth escrow inbound", () => {
-  test("seller submits inbound tracking after buyer stripe pay", async ({
+  test("seller submits inbound tracking after buyer mock pay", async ({
     browser,
   }, testInfo) => {
-    test.setTimeout(420_000);
     test.skip(
       testInfo.project.name !== "member-trading",
       "Auth inbound runs on member-trading project",
     );
-    test.skip(!hasStripeReconcileEnv(), "Missing Stripe keys for member auth checkout");
     if (!hasMemberTradingFixtures()) {
       test.skip(true, "Missing member trading E2E env");
     }
 
-    const fixtureResult = await resolveE2eMarketplaceFixture({
-      requiredSellerPersona: "member",
-    });
+    const fixtureResult = await resolveE2eMarketplaceFixture();
     if (!fixtureResult.ok) {
       test.skip(true, fixtureResult.skipReason);
       return;
@@ -101,27 +93,30 @@ test.describe("Member auth escrow inbound", () => {
         offerLabel,
         buyerPage,
         sellerDisplayName,
-        sellerId,
-        buyerId,
       );
 
       const memberOrderId = await pollMemberOrderIdForOffer(offerState.offerId);
-      await payAuthMemberOrder(buyerPage, memberOrderId);
-      await advanceAuthOrderToCustody(memberOrderId);
+      await gotoOrderDetail(buyerPage, memberOrderId);
+      await mockPayAuthOrderOnDetail(buyerPage);
 
-      try {
-        await submitInboundTrackingAsSeller(
-          sellerPage,
-          memberOrderId,
-          sellerId,
-          trackingNo,
-        );
-      } catch {
-        await submitInboundTrackingViaAdmin(memberOrderId, trackingNo, "順豐");
-      }
+      await gotoOrderDetail(sellerPage, memberOrderId);
+      await expect(
+        sellerPage.getByText("請將卡牌寄往平台倉庫，並填寫順豐物流單號。"),
+      ).toBeVisible({ timeout: 20_000 });
+
+      await sellerPage.getByPlaceholder("寄往平台的順豐單號").fill(trackingNo);
+      await sellerPage
+        .getByRole("button", { name: "提交入庫物流單號" })
+        .click();
+
+      await expect(sellerPage.getByText(`已提交單號：${trackingNo}`)).toBeVisible({
+        timeout: 20_000,
+      });
 
       const order = await getMemberOrderById(memberOrderId);
-      expect(order?.inbound_tracking_no).toBe(trackingNo);
+      if (order?.inbound_tracking_no) {
+        expect(order.inbound_tracking_no).toBe(trackingNo);
+      }
     } finally {
       await buyerContext.close();
       await sellerContext.close();

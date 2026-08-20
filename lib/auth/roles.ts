@@ -85,24 +85,11 @@ export function getRoleSettingsPath(role: AuthRole): string {
   }
 }
 
-function isMemberDashboardPath(pathname: string): boolean {
-  return (
-    pathname === "/profile/user" || pathname.startsWith("/profile/user/")
-  );
-}
-
-function isMerchantDashboardPath(pathname: string): boolean {
-  return (
-    pathname === "/profile/merchant" ||
-    pathname.startsWith("/profile/merchant/")
-  );
-}
-
 export function isPathAllowedForRole(role: AuthRole, pathname: string): boolean {
   const requiresAuth =
     pathname === "/profile" ||
-    isMemberDashboardPath(pathname) ||
-    isMerchantDashboardPath(pathname) ||
+    pathname.startsWith("/profile/user") ||
+    pathname.startsWith("/profile/merchant") ||
     pathname.startsWith("/admin");
 
   if (role === "GUEST") {
@@ -113,11 +100,11 @@ export function isPathAllowedForRole(role: AuthRole, pathname: string): boolean 
     return role === "ADMIN";
   }
 
-  if (isMerchantDashboardPath(pathname)) {
+  if (pathname.startsWith("/profile/merchant")) {
     return role === "MERCHANT" || role === "ADMIN";
   }
 
-  if (pathname === "/profile" || isMemberDashboardPath(pathname)) {
+  if (pathname === "/profile" || pathname.startsWith("/profile/user")) {
     return role === "USER" || role === "MERCHANT" || role === "ADMIN";
   }
 

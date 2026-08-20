@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
 import { getUserRewardCoupons } from "@/app/actions/rewards";
@@ -15,8 +15,6 @@ import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
-import { FlashCampaignSection } from "@/app/components/rewards/FlashCampaignSection";
-import { PointsRedemptionSection } from "@/app/components/rewards/PointsRedemptionSection";
 import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
 // 🟢 核心對接：引入全域統一的奢華黑金分頁組件
@@ -114,14 +112,6 @@ export default function MemberRewardsPage() {
     setCouponPageState({ page, forKey: couponFilterFingerprint });
   };
 
-  const reloadCoupons = useCallback(async () => {
-    const result = await getUserRewardCoupons();
-    if (result.success) {
-      setWalletCoupons(result.data.wallet);
-      setLockedRewards(result.data.locked);
-    }
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -208,10 +198,6 @@ export default function MemberRewardsPage() {
 
         {/* 頂部常駐：每日簽到打卡組件 */}
         <CheckInCard />
-
-        <FlashCampaignSection onClaimed={reloadCoupons} />
-
-        <PointsRedemptionSection onRedeemed={reloadCoupons} />
 
         {/* ── 智能三態 Coupon 中心 ── */}
         <section id="redeem-list" className="space-y-4 pt-2">

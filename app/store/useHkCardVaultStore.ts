@@ -18,7 +18,6 @@ export type OfferLedgerEntry = {
   orderKind?: "member" | "merchant";
   offerPrice?: number;
   modifiedCount?: number;
-  paymentHref?: string | null;
 };
 
 export interface SpecialTransactionData {
@@ -213,11 +212,7 @@ interface HkCardVaultStore {
    * Activates an existing room by its raw ID, or creates a minimal stub if not found.
    * Prefer openGlobalChat for new call sites where buyer/seller IDs are known.
    */
-  activateRoomById: (
-    roomId: string,
-    partnerName: string,
-    partnerId?: string,
-  ) => void;
+  activateRoomById: (roomId: string, partnerName: string) => void;
 
   /** Resolve an existing room by counterparty profile id + persona, or open a pending stub. */
   openChatWithPartner: (
@@ -225,6 +220,17 @@ interface HkCardVaultStore {
     partnerName: string,
     partnerPersona?: ChatPartnerPersona,
   ) => void;
+
+  injectSpecialTransaction: (payload: {
+    sellerName: string;
+    sellerId: string;
+    cardName: string;
+    cardId: string;
+    offerPrice: number;
+    buyerName: string;
+    buyerId: string;
+    isInstantTake: boolean;
+  }) => void;
 
   openOfferChatSession: (payload: {
     roomId: string;
@@ -261,7 +267,6 @@ interface HkCardVaultStore {
     offerId: string,
     orderId?: string,
     orderKind?: "member" | "merchant",
-    paymentHref?: string | null,
   ) => void;
 
   applyOfferRejected: (offerId: string) => void;
@@ -321,9 +326,8 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
-  activateRoomById: (roomId, partnerName, partnerId) =>
+  activateRoomById: (roomId, partnerName) =>
     set((state) => {
-      const resolvedPartnerId = partnerId?.trim() || "";
       const exists = state.chats.some((c) => c.id === roomId);
       if (exists) {
         return {
@@ -331,19 +335,13 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           isChatOpen: true,
           mobileView: "CHAT" as const,
           chats: state.chats.map((c) =>
-            c.id === roomId
-              ? {
-                  ...c,
-                  unreadCount: 0,
-                  ...(resolvedPartnerId ? { partnerId: resolvedPartnerId } : {}),
-                }
-              : c,
+            c.id === roomId ? { ...c, unreadCount: 0 } : c,
           ),
         };
       }
       const stub: ChatRoom = {
         id: roomId,
-        partnerId: resolvedPartnerId || roomId,
+        partnerId: roomId,
         partnerPersona: "member",
         viewerPersona: readActiveViewerPersona(),
         partnerName,
@@ -518,6 +516,83 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
+  injectSpecialTransaction: (payload) =>
+    set((state) => {
+      const canonicalRoomId = generateDeterministicRoomId(
+        payload.buyerId,
+        "member",
+        payload.sellerId,
+        "member",
+      );
+
+      const status = payload.isInstantTake ? "accepted" : "pending";
+      const msgText = payload.isInstantTake
+        ? "⚡【立即購買】" + payload.buyerName + " 已接受一口價購入並成功預留資產！"
+        : "📩【議價要約】" + payload.buyerName + " 向您提報了 HK$ " + payload.offerPrice.toLocaleString() + " 的預期出價。";
+
+      const specialMsg = createSpecialTransactionMessage(
+        "me",
+        {
+          cardName: payload.cardName,
+          cardId: payload.cardId,
+          offerPrice: payload.offerPrice,
+          buyerName: payload.buyerName,
+          buyerId: payload.buyerId,
+          sellerId: payload.sellerId,
+          sellerName: payload.sellerName,
+          initialStatus: status,
+        },
+        msgText,
+      );
+
+      const exists = state.chats.some((c) => c.id === canonicalRoomId);
+      let updatedChats = [...state.chats];
+
+      if (exists) {
+        updatedChats = state.chats.map((room) => {
+          if (room.id === canonicalRoomId) {
+            return {
+              ...room,
+              lastMessage: specialMsg.text,
+              messages: [...room.messages, specialMsg],
+              unreadCount: 0,
+            };
+          }
+          return room;
+        });
+      } else {
+        const newRoom: ChatRoom = {
+          id: canonicalRoomId,
+          partnerId: payload.sellerId,
+          partnerPersona: "member",
+          viewerPersona: "member",
+          partnerName: payload.sellerName,
+          partnerAvatarUrl: DEFAULT_AVATAR_URL,
+          partnerTier: "認證賣家",
+          lastMessage: specialMsg.text,
+          unreadCount: 0,
+          timestamp: new Date().toISOString(),
+          messages: [
+            {
+              id: "sys-" + Date.now(),
+              sender: "system",
+              text: "🔒 已建立與 " + payload.sellerName + " 的安全中介蒗管交易通道。",
+              timestamp: new Date().toISOString(),
+            },
+            specialMsg,
+          ],
+        };
+        updatedChats = [newRoom, ...state.chats];
+      }
+
+      return {
+        chats: updatedChats,
+        activeRoomId: canonicalRoomId,
+        isChatOpen: true,
+        mobileView: "CHAT",
+      };
+    }),
+
   openOfferChatSession: (payload) =>
     set((state) => {
       const partnerPersona = payload.partnerPersona ?? "member";
@@ -664,7 +739,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
       };
     }),
 
-  applyOfferAccepted: (offerId, orderId, orderKind = "member", paymentHref) =>
+  applyOfferAccepted: (offerId, orderId, orderKind = "member") =>
     set((state) => {
       if (isOfferAlreadyInStatus(state.offers, state.chats, offerId, "accepted")) {
         return state;
@@ -677,7 +752,6 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           ...state.offers[offerId],
           status: "accepted",
           orderKind,
-          ...(paymentHref !== undefined ? { paymentHref } : {}),
           ...(orderKind === "merchant"
             ? { merchantOrderId: orderId }
             : { memberOrderId: orderId }),

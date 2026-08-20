@@ -19,17 +19,16 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { PlatformAnnouncement } from "@/lib/announcements/types";
-import { AnnouncementDetailLink } from "@/lib/announcements/announcement-detail-link";
+import {
+  MOCK_ANNOUNCEMENTS,
+  getActiveAnnouncements,
+  type Announcement,
+} from "@/app/lib/mockAnnouncements";
 
-type AnnouncementModalProps = {
-  announcements: PlatformAnnouncement[];
-};
-
-export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
+export function AnnouncementModal() {
   const [open, setOpen] = useState(false);
   const [activeAnnouncements, setActiveAnnouncements] = useState<
-    PlatformAnnouncement[]
+    Announcement[]
   >([]);
   const [api, setApi] = useState<CarouselApi>();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -41,17 +40,23 @@ export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
   );
 
   useEffect(() => {
+    // Check if user has already seen the popup modal in the current session
     const hasSeenModal = sessionStorage.getItem("hasSeenAnnouncementsModal");
-    setActiveAnnouncements(announcements);
 
-    if (!hasSeenModal && announcements.length > 0) {
+    // TODO: [Supabase Integration] Fetch active announcements via Server Action / Supabase query where startDate <= NOW() and endDate >= NOW()
+    const now = new Date();
+    const activeList = getActiveAnnouncements(MOCK_ANNOUNCEMENTS, now);
+
+    setActiveAnnouncements(activeList);
+
+    if (!hasSeenModal && activeList.length > 0) {
       // Small timeout to allow smooth home page render before popping modal
       const timer = setTimeout(() => {
         setOpen(true);
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, [announcements]);
+  }, []);
 
   // Update carousel slide counter & indicator state
   useEffect(() => {
@@ -141,6 +146,7 @@ export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
                       </div>
                     </div>
 
+                    {/* Announcement Details Box - Only Content, No Redirect Button */}
                     <div className="p-4 sm:p-5 space-y-2 sm:space-y-2.5 bg-[#26211C] w-full min-w-0 max-w-full overflow-y-auto max-h-[35vh]">
                       <h3 className="font-sans text-sm sm:text-base font-bold text-text-primary leading-snug break-words">
                         {item.title}
@@ -149,10 +155,6 @@ export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
                       <p className="font-sans text-xs sm:text-sm text-text-secondary leading-relaxed break-words whitespace-pre-line">
                         {item.content}
                       </p>
-
-                      {item.linkUrl ? (
-                        <AnnouncementDetailLink linkUrl={item.linkUrl} />
-                      ) : null}
                     </div>
                   </div>
                 </CarouselItem>

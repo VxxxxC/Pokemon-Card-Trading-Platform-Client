@@ -2,7 +2,6 @@ import type {
   DiscountCouponRewardValue,
   FreeShippingRewardValue,
 } from "@/lib/constants/rewards";
-import { classifyCouponTab } from "@/lib/rewards/coupon-expiry";
 
 export type UserCouponTab = "redeemable" | "redeemed" | "expired";
 
@@ -130,6 +129,21 @@ function buildCouponCode(
       ? (rewardValue as { code_prefix: string }).code_prefix
       : "HKCV";
   return `${prefix}-${userRewardId.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
+}
+
+function classifyCouponTab(row: UserRewardRow, now: Date): UserCouponTab {
+  if (row.is_used) {
+    return "redeemed";
+  }
+
+  if (row.calculated_expiry) {
+    const expiry = new Date(row.calculated_expiry);
+    if (!Number.isNaN(expiry.getTime()) && expiry < now) {
+      return "expired";
+    }
+  }
+
+  return "redeemable";
 }
 
 export function mapUserRewardRowToCoupon(

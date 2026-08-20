@@ -9,7 +9,6 @@ import {
   getLatestOfferForListing,
   getListingMarketplaceFixture,
   getProfileIdByEmail,
-  resolveE2eMarketplaceFixture,
   type ListingMarketplaceFixture,
 } from "./fixtures/supabase-admin";
 
@@ -67,7 +66,7 @@ test.describe("Marketplace search + make offer", () => {
     }
 
     const { listingId } = getMerchantProductDetailFixtures();
-    const result = await resolveE2eMarketplaceFixture();
+    const result = await getListingMarketplaceFixture(listingId!);
     if (!result.ok) {
       testInstance.skip(true, result.skipReason);
       return null;
@@ -161,12 +160,7 @@ test.describe("Marketplace search + make offer", () => {
     });
 
     await test.step("Step 5 — navigate via card link to public product page", async () => {
-      const cardLink = fixtureGridCardLink(page, fixture);
-      const productHref = await cardLink.getAttribute("href");
-      expect(productHref).toMatch(
-        new RegExp(`/marketplace/product/${escapeRegex(fixture.productId)}`),
-      );
-      await page.goto(productHref!, { waitUntil: "domcontentloaded" });
+      await fixtureGridCardLink(page, fixture).click();
 
       await expect(page).toHaveURL(
         new RegExp(
@@ -180,19 +174,15 @@ test.describe("Marketplace search + make offer", () => {
       await expect(page.locator("#live-order-book-panel")).toBeVisible({
         timeout: 20_000,
       });
-      const sellerRow = page
-        .locator("#live-order-book-panel [role='button']")
-        .filter({ hasText: fixture.sellerName })
-        .filter({ hasText: formatHkd(fixture.listingPrice) })
-        .first();
-      await expect(sellerRow).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText(fixture.sellerName, { exact: true })).toBeVisible({
+        timeout: 20_000,
+      });
     });
 
     await test.step("Step 7 — open execution slide-over from seller row", async () => {
       const sellerRow = page
         .locator("#live-order-book-panel [role='button']")
         .filter({ hasText: fixture.sellerName })
-        .filter({ hasText: formatHkd(fixture.listingPrice) })
         .first();
       await expect(sellerRow).toBeVisible({ timeout: 15_000 });
       await sellerRow.click();
@@ -201,9 +191,7 @@ test.describe("Marketplace search + make offer", () => {
       await expect(slideOver).toBeVisible({ timeout: 15_000 });
       await expect(slideOver.getByText("對接賣家商號")).toBeVisible();
       await expect(
-        slideOver
-          .getByText(new RegExp(escapeRegex(formatHkd(fixture.listingPrice))))
-          .first(),
+        slideOver.getByText(new RegExp(escapeRegex(formatHkd(fixture.listingPrice)))),
       ).toBeVisible();
       await expect(slideOver.locator("#exe-negotiation-price")).toBeVisible();
     });

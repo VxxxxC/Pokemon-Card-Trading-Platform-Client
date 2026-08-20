@@ -11,7 +11,6 @@ export interface SellOrder {
   readonly sellerRating: number;
   readonly reviewCount?: number;
   readonly customGrade: { authority: string; score: string };
-  readonly deliverySummary?: string;
 }
 
 export interface UnifiedProductSpec {

@@ -7,11 +7,6 @@ import {
 } from "@/app/lib/chat/offerCardImage";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
-import {
-  formatAuthOfferMessageContent,
-  formatStandardOfferMessageContent,
-} from "@/lib/listings/auth-service-copy";
-import { fetchPlatformAuthFeeHkd } from "@/lib/platform/resolve-display-auth-fee";
 import type { Tables } from "@/types/supabase";
 import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 
@@ -117,13 +112,6 @@ export type OfferCardContext = {
   imageUrl?: string;
   buyerName: string;
   sellerId: string;
-  authServiceFeeHkd: number;
-  orderId?: string | null;
-  orderKind?: "merchant" | "member";
-  pendingPayment?: boolean;
-  canPayAuth?: boolean;
-  paymentHref?: string | null;
-  orderDetailHref?: string | null;
 };
 
 export type GetOfferCardContextResult =
@@ -165,97 +153,10 @@ function readModifiedCount(offer: {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-async function resolveAcceptedOfferOrderContext(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  offerId: string,
-  offerStatus: Tables<"offers">["status"],
-): Promise<
-  Pick<
-    OfferCardContext,
-    | "orderId"
-    | "orderKind"
-    | "pendingPayment"
-    | "canPayAuth"
-    | "paymentHref"
-    | "orderDetailHref"
-  >
-> {
-  if (offerStatus !== "accepted") {
-    return {};
-  }
-
-  const { data: acceptedMessage } = await supabase
-    .from("chat_messages")
-    .select("merchant_order_id, member_order_id")
-    .eq("offer_id", offerId)
-    .eq("content", "SYSTEM_OFFER_ACCEPTED")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<{
-      merchant_order_id: string | null;
-      member_order_id: string | null;
-    }>();
-
-  const merchantOrderId = acceptedMessage?.merchant_order_id?.trim();
-  const memberOrderId = acceptedMessage?.member_order_id?.trim();
-
-  if (merchantOrderId) {
-    const { data: order } = await supabase
-      .from("merchant_orders")
-      .select("escrow_status")
-      .eq("id", merchantOrderId)
-      .maybeSingle<Pick<Tables<"merchant_orders">, "escrow_status">>();
-
-    const pendingPayment = order?.escrow_status === "pending_payment";
-    const paymentHref = pendingPayment
-      ? `/checkout/${merchantOrderId}`
-      : null;
-
-    return {
-      orderId: merchantOrderId,
-      orderKind: "merchant",
-      pendingPayment,
-      paymentHref,
-      orderDetailHref: `/profile/user/orderDetail/${merchantOrderId}`,
-    };
-  }
-
-  if (memberOrderId) {
-    const { data: order } = await supabase
-      .from("member_orders")
-      .select(
-        "escrow_status, use_authentication, status, payment_confirmed_at",
-      )
-      .eq("id", memberOrderId)
-      .maybeSingle<
-        Pick<
-          Tables<"member_orders">,
-          | "escrow_status"
-          | "use_authentication"
-          | "status"
-          | "payment_confirmed_at"
-        >
-      >();
-
-    const canPayAuth =
-      Boolean(order?.use_authentication) &&
-      order?.escrow_status === "payment" &&
-      order?.payment_confirmed_at == null;
-    const paymentHref = canPayAuth
-      ? `/checkout/${memberOrderId}`
-      : null;
-
-    return {
-      orderId: memberOrderId,
-      orderKind: "member",
-      canPayAuth,
-      paymentHref,
-      orderDetailHref: `/profile/user/orderDetail/${memberOrderId}`,
-    };
-  }
-
-  return {};
-}
+import {
+  formatAuthOfferMessageContent,
+  formatStandardOfferMessageContent,
+} from "@/lib/listings/auth-service-copy";
 
 function formatModifyOfferMessageContent(newPrice: number): string {
   return `修改了出價需求：HK$ ${newPrice.toLocaleString()}`;
@@ -437,13 +338,6 @@ export async function getOfferCardContext(
       catalog.name_ja?.trim() ||
       "未命名卡牌";
 
-    const orderContext = await resolveAcceptedOfferOrderContext(
-      supabase,
-      data.id,
-      data.status,
-    );
-    const authServiceFeeHkd = await fetchPlatformAuthFeeHkd();
-
     return {
       success: true,
       data: {
@@ -468,8 +362,6 @@ export async function getOfferCardContext(
         ),
         buyerName: buyerProfile?.display_name?.trim() || "買家",
         sellerId: room.seller_id,
-        authServiceFeeHkd,
-        ...orderContext,
       },
     };
   } catch (error) {
@@ -522,16 +414,12 @@ export async function makeOffer(
       return { success: false, error: SELF_OFFER_ERROR_MESSAGE };
     }
 
-    const authServiceFeeHkd = useAuthentication
-      ? await fetchPlatformAuthFeeHkd()
-      : 0;
-
     const rpcArgs: RpcMakeOfferArgs = {
       p_listing_id: trimmedListingId,
       p_buyer_id: user.id,
       p_offer_price: offerPrice,
       p_content: useAuthentication
-        ? formatAuthOfferMessageContent(offerPrice, authServiceFeeHkd)
+        ? formatAuthOfferMessageContent(offerPrice)
         : formatStandardOfferMessageContent(offerPrice),
       p_use_authentication: useAuthentication,
     };

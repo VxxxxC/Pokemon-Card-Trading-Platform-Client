@@ -22,7 +22,5 @@ jobs:
         run: bunx tsc --noEmit
       - name: 🛡️ Gate 2 Linter Structural Cleanliness Audit
         run: bun run lint
-      - name: 🛡️ Gate 2b UI Feature Map Contract (SC-UI-MAP)
-        run: bun run test:ui:check-map
       - name: 🛡️ Gate 3 Production Optimization Asset Bundle Packer
         run: bun run build

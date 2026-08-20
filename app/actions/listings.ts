@@ -13,11 +13,6 @@ import {
   getGradingOption,
   gradingOptionToFields,
 } from "@/lib/grading/options";
-import { isMerchantListingAllowed } from "@/lib/kyc/merchant-gates";
-import {
-  parseShippingFeeInput,
-  validateListingExtraShippingFee,
-} from "@/lib/merchant/shipping-fee";
 import { mapListingInsertError } from "@/lib/listings/errors";
 import {
   parseImageUploadsFromFormData,
@@ -66,40 +61,6 @@ export type CreateCardListingResult =
 export type PreUploadedListingImage = ListingImage & {
   objectKey: string;
 };
-
-async function assertListingModerationAllowed(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  persona: Tables<"listings">["seller_persona"],
-): Promise<string | null> {
-  type ListingModerationRpcClient = {
-    rpc(
-      fn: "moderation_check_listing_allowed",
-      args: {
-        p_user_id: string;
-        p_persona: Tables<"listings">["seller_persona"];
-      },
-    ): Promise<{ data: boolean | null; error: { message: string } | null }>;
-  };
-
-  const { data, error } = await (
-    supabase as unknown as ListingModerationRpcClient
-  ).rpc("moderation_check_listing_allowed", {
-    p_user_id: userId,
-    p_persona: persona,
-  });
-
-  if (error) {
-    console.error("[assertListingModerationAllowed]", error.message);
-    return "無法驗證帳戶狀態，請稍後再試";
-  }
-
-  if (data === false) {
-    return "帳戶已被限制上架";
-  }
-
-  return null;
-}
 
 function parsePreUploadedImages(raw: string): PreUploadedListingImage[] | null {
   try {
@@ -166,27 +127,6 @@ function resolveListingSellerPersona(input: {
   return { persona };
 }
 
-function resolveExtraShippingFeeForListing(
-  sellerPersona: ListingSellerPersona | undefined,
-  rawValue: unknown,
-): { ok: true; amount: number } | { ok: false; error: string } {
-  if (sellerPersona !== "merchant") {
-    return { ok: true, amount: 0 };
-  }
-
-  const parsed = parseShippingFeeInput(rawValue);
-  if (!parsed.ok) {
-    return parsed;
-  }
-
-  const feeError = validateListingExtraShippingFee(parsed.amount);
-  if (feeError) {
-    return { ok: false, error: feeError };
-  }
-
-  return { ok: true, amount: parsed.amount };
-}
-
 function parseCreateCardListingForm(formData: FormData): {
   fields: {
     productId: string;
@@ -196,12 +136,10 @@ function parseCreateCardListingForm(formData: FormData): {
     useAuthentication: boolean;
     sourceCollectionId?: string;
     sellerPersona?: ListingSellerPersona;
-    extraShippingFee: number;
   };
   uploads: ParsedImageUpload[];
   preUploaded: PreUploadedListingImage[] | null;
   rawImageEntryCount: number;
-  extraShippingFeeError: string | null;
 } {
   const productId = String(formData.get("productId") ?? "").trim();
   const gradingOptionId = String(formData.get("gradingOptionId") ?? "").trim();
@@ -222,10 +160,6 @@ function parseCreateCardListingForm(formData: FormData): {
   const sourceCollectionId = sourceCollectionIdRaw || undefined;
   const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
   const sellerPersona = parseSellerPersonaField(sellerPersonaRaw);
-  const extraShippingParsed = resolveExtraShippingFeeForListing(
-    sellerPersona,
-    formData.get("extraShippingFee"),
-  );
 
   const rawImageEntries = formData.getAll("images");
   const uploads = parseImageUploadsFromFormData(formData);
@@ -243,14 +177,10 @@ function parseCreateCardListingForm(formData: FormData): {
       useAuthentication,
       sourceCollectionId,
       sellerPersona,
-      extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
     uploads,
     preUploaded,
     rawImageEntryCount: rawImageEntries.length,
-    extraShippingFeeError: extraShippingParsed.ok
-      ? null
-      : extraShippingParsed.error,
   };
 }
 
@@ -259,12 +189,7 @@ function validateServerListingSubmit(
   uploads: ParsedImageUpload[],
   preUploaded: PreUploadedListingImage[] | null,
   rawImageEntryCount: number,
-  extraShippingFeeError?: string | null,
 ): string | null {
-  if (extraShippingFeeError) {
-    return extraShippingFeeError;
-  }
-
   const fieldError = validateCreateCardListingFields(fields);
   if (fieldError) return fieldError;
 
@@ -359,11 +284,8 @@ function parseUpdateCardListingForm(formData: FormData): {
     price: number;
     sellerDescription?: string;
     isActive: boolean;
-    sellerPersona?: ListingSellerPersona;
-    extraShippingFee: number;
   };
   preUploaded: PreUploadedListingImage[] | null;
-  extraShippingFeeError: string | null;
 } {
   const listingId = String(formData.get("listingId") ?? "").trim();
   const gradingOptionId = String(formData.get("gradingOptionId") ?? "").trim();
@@ -378,15 +300,6 @@ function parseUpdateCardListingForm(formData: FormData): {
     isActiveRaw === null
       ? true
       : isActiveRaw === "true" || isActiveRaw === "on";
-  const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
-  const sellerPersona =
-    sellerPersonaRaw === "merchant" || sellerPersonaRaw === "member"
-      ? sellerPersonaRaw
-      : undefined;
-  const extraShippingParsed = resolveExtraShippingFeeForListing(
-    sellerPersona,
-    formData.get("extraShippingFee"),
-  );
   const uploadedImagesRaw = String(formData.get("uploadedImages") ?? "").trim();
   const preUploaded = uploadedImagesRaw
     ? parsePreUploadedImages(uploadedImagesRaw)
@@ -399,13 +312,8 @@ function parseUpdateCardListingForm(formData: FormData): {
       price,
       sellerDescription: sellerDescription || undefined,
       isActive,
-      sellerPersona,
-      extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
     preUploaded,
-    extraShippingFeeError: extraShippingParsed.ok
-      ? null
-      : extraShippingParsed.error,
   };
 }
 
@@ -440,12 +348,7 @@ export type UpdateCardListingResult = CreateCardListingResult;
 export async function updateCardListing(
   formData: FormData,
 ): Promise<UpdateCardListingResult> {
-  const { fields, preUploaded, extraShippingFeeError } =
-    parseUpdateCardListingForm(formData);
-
-  if (extraShippingFeeError) {
-    return { success: false, error: extraShippingFeeError };
-  }
+  const { fields, preUploaded } = parseUpdateCardListingForm(formData);
 
   const fieldError = validateUpdateCardListingFields({
     listingId: fields.listingId,
@@ -490,7 +393,7 @@ export async function updateCardListing(
     const { data: existingListing, error: fetchError } = await supabase
       .from("listings")
       .select(
-        "id, seller_id, status, images, grading_company, grading_score, use_authentication, seller_persona",
+        "id, seller_id, status, images, grading_company, grading_score, use_authentication",
       )
       .eq("id", fields.listingId)
       .maybeSingle<
@@ -503,7 +406,6 @@ export async function updateCardListing(
           | "grading_company"
           | "grading_score"
           | "use_authentication"
-          | "seller_persona"
         >
       >();
 
@@ -513,15 +415,6 @@ export async function updateCardListing(
 
     if (existingListing.seller_id !== user.id) {
       return fail("沒有權限更新此商品");
-    }
-
-    const moderationError = await assertListingModerationAllowed(
-      supabase,
-      user.id,
-      existingListing.seller_persona,
-    );
-    if (moderationError) {
-      return fail(moderationError);
     }
 
     if (existingListing.status === "sold") {
@@ -554,10 +447,6 @@ export async function updateCardListing(
     );
     const replacedKeys = previousKeys.filter((key) => !nextKeys.has(key));
 
-    const sellerPersona = existingListing.seller_persona;
-    const extraShippingFee =
-      sellerPersona === "merchant" ? fields.extraShippingFee : 0;
-
     const admin = createAdminClient();
     const { data: listing, error: updateError } = await admin
       .from("listings")
@@ -573,7 +462,6 @@ export async function updateCardListing(
           grading.grader === "RAW"
             ? existingListing.use_authentication
             : false,
-        extra_shipping_fee: extraShippingFee,
       })
       .eq("id", fields.listingId)
       .eq("seller_id", user.id)
@@ -620,7 +508,7 @@ export async function updateCardListing(
 export async function createCardListing(
   formData: FormData,
 ): Promise<CreateCardListingResult> {
-  const { fields, uploads, preUploaded, rawImageEntryCount, extraShippingFeeError } =
+  const { fields, uploads, preUploaded, rawImageEntryCount } =
     parseCreateCardListingForm(formData);
 
   const uploadedObjectKeys: string[] = preUploaded
@@ -641,7 +529,6 @@ export async function createCardListing(
     uploads,
     preUploaded,
     rawImageEntryCount,
-    extraShippingFeeError,
   );
 
   if (validationError) {
@@ -679,41 +566,15 @@ export async function createCardListing(
       return fail(personaError);
     }
 
-    const moderationError = await assertListingModerationAllowed(
-      supabase,
-      user.id,
-      sellerPersona,
-    );
-    if (moderationError) {
-      return fail(moderationError);
-    }
-
     if (sellerPersona === "merchant" && profile.role !== "admin") {
-      const [{ data: shopRow, error: shopError }, { data: kycRow, error: kycError }] =
-        await Promise.all([
-          supabase
-            .from("merchant_shops")
-            .select("merchant_id")
-            .eq("merchant_id", user.id)
-            .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>(),
-          supabase
-            .from("kyc_records")
-            .select("kyc_status")
-            .eq("merchant_id", user.id)
-            .maybeSingle<Pick<Tables<"kyc_records">, "kyc_status">>(),
-        ]);
+      const { data: shopRow, error: shopError } = await supabase
+        .from("merchant_shops")
+        .select("merchant_id")
+        .eq("merchant_id", user.id)
+        .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>();
 
       if (shopError || !shopRow) {
         return fail("商戶店舖資料尚未就緒，無法建立商戶商品");
-      }
-
-      if (kycError) {
-        console.error("[createListing] kyc_records", kycError.message);
-        return fail("無法驗證商戶認證狀態，請稍後再試");
-      }
-
-      if (!isMerchantListingAllowed(kycRow?.kyc_status)) {
-        return fail("商戶認證審核中，暫不可上架商品");
       }
     }
 
@@ -771,8 +632,6 @@ export async function createCardListing(
       status: "active",
       seller_persona: sellerPersona,
       use_authentication: fields.useAuthentication,
-      extra_shipping_fee:
-        sellerPersona === "merchant" ? fields.extraShippingFee : 0,
     };
 
     if (fields.sourceCollectionId) {
@@ -839,12 +698,10 @@ function parseCreateSealedListingForm(formData: FormData): {
     sellerDescription?: string;
     sourceCollectionId?: string;
     sellerPersona?: ListingSellerPersona;
-    extraShippingFee: number;
   };
   uploads: ParsedImageUpload[];
   preUploaded: PreUploadedListingImage[] | null;
   rawImageEntryCount: number;
-  extraShippingFeeError: string | null;
 } {
   const productId = String(formData.get("productId") ?? "").trim();
   const price = Number(formData.get("price"));
@@ -862,10 +719,6 @@ function parseCreateSealedListingForm(formData: FormData): {
   const sourceCollectionId = sourceCollectionIdRaw || undefined;
   const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
   const sellerPersona = parseSellerPersonaField(sellerPersonaRaw);
-  const extraShippingParsed = resolveExtraShippingFeeForListing(
-    sellerPersona,
-    formData.get("extraShippingFee"),
-  );
 
   const rawImageEntries = formData.getAll("images");
   const uploads = parseImageUploadsFromFormData(formData);
@@ -882,14 +735,10 @@ function parseCreateSealedListingForm(formData: FormData): {
       sellerDescription: sellerDescription || undefined,
       sourceCollectionId,
       sellerPersona,
-      extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
     uploads,
     preUploaded,
     rawImageEntryCount: rawImageEntries.length,
-    extraShippingFeeError: extraShippingParsed.ok
-      ? null
-      : extraShippingParsed.error,
   };
 }
 
@@ -898,12 +747,7 @@ function validateServerSealedListingSubmit(
   uploads: ParsedImageUpload[],
   preUploaded: PreUploadedListingImage[] | null,
   rawImageEntryCount: number,
-  extraShippingFeeError?: string | null,
 ): string | null {
-  if (extraShippingFeeError) {
-    return extraShippingFeeError;
-  }
-
   const fieldError = validateCreateSealedListingFields(fields);
   if (fieldError) return fieldError;
 
@@ -939,7 +783,7 @@ function validateServerSealedListingSubmit(
 export async function createSealedListing(
   formData: FormData,
 ): Promise<CreateCardListingResult> {
-  const { fields, uploads, preUploaded, rawImageEntryCount, extraShippingFeeError } =
+  const { fields, uploads, preUploaded, rawImageEntryCount } =
     parseCreateSealedListingForm(formData);
 
   const uploadedObjectKeys: string[] = preUploaded
@@ -960,7 +804,6 @@ export async function createSealedListing(
     uploads,
     preUploaded,
     rawImageEntryCount,
-    extraShippingFeeError,
   );
 
   if (validationError) {
@@ -998,41 +841,15 @@ export async function createSealedListing(
       return fail(personaError);
     }
 
-    const moderationError = await assertListingModerationAllowed(
-      supabase,
-      user.id,
-      sellerPersona,
-    );
-    if (moderationError) {
-      return fail(moderationError);
-    }
-
     if (sellerPersona === "merchant" && profile.role !== "admin") {
-      const [{ data: shopRow, error: shopError }, { data: kycRow, error: kycError }] =
-        await Promise.all([
-          supabase
-            .from("merchant_shops")
-            .select("merchant_id")
-            .eq("merchant_id", user.id)
-            .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>(),
-          supabase
-            .from("kyc_records")
-            .select("kyc_status")
-            .eq("merchant_id", user.id)
-            .maybeSingle<Pick<Tables<"kyc_records">, "kyc_status">>(),
-        ]);
+      const { data: shopRow, error: shopError } = await supabase
+        .from("merchant_shops")
+        .select("merchant_id")
+        .eq("merchant_id", user.id)
+        .maybeSingle<Pick<Tables<"merchant_shops">, "merchant_id">>();
 
       if (shopError || !shopRow) {
         return fail("商戶店舖資料尚未就緒，無法建立商戶商品");
-      }
-
-      if (kycError) {
-        console.error("[createListing] kyc_records", kycError.message);
-        return fail("無法驗證商戶認證狀態，請稍後再試");
-      }
-
-      if (!isMerchantListingAllowed(kycRow?.kyc_status)) {
-        return fail("商戶認證審核中，暫不可上架商品");
       }
     }
 
@@ -1086,8 +903,6 @@ export async function createSealedListing(
       status: "active",
       seller_persona: sellerPersona,
       use_authentication: false,
-      extra_shipping_fee:
-        sellerPersona === "merchant" ? fields.extraShippingFee : 0,
     };
 
     if (fields.sourceCollectionId) {

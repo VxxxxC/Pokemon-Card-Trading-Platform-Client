@@ -17,14 +17,12 @@ import {
 } from "./fixtures/supabase-admin";
 import {
   addAssetModalForm,
-  dismissBlockingOverlays,
   ensureProductInWishlist,
   gotoCollectionPage,
   holdingsSection,
   openHobbyAddAssetModal,
   openMerchAddAssetModal,
   searchAndSelectCatalogForFixture,
-  selectHobbyRawGrading,
   uploadMerchPhotos,
   wishlistSection,
 } from "./helpers/collection-asset";
@@ -127,8 +125,6 @@ test.describe("Member collection and wishlist", () => {
       wishlistSection(page).getByText(fixture.productName).first(),
     ).toBeVisible({ timeout: 20_000 });
 
-    await dismissBlockingOverlays(page);
-
     const rowsBefore = await wishlistSection(page)
       .getByText(fixture.productName)
       .count();
@@ -186,7 +182,6 @@ test.describe("Member collection and wishlist", () => {
     });
     await openHobbyAddAssetModal(page);
     await searchAndSelectCatalogForFixture(page, fixture);
-    await selectHobbyRawGrading(page);
     await addAssetModalForm(page).getByPlaceholder("0").fill("12345");
     await page.getByRole("button", { name: "★ 收錄至私藏愛好" }).click();
 
@@ -248,11 +243,7 @@ test.describe.serial("Member merch listing via AddAssetModal", () => {
       .getByPlaceholder("一口價放售金額...")
       .fill("19999");
     await uploadMerchPhotos(page);
-    const publishButton = page.getByRole("button", {
-      name: "🚀 立即發佈商品上架",
-    });
-    await expect(publishButton).toBeEnabled({ timeout: 15_000 });
-    await publishButton.click();
+    await page.getByRole("button", { name: "🚀 立即發佈商品上架" }).click();
 
     await expect(
       page.getByText("商品已成功錄入並直接上架交易所大盤"),
@@ -321,11 +312,7 @@ test.describe.serial("Member merch listing via AddAssetModal", () => {
       .getByPlaceholder("一口價放售金額...")
       .fill("18888");
     await uploadMerchPhotos(page);
-    const publishButton = page.getByRole("button", {
-      name: "🚀 立即發佈商品上架",
-    });
-    await expect(publishButton).toBeEnabled({ timeout: 15_000 });
-    await publishButton.click();
+    await page.getByRole("button", { name: "🚀 立即發佈商品上架" }).click();
 
     await expect(
       page.getByText("商品已成功錄入並直接上架交易所大盤"),
