@@ -83,7 +83,7 @@ export default defineConfig({
         /member-auth-escrow\.spec\.ts/,
         /member-auth-inbound\.spec\.ts/,
         /member-order-detail-auth\.spec\.ts/,
-        /e2e\/partner\/(?!system\/(p-ui-routes|p-m0-staging-smoke)\.spec\.ts)(?!member\/p-e04-marketplace-search\.spec\.ts)(?!member\/p-e05-merchant-buy-now\.spec\.ts)/,
+        /e2e\/partner\/(?!system\/(p-ui-routes|p-m0-staging-smoke)\.spec\.ts)(?!member\/p-e04-marketplace-search\.spec\.ts)(?!member\/p-e05-merchant-buy-now\.spec\.ts)(?!member\/p-e12-order-detail-profile\.spec\.ts)/,
       ],
       use: { ...devices["Desktop Chrome"] },
     },

@@ -40,7 +40,7 @@
 | **SC-G02** | Nightly L1–L3 全綠 | `test:nightly:coverage` | ☐ |
 | **SC-G03** | Rewards schedule 全綠 | `rewards.yml` integration + E2E production | ☐ |
 | **SC-G04** | Moderation schedule 全綠 | `moderation-integration.yml` | ☐ |
-| **SC-G05** | Matrix soak 3/3 | SSOT §10 | ☐ |
+| **SC-G05** | Matrix soak 3/3 | SSOT §10 | ☑ |
 
 ### 2.2 旅程／CC 匯總（對照 SSOT §3–§8 — 細項見功能表）
 

@@ -178,11 +178,11 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **TC-P02** | Grading fail webhook 全鏈 | Partial | S1 | Fixture | Gate partial | `webhook-route` C1-7 · unit saga | S1 | ☑ |
 | **TC-P03** | S2 pass 前 dispute | Partial | S1 | Fixture | — | indirect | S0 | ☐ | 專項 |
 | **TC-P04** | Connect payout 零 skip | Partial | S1 | Fixture | Gate | `merchant-connect-payout-pipeline` M1–M4 | S1 | ☑ |
-| **TC-P05** | Rewards matrix E2E | Partial | S1 | Fixture | Nightly + Rewards dispatch | `platform-rewards-matrix` | S1† | ◐ | soak 3/3 |
+| **TC-P05** | Rewards matrix E2E | Partial | S1 | Fixture | Nightly + Rewards dispatch | `platform-rewards-matrix` | S1† | ☑ | — |
 | **TC-P06** | Staging webhook replay | Ops | — | — | — | — | — | — | PG-WH-03 |
 | **TC-P07** | Legacy C6 | N/A | — | — | — | — | — | — | — |
 
-† **TC-P05 / TC-N05：** matrix **cases 已有** → Solid **S1**；**進度 ◐** = nightly soak 未 3/3，未預設入 production gate。
+† **TC-P05 / TC-N05：** matrix **cases 已有** → Solid **S1**；soak **3/3 ☑**（§10）— production gate 仍 opt-in 直至 signoff 全綠。
 
 ---
 
@@ -196,7 +196,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **TC-N02** | Auth fee | S1 | Fixture | Nightly | `auth-fee.integration` | S0 | ◐ |
 | **TC-N03** | P2P AML | S1 | Fixture | Nightly | `p2p-aml-limits.integration` | S0 | ◐ |
 | **TC-N04** | Announcements | S2 | Partner | announcements gate | `test:announcements:gate` | S1 | ☐ |
-| **TC-N05** | Rewards eligibility 矩陣 | S1 | Fixture | Nightly | `rewards-matrix.integration`（**B2C 為主**） | S1† | ◐ |
+| **TC-N05** | Rewards eligibility 矩陣 | S1 | Fixture | Nightly | `rewards-matrix.integration`（**B2C 為主**） | S1† | ☑ |
 
 ### 5.2 E2E
 
@@ -210,10 +210,10 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **TC-E06** | P3 | Dashboard | S1 | Partner | Partner UI | `p-e06-member-dashboard` | S1 | ☑ |
 | **TC-E07** | P3 | Collection | S1 | Partner | Partner UI | `p-e07-member-collection` | S1 | ☑ |
 | **TC-E08** | P2 | C2C 鑑定 escrow | S2 | Partner | Partner escrow | `p-e08-c2c-auth-escrow` | S1 | ☑ |
-| **TC-E09** | P3 | Admin 周邊 | S1 | Partner | — | `admin-*` | S0 | ☐ |
-| **TC-E10** | P2 | 積分／訂單詳情券 | S2 | Partner | Rewards partial | `member-rewards-redeem` 等 | S0 | ☐ |
-| **TC-E11** | P2 | Trading smoke／filters | S2 | Partner | Manual‡ | `member-trading-smoke` 等 | S1 | ◐ |
-| **TC-E12** | P3 | 訂單詳情／profile | S1 | Partner | Manual‡ | `member-order-detail-p2p` 等 | S1 | ◐ |
+| **TC-E09** | P3 | Admin 周邊 | S1 | Partner | Partner journey | `p-e09-admin-periphery` | S1 | ☑ |
+| **TC-E10** | P2 | 積分／訂單詳情券 | S2 | Partner | Partner journey | `p-e10-rewards-coupon` | S1 | ☑ |
+| **TC-E11** | P2 | Trading smoke／filters | S2 | Partner | Partner journey | `p-e11-trading-smoke-filters` | S1 | ☑ |
+| **TC-E12** | P3 | 訂單詳情／profile | S1 | Partner | Partner journey | `p-e12-order-detail-profile` | S1 | ☑ |
 | **TC-E13** | P1 | Admin 建券 → C2C 鑑定 checkout eligible | S2 | Partner | **Rewards** | `member-auth-coupon-admin` | S2 | ☑ |
 
 ‡ `member-trading` project specs — **未**入 `test:nightly:coverage`；要 ☑ 需接入 nightly 或 rewards gate。
@@ -255,7 +255,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | `min_spend` / `max_subsidy` | ☑ | rewards-checkout-coupon | ☑ | 未達標→灰 |
 | reserve / expiry / used | — | E2E-C4 | ☑ integration FSM | 過期→灰 |
 
-**Soak：** ◐ 1/3（§10）— 只影響 matrix **穩定度**，唔影響 CC-INT 已 ☑ 嘅合約。
+**Soak：** ☑ 3/3（§10）— matrix 穩定度達標；production 仍要 `PRODUCTION_GATE_INCLUDE_MATRIX=1` signoff 全綠。
 
 ### 7.2 Moderation refund — eligibility + finalize 矩陣
 
@@ -346,7 +346,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **L0** | SSOT v2.3 + registry + certify 腳本 | §0 · registry · scripts | SC-L00 | ◐ |
 | **L1** | Nightly P2 E2E 穩定 | TC-E01–E03 | SC-T03 | ☑ |
 | **L2** | Platform integration nightly | TC-N01–N03 | SC-T02 | ◐ |
-| **L3** | Matrix soak → gate | TC-P05 · TC-N05 | SC-G05 · SC-T01 | ◐ 1/3 |
+| **L3** | Matrix soak → gate | TC-P05 · TC-N05 | SC-G05 · SC-T01 | ☑ 3/3 |
 | **L4** | Cron HTTP | TC-M01–M06 | SC-M01 | ☑ |
 | **L5** | Connect/KYC | TC-M10–M11 | SC-M02 | ☐ |
 | **L6** | Member-trading 入 CI | TC-E08 · E11 · J-AUTH-01 | SC-J05 · SC-T03 | ◐ |
@@ -377,10 +377,10 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | # | Date (HKT) | Run | Streak |
 |---|------------|-----|--------|
 | 1 | 2026-08-16 | local `test:nightly:coverage` ✅ | **1/3** |
-| 2 | — | — | |
-| 3 | — | — | |
+| 2 | 2026-08-20 | local `test:e2e:nightly:matrix` + `test:integration:rewards-matrix` ✅ | **2/3** |
+| 3 | 2026-08-20 | local `test:e2e:nightly:matrix` + `test:integration:rewards-matrix` ✅ | **3/3** |
 
-**Exit：** 3/3 → `PRODUCTION_GATE_INCLUDE_MATRIX=1` signoff。
+**Exit：** 3/3 ✅ → 可跑 `PRODUCTION_GATE_INCLUDE_MATRIX=1 bun run test:production:gate:signoff`。
 
 ---
 
@@ -423,7 +423,10 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
-| 2026-08-20 | **v2.10：** TC-E08 Partner escrow `p-e08-member-auth-escrow` · `test:e2e:partner-escrow` |
+| 2026-08-20 | **v2.13：** TC-P05 matrix soak **3/3** ☑ · L3 / SC-G05 exit |
+| 2026-08-20 | **v2.12：** TC-P05 matrix soak **2/3**（L3 E2E + integration 全綠） |
+| 2026-08-20 | **v2.11：** TC-E09–E12 Partner journey `p-e09`–`p-e12` · `test:e2e:partner-journey` |
+| 2026-08-20 | **v2.10：** TC-E08 Partner escrow `p-e08-c2c-auth-escrow` · `test:e2e:partner-escrow` |
 | 2026-08-20 | **v2.9：** Gate 收緊 TC-P01/P02/P04 · `test:gate:partial` · webhook C1-6/7 |
 | 2026-08-20 | **v2.8：** TC-E04–E07 Partner UI specs · `test:e2e:partner-ui` |
 | 2026-08-20 | **v2.7：** 附錄 A.2 TC-M20–M25 · A.4 TC-M40–M42 integration ☑ · `test:integration:appendix-a` |

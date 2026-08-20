@@ -95,6 +95,15 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-E07** | Collection + wishlist filters | F-M-10 · 11 | `e2e/partner/member/p-e07-member-collection.spec.ts` | `test:e2e:partner-ui` | ☑ |
 | **P-E08** | C2C 鑑定 escrow 待付款 UI | F-M-16 · 17 · 19 · F-S-08 | `e2e/partner/member/p-e08-c2c-auth-escrow.spec.ts` | `test:e2e:partner-escrow` | ☑ |
 
+### 3.2 Partner UI journeys（TC-E09–E12）
+
+| ID | Journey | 功能 | Spec | 命令 | 進度 |
+|----|---------|------|------|------|------|
+| **P-E09** | Admin catalog / user / payouts / campaigns | F-A-04 · 05 · 08 · 12 · 14 | `e2e/partner/admin/p-e09-admin-periphery.spec.ts` | `test:e2e:partner-journey` | ☑ |
+| **P-E10** | Rewards hub + order payment row | F-M-20 · 21 | `e2e/partner/member/p-e10-rewards-coupon.spec.ts` | `test:e2e:partner-journey` | ☑ |
+| **P-E11** | Trading smoke + filter shell | F-M-18 · 26 | `e2e/partner/member/p-e11-trading-smoke-filters.spec.ts` | `test:e2e:partner-journey` | ☑ |
+| **P-E12** | Public profile + P2P order detail | F-M-08 · 14 · 19 | `e2e/partner/member/p-e12-order-detail-profile.spec.ts` | `test:e2e:partner-journey` | ☑ |
+
 ---
 
 ## 5. Feature → Partner TC 覆蓋（Phase 3 目標）
