@@ -15,6 +15,12 @@ export async function loginAsAdmin(page: Page): Promise<void> {
     throw new Error("Missing E2E_ADMIN_EMAIL or E2E_ADMIN_PASSWORD");
   }
 
+  await page.goto("/admin/dashboard", { waitUntil: "domcontentloaded" });
+  const pathname = new URL(page.url()).pathname;
+  if (pathname.startsWith("/admin/")) {
+    return;
+  }
+
   await page.goto("/auth", { waitUntil: "domcontentloaded" });
   await page.locator('input[name="email"]').fill(email);
   await page.locator('input[name="password"]').fill(password);
