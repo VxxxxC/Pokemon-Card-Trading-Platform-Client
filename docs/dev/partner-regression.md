@@ -14,6 +14,7 @@
 | **L2 Feature** | [system-feature-registry.md](./system-feature-registry.md) F-* | T0–T3 有無 artifact · CI 接入 | `test:staging:certify:check-ssot` |
 | **L3 Journey** | [test-coverage-ssot.md](./test-coverage-ssot.md) J-* / TC-* | Solidity S0–S2 · Path Fixture/Partner | gate / nightly / rewards |
 | **L4 Partner** | **本文件** P-* | **UI-first** · 顯示層 assert · 跨頁狀態 | `test:e2e:partner` |
+| **Solid UI (L2+)** | [ui-feature-map.md](./ui-feature-map.md) F-* → surface | Route 契約 · `requiredElements` · `stateVariants` | `test:ui:check-map` · `test:e2e:ui-l2` |
 
 **North star（v2.5 起）：**
 
@@ -187,7 +188,8 @@ bun run test:staging:certify
 
 | 日期 | 變更 |
 |------|------|
-| 2026-08-20 | Phase 3：P-F01–F05 Partner smoke 綠 · F-* **67/67** · **SC-P-FX ☑**（SC-P-ALL 仍等 M0） |
+| 2026-08-20 | v1.0 | Phase 3：P-F01–F05 Partner smoke 綠 · F-* **67/67** · **SC-P-FX ☑**（SC-P-ALL 仍等 M0） |
+| 2026-08-20 | v1.1 | 交叉引用 [ui-feature-map.md](./ui-feature-map.md) Solid UI L2+；CI `test:ui:check-map` · nightly `test:e2e:ui-l2` |
 | 2026-08-20 | P-B01–B09 · P-C01–C03 Partner 全綠 · SC-P1／SC-P2 ☑；P-B04 修 merchant RAW filter（SaleOrder 空 company 誤判） |
 | 2026-08-19 | 寫入 P-C01–P-C03 Partner P2 spec（未跑；等 p86 完） |
 | 2026-08-19 | 寫入 P-B01–P-B09 Partner P1 spec（未跑；等 p86 完） |

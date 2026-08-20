@@ -352,6 +352,49 @@
               "role": "button",
               "locator": "#orders-list"
             }
+          ],
+          "stateVariants": [
+            {
+              "id": "pending-tab",
+              "setup": [
+                { "action": "click", "role": "button", "pattern": "待處理" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "pending-heading",
+                  "role": "heading",
+                  "pattern": "交易管理"
+                },
+                {
+                  "id": "pending-persona-buy",
+                  "role": "button",
+                  "pattern": "買單"
+                },
+                {
+                  "id": "pending-persona-sell",
+                  "role": "button",
+                  "pattern": "賣單"
+                }
+              ]
+            },
+            {
+              "id": "buy-persona",
+              "setup": [
+                { "action": "click", "role": "button", "pattern": "買單" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "buy-persona-sell",
+                  "role": "button",
+                  "pattern": "賣單"
+                },
+                {
+                  "id": "buy-persona-raw",
+                  "role": "checkbox",
+                  "name": "只顯示 RAW/裸卡"
+                }
+              ]
+            }
           ]
         }
       ]
@@ -371,9 +414,33 @@
           "path": "/profile/user/rewards",
           "role": "buyer",
           "assertions": [{ "type": "text", "pattern": "積分商城" }]
+        },
+        {
+          "id": "checkout-wizard",
+          "path": "/checkout/{orderId}",
+          "role": "buyer",
+          "assertions": [{ "type": "heading", "name": "訂單確認" }],
+          "requiredElements": [
+            {
+              "id": "checkout-heading",
+              "role": "heading",
+              "pattern": "訂單確認|安全託管付款"
+            },
+            {
+              "id": "checkout-summary",
+              "role": "text",
+              "pattern": "訂單財務明細"
+            },
+            {
+              "id": "checkout-coupon",
+              "role": "button",
+              "locator": "#checkout-coupon",
+              "optional": true
+            }
+          ]
         }
       ],
-      "note": "動態 /checkout/[id]；L3 rewards + Partner P-B06/07"
+      "note": "動態 /checkout/[id]（`E2E_CHECKOUT_ORDER_ID`）；L3 rewards + Partner P-B06/07"
     },
     {
       "id": "F-M-20",
@@ -916,7 +983,69 @@
           "id": "admin-grading",
           "path": "/admin/grading",
           "role": "admin",
-          "assertions": [{ "type": "heading", "name": "鑑定工作台" }]
+          "assertions": [{ "type": "heading", "name": "鑑定工作台" }],
+          "requiredElements": [
+            {
+              "id": "grading-heading",
+              "role": "heading",
+              "name": "鑑定工作台"
+            },
+            {
+              "id": "grading-intro",
+              "role": "text",
+              "pattern": "統一處理 Member C2C"
+            },
+            {
+              "id": "tab-awaiting-intake",
+              "role": "button",
+              "name": "待入庫"
+            },
+            {
+              "id": "tab-grading",
+              "role": "button",
+              "name": "鑑定中"
+            },
+            {
+              "id": "tab-awaiting-outbound",
+              "role": "button",
+              "name": "待出庫"
+            },
+            {
+              "id": "tab-search",
+              "role": "textbox",
+              "pattern": "搜尋訂單"
+            },
+            {
+              "id": "search-button",
+              "role": "button",
+              "name": "搜尋"
+            },
+            {
+              "id": "col-order-no",
+              "role": "columnheader",
+              "name": "訂單號"
+            }
+          ],
+          "stateVariants": [
+            {
+              "id": "grading-tab-active",
+              "setup": [
+                { "action": "click", "role": "button", "name": "鑑定中" }
+              ],
+              "requiredElements": [
+                {
+                  "id": "grading-tab-col-product",
+                  "role": "columnheader",
+                  "name": "商品"
+                },
+                {
+                  "id": "grading-tab-col-refund",
+                  "role": "columnheader",
+                  "name": "退款"
+                }
+              ]
+            }
+          ]
         }
       ]
     },

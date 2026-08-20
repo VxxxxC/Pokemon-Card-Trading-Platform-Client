@@ -20,6 +20,8 @@ env:
   E2E_SELLER_PASSWORD: ${{ secrets.E2E_SELLER_PASSWORD }}
   E2E_LISTING_ID: ${{ secrets.E2E_LISTING_ID }}
   E2E_SELLER_ID: ${{ secrets.E2E_SELLER_ID }}
+  E2E_LISTING_PRODUCT_ID: ${{ secrets.E2E_LISTING_PRODUCT_ID }}
+  E2E_CHECKOUT_ORDER_ID: ${{ secrets.E2E_CHECKOUT_ORDER_ID }}
 
 jobs:
   nightly-coverage:

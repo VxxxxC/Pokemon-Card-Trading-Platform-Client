@@ -11,7 +11,7 @@
 | 層 | 驗咩 | 命令 |
 |----|------|------|
 | **L2 Surface** | 每 F-* 有 route 或 `headless`；靜態 route 存在於 `app/**/page.tsx` | `test:ui:check-map` |
-| **L2 Scan** | 登入角色開頁 → heading／text／locator 可見 | `p-ui-routes.spec.ts` |
+| **L2 Scan** | 登入角色開頁 → heading／text／locator 可見 | `test:e2e:ui-l2`（`p-ui-routes.spec.ts`） |
 | **L3 Semantics** | 文案／欄位／狀態對齊業務 | Partner P-A/B/C + nightly |
 | **L4 Polish** | 好睇、通順、RWD | Partner M0 + 探索性 QA |
 
@@ -48,6 +48,7 @@
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | v1.4：CI `test:ui:check-map` · nightly `test:e2e:ui-l2` · F-M-18/F-A-06/checkout L2+ |
 | 2026-08-20 | v1.3：`requiredElements` F-M-18/F-C-03/F-A-05 · merchant `stateVariants` pending 子篩選 |
 | 2026-08-20 | v1.2：guest project L2 scan · storefront assertion fix · admin login idempotent |
 | 2026-08-20 | v1.1：`requiredElements` pilot（F-C-02 merchant trading） |

@@ -148,6 +148,7 @@ export function resolveSurfacePath(
     sellerId: env.E2E_SELLER_ID?.trim(),
     productId: env.E2E_LISTING_PRODUCT_ID?.trim(),
     listingId: env.E2E_LISTING_ID?.trim(),
+    orderId: env.E2E_CHECKOUT_ORDER_ID?.trim(),
   };
 
   let resolved = template.split("?")[0] ?? template;
