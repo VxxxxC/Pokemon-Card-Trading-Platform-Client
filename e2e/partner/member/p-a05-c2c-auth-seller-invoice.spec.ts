@@ -1,5 +1,5 @@
 // @partner-id P-A05
-// @features F-M-16, F-M-17
+// @features F-M-16, F-M-17, F-S-08
 // @path Partner
 
 import { test, expect } from "@playwright/test";

@@ -33,10 +33,10 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **SC-P0** | §2 [#A] P-A01–P-A08 **全 ☑** | ☑ |
 | **SC-P1** | §3 [#B] 全 ☑ | ☑ |
 | **SC-P2** | §4 [#C] P-C01–P-C03 **全 ☑**（P-C04 預留） | ☑ |
-| **SC-P-FX** | §5 每 F-* 至少 1 條 P-TC ☑（Phase 3） | ☐ |
+| **SC-P-FX** | §5 每 F-* 至少 1 條 P-TC ☑（Phase 3） | ☑ |
 | **SC-P-ALL** | SC-P0 + certify 綠 + M0 | ☐ |
 
-**統計（2026-08-20）：** P0 **8/8 ☑** · P1 **9/9 ☑** · P2 **3/3 ☑**（P-C04 預留） · F-* Partner 覆蓋 **0/67**。
+**統計（2026-08-20）：** P0 **8/8 ☑** · P1 **9/9 ☑** · P2 **3/3 ☑**（P-C04 預留） · F-* Partner 覆蓋 **67/67 ☑**。
 
 ---
 
@@ -92,10 +92,23 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 
 | 域 | 功能數 | Partner spec 目標數 | 現有 | 進度 |
 |----|--------|---------------------|------|------|
-| Member F-M-* | 26 | ≥26 | 0 | ☐ |
-| Merchant F-C-* | 13 | ≥13 | 0 | ☐ |
-| Admin F-A-* | 15 | ≥15（T0 可合併 smoke） | 0 | ☐ |
-| System F-S-* | 13 | ≥13 | 0 | ☐ |
+| Member F-M-* | 26 | ≥26 | 26 | ☑ |
+| Merchant F-C-* | 13 | ≥13 | 13 | ☑ |
+| Admin F-A-* | 15 | ≥15（T0 可合併 smoke） | 15 | ☑ |
+| System F-S-* | 13 | ≥13 | 13 | ☑ |
+
+**P-F 合併 smoke（Phase 3，已綠）：**
+
+| ID | 摘要 | 功能 | Spec |
+|----|------|------|------|
+| **P-F01** | Member auth／dashboard／settings | F-M-01 · 02 · 03 · 09 · 12 | `e2e/partner/member/p-f01-member-auth-shell.spec.ts` |
+| **P-F02** | 市集／profile／inventory／trading／legal | F-M-06 · 08 · 11 · 14 · 15 · 24 · 25 · F-S-05 · 11 · 13 | `e2e/partner/member/p-f02-member-discovery.spec.ts` |
+| **P-F03** | 積分錢包＋舉報 dialog | F-M-20 · 21 · 22 | `e2e/partner/member/p-f03-member-rewards-moderation.spec.ts` |
+| **P-F04** | Merchant ops＋member-seller trading | F-C-01 · 04–09 · F-M-26 | `e2e/partner/merchant/p-f04-merchant-shell.spec.ts` |
+| **P-F04B** | Member KYC 申請頁 | F-C-08 | `e2e/partner/member/p-f04b-merchant-kyc-apply.spec.ts` |
+| **P-F05** | Admin workbench T0 合併 | F-A-01–14 · 05b · F-M-23 · F-S-01–04 · 07 · 09 · 10 | `e2e/partner/admin/p-f05-admin-ops-smoke.spec.ts` |
+
+其餘 F-* 由現有 P-A／P-B／P-C `@features` 覆蓋（例如 F-C-02＝P-B04、F-S-12＝P-A02）。P-F 新 smoke 已綠；**SC-P-ALL 仍 ☐**（等 M0）。
 
 **Phase 路線：**
 
@@ -174,6 +187,7 @@ bun run test:staging:certify
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | Phase 3：P-F01–F05 Partner smoke 綠 · F-* **67/67** · **SC-P-FX ☑**（SC-P-ALL 仍等 M0） |
 | 2026-08-20 | P-B01–B09 · P-C01–C03 Partner 全綠 · SC-P1／SC-P2 ☑；P-B04 修 merchant RAW filter（SaleOrder 空 company 誤判） |
 | 2026-08-19 | 寫入 P-C01–P-C03 Partner P2 spec（未跑；等 p86 完） |
 | 2026-08-19 | 寫入 P-B01–P-B09 Partner P1 spec（未跑；等 p86 完） |

@@ -1,5 +1,5 @@
 // @partner-id P-A01
-// @features F-C-03, F-M-07
+// @features F-C-03, F-C-04, F-C-12, F-M-07
 // @path Partner (no DB seed for listing auth — use inventory UI)
 
 import { test, expect } from "@playwright/test";
