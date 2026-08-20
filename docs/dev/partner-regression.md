@@ -93,6 +93,7 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-E05** | Merchant buy-now dialog | F-M-07 · F-C-03 | `e2e/partner/member/p-e05-merchant-buy-now.spec.ts` | `test:e2e:partner-ui` | ☑ |
 | **P-E06** | Dashboard + rewards hub | F-M-09 · 20 | `e2e/partner/member/p-e06-member-dashboard.spec.ts` | `test:e2e:partner-ui` | ☑ |
 | **P-E07** | Collection + wishlist filters | F-M-10 · 11 | `e2e/partner/member/p-e07-member-collection.spec.ts` | `test:e2e:partner-ui` | ☑ |
+| **P-E08** | C2C 鑑定 escrow 待付款 UI | F-M-16 · 17 · 19 · F-S-08 | `e2e/partner/member/p-e08-c2c-auth-escrow.spec.ts` | `test:e2e:partner-escrow` | ☑ |
 
 ---
 

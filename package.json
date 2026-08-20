@@ -59,6 +59,7 @@
     "test:e2e:ui-l2": "playwright test e2e/partner/system/p-ui-routes.spec.ts --project=setup --project=guest --project=buyer --project=seller",
     "test:e2e:partner-m0": "playwright test e2e/partner/system/p-m0-staging-smoke.spec.ts --project=setup --project=guest --project=buyer",
     "test:e2e:partner-ui": "playwright test e2e/partner/member/p-e04-marketplace-search.spec.ts e2e/partner/member/p-e05-merchant-buy-now.spec.ts e2e/partner/member/p-e06-member-dashboard.spec.ts e2e/partner/member/p-e07-member-collection.spec.ts --project=setup --project=guest --project=buyer",
+    "test:e2e:partner-escrow": "playwright test e2e/partner/member/p-e08-c2c-auth-escrow.spec.ts --project=setup --project=buyer",
     "test:partner:regression": "bash scripts/partner-regression.sh",
     "test:e2e:partner": "playwright test e2e/partner --project=setup --project=guest --project=buyer --project=seller --project=member-trading --project=chat-realtime",
     "test:integration:platform": "vitest run --config vitest.config.mts tests/integration/platform/platform-legal.integration.test.ts tests/integration/platform/auth-fee.integration.test.ts tests/integration/platform/p2p-aml-limits.integration.test.ts tests/integration/announcements/platform-announcements.integration.test.ts",

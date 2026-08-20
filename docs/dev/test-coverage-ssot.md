@@ -209,7 +209,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **TC-E05** | P3 | Buy-now UI | S1 | Partner | Partner UI | `p-e05-merchant-buy-now` | S1 | ☑ |
 | **TC-E06** | P3 | Dashboard | S1 | Partner | Partner UI | `p-e06-member-dashboard` | S1 | ☑ |
 | **TC-E07** | P3 | Collection | S1 | Partner | Partner UI | `p-e07-member-collection` | S1 | ☑ |
-| **TC-E08** | P2 | C2C 鑑定 escrow | S2 | Partner | Manual‡ | `member-auth-escrow` 等 | S1 | ◐ |
+| **TC-E08** | P2 | C2C 鑑定 escrow | S2 | Partner | Partner escrow | `p-e08-c2c-auth-escrow` | S1 | ☑ |
 | **TC-E09** | P3 | Admin 周邊 | S1 | Partner | — | `admin-*` | S0 | ☐ |
 | **TC-E10** | P2 | 積分／訂單詳情券 | S2 | Partner | Rewards partial | `member-rewards-redeem` 等 | S0 | ☐ |
 | **TC-E11** | P2 | Trading smoke／filters | S2 | Partner | Manual‡ | `member-trading-smoke` 等 | S1 | ◐ |
@@ -423,6 +423,7 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | **v2.10：** TC-E08 Partner escrow `p-e08-member-auth-escrow` · `test:e2e:partner-escrow` |
 | 2026-08-20 | **v2.9：** Gate 收緊 TC-P01/P02/P04 · `test:gate:partial` · webhook C1-6/7 |
 | 2026-08-20 | **v2.8：** TC-E04–E07 Partner UI specs · `test:e2e:partner-ui` |
 | 2026-08-20 | **v2.7：** 附錄 A.2 TC-M20–M25 · A.4 TC-M40–M42 integration ☑ · `test:integration:appendix-a` |
