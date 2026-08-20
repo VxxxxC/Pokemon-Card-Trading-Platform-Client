@@ -470,15 +470,15 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | ID | Flow | Status | Solid 目標 | 進度 |
 |----|------|--------|------------|------|
-| **TC-M10** | `/api/stripe/connect/onboard` · `return` · `dashboard` | Missing | S1 | ☐ |
-| **TC-M11** | `admin-kyc` · `merchant-kyc` · `kyc/upload-document` | Missing | S1 | ☐ |
+| **TC-M10** | `/api/stripe/connect/onboard` · `return` · `dashboard` | `connect-routes.integration` | S1 | ☑ |
+| **TC-M11** | `admin-kyc` · `merchant-kyc` · `kyc/upload-document` | `admin-kyc-list` · `merchant-kyc` · `tc-m31-upload-routes` | S1 | ☑ |
 
 ### A.2 交易／社交
 
 | ID | Flow | Status | Solid 目標 | 進度 | 備註 |
 |----|------|--------|------------|------|------|
 | **TC-M20** | P2P 面交全鏈 | HasTest (E2E) | S2 | ◐ | J-TRD-01；缺 integration |
-| **TC-M21** | Chat server actions | Missing (integration) | S1 | ☐ | E2E realtime only |
+| **TC-M21** | Chat server actions | `chat-actions.integration` | S1 | ☑ |
 | **TC-M22** | Reviews / 評價 | Missing | S1 | ☐ | |
 | **TC-M23** | Collection / wishlist / inventory | HasTest (E2E) | S1 | ☐ | |
 | **TC-M24** | Merchant 直購 checkout→paid | Partial | S2 | ◐ | J-CPN-01 重疊 |
@@ -488,8 +488,8 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | ID | Route | Status | 進度 |
 |----|-------|--------|------|
-| **TC-M30** | `profile/upload-avatar` · `listings/upload-image` | Missing | ☐ |
-| **TC-M31** | `reports/upload-evidence` · `merchant/upload-*` | Missing | ☐ |
+| **TC-M30** | `profile/upload-avatar` · `listings/upload-image` | `tc-m30-upload-routes.integration` | ☑ |
+| **TC-M31** | `reports/upload-evidence` · `merchant/upload-*` | `tc-m31-upload-routes.integration` | ☑ |
 | **TC-M32** | `admin/upload-announcement-image` | HasTest | ☑ |
 
 ### A.4 Admin / 營運

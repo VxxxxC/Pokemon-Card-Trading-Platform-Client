@@ -8,6 +8,8 @@ const kycUpdate = vi.hoisted(() => vi.fn());
 const accountLinksCreate = vi.hoisted(() => vi.fn());
 const createExpressAccount = vi.hoisted(() => vi.fn());
 const createLoginLink = vi.hoisted(() => vi.fn());
+const stripeAccountsRetrieve = vi.hoisted(() => vi.fn());
+const syncKycConnectFlags = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth/site-url", () => ({
   getSiteUrl: async () => "http://localhost:3000",
@@ -67,6 +69,9 @@ vi.mock("@/lib/stripe", () => ({
     accountLinks: {
       create: accountLinksCreate,
     },
+    accounts: {
+      retrieve: stripeAccountsRetrieve,
+    },
   },
 }));
 
@@ -85,10 +90,12 @@ vi.mock("@/lib/stripe/payout-ready", () => ({
 vi.mock("@/lib/stripe/sync-kyc-connect-flags", () => ({
   isStripeConnectAccountId: (value: string | null | undefined) =>
     typeof value === "string" && value.startsWith("acct_"),
+  syncKycConnectFlagsFromStripeAccount: syncKycConnectFlags,
 }));
 
 import { GET as getConnectOnboard } from "@/app/api/stripe/connect/onboard/route";
 import { GET as getConnectDashboard } from "@/app/api/stripe/connect/dashboard/route";
+import { GET as getConnectReturn } from "@/app/api/stripe/connect/return/route";
 
 describe("Stripe Connect HTTP routes (TC-M10)", () => {
   beforeEach(() => {
@@ -108,6 +115,8 @@ describe("Stripe Connect HTTP routes (TC-M10)", () => {
     accountLinksCreate.mockResolvedValue({ url: "https://connect.stripe.com/onboard" });
     createExpressAccount.mockResolvedValue({ id: "acct_created_retry" });
     createLoginLink.mockResolvedValue({ url: "https://connect.stripe.com/express/login" });
+    stripeAccountsRetrieve.mockResolvedValue({ id: "acct_test_connect" });
+    syncKycConnectFlags.mockResolvedValue({ ok: true });
   });
 
   it("onboard redirects guests to /auth", async () => {
@@ -167,5 +176,51 @@ describe("Stripe Connect HTTP routes (TC-M10)", () => {
       "https://connect.stripe.com/express/login",
     );
     expect(createLoginLink).toHaveBeenCalledWith("acct_test_connect");
+  });
+
+  it("return redirects guests to /auth", async () => {
+    const response = await getConnectReturn();
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("http://localhost:3000/auth");
+  });
+
+  it("return redirects non-merchant users with sync-error", async () => {
+    getUser.mockResolvedValue({
+      data: { user: { id: "00000000-0000-4000-8000-000000000005" } },
+    });
+    profileMaybeSingle.mockResolvedValue({ data: { role: "member" } });
+
+    const response = await getConnectReturn();
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/profile/merchant?stripe=sync-error",
+    );
+  });
+
+  it("return syncs Connect flags and redirects synced for merchant", async () => {
+    getUser.mockResolvedValue({
+      data: { user: { id: "00000000-0000-4000-8000-000000000006" } },
+    });
+
+    const response = await getConnectReturn();
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/profile/merchant?stripe=synced",
+    );
+    expect(stripeAccountsRetrieve).toHaveBeenCalledWith("acct_test_connect");
+    expect(syncKycConnectFlags).toHaveBeenCalled();
+  });
+
+  it("return redirects sync-error when Stripe sync fails", async () => {
+    getUser.mockResolvedValue({
+      data: { user: { id: "00000000-0000-4000-8000-000000000007" } },
+    });
+    syncKycConnectFlags.mockResolvedValue({ ok: false, error: "sync failed" });
+
+    const response = await getConnectReturn();
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/profile/merchant?stripe=sync-error",
+    );
   });
 });
