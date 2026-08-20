@@ -423,6 +423,7 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | **v2.7：** 附錄 A.2 TC-M20–M25 · A.4 TC-M40–M42 integration ☑ · `test:integration:appendix-a` |
 | 2026-08-18 | **v2.5：** [partner-regression.md](./partner-regression.md) L4 · SC-P* · S2 綁定 P-* |
 | 2026-08-16 | **v2.4：** [system-feature-registry.md](./system-feature-registry.md) 全功能終極表 Member/Merchant/Admin/System |
 | 2026-08-16 | **v2.3：** staging-certification · certify 腳本 |
@@ -477,12 +478,12 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | ID | Flow | Status | Solid 目標 | 進度 | 備註 |
 |----|------|--------|------------|------|------|
-| **TC-M20** | P2P 面交全鏈 | HasTest (E2E) | S2 | ◐ | J-TRD-01；缺 integration |
+| **TC-M20** | P2P 面交全鏈 | `tc-m20-p2p-handover.integration` | S2 | ☑ |
 | **TC-M21** | Chat server actions | `chat-actions.integration` | S1 | ☑ |
-| **TC-M22** | Reviews / 評價 | Missing | S1 | ☐ | |
-| **TC-M23** | Collection / wishlist / inventory | HasTest (E2E) | S1 | ☐ | |
-| **TC-M24** | Merchant 直購 checkout→paid | Partial | S2 | ◐ | J-CPN-01 重疊 |
-| **TC-M25** | Member 非鑑定 complete/cancel | Missing | S1 | ☐ | |
+| **TC-M22** | Reviews / 評價 | `tc-m22-reviews.integration` | S1 | ☑ |
+| **TC-M23** | Collection / wishlist / inventory | `tc-m23-collection-wishlist.integration` | S1 | ☑ |
+| **TC-M24** | Merchant 直購 checkout→paid | `tc-m24-buy-now.integration` | S2 | ☑ |
+| **TC-M25** | Member 非鑑定 complete/cancel | `tc-m25-member-order-mutations.integration` | S1 | ☑ |
 
 ### A.3 Upload / 媒體 API
 
@@ -496,9 +497,9 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | ID | Flow | Status | 進度 |
 |----|------|--------|------|
-| **TC-M40** | `admin-member-orders` | Missing | ☐ |
-| **TC-M41** | Daily check-in program | Partial | ☐ |
-| **TC-M42** | `merchant-finance` · dashboards | Missing | ☐ |
+| **TC-M40** | `admin-member-orders` | `admin-member-orders.integration` | ☑ |
+| **TC-M41** | Daily check-in program | `admin-check-in-program.integration` | ☑ |
+| **TC-M42** | `merchant-finance` · dashboards | `tc-m42-merchant-finance.integration` | ☑ |
 
 ### A.5 v3+ Deferred（唔計 Staging 認證）
 

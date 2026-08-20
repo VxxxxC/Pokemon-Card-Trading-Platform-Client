@@ -8,10 +8,23 @@ import {
   programRowToForm,
 } from "@/lib/admin-check-in-program/parse-check-in-program";
 import { clearSessionCache, runAsAdmin, warmSession } from "../shared/auth-context";
+import { setGuestServerClient } from "../shared/guest-auth";
 import { hasRewardsIntegrationEnv } from "../rewards/helpers/env";
 
+describe("TC-M41 admin check-in program — contract", () => {
+  it("getAdminCheckInProgram requires login", async () => {
+    setGuestServerClient();
+
+    const result = await getAdminCheckInProgram();
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("請先登入");
+    }
+  });
+});
+
 describe.skipIf(!hasRewardsIntegrationEnv())(
-  "Admin check-in program (TC-M41)",
+  "TC-M41 admin check-in program — smoke",
   () => {
     let restoreForm: ReturnType<typeof buildDefaultCheckInProgramForm> | null =
       null;

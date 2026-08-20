@@ -13,8 +13,18 @@ import {
 } from "../rewards/helpers/checkout-fixture";
 import { hasRewardsIntegrationEnv } from "../rewards/helpers/env";
 
+describe("TC-M40 admin member orders — contract", () => {
+  it("confirmPlatformReceived rejects empty order id", async () => {
+    const result = await confirmPlatformReceived("  ");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("找不到此訂單");
+    }
+  });
+});
+
 describe.skipIf(!hasRewardsIntegrationEnv())(
-  "Admin member auth orders (TC-M40)",
+  "TC-M40 admin member orders — smoke",
   () => {
     const trackedOrderIds: string[] = [];
 
