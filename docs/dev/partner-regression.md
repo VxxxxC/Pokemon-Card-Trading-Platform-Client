@@ -1,6 +1,6 @@
 # Partner Regression SSOT — UI / 探索性 bug 自動化
 
-> **版本：** v1.0 · **更新：** 2026-08-18  
+> **版本：** v1.0 · **更新：** 2026-08-20  
 > **範圍：** [system-feature-registry.md](./system-feature-registry.md) 全 **67** 項 in-scope（Member / Merchant / Admin / System）；**唔包** [v3-deferred.md](./v3-deferred.md)。  
 > **來源：** Partner `bugs_finding.org` · 工程探索性 QA · 新 bug **先寫 failing spec 再 fix**。
 
@@ -31,12 +31,12 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | 匯總 ID | 條件 | 進度 |
 |---------|------|------|
 | **SC-P0** | §2 [#A] P-A01–P-A08 **全 ☑** | ☑ |
-| **SC-P1** | §3 [#B] 全 ☑ | ☐ |
-| **SC-P2** | §4 [#C] 全 ☑ | ☐ |
+| **SC-P1** | §3 [#B] 全 ☑ | ☑ |
+| **SC-P2** | §4 [#C] P-C01–P-C03 **全 ☑**（P-C04 預留） | ☑ |
 | **SC-P-FX** | §5 每 F-* 至少 1 條 P-TC ☑（Phase 3） | ☐ |
 | **SC-P-ALL** | SC-P0 + certify 綠 + M0 | ☐ |
 
-**統計（2026-08-19）：** P0 **8/8 ☑** · P1 **0/9 ☐**（spec 已寫、未跑） · P2 **0/4 ☐**（P-C01–C03 spec 已寫、未跑） · F-* Partner 覆蓋 **0/67**。
+**統計（2026-08-20）：** P0 **8/8 ☑** · P1 **9/9 ☑** · P2 **3/3 ☑**（P-C04 預留） · F-* Partner 覆蓋 **0/67**。
 
 ---
 
@@ -63,15 +63,15 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 
 | ID | Partner 摘要 | 功能 | Spec（目標） | 進度 |
 |----|-------------|------|--------------|------|
-| **P-B01** | 首頁走馬燈港元符號 | F-M-04 | `e2e/partner/member/p-b01-home-ticker-currency.spec.ts` | ☐ |
-| **P-B02** | 首頁走馬燈仍為 mock data | F-M-04 | `e2e/partner/member/p-b02-home-ticker-live-data.spec.ts` | ☐ |
-| **P-B03** | 認證商家 carousel redirect 顯示 member username | F-M-04 | `e2e/partner/member/p-b03-certified-merchant-carousel.spec.ts` | ☐ |
-| **P-B04** | Merchant trading「只顯示 RAW」filter 失效 | F-C-02 | `e2e/partner/merchant/p-b04-raw-filter.spec.ts` | ☐ |
-| **P-B05** | 已完成訂單 chat 仍顯示付款 button | F-M-13 | `e2e/partner/system/p-b05-chat-paid-order-cta.spec.ts` | ☐ |
-| **P-B06** | 已完成訂單仍可進 checkout（button disabled） | F-M-19 | `e2e/partner/member/p-b06-checkout-completed-guard.spec.ts` | ☐ |
-| **P-B07** | Member order detail invoice 冇顯示券扣減 | F-M-19 | `e2e/partner/member/p-b07-order-invoice-coupon.spec.ts` | ☐ |
-| **P-B08** | BGS/CGC 長 grading label 新增失敗（varchar） | F-M-10 · F-C-03 | `e2e/partner/member/p-b08-grading-long-label.spec.ts` | ☐ |
-| **P-B09** | Marketplace 最低價 seller 名稱同 badge 不一致 | F-M-05 | `e2e/partner/member/p-b09-product-card-seller-badge.spec.ts` | ☐ |
+| **P-B01** | 首頁走馬燈港元符號 | F-M-04 | `e2e/partner/member/p-b01-home-ticker-currency.spec.ts` | ☑ |
+| **P-B02** | 首頁走馬燈仍為 mock data | F-M-04 | `e2e/partner/member/p-b02-home-ticker-live-data.spec.ts` | ☑ |
+| **P-B03** | 認證商家 carousel redirect 顯示 member username | F-M-04 | `e2e/partner/member/p-b03-certified-merchant-carousel.spec.ts` | ☑ |
+| **P-B04** | Merchant trading「只顯示 RAW」filter 失效 | F-C-02 | `e2e/partner/merchant/p-b04-raw-filter.spec.ts` | ☑ |
+| **P-B05** | 已完成訂單 chat 仍顯示付款 button | F-M-13 | `e2e/partner/system/p-b05-chat-paid-order-cta.spec.ts` | ☑ |
+| **P-B06** | 已完成訂單仍可進 checkout（button disabled） | F-M-19 | `e2e/partner/member/p-b06-checkout-completed-guard.spec.ts` | ☑ |
+| **P-B07** | Member order detail invoice 冇顯示券扣減 | F-M-19 | `e2e/partner/member/p-b07-order-invoice-coupon.spec.ts` | ☑ |
+| **P-B08** | BGS/CGC 長 grading label 新增失敗（varchar） | F-M-10 · F-C-03 | `e2e/partner/member/p-b08-grading-long-label.spec.ts` | ☑ |
+| **P-B09** | Marketplace 最低價 seller 名稱同 badge 不一致 | F-M-05 | `e2e/partner/member/p-b09-product-card-seller-badge.spec.ts` | ☑ |
 
 ---
 
@@ -79,9 +79,9 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 
 | ID | Partner 摘要 | 功能 | Spec（目標） | 進度 |
 |----|-------------|------|--------------|------|
-| **P-C01** | Member trading filter chips 數字錯 | F-M-18 | `e2e/partner/member/p-c01-trading-filter-counts.spec.ts` | ☐ |
-| **P-C02** | Logout 後 login 另一帳號 chat cache 殘留 | F-M-13 | `e2e/partner/system/p-c02-chat-session-isolation.spec.ts` | ☐ |
-| **P-C03** | 對話記錄唔完整／延遲出現 | F-M-13 | `e2e/partner/system/p-c03-chat-history-sync.spec.ts` | ☐ |
+| **P-C01** | Member trading filter chips 數字錯 | F-M-18 | `e2e/partner/member/p-c01-trading-filter-counts.spec.ts` | ☑ |
+| **P-C02** | Logout 後 login 另一帳號 chat cache 殘留 | F-M-13 | `e2e/partner/system/p-c02-chat-session-isolation.spec.ts` | ☑ |
+| **P-C03** | 對話記錄唔完整／延遲出現 | F-M-13 | `e2e/partner/system/p-c03-chat-history-sync.spec.ts` | ☑ |
 | **P-C04** | （預留） | — | — | ☐ |
 
 ---
@@ -174,6 +174,7 @@ bun run test:staging:certify
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-20 | P-B01–B09 · P-C01–C03 Partner 全綠 · SC-P1／SC-P2 ☑；P-B04 修 merchant RAW filter（SaleOrder 空 company 誤判） |
 | 2026-08-19 | 寫入 P-C01–P-C03 Partner P2 spec（未跑；等 p86 完） |
 | 2026-08-19 | 寫入 P-B01–P-B09 Partner P1 spec（未跑；等 p86 完） |
 | 2026-08-19 | P-A01–P-A08 Partner P0 全綠 · SC-P0 ☑ |

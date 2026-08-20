@@ -28,7 +28,14 @@ const STATUS_TAB_LABELS: TabStatusFilter[] = [
   "cancelled",
 ];
 
-function isRawMerchantOrder(order: Record<string, unknown>): boolean {
+function isRawMerchantOrder(order: {
+  listing?: { gradingCompany?: string | null };
+  grade?: unknown;
+  cardType?: unknown;
+  isRaw?: unknown;
+  isRawCard?: unknown;
+  gradingCompany?: unknown;
+}): boolean {
   if (
     order.cardType === "RAW" ||
     order.isRaw === true ||
@@ -36,32 +43,30 @@ function isRawMerchantOrder(order: Record<string, unknown>): boolean {
   ) {
     return true;
   }
+
   const grade = String(order.grade ?? "").toUpperCase().trim();
-  if (
-    grade.includes("RAW") ||
-    grade.includes("裸卡") ||
-    grade === "" ||
-    grade === "NONE"
-  ) {
+  if (/\b(PSA|BGS|CGC|ARS)\b/.test(grade)) {
+    return false;
+  }
+  if (grade.includes("RAW") || grade.includes("裸卡")) {
     return true;
   }
+
   const company = String(
-    order.gradingCompany ??
-      (order.listing as Record<string, unknown> | undefined)?.gradingCompany ??
-      "",
+    order.listing?.gradingCompany ?? order.gradingCompany ?? "",
   )
     .toUpperCase()
     .trim();
-  if (
+  if (["PSA", "CGC", "BGS", "ARS"].includes(company)) {
+    return false;
+  }
+  return (
     !company ||
     company === "RAW" ||
     company === "RAW CARD" ||
     company === "NONE" ||
     company === "裸卡"
-  ) {
-    return true;
-  }
-  return false;
+  );
 }
 
 export function MerchantTradingClient({
@@ -102,13 +107,9 @@ export function MerchantTradingClient({
   const saleOrders = useMemo(() => {
     const mapped = orders.map(mapMerchantTradingOrderToSaleOrder);
     if (!onlyRawChecked) return mapped;
-    return mapped.filter((saleOrder, idx) => {
-      const rawOrder = orders[idx];
-      return (
-        isRawMerchantOrder(saleOrder as unknown as Record<string, unknown>) ||
-        (rawOrder &&
-          isRawMerchantOrder(rawOrder as unknown as Record<string, unknown>))
-      );
+    return mapped.filter((_, idx) => {
+      const source = orders[idx];
+      return Boolean(source && isRawMerchantOrder(source));
     });
   }, [orders, onlyRawChecked]);
 

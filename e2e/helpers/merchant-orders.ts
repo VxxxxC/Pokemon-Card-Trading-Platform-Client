@@ -93,6 +93,108 @@ export async function seedMerchantPendingPaymentOrder(): Promise<{
   return { orderId, listingId, merchantId: sellerId, buyerId };
 }
 
+export async function seedMerchantPsaPendingOrder(): Promise<{
+  orderId: string;
+  listingId: string;
+  merchantId: string;
+}> {
+  const buyerEmail = process.env.E2E_BUYER_EMAIL?.trim();
+  if (!buyerEmail) {
+    throw new Error("Missing E2E_BUYER_EMAIL");
+  }
+
+  const buyerId = await getProfileIdByEmail(buyerEmail);
+  if (!buyerId) {
+    throw new Error(`Buyer profile not found for ${buyerEmail}`);
+  }
+
+  const { listingId: sourceListingId, sellerId } =
+    await resolveReconcileMerchantListing();
+  const admin = createE2eAdminClient();
+
+  const { data: existingPsa, error: existingError } = await admin
+    .from("listings")
+    .select("id")
+    .eq("seller_id", sellerId)
+    .eq("seller_persona", "merchant")
+    .eq("grading_company", "PSA")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`[seedMerchantPsaPendingOrder] ${existingError.message}`);
+  }
+
+  let psaListingId = existingPsa?.id ?? null;
+  if (!psaListingId) {
+    const { data: source, error: sourceError } = await admin
+      .from("listings")
+      .select("product_id, price, images")
+      .eq("id", sourceListingId)
+      .maybeSingle();
+    if (sourceError || !source?.product_id) {
+      throw new Error(
+        `[seedMerchantPsaPendingOrder] ${sourceError?.message ?? "missing source listing"}`,
+      );
+    }
+
+    const { data: catalog, error: catalogError } = await admin
+      .from("product_catalog")
+      .select("id")
+      .neq("id", source.product_id)
+      .not("name_zh", "is", null)
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (catalogError || !catalog?.id) {
+      throw new Error(
+        `[seedMerchantPsaPendingOrder] ${catalogError?.message ?? "missing catalog row"}`,
+      );
+    }
+
+    const { data: created, error: insertError } = await admin
+      .from("listings")
+      .insert({
+        seller_id: sellerId,
+        product_id: catalog.id,
+        price: source.price || 299,
+        status: "active",
+        seller_persona: "merchant",
+        grading_company: "PSA",
+        grading_score: "10",
+        seller_description: "E2E P-B04 PSA listing",
+        images: source.images ?? [],
+        use_authentication: false,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !created?.id) {
+      throw new Error(
+        `[seedMerchantPsaPendingOrder] ${insertError?.message ?? "missing PSA listing"}`,
+      );
+    }
+    psaListingId = created.id;
+  }
+
+  const { data: orderId, error } = await admin.rpc(
+    "rpc_e2e_seed_merchant_pending_payment_order",
+    {
+      p_listing_id: psaListingId,
+      p_buyer_id: buyerId,
+    },
+  );
+
+  if (error || !orderId) {
+    throw new Error(
+      `[seedMerchantPsaPendingOrder] ${error?.message ?? "missing order id"}`,
+    );
+  }
+
+  return { orderId, listingId: psaListingId, merchantId: sellerId };
+}
+
 export async function backdateMerchantOrderCreatedAt(
   orderId: string,
   hoursAgo = 49,
