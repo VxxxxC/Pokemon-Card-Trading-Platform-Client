@@ -94,6 +94,29 @@ describe.sequential(
       expect(payload.escrow_capture_model).toBe("single");
     });
 
+    merchantIt("G-BF2M: prepare seller fault single → cancel", async () => {
+      const { orderId } = await seedAuthenticatingOrder("bf2m");
+
+      const payload = await runAsAdmin(async () => {
+        const client = getAdminClient();
+        const { data, error } = await client.rpc("rpc_prepare_auth_grading_fail", {
+          p_order_kind: "merchant",
+          p_order_id: orderId,
+          p_fault_party: "seller",
+          p_reason: "integration merchant seller fault prepare",
+        });
+        if (error) {
+          throw new Error(error.message);
+        }
+        return data as PreparePayload;
+      });
+
+      expect(payload.success).toBe(true);
+      expect(payload.void_mode).toBe("cancel");
+      expect(payload.capture_cents ?? 0).toBe(0);
+      expect(payload.escrow_capture_model).toBe("single");
+    });
+
     merchantIt("G-BF3M: finalize buyer fault → auth_fee_captured", async () => {
       const { orderId, paymentIntentId } = await seedAuthenticatingOrder("bf3m");
 

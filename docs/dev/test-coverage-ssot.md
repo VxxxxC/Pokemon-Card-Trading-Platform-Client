@@ -33,8 +33,8 @@
 | 域 | 代表風險 | CC-INT | CC-E2E | Backlog |
 |----|----------|--------|--------|---------|
 | **Rewards 券** | `restrictions.*` / `min_spend` 缺 UI / default 錯 | ☑ `admin-publish-defaults` | ☑ TC-E13 · C2C-ADM-1b | CC-RWD-03 hidden keys |
-| **Platform 鑑定費** | test 直寫 DB、Partner 用 Admin | ☑ `auth-fee` | ☐ | **CC-PLAT-01** |
-| **Platform 佣金** | payout snapshot | ☑ `commission-rate` | ☐ | **CC-PLAT-02** |
+| **Platform 鑑定費** | test 直寫 DB、Partner 用 Admin | ☑ `auth-fee` · CC-PLAT-01 | ☑ | **CC-PLAT-01** |
+| **Platform 佣金** | payout snapshot | ☑ `commission-rate` · CC-PLAT-02 | ☑ | **CC-PLAT-02** |
 | **Moderation** | 退款規則 | ☑ matrix | ☑ J-MOD-01 | — |
 | **Grading** | Admin 操作 | ☑ integration | ◐ | **CC-GRD-01** |
 | **Cron HTTP** | route≠RPC | ☐ | — | TC-M01+ |
@@ -311,7 +311,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | `fault_party` | member_auth | merchant_auth | Stripe smoke | 進度 |
 |---------------|-------------|---------------|--------------|------|
 | `buyer` prepare + finalize | ☑ G-BF1 · G-BF3 | ☑ G-BF1M · G-BF3M | ☑ G-BF-S1 | ☑ |
-| `seller` prepare | ☑ G-BF2 | ☐（缺 G-BF2M） | — | ◐ |
+| `seller` prepare | ☑ G-BF2 | ☑ G-BF2M | — | ☑ |
 | `seller` finalize | ☑ G-BF4 | ☑ G-BF4M | ☑ G-BF-S2 | ☑ |
 | `carrier` + `seller` liability | ☑ G-BF6 | ☑ G-BF6M | — | ☑ |
 | `carrier` + `platform` liability | ☑ G-BF7 | ☑ G-BF7M | — | ☑ |
@@ -423,7 +423,7 @@ Touch **任何** Admin 配置或 runtime eligibility：
 
 | 日期 | 變更 |
 |------|------|
-| 2026-08-20 | **v2.14：** TC-P03 PG-S2-02 · TC-N01–N04 platform INT 收緊 · L6 E2E fixture/toast fixes |
+| 2026-08-20 | **v2.15：** CC-PLAT-01/02 admin settings contract · G-BF2M merchant fail prepare |
 | 2026-08-20 | **v2.12：** TC-P05 matrix soak **2/3**（L3 E2E + integration 全綠） |
 | 2026-08-20 | **v2.11：** TC-E09–E12 Partner journey `p-e09`–`p-e12` · `test:e2e:partner-journey` |
 | 2026-08-20 | **v2.10：** TC-E08 Partner escrow `p-e08-c2c-auth-escrow` · `test:e2e:partner-escrow` |
