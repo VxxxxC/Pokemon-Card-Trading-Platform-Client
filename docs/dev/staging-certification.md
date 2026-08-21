@@ -81,17 +81,42 @@
 # 只檢查 §2 登記表是否全部 ☑（唔跑 test）
 bun run test:staging:certify --check-ssot
 
+# 鎖定 staging-certification.sh 步驟清單（manifest v1.0.0，有 drift 即 fail）
+bun run test:staging:certify:manifest
+
+# Full certify 前必跑：fast/medium 實跑 + heavy env 檢查，加權 pass rate >= 95%
+bun run test:staging:certify:preflight
+
 # Partner P0 登記表（唔跑 test；未達標會 exit 1）
 bun run test:partner:check-ssot -- --p0
 
 # Partner UI E2E only
 bun run test:e2e:partner
 
-# 完整認證（gate + nightly + security）
+# 完整認證（gate + nightly + security）— 僅在 preflight PASS 後跑
 bun run test:staging:certify
+
+# UI data-contract delta only（preflight 子集，~5–20 min）
+bun run test:staging:certify:delta
 
 # 認證 + Partner P0 綠後 → Partner M0（見 PARTNER_QA.md）
 ```
+
+### 3.1 Frozen certify steps（v1.0.0 · 2026-08-21）
+
+`scripts/staging-certification.manifest.json` 鎖定 **16 個** `run_step`（唔再改除非 bump version）：
+
+| # | Step | Tier |
+|---|------|------|
+| 1–4 | ui map · data contracts · journey audit · pricing unit | fast |
+| 5–6 | production gate signoff · nightly coverage | heavy |
+| 7 | rewards integration | medium |
+| 8–9 | production server · rewards E2E production | heavy |
+| 10 | partner checkout data contracts | medium |
+| 11–14 | coupon security/pbt · moderation pbt · mutation contract | medium |
+| 15–16 | rewards/moderation mutation (Stryker) | heavy |
+
+**Preflight 策略：** fast/medium **實跑**；heavy **只驗 env**（Stripe、nightly、Stryker、merchant role）。加權分數 ≥ **95%** 先 worth 跑 full certify（~65 min）。
 
 ---
 

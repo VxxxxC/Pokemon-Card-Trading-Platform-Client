@@ -54,6 +54,8 @@
     "test:production:gate:signoff": "PRODUCTION_GATE_SIGNOFF=1 bash scripts/production-gate.sh",
     "test:staging:certify": "bash scripts/staging-certification.sh",
     "test:staging:certify:check-ssot": "bash scripts/check-staging-certification.sh",
+    "test:staging:certify:manifest": "bash scripts/validate-staging-certification-manifest.sh",
+    "test:staging:certify:preflight": "bash scripts/staging-certify-preflight.sh",
     "test:partner:check-ssot": "bash scripts/check-partner-regression.sh",
     "test:ui:check-map": "bash scripts/check-ui-feature-map.sh",
     "test:ui:check-data-contracts": "bash scripts/check-ui-data-contracts.sh",

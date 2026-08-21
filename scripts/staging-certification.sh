@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # Full staging certification: SSOT §2 all ☑ + production signoff + nightly + security suites.
+#
+# FROZEN MANIFEST v1.0.0 — do NOT add/remove/reorder run_step lines without updating:
+#   scripts/staging-certification.manifest.json
+#   scripts/validate-staging-certification-manifest.sh
+#
+# Before full certify, run:
+#   bun run test:staging:certify:preflight   # requires >=95% weighted pass
+#
 # Usage:
 #   bun run test:staging:certify              # full
 #   bun run test:staging:certify --check-ssot # manifest only
@@ -24,6 +32,8 @@ if [[ "$CHECK_SSOT_ONLY" -eq 1 ]]; then
 fi
 
 bash scripts/check-staging-certification.sh
+
+bash scripts/validate-staging-certification-manifest.sh
 
 # shellcheck disable=SC1091
 source "$ROOT/scripts/e2e-production-server.sh"
