@@ -263,8 +263,7 @@ test.describe("Platform rewards Phase 3 E2E", () => {
 
     await gotoMemberRewardsPage(page);
     await waitForFlashCampaignSectionReady(page);
-    const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
-    const card = section
+    const card = page
       .locator("div.rounded-2xl")
       .filter({ hasText: templateTitle! });
     const hasFlashCard = await card.isVisible().catch(() => false);

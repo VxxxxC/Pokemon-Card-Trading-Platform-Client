@@ -13,7 +13,7 @@
 | **L1 Gate** | [staging-certification.md](./staging-certification.md) SC-G* | 金流合約 · signoff · mutation | `test:staging:certify` |
 | **L2 Feature** | [system-feature-registry.md](./system-feature-registry.md) F-* | T0–T3 有無 artifact · CI 接入 | `test:staging:certify:check-ssot` |
 | **L3 Journey** | [test-coverage-ssot.md](./test-coverage-ssot.md) J-* / TC-* | Solidity S0–S2 · Path Fixture/Partner | gate / nightly / rewards |
-| **L4 Partner** | **本文件** P-* | **UI-first** · 顯示層 assert · 跨頁狀態 | `test:e2e:partner` |
+| **L4 Partner** | **本文件** P-* | **UI-first** · 顯示層 assert · 跨頁狀態 | `test:e2e:partner`（含 `p-ui-routes` L2 全圖） |
 | **Solid UI (L2+)** | [ui-feature-map.md](./ui-feature-map.md) F-* → surface | Route 契約 · `requiredElements` · `stateVariants` | `test:ui:check-map` · `test:e2e:ui-l2` |
 
 **North star（v2.5 起）：**
@@ -172,7 +172,11 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 ## 7. 命令與 CI 接入
 
 ```bash
-# Partner suite only（Playwright）
+# SSOT：ui-feature-map + L2 inventory（唔跑 browser）
+bun run test:ui:check-map
+bun run scripts/validate-partner-ui-coverage.ts
+
+# Partner suite（含 p-ui-routes L2 全 surface requiredElements）
 bun run test:e2e:partner
 
 # SSOT 掃描 Partner 進度（唔跑 test）

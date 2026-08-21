@@ -786,14 +786,22 @@ export async function listActiveFlashCampaignRowsForUser(params: {
   return data as AdminCampaignListRow[];
 }
 
-export async function waitForFlashCampaignSectionReady(page: Page): Promise<void> {
-  const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
-  const hasFlashSection = await section
-    .isVisible({ timeout: 5_000 })
-    .catch(() => false);
+export async function gotoMemberCampaignsPage(
+  page: Page,
+  tab: "flash" | "points" = "flash",
+): Promise<void> {
+  await ensureMemberPersona(page);
+  await page.goto("/profile/user/campaigns", { waitUntil: "domcontentloaded" });
+  await dismissBlockingOverlays(page);
+  await dismissRewardUnlockedModal(page);
 
-  if (!hasFlashSection) {
-    return;
+  const tabLabel = tab === "flash" ? "限時搶券" : "積分商城";
+  await page.getByRole("button", { name: tabLabel }).click();
+}
+
+export async function waitForFlashCampaignSectionReady(page: Page): Promise<void> {
+  if (!page.url().includes("/campaigns")) {
+    await gotoMemberCampaignsPage(page, "flash");
   }
 
   await expect(page.getByText(/載入限時搶券/)).toBeHidden({
@@ -804,9 +812,7 @@ export async function waitForFlashCampaignSectionReady(page: Page): Promise<void
 export async function waitForPointsRedemptionSectionReady(
   page: Page,
 ): Promise<void> {
-  await expect(page.getByRole("heading", { name: "🪙 積分商城" })).toBeVisible({
-    timeout: 30_000,
-  });
+  await gotoMemberCampaignsPage(page, "points");
   await expect(page.getByText(/載入積分商城/)).toBeHidden({
     timeout: 20_000,
   });
@@ -1973,18 +1979,12 @@ export async function tryClaimFlashCampaignViaUI(
   campaignName?: string,
 ): Promise<boolean> {
   try {
-    await gotoMemberRewardsPage(page);
+    await gotoMemberCampaignsPage(page, "flash");
     await page.waitForTimeout(2000);
 
-    const section = page.locator("section").filter({ hasText: "⚡ 限時搶券" });
-    const loaded = await section.isVisible({ timeout: 15_000 }).catch(() => false);
-    if (!loaded) {
-      return false;
-    }
-
     const card = campaignName
-      ? section.locator("div.rounded-2xl").filter({ hasText: campaignName })
-      : section.locator("div.rounded-2xl").first();
+      ? page.locator("div.rounded-2xl").filter({ hasText: campaignName })
+      : page.locator("div.rounded-2xl").first();
 
     if (!(await card.isVisible({ timeout: 10_000 }).catch(() => false))) {
       return false;

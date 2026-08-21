@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { getMerchantDashboardOverview } from "@/app/actions/merchant-dashboard";
-import { getMerchantFinanceSummary } from "@/app/actions/merchant-finance";
+import { getMerchantFinanceSummary, listMerchantFinanceSettlements } from "@/app/actions/merchant-finance";
 import {
   clearSessionCache,
   runAsSeller,
@@ -47,6 +47,27 @@ describe.skipIf(!hasBaseIntegrationEnv())(
       if (result.success) {
         expect(typeof result.data.monthEarned).toBe("number");
         expect(Array.isArray(result.data.recentSettlements)).toBe(true);
+      }
+    });
+
+    it("seller can load paginated settlements via RPC", async () => {
+      await warmSession("seller");
+
+      const result = await runAsSeller(async () =>
+        listMerchantFinanceSettlements({
+          page: 1,
+          pageSize: 10,
+          statusFilter: "all",
+          sort: "transferred_at-desc",
+        }),
+      );
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.page).toBeGreaterThanOrEqual(1);
+        expect(result.data.pageSize).toBe(10);
+        expect(result.data.totalPages).toBeGreaterThanOrEqual(1);
+        expect(Array.isArray(result.data.rows)).toBe(true);
       }
     });
 

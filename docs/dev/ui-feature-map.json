@@ -912,9 +912,9 @@
               "name": "會員獎勵與任務中心"
             },
             {
-              "id": "points-mall",
-              "role": "heading",
-              "pattern": "積分商城"
+              "id": "campaigns-hub-link",
+              "role": "link",
+              "pattern": "限時搶券.*積分商城"
             },
             {
               "id": "coupon-center",
@@ -1000,6 +1000,7 @@
       "kind": "page",
       "component": "app/profile/user/rewards/page.tsx",
       "partnerSpecs": [
+        "e2e/partner/member/p-e10-rewards-coupon.spec.ts",
         "e2e/partner/member/p-f03-member-rewards-moderation.spec.ts"
       ],
       "surfaces": [
@@ -1020,14 +1021,37 @@
               "name": "會員獎勵與任務中心"
             },
             {
-              "id": "points-mall",
-              "role": "heading",
-              "pattern": "積分商城"
+              "id": "campaigns-hub-link",
+              "role": "link",
+              "pattern": "限時搶券.*積分商城"
             },
             {
               "id": "coupon-center",
               "role": "heading",
               "pattern": "折價券中心"
+            }
+          ]
+        },
+        {
+          "id": "member-campaigns",
+          "path": "/profile/user/campaigns",
+          "role": "buyer",
+          "assertions": [
+            {
+              "type": "heading",
+              "name": "限時搶券 · 積分商城"
+            }
+          ],
+          "requiredElements": [
+            {
+              "id": "flash-tab",
+              "role": "button",
+              "name": "限時搶券"
+            },
+            {
+              "id": "points-tab",
+              "role": "button",
+              "name": "積分商城"
             }
           ]
         }
@@ -1526,12 +1550,27 @@
             {
               "id": "payout-history",
               "role": "heading",
-              "name": "近期撥款記錄"
+              "pattern": "撥款記錄"
             },
             {
               "id": "stripe-connect-heading",
               "role": "heading",
               "name": "Stripe Connect 帳戶"
+            },
+            {
+              "id": "finance-search",
+              "role": "searchbox",
+              "name": "訂單編號 / Transfer ID"
+            },
+            {
+              "id": "finance-apply-filter",
+              "role": "button",
+              "name": "套用篩選"
+            },
+            {
+              "id": "finance-status-all",
+              "role": "link",
+              "name": "全部"
             }
           ]
         }

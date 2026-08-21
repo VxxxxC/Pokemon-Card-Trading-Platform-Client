@@ -28,10 +28,15 @@ test.describe("Member rewards coupons", () => {
     });
 
     await expect(
-      page.getByRole("heading", { name: "🪙 積分商城" }),
+      page.getByRole("link", { name: /限時搶券.*積分商城/ }),
     ).toBeVisible({ timeout: 20_000 });
     await expect(
       page.getByRole("heading", { name: "🎟️ 我的全域平台折價券中心" }),
     ).toBeVisible({ timeout: 20_000 });
+
+    await page.goto("/profile/user/campaigns", { waitUntil: "domcontentloaded" });
+    await dismissBlockingOverlays(page);
+    await page.getByRole("button", { name: "積分商城" }).click();
+    await expect(page.getByText(/載入積分商城/)).toBeHidden({ timeout: 20_000 });
   });
 });

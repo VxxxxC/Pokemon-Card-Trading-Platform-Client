@@ -135,7 +135,7 @@ Fixture builder **只可**標 `// @rpc-edge-only` 用於 RPC 邊界／negative�
 | PR `tsc` + `lint` + unit | CC-UNIT |
 | `test:integration:rewards` | CC-INT rewards · member-auth-coupon（fixture） |
 | `test:e2e:rewards-gate:production` | CC-E2E rewards P0（**含 TC-E13**） |
-| `test:nightly:coverage` | platform CC-INT · P2 E2E · matrix soak |
+| `test:nightly:coverage` | platform CC-INT · cron TC-M01–M06 · appendix-A TC-M10–M42 · P2 E2E · matrix soak |
 | `test:production:gate:signoff` | 商業主線 + rewards production E2E |
 
 **原則：** P0 域至少 **CC-INT + CC-E2E** 其一不可長期為 ☐。

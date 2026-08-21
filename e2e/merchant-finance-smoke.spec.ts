@@ -18,7 +18,7 @@ test.describe("Merchant finance smoke (F-C-06)", () => {
     await expect(page.getByText("本月撥款收入（已結算）")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByRole("heading", { name: "近期撥款記錄" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /撥款記錄/ })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Stripe Connect 帳戶" }),
     ).toBeVisible();

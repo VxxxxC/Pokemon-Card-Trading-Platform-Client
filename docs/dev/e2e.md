@@ -499,7 +499,7 @@ E2E order in gate: `user-report` → `admin-moderation` → `report-outcome-noti
 CI:
 
 - [`.github/workflows/moderation-integration.yml`](../../.github/workflows/moderation-integration.yml) — label `moderation`, nightly, or `workflow_dispatch`; `bun run test:integration:moderation` + full `E2E_*` secrets.
-- [`.github/workflows/nightly-test-coverage.yml`](../../.github/workflows/nightly-test-coverage.yml) — **03:00 HKT** serial `bun run test:nightly:coverage` (L2 platform → L1 P2 E2E → L3 matrix soak); PR labels `platform` / `nightly-e2e`. SSOT: [test-coverage-ssot.md](./test-coverage-ssot.md) §8–§9.
+- [`.github/workflows/nightly-test-coverage.yml`](../../.github/workflows/nightly-test-coverage.yml) — **03:00 HKT** serial `bun run test:nightly:coverage` (L2 platform → L4 cron → L5 appendix-A incl. TC-M42 → L2 UI → L1 P2 E2E → L6 member → L3 matrix); PR labels `platform` / `nightly-e2e`. SSOT: [test-coverage-ssot.md](./test-coverage-ssot.md) §8–§9.
 - [`.github/workflows/rewards.yml`](../../.github/workflows/rewards.yml) — **05:00 HKT** schedule: vitest rewards + `test:e2e:rewards-gate:production` (no matrix); dispatch / PR label `rewards` runs full `test:e2e:rewards-gate`.
 
 ### Moderation Stripe refund smoke (I-H14, pre-release)

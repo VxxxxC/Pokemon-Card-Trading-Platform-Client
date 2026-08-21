@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
+import { listMerchantFinanceSettlements } from "@/app/actions/merchant-finance";
 import { maskStripeAccountId } from "@/lib/stripe/connect-dashboard";
 import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isStripeConnectAccountId } from "@/lib/stripe/sync-kyc-connect-flags";
 import { getOptionalAuthUser } from "@/lib/auth/session";
+import { parseMerchantFinanceQuery } from "@/lib/merchant-finance/query-params";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { Tables } from "@/types/supabase";
-import { getMerchantFinanceSummary } from "@/app/actions/merchant-finance";
 import { MerchantFinanceClient } from "./MerchantFinanceClient";
 
 type ProfileRoleRow = Pick<Tables<"profiles">, "role">;
@@ -20,7 +21,13 @@ type KycConnectRow = Pick<
   | "stripe_payouts_enabled"
 >;
 
-export async function MerchantFinancePageData() {
+type MerchantFinancePageDataProps = {
+  searchParams?: Record<string, string | string[] | undefined>;
+};
+
+export async function MerchantFinancePageData({
+  searchParams = {},
+}: MerchantFinancePageDataProps) {
   if (!isSupabaseConfigured()) {
     redirect("/auth");
   }
@@ -54,13 +61,8 @@ export async function MerchantFinancePageData() {
     ? kycRecord.stripe_account_id
     : null;
 
-  const financeSummary = await getMerchantFinanceSummary();
-  const monthEarned = financeSummary.success
-    ? financeSummary.data.monthEarned
-    : 0;
-  const recentSettlements = financeSummary.success
-    ? financeSummary.data.recentSettlements
-    : [];
+  const query = parseMerchantFinanceQuery(searchParams);
+  const settlementsPage = await listMerchantFinanceSettlements(query);
 
   return (
     <MerchantFinanceClient
@@ -69,8 +71,20 @@ export async function MerchantFinancePageData() {
       stripeAccountLabel={
         stripeAccountId ? maskStripeAccountId(stripeAccountId) : null
       }
-      monthEarned={monthEarned}
-      recentSettlements={recentSettlements}
+      query={query}
+      settlementsPage={
+        settlementsPage.success
+          ? settlementsPage.data
+          : {
+              monthEarned: 0,
+              rows: [],
+              total: 0,
+              page: query.page,
+              pageSize: query.pageSize,
+              totalPages: 1,
+            }
+      }
+      loadError={settlementsPage.success ? null : settlementsPage.error}
     />
   );
 }

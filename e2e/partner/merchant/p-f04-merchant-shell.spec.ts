@@ -51,6 +51,14 @@ test.describe("P-F04 merchant ops and member-seller trading", () => {
     await expect(page.getByText("本月撥款收入（已結算）")).toBeVisible({
       timeout: 20_000,
     });
+    await expect(page.getByRole("heading", { name: /撥款記錄/ })).toBeVisible();
+    await expect(
+      page.getByRole("searchbox", { name: "訂單編號 / Transfer ID" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "套用篩選" }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "全部" })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Stripe Connect 帳戶" }),
     ).toBeVisible();

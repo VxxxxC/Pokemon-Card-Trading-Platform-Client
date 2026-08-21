@@ -91,10 +91,7 @@ test.describe("Platform rewards Phase 4 E2E", () => {
     await gotoMemberRewardsPage(page);
     await waitForPointsRedemptionSectionReady(page);
 
-    const pointsSection = page.locator("section").filter({
-      has: page.getByRole("heading", { name: "🪙 積分商城" }),
-    });
-    const catalogCard = pointsSection
+    const catalogCard = page
       .locator("div.rounded-2xl")
       .filter({ has: page.getByText(templateTitle, { exact: true }) });
     await expect(catalogCard).toBeVisible({ timeout: 20_000 });

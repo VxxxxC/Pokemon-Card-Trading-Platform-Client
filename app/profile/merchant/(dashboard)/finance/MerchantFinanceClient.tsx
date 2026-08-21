@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type {
-  ListMerchantFinanceSettlementsInput,
+  MerchantFinanceSettlementsPage,
   MerchantFinanceSettlement,
   MerchantFinanceSort,
   MerchantFinanceStatusFilter,
 } from "@/app/actions/merchant-finance";
-import { listMerchantFinanceSettlements } from "@/app/actions/merchant-finance";
 import { Pagination } from "@/app/components/ui/Pagination";
+import {
+  buildMerchantFinanceHref,
+  type MerchantFinanceQuery,
+} from "@/lib/merchant-finance/query-params";
 import {
   formatPayoutStatusLabel,
   getPayoutStatusBadgeClass,
@@ -19,15 +23,15 @@ import {
   formatMerchantPayoutStatusLabel,
 } from "@/lib/merchant-order/merchant-payout-hold";
 import { truncateStripeId } from "@/lib/stripe/display";
-import Link from "next/link";
 import { toast } from "sonner";
 
 type MerchantFinanceClientProps = {
   stripeConnected: boolean;
   stripeAccountId: string | null;
   stripeAccountLabel: string | null;
-  monthEarned: number;
-  recentSettlements: MerchantFinanceSettlement[];
+  query: MerchantFinanceQuery;
+  settlementsPage: MerchantFinanceSettlementsPage;
+  loadError: string | null;
 };
 
 const STATUS_FILTERS: { value: MerchantFinanceStatusFilter; label: string }[] =
@@ -98,7 +102,13 @@ function formatSettlementStatusLabel(tx: MerchantFinanceSettlement): string {
   return formatPayoutStatusLabel(normalizePayoutStatus(tx.payoutStatus));
 }
 
-function SettlementRow({ tx, showTopBorder }: { tx: MerchantFinanceSettlement; showTopBorder: boolean }) {
+function SettlementRow({
+  tx,
+  showTopBorder,
+}: {
+  tx: MerchantFinanceSettlement;
+  showTopBorder: boolean;
+}) {
   const payoutStatus = normalizePayoutStatus(tx.payoutStatus);
 
   return (
@@ -183,54 +193,12 @@ export function MerchantFinanceClient({
   stripeConnected,
   stripeAccountId,
   stripeAccountLabel,
-  monthEarned: initialMonthEarned,
-  recentSettlements: initialSettlements,
+  query,
+  settlementsPage,
+  loadError,
 }: MerchantFinanceClientProps) {
-  const [monthEarned, setMonthEarned] = useState(initialMonthEarned);
-  const [settlements, setSettlements] = useState(initialSettlements);
-  const [total, setTotal] = useState(initialSettlements.length);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [statusFilter, setStatusFilter] =
-    useState<MerchantFinanceStatusFilter>("all");
-  const [sort, setSort] = useState<MerchantFinanceSort>("transferred_at-desc");
-  const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const loadSettlements = useCallback(
-    (overrides: Partial<ListMerchantFinanceSettlementsInput> = {}) => {
-      startTransition(async () => {
-        const result = await listMerchantFinanceSettlements({
-          page,
-          pageSize: 10,
-          statusFilter,
-          sort,
-          search: search.trim() || undefined,
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
-          ...overrides,
-        });
-
-        if (!result.success) {
-          toast.error(result.error);
-          return;
-        }
-
-        setSettlements(result.data.rows);
-        setTotal(result.data.total);
-        setPage(result.data.page);
-        setTotalPages(result.data.totalPages);
-        setMonthEarned(result.data.monthEarned);
-      });
-    },
-    [dateFrom, dateTo, page, search, sort, statusFilter],
-  );
-
-  useEffect(() => {
-    loadSettlements();
-  }, [loadSettlements]);
+  const router = useRouter();
+  const { rows, total, page, totalPages, monthEarned } = settlementsPage;
 
   return (
     <>
@@ -259,41 +227,37 @@ export function MerchantFinanceClient({
           >
             撥款記錄（{total}）
           </h2>
-          <div className="flex flex-wrap gap-2 items-center">
+          <form
+            method="get"
+            action="/profile/merchant/finance"
+            className="flex flex-wrap gap-2 items-center"
+          >
+            <input type="hidden" name="page" value="1" />
+            {query.statusFilter !== "all" ? (
+              <input type="hidden" name="status" value={query.statusFilter} />
+            ) : null}
             <input
               type="search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
+              name="search"
+              defaultValue={query.search ?? ""}
               placeholder="訂單編號 / Transfer ID"
               className="h-9 px-3 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary min-w-[180px]"
             />
             <input
               type="date"
-              value={dateFrom}
-              onChange={(event) => {
-                setDateFrom(event.target.value);
-                setPage(1);
-              }}
+              name="dateFrom"
+              defaultValue={query.dateFrom ?? ""}
               className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-mono text-[11px] text-text-primary"
             />
             <input
               type="date"
-              value={dateTo}
-              onChange={(event) => {
-                setDateTo(event.target.value);
-                setPage(1);
-              }}
+              name="dateTo"
+              defaultValue={query.dateTo ?? ""}
               className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-mono text-[11px] text-text-primary"
             />
             <select
-              value={sort}
-              onChange={(event) => {
-                setSort(event.target.value as MerchantFinanceSort);
-                setPage(1);
-              }}
+              name="sort"
+              defaultValue={query.sort}
               className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary"
             >
               {SORT_OPTIONS.map((option) => (
@@ -302,44 +266,48 @@ export function MerchantFinanceClient({
                 </option>
               ))}
             </select>
-          </div>
+            <button
+              type="submit"
+              className="h-9 px-3 rounded-lg border border-brand/30 font-mono text-[11px] text-brand"
+            >
+              套用篩選
+            </button>
+          </form>
         </div>
 
         <div className="flex gap-1.5 flex-wrap">
           {STATUS_FILTERS.map((filter) => {
-            const isActive = statusFilter === filter.value;
+            const isActive = query.statusFilter === filter.value;
             return (
-              <button
+              <Link
                 key={filter.value}
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  setStatusFilter(filter.value);
-                  setPage(1);
-                }}
-                className={`font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                href={buildMerchantFinanceHref(query, {
+                  statusFilter: filter.value,
+                  page: 1,
+                })}
+                className={`font-mono text-[11px] px-3 py-1 rounded-lg border transition-all ${
                   isActive
                     ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold"
                     : "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated"
                 }`}
               >
                 {filter.label}
-              </button>
+              </Link>
             );
           })}
         </div>
 
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {isPending && settlements.length === 0 ? (
-            <p className="px-4 py-8 text-center font-mono text-[12px] text-text-secondary">
-              載入中…
+          {loadError ? (
+            <p className="px-4 py-8 text-center font-mono text-[12px] text-warning">
+              {loadError}
             </p>
-          ) : settlements.length === 0 ? (
+          ) : rows.length === 0 ? (
             <p className="px-4 py-8 text-center font-mono text-[12px] text-text-secondary">
               尚無撥款記錄
             </p>
           ) : (
-            settlements.map((tx, i) => (
+            rows.map((tx, i) => (
               <SettlementRow key={tx.orderId} tx={tx} showTopBorder={i > 0} />
             ))
           )}
@@ -348,10 +316,12 @@ export function MerchantFinanceClient({
         <Pagination
           currentPage={page}
           totalPages={totalPages}
-          onPageChange={setPage}
+          onPageChange={(nextPage) => {
+            router.push(buildMerchantFinanceHref(query, { page: nextPage }));
+          }}
           itemLabel="筆撥款"
           totalItems={total}
-          itemsPerPage={10}
+          itemsPerPage={query.pageSize}
           hideControls={totalPages <= 1}
           enableScroll={false}
         />

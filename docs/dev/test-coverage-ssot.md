@@ -348,13 +348,13 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **L2** | Platform integration nightly | TC-N01–N03 | SC-T02 | ☑ |
 | **L3** | Matrix soak → gate | TC-P05 · TC-N05 | SC-G05 · SC-T01 | ☑ 3/3 |
 | **L4** | Cron HTTP | TC-M01–M06 | SC-M01 | ☑ |
-| **L5** | Connect/KYC | TC-M10–M11 | SC-M02 | ☐ |
+| **L5** | Connect/KYC · upload · trading · **TC-M42 finance RPC** | TC-M10–M25 · M30–M31 · M40–M42 | SC-M02 | ☑ |
 | **L6** | Member-trading 入 CI | TC-E08 · E11 · J-AUTH-01 | SC-J05 · SC-T03 | ◐ |
 | **L7** | Admin default contract (CC-INT) | J-CPN-07 | SC-J03 | ☑ |
 | **L8** | 全站 CC | CC-PLAT/RWD/GRD | SC-CC01–04 | ☐ |
 | **L9** | 功能表全 ☑（registry §1–4） | F-M/C/A/S | SC-FX-ALL | ☐ |
 | **L10** | Security mutation 入 certify | SEC-S03 · S06 | SC-S03 · SC-S06 | ☐ |
-| **L11** | Nightly 接入所有 Nightly† spec | registry † 行 | SC-G02 | ☐ |
+| **L11** | Nightly 接入所有 Nightly† spec | registry † 行 | SC-G02 | ◐ |
 
 ---
 
@@ -362,7 +362,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 
 | Workflow | Schedule | 內容 | 相關 TC |
 |----------|----------|------|---------|
-| **nightly-test-coverage** | 03:00 HKT | L2 platform INT → L1 P2 E2E → L3 matrix（**唔含** `test:integration:rewards`） | E01–E03 · P05 · N01–N03 · N05 |
+| **nightly-test-coverage** | 03:00 HKT | L2 platform INT → **L4 cron (TC-M01–M06)** → **L5 appendix-A (TC-M10–M42 incl. M42 RPC)** → L2 UI → L1 P2 E2E → L6 member → L3 matrix（**唔含** `test:integration:rewards`） | E01–E03 · **M01–M06 · M10–M42** · P05 · N01–N03 · N05 |
 | **rewards.yml** `rewards-integration` | 05:00 HKT 前 | `test:integration:rewards`（**CC-INT**） | J-CPN-07 · member-auth-coupon |
 | **rewards.yml** `rewards-e2e` | 05:00 HKT | `test:e2e:rewards-gate:production`（**TC-E13** · C2C-ADM-1b） | J-CPN-01–05 |
 | **rewards.yml** dispatch / PR `rewards` | on-demand | `test:e2e:rewards-gate`（full + matrix） | + P05 matrix |

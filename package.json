@@ -56,6 +56,7 @@
     "test:staging:certify:check-ssot": "bash scripts/check-staging-certification.sh",
     "test:partner:check-ssot": "bash scripts/check-partner-regression.sh",
     "test:ui:check-map": "bash scripts/check-ui-feature-map.sh",
+    "test:partner:ui-coverage": "bun run scripts/validate-partner-ui-coverage.ts",
     "test:e2e:ui-l2": "playwright test e2e/partner/system/p-ui-routes.spec.ts --project=setup --project=guest --project=buyer --project=seller",
     "test:e2e:partner-m0": "playwright test e2e/partner/system/p-m0-staging-smoke.spec.ts --project=setup --project=guest --project=buyer",
     "test:e2e:partner-ui": "playwright test e2e/partner/member/p-e04-marketplace-search.spec.ts e2e/partner/member/p-e05-merchant-buy-now.spec.ts e2e/partner/member/p-e06-member-dashboard.spec.ts e2e/partner/member/p-e07-member-collection.spec.ts --project=setup --project=guest --project=buyer",

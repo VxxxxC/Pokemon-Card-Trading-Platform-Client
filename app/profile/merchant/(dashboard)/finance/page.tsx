@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { use } from "react";
 import { MerchantFinancePageData } from "./MerchantFinancePageData";
 
 export const metadata: Metadata = {
@@ -6,6 +7,13 @@ export const metadata: Metadata = {
   description: "查看本月總收入、資金流水記錄及 Stripe Connect 帳戶",
 };
 
-export default function MerchantFinancePage() {
-  return <MerchantFinancePageData />;
+type MerchantFinancePageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default function MerchantFinancePage({
+  searchParams,
+}: MerchantFinancePageProps) {
+  const params = use(searchParams);
+  return <MerchantFinancePageData searchParams={params} />;
 }

@@ -40,7 +40,7 @@ const TERMS_SHELL = [
 
 const REWARDS_SHELL = [
   { id: "rewards-center-heading", role: "heading", name: "會員獎勵與任務中心" },
-  { id: "points-mall", role: "heading", pattern: "積分商城" },
+  { id: "campaigns-hub-link", role: "link", pattern: "限時搶券.*積分商城" },
   { id: "coupon-center", role: "heading", pattern: "折價券中心" },
 ];
 
@@ -162,7 +162,7 @@ const BY_SURFACE: Record<string, object[]> = {
   ],
   "merchant-finance": [
     { id: "monthly-payout", role: "text", name: "本月撥款收入（已結算）" },
-    { id: "payout-history", role: "heading", name: "近期撥款記錄" },
+    { id: "payout-history", role: "heading", pattern: "撥款記錄" },
     { id: "stripe-connect-heading", role: "heading", name: "Stripe Connect 帳戶" },
   ],
   "merchant-performance": [

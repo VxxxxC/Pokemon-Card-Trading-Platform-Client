@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 1 nightly test coverage — serial L2 → L1 → L3 on staging fixtures.
+# Phase 1 nightly test coverage — serial L2 → L4 cron → L5 appendix-A → L1 → L3 on staging fixtures.
 # SSOT: docs/dev/test-coverage-ssot.md §9
 #
 # Prerequisites: Supabase + E2E_* in .env.local or CI secrets (see check-nightly-env.sh).
@@ -46,6 +46,12 @@ run_step "check-nightly-env" bash scripts/check-nightly-env.sh
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
 run_step "L2 platform integration" bun run test:integration:platform
+if [[ "$failed" -ne 0 ]]; then exit 1; fi
+
+run_step "L4 cron HTTP integration (TC-M01–M06)" bun run test:integration:cron-routes
+if [[ "$failed" -ne 0 ]]; then exit 1; fi
+
+run_step "L5 appendix-A integration (TC-M10–M25 · M30–M31 · M40–M42)" bun run test:integration:appendix-a
 if [[ "$failed" -ne 0 ]]; then exit 1; fi
 
 run_step "start production server for E2E" e2e_start_production_server

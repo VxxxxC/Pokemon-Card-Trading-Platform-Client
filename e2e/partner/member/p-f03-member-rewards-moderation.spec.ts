@@ -38,11 +38,17 @@ test.describe("P-F03 member rewards and report", () => {
       timeout: 20_000,
     });
     await expect(
-      page.getByRole("heading", { name: "🪙 積分商城" }),
+      page.getByRole("link", { name: /限時搶券.*積分商城/ }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "🎟️ 我的全域平台折價券中心" }),
     ).toBeVisible();
+
+    await page.goto("/profile/user/campaigns", { waitUntil: "domcontentloaded" });
+    await dismissBlockingOverlays(page);
+    await expect(
+      page.getByRole("button", { name: "限時搶券" }),
+    ).toBeVisible({ timeout: 20_000 });
 
     await page.goto(buildPublicProfilePath(fixtureResult.fixture.sellerId), {
       waitUntil: "domcontentloaded",
