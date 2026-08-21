@@ -38,6 +38,8 @@ import {
   LISTING_DESCRIPTION_MAX,
   validateImageFile,
 } from "@/lib/listings/validation";
+import { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
+import { useListingAuthService } from "@/lib/listings/use-listing-auth-service";
 
 type ListingEditDialogProps = {
   open: boolean;
@@ -76,6 +78,15 @@ export function ListingEditDialog({
   const [activeReplaceIndex, setActiveReplaceIndex] = useState<number | null>(
     null,
   );
+  const {
+    acceptsBuyerAuth,
+    setAcceptsBuyerAuth,
+    resolvedUseAuthentication,
+    showListingAuthToggle,
+  } = useListingAuthService({
+    gradingOptionId,
+    initialAcceptsBuyerAuth: item.useAuthentication,
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoSlotsRef = useRef<EditListingPhotoSlot[]>(photoSlots);
@@ -186,6 +197,7 @@ export function ListingEditDialog({
       gradingOptionId,
       price: parsedPrice,
       sellerDescription: sellerDescription.trim() || undefined,
+      useAuthentication: resolvedUseAuthentication,
       isActive,
       sellerPersona: inventoryContext === "merchant" ? "merchant" : undefined,
       extraShippingFee:
@@ -230,7 +242,11 @@ export function ListingEditDialog({
             </p>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="mt-3 space-y-4">
+          <form
+            key={item.id}
+            onSubmit={handleSubmit}
+            className="mt-3 space-y-4"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
                 <label
@@ -283,6 +299,13 @@ export function ListingEditDialog({
                 </Select>
               </div>
             </div>
+
+            {showListingAuthToggle ? (
+              <ListingAuthServiceToggle
+                checked={acceptsBuyerAuth}
+                onCheckedChange={setAcceptsBuyerAuth}
+              />
+            ) : null}
 
             {inventoryContext === "merchant" ? (
               <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">

@@ -2024,6 +2024,30 @@ export async function deletePendingReports(params: {
   await deleteModerationCasesForSubject(params.targetId);
 }
 
+export async function acknowledgeAllReportOutcomesForReporter(
+  reporterId: string,
+): Promise<number> {
+  const admin = createE2eAdminClient();
+  const acknowledgedAt = new Date().toISOString();
+  const { data, error, status } = await admin
+    .from("reports")
+    .update({ outcome_acknowledged_at: acknowledgedAt })
+    .eq("reporter_id", reporterId)
+    .is("outcome_acknowledged_at", null)
+    .select("id");
+
+  if (error) {
+    if (isSupabaseAccessDenied(error, status)) {
+      return 0;
+    }
+    throw new Error(
+      `[acknowledgeAllReportOutcomesForReporter] ${error.message}`,
+    );
+  }
+
+  return data?.length ?? 0;
+}
+
 export async function countPendingReports(params: {
   reporterId: string;
   targetId: string;

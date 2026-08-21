@@ -359,6 +359,7 @@ function parseUpdateCardListingForm(formData: FormData): {
     price: number;
     sellerDescription?: string;
     isActive: boolean;
+    useAuthentication: boolean;
     sellerPersona?: ListingSellerPersona;
     extraShippingFee: number;
   };
@@ -378,6 +379,9 @@ function parseUpdateCardListingForm(formData: FormData): {
     isActiveRaw === null
       ? true
       : isActiveRaw === "true" || isActiveRaw === "on";
+  const useAuthenticationRaw = formData.get("useAuthentication");
+  const useAuthentication =
+    useAuthenticationRaw === "true" || useAuthenticationRaw === "on";
   const sellerPersonaRaw = String(formData.get("sellerPersona") ?? "").trim();
   const sellerPersona =
     sellerPersonaRaw === "merchant" || sellerPersonaRaw === "member"
@@ -399,6 +403,7 @@ function parseUpdateCardListingForm(formData: FormData): {
       price,
       sellerDescription: sellerDescription || undefined,
       isActive,
+      useAuthentication,
       sellerPersona,
       extraShippingFee: extraShippingParsed.ok ? extraShippingParsed.amount : 0,
     },
@@ -570,9 +575,7 @@ export async function updateCardListing(
         seller_description: fields.sellerDescription ?? null,
         status: fields.isActive ? "active" : "inactive",
         use_authentication:
-          grading.grader === "RAW"
-            ? existingListing.use_authentication
-            : false,
+          grading.grader === "RAW" ? fields.useAuthentication : false,
         extra_shipping_fee: extraShippingFee,
       })
       .eq("id", fields.listingId)

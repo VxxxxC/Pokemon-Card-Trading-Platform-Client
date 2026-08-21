@@ -84,6 +84,7 @@ type MemberOrderCompleteConfirmDialogProps = {
   isActionLoading?: boolean;
   onConfirm: () => Promise<boolean>;
   triggerClassName: string;
+  triggerLabel?: string;
 };
 
 export function MemberOrderCompleteConfirmDialog({
@@ -91,6 +92,7 @@ export function MemberOrderCompleteConfirmDialog({
   isActionLoading = false,
   onConfirm,
   triggerClassName,
+  triggerLabel = "確認完成交易",
 }: MemberOrderCompleteConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   const [checks, setChecks] = useState<ChecklistState>(EMPTY_CHECKLIST);
@@ -134,7 +136,7 @@ export function MemberOrderCompleteConfirmDialog({
         disabled={disabled || isActionLoading}
         className={triggerClassName}
       >
-        {isActionLoading ? "處理中…" : "確認完成交易"}
+        {isActionLoading ? "處理中…" : triggerLabel}
       </AlertDialogTrigger>
 
       <AlertDialogContent className="max-w-md rounded-2xl border border-success/25 bg-[#26211C] p-6 text-[#eae1da]">

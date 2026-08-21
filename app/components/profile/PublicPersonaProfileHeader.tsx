@@ -306,6 +306,7 @@ export function PublicPersonaProfileHeader({
         {variant === "public-profile" ? (
           <button
             type="button"
+            aria-label="舉報用戶"
             onClick={() => setIsReportOpen(true)}
             className="absolute top-2 left-2 shrink-0 flex items-center gap-1 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[12px] font-medium text-red-400/90 transition-colors font-sans lg:border-transparent lg:bg-transparent lg:text-text-disabled/70 lg:hover:text-red-500 cursor-pointer select-none focus:outline-none"
           >

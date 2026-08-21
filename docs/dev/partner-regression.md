@@ -31,14 +31,14 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 
 | 匯總 ID | 條件 | 進度 |
 |---------|------|------|
-| **SC-P0** | §2 [#A] P-A01–P-A08 **全 ☑** | ☑ |
+| **SC-P0** | §2 [#A] P-A01–P-A09 **全 ☑** | ☑ |
 | **SC-P1** | §3 [#B] 全 ☑ | ☑ |
 | **SC-P2** | §4 [#C] P-C01–P-C03 **全 ☑**（P-C04 預留） | ☑ |
 | **SC-P-FX** | §5 每 F-* 至少 1 條 P-TC ☑（Phase 3） | ☑ |
 | **SC-P-M0** | Partner M0 staging smoke（[PARTNER_QA.md](./PARTNER_QA.md)） | ☑ |
 | **SC-P-ALL** | SC-P0 + certify 綠 + M0 | ☐（M0 ☑ · certify 待 L2 fix 重跑） |
 
-**統計（2026-08-20）：** P0 **8/8 ☑** · P1 **9/9 ☑** · P2 **3/3 ☑**（P-C04 預留） · F-* Partner 覆蓋 **67/67 ☑**。
+**統計（2026-08-21）：** P0 **9/9 ☑** · P1 **9/9 ☑** · P2 **3/3 ☑**（P-C04 預留） · F-* Partner 覆蓋 **67/67 ☑**。
 
 ---
 
@@ -56,6 +56,7 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-A06** | C2B merchant seller 實收（待驗） | F-C-11 · F-C-13 | `e2e/partner/merchant/p-a06-c2b-seller-invoice.spec.ts` | Partner | Partner nightly | ☑ |
 | **P-A07** | Chat 㩒 member 頭像 → 錯跳 merchant profile | F-M-13 | `e2e/partner/system/p-a07-chat-avatar-persona.spec.ts` | Partner | Partner nightly | ☑ |
 | **P-A08** | 新對話收件匣 icon 冇綠點 | F-M-13 | `e2e/partner/system/p-a08-inbox-unread-badge.spec.ts` | Partner | Partner nightly | ☑ |
+| **P-A09** | C2C 鑑定確認收貨冇 confirm dialog | F-M-17 | `e2e/partner/member/p-a09-c2c-auth-confirm-dialog.spec.ts` | Partner | Partner nightly | ☑ |
 
 **外部 ID 對照：** `bugs_finding.org` Stripe/Escrow § Member-Merchant § Chatroom [#A] 項。
 
@@ -225,25 +226,26 @@ bun run test:staging:certify
 
 | ☐ | 項目 |
 |---|------|
-| ☐ | **Listing card asset workflow** — 合併 `AddAssetModal.tsx`、`ListingEditDialog.tsx`（及收藏品 `AddAssetModal` hobby 路徑）嘅 grading／鑑定 toggle logic 為同一 global component；現有 `app/components/listings/ListingCardAssetWorkflow.tsx` 僅 export barrel，**待抽 shared hook + UI**。後續 [#A] 商品管理裸卡鑑定 toggle 依賴此項。 |
+| ☐ | **Listing card asset workflow** — 合併 `AddAssetModal.tsx`、`ListingEditDialog.tsx`（及收藏品 `AddAssetModal` hobby 路徑）嘅 grading／鑑定 toggle logic 為同一 global component；`ListingAuthServiceToggle` + `useListingAuthService` 已抽 shared SSOT（2026-08-21），後續可再 consolidate modal shell。 |
 
 ### Member
 
-| ☐ | 域 | [#A] 摘要 | 備註 |
+| ☑ | 域 | [#A] 摘要 | 備註 |
 |---|-----|----------|------|
-| ☐ | Order Detail | **[C2C 鑑定訂單]** 確認收貨 button 欠缺 confirm dialog | B2C 鑑定已有 **P-A04**；Member C2C auth 路徑仍缺 |
+| ☑ | Order Detail | **[C2C 鑑定訂單]** 確認收貨 button 欠缺 confirm dialog | **P-A09** · B2C 仍用 **P-A04** |
 
 ### Member / Merchant
 
 | ☐ | 域 | [#A] 摘要 | 備註 |
 |---|-----|----------|------|
-| ☐ | 商品管理 | 編輯商品改 **裸卡** 後，Marketplace Product Card 已顯示裸卡，但 **編輯對話框**「准許鑑定服務」toggle 仍 **Disable**（無法開啟） | 需先完成 **Component 前置**；與 **P-A01**（marketplace 買家側 toggle）為不同 surface |
+| ☑ | 商品管理 | 編輯商品改 **裸卡** 後，Marketplace Product Card 已顯示裸卡，但 **編輯對話框**「准許鑑定服務」toggle 仍 **Disable**（無法開啟） | `ListingEditDialog` + `updateCardListing` 已接 `useAuthentication` |
 
 ### 已修（2026-08-21）
 
 | ☑ | 域 | 摘要 | Spec |
 |---|-----|------|------|
 | ☑ | Checkout | C2C 鑑定 checkout breakdown 運費（inbound/outbound）prepare 前顯示 $0 | **P-E08** 第二 test · `resolveAuthEscrowSfLegFeeHkd` |
+| ☑ | Order Detail | C2C 鑑定確認收貨 confirm dialog | **P-A09** · `MemberOrderCompleteConfirmDialog` |
 
 ---
 

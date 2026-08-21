@@ -765,7 +765,7 @@ export function GlobalChatConsole({
   const isThreadLoading =
     Boolean(activeRoomId) && threadLoadingRoomId === activeRoomId;
 
-  const { loadingOlder, handleScroll, showAllHistoryLoaded } =
+  const { loadingOlder, handleScroll, showAllHistoryLoaded, topSentinelRef } =
     useChatThreadPagination({
       scrollRef,
       activeRoomId,
@@ -1062,6 +1062,7 @@ export function GlobalChatConsole({
                   已載入全部歷史訊息
                 </p>
               ) : null}
+              <div ref={topSentinelRef} aria-hidden className="h-px w-full shrink-0" />
               <MessageThread
                 renderList={renderList}
                 currentUserId={currentUserId}
@@ -1351,6 +1352,7 @@ export function GlobalChatConsole({
                     已載入全部歷史訊息
                   </p>
                 ) : null}
+                <div ref={topSentinelRef} aria-hidden className="h-px w-full shrink-0" />
                 <MobileMessageThread
                   renderList={renderList}
                   currentUserId={currentUserId}

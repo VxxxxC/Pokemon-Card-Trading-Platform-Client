@@ -243,9 +243,9 @@ export function MemberOrderDetailView({
     onRefresh();
   };
 
-  const handleConfirmReceipt = async () => {
+  const handleConfirmReceipt = async (): Promise<boolean> => {
     if (isActionLoading) {
-      return;
+      return false;
     }
 
     setIsActionLoading(true);
@@ -254,7 +254,7 @@ export function MemberOrderDetailView({
 
     if (!result.success) {
       toast.error(result.error);
-      return;
+      return false;
     }
 
     toast.success("已確認收貨，交易完成！");
@@ -264,6 +264,8 @@ export function MemberOrderDetailView({
     if (onOpenReview) {
       onOpenReview(order.id, order.counterparty.id);
     }
+
+    return true;
   };
 
   const handleOpenReview = () => {
@@ -785,20 +787,23 @@ export function MemberOrderDetailView({
               {(isMerchantBuyerOrder
                 ? order.canCompleteMerchantPurchase
                 : order.canConfirmReceipt) ? (
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={() =>
-                    void (
-                      isMerchantBuyerOrder
-                        ? handleComplete()
-                        : handleConfirmReceipt()
-                    )
-                  }
-                  className="w-full h-10 rounded-xl bg-success text-white font-semibold text-[13px] disabled:opacity-50"
-                >
-                  確認收貨
-                </button>
+                isMerchantBuyerOrder ? (
+                  <MemberOrderCompleteConfirmDialog
+                    disabled={isActionLoading}
+                    isActionLoading={isActionLoading}
+                    onConfirm={handleComplete}
+                    triggerLabel="確認收貨"
+                    triggerClassName="w-full h-10 rounded-xl bg-success text-white font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                ) : (
+                  <MemberOrderCompleteConfirmDialog
+                    disabled={isActionLoading}
+                    isActionLoading={isActionLoading}
+                    onConfirm={handleConfirmReceipt}
+                    triggerLabel="確認收貨"
+                    triggerClassName="w-full h-10 rounded-xl bg-success text-white font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                )
               ) : null}
             </div>
           ) : null}

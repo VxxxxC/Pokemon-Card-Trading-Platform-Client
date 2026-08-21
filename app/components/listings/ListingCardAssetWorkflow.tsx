@@ -11,6 +11,8 @@ export {
   triggerGlobalAddAssetModal,
 } from "@/app/components/shared/AddAssetModal";
 export { ListingEditDialog } from "@/app/components/merchant/ListingEditDialog";
+export { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
+export { useListingAuthService } from "@/lib/listings/use-listing-auth-service";
 export {
   buildEditListingPhotoSlots,
   createEmptyCreatePhotoSlots,

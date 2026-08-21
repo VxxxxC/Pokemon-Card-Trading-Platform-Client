@@ -813,12 +813,91 @@ export async function waitForPointsRedemptionSectionReady(
   page: Page,
 ): Promise<void> {
   await gotoMemberCampaignsPage(page, "points");
+
+  await expect(page.getByText("載入積分商城…")).toBeHidden({
+    timeout: 60_000,
+  });
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await dismissBlockingOverlays(page);
+    await dismissRewardUnlockedModal(page);
+
+    const ready = page
+      .getByText("積分商城暫無可兌換商品")
+      .or(page.getByRole("button", { name: "兌換" }).first())
+      .or(page.getByText(/無法載入積分商城/));
+    if (await ready.isVisible().catch(() => false)) {
+      return;
+    }
+    await page.waitForTimeout(500);
+  }
+
   await expect(
     page
       .getByText("積分商城暫無可兌換商品")
       .or(page.getByRole("button", { name: "兌換" }).first())
       .or(page.getByText(/無法載入積分商城/)),
-  ).toBeVisible({ timeout: 45_000 });
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+export function locatePointsCatalogCard(page: Page, templateTitle: string) {
+  return page
+    .locator("div.rounded-2xl")
+    .filter({ has: page.getByText(templateTitle, { exact: true }) });
+}
+
+/** Paginated catalog (200+ stale rows in E2E) — sort high→low then walk pages. */
+export async function findPointsCatalogCardByTitle(
+  page: Page,
+  templateTitle: string,
+) {
+  const buyerId = await getBuyerProfileIdFromEnv();
+  if (buyerId) {
+    await acknowledgePendingRewardGrantsForUser(buyerId);
+  }
+
+  await waitForPointsRedemptionSectionReady(page);
+
+  const sortSelect = page.locator("select").filter({
+    has: page.locator('option[value="points_desc"]'),
+  });
+  if (await sortSelect.isVisible().catch(() => false)) {
+    await sortSelect.selectOption("points_desc");
+    await page.waitForTimeout(400);
+  }
+
+  const card = locatePointsCatalogCard(page, templateTitle);
+  const nextPage = page.getByRole("button", { name: "下一頁" });
+  let visitedFirstPage = false;
+
+  await expect
+    .poll(
+      async () => {
+        if (await card.isVisible().catch(() => false)) {
+          return true;
+        }
+        if (!visitedFirstPage) {
+          visitedFirstPage = true;
+          const firstPage = page.getByRole("button", { name: "1" });
+          if (await firstPage.isVisible().catch(() => false)) {
+            await firstPage.click();
+            await page.waitForTimeout(300);
+            if (await card.isVisible().catch(() => false)) {
+              return true;
+            }
+          }
+        }
+        if (await nextPage.isEnabled().catch(() => false)) {
+          await nextPage.click();
+          await page.waitForTimeout(300);
+        }
+        return false;
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(true);
+
+  return card;
 }
 
 export async function getPointsCatalogIdByTemplateTitle(

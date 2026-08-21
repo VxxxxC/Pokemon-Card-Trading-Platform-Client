@@ -3,11 +3,11 @@ import { getProfileIdByEmail } from "./fixtures/supabase-admin";
 import { hasBuyerAuthFixtures } from "./fixtures/test-data";
 import {
   findLatestUserRewardForTemplate,
+  findPointsCatalogCardByTitle,
   getRewardTemplateIdByTitle,
   gotoMemberRewardsPage,
   publishRewardActivityViaAdmin,
   seedBuyerPointsForE2e,
-  waitForPointsRedemptionSectionReady,
 } from "./helpers/platform-rewards";
 
 function readEnv(key: string): string | undefined {
@@ -88,13 +88,8 @@ test.describe("Platform rewards Phase 4 E2E", () => {
     }
 
     await seedBuyerPointsForE2e(buyerUserId, 500);
-    await gotoMemberRewardsPage(page);
-    await waitForPointsRedemptionSectionReady(page);
 
-    const catalogCard = page
-      .locator("div.rounded-2xl")
-      .filter({ has: page.getByText(templateTitle, { exact: true }) });
-    await expect(catalogCard).toBeVisible({ timeout: 20_000 });
+    const catalogCard = await findPointsCatalogCardByTitle(page, templateTitle);
     await expect(catalogCard.getByText("200 PTS")).toBeVisible();
 
     await catalogCard.getByRole("button", { name: "兌換" }).click();

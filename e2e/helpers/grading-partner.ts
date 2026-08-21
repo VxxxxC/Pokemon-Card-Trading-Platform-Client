@@ -177,6 +177,27 @@ export async function seedMemberAuthConfirmGuardNegative(params?: {
   return seed;
 }
 
+export async function seedMemberAuthAwaitingBuyerConfirm(params?: {
+  suffix?: string;
+}): Promise<MemberAuthAwaitingOutboundSeed> {
+  const seed = await seedMemberAuthAwaitingOutbound(params);
+  const admin = createE2eAdminClient();
+  const suffix = params?.suffix ?? `conf-${Date.now()}`;
+
+  const { error } = await admin
+    .from("member_orders")
+    .update({
+      outbound_tracking_no: `SF-OUT-${suffix}`,
+    })
+    .eq("id", seed.orderId);
+
+  if (error) {
+    throw new Error(`[seedMemberAuthAwaitingBuyerConfirm] ${error.message}`);
+  }
+
+  return seed;
+}
+
 export async function getMemberOrderOutboundTracking(
   orderId: string,
 ): Promise<string | null> {

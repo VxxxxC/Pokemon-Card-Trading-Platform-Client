@@ -17,9 +17,20 @@ import {
   projectMatchesSurfaceRole,
 } from "../../helpers/ui-feature-map-playwright";
 import { dismissBlockingOverlays, suppressTransientHomeOverlays, waitUntilNoBlockingOverlay } from "../../helpers/overlays";
+import {
+  acknowledgeAllReportOutcomesForReporter,
+  getBuyerProfileIdFromEnv,
+} from "../../fixtures/supabase-admin";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(90_000);
+
+test.beforeAll(async () => {
+  const buyerId = await getBuyerProfileIdFromEnv();
+  if (buyerId) {
+    await acknowledgeAllReportOutcomesForReporter(buyerId);
+  }
+});
 
 const l2Surfaces = getL2Surfaces(loadUiFeatureMap().features);
 

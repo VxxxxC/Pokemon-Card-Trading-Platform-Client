@@ -38,6 +38,7 @@ export function useChatThreadPagination({
   const loadOlderRequestIdRef = useRef(0);
   const prevRoomIdRef = useRef(activeRoomId);
   const prevMessageCountRef = useRef(messageCount);
+  const topSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToBottom = useCallback(() => {
     const element = scrollRef.current;
@@ -58,20 +59,14 @@ export function useChatThreadPagination({
     stickToBottomRef.current = distanceFromBottom < SCROLL_EDGE_THRESHOLD_PX;
   }, [scrollRef]);
 
-  const handleScroll = useCallback(() => {
+  const requestOlderMessages = useCallback(() => {
     const element = scrollRef.current;
-    if (!element || isThreadLoading || loadingOlder) {
-      updateStickToBottom();
-      return;
-    }
-
-    updateStickToBottom();
-
     if (
+      !element ||
       !activeRoom ||
       activeRoom.threadHasMoreOlder === false ||
       loadingOlderRef.current ||
-      element.scrollTop > SCROLL_EDGE_THRESHOLD_PX
+      isThreadLoading
     ) {
       return;
     }
@@ -111,11 +106,26 @@ export function useChatThreadPagination({
           setLoadingOlder(false);
         }
       });
+  }, [activeRoom, activeRoomId, isThreadLoading, scrollRef]);
+
+  const handleScroll = useCallback(() => {
+    const element = scrollRef.current;
+    if (!element || isThreadLoading || loadingOlder) {
+      updateStickToBottom();
+      return;
+    }
+
+    updateStickToBottom();
+
+    if (element.scrollTop > SCROLL_EDGE_THRESHOLD_PX) {
+      return;
+    }
+
+    requestOlderMessages();
   }, [
-    activeRoom,
-    activeRoomId,
     isThreadLoading,
     loadingOlder,
+    requestOlderMessages,
     scrollRef,
     updateStickToBottom,
   ]);
@@ -163,6 +173,45 @@ export function useChatThreadPagination({
     }
   }, [activeRoom?.threadHydrated, activeRoomId, isChatOpen, isThreadLoading, scrollToBottom]);
 
+  useEffect(() => {
+    const root = scrollRef.current;
+    const sentinel = topSentinelRef.current;
+    if (
+      !root ||
+      !sentinel ||
+      !isChatOpen ||
+      isThreadLoading ||
+      !activeRoom?.threadHydrated ||
+      activeRoom.threadHasMoreOlder === false
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          requestOlderMessages();
+        }
+      },
+      {
+        root,
+        threshold: 0,
+      },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [
+    activeRoom?.threadHasMoreOlder,
+    activeRoom?.threadHydrated,
+    activeRoomId,
+    isChatOpen,
+    isThreadLoading,
+    messageCount,
+    requestOlderMessages,
+    scrollRef,
+  ]);
+
   const showAllHistoryLoaded =
     Boolean(activeRoom?.threadHydrated) &&
     activeRoom?.threadHasMoreOlder === false &&
@@ -172,5 +221,6 @@ export function useChatThreadPagination({
     loadingOlder,
     handleScroll,
     showAllHistoryLoaded,
+    topSentinelRef,
   };
 }

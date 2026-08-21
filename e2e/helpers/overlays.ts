@@ -45,10 +45,37 @@ export async function suppressTransientHomeOverlays(page: Page): Promise<void> {
   });
 }
 
+async function isReportOutcomeDialogOpen(page: Page): Promise<boolean> {
+  return page
+    .getByRole("alertdialog", { name: "舉報結果通知" })
+    .isVisible()
+    .catch(() => false);
+}
+
+export async function dismissReportOutcomeNotifications(
+  page: Page,
+): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const reportDialog = page.getByRole("alertdialog", {
+      name: "舉報結果通知",
+    });
+    if (!(await reportDialog.isVisible().catch(() => false))) {
+      return;
+    }
+
+    await reportDialog
+      .getByRole("button", { name: /我知道了|處理中/ })
+      .click({ force: true, timeout: 5_000 })
+      .catch(() => undefined);
+    await page.waitForTimeout(400);
+  }
+}
+
 export async function waitUntilNoBlockingOverlay(page: Page): Promise<void> {
   await page.waitForTimeout(700);
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 16; attempt += 1) {
     await dismissBlockingOverlays(page);
+    await dismissReportOutcomeNotifications(page);
     const overlayVisible = await page
       .locator("div.fixed.inset-0.z-\\[400\\]")
       .first()
@@ -65,7 +92,8 @@ export async function waitUntilNoBlockingOverlay(page: Page): Promise<void> {
         .isVisible()
         .catch(() => false)) ||
       (await page.getByText("恭喜解鎖獎勵", { exact: true }).isVisible().catch(() => false));
-    if (!overlayVisible && !announcementOpen && !rewardOpen) {
+    const reportOutcomeOpen = await isReportOutcomeDialogOpen(page);
+    if (!overlayVisible && !announcementOpen && !rewardOpen && !reportOutcomeOpen) {
       return;
     }
     await page.waitForTimeout(300);
@@ -106,7 +134,7 @@ export async function dismissBlockingOverlays(page: Page): Promise<void> {
     });
     if (
       await clickIfVisible(
-        reportDialog.getByRole("button", { name: "我知道了" }),
+        reportDialog.getByRole("button", { name: /我知道了|處理中/ }),
       )
     ) {
       dismissed = true;

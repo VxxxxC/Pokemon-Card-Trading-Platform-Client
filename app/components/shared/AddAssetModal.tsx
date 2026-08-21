@@ -45,25 +45,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
-  buildAuthServiceTooltipBody,
-} from "@/lib/listings/auth-service-copy";
-import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
+import { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
+import { useListingAuthService } from "@/lib/listings/use-listing-auth-service";
 import {
   catalogItemKindFromType,
   defaultSealedProductScore,
   type SealedProductScore,
 } from "@/lib/catalog/item-kind";
 import type { CatalogType } from "@/lib/constants/commerce";
-import { CircleHelp } from "lucide-react";
 
 type LocalPhotoSlot = {
   file: File | null;
@@ -134,8 +123,6 @@ export function AddAssetModal() {
   const addAssetSellerPersona = useUIStore((state) => state.addAssetSellerPersona);
   const closeAddAssetModal = useUIStore((state) => state.closeAddAssetModal);
   const isMemberPersonaActive = useIsMemberPersonaActive();
-  const authServiceFeeHkd = usePlatformAuthFee();
-
   // 模式 Toggle 狀態
   const [mode, setMode] = useState<"hobby" | "merch">("hobby");
 
@@ -156,16 +143,21 @@ export function AddAssetModal() {
   const [sealState, setSealState] = useState<SealedProductScore>(
     defaultSealedProductScore(),
   );
-  const [acceptsBuyerAuth, setAcceptsBuyerAuth] = useState(false);
-  const selectedGrading = useMemo(
-    () => getGradingOption(selectedGradingId),
-    [selectedGradingId],
-  );
-  const isRawCardListing = isRawGradingOption(selectedGrading);
+  const {
+    acceptsBuyerAuth,
+    setAcceptsBuyerAuth,
+    resolvedUseAuthentication,
+    showListingAuthToggle,
+  } = useListingAuthService({
+    gradingOptionId: selectedGradingId,
+    initialAcceptsBuyerAuth: false,
+  });
 
   const handleGradingChange = (gradingId: string) => {
     setSelectedGradingId(gradingId);
-    setAcceptsBuyerAuth(isRawGradingOption(getGradingOption(gradingId)));
+    if (isRawGradingOption(getGradingOption(gradingId))) {
+      setAcceptsBuyerAuth(true);
+    }
   };
 
   // 收藏愛好專屬欄位
@@ -621,7 +613,7 @@ export function AddAssetModal() {
         gradingOptionId: selectedGradingId,
         price: Number(sellingPrice),
         sellerDescription: conditionDesc || undefined,
-        useAuthentication: isRawCardListing ? acceptsBuyerAuth : false,
+        useAuthentication: resolvedUseAuthentication,
         sourceCollectionId: sellPrefill?.collectionId,
         sellerPersona: addAssetSellerPersona,
         imageFiles,
@@ -637,7 +629,7 @@ export function AddAssetModal() {
       }
 
       const hadSellPrefill = Boolean(sellPrefill);
-      const gradingFields = gradingOptionToFields(selectedGrading);
+      const gradingFields = gradingOptionToFields(getGradingOption(selectedGradingId));
 
       const payload: GlobalAssetPayload = {
         id: result.data.listingId,
@@ -695,49 +687,8 @@ export function AddAssetModal() {
     }
   };
 
-  const showListingAuthToggle =
-    mode === "merch" && itemType === "card" && isRawCardListing;
-
-  const listingAuthToggle = showListingAuthToggle ? (
-    <div className="bg-[#17130f] border border-brand/20 rounded-xl p-4 space-y-2 animate-fadeIn">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-sans font-bold text-[#d4c4b7] text-[12.5px]">
-            接受買家加購平台鑑定
-          </span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger
-                type="button"
-                className="shrink-0 text-[#8A8680] hover:text-brand"
-                aria-label="平台鑑定託管說明"
-              >
-                <CircleHelp className="size-4" />
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                className="max-w-xs whitespace-pre-line text-left leading-relaxed"
-              >
-                <span className="font-bold block mb-1">
-                  {LISTING_AUTH_SERVICE_TOOLTIP_TITLE}
-                </span>
-                {buildAuthServiceTooltipBody(authServiceFeeHkd)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <Switch
-          checked={acceptsBuyerAuth}
-          onCheckedChange={setAcceptsBuyerAuth}
-          className="data-checked:bg-brand data-unchecked:bg-[#39342f] shrink-0"
-        />
-      </div>
-      <p className="text-[11px] text-text-secondary leading-relaxed">
-        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$
-        {authServiceFeeHkd} 由買家承擔）。
-      </p>
-    </div>
-  ) : null;
+  const showMerchAuthToggle =
+    mode === "merch" && itemType === "card" && showListingAuthToggle;
 
   return (
     <>
@@ -1010,7 +961,12 @@ export function AddAssetModal() {
             </div>
           )}
 
-          {listingAuthToggle}
+          {showMerchAuthToggle ? (
+            <ListingAuthServiceToggle
+              checked={acceptsBuyerAuth}
+              onCheckedChange={setAcceptsBuyerAuth}
+            />
+          ) : null}
 
           {/* === 4. PHOTO UPLOAD SECTION === */}
           {mode === "merch" ? (
