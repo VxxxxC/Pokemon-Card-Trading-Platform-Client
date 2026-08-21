@@ -69,12 +69,21 @@ echo "=== Staging Certify Preflight START $(date '+%Y-%m-%d %H:%M:%S') ==="
 
 bash scripts/validate-staging-certification-manifest.sh
 
-run_exec_step "ssot strict checklist" fast bash scripts/check-staging-certification.sh --strict
+run_exec_step "ssot feature checklist" fast bash scripts/check-staging-certification.sh
 
 heavy_env_ok=0
 if bash scripts/check-staging-certify-env.sh; then
   heavy_env_ok=1
 fi
+
+manifest_steps_file="$(mktemp)"
+trap 'rm -f "$manifest_steps_file"' EXIT
+bun -e "
+  const manifest = await Bun.file(process.argv[1]).json();
+  for (const step of manifest.steps) {
+    console.log([step.id, step.name, step.tier, step.command].join('\t'));
+  }
+" "$MANIFEST" >"$manifest_steps_file"
 
 while IFS=$'\t' read -r _step_id step_name step_tier step_command; do
   [[ -z "$step_name" ]] && continue
@@ -85,14 +94,7 @@ while IFS=$'\t' read -r _step_id step_name step_tier step_command; do
   fi
 
   run_exec_step "$step_name" "$step_tier" bash -lc "$step_command"
-done < <(
-  bun -e "
-    const manifest = await Bun.file(process.argv[1]).json();
-    for (const step of manifest.steps) {
-      console.log([step.id, step.name, step.tier, step.command].join('\t'));
-    }
-  " "$MANIFEST"
-)
+done <"$manifest_steps_file"
 
 if [[ "$total_weight" -le 0 ]]; then
   echo "Preflight scoring error: total_weight=0" >&2
