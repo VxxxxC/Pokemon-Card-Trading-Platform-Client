@@ -24,11 +24,12 @@ import {
   gradingOptionToFields,
   isRawGradingOption,
 } from "@/lib/grading/options";
-import type { ListingImage } from "@/lib/listings/images";
 import {
   LISTING_IMAGE_MAX,
   LISTING_PHOTO_SLOT_LABELS,
+  type ListingImage,
 } from "@/lib/listings/images";
+import { createEmptyCreatePhotoSlots } from "@/lib/listings/card-listing-photo-slots";
 import {
   LISTING_DESCRIPTION_MAX,
   validateCreateCardListing,
@@ -71,11 +72,7 @@ type LocalPhotoSlot = {
 };
 
 function createEmptyPhotoSlots(): LocalPhotoSlot[] {
-  return Array.from({ length: LISTING_IMAGE_MAX }, () => ({
-    file: null,
-    previewUrl: null,
-    description: "",
-  }));
+  return createEmptyCreatePhotoSlots();
 }
 
 function revokePhotoSlots(slots: LocalPhotoSlot[]) {

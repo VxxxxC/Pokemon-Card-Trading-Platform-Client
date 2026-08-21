@@ -1,6 +1,14 @@
 "use client";
 
-import type { MerchantFinanceSettlement } from "@/app/actions/merchant-finance";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import type {
+  ListMerchantFinanceSettlementsInput,
+  MerchantFinanceSettlement,
+  MerchantFinanceSort,
+  MerchantFinanceStatusFilter,
+} from "@/app/actions/merchant-finance";
+import { listMerchantFinanceSettlements } from "@/app/actions/merchant-finance";
+import { Pagination } from "@/app/components/ui/Pagination";
 import {
   formatPayoutStatusLabel,
   getPayoutStatusBadgeClass,
@@ -21,6 +29,20 @@ type MerchantFinanceClientProps = {
   monthEarned: number;
   recentSettlements: MerchantFinanceSettlement[];
 };
+
+const STATUS_FILTERS: { value: MerchantFinanceStatusFilter; label: string }[] =
+  [
+    { value: "all", label: "全部" },
+    { value: "paid", label: "已撥款" },
+    { value: "held", label: "待撥款" },
+    { value: "processing", label: "處理中" },
+    { value: "failed", label: "失敗" },
+  ];
+
+const SORT_OPTIONS: { value: MerchantFinanceSort; label: string }[] = [
+  { value: "transferred_at-desc", label: "最新優先" },
+  { value: "transferred_at-asc", label: "最舊優先" },
+];
 
 function formatSettlementDate(iso: string | null): string {
   if (!iso) {
@@ -161,9 +183,55 @@ export function MerchantFinanceClient({
   stripeConnected,
   stripeAccountId,
   stripeAccountLabel,
-  monthEarned,
-  recentSettlements,
+  monthEarned: initialMonthEarned,
+  recentSettlements: initialSettlements,
 }: MerchantFinanceClientProps) {
+  const [monthEarned, setMonthEarned] = useState(initialMonthEarned);
+  const [settlements, setSettlements] = useState(initialSettlements);
+  const [total, setTotal] = useState(initialSettlements.length);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [statusFilter, setStatusFilter] =
+    useState<MerchantFinanceStatusFilter>("all");
+  const [sort, setSort] = useState<MerchantFinanceSort>("transferred_at-desc");
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [isPending, startTransition] = useTransition();
+
+  const loadSettlements = useCallback(
+    (overrides: Partial<ListMerchantFinanceSettlementsInput> = {}) => {
+      startTransition(async () => {
+        const result = await listMerchantFinanceSettlements({
+          page,
+          pageSize: 10,
+          statusFilter,
+          sort,
+          search: search.trim() || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          ...overrides,
+        });
+
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+
+        setSettlements(result.data.rows);
+        setTotal(result.data.total);
+        setPage(result.data.page);
+        setTotalPages(result.data.totalPages);
+        setMonthEarned(result.data.monthEarned);
+      });
+    },
+    [dateFrom, dateTo, page, search, sort, statusFilter],
+  );
+
+  useEffect(() => {
+    loadSettlements();
+  }, [loadSettlements]);
+
   return (
     <>
       <section aria-labelledby="finance-summary-heading" className="mb-6">
@@ -183,21 +251,110 @@ export function MerchantFinanceClient({
         </div>
       </section>
 
-      <section aria-labelledby="tx-heading" className="mb-6">
-        <h2 id="tx-heading" className="font-sans font-semibold text-[16px] text-text-primary mb-4">
-          近期撥款記錄
-        </h2>
+      <section aria-labelledby="tx-heading" className="mb-6 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <h2
+            id="tx-heading"
+            className="font-sans font-semibold text-[16px] text-text-primary"
+          >
+            撥款記錄（{total}）
+          </h2>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="訂單編號 / Transfer ID"
+              className="h-9 px-3 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary min-w-[180px]"
+            />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                setPage(1);
+              }}
+              className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-mono text-[11px] text-text-primary"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                setPage(1);
+              }}
+              className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-mono text-[11px] text-text-primary"
+            />
+            <select
+              value={sort}
+              onChange={(event) => {
+                setSort(event.target.value as MerchantFinanceSort);
+                setPage(1);
+              }}
+              className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-1.5 flex-wrap">
+          {STATUS_FILTERS.map((filter) => {
+            const isActive = statusFilter === filter.value;
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                disabled={isPending}
+                onClick={() => {
+                  setStatusFilter(filter.value);
+                  setPage(1);
+                }}
+                className={`font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer ${
+                  isActive
+                    ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold"
+                    : "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated"
+                }`}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {recentSettlements.length === 0 ? (
+          {isPending && settlements.length === 0 ? (
+            <p className="px-4 py-8 text-center font-mono text-[12px] text-text-secondary">
+              載入中…
+            </p>
+          ) : settlements.length === 0 ? (
             <p className="px-4 py-8 text-center font-mono text-[12px] text-text-secondary">
               尚無撥款記錄
             </p>
           ) : (
-            recentSettlements.map((tx, i) => (
+            settlements.map((tx, i) => (
               <SettlementRow key={tx.orderId} tx={tx} showTopBorder={i > 0} />
             ))
           )}
         </div>
+
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          itemLabel="筆撥款"
+          totalItems={total}
+          itemsPerPage={10}
+          hideControls={totalPages <= 1}
+          enableScroll={false}
+        />
       </section>
 
       <section

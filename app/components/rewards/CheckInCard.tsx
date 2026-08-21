@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   executeDailyCheckIn,
@@ -286,6 +287,13 @@ export function CheckInCard({
                 ? "簽到中…"
                 : "立即簽到打卡獲取積分"}
       </button>
+
+      <Link
+        href="/profile/user/campaigns"
+        className="mt-3 w-full h-11 rounded-xl font-sans font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 bg-[rgba(212,165,116,0.12)] border border-brand/40 text-brand hover:bg-[rgba(212,165,116,0.18)] active:scale-[0.99]"
+      >
+        ⚡ 限時搶券 · 積分商城
+      </Link>
     </div>
   );
 }

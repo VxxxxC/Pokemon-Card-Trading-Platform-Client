@@ -176,7 +176,7 @@
             {
               "id": "nav-marketplace",
               "role": "link",
-              "name": "市場"
+              "locator": "header nav a[href=\"/marketplace\"], nav.lg\\:hidden a[href=\"/marketplace\"], footer a[href=\"/marketplace\"]"
             },
             {
               "id": "premium-merchant-section",

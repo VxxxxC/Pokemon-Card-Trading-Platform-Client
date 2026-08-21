@@ -9,19 +9,49 @@ import {
 } from "@/app/actions/rewards";
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import type { PointsRedemptionCatalogView } from "@/lib/admin-rewards/types";
+import { Pagination } from "@/app/components/ui/Pagination";
 import { rewardLabelFromCatalogItem } from "@/lib/rewards/mapPointsRedemptionCatalog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 type PointsRedemptionSectionProps = {
   onRedeemed?: () => void;
+  paginated?: boolean;
+  showHeading?: boolean;
+  itemsPerPage?: number;
 };
+
+type PointsSort = "points_asc" | "points_desc" | "stock_desc";
+
+const POINTS_PAGE_SIZE = 6;
+
+function sortPointsCatalog(
+  items: PointsRedemptionCatalogView[],
+  sort: PointsSort,
+): PointsRedemptionCatalogView[] {
+  const sorted = [...items];
+  if (sort === "points_desc") {
+    sorted.sort((a, b) => b.pointsCost - a.pointsCost);
+    return sorted;
+  }
+  if (sort === "stock_desc") {
+    sorted.sort((a, b) => b.stock - a.stock);
+    return sorted;
+  }
+  sorted.sort((a, b) => a.pointsCost - b.pointsCost);
+  return sorted;
+}
 
 export function PointsRedemptionSection({
   onRedeemed,
+  paginated = false,
+  showHeading = true,
+  itemsPerPage = POINTS_PAGE_SIZE,
 }: PointsRedemptionSectionProps) {
   const isMemberPersonaActive = useIsMemberPersonaActive();
   const [items, setItems] = useState<PointsRedemptionCatalogView[]>([]);
+  const [sort, setSort] = useState<PointsSort>("points_asc");
+  const [page, setPage] = useState(1);
   const [pointsBalance, setPointsBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -136,29 +166,62 @@ export function PointsRedemptionSection({
   }
 
   if (items.length === 0) {
-    return null;
+    return (
+      <section className="rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-8 text-center text-sm text-[#d4c4b7]">
+        積分商城暫無可兌換商品
+      </section>
+    );
   }
+
+  const sortedItems = sortPointsCatalog(items, sort);
+  const totalPages = paginated
+    ? Math.max(1, Math.ceil(sortedItems.length / itemsPerPage))
+    : 1;
+  const safePage = Math.min(page, totalPages);
+  const visibleItems = paginated
+    ? sortedItems.slice((safePage - 1) * itemsPerPage, safePage * itemsPerPage)
+    : sortedItems;
 
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-            🪙 積分商城
-          </h3>
-          <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
-            POINTS REDEMPTION STORE
-          </p>
+        {showHeading ? (
+          <div>
+            <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
+              🪙 積分商城
+            </h3>
+            <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
+              POINTS REDEMPTION STORE
+            </p>
+          </div>
+        ) : (
+          <div />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {paginated ? (
+            <select
+              value={sort}
+              onChange={(event) => {
+                setSort(event.target.value as PointsSort);
+                setPage(1);
+              }}
+              className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary"
+            >
+              <option value="points_asc">積分由低至高</option>
+              <option value="points_desc">積分由高至低</option>
+              <option value="stock_desc">庫存優先</option>
+            </select>
+          ) : null}
+          {pointsBalance != null ? (
+            <p className="font-mono text-[11px] text-brand">
+              可用積分 {pointsBalance.toLocaleString()} PTS
+            </p>
+          ) : null}
         </div>
-        {pointsBalance != null ? (
-          <p className="font-mono text-[11px] text-brand">
-            可用積分 {pointsBalance.toLocaleString()} PTS
-          </p>
-        ) : null}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const soldOut = item.stock <= 0;
           const atUserLimit =
             item.maxRedemptionsPerUser != null &&
@@ -225,6 +288,19 @@ export function PointsRedemptionSection({
           );
         })}
       </div>
+
+      {paginated ? (
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          itemLabel="件商品"
+          totalItems={sortedItems.length}
+          itemsPerPage={itemsPerPage}
+          hideControls={totalPages <= 1}
+          enableScroll={false}
+        />
+      ) : null}
     </section>
   );
 }

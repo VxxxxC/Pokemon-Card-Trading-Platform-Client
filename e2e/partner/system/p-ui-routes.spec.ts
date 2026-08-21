@@ -16,7 +16,7 @@ import {
   assertUiSurface,
   projectMatchesSurfaceRole,
 } from "../../helpers/ui-feature-map-playwright";
-import { dismissBlockingOverlays } from "../../helpers/overlays";
+import { dismissBlockingOverlays, suppressTransientHomeOverlays, waitUntilNoBlockingOverlay } from "../../helpers/overlays";
 
 test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(90_000);
@@ -50,8 +50,13 @@ for (const surface of l2Surfaces) {
       await ensureMerchantPersona(page);
     }
 
+    if (pathToVisit === "/") {
+      await suppressTransientHomeOverlays(page);
+    }
+
     await page.goto(pathToVisit, { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
+    await waitUntilNoBlockingOverlay(page);
     await assertUiSurface(page, surface.assertions);
     if (surface.requiredElements?.length) {
       await assertRequiredElements(page, surface.requiredElements);

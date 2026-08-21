@@ -28,40 +28,16 @@ import {
 import {
   LISTING_IMAGE_MAX,
   LISTING_PHOTO_SLOT_LABELS,
-  type ListingImage,
 } from "@/lib/listings/images";
+import {
+  buildEditListingPhotoSlots,
+  type EditListingPhotoSlot,
+} from "@/lib/listings/card-listing-photo-slots";
 import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listing";
 import {
   LISTING_DESCRIPTION_MAX,
   validateImageFile,
 } from "@/lib/listings/validation";
-import { bunnyObjectKeyFromCdnUrl } from "@/lib/storage/bunny";
-
-type PhotoSlotState = {
-  previewUrl: string | null;
-  file: File | null;
-  existingUrl: string | null;
-  existingObjectKey: string | null;
-  remark: string;
-};
-
-function buildInitialSlots(images: ListingImage[]): PhotoSlotState[] {
-  const sorted = [...images].sort((a, b) => a.order - b.order);
-
-  return Array.from({ length: LISTING_IMAGE_MAX }, (_, index) => {
-    const image = sorted[index];
-    const slotLabel = LISTING_PHOTO_SLOT_LABELS[index] ?? `實體照 ${index + 1}`;
-
-    return {
-      previewUrl: image?.url ?? null,
-      file: null,
-      existingUrl: image?.url ?? null,
-      existingObjectKey:
-        image?.url != null ? bunnyObjectKeyFromCdnUrl(image.url) : null,
-      remark: image?.remark?.trim() || slotLabel,
-    };
-  });
-}
 
 type ListingEditDialogProps = {
   open: boolean;
@@ -91,8 +67,8 @@ export function ListingEditDialog({
   );
   const [sellerDescription, setSellerDescription] = useState(item.conditionDesc);
   const [isActive, setIsActive] = useState(item.status === "active");
-  const [photoSlots, setPhotoSlots] = useState<PhotoSlotState[]>(() =>
-    buildInitialSlots(item.images),
+  const [photoSlots, setPhotoSlots] = useState<EditListingPhotoSlot[]>(() =>
+    buildEditListingPhotoSlots(item.images),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -102,7 +78,7 @@ export function ListingEditDialog({
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const photoSlotsRef = useRef<PhotoSlotState[]>(photoSlots);
+  const photoSlotsRef = useRef<EditListingPhotoSlot[]>(photoSlots);
 
   useEffect(() => {
     photoSlotsRef.current = photoSlots;

@@ -7,12 +7,38 @@ import {
   listActiveFlashCampaigns,
 } from "@/app/actions/reward-flash";
 import type { FlashCampaignView } from "@/lib/admin-rewards/types";
+import { Pagination } from "@/app/components/ui/Pagination";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
 type FlashCampaignSectionProps = {
   onClaimed?: () => void;
+  paginated?: boolean;
+  showHeading?: boolean;
+  itemsPerPage?: number;
 };
+
+type FlashSort = "ending_soon" | "newest";
+
+const FLASH_PAGE_SIZE = 6;
+
+function sortFlashCampaigns(
+  campaigns: FlashCampaignView[],
+  sort: FlashSort,
+): FlashCampaignView[] {
+  const sorted = [...campaigns];
+  if (sort === "newest") {
+    sorted.sort(
+      (a, b) =>
+        new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
+    );
+    return sorted;
+  }
+  sorted.sort(
+    (a, b) => new Date(a.ends_at).getTime() - new Date(b.ends_at).getTime(),
+  );
+  return sorted;
+}
 
 function rewardLabel(campaign: FlashCampaignView): string {
   if (campaign.template.type === "free_shipping") {
@@ -53,8 +79,15 @@ function getFlashCountdownNowServerSnapshot() {
   return 0;
 }
 
-export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
+export function FlashCampaignSection({
+  onClaimed,
+  paginated = false,
+  showHeading = true,
+  itemsPerPage = FLASH_PAGE_SIZE,
+}: FlashCampaignSectionProps) {
   const [campaigns, setCampaigns] = useState<FlashCampaignView[]>([]);
+  const [sort, setSort] = useState<FlashSort>("ending_soon");
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const now = useSyncExternalStore(
@@ -146,22 +179,56 @@ export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
   }
 
   if (campaigns.length === 0) {
-    return null;
+    return (
+      <section className="rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-8 text-center text-sm text-[#d4c4b7]">
+        目前沒有進行中的限時搶券活動
+      </section>
+    );
   }
+
+  const sortedCampaigns = sortFlashCampaigns(campaigns, sort);
+  const totalPages = paginated
+    ? Math.max(1, Math.ceil(sortedCampaigns.length / itemsPerPage))
+    : 1;
+  const safePage = Math.min(page, totalPages);
+  const visibleCampaigns = paginated
+    ? sortedCampaigns.slice(
+        (safePage - 1) * itemsPerPage,
+        safePage * itemsPerPage,
+      )
+    : sortedCampaigns;
 
   return (
     <section className="space-y-4">
-      <div>
-        <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-          ⚡ 限時搶券
-        </h3>
-        <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
-          FLASH REWARD CAMPAIGNS
-        </p>
-      </div>
+      {showHeading ? (
+        <div>
+          <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
+            ⚡ 限時搶券
+          </h3>
+          <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
+            FLASH REWARD CAMPAIGNS
+          </p>
+        </div>
+      ) : null}
+
+      {paginated ? (
+        <div className="flex justify-end">
+          <select
+            value={sort}
+            onChange={(event) => {
+              setSort(event.target.value as FlashSort);
+              setPage(1);
+            }}
+            className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary"
+          >
+            <option value="ending_soon">即將結束</option>
+            <option value="newest">最新上架</option>
+          </select>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {campaigns.map((campaign) => {
+        {visibleCampaigns.map((campaign) => {
           const startsAt = new Date(campaign.starts_at).getTime();
           const endsAt = new Date(campaign.ends_at).getTime();
           const notStarted = now < startsAt;
@@ -238,6 +305,19 @@ export function FlashCampaignSection({ onClaimed }: FlashCampaignSectionProps) {
           );
         })}
       </div>
+
+      {paginated ? (
+        <Pagination
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          itemLabel="個活動"
+          totalItems={sortedCampaigns.length}
+          itemsPerPage={itemsPerPage}
+          hideControls={totalPages <= 1}
+          enableScroll={false}
+        />
+      ) : null}
     </section>
   );
 }
