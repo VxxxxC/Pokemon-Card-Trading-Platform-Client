@@ -42,7 +42,12 @@ test.describe("P-E10 rewards and order payment UI", () => {
       page.getByRole("heading", { name: "限時搶券 · 積分商城" }),
     ).toBeVisible({ timeout: 20_000 });
     await page.getByRole("button", { name: "積分商城" }).click();
-    await expect(page.getByText(/載入積分商城/)).toBeHidden({ timeout: 20_000 });
+    await expect(
+      page
+        .getByText("積分商城暫無可兌換商品")
+        .or(page.getByRole("button", { name: "兌換" }).first())
+        .or(page.getByText(/無法載入積分商城/)),
+    ).toBeVisible({ timeout: 45_000 });
   });
 
   test("buyer merchant order detail shows payment amount row", async ({

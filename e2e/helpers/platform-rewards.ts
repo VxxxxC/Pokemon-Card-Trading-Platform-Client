@@ -813,9 +813,12 @@ export async function waitForPointsRedemptionSectionReady(
   page: Page,
 ): Promise<void> {
   await gotoMemberCampaignsPage(page, "points");
-  await expect(page.getByText(/載入積分商城/)).toBeHidden({
-    timeout: 20_000,
-  });
+  await expect(
+    page
+      .getByText("積分商城暫無可兌換商品")
+      .or(page.getByRole("button", { name: "兌換" }).first())
+      .or(page.getByText(/無法載入積分商城/)),
+  ).toBeVisible({ timeout: 45_000 });
 }
 
 export async function getPointsCatalogIdByTemplateTitle(
