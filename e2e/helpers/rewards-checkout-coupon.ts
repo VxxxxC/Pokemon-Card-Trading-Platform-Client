@@ -196,6 +196,16 @@ export async function readCheckoutSummaryAmounts(
   };
 }
 
+export async function readAuthEscrowCheckoutShippingLegs(page: Page): Promise<{
+  inboundShippingFee: number;
+  outboundShippingFee: number;
+}> {
+  return {
+    inboundShippingFee: await readSummaryRowAmount(page, "運費（賣家寄送平台）"),
+    outboundShippingFee: await readSummaryRowAmount(page, "運費（平台寄送買家）"),
+  };
+}
+
 export async function expireUserRewardForE2e(userRewardId: string): Promise<void> {
   const admin = createE2eAdminClient();
   const expiredAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

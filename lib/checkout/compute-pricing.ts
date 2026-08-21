@@ -1,6 +1,7 @@
 import {
   AUTH_ESCROW_SF_LEG_FEE_HKD,
   estimateAuthEscrowCheckoutTotal,
+  resolveAuthEscrowSfLegFeeHkd,
 } from "@/lib/auth-escrow/defaults";
 import { computeCourierShippingFee } from "@/lib/merchant-checkout/pricing";
 import type {
@@ -68,10 +69,12 @@ function resolveAuthCheckoutPricing(session: CheckoutSession): {
   platformSubsidy: number;
   totalAmount: number;
 } {
-  const inboundShippingFee =
-    session.pricing.inboundShippingFee ?? AUTH_ESCROW_SF_LEG_FEE_HKD;
-  const outboundShippingFee =
-    session.pricing.outboundShippingFee ?? AUTH_ESCROW_SF_LEG_FEE_HKD;
+  const inboundShippingFee = resolveAuthEscrowSfLegFeeHkd(
+    session.pricing.inboundShippingFee,
+  );
+  const outboundShippingFee = resolveAuthEscrowSfLegFeeHkd(
+    session.pricing.outboundShippingFee,
+  );
   const authFee =
     session.pricing.authFee > 0
       ? session.pricing.authFee

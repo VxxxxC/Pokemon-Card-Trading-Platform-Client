@@ -7,7 +7,8 @@ import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { AUTH_ESCROW_CAPTURE_MODEL_SINGLE } from "@/lib/payments/escrow-payment-intent";
 import { calculateMemberAuthPaymentTotal } from "@/lib/payments/member-auth-payment";
 import {
-  AUTH_ESCROW_SF_LEG_FEE_HKD,
+  estimateAuthEscrowCheckoutTotal,
+  resolveAuthEscrowSfLegFeeHkd,
 } from "@/lib/auth-escrow/defaults";
 import {
   fetchPlatformAuthFeeHkd,
@@ -281,15 +282,20 @@ function mapCheckoutSnapshot(
     Boolean(row.use_authentication),
     platformAuthFeeHkd,
   );
-  const inboundShippingFee = Number(
-    row.inbound_shipping_fee ?? AUTH_ESCROW_SF_LEG_FEE_HKD,
-  );
-  const outboundShippingFee = Number(
-    row.outbound_shipping_fee ?? AUTH_ESCROW_SF_LEG_FEE_HKD,
-  );
-  const totalAmount = Number(
-    row.total_amount ?? calculateMemberAuthPaymentTotal(itemSubtotal),
-  );
+  const inboundFromRow = Number(row.inbound_shipping_fee ?? 0);
+  const outboundFromRow = Number(row.outbound_shipping_fee ?? 0);
+  const inboundShippingFee = Boolean(row.use_authentication)
+    ? resolveAuthEscrowSfLegFeeHkd(inboundFromRow)
+    : inboundFromRow;
+  const outboundShippingFee = Boolean(row.use_authentication)
+    ? resolveAuthEscrowSfLegFeeHkd(outboundFromRow)
+    : outboundFromRow;
+  const totalFromRow = Number(row.total_amount ?? 0);
+  const totalAmount = Boolean(row.use_authentication)
+    ? totalFromRow > itemSubtotal
+      ? totalFromRow
+      : estimateAuthEscrowCheckoutTotal(itemSubtotal, platformAuthFeeHkd)
+    : Number(row.total_amount ?? calculateMemberAuthPaymentTotal(itemSubtotal));
   const buyerTotalAmount = Number(
     row.buyer_total_amount ?? row.total_amount ?? totalAmount,
   );

@@ -94,7 +94,7 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-E05** | Merchant buy-now dialog | F-M-07 · F-C-03 | `e2e/partner/member/p-e05-merchant-buy-now.spec.ts` | `test:e2e:partner-ui` | ☑ |
 | **P-E06** | Dashboard + rewards hub | F-M-09 · 20 | `e2e/partner/member/p-e06-member-dashboard.spec.ts` | `test:e2e:partner-ui` | ☑ |
 | **P-E07** | Collection + wishlist filters | F-M-10 · 11 | `e2e/partner/member/p-e07-member-collection.spec.ts` | `test:e2e:partner-ui` | ☑ |
-| **P-E08** | C2C 鑑定 escrow 待付款 UI | F-M-16 · 17 · 19 · F-S-08 | `e2e/partner/member/p-e08-c2c-auth-escrow.spec.ts` | `test:e2e:partner-escrow` | ☑ |
+| **P-E08** | C2C 鑑定 escrow 待付款 UI + checkout breakdown 運費 | F-M-16 · 17 · 19 · F-S-08 | `e2e/partner/member/p-e08-c2c-auth-escrow.spec.ts` | `test:e2e:partner-escrow` | ☑ |
 
 ### 3.2 Partner UI journeys（TC-E09–E12）
 
@@ -216,10 +216,42 @@ bun run test:staging:certify
 
 ---
 
+## 10. Partner 待修 backlog（bugs_finding.org 同步）
+
+> 以下為 Partner 新登記、**尚未** 有 P-* spec 或仍 ☐ 的項目；與 §2–4 已 ☑ 分開維護。  
+> **更正（2026-08-21）：** 下列兩條取代舊 org 中對同一現象嘅模糊描述（例如將「marketplace 買家 toggle」同「編輯商品裸卡後 seller toggle」混為一談）。
+
+### 前置 — Component
+
+| ☐ | 項目 |
+|---|------|
+| ☐ | **Listing card asset workflow** — 合併 `AddAssetModal.tsx`、`ListingEditDialog.tsx`（及收藏品 `AddAssetModal` hobby 路徑）嘅 grading／鑑定 toggle logic 為同一 global component；現有 `app/components/listings/ListingCardAssetWorkflow.tsx` 僅 export barrel，**待抽 shared hook + UI**。後續 [#A] 商品管理裸卡鑑定 toggle 依賴此項。 |
+
+### Member
+
+| ☐ | 域 | [#A] 摘要 | 備註 |
+|---|-----|----------|------|
+| ☐ | Order Detail | **[C2C 鑑定訂單]** 確認收貨 button 欠缺 confirm dialog | B2C 鑑定已有 **P-A04**；Member C2C auth 路徑仍缺 |
+
+### Member / Merchant
+
+| ☐ | 域 | [#A] 摘要 | 備註 |
+|---|-----|----------|------|
+| ☐ | 商品管理 | 編輯商品改 **裸卡** 後，Marketplace Product Card 已顯示裸卡，但 **編輯對話框**「准許鑑定服務」toggle 仍 **Disable**（無法開啟） | 需先完成 **Component 前置**；與 **P-A01**（marketplace 買家側 toggle）為不同 surface |
+
+### 已修（2026-08-21）
+
+| ☑ | 域 | 摘要 | Spec |
+|---|-----|------|------|
+| ☑ | Checkout | C2C 鑑定 checkout breakdown 運費（inbound/outbound）prepare 前顯示 $0 | **P-E08** 第二 test · `resolveAuthEscrowSfLegFeeHkd` |
+
+---
+
 ## Changelog
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-21 | §10 Partner backlog：更正 C2C 確認收貨 dialog、編輯裸卡鑑定 toggle（Component 前置）；C2C checkout 運費 breakdown fix + P-E08 assertion |
 | 2026-08-20 | v1.0 | Phase 3：P-F01–F05 Partner smoke 綠 · F-* **67/67** · **SC-P-FX ☑**（SC-P-ALL 仍等 M0） |
 | 2026-08-20 | v1.2 | L2+ `requiredElements` 全 67 surfaces · `test:e2e:partner-m0` 工程預檢 |
 | 2026-08-20 | v1.1 | 交叉引用 [ui-feature-map.md](./ui-feature-map.md) Solid UI L2+；CI `test:ui:check-map` · nightly `test:e2e:ui-l2` |
