@@ -50,11 +50,16 @@ run_step() {
   fi
 }
 
+run_step "ui feature map" bun run test:ui:check-map
+run_step "ui data contracts" bash scripts/check-ui-data-contracts.sh
+run_step "ui journey audit" bun run test:ui:audit-journeys
+run_step "checkout pricing unit" bunx vitest run --config vitest.config.mts tests/unit/lib/checkout/compute-pricing.test.ts
 run_step "production gate signoff" env PRODUCTION_GATE_SIGNOFF=1 bun run test:production:gate:signoff
 run_step "nightly coverage" bun run test:nightly:coverage
 run_step "rewards integration" bun run test:integration:rewards
 run_step "start production server for rewards E2E" e2e_start_production_server
 run_step "rewards E2E production gate" env REWARDS_GATE=1 bun run test:e2e:rewards-gate:production
+run_step "partner checkout data contracts" bun run test:e2e:partner-data-contract
 run_step "coupon security" bunx vitest run --config vitest.config.mts tests/integration/rewards/coupon-security.integration.test.ts
 run_step "coupon pbt" bun run test:integration:rewards:pbt
 run_step "moderation pbt" bun run test:integration:moderation:pbt

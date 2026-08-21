@@ -673,7 +673,10 @@
       "name": "C2C 鑑定 escrow 全鏈",
       "kind": "embedded",
       "partnerSpecs": [
-        "e2e/partner/member/p-a05-c2c-auth-seller-invoice.spec.ts"
+        "e2e/partner/member/p-a05-c2c-auth-seller-invoice.spec.ts",
+        "e2e/partner/member/p-d01-member-auth-invoice-financial.spec.ts",
+        "e2e/partner/member/p-d01b-member-auth-invoice-buyer.spec.ts",
+        "e2e/partner/member/p-d02-trading-list-order-amount.spec.ts"
       ],
       "surfaces": [
         {
@@ -721,7 +724,10 @@
       "partnerSpecs": [
         "e2e/partner/member/p-a03-b2c-auth-stepper-courier.spec.ts",
         "e2e/partner/member/p-a04-b2c-auth-confirm-dialog.spec.ts",
-        "e2e/partner/member/p-a05-c2c-auth-seller-invoice.spec.ts"
+        "e2e/partner/member/p-a05-c2c-auth-seller-invoice.spec.ts",
+        "e2e/partner/member/p-d01-member-auth-invoice-financial.spec.ts",
+        "e2e/partner/member/p-d01b-member-auth-invoice-buyer.spec.ts",
+        "e2e/partner/member/p-d04-merchant-b2c-invoice-financial.spec.ts"
       ],
       "surfaces": [
         {
@@ -766,7 +772,8 @@
       "name": "交易列表／篩選 smoke",
       "kind": "page",
       "partnerSpecs": [
-        "e2e/partner/member/p-c01-trading-filter-counts.spec.ts"
+        "e2e/partner/member/p-c01-trading-filter-counts.spec.ts",
+        "e2e/partner/member/p-d02-trading-list-order-amount.spec.ts"
       ],
       "surfaces": [
         {
@@ -892,7 +899,11 @@
       "component": "app/checkout/[id]/CheckoutClient.tsx",
       "partnerSpecs": [
         "e2e/partner/member/p-b06-checkout-completed-guard.spec.ts",
-        "e2e/partner/member/p-b07-order-invoice-coupon.spec.ts"
+        "e2e/partner/member/p-b07-order-invoice-coupon.spec.ts",
+        "e2e/partner/member/p-d03-checkout-coupon-subsidy.spec.ts",
+        "e2e/partner/member/p-e08b-merchant-auth-checkout-breakdown.spec.ts",
+        "e2e/partner/member/p-e08c-merchant-direct-auth-breakdown.spec.ts",
+        "e2e/partner/member/p-e08d-merchant-direct-sf-breakdown.spec.ts"
       ],
       "surfaces": [
         {
@@ -960,7 +971,8 @@
       "name": "C2C 鑑定 checkout＋Admin 券",
       "kind": "embedded",
       "partnerSpecs": [
-        "e2e/partner/member/p-f03-member-rewards-moderation.spec.ts"
+        "e2e/partner/member/p-f03-member-rewards-moderation.spec.ts",
+        "e2e/partner/member/p-d03-checkout-coupon-subsidy.spec.ts"
       ],
       "surfaces": [
         {
@@ -1528,7 +1540,8 @@
       "name": "商戶財務",
       "kind": "page",
       "partnerSpecs": [
-        "e2e/partner/merchant/p-f04-merchant-shell.spec.ts"
+        "e2e/partner/merchant/p-f04-merchant-shell.spec.ts",
+        "e2e/partner/merchant/p-f04b-merchant-finance-settlement-amount.spec.ts"
       ],
       "surfaces": [
         {

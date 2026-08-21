@@ -177,7 +177,7 @@ export async function readCheckoutSummaryAmounts(
   page: Page,
 ): Promise<CheckoutSummaryAmounts> {
   const itemSubtotal = await readSummaryRowAmount(page, "卡牌商品總額");
-  const shippingFee = await readSummaryRowAmount(page, /運費/);
+  const shippingFee = await readMerchantDirectShippingFee(page);
   const totalAmount = await readSummaryRowAmount(page, "託管安全支付總額");
 
   const subsidyVisible = await checkoutOrderSummary(page)
@@ -194,6 +194,21 @@ export async function readCheckoutSummaryAmounts(
     platformSubsidy,
     totalAmount,
   };
+}
+
+async function readMerchantDirectShippingFee(page: Page): Promise<number> {
+  const summary = checkoutOrderSummary(page);
+  const courierLabel = summary.getByText("運費（快遞寄貨）", { exact: true });
+  if (await courierLabel.isVisible().catch(() => false)) {
+    return readSummaryRowAmount(page, "運費（快遞寄貨）");
+  }
+
+  const genericShipping = summary.getByText(/^運費$/, { exact: true });
+  if (await genericShipping.isVisible().catch(() => false)) {
+    return readSummaryRowAmount(page, "運費");
+  }
+
+  return 0;
 }
 
 export async function readAuthEscrowCheckoutShippingLegs(page: Page): Promise<{

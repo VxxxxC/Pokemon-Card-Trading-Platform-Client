@@ -16,7 +16,7 @@ import {
   gotoTradingPageWithFilter,
   waitForTradingListSettled,
 } from "../../helpers/member-trading";
-import { readAuthEscrowCheckoutShippingLegs } from "../../helpers/rewards-checkout-coupon";
+import { assertAuthEscrowCheckoutBreakdownOnPage } from "../../helpers/checkout-display-contract";
 import { hasMerchantOrderE2eEnv } from "../../helpers/merchant-orders";
 import { dismissBlockingOverlays } from "../../helpers/overlays";
 import { seedMemberAuthPendingOrderForE2e } from "../../helpers/platform-rewards";
@@ -107,13 +107,7 @@ test.describe("P-E08 C2C auth escrow", () => {
     await gotoCheckout(page, orderId);
     await dismissBlockingOverlays(page);
 
-    await expect(
-      page.getByRole("heading", { name: /訂單財務明細總結/ }),
-    ).toBeVisible({ timeout: 20_000 });
-
-    const shippingLegs = await readAuthEscrowCheckoutShippingLegs(page);
-    expect(shippingLegs.inboundShippingFee).toBe(30);
-    expect(shippingLegs.outboundShippingFee).toBe(30);
+    await assertAuthEscrowCheckoutBreakdownOnPage(page);
   });
 
   test("buyer trading list shows auth escrow 待付款 row", async ({
