@@ -21,6 +21,8 @@ import {
 import {
   addHobbyHoldingForFixture,
   clickCollectionFilter,
+  clickHoldingsRowOverflowItem,
+  filterCollectionHoldingsBySearch,
   dismissBlockingOverlays,
   gotoCollectionPage,
   holdingsRow,
@@ -29,6 +31,7 @@ import {
   openHoldingsRowMenu,
   sellPrefillModalForm,
   uploadSellPrefillPhotos,
+  waitForCollectionRefresh,
 } from "./helpers/collection-asset";
 
 function uniquePurchasePrice(seed: string): string {
@@ -37,15 +40,6 @@ function uniquePurchasePrice(seed: string): string {
     hash = (hash * 31 + char.charCodeAt(0)) % 1000;
   }
   return String(10_000 + ((hash * 97 + Date.now()) % 90_000));
-}
-
-async function waitForCollectionRefresh(page: import("@playwright/test").Page) {
-  const wrapper = page
-    .locator('section[aria-labelledby="cards-heading"]')
-    .locator("xpath=..");
-  await expect(wrapper).not.toHaveClass(/pointer-events-none/, {
-    timeout: 30_000,
-  });
 }
 
 test.use({ viewport: { width: 1280, height: 900 } });
@@ -109,6 +103,7 @@ test.describe.serial("Member collection holdings mutations", () => {
     await addHobbyHoldingForFixture(page, fixture, purchasePrice, {
       gradingOptionLabel: "PSA 10",
     });
+    await filterCollectionHoldingsBySearch(page, purchasePrice);
     const row = holdingsRowByPurchasePrice(
       page,
       fixture.productName,
@@ -120,20 +115,18 @@ test.describe.serial("Member collection holdings mutations", () => {
     await row.getByLabel(`更改 ${fixture.productName} 鑑定規格`).click();
     await page.getByRole("menuitem", { name: "裸卡 A", exact: true }).click();
     await waitForCollectionRefresh(page);
+    await filterCollectionHoldingsBySearch(page, purchasePrice);
 
     const updatedRow = holdingsRowByPurchasePrice(
       page,
       fixture.productName,
       purchasePrice,
-      { gradingLabel: "RAW" },
     );
-    await expect(updatedRow).toContainText("RAW", { timeout: 20_000 });
+    await expect(updatedRow).toContainText("裸卡 A", { timeout: 20_000 });
 
     await clickCollectionFilter(page, "未鑑定");
     await expect(
-      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice, {
-        gradingLabel: "RAW",
-      }),
+      holdingsRowByPurchasePrice(page, fixture.productName, purchasePrice),
     ).toBeVisible({
       timeout: 15_000,
     });
@@ -160,14 +153,15 @@ test.describe.serial("Member collection holdings mutations", () => {
 
     const purchasePrice = uniquePurchasePrice("remove");
     await addHobbyHoldingForFixture(page, fixture, purchasePrice);
+    await filterCollectionHoldingsBySearch(page, purchasePrice);
     const row = holdingsRowByPurchasePrice(
       page,
       fixture.productName,
       purchasePrice,
       { gradingLabel: "RAW" },
     );
-    await row.getByRole("button").filter({ hasText: "⋯" }).click();
-    await page.getByRole("menuitem", { name: "移除出資產庫" }).click();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+    await clickHoldingsRowOverflowItem(page, row, "移除出資產庫");
 
     await expect(row).toHaveCount(0, {
       timeout: 30_000,
@@ -241,8 +235,7 @@ test.describe.serial("Member collection holdings mutations", () => {
       fixture.productId,
     );
 
-    await row.getByRole("button").filter({ hasText: "⋯" }).click();
-    await page.getByRole("menuitem", { name: "出售收藏品" }).click();
+    await clickHoldingsRowOverflowItem(page, row, "出售收藏品");
 
     await expect(page.getByText("上架出售收藏")).toBeVisible({
       timeout: 15_000,

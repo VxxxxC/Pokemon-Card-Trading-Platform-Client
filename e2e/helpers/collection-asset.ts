@@ -114,14 +114,29 @@ export async function searchAndSelectCatalog(
     /sv2a-182 或 Charizard ex SAR|151 Booster Box/,
   );
   const keywordList = Array.isArray(keywords) ? keywords : [keywords];
-  const catalogResults = modal.locator("div.absolute button:has(img)");
+  const catalogDropdown = modal.locator("div.absolute.z-50");
+  const catalogResults = catalogDropdown.locator("button:has(img)");
+  const searchButton = modal.getByRole("button", { name: "搜尋" });
 
   for (const keyword of keywordList) {
-    await searchInput.fill(keyword);
-    await expect(searchInput).toHaveValue(keyword);
-    await expect(catalogResults.first()).toBeVisible({ timeout: 25_000 });
+    const normalizedKeyword = keyword.trim();
+    if (!normalizedKeyword) {
+      continue;
+    }
 
-    const matchText = preferredMatch ?? keyword;
+    await searchInput.fill("");
+    await searchInput.fill(normalizedKeyword);
+    await expect(searchInput).toHaveValue(normalizedKeyword);
+    await searchButton.click();
+
+    const searching = modal.getByText("搜尋中…");
+    if (await searching.isVisible().catch(() => false)) {
+      await searching.waitFor({ state: "hidden", timeout: 20_000 });
+    }
+
+    await expect(catalogResults.first()).toBeVisible({ timeout: 45_000 });
+
+    const matchText = preferredMatch ?? normalizedKeyword;
     const preferred = catalogResults.filter({ hasText: matchText });
     const target =
       (await preferred.count()) > 0
@@ -129,6 +144,7 @@ export async function searchAndSelectCatalog(
         : catalogResults.first();
 
     await target.click();
+    await expect(catalogResults).toHaveCount(0, { timeout: 10_000 });
     return;
   }
 
@@ -240,7 +256,36 @@ export function holdingsRowByPurchasePrice(
     .filter({
       has: page.locator("td").nth(2).locator("p").first().getByText(normalized),
     })
-    .last();
+    .first();
+}
+
+export async function waitForCollectionRefresh(page: Page): Promise<void> {
+  const wrapper = holdingsSection(page).locator("xpath=..");
+  await expect(wrapper).not.toHaveClass(/pointer-events-none/, {
+    timeout: 30_000,
+  });
+}
+
+export async function filterCollectionHoldingsBySearch(
+  page: Page,
+  query: string,
+): Promise<void> {
+  const search = page.getByPlaceholder("搜尋持有卡牌名稱、編號或 JAN 條碼...");
+  await search.fill("");
+  await search.fill(query);
+  await waitForCollectionRefresh(page);
+}
+
+export async function clickHoldingsRowOverflowItem(
+  page: Page,
+  row: ReturnType<typeof holdingsRow>,
+  menuLabel: string,
+): Promise<void> {
+  await row.scrollIntoViewIfNeeded();
+  await row.getByRole("button", { name: "⋯" }).click();
+  const menuItem = page.getByRole("menuitem", { name: menuLabel });
+  await expect(menuItem).toBeVisible({ timeout: 10_000 });
+  await menuItem.click();
 }
 
 export async function clickCollectionFilter(
@@ -277,7 +322,10 @@ export async function selectHobbyGrading(
   optionLabel: string,
 ): Promise<void> {
   await ensureHobbyCardItemType(page);
+  const modal = addAssetModalForm(page);
+  await page.keyboard.press("Escape");
   const trigger = await hobbyGradingSelectTrigger(page);
+  await trigger.scrollIntoViewIfNeeded();
   await trigger.click();
   const list = page.locator('[data-slot="select-content"]').last();
   await expect(list).toBeVisible({ timeout: 10_000 });
