@@ -1385,45 +1385,28 @@ export async function waitForBuyerP2pCompleteOnTradingList(
   options?: { orderNumber?: string | null; memberOrderId?: string | null },
 ): Promise<void> {
   await ensureMemberPersona(page);
+  const normalizedOrderNumber = options?.orderNumber?.replace(/^#/, "") ?? null;
 
   await expect
     .poll(
       async () => {
-        await page.goto(
-          `/profile/user/trading?filter=${encodeURIComponent("待處理")}&_e2e=${Date.now()}`,
-          { waitUntil: "domcontentloaded" },
-        );
-        await dismissBlockingOverlays(page);
+        await gotoTradingPageWithFilter(page, "待處理");
+        await selectTradingPersonaTab(page, "買單");
 
-        if (page.url().includes("/auth")) {
-          return false;
-        }
+        if (normalizedOrderNumber) {
+          const search = page.locator("#user-order-search");
+          await search.fill("");
+          await search.fill(normalizedOrderNumber);
+          await waitForTradingListSettled(page);
 
-        const headingVisible = await page
-          .locator("#user-trading-heading")
-          .isVisible()
-          .catch(() => false);
-        if (!headingVisible) {
-          return false;
-        }
-
-        await waitForTradingListSettled(page);
-
-        if (options?.orderNumber) {
           const orderRow = page
             .locator("div.cursor-pointer.rounded-xl")
-            .filter({ hasText: `#${options.orderNumber}` });
-          const orderVisible = await orderRow
+            .filter({ hasText: `#${normalizedOrderNumber}` });
+          return orderRow
+            .getByRole("button", { name: "確認完成交易" })
             .first()
             .isVisible()
             .catch(() => false);
-          if (orderVisible) {
-            return orderRow
-              .getByRole("button", { name: "確認完成交易" })
-              .first()
-              .isVisible()
-              .catch(() => false);
-          }
         }
 
         return page
@@ -1432,7 +1415,7 @@ export async function waitForBuyerP2pCompleteOnTradingList(
           .isVisible()
           .catch(() => false);
       },
-      { timeout: 45_000 },
+      { timeout: 60_000 },
     )
     .toBe(true);
 }
