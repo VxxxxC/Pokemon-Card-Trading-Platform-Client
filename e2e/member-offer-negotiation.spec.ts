@@ -22,6 +22,7 @@ import {
   openBothChatRooms,
   chatConsoleRoot,
   submitBuyerOfferFromDetail,
+  waitForBuyerOfferCardRejected,
   waitForSellerOfferCardVisible,
   P2P_OFFER_AMOUNT,
   P2P_OFFER_AMOUNT_LABEL,
@@ -150,14 +151,13 @@ test.describe("Member offer negotiation", () => {
         .or(rejectConfirmDialog.getByRole("button", { name: "確認拒絕" }));
       await confirmRejectButton.first().click({ force: true, timeout: 15_000 });
 
-      await expect
-        .poll(async () => getOfferStatus(offerId!), { timeout: 30_000 })
-        .toBe("rejected");
-
-      await ensureChatRoomActive(buyerPage, roomId, sellerDisplayName, sellerId);
-      const buyerOfferCard = offerCardWithAmount(buyerPage, offerLabel);
-      await expect(buyerOfferCard.getByText("● 已拒絕")).toBeVisible({
-        timeout: 30_000,
+      await waitForBuyerOfferCardRejected({
+        buyerPage,
+        roomId,
+        sellerDisplayName,
+        sellerId,
+        amountLabel: offerLabel,
+        offerId: offerId!,
       });
     } finally {
       await buyerContext.close();

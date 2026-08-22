@@ -462,6 +462,76 @@ export async function waitForBuyerOfferCardAccepted(params: {
     .toBe(true);
 }
 
+export async function waitForBuyerOfferCardRejected(params: {
+  buyerPage: Page;
+  roomId: string;
+  sellerDisplayName: string;
+  sellerId: string;
+  amountLabel: string;
+  offerId: string;
+  timeoutMs?: number;
+}): Promise<void> {
+  const offerRoomId =
+    (await getOfferRoomId(params.offerId)) ?? params.roomId;
+
+  await expect
+    .poll(async () => getOfferStatus(params.offerId), { timeout: 30_000 })
+    .toBe("rejected");
+
+  if (params.offerId) {
+    await expect
+      .poll(async () => hasOfferChatMessage(params.offerId), {
+        timeout: 25_000,
+      })
+      .toBe(true);
+  }
+
+  const buyerOfferCard = () =>
+    offerCardWithAmount(params.buyerPage, params.amountLabel).filter({
+      has: params.buyerPage.getByText("● 已拒絕"),
+    });
+
+  const timeoutMs = params.timeoutMs ?? 90_000;
+  let reopened = false;
+
+  await expect
+    .poll(
+      async () => {
+        await dismissBlockingOverlays(params.buyerPage);
+        await expandChatConsole(params.buyerPage);
+        await ensureChatRoomActive(
+          params.buyerPage,
+          offerRoomId,
+          params.sellerDisplayName,
+          params.sellerId,
+        ).catch(() => undefined);
+
+        const card = buyerOfferCard();
+        await card.scrollIntoViewIfNeeded().catch(() => undefined);
+        const visible = await card.isVisible().catch(() => false);
+        if (visible) {
+          return true;
+        }
+
+        if (!reopened) {
+          reopened = true;
+          await openChatRoom(
+            params.buyerPage,
+            offerRoomId,
+            params.sellerDisplayName,
+            params.sellerId,
+          );
+          await card.scrollIntoViewIfNeeded().catch(() => undefined);
+          return card.isVisible().catch(() => false);
+        }
+
+        return false;
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
+}
+
 export async function openBothChatRooms(
   buyerPage: Page,
   sellerPage: Page,

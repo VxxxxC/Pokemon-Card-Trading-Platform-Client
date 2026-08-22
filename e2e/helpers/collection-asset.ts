@@ -272,8 +272,52 @@ export async function filterCollectionHoldingsBySearch(
 ): Promise<void> {
   const search = page.getByPlaceholder("搜尋持有卡牌名稱、編號或 JAN 條碼...");
   await search.fill("");
-  await search.fill(query);
+  if (query) {
+    await search.fill(query);
+  }
   await waitForCollectionRefresh(page);
+}
+
+/** Narrows by catalog name search, then paginates until the unique purchase-price row is visible. */
+export async function focusHoldingsRowByPurchasePrice(
+  page: Page,
+  productName: string,
+  purchasePrice: string | number,
+  options?: { gradingLabel?: string },
+): Promise<ReturnType<typeof holdingsRow>> {
+  await filterCollectionHoldingsBySearch(page, productName);
+
+  for (let pageIndex = 0; pageIndex < 10; pageIndex += 1) {
+    const row = holdingsRowByPurchasePrice(
+      page,
+      productName,
+      purchasePrice,
+      options,
+    );
+    if (await row.isVisible().catch(() => false)) {
+      await row.scrollIntoViewIfNeeded();
+      return row;
+    }
+
+    const nextButton = holdingsSection(page).getByRole("button", {
+      name: "下一頁",
+    });
+    if (!(await nextButton.isEnabled().catch(() => false))) {
+      break;
+    }
+    await nextButton.click();
+    await waitForCollectionRefresh(page);
+  }
+
+  const row = holdingsRowByPurchasePrice(
+    page,
+    productName,
+    purchasePrice,
+    options,
+  );
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  await row.scrollIntoViewIfNeeded();
+  return row;
 }
 
 export async function clickHoldingsRowOverflowItem(
@@ -286,6 +330,53 @@ export async function clickHoldingsRowOverflowItem(
   const menuItem = page.getByRole("menuitem", { name: menuLabel });
   await expect(menuItem).toBeVisible({ timeout: 10_000 });
   await menuItem.click();
+}
+
+export async function selectHoldingsRowGrade(
+  page: Page,
+  productName: string,
+  purchasePrice: string | number,
+  gradeOptionLabel: string,
+  options?: { fromGradingLabel?: string },
+): Promise<void> {
+  const row = await focusHoldingsRowByPurchasePrice(
+    page,
+    productName,
+    purchasePrice,
+    options?.fromGradingLabel
+      ? { gradingLabel: options.fromGradingLabel }
+      : undefined,
+  );
+  const trigger = row.getByLabel(`更改 ${productName} 鑑定規格`);
+  await trigger.scrollIntoViewIfNeeded();
+  await trigger.click();
+
+  const menuItem = page.getByRole("menuitem", {
+    name: gradeOptionLabel,
+    exact: true,
+  });
+  await expect(menuItem).toBeVisible({ timeout: 10_000 });
+  await expect(menuItem).toBeEnabled({ timeout: 5_000 });
+  await menuItem.click();
+
+  await expect
+    .poll(
+      async () => {
+        const refreshed = holdingsRowByPurchasePrice(
+          page,
+          productName,
+          purchasePrice,
+        );
+        const text = await refreshed
+          .getByLabel(`更改 ${productName} 鑑定規格`)
+          .textContent()
+          .catch(() => null);
+        return text?.includes(gradeOptionLabel) ?? false;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  await waitForCollectionRefresh(page);
 }
 
 export async function clickCollectionFilter(

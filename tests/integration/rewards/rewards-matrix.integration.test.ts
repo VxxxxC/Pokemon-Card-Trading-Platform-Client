@@ -170,8 +170,19 @@ describe.skipIf(!hasRewardsIntegrationEnv()).sequential(
     expect(campaignId).toBeTruthy();
 
     await runAsBuyer(async () => {
+      await expect
+        .poll(async () => {
+          const list = await listActiveFlashCampaigns();
+          if (!list.success) {
+            return false;
+          }
+          const campaign = list.data.find((entry) => entry.id === campaignId);
+          return campaign?.can_claim === true;
+        }, { timeout: 20_000 })
+        .toBe(true);
+
       const first = await claimFlashReward(campaignId!);
-      expect(first.success).toBe(true);
+      expect(first.success, first.success ? "" : first.error).toBe(true);
 
       const second = await claimFlashReward(campaignId!);
       expect(second.success).toBe(false);

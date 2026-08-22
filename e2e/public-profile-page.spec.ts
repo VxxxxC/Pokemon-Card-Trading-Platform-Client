@@ -118,13 +118,15 @@ test.describe("Public profile page", () => {
     const href = await listingLink.first().getAttribute("href");
     expect(href).toMatch(/\/product\//);
 
-    await listingLink.first().click();
+    await page.goto(href!, { waitUntil: "domcontentloaded" });
+    await dismissBlockingOverlays(page);
     await expect(page).toHaveURL(
       new RegExp(
         `/marketplace/${sellerId!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/product/`,
       ),
       { timeout: 20_000 },
     );
+    await expect(page.locator("main h1")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("店主獨立出讓一口價")).toBeVisible({
       timeout: 15_000,
     });

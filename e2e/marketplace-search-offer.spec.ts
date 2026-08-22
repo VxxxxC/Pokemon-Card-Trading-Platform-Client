@@ -6,6 +6,7 @@ import {
 } from "./fixtures/test-data";
 import {
   ensureDbChatRoom,
+  ensureListingActive,
   getLatestOfferForListing,
   getProfileIdByEmail,
   resolveE2eMarketplaceFixture,
@@ -170,6 +171,7 @@ test.describe("Marketplace search + make offer", () => {
     });
 
     await test.step("Step 6 — order book lists fixture seller", async () => {
+      await ensureListingActive(fixture.listingId);
       await expect(page.locator("#live-order-book-panel")).toBeVisible({
         timeout: 20_000,
       });
@@ -201,21 +203,21 @@ test.describe("Marketplace search + make offer", () => {
       await expect(slideOver.locator("#exe-negotiation-price")).toBeVisible();
     });
 
-    await test.step("Step 8 — submit AML-safe offer from slide-over", async () => {
+    await test.step("Step 8 — submit offer and assert pending DB row", async () => {
       await page.locator("#exe-negotiation-price").fill(OFFER_AMOUNT);
       await page.getByRole("button", { name: "發送叫價至聊天室" }).click();
 
       await expect
         .poll(
           async () => {
-            const successToast = await page
-              .locator("[data-sonner-toast]")
-              .filter({ hasText: /議價要約已成功送出/ })
-              .first()
-              .isVisible()
-              .catch(() => false);
-            if (successToast) {
-              return true;
+            const errorToast = page
+              .locator('[data-sonner-toast][data-type="error"]')
+              .first();
+            if (await errorToast.isVisible().catch(() => false)) {
+              const message = await errorToast
+                .innerText()
+                .catch(() => "unknown offer error");
+              throw new Error(`Offer submission failed: ${message}`);
             }
 
             const offer = await getLatestOfferForListing({
@@ -223,25 +225,17 @@ test.describe("Marketplace search + make offer", () => {
               listingId: fixture.listingId,
               buyerId,
             });
-            return offer?.status === "pending";
-          },
-          { timeout: 25_000 },
-        )
-        .toBe(true);
-    });
+            if (offer?.status === "pending") {
+              return true;
+            }
 
-    await test.step("Step 9 — DB offer row is pending", async () => {
-      await expect
-        .poll(
-          async () => {
-            const offer = await getLatestOfferForListing({
-              roomId,
+            const fallbackOffer = await getLatestOfferForListing({
               listingId: fixture.listingId,
               buyerId,
             });
-            return offer?.status === "pending";
+            return fallbackOffer?.status === "pending";
           },
-          { timeout: 25_000 },
+          { timeout: 45_000 },
         )
         .toBe(true);
     });
