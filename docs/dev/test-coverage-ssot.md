@@ -352,7 +352,7 @@ Fixture 標 `@rpc-edge-only`；唔作 Admin 唯一證明（registry §3.3）。
 | **L6** | Member-trading 入 CI | TC-E08 · E11 · J-AUTH-01 | SC-J05 · SC-T03 | ◐ |
 | **L7** | Admin default contract (CC-INT) | J-CPN-07 | SC-J03 | ☑ |
 | **L8** | 全站 CC | CC-PLAT/RWD/GRD | SC-CC01–04 | ☐ |
-| **L9** | 功能表全 ☑（registry §1–4） | F-M/C/A/S | SC-FX-ALL | ☐ |
+| **L9** | 功能表全 ☑（registry §1–4） | F-M/C/A/S | SC-FX-ALL | ☑ |
 | **L10** | Security mutation 入 certify | SEC-S03 · S06 | SC-S03 · SC-S06 | ☐ |
 | **L11** | Nightly 接入所有 Nightly† spec | registry † 行 | SC-G02 | ◐ |
 

@@ -133,9 +133,9 @@
 | **SC-FX-C** | §2 Merchant **全 ☑** | ☑ |
 | **SC-FX-A** | §3 Admin **全 ☑** | ☑ |
 | **SC-FX-S** | §4 System **全 ☑** | ☑ |
-| **SC-FX-ALL** | 上列四項全 ☑ + `test:staging:certify` 綠 + **SC-P0** + Partner M0 | ☐（M0 ☑ · certify 待重跑） |
+| **SC-FX-ALL** | 上列四項全 ☑ + `test:staging:certify` 綠 + **SC-P0** + Partner M0 | ☑（2026-08-22） |
 
-**統計（2026-08-21）：** Member **26/26 ☑** · Merchant **13/13 ☑** · Admin **15/15 ☑** · System **13/13 ☑** — **67/67 功能 T0–T3 ☑**；待 **SC-FX-ALL**（`test:staging:certify` 綠）。Partner M0 ☑ · SC-P0 ☑ — 見 [partner-regression.md](./partner-regression.md)。
+**統計（2026-08-22）：** Member **26/26 ☑** · Merchant **13/13 ☑** · Admin **15/15 ☑** · System **13/13 ☑** — **67/67 功能 T0–T3 ☑** · **SC-FX-ALL ☑**（`test:staging:certify` PASS · Partner M0 2026-08-22）。
 
 ---
 

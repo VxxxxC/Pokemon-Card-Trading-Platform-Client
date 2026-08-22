@@ -36,7 +36,7 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **SC-P2** | §4 [#C] P-C01–P-C03 **全 ☑**（P-C04 預留） | ☑ |
 | **SC-P-FX** | §5 每 F-* 至少 1 條 P-TC ☑（Phase 3） | ☑ |
 | **SC-P-M0** | Partner M0 staging smoke（[PARTNER_QA.md](./PARTNER_QA.md)） | ☑ |
-| **SC-P-ALL** | SC-P0 + certify 綠 + M0 | ☐（M0 ☑ · certify 待 L2 fix 重跑） |
+| **SC-P-ALL** | SC-P0 + certify 綠 + M0 | ☑（2026-08-22 · certify PASS · M0 綠） |
 
 **統計（2026-08-21）：** P0 **9/9 ☑** · P1 **9/9 ☑** · P2 **3/3 ☑**（P-C04 預留） · F-* Partner 覆蓋 **67/67 ☑**。
 
@@ -138,7 +138,7 @@ F-* 全 ☑  +  test:staging:certify 綠  +  SC-P0 全 ☑  +  Partner M0
 | **P-F04B** | Member KYC 申請頁 | F-C-08 | `e2e/partner/member/p-f04b-merchant-kyc-apply.spec.ts` |
 | **P-F05** | Admin workbench T0 合併 | F-A-01–14 · 05b · F-M-23 · F-S-01–04 · 07 · 09 · 10 | `e2e/partner/admin/p-f05-admin-ops-smoke.spec.ts` |
 
-其餘 F-* 由現有 P-A／P-B／P-C `@features` 覆蓋（例如 F-C-02＝P-B04、F-S-12＝P-A02）。P-F 新 smoke 已綠；**SC-P-ALL** 差 `test:staging:certify` 綠（M0 ☑ 2026-08-21）。
+其餘 F-* 由現有 P-A／P-B／P-C `@features` 覆蓋（例如 F-C-02＝P-B04、F-S-12＝P-A02）。P-F 新 smoke 已綠；**SC-P-ALL ☑**（certify PASS · M0 2026-08-22）。
 
 **Phase 路線：**
 

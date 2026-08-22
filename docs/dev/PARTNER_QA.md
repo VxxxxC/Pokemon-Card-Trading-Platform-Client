@@ -1,7 +1,7 @@
 # Partner QA — Staging 人手簽收
 
-> **Status:** ✅ Partner **M0** 簽收（2026-08-21 · staging）  
-> **更新：** 2026-08-21  
+> **Status:** ✅ Partner **M0** 簽收（2026-08-22 · staging · `test:e2e:partner-m0` 綠）  
+> **更新：** 2026-08-22  
 > **環境：** staging only · 勿用 production 真實用戶
 
 **Dev 前提：** [system-feature-registry.md](./system-feature-registry.md) **全 ☑** + `test:staging:certify` 綠 + **[partner-regression.md](./partner-regression.md) SC-P0 全 ☑** + `test:e2e:partner` 綠
@@ -34,7 +34,7 @@ Logic／回歸／安全由 [staging-certification.md](./staging-certification.md
 | ☑ | 開 `/profile/user/rewards` | 無 5xx／白屏 |
 | ☑ | 開 `/terms`、`/privacy` | 可讀、無 500 |
 
-**Partner 簽名：** Partner QA **日期：** 2026-08-21
+**Partner 簽名：** Partner QA **日期：** 2026-08-22（`bun run test:e2e:partner-m0` · post `test:staging:certify` PASS）
 
 ---
 
