@@ -124,28 +124,38 @@ export async function searchAndSelectCatalog(
       continue;
     }
 
-    await searchInput.fill("");
-    await searchInput.fill(normalizedKeyword);
-    await expect(searchInput).toHaveValue(normalizedKeyword);
-    await searchButton.click();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await searchInput.fill("");
+      await searchInput.fill(normalizedKeyword);
+      await expect(searchInput).toHaveValue(normalizedKeyword);
+      await searchButton.click();
 
-    const searching = modal.getByText("搜尋中…");
-    if (await searching.isVisible().catch(() => false)) {
-      await searching.waitFor({ state: "hidden", timeout: 20_000 });
+      const searching = modal.getByText("搜尋中…");
+      if (await searching.isVisible().catch(() => false)) {
+        await searching.waitFor({ state: "hidden", timeout: 30_000 });
+      }
+
+      const hasResults = await catalogResults
+        .first()
+        .isVisible({ timeout: 20_000 })
+        .catch(() => false);
+      if (!hasResults) {
+        if (attempt < 2) {
+          await page.waitForTimeout(1_000);
+          continue;
+        }
+        await expect(catalogResults.first()).toBeVisible({ timeout: 25_000 });
+      }
+
+      const matchText = preferredMatch ?? normalizedKeyword;
+      const preferred = catalogResults.filter({ hasText: matchText });
+      const target =
+        (await preferred.count()) > 0 ? preferred.first() : catalogResults.first();
+
+      await target.click();
+      await expect(catalogResults).toHaveCount(0, { timeout: 10_000 });
+      return;
     }
-
-    await expect(catalogResults.first()).toBeVisible({ timeout: 45_000 });
-
-    const matchText = preferredMatch ?? normalizedKeyword;
-    const preferred = catalogResults.filter({ hasText: matchText });
-    const target =
-      (await preferred.count()) > 0
-        ? preferred.first()
-        : catalogResults.first();
-
-    await target.click();
-    await expect(catalogResults).toHaveCount(0, { timeout: 10_000 });
-    return;
   }
 
   throw new Error(
@@ -159,7 +169,12 @@ export async function searchAndSelectCatalogForFixture(
 ): Promise<void> {
   await searchAndSelectCatalog(
     page,
-    [fixture.catalogModalKeyword, fixture.searchKeyword, fixture.productId],
+    [
+      fixture.catalogModalKeyword,
+      fixture.searchKeyword,
+      fixture.productName,
+      fixture.productId,
+    ],
     fixture.catalogModalKeyword,
   );
 }

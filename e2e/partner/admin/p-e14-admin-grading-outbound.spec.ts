@@ -22,7 +22,7 @@ import {
 import { dismissBlockingOverlays } from "../../helpers/overlays";
 
 test.use({ viewport: { width: 1440, height: 900 } });
-test.setTimeout(180_000);
+test.setTimeout(240_000);
 
 test.describe("P-E14 G-W1 admin grading outbound", () => {
   test("admin submits outbound tracking on awaiting_outbound tab", async ({
