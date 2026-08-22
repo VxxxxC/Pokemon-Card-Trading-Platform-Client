@@ -11,6 +11,7 @@ import {
   type AdminRewardTemplateType,
   type AdminRewardTemplateUpsertInput,
 } from "@/lib/admin-rewards/types";
+import { formatHongKongDateTimeSlash } from "@/lib/datetime/hong-kong";
 
 const CATALOG_ELIGIBLE_TYPES = new Set<AdminRewardTemplateType>([
   "discount_coupon",
@@ -288,7 +289,7 @@ export function formatRewardActivityValue(row: AdminRewardActivityRow): string {
 
 export function formatActivityValidityPeriod(row: AdminRewardActivityRow): string {
   if (row.distribution_mode === "flash_only" && row.starts_at && row.ends_at) {
-    return `${new Date(row.starts_at).toLocaleString("zh-HK")} — ${new Date(row.ends_at).toLocaleString("zh-HK")}`;
+    return `${formatHongKongDateTimeSlash(row.starts_at)} — ${formatHongKongDateTimeSlash(row.ends_at)}`;
   }
 
   if (row.fixed_expiry_date) {

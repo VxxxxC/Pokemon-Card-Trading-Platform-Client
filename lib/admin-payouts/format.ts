@@ -2,8 +2,7 @@ import type {
   FpsPayoutRequestStatus,
   MerchantTransferPayoutStatus,
 } from "@/lib/admin-payouts/types";
-
-const HKT_TIME_ZONE = "Asia/Hong_Kong";
+import { formatHongKongDateTime } from "@/lib/datetime/hong-kong";
 
 export function formatAdminHkd(amount: number | null | undefined): string {
   const value = Number(amount ?? 0);
@@ -17,33 +16,7 @@ export function formatAdminHkd(amount: number | null | undefined): string {
 }
 
 export function formatAdminDateTime(iso: string | null | undefined): string {
-  if (!iso) {
-    return "—";
-  }
-
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  const formatter = new Intl.DateTimeFormat("zh-HK", {
-    timeZone: HKT_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(date);
-  const year = parts.find((part) => part.type === "year")?.value ?? "";
-  const month = parts.find((part) => part.type === "month")?.value ?? "";
-  const day = parts.find((part) => part.type === "day")?.value ?? "";
-  const hour = parts.find((part) => part.type === "hour")?.value ?? "";
-  const minute = parts.find((part) => part.type === "minute")?.value ?? "";
-
-  return `${year}/${month}/${day} ${hour}:${minute}`;
+  return formatHongKongDateTime(iso);
 }
 
 export function formatStripeSyncLabel(iso: string): string {

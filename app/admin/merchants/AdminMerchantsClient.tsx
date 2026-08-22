@@ -26,6 +26,7 @@ import {
 } from "@/app/actions/admin-kyc";
 import type { StripeAccountPayoutSummary } from "@/lib/stripe/account-summary";
 import { KYC_DOCUMENT_TYPE_LABELS } from "@/lib/kyc/documents";
+import { formatHongKongDateTime } from "@/lib/datetime/hong-kong";
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
@@ -68,8 +69,7 @@ function formatHandle(
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("zh-HK", { hour12: false });
+  return formatHongKongDateTime(iso);
 }
 
 function statusBadgeClasses(

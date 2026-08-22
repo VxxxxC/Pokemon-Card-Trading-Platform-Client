@@ -3,6 +3,7 @@ import {
   type ReportCategorySlug,
 } from "@/lib/moderation/category-config";
 import type { ModerationCaseStatus } from "@/lib/moderation/types";
+import { formatHongKongDateTimeSlash } from "@/lib/datetime/hong-kong";
 
 export type ModerationSeverityBand = "critical" | "medium" | "low";
 
@@ -100,20 +101,7 @@ export function categoryBadgeClasses(
 }
 
 export function formatModerationDateTime(value: string | null | undefined): string {
-  if (!value) {
-    return "—";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("zh-HK", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatHongKongDateTimeSlash(value);
 }
 
 export function moderationAuditActionLabel(action: string): string {

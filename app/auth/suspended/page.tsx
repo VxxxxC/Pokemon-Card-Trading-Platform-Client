@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthFormShell } from "@/app/auth/AuthFormShell";
+import { formatHongKongDateTimeSlash } from "@/lib/datetime/hong-kong";
 import { SuspendedAccountClient } from "./SuspendedAccountClient";
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ export default async function SuspendedAccountPage({ searchParams }: PageProps) 
         restrictionType === "ban"
           ? "此帳戶因違反平台規則已被永久封禁。如有疑問請聯絡客服。"
           : endsAt
-            ? `此帳戶暫時無法使用，預計恢復時間：${new Date(endsAt).toLocaleString("zh-HK")}。`
+            ? `此帳戶暫時無法使用，預計恢復時間：${formatHongKongDateTimeSlash(endsAt)}。`
             : "此帳戶暫時無法使用，請稍後再試或聯絡客服。"
       }
     >

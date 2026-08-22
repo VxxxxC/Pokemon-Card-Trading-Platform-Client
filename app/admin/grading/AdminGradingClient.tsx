@@ -18,6 +18,7 @@ import {
   type AdminGradingTab,
   type AdminGradingFaultParty,
 } from "@/app/actions/admin-grading";
+import { formatHongKongDateTime } from "@/lib/datetime/hong-kong";
 import {
   DEFAULT_GRADING_OPTION_ID,
   GRADING_OPTION_GROUPS,
@@ -48,8 +49,7 @@ const TAB_LABELS: Record<AdminGradingTab, string> = {
 const PAGE_SIZE = 20;
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("zh-HK", { hour12: false });
+  return formatHongKongDateTime(iso);
 }
 
 function formatProductName(row: AdminGradingQueueRow): string {
