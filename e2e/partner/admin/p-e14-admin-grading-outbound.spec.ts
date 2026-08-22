@@ -11,8 +11,14 @@ import {
 import {
   getMemberOrderOutboundTracking,
   hasGradingPartnerE2eEnv,
+  pollMemberOrderAwaitingOutboundSeed,
   seedMemberAuthAwaitingOutbound,
 } from "../../helpers/grading-partner";
+import {
+  adminGradingOrderRow,
+  openAdminGradingTab,
+  searchAdminGradingQueue,
+} from "../../helpers/admin-grading";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 test.setTimeout(180_000);
@@ -31,6 +37,7 @@ test.describe("P-E14 G-W1 admin grading outbound", () => {
     const seed = await seedMemberAuthAwaitingOutbound({
       suffix: `p-e14-${Date.now()}`,
     });
+    await pollMemberOrderAwaitingOutboundSeed(seed.orderId);
 
     await loginAsAdmin(page);
     await gotoAdminPage(page, "/admin/grading");
@@ -39,13 +46,10 @@ test.describe("P-E14 G-W1 admin grading outbound", () => {
       timeout: 30_000,
     });
 
-    await page.getByRole("button", { name: "待出庫" }).click();
-    await page.locator('input[placeholder="搜尋訂單號、買家、賣家、物流單號"]').fill(
-      seed.orderNumber,
-    );
-    await page.getByRole("button", { name: "搜尋" }).click();
+    await openAdminGradingTab(page, "待出庫");
+    await searchAdminGradingQueue(page, seed.orderNumber);
 
-    const row = page.locator("tr", { hasText: seed.orderNumber }).first();
+    const row = adminGradingOrderRow(page, seed.orderNumber);
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.getByRole("button", { name: "處理" }).click();
 

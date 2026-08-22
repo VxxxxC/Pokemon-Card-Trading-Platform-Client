@@ -198,6 +198,40 @@ export async function seedMemberAuthAwaitingBuyerConfirm(params?: {
   return seed;
 }
 
+export async function pollMemberOrderAwaitingOutboundSeed(
+  orderId: string,
+  timeoutMs = 30_000,
+): Promise<void> {
+  const admin = createE2eAdminClient();
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const { data, error } = await admin
+      .from("member_orders")
+      .select("escrow_status, auth_result, outbound_tracking_no")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`[pollMemberOrderAwaitingOutboundSeed] ${error.message}`);
+    }
+
+    if (
+      data?.escrow_status === "shipped" &&
+      data.auth_result === "passed" &&
+      (data.outbound_tracking_no == null || data.outbound_tracking_no === "")
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(
+    `[pollMemberOrderAwaitingOutboundSeed] order ${orderId} not awaiting outbound`,
+  );
+}
+
 export async function getMemberOrderOutboundTracking(
   orderId: string,
 ): Promise<string | null> {
