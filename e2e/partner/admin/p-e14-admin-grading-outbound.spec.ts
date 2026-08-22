@@ -15,10 +15,11 @@ import {
   seedMemberAuthAwaitingOutbound,
 } from "../../helpers/grading-partner";
 import {
-  adminGradingOrderRow,
+  filterAdminGradingOrderKind,
   openAdminGradingTab,
-  searchAdminGradingQueue,
+  waitForAdminGradingOrderRow,
 } from "../../helpers/admin-grading";
+import { dismissBlockingOverlays } from "../../helpers/overlays";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 test.setTimeout(180_000);
@@ -41,16 +42,16 @@ test.describe("P-E14 G-W1 admin grading outbound", () => {
 
     await loginAsAdmin(page);
     await gotoAdminPage(page, "/admin/grading");
+    await dismissBlockingOverlays(page);
 
     await expect(page.getByRole("heading", { name: "鑑定工作台" })).toBeVisible({
       timeout: 30_000,
     });
 
     await openAdminGradingTab(page, "待出庫");
-    await searchAdminGradingQueue(page, seed.orderNumber);
+    await filterAdminGradingOrderKind(page, "member");
 
-    const row = adminGradingOrderRow(page, seed.orderNumber);
-    await expect(row).toBeVisible({ timeout: 30_000 });
+    const row = await waitForAdminGradingOrderRow(page, seed.orderNumber);
     await row.getByRole("button", { name: "處理" }).click();
 
     await page.locator('input[placeholder="出庫物流單號"]').fill(trackingNo);

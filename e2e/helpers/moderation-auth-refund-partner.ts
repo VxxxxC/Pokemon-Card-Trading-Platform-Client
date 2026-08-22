@@ -319,6 +319,30 @@ export async function seedModerationCaseForAuthRefund(params: {
   return { caseId: moderationCase.id };
 }
 
+async function selectModerationResolutionUpheldWarn(page: Page): Promise<void> {
+  const resolutionSection = page
+    .locator("div")
+    .filter({ has: page.getByRole("heading", { name: "仲裁判定動作", exact: true }) })
+    .last();
+  const trigger = resolutionSection.getByRole("combobox").first();
+  await expect(trigger).toBeVisible({ timeout: 20_000 });
+
+  const optionName = "裁定成立（僅警告／可選退款）";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await trigger.click();
+    const option = page.getByRole("option", { name: optionName });
+    if (await option.isVisible({ timeout: 5_000 }).catch(() => false)) {
+      await option.click();
+      return;
+    }
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+  }
+
+  await trigger.click();
+  await page.getByRole("option", { name: optionName }).click({ timeout: 20_000 });
+}
+
 export async function resolveAdminDisputeWithSellerFaultRefund(
   page: Page,
   params: { caseId: string; orderNumber: string; violationPersona: "Member" | "Merchant" },
@@ -335,17 +359,15 @@ export async function resolveAdminDisputeWithSellerFaultRefund(
     page.getByRole("heading", { name: "關聯訂單" }),
   ).toBeVisible({ timeout: 20_000 });
 
-  await page
-    .getByRole("combobox")
-    .filter({ hasText: /請選擇一項仲裁判定動作/ })
-    .click();
-  await page
-    .getByRole("option", { name: "裁定成立（僅警告／可選退款）" })
-    .click();
+  await selectModerationResolutionUpheldWarn(page);
 
-  await page
+  const violationSection = page
+    .locator("div")
+    .filter({ has: page.getByRole("heading", { name: "仲裁判定動作", exact: true }) })
+    .last();
+  await violationSection
     .getByRole("combobox")
-    .filter({ hasText: /請選擇違規身分/ })
+    .filter({ hasText: /請選擇違規身分|Member|Merchant/ })
     .click();
   await page.getByRole("option", { name: params.violationPersona }).click();
 
