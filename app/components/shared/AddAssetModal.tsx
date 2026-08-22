@@ -18,9 +18,7 @@ import { useProductCatalogSearch } from "@/app/lib/hooks/useProductCatalogSearch
 import type { ProductCatalogSuggestion } from "@/app/actions/productCatalog";
 import {
   DEFAULT_GRADING_OPTION_ID,
-  GRADING_OPTION_GROUPS,
   getGradingOption,
-  getGradingOptionsByGroup,
   gradingOptionToFields,
   isRawGradingOption,
 } from "@/lib/grading/options";
@@ -36,17 +34,9 @@ import {
   validateCreateSealedListing,
   validateImageFile,
 } from "@/lib/listings/validation";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
-import { useListingAuthService } from "@/lib/listings/use-listing-auth-service";
+import { ListingGradingSelect } from "@/app/components/listings/ListingGradingSelect";
+import { useListingGradingAuthFields } from "@/lib/listings/use-listing-grading-auth-fields";
 import {
   catalogItemKindFromType,
   defaultSealedProductScore,
@@ -137,28 +127,20 @@ export function AddAssetModal() {
     enabled: isOpen,
   });
 
-  const [selectedGradingId, setSelectedGradingId] = useState(
-    DEFAULT_GRADING_OPTION_ID,
-  );
   const [sealState, setSealState] = useState<SealedProductScore>(
     defaultSealedProductScore(),
   );
   const {
+    gradingOptionId,
+    setGradingOptionId,
+    setGradingOptionIdState,
     acceptsBuyerAuth,
     setAcceptsBuyerAuth,
     resolvedUseAuthentication,
     showListingAuthToggle,
-  } = useListingAuthService({
-    gradingOptionId: selectedGradingId,
-    initialAcceptsBuyerAuth: false,
+  } = useListingGradingAuthFields({
+    enableAuthOnRawGradingSelect: true,
   });
-
-  const handleGradingChange = (gradingId: string) => {
-    setSelectedGradingId(gradingId);
-    if (isRawGradingOption(getGradingOption(gradingId))) {
-      setAcceptsBuyerAuth(true);
-    }
-  };
 
   // 收藏愛好專屬欄位
   const [purchasePrice, setPurchasePrice] = useState("");
@@ -249,7 +231,7 @@ export function AddAssetModal() {
         setMode("merch");
         setItemType(sellPrefill.itemKind ?? catalogItemKindFromType(suggestion.type));
         setSet(sellPrefill.catalog.setCode);
-        setSelectedGradingId(sellPrefill.gradingOptionId);
+        setGradingOptionIdState(sellPrefill.gradingOptionId);
         setSealState(sellPrefill.sealState ?? defaultSealedProductScore());
         setSellingPrice(String(sellPrefill.sellingPrice));
         setAcceptsBuyerAuth(
@@ -264,7 +246,7 @@ export function AddAssetModal() {
         setMode(globalMode);
         setItemType("card");
         setSet("");
-        setSelectedGradingId(DEFAULT_GRADING_OPTION_ID);
+        setGradingOptionIdState(DEFAULT_GRADING_OPTION_ID);
         setSealState(defaultSealedProductScore());
         setPurchasePrice("");
         setSellingPrice("");
@@ -476,7 +458,7 @@ export function AddAssetModal() {
 
       const result = await addToCollection({
         productId: catalogSearch.selected.id,
-        gradingOptionId: selectedGradingId,
+        gradingOptionId: gradingOptionId,
         purchasePrice: parsedPurchasePrice,
         sealState: itemType === "box_set" ? sealState : undefined,
       });
@@ -581,7 +563,7 @@ export function AddAssetModal() {
       const validationError = validateCreateCardListing(
         {
           productId: catalogSearch.selected?.id ?? "",
-          gradingOptionId: selectedGradingId,
+          gradingOptionId: gradingOptionId,
           price: Number(sellingPrice),
           sellerDescription: conditionDesc || undefined,
         },
@@ -610,7 +592,7 @@ export function AddAssetModal() {
       const result = await submitCardListingWithProgress({
         mode: "create",
         productId: catalogSearch.selected.id,
-        gradingOptionId: selectedGradingId,
+        gradingOptionId: gradingOptionId,
         price: Number(sellingPrice),
         sellerDescription: conditionDesc || undefined,
         useAuthentication: resolvedUseAuthentication,
@@ -629,7 +611,7 @@ export function AddAssetModal() {
       }
 
       const hadSellPrefill = Boolean(sellPrefill);
-      const gradingFields = gradingOptionToFields(getGradingOption(selectedGradingId));
+      const gradingFields = gradingOptionToFields(getGradingOption(gradingOptionId));
 
       const payload: GlobalAssetPayload = {
         id: result.data.listingId,
@@ -679,7 +661,7 @@ export function AddAssetModal() {
       if (!hadSellPrefill && catalogSearch.selected && isMemberPersonaActive) {
         setCollectionAddPrompt({
           productId: catalogSearch.selected.id,
-          gradingOptionId: selectedGradingId,
+          gradingOptionId: gradingOptionId,
           productName: catalogSearch.selected.name,
         });
       }
@@ -907,28 +889,11 @@ export function AddAssetModal() {
               <label className="font-mono text-[11px] text-[#d4c4b7]">
                 鑑定／品相
               </label>
-              <Select
-                value={selectedGradingId}
-                onValueChange={(val) =>
-                  handleGradingChange(val ?? DEFAULT_GRADING_OPTION_ID)
-                }
-              >
-                <SelectTrigger className="w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]">
-                  <SelectValue placeholder="選擇鑑定或裸卡品相" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da] max-h-72">
-                  {GRADING_OPTION_GROUPS.map((group) => (
-                    <SelectGroup key={group.key}>
-                      <SelectLabel>{group.label}</SelectLabel>
-                      {getGradingOptionsByGroup(group.key).map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ListingGradingSelect
+                value={gradingOptionId}
+                onValueChange={setGradingOptionId}
+                variant="create"
+              />
             </div>
           )}
 

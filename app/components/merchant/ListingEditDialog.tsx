@@ -5,15 +5,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import type { CardInstance, SKUGroup } from "@/app/components/merchant/InventoryAccordion";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ListingGradingSelect } from "@/app/components/listings/ListingGradingSelect";
 import {
   Dialog,
   DialogContent,
@@ -22,8 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   DEFAULT_GRADING_OPTION_ID,
-  GRADING_OPTION_GROUPS,
-  getGradingOptionsByGroup,
 } from "@/lib/grading/options";
 import {
   LISTING_IMAGE_MAX,
@@ -39,7 +29,7 @@ import {
   validateImageFile,
 } from "@/lib/listings/validation";
 import { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
-import { useListingAuthService } from "@/lib/listings/use-listing-auth-service";
+import { useListingGradingAuthFields } from "@/lib/listings/use-listing-grading-auth-fields";
 
 type ListingEditDialogProps = {
   open: boolean;
@@ -64,9 +54,17 @@ export function ListingEditDialog({
       ? String(item.extraShippingFee)
       : "",
   );
-  const [gradingOptionId, setGradingOptionId] = useState(
-    item.gradingOptionId || DEFAULT_GRADING_OPTION_ID,
-  );
+  const {
+    gradingOptionId,
+    setGradingOptionId,
+    acceptsBuyerAuth,
+    setAcceptsBuyerAuth,
+    resolvedUseAuthentication,
+    showListingAuthToggle,
+  } = useListingGradingAuthFields({
+    initialGradingOptionId: item.gradingOptionId || DEFAULT_GRADING_OPTION_ID,
+    initialAcceptsBuyerAuth: item.useAuthentication,
+  });
   const [sellerDescription, setSellerDescription] = useState(item.conditionDesc);
   const [isActive, setIsActive] = useState(item.status === "active");
   const [photoSlots, setPhotoSlots] = useState<EditListingPhotoSlot[]>(() =>
@@ -78,15 +76,6 @@ export function ListingEditDialog({
   const [activeReplaceIndex, setActiveReplaceIndex] = useState<number | null>(
     null,
   );
-  const {
-    acceptsBuyerAuth,
-    setAcceptsBuyerAuth,
-    resolvedUseAuthentication,
-    showListingAuthToggle,
-  } = useListingAuthService({
-    gradingOptionId,
-    initialAcceptsBuyerAuth: item.useAuthentication,
-  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoSlotsRef = useRef<EditListingPhotoSlot[]>(photoSlots);
@@ -275,28 +264,11 @@ export function ListingEditDialog({
                 <label className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
                   鑑定等級
                 </label>
-                <Select
+                <ListingGradingSelect
+                  variant="edit"
                   value={gradingOptionId}
-                  onValueChange={(value) =>
-                    setGradingOptionId(value ?? DEFAULT_GRADING_OPTION_ID)
-                  }
-                >
-                  <SelectTrigger className="mt-1 w-full h-10 border-0 bg-transparent px-0 text-[13px] font-bold text-text-primary shadow-none focus:ring-0">
-                    <SelectValue placeholder="選擇鑑定或裸卡品相" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da] max-h-72">
-                    {GRADING_OPTION_GROUPS.map((group) => (
-                      <SelectGroup key={group.key}>
-                        <SelectLabel>{group.label}</SelectLabel>
-                        {getGradingOptionsByGroup(group.key).map((option) => (
-                          <SelectItem key={option.id} value={option.id}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onValueChange={setGradingOptionId}
+                />
               </div>
             </div>
 

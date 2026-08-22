@@ -226,7 +226,7 @@ bun run test:staging:certify
 
 | ☐ | 項目 |
 |---|------|
-| ☐ | **Listing card asset workflow** — 合併 `AddAssetModal.tsx`、`ListingEditDialog.tsx`（及收藏品 `AddAssetModal` hobby 路徑）嘅 grading／鑑定 toggle logic 為同一 global component；`ListingAuthServiceToggle` + `useListingAuthService` 已抽 shared SSOT（2026-08-21），後續可再 consolidate modal shell。 |
+| ☑ | **Listing card asset workflow** — 合併 `AddAssetModal.tsx`、`ListingEditDialog.tsx`（及收藏品 `AddAssetModal` hobby 路徑）嘅 grading／鑑定 toggle logic 為同一 global component；`ListingAuthServiceToggle` + `useListingAuthService` + `ListingGradingSelect` + `useListingGradingAuthFields`（2026-08-22）。 |
 
 ### Member
 
@@ -253,6 +253,7 @@ bun run test:staging:certify
 
 | 日期 | 變更 |
 |------|------|
+| 2026-08-22 | §10 Component：Listing grading/auth 合併為 `ListingGradingSelect` + `useListingGradingAuthFields` |
 | 2026-08-21 | §10 Partner backlog：更正 C2C 確認收貨 dialog、編輯裸卡鑑定 toggle（Component 前置）；C2C checkout 運費 breakdown fix + P-E08 assertion |
 | 2026-08-20 | v1.0 | Phase 3：P-F01–F05 Partner smoke 綠 · F-* **67/67** · **SC-P-FX ☑**（SC-P-ALL 仍等 M0） |
 | 2026-08-20 | v1.2 | L2+ `requiredElements` 全 67 surfaces · `test:e2e:partner-m0` 工程預檢 |

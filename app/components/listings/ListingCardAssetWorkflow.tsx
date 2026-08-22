@@ -1,10 +1,7 @@
 /**
  * Unified card listing asset workflow — create (AddAssetModal) + edit (ListingEditDialog).
  * Shared photo-slot SSOT lives in lib/listings/card-listing-photo-slots.ts.
- *
- * TODO(partner-backlog): Extract shared grading + use_authentication toggle logic
- * into one global component consumed by AddAssetModal and ListingEditDialog
- * (see docs/dev/partner-regression.md §10 Component 前置).
+ * Grading + auth toggle SSOT: ListingGradingSelect + useListingGradingAuthFields.
  */
 export {
   AddAssetModal,
@@ -12,7 +9,9 @@ export {
 } from "@/app/components/shared/AddAssetModal";
 export { ListingEditDialog } from "@/app/components/merchant/ListingEditDialog";
 export { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
+export { ListingGradingSelect } from "@/app/components/listings/ListingGradingSelect";
 export { useListingAuthService } from "@/lib/listings/use-listing-auth-service";
+export { useListingGradingAuthFields } from "@/lib/listings/use-listing-grading-auth-fields";
 export {
   buildEditListingPhotoSlots,
   createEmptyCreatePhotoSlots,
