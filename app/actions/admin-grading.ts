@@ -22,6 +22,16 @@ export type AdminGradingTab =
   | "awaiting_settlement"
   | "closed";
 
+const ADMIN_GRADING_TABS: AdminGradingTab[] = [
+  "awaiting_intake",
+  "grading",
+  "awaiting_outbound",
+  "awaiting_settlement",
+  "closed",
+];
+
+export type AdminGradingTabCounts = Record<AdminGradingTab, number>;
+
 export type AdminGradingOrderKind = "member" | "merchant";
 
 export type AdminGradingFaultParty =
@@ -349,6 +359,53 @@ export async function searchAdminGradingOrders(params: {
   } catch (error) {
     console.error("[searchAdminGradingOrders]", error);
     return { success: false, error: "無法載入鑑定佇列" };
+  }
+}
+
+export async function getAdminGradingTabCounts(params?: {
+  orderKind?: AdminGradingOrderKind | "all";
+  keyword?: string;
+}): Promise<ActionResult<AdminGradingTabCounts>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const orderKind =
+    params?.orderKind && params.orderKind !== "all" ? params.orderKind : null;
+  const keyword = params?.keyword?.trim() || null;
+
+  try {
+    const supabase = asAdminGradingRpcClient(await createClient());
+    const results = await Promise.all(
+      ADMIN_GRADING_TABS.map((tab) =>
+        supabase.rpc("search_admin_grading_orders", {
+          p_tab: tab,
+          p_order_kind: orderKind,
+          p_keyword: keyword,
+          p_page: 1,
+          p_page_size: 1,
+        }),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.error) {
+        console.error("[getAdminGradingTabCounts]", result.error.message);
+        return { success: false, error: mapRpcError(result.error.message) };
+      }
+    }
+
+    const counts = {} as AdminGradingTabCounts;
+    ADMIN_GRADING_TABS.forEach((tab, index) => {
+      const parsed = parseQueuePayload(results[index].data);
+      counts[tab] = parsed?.total ?? 0;
+    });
+
+    return { success: true, data: counts };
+  } catch (error) {
+    console.error("[getAdminGradingTabCounts]", error);
+    return { success: false, error: "無法載入佇列數量" };
   }
 }
 

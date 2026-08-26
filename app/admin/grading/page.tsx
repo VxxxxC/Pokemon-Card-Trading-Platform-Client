@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { searchAdminGradingOrders } from "@/app/actions/admin-grading";
+import { getAdminGradingTabCounts, searchAdminGradingOrders } from "@/app/actions/admin-grading";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -34,10 +34,23 @@ export default async function AdminGradingPage() {
     pageSize: 20,
   });
 
+  const countsResult = await getAdminGradingTabCounts();
+
   return (
     <AdminGradingClient
       initialRows={result.success ? result.data.rows : []}
       initialTotal={result.success ? result.data.total : 0}
+      initialTabCounts={
+        countsResult.success
+          ? countsResult.data
+          : {
+              awaiting_intake: result.success ? result.data.total : 0,
+              grading: 0,
+              awaiting_outbound: 0,
+              awaiting_settlement: 0,
+              closed: 0,
+            }
+      }
       loadError={result.success ? null : result.error}
     />
   );

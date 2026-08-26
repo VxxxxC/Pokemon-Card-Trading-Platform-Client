@@ -51,10 +51,21 @@ function mapRpcError(message: string): string {
   return message || "操作失敗，請稍後再試";
 }
 
+function isMissingRpcError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("could not find the function") ||
+    normalized.includes("schema cache")
+  );
+}
+
 type AdminActivityRpcClient = {
   rpc(
     fn: "rpc_admin_list_reward_activities",
     args: { p_status: string; p_page: number; p_page_size: number },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "rpc_admin_reward_activity_status_counts",
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "rpc_admin_get_reward_activity",
@@ -207,6 +218,67 @@ export async function listAdminRewardActivities(params?: {
   } catch (error) {
     console.error("[listAdminRewardActivities]", error);
     return { success: false, error: "無法載入獎勵活動" };
+  }
+}
+
+const STATUS_COUNT_KEYS = [
+  "all",
+  "draft",
+  "active",
+  "paused",
+  "ended",
+  "archived",
+] as const;
+
+export type AdminRewardActivityStatusCountKey =
+  (typeof STATUS_COUNT_KEYS)[number];
+
+function parseAdminRewardActivityStatusCounts(
+  raw: unknown,
+): Record<AdminRewardActivityStatusCountKey, number> | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const row = raw as Record<string, unknown>;
+  const next = {} as Record<AdminRewardActivityStatusCountKey, number>;
+  for (const key of STATUS_COUNT_KEYS) {
+    const value = Number(row[key] ?? 0);
+    next[key] = Number.isFinite(value) ? value : 0;
+  }
+  return next;
+}
+
+export async function getAdminRewardActivityStatusCounts(): Promise<
+  ActionResult<Record<AdminRewardActivityStatusCountKey, number>>
+> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  try {
+    const supabase = asAdminActivityRpcClient(await createClient());
+    const { data, error } = await supabase.rpc(
+      "rpc_admin_reward_activity_status_counts",
+    );
+
+    if (error) {
+      if (isMissingRpcError(error.message)) {
+        return { success: false, error: "活動統計尚未部署" };
+      }
+      console.error("[getAdminRewardActivityStatusCounts]", error.message);
+      return { success: false, error: mapRpcError(error.message) };
+    }
+
+    const parsed = parseAdminRewardActivityStatusCounts(data);
+    if (!parsed) {
+      return { success: false, error: "無法載入活動統計" };
+    }
+
+    return { success: true, data: parsed };
+  } catch (error) {
+    console.error("[getAdminRewardActivityStatusCounts]", error);
+    return { success: false, error: "無法載入活動統計" };
   }
 }
 

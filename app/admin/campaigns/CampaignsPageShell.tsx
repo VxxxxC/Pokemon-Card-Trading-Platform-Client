@@ -8,13 +8,16 @@ import {
   type CampaignTab,
   campaignTabToQuery,
 } from "./campaign-tabs";
+import { FILTER_CHIP_CLASS } from "./campaigns-ui";
 import type { CheckInProgramRow } from "@/lib/admin-check-in-program/types";
 import type { AdminRewardActivityRow } from "@/lib/admin-rewards/types";
+import type { AdminRewardActivityStatusCountKey } from "@/app/actions/admin-reward-activities";
 
 type CampaignsPageShellProps = {
   initialActivities: AdminRewardActivityRow[];
   activitiesTotal: number;
   activitiesLoadError: string | null;
+  initialStatusCounts: Record<AdminRewardActivityStatusCountKey, number> | null;
   initialCheckInProgram: CheckInProgramRow | null;
   checkInLoadError: string | null;
   initialTab: CampaignTab;
@@ -24,12 +27,16 @@ export function CampaignsPageShell({
   initialActivities,
   activitiesTotal,
   activitiesLoadError,
+  initialStatusCounts,
   initialCheckInProgram,
   checkInLoadError,
   initialTab,
 }: CampaignsPageShellProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<CampaignTab>(initialTab);
+  const [checkInActive, setCheckInActive] = useState(
+    initialCheckInProgram?.is_active ?? false,
+  );
 
   const handleTabChange = (tab: CampaignTab) => {
     setActiveTab(tab);
@@ -38,45 +45,54 @@ export function CampaignsPageShell({
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-sans text-[24px] font-bold text-[#eae1da]">
-          積分與獎勵活動
-        </h1>
-        <p className="mt-1 text-sm text-[#d4c4b7]">
-          管理獎勵活動（自動發放、限時搶領）與簽到計劃。
-        </p>
-      </div>
+    <div className="space-y-5 pb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
+              積分與獎勵活動
+            </h1>
+            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+              CAMPAIGNS
+            </span>
+          </div>
+          <p className="mt-1 font-sans text-[13px] text-text-secondary">
+            管理獎勵活動（自動發放、限時搶領）與簽到計劃。
+          </p>
+        </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => handleTabChange("activities")}
-          className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "activities"
-              ? "bg-brand text-[#17130f]"
-              : "bg-[#26211C] text-[#d4c4b7] border border-white/10"
-          }`}
-        >
-          獎勵活動
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabChange("check_in")}
-          className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
-            activeTab === "check_in"
-              ? "bg-brand text-[#17130f]"
-              : "bg-[#26211C] text-[#d4c4b7] border border-white/10"
-          }`}
-        >
-          簽到計劃
-        </button>
+        <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
+          <button
+            type="button"
+            onClick={() => handleTabChange("activities")}
+            className={FILTER_CHIP_CLASS(activeTab === "activities")}
+          >
+            獎勵活動
+          </button>
+          <button
+            type="button"
+            onClick={() => handleTabChange("check_in")}
+            className={`${FILTER_CHIP_CLASS(activeTab === "check_in")} gap-1.5`}
+          >
+            簽到計劃
+            <span
+              className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
+                checkInActive
+                  ? "bg-success/15 text-success"
+                  : "bg-white/5 text-text-disabled"
+              }`}
+            >
+              {checkInActive ? "已啟用" : "已關閉"}
+            </span>
+          </button>
+        </div>
       </div>
 
       {activeTab === "activities" ? (
         <AdminRewardActivitiesClient
           initialRows={initialActivities}
           initialTotal={activitiesTotal}
+          initialStatusCounts={initialStatusCounts}
           loadError={activitiesLoadError}
         />
       ) : null}
@@ -85,6 +101,7 @@ export function CampaignsPageShell({
         <AdminCheckInProgramClient
           initialRow={initialCheckInProgram}
           loadError={checkInLoadError}
+          onActiveChange={setCheckInActive}
         />
       ) : null}
     </div>

@@ -33,6 +33,8 @@ interface PaginationProps {
    *  Defaults to `true`. Pass `false` to bypass ALL scroll side-effects — pure
    *  in-place client-side data state slicing with zero viewport displacement. */
   enableScroll?: boolean;
+  /** Hide the summary line above page controls (use when totals are shown elsewhere). */
+  showInfoStrip?: boolean;
   className?: string;
   scrollToViewId?: string;
   scrollBlock?: ScrollLogicalPosition;
@@ -85,6 +87,7 @@ export function Pagination({
   itemsPerPage,
   hideControls = false,
   enableScroll = true, // 🟢 預設開啟：保持全站原有平滑回頂行為不變
+  showInfoStrip = true,
   className,
   scrollToViewId,
   scrollBlock = "nearest",
@@ -128,21 +131,24 @@ export function Pagination({
   };
 
   return (
-    <div className={`flex flex-col items-center gap-3 pt-4 ${className ?? ""}`}>
+    <div
+      className={`flex w-full max-w-full flex-col items-center gap-3 overflow-hidden pt-4 ${className ?? ""}`}
+    >
       {/* Info strip */}
-      {rangeStart != null && rangeEnd != null && totalItems != null && (
-        <p className="font-mono text-[10.5px] text-[#8A8680] tracking-wider uppercase select-none">
+      {showInfoStrip &&
+        rangeStart != null &&
+        rangeEnd != null &&
+        totalItems != null && (
+        <p className="font-mono text-[10.5px] text-[#8A8680] tracking-wider uppercase select-none text-center">
           顯示第 <span className="text-brand font-bold">{rangeStart}</span> –{" "}
           <span className="text-brand font-bold">{rangeEnd}</span> / 共{" "}
-          <span className="text-[#d4c4b7]">{totalItems}</span> {itemLabel} ·{" "}
-          <span className="text-[#d4c4b7]">
-            第 {currentPage} / {totalPages} 頁
-          </span>
+          <span className="text-[#d4c4b7]">{totalItems}</span> {itemLabel}
         </p>
       )}
 
-      <PaginationPrimitive>
-        <PaginationContent className="gap-1">
+      <div className="w-full max-w-full overflow-x-auto">
+        <PaginationPrimitive className="mx-auto w-max max-w-full">
+          <PaginationContent className="flex-nowrap justify-center gap-1">
           {/* ← Prev (🟢 根據開關動態隱藏) */}
           {!hideControls && (
             <PaginationItem>
@@ -200,6 +206,7 @@ export function Pagination({
           )}
         </PaginationContent>
       </PaginationPrimitive>
+      </div>
     </div>
   );
 }

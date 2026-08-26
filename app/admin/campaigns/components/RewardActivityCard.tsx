@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  BTN_OUTLINE_SM_CLASS,
+  BTN_PRIMARY_SM_CLASS,
+  FORM_SWITCH_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
 import type { AdminRewardActivityRow, AdminRewardActivityStatus } from "@/lib/admin-rewards/types";
 import {
   DISPLAY_STATUS_LABELS,
@@ -80,168 +85,166 @@ export function RewardActivityCard({
   disabled = false,
   onStatusChange,
 }: RewardActivityCardProps) {
+  const [open, setOpen] = useState(false);
   const shortId = formatActivityIdShort(row.activity_id);
   const rewardLabel = formatRewardActivityValue(row);
   const stockLabel = formatActivityStock(row);
 
   return (
-    <Card className="bg-transparent border-0 border-b border-[rgba(237,232,224,0.06)] rounded-none last:border-b-0 hover:bg-bg-hover/50 transition-colors">
-      <CardContent className="p-4 sm:p-5 flex flex-col gap-3.5">
-        <div className="flex items-start justify-between gap-3 w-full flex-wrap">
-          <div className="min-w-0 flex-1" title={row.activity_id}>
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="font-mono text-[11px] text-text-disabled">
+    <article className="px-1 py-2.5 transition-colors hover:bg-bg-hover/30 sm:py-3">
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="flex min-w-0 flex-1 items-start gap-2 rounded-lg px-1 py-0.5 text-left transition-colors hover:bg-brand/5 active:scale-[0.99]"
+          aria-expanded={open}
+        >
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono text-[10px] text-text-disabled">
                 #{shortId}
               </span>
-              <h3 className="font-sans font-bold text-[15px] text-text-primary">
-                {row.title}
-              </h3>
+              {statusBadge(row.display_status)}
               <Badge
                 variant="outline"
-                className="border-brand/30 text-brand bg-brand/10 font-mono text-[10px]"
+                className="border-brand/30 bg-brand/10 font-mono text-[10px] text-brand"
               >
                 {TYPE_LABELS[row.type]}
               </Badge>
             </div>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            {statusBadge(row.display_status)}
-
-            {showFlashSwitch(row) ? (
-              <div
-                className="flex items-center gap-1.5"
-                title="切換 進行中 / 已暫停"
-              >
-                <span className="font-mono text-[10px] text-text-secondary">
-                  {row.display_status === "active" ? "開啟" : "關閉"}
-                </span>
-                <Switch
-                  checked={row.display_status === "active"}
-                  disabled={disabled}
-                  onCheckedChange={(checked) => {
-                    onStatusChange(row, checked ? "active" : "paused");
-                  }}
-                  className="data-[state=checked]:bg-success data-[state=unchecked]:bg-bg-elevated"
-                />
-              </div>
+            <h3 className="font-sans text-[14px] font-bold leading-snug text-text-primary">
+              {row.title}
+            </h3>
+            {!open ? (
+              <p className="truncate font-sans text-[11px] text-text-secondary">
+                <span className="font-mono text-brand">{rewardLabel}</span>
+                <span className="mx-1.5 text-text-disabled">·</span>
+                庫存 {stockLabel}
+                <span className="mx-1.5 text-text-disabled">·</span>
+                已領 {row.claimed_count.toLocaleString("zh-TW")}
+              </p>
             ) : null}
           </div>
-        </div>
+          <ChevronDown
+            className={`mt-0.5 size-4 shrink-0 text-text-disabled transition-transform ${
+              open ? "rotate-180" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </button>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-bg-page/70 border border-[rgba(237,232,224,0.06)] rounded-xl p-3 text-[11px]">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-text-secondary font-sans">
-              <span className="text-brand text-[12px]">📦</span>
-              <span className="text-text-disabled font-mono text-[10px]">
-                發放方式：
-              </span>
-              <span className="font-medium text-text-primary">
+        {showFlashSwitch(row) ? (
+          <div
+            className="flex shrink-0 items-center gap-1.5 pt-0.5"
+            title="切換 進行中 / 已暫停"
+          >
+            <span className="font-mono text-[10px] text-text-secondary">
+              {row.display_status === "active" ? "開啟" : "關閉"}
+            </span>
+            <Switch
+              checked={row.display_status === "active"}
+              disabled={disabled}
+              onCheckedChange={(checked) => {
+                onStatusChange(row, checked ? "active" : "paused");
+              }}
+              className={FORM_SWITCH_CLASS}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {open ? (
+        <div className="mt-2 space-y-2.5 border-t border-white/[0.06] pt-2.5 pl-1">
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 font-sans text-[11px]">
+            <div className="flex gap-1.5 min-w-0">
+              <dt className="shrink-0 text-text-disabled">發放</dt>
+              <dd className="min-w-0 truncate text-text-primary">
                 {DISTRIBUTION_MODE_LABELS[row.distribution_mode]}
-              </span>
+              </dd>
             </div>
-            <div className="flex items-center gap-1.5 text-text-secondary font-sans">
-              <span className="text-brand text-[12px]">⚡</span>
-              <span className="text-text-disabled font-mono text-[10px]">
-                觸發條件：
-              </span>
-              <span className="font-medium text-text-primary">
+            <div className="flex gap-1.5 min-w-0">
+              <dt className="shrink-0 text-text-disabled">觸發</dt>
+              <dd className="min-w-0 truncate text-text-primary">
                 {formatTriggerConditionLabel(
                   row.trigger_conditions,
                   row.distribution_mode,
                 )}
-              </span>
+              </dd>
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-text-secondary font-sans">
-              <span className="text-brand text-[12px]">📅</span>
-              <span className="text-text-disabled font-mono text-[10px]">
-                有效期：
-              </span>
-              <span className="font-mono text-text-primary">
+            <div className="flex gap-1.5 min-w-0 sm:col-span-2">
+              <dt className="shrink-0 text-text-disabled">有效期</dt>
+              <dd className="min-w-0 font-mono text-[10px] text-text-primary">
                 {formatActivityValidityPeriod(row)}
-              </span>
+              </dd>
             </div>
-            <div className="flex items-center gap-1.5 text-text-secondary font-sans">
-              <span className="text-brand text-[12px]">🎁</span>
-              <span className="text-text-disabled font-mono text-[10px]">
-                獎勵內容：
-              </span>
-              <span className="font-bold text-brand font-mono">{rewardLabel}</span>
+            <div className="flex gap-1.5 min-w-0">
+              <dt className="shrink-0 text-text-disabled">獎勵</dt>
+              <dd className="min-w-0 truncate font-mono font-semibold text-brand">
+                {rewardLabel}
+              </dd>
             </div>
-          </div>
-        </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+              <span className="text-text-disabled">
+                庫存{" "}
+                <span className="font-mono font-semibold text-brand">
+                  {stockLabel}
+                </span>
+              </span>
+              <span className="text-text-disabled">
+                已領{" "}
+                <span className="font-mono font-bold text-text-primary">
+                  {row.claimed_count.toLocaleString("zh-TW")}
+                </span>
+              </span>
+              {row.distribution_mode === "flash_only" ? (
+                <span className="text-text-disabled">
+                  上限{" "}
+                  <span className="font-mono font-bold text-success">
+                    {row.max_claims_per_user ?? 1}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          </dl>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-bg-page border border-[rgba(237,232,224,0.05)] rounded-xl p-2.5 text-center font-mono text-[11px]">
-          <div>
-            <span className="text-text-disabled text-[9px] block uppercase">
-              庫存
-            </span>
-            <span className="text-brand font-semibold block mt-0.5">
-              {stockLabel}
-            </span>
-          </div>
-          <div>
-            <span className="text-text-disabled text-[9px] block uppercase">
-              已領取
-            </span>
-            <span className="text-text-primary font-bold block mt-0.5">
-              {row.claimed_count.toLocaleString("zh-TW")}
-            </span>
-          </div>
-          {row.distribution_mode === "flash_only" ? (
-            <div>
-              <span className="text-text-disabled text-[9px] block uppercase">
-                每人上限
-              </span>
-              <span className="text-success font-bold block mt-0.5">
-                {row.max_claims_per_user ?? 1}
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              <Link
+                href={`/admin/campaigns/${row.activity_id}`}
+                className={BTN_OUTLINE_SM_CLASS}
+              >
+                編輯
+              </Link>
+              {row.display_status === "draft" ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onStatusChange(row, "active")}
+                  className={BTN_PRIMARY_SM_CLASS}
+                >
+                  發布
+                </button>
+              ) : null}
+              {row.status !== "archived" ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onStatusChange(row, "archived")}
+                  className={BTN_OUTLINE_SM_CLASS}
+                >
+                  封存
+                </button>
+              ) : null}
             </div>
-          ) : null}
-        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/admin/campaigns/${row.activity_id}`}
-              className="inline-flex h-8 items-center justify-center rounded-md border border-[rgba(237,232,224,0.12)] px-3 text-xs text-text-secondary hover:text-text-primary"
-            >
-              編輯
-            </Link>
-            {row.display_status === "draft" ? (
-              <Button
-                type="button"
-                size="sm"
-                disabled={disabled}
-                onClick={() => onStatusChange(row, "active")}
-              >
-                發布
-              </Button>
-            ) : null}
-            {row.status !== "archived" ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={disabled}
-                onClick={() => onStatusChange(row, "archived")}
-              >
-                封存
-              </Button>
+            {row.created_at ? (
+              <span className="font-mono text-[10px] text-text-disabled">
+                {new Date(row.created_at).toLocaleDateString("zh-HK")}
+              </span>
             ) : null}
           </div>
-
-          {row.created_at ? (
-            <span className="font-mono text-[10px] text-text-disabled">
-              建立：
-              {new Date(row.created_at).toLocaleDateString("zh-HK")}
-            </span>
-          ) : null}
         </div>
-      </CardContent>
-    </Card>
+      ) : null}
+    </article>
   );
 }

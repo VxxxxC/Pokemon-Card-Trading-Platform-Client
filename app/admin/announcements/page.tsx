@@ -13,19 +13,16 @@ import {
   Upload,
   Search,
   CheckCircle2,
-  Sparkles,
   Clock,
   X,
   Link2,
   Megaphone,
+  Plus,
   RotateCcw,
 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -39,6 +36,19 @@ import {
   togglePlatformAnnouncementActive,
   updatePlatformAnnouncement,
 } from "@/app/actions/admin-announcements";
+import {
+  BTN_OUTLINE_CLASS,
+  BTN_OUTLINE_SM_CLASS,
+  BTN_PRIMARY_CLASS,
+  FILTER_CHIP_CLASS,
+  FILTER_INPUT_CLASS,
+  FORM_INPUT_CLASS,
+  FORM_LABEL_CLASS,
+  FORM_SECTION_CLASS,
+  FORM_SWITCH_CLASS,
+  FORM_TEXTAREA_CLASS,
+  FORM_TOGGLE_ROW_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
 import { DEFAULT_ANNOUNCEMENT_POSTER_URL } from "@/lib/announcements/defaults";
 import { uploadAnnouncementPosterImage } from "@/lib/announcements/client-upload";
 import {
@@ -76,6 +86,7 @@ export default function AdminAnnouncementsPage() {
   // File upload preview state
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,6 +163,7 @@ export default function AdminAnnouncementsPage() {
   };
 
   const handleEdit = (announcement: PlatformAnnouncement) => {
+    setIsFormOpen(true);
     setEditingId(announcement.id);
     setTitle(announcement.title);
     setContent(announcement.content);
@@ -169,8 +181,7 @@ export default function AdminAnnouncementsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Reset form
-  const handleResetForm = () => {
+  const resetFormFields = () => {
     setEditingId(null);
     setTitle("");
     setContent("");
@@ -184,6 +195,17 @@ export default function AdminAnnouncementsPage() {
     setImageObjectKey(null);
     setSelectedFile(null);
     setSelectedFileName("");
+  };
+
+  const handleOpenCreateForm = () => {
+    resetFormFields();
+    setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleResetForm = () => {
+    resetFormFields();
+    setIsFormOpen(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -295,6 +317,14 @@ export default function AdminAnnouncementsPage() {
     }
   };
 
+  const statusFilters = [
+    { id: "all", label: "全部", count: stats.total },
+    { id: "active", label: "進行中", count: stats.active },
+    { id: "upcoming", label: "未開始", count: stats.upcoming },
+    { id: "expired", label: "已過期", count: stats.expired },
+    { id: "inactive", label: "已下架", count: stats.inactive },
+  ] as const;
+
   const showToast = (msg: string) => {
     setFeedbackMessage(msg);
     setTimeout(() => {
@@ -303,146 +333,98 @@ export default function AdminAnnouncementsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Toast Feedback */}
+    <div className="space-y-5 pb-8">
       {feedbackMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-brand/40 bg-[#2e2925] px-4 py-3 text-sm text-text-primary shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-3">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border border-brand/40 bg-bg-card px-4 py-3 font-sans text-[13px] text-text-primary shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-3">
+          <CheckCircle2 className="size-4 shrink-0 text-success" />
           <span>{feedbackMessage}</span>
         </div>
       )}
 
-      {/* Header section */}
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-[rgba(237,232,224,0.08)] pb-5">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <Megaphone className="h-6 w-6 text-brand" />
-            <h1 className="font-sans text-2xl font-bold tracking-tight text-text-primary">
-              首頁活動與公告管理
-            </h1>
-          </div>
-          <p className="mt-1 font-sans text-sm text-text-secondary">
-            管理全站公告彈窗與動態輪播橫幅，精準設定上架時段與展示狀態。
-          </p>
+      <header>
+        <div className="flex items-center gap-2">
+          <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
+            首頁活動與公告管理
+          </h1>
+          <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+            ANNOUNCE
+          </span>
         </div>
+        <p className="mt-1 font-sans text-[13px] text-text-secondary">
+          管理全站公告彈窗與動態輪播橫幅，精準設定上架時段與展示狀態。
+        </p>
+      </header>
 
-        {/* Stats summary badges */}
-        <div className="flex flex-wrap items-center gap-2 pt-2 md:pt-0">
-          <Badge
-            variant="outline"
-            className="border-[rgba(237,232,224,0.12)] bg-[#26211C] px-3 py-1 font-mono text-xs text-text-primary"
-          >
-            總計: {stats.total}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="border-emerald-800/60 bg-emerald-950/40 px-3 py-1 font-mono text-xs text-emerald-400"
-          >
-            進行中: {stats.active}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="border-amber-800/60 bg-amber-950/40 px-3 py-1 font-mono text-xs text-amber-300"
-          >
-            未開始: {stats.upcoming}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="border-neutral-800 bg-neutral-900/60 px-3 py-1 font-mono text-xs text-neutral-400"
-          >
-            過期/下架: {stats.expired + stats.inactive}
-          </Badge>
-        </div>
-      </div>
-
-      {/* Grid: Left Form Panel / Right Table List */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* ================= FORM PANEL (4 cols on lg) ================= */}
-        <div className="lg:col-span-5">
-          <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-5 shadow-lg space-y-5">
-            <div className="flex items-center justify-between border-b border-[rgba(237,232,224,0.08)] pb-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-brand" />
-                <h2 className="font-sans text-base font-bold text-text-primary">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
+        {isFormOpen ? (
+          <div className="lg:col-span-5">
+            <section className="space-y-4 border-b border-white/[0.08] pb-5 lg:border-b-0 lg:pb-0">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className={FORM_SECTION_CLASS}>
                   {editingId ? "編輯公告內容" : "建立新公告"}
                 </h2>
-              </div>
-              {editingId && (
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={handleResetForm}
-                  className="h-8 text-xs text-text-secondary hover:text-text-primary hover:bg-[#39342f]"
+                  className={`${BTN_OUTLINE_SM_CLASS} gap-1.5`}
                 >
-                  <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                  取消編輯
-                </Button>
-              )}
-            </div>
+                  <RotateCcw className="size-3.5" />
+                  {editingId ? "取消編輯" : "取消"}
+                </button>
+              </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Field 1: Title */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-text-secondary">
-                  公告標題 <span className="text-rose-400">*</span>
+                <label className={FORM_LABEL_CLASS}>
+                  公告標題 <span className="text-warning">*</span>
                 </label>
                 <Input
                   type="text"
-                  placeholder="請輸入吸引人的活動或公告標題..."
+                  placeholder="請輸入吸引人的活動或公告標題…"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="border-[rgba(237,232,224,0.12)] bg-[#17130f] text-text-primary focus-visible:ring-brand/40"
+                  className={FORM_INPUT_CLASS}
                   required
                 />
               </div>
 
-              {/* Field 2: Image Selector & Fallback URL */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-text-secondary">
-                  封面海報圖 (本地上傳 / 網路 URL)
+                <label className={FORM_LABEL_CLASS}>
+                  封面海報圖（本地上傳 / 網路 URL）
                 </label>
-
-                <div className="space-y-2">
-                  {/* File upload trigger */}
-                  <div className="relative flex items-center justify-center rounded-lg border border-dashed border-[rgba(237,232,224,0.2)] bg-[#17130f] p-3 text-center transition-colors hover:border-brand/50">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="absolute inset-0 cursor-pointer opacity-0"
-                    />
-                    <div className="flex items-center gap-2 text-xs text-text-secondary">
-                      <Upload className="h-4 w-4 text-brand shrink-0" />
-                      <span>
-                        {selectedFileName
-                          ? `已選擇: ${selectedFileName}`
-                          : "點擊或拖曳上傳圖片 (支持 JPG, PNG, WEBP)"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Fallback URL input */}
-                  <div className="flex items-center gap-2">
-                    <Link2 className="h-3.5 w-3.5 text-text-disabled shrink-0" />
-                    <Input
-                      type="text"
-                      placeholder="或輸入圖片網址 (https://...)"
-                      value={imageUrl}
-                      onChange={(e) => {
-                        setImageUrl(e.target.value);
-                        setSelectedFileName("");
-                        setSelectedFile(null);
-                        setImageObjectKey(null);
-                      }}
-                      className="h-8 text-xs border-[rgba(237,232,224,0.12)] bg-[#17130f] text-text-primary"
-                    />
+                <div className="relative flex items-center justify-center rounded-lg border border-dashed border-white/10 bg-transparent p-3 text-center transition-colors hover:border-brand/40">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                  />
+                  <div className="flex items-center gap-2 font-sans text-[11px] text-text-secondary">
+                    <Upload className="size-4 shrink-0 text-brand" />
+                    <span>
+                      {selectedFileName
+                        ? `已選擇：${selectedFileName}`
+                        : "點擊或拖曳上傳圖片（JPG、PNG、WEBP）"}
+                    </span>
                   </div>
                 </div>
-
-                {/* Image Preview Box */}
-                {imageUrl && (
-                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-[rgba(237,232,224,0.12)] bg-[#17130f]">
+                <div className="flex items-center gap-2">
+                  <Link2 className="size-3.5 shrink-0 text-text-disabled" />
+                  <Input
+                    type="text"
+                    placeholder="或輸入圖片網址（https://…）"
+                    value={imageUrl}
+                    onChange={(e) => {
+                      setImageUrl(e.target.value);
+                      setSelectedFileName("");
+                      setSelectedFile(null);
+                      setImageObjectKey(null);
+                    }}
+                    className={`${FORM_INPUT_CLASS} text-[12px]`}
+                  />
+                </div>
+                {imageUrl ? (
+                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-white/10">
                     <Image
                       src={imageUrl}
                       alt="Preview"
@@ -460,54 +442,49 @@ export default function AdminAnnouncementsPage() {
                       }}
                       className="absolute top-2 right-2 rounded-full bg-black/70 p-1 text-white hover:bg-black"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="size-3.5" />
                     </button>
                   </div>
-                )}
+                ) : null}
               </div>
 
-              {/* Field 3: Content / Rich Details */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-text-secondary">
-                  公告詳細內容 <span className="text-rose-400">*</span>
+                <label className={FORM_LABEL_CLASS}>
+                  公告詳細內容 <span className="text-warning">*</span>
                 </label>
                 <Textarea
                   rows={4}
-                  placeholder="請輸入公告詳細說明、活動辦法、限制條件等..."
+                  placeholder="請輸入公告詳細說明、活動辦法、限制條件等…"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  className="border-[rgba(237,232,224,0.12)] bg-[#17130f] text-text-primary focus-visible:ring-brand/40"
+                  className={FORM_TEXTAREA_CLASS}
                   required
                 />
               </div>
 
-              {/* Field 4: Optional Action Link */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-text-secondary">
-                  點擊跳轉連結 (選填)
-                </label>
+                <label className={FORM_LABEL_CLASS}>點擊跳轉連結（選填）</label>
                 <Input
                   type="text"
-                  placeholder="例如: /catalog 或 https://..."
+                  placeholder="例如：/catalog 或 https://…"
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
-                  className="border-[rgba(237,232,224,0.12)] bg-[#17130f] text-text-primary focus-visible:ring-brand/40 text-xs"
+                  className={`${FORM_INPUT_CLASS} text-[12px]`}
                 />
               </div>
 
-              {/* Field 5: Start & End Date Pickers */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-text-secondary">
-                    上架開始日期
-                  </label>
+                  <label className={FORM_LABEL_CLASS}>上架開始日期</label>
                   <Popover>
-                    <PopoverTrigger className="w-full h-9 justify-start border border-[rgba(237,232,224,0.12)] bg-[#17130f] px-2.5 rounded-lg font-mono text-xs text-text-primary hover:bg-[#2e2925] flex items-center">
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5 text-brand shrink-0" />
+                    <PopoverTrigger
+                      className={`${FORM_INPUT_CLASS} flex w-full items-center gap-2 font-mono text-[12px]`}
+                    >
+                      <CalendarIcon className="size-3.5 shrink-0 text-brand" />
                       {format(startDate, "yyyy-MM-dd")}
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto p-0 border border-[rgba(237,232,224,0.12)] bg-[#26211C] text-text-primary shadow-2xl"
+                      className="w-auto border border-white/10 bg-bg-card p-0 shadow-2xl"
                       align="start"
                     >
                       <Calendar
@@ -519,18 +496,17 @@ export default function AdminAnnouncementsPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-text-secondary">
-                    下架結束日期
-                  </label>
+                  <label className={FORM_LABEL_CLASS}>下架結束日期</label>
                   <Popover>
-                    <PopoverTrigger className="w-full h-9 justify-start border border-[rgba(237,232,224,0.12)] bg-[#17130f] px-2.5 rounded-lg font-mono text-xs text-text-primary hover:bg-[#2e2925] flex items-center">
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5 text-brand shrink-0" />
+                    <PopoverTrigger
+                      className={`${FORM_INPUT_CLASS} flex w-full items-center gap-2 font-mono text-[12px]`}
+                    >
+                      <CalendarIcon className="size-3.5 shrink-0 text-brand" />
                       {format(endDate, "yyyy-MM-dd")}
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-auto p-0 border border-[rgba(237,232,224,0.12)] bg-[#26211C] text-text-primary shadow-2xl"
+                      className="w-auto border border-white/10 bg-bg-card p-0 shadow-2xl"
                       align="start"
                     >
                       <Calendar
@@ -544,108 +520,122 @@ export default function AdminAnnouncementsPage() {
                 </div>
               </div>
 
-              {/* Field 6: Status Switch Toggle */}
-              <div className="flex items-center justify-between rounded-lg border border-[rgba(237,232,224,0.08)] bg-[#17130f] p-3">
+              <div className={FORM_TOGGLE_ROW_CLASS}>
                 <div className="space-y-0.5">
-                  <div className="font-sans text-xs font-semibold text-text-primary">
+                  <div className="font-sans text-[12px] font-semibold text-text-primary">
                     公告上架狀態
                   </div>
                   <div className="font-sans text-[11px] text-text-secondary">
-                    {isActive ? "啟用 (符合時段將公開展示)" : "下架 (暫不公開展示)"}
+                    {isActive
+                      ? "啟用（符合時段將公開展示）"
+                      : "下架（暫不公開展示）"}
                   </div>
                 </div>
-                <Switch checked={isActive} onCheckedChange={setIsActive} />
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={setIsActive}
+                  className={FORM_SWITCH_CLASS}
+                />
               </div>
 
-              {/* Form Action Buttons */}
-              <div className="flex items-center gap-2 pt-2">
-                <Button
+              <div className="flex items-center gap-2 pt-1">
+                <button
                   type="submit"
                   disabled={isLoadingAnnouncements || isSavingAnnouncement}
-                  className="flex-1 bg-brand text-[#17130f] font-bold hover:bg-[#e8b896] active:scale-[0.98] transition-transform"
+                  className={`${BTN_PRIMARY_CLASS} flex-1 disabled:opacity-50`}
                 >
                   {isSavingAnnouncement
                     ? "儲存中…"
                     : editingId
                       ? "儲存變更"
                       : "新增公告"}
-                </Button>
-                <Button
+                </button>
+                <button
                   type="button"
-                  variant="outline"
                   onClick={handleResetForm}
-                  className="border-[rgba(237,232,224,0.12)] bg-[#17130f] text-text-secondary hover:bg-[#2e2925] hover:text-text-primary"
+                  className={BTN_OUTLINE_CLASS}
                 >
                   重設
-                </Button>
+                </button>
               </div>
             </form>
-          </div>
+          </section>
         </div>
+        ) : null}
 
-        {/* ================= ANNOUNCEMENTS LIST / TABLE (7 cols on lg) ================= */}
-        <div className="lg:col-span-7 space-y-4">
-          {/* Search & Filter Bar */}
-          <div className="flex flex-col gap-3 rounded-xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-4 shadow-lg sm:flex-row sm:items-center sm:justify-between">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-disabled" />
+        <div
+          className={`space-y-4 ${isFormOpen ? "lg:col-span-7" : "lg:col-span-12"}`}
+        >
+          <div className="space-y-3 border-b border-white/[0.08] pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1 sm:max-w-md">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+                aria-hidden="true"
+              />
               <Input
-                type="text"
-                placeholder="搜尋公告標題或內容..."
+                type="search"
+                placeholder="搜尋公告標題或內容…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 border-[rgba(237,232,224,0.12)] bg-[#17130f] text-xs text-text-primary focus-visible:ring-brand/40"
+                className={FILTER_INPUT_CLASS}
               />
-              {searchQuery && (
+              {searchQuery ? (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-disabled hover:text-text-primary"
+                  className="absolute top-1/2 right-2.5 -translate-y-1/2 text-text-disabled hover:text-text-primary"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="size-3.5" />
                 </button>
-              )}
+              ) : null}
             </div>
-
-            {/* Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1">
-              {[
-                { id: "all", label: "全部" },
-                { id: "active", label: "進行中" },
-                { id: "upcoming", label: "未開始" },
-                { id: "expired", label: "已過期" },
-                { id: "inactive", label: "已下架" },
-              ].map((filter) => (
+            {!isFormOpen ? (
+              <button
+                type="button"
+                onClick={handleOpenCreateForm}
+                className={`${BTN_PRIMARY_CLASS} shrink-0 gap-1.5`}
+              >
+                <Plus className="size-3.5" />
+                新增公告
+              </button>
+            ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {statusFilters.map((filter) => (
                 <button
                   key={filter.id}
                   type="button"
                   onClick={() => setStatusFilter(filter.id)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
-                    statusFilter === filter.id
-                      ? "bg-brand text-[#17130f] font-bold shadow-sm"
-                      : "bg-[#17130f] text-text-secondary hover:bg-[#2e2925] hover:text-text-primary"
-                  }`}
+                  className={`${FILTER_CHIP_CLASS(statusFilter === filter.id)} gap-1.5`}
                 >
-                  {filter.label}
+                  <span>{filter.label}</span>
+                  <span
+                    className={`font-mono text-[10px] tabular-nums ${
+                      statusFilter === filter.id
+                        ? "text-brand/80"
+                        : "text-text-disabled"
+                    }`}
+                  >
+                    {filter.count}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Announcements Cards / List */}
-          <div className="space-y-3">
+          <div className="space-y-0 divide-y divide-white/[0.06]">
             {isLoadingAnnouncements ? (
-              <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-8 text-center text-sm text-text-secondary">
+              <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
                 載入公告中…
-              </div>
+              </p>
             ) : filteredAnnouncements.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[rgba(237,232,224,0.12)] bg-[#26211C] p-10 text-center">
-                <Megaphone className="h-10 w-10 text-text-disabled mb-2" />
-                <p className="font-sans text-sm font-semibold text-text-primary">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Megaphone className="mb-2 size-8 text-text-disabled" />
+                <p className="font-sans text-[13px] font-semibold text-text-primary">
                   找不到符合條件的公告
                 </p>
-                <p className="mt-1 text-xs text-text-secondary">
+                <p className="mt-1 font-sans text-[12px] text-text-secondary">
                   嘗試調整搜尋關鍵字或選擇其他狀態分類
                 </p>
               </div>
@@ -655,17 +645,14 @@ export default function AdminAnnouncementsPage() {
                 const isSelectedForEdit = editingId === item.id;
 
                 return (
-                  <div
+                  <article
                     key={item.id}
-                    className={`group relative flex flex-col gap-4 rounded-xl border p-4 transition-all ${
-                      isSelectedForEdit
-                        ? "border-brand bg-[#2e2925] shadow-md ring-1 ring-brand/50"
-                        : "border-[rgba(237,232,224,0.08)] bg-[#26211C] hover:border-[rgba(237,232,224,0.2)] hover:bg-[#2e2925]/60"
+                    className={`space-y-3 px-1 py-4 transition-colors ${
+                      isSelectedForEdit ? "bg-brand/10" : ""
                     }`}
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                      {/* Thumbnail */}
-                      <div className="relative h-28 w-full sm:w-40 shrink-0 overflow-hidden rounded-lg border border-[rgba(237,232,224,0.12)] bg-[#17130f]">
+                      <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-lg border border-white/10 sm:w-36">
                         <Image
                           src={
                             item.imageUrl ||
@@ -673,103 +660,81 @@ export default function AdminAnnouncementsPage() {
                           }
                           alt={item.title}
                           fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="object-cover"
                           unoptimized
                         />
-                        <div className="absolute top-2 left-2">
-                          <Badge
-                            variant="outline"
-                            className={`border text-[10px] font-bold ${status.badgeClass}`}
-                          >
-                            {status.label}
-                          </Badge>
-                        </div>
+                        <span
+                          className={`absolute top-2 left-2 rounded border px-2 py-0.5 font-mono text-[9px] ${status.badgeClass}`}
+                        >
+                          {status.label}
+                        </span>
                       </div>
 
-                      {/* Main Info */}
-                      <div className="flex-1 space-y-1.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-sans text-sm font-bold text-text-primary line-clamp-2">
-                            {item.title}
-                          </h3>
-                        </div>
-
-                        <p className="font-sans text-xs text-text-secondary line-clamp-2 leading-relaxed">
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <h3 className="line-clamp-2 font-sans text-[13px] font-semibold text-text-primary">
+                          {item.title}
+                        </h3>
+                        <p className="line-clamp-2 font-sans text-[12px] leading-relaxed text-text-secondary">
                           {item.content}
                         </p>
-
-                        <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] font-mono text-text-secondary">
+                        <div className="flex flex-wrap items-center gap-3 pt-0.5 font-mono text-[11px] text-text-secondary">
                           <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-brand" />
+                            <Clock className="size-3 text-brand" />
                             {item.startDate} ~ {item.endDate}
                           </span>
-
-                          {item.linkUrl && (
+                          {item.linkUrl ? (
                             <span className="flex items-center gap-1 text-brand">
-                              <Link2 className="h-3 w-3" />
-                              {item.linkUrl}
+                              <Link2 className="size-3" />
+                              <span className="truncate max-w-[12rem]">
+                                {item.linkUrl}
+                              </span>
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
 
-                    {/* Bottom Actions Row */}
-                    <div className="flex items-center justify-between border-t border-[rgba(237,232,224,0.06)] pt-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono text-text-disabled">
-                          ID: {item.id}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* Status Toggle Button */}
-                        <Button
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
+                      <span className="font-mono text-[10px] text-text-disabled">
+                        {item.id}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
                           onClick={() => handleToggleActive(item.id)}
-                          className="h-8 text-xs text-text-secondary hover:bg-[#39342f] hover:text-text-primary"
+                          className={`${BTN_OUTLINE_SM_CLASS} gap-1.5`}
                         >
                           {item.isActive ? (
                             <>
-                              <EyeOff className="mr-1 h-3.5 w-3.5 text-amber-400" />
+                              <EyeOff className="size-3.5 text-warning" />
                               下架
                             </>
                           ) : (
                             <>
-                              <Eye className="mr-1 h-3.5 w-3.5 text-emerald-400" />
+                              <Eye className="size-3.5 text-success" />
                               重新上架
                             </>
                           )}
-                        </Button>
-
-                        {/* Edit Button */}
-                        <Button
+                        </button>
+                        <button
                           type="button"
-                          variant="outline"
-                          size="sm"
                           onClick={() => handleEdit(item)}
-                          className="h-8 border-[rgba(237,232,224,0.12)] bg-[#17130f] text-xs text-text-primary hover:border-brand hover:bg-brand/10"
+                          className={`${BTN_OUTLINE_SM_CLASS} gap-1.5 text-brand`}
                         >
-                          <Pencil className="mr-1 h-3.5 w-3.5 text-brand" />
+                          <Pencil className="size-3.5" />
                           編輯
-                        </Button>
-
-                        {/* Delete Button */}
-                        <Button
+                        </button>
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
                           onClick={() => handleDelete(item.id)}
-                          className="h-8 text-xs text-rose-400 hover:bg-rose-950/40 hover:text-rose-300"
+                          className={`${BTN_OUTLINE_SM_CLASS} border-warning/30 text-warning hover:border-warning/40 hover:bg-warning/10 hover:text-warning`}
                         >
-                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          <Trash2 className="size-3.5" />
                           刪除
-                        </Button>
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 );
               })
             )}

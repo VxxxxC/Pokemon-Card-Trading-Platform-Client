@@ -7,6 +7,13 @@ import {
   updateAdminPayoutRequestStatus,
 } from "@/app/actions/admin-payouts";
 import {
+  BTN_OUTLINE_SM_CLASS,
+  BTN_PRIMARY_CLASS,
+  BTN_PRIMARY_SM_CLASS,
+  FILTER_INPUT_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
+import { Pagination } from "@/app/components/ui/Pagination";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -31,10 +39,12 @@ import {
 } from "@/lib/admin-payouts/format";
 import type {
   FpsPayoutPage,
+  FpsPayoutRow,
   FpsPayoutSort,
   FpsPayoutStatusFilter,
 } from "@/lib/admin-payouts/types";
 import { FPS_PAYOUT_REQUESTS_PAGE_SIZE } from "@/lib/admin-payouts/types";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import {
   useCallback,
@@ -76,6 +86,107 @@ function formatRequestId(requestId: string): string {
     return `#${requestId}`;
   }
   return `#${requestId.slice(0, 8)}`;
+}
+
+function FpsPayoutMobileCard({
+  row,
+  isSelected,
+  canSelect,
+  isMutating,
+  blockedForComplete,
+  onToggleSelect,
+  onComplete,
+  onReject,
+}: {
+  row: FpsPayoutRow;
+  isSelected: boolean;
+  canSelect: boolean;
+  isMutating: boolean;
+  blockedForComplete: boolean;
+  onToggleSelect: () => void;
+  onComplete: () => void;
+  onReject: () => void;
+}) {
+  const canAct = isFpsPayoutIncomplete(row.status);
+
+  return (
+    <article className="space-y-2 px-1 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex items-start gap-2">
+          {canSelect ? (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggleSelect}
+              className="mt-0.5 rounded border-white/20 accent-brand"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <p className="font-mono text-[11px] text-text-disabled">
+              {formatRequestId(row.requestId)}
+            </p>
+            <Link
+              href={`/profile/${row.sellerId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-sans text-[13px] font-semibold text-brand hover:underline"
+            >
+              {row.sellerName}
+            </Link>
+          </div>
+        </div>
+        <span
+          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${getFpsPayoutStatusBadgeClass(row.status)}`}
+        >
+          {formatFpsPayoutStatusLabel(row.status)}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[11px]">
+        <span className="text-text-disabled">訂單</span>
+        <Link
+          href={`/profile/user/orderDetail/${row.orderNumber}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
+          {row.orderNumber}
+        </Link>
+        <span className="text-text-disabled">金額</span>
+        <span className="font-bold text-text-primary">
+          {formatAdminHkd(row.amount)}
+        </span>
+        <span className="text-text-disabled">FPS ID</span>
+        <span className="font-bold text-brand">{row.fpsId}</span>
+        <span className="text-text-disabled">提交</span>
+        <span className="text-text-secondary">{row.submittedAt}</span>
+      </div>
+      {blockedForComplete ? (
+        <p className="font-sans text-[10px] text-text-disabled">待賣家補 FPS</p>
+      ) : null}
+      {canAct ? (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {!blockedForComplete ? (
+            <button
+              type="button"
+              onClick={onComplete}
+              disabled={isMutating}
+              className={BTN_PRIMARY_SM_CLASS}
+            >
+              銷帳
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onReject}
+            disabled={isMutating}
+            className={`${BTN_OUTLINE_SM_CLASS} border-warning/30 text-warning hover:border-warning/40 hover:bg-warning/10 hover:text-warning`}
+          >
+            駁回
+          </button>
+        </div>
+      ) : null}
+    </article>
+  );
 }
 
 export default function FpsLedgerTab({
@@ -369,18 +480,6 @@ export default function FpsLedgerTab({
   };
 
   const totalPages = pageData.totalPages;
-  const startRow =
-    pageData.total === 0 ? 0 : (pageData.page - 1) * pageData.pageSize + 1;
-  const endRow = Math.min(pageData.page * pageData.pageSize, pageData.total);
-
-  const pageNumbers = useMemo(() => {
-    if (totalPages <= 0) return [];
-    const maxButtons = 5;
-    let start = Math.max(1, pageData.page - Math.floor(maxButtons / 2));
-    const end = Math.min(totalPages, start + maxButtons - 1);
-    start = Math.max(1, end - maxButtons + 1);
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  }, [pageData.page, totalPages]);
 
   const selectableRowIds = useMemo(
     () =>
@@ -401,7 +500,7 @@ export default function FpsLedgerTab({
   const displayError = loadError ?? fetchError;
 
   return (
-    <div className="flex-1 flex flex-col justify-between space-y-4">
+    <div className="space-y-4">
       <BlockingLoadingOverlay
         open={isExportingCsv || isMutating}
         message={
@@ -453,103 +552,122 @@ export default function FpsLedgerTab({
       </Dialog>
 
       {displayError ? (
-        <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 font-sans text-[12px] text-warning">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 font-sans text-[13px] text-warning">
           {displayError}
         </div>
       ) : null}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72 md:w-80">
-          <input
-            type="text"
-            placeholder="搜尋提現單號、訂單號、用戶名稱或 FPS ID..."
+      <div className="flex flex-col gap-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            placeholder="搜尋提現單號、訂單號、用戶名稱或 FPS ID…"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+            className={FILTER_INPUT_CLASS}
           />
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="absolute left-3 top-2.5 text-text-disabled"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+        </div>
+
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <FilterChips
+              options={statusChipOptions}
+              active={statusFilter}
+              onSelect={handleStatusFilterChange}
+            />
+          </div>
+          <SortSelect
+            value={sort}
+            options={FPS_SORT_OPTIONS}
+            onChange={handleSortChange}
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {selectedIds.size > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 animate-fade-in">
-              <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
+            <>
+              <span className="rounded-lg border border-brand/20 bg-brand/10 px-2.5 py-1 font-mono text-[11px] text-brand">
                 已選 {selectedIds.size} 筆
               </span>
               <button
                 type="button"
                 onClick={() => handleExportCsv(true)}
                 disabled={isExportingCsv || isMutating}
-                className="h-9 px-3 bg-bg-elevated border border-[rgba(237,232,224,0.12)] text-text-primary hover:text-brand font-sans text-xs rounded-xl hover:bg-bg-hover transition-colors whitespace-nowrap flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={BTN_OUTLINE_SM_CLASS}
               >
-                📥 導出已選 ({selectedIds.size})
+                導出已選 ({selectedIds.size})
               </button>
               <button
                 type="button"
                 onClick={handleBatchComplete}
                 disabled={isExportingCsv || isMutating}
-                className="h-9 px-3.5 bg-success text-[#111] font-sans font-bold text-xs rounded-xl hover:bg-success/90 transition-transform whitespace-nowrap flex items-center gap-1 shadow-md shadow-success/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={BTN_PRIMARY_SM_CLASS}
               >
-                ✓ 批量銷帳
+                批量銷帳
               </button>
-            </div>
+            </>
           ) : (
             <button
               type="button"
               onClick={() => handleExportCsv(false)}
               disabled={isExportingCsv || isMutating}
-              className="h-9 px-4 bg-brand text-[#17130f] font-sans font-semibold text-xs rounded-xl hover:bg-brand-hover transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+              className={BTN_PRIMARY_CLASS}
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
               全量導出 Payout CSV
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <FilterChips
-          options={statusChipOptions}
-          active={statusFilter}
-          onSelect={handleStatusFilterChange}
-        />
+      {pageData.rows.length === 0 ? (
+        <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
+          沒有符合篩選條件的提現記錄。
+        </p>
+      ) : (
+        <>
+          <div
+            className={`md:hidden divide-y divide-white/[0.06] ${isPending ? "opacity-60" : ""}`}
+          >
+            {pageData.rows.map((row) => {
+              const isSelected = selectedIds.has(row.requestId);
+              const blockedForComplete = isFpsPayoutBlockedForComplete({
+                status: row.status,
+                fpsId: row.fpsId,
+                fpsName: row.fpsName,
+              });
+              const canSelect =
+                isFpsPayoutIncomplete(row.status) && !blockedForComplete;
 
-        <SortSelect
-          value={sort}
-          options={FPS_SORT_OPTIONS}
-          onChange={handleSortChange}
-        />
-      </div>
+              return (
+                <FpsPayoutMobileCard
+                  key={row.requestId}
+                  row={row}
+                  isSelected={isSelected}
+                  canSelect={canSelect}
+                  isMutating={isMutating}
+                  blockedForComplete={blockedForComplete}
+                  onToggleSelect={() => toggleSelectRow(row.requestId)}
+                  onComplete={() => {
+                    setCompleteDialogRequestId(row.requestId);
+                    setAdminFpsReference("");
+                  }}
+                  onReject={() => handleStatusUpdate(row.requestId, "failed")}
+                />
+              );
+            })}
+          </div>
 
-      <div
-        className={`flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto ${isPending ? "opacity-60" : ""}`}
-      >
+          <div
+            className={`hidden overflow-x-auto rounded-lg border border-white/[0.08] md:block ${isPending ? "opacity-60" : ""}`}
+          >
         <Table>
-          <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
-            <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-              <TableHead className="w-10 text-center">
+          <TableHeader className="border-b border-white/[0.08] bg-bg-card/30">
+            <TableRow className="border-transparent hover:bg-transparent">
+              <TableHead className="h-9 w-10 text-center">
                 <input
                   type="checkbox"
                   checked={
@@ -558,43 +676,43 @@ export default function FpsLedgerTab({
                   }
                   onChange={toggleSelectAll}
                   disabled={selectableRowIds.length === 0}
-                  className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer disabled:opacity-40"
+                  className="rounded border-white/20 accent-brand cursor-pointer disabled:opacity-40"
                 />
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
                 提現單號
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
                 訂單號
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
                 用戶名稱
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
+              <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled">
                 提現金額
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
                 FPS 收款人
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
                 FPS ID
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
                 提交時間
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
+              <TableHead className="h-9 text-center font-sans text-[11px] text-text-disabled">
                 狀態
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
                 FPS 參考
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
+              <TableHead className="h-9 min-w-[5.5rem] text-right font-sans text-[11px] text-text-disabled">
                 操作
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pageData.rows.map((row) => {
+            {pageData.rows.map((row, rowIndex) => {
               const isSelected = selectedIds.has(row.requestId);
               const canAct = isFpsPayoutIncomplete(row.status);
               const blockedForComplete = isFpsPayoutBlockedForComplete({
@@ -607,13 +725,11 @@ export default function FpsLedgerTab({
               return (
                 <TableRow
                   key={row.requestId}
-                  className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
-                    isSelected
-                      ? "bg-[rgba(212,165,116,0.08)]"
-                      : "hover:bg-bg-elevated/40"
-                  }`}
+                  className={`border-white/[0.06] transition-colors hover:bg-brand/10 ${
+                    rowIndex % 2 === 0 ? "bg-bg-card/25" : "bg-white/[0.02]"
+                  } ${isSelected ? "bg-brand/10" : ""}`}
                 >
-                  <TableCell className="w-10 text-center py-3">
+                  <TableCell className="w-10 py-2.5 text-center">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -678,13 +794,13 @@ export default function FpsLedgerTab({
                   <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
                     {row.adminFpsReference ?? "—"}
                   </TableCell>
-                  <TableCell className="text-right py-3 whitespace-nowrap">
+                  <TableCell className="text-right py-2.5 whitespace-nowrap">
                     <div className="flex justify-end items-center gap-1.5">
                       <a
                         href={`/profile/user/orderDetail/${row.orderNumber}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="min-h-[44px] h-9 px-2.5 text-brand font-sans text-[11px] font-medium rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-transform whitespace-nowrap inline-flex items-center"
+                        className={`${BTN_OUTLINE_SM_CLASS} inline-flex h-8 items-center px-2.5 text-brand`}
                       >
                         查看訂單
                       </a>
@@ -698,9 +814,9 @@ export default function FpsLedgerTab({
                                 setAdminFpsReference("");
                               }}
                               disabled={isMutating}
-                              className="min-h-[44px] h-9 px-2.5 bg-success text-[#111] font-sans font-bold text-[10px] rounded-lg hover:bg-success/90 active:scale-[0.98] transition-transform disabled:opacity-50"
+                              className={BTN_PRIMARY_SM_CLASS}
                             >
-                              ✓ 銷帳
+                              銷帳
                             </button>
                           ) : null}
                           <button
@@ -709,9 +825,9 @@ export default function FpsLedgerTab({
                               handleStatusUpdate(row.requestId, "failed")
                             }
                             disabled={isMutating}
-                            className="min-h-[44px] h-9 px-2.5 bg-[rgba(239,68,68,0.10)] text-warning font-mono text-[10px] rounded-lg border border-warning/20 hover:bg-[rgba(239,68,68,0.15)] active:scale-[0.98] transition-transform disabled:opacity-50"
+                            className={`${BTN_OUTLINE_SM_CLASS} border-warning/30 text-warning hover:border-warning/40 hover:bg-warning/10 hover:text-warning`}
                           >
-                            ✕ 駁回
+                            駁回
                           </button>
                         </>
                       ) : null}
@@ -722,53 +838,26 @@ export default function FpsLedgerTab({
             })}
           </TableBody>
         </Table>
-      </div>
+          </div>
 
-      {pageData.total > 0 ? (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-          <div className="font-mono text-[12px] text-text-secondary">
-            顯示第{" "}
-            <span className="font-bold text-text-primary">{startRow}</span> -{" "}
-            <span className="font-bold text-text-primary">{endRow}</span> 筆，共{" "}
-            <span className="font-bold text-brand">{pageData.total}</span> 筆資料
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={pageData.page === 1 || isPending}
-              onClick={() => handlePageChange(Math.max(pageData.page - 1, 1))}
-              className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              上一頁
-            </button>
-            {pageNumbers.map((p) => (
-              <button
-                key={p}
-                type="button"
-                disabled={isPending}
-                onClick={() => handlePageChange(p)}
-                className={`min-h-[44px] h-11 w-11 rounded-lg font-mono text-xs font-semibold transition-all ${
-                  pageData.page === p
-                    ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                    : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              type="button"
-              disabled={pageData.page === totalPages || isPending}
-              onClick={() =>
-                handlePageChange(Math.min(pageData.page + 1, totalPages))
-              }
-              className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              下一頁
-            </button>
-          </div>
-        </div>
-      ) : null}
+          {pageData.total > 0 && totalPages <= 1 ? (
+            <p className="font-mono text-[12px] text-text-secondary">
+              共 {pageData.total} 筆資料{isPending ? "（更新中…）" : ""}
+            </p>
+          ) : null}
+          {pageData.total > 0 && totalPages > 1 ? (
+            <Pagination
+              currentPage={pageData.page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={pageData.total}
+              itemsPerPage={pageData.pageSize}
+              itemLabel="筆資料"
+              enableScroll={false}
+            />
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

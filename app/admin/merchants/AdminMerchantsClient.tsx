@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
+import {
+  BTN_OUTLINE_SM_CLASS,
+  BTN_PRIMARY_SM_CLASS,
+  FILTER_CHIP_CLASS,
+  FILTER_INPUT_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
+import { Pagination } from "@/app/components/ui/Pagination";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -16,7 +25,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import {
   getKycDocumentSignedUrl,
   getStripePayoutBankSummary,
@@ -120,7 +128,7 @@ function StripePayoutPopover({ applicationId }: { applicationId: string }) {
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-[11px] text-text-primary hover:bg-bg-elevated"
+        className={`${BTN_OUTLINE_SM_CLASS} h-9`}
       >
         Stripe 出款
       </PopoverTrigger>
@@ -185,9 +193,11 @@ function StripePayoutPopover({ applicationId }: { applicationId: string }) {
 function ApplicationActions({
   application,
   onUpdated,
+  variant = "inline",
 }: {
   application: AdminKycApplicationListItem;
   onUpdated: () => void;
+  variant?: "inline" | "stacked";
 }) {
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject] = useState(false);
@@ -252,14 +262,32 @@ function ApplicationActions({
   }
 
   if (application.status === "pending") {
+    const actionButtonClass =
+      variant === "stacked"
+        ? "h-9 w-full sm:w-auto"
+        : "h-8 shrink-0 px-2.5";
+
     return (
-      <div className="flex flex-col items-end gap-2 min-w-[140px]">
-        <Popover>
-          <PopoverTrigger
-            className="inline-flex items-center justify-center h-9 px-3 rounded-md border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-[11px] text-text-primary hover:bg-bg-elevated"
-          >
-            查看文件
-          </PopoverTrigger>
+      <div
+        className={
+          variant === "stacked"
+            ? "flex flex-col items-stretch gap-2"
+            : "flex min-w-[11rem] flex-col items-end gap-2"
+        }
+      >
+        <div
+          className={
+            variant === "stacked"
+              ? "flex flex-col gap-1.5"
+              : "flex flex-wrap items-center justify-end gap-1.5"
+          }
+        >
+          <Popover>
+            <PopoverTrigger
+              className={`${BTN_OUTLINE_SM_CLASS} ${actionButtonClass}`}
+            >
+              查看文件
+            </PopoverTrigger>
           <PopoverContent
             align="end"
             className="w-56 p-2 bg-bg-card border-[rgba(237,232,224,0.12)]"
@@ -280,49 +308,47 @@ function ApplicationActions({
           </PopoverContent>
         </Popover>
 
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <Button
+          <button
             type="button"
-            size="sm"
             disabled={isPending}
             onClick={() => handleReview("approve")}
-            className="h-9 text-[11px]"
+            className={`${BTN_PRIMARY_SM_CLASS} ${actionButtonClass} disabled:opacity-50`}
           >
             {isPending ? "處理中…" : "批准"}
-          </Button>
+          </button>
           {!showReject ? (
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               disabled={isPending}
               onClick={() => setShowReject(true)}
-              className="h-9 text-[11px]"
+              className={`${BTN_OUTLINE_SM_CLASS} ${actionButtonClass} border-warning/30 text-warning hover:border-warning/50 hover:bg-warning/10 hover:text-warning disabled:opacity-50`}
             >
               拒絕
-            </Button>
+            </button>
           ) : null}
         </div>
 
         {showReject ? (
-          <div className="w-full space-y-2">
+          <div
+            className={
+              variant === "stacked" ? "w-full space-y-2" : "w-full min-w-[11rem] space-y-2"
+            }
+          >
             <input
               type="text"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="拒絕原因（必填）"
-              className="w-full h-9 px-3 rounded-lg bg-bg-page border border-[rgba(237,232,224,0.12)] font-sans text-[12px] text-text-primary"
+              className="h-9 w-full rounded-lg border border-white/10 bg-transparent px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-warning/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/30"
             />
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               disabled={isPending || !rejectReason.trim()}
               onClick={() => handleReview("reject")}
-              className="h-9 w-full text-[11px] text-warning border-warning/30"
+              className={`${BTN_OUTLINE_SM_CLASS} h-9 w-full border-warning/40 text-warning hover:border-warning/50 hover:bg-warning/10 hover:text-warning disabled:opacity-50`}
             >
               確認拒絕
-            </Button>
+            </button>
           </div>
         ) : null}
       </div>
@@ -331,15 +357,14 @@ function ApplicationActions({
 
   if (application.status === "approved" && !application.stripeAccountId) {
     return (
-      <Button
+      <button
         type="button"
-        size="sm"
         disabled={isPending}
         onClick={handleRetryStripe}
-        className="h-9 text-[11px]"
+        className={`${BTN_PRIMARY_SM_CLASS} h-9 disabled:opacity-50`}
       >
         {isPending ? "重試中…" : "重試 Stripe 開通"}
-      </Button>
+      </button>
     );
   }
 
@@ -359,6 +384,73 @@ function ApplicationActions({
   }
 
   return <span className="font-sans text-[11px] text-text-disabled">—</span>;
+}
+
+function KycApplicationMobileCard({
+  app,
+  highlightApplicationId,
+  onUpdated,
+}: {
+  app: AdminKycApplicationListItem;
+  highlightApplicationId: string | null;
+  onUpdated: () => void;
+}) {
+  return (
+    <article
+      data-testid={`kyc-row-${app.id}`}
+      className={`space-y-2.5 px-1 py-3 ${
+        highlightApplicationId === app.id
+          ? "rounded-lg bg-brand/5 ring-1 ring-brand/30"
+          : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-sans text-[13px] font-semibold leading-snug text-text-primary">
+            {app.companyNameEn}
+            {app.companyNameZh ? (
+              <span className="font-normal text-text-secondary">
+                （{app.companyNameZh}）
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+            {formatHandle(app.shopHandle, app.applicantUsername)}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${statusBadgeClasses(app.status)}`}
+        >
+          {statusLabel(app.status)}
+        </span>
+      </div>
+      <dl className="grid grid-cols-1 gap-1 font-mono text-[10px]">
+        <div className="flex min-w-0 gap-2">
+          <dt className="shrink-0 text-text-disabled">電郵</dt>
+          <dd className="truncate text-text-secondary">{app.repEmail}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="shrink-0 text-text-disabled">BR</dt>
+          <dd className="text-text-secondary">{app.brNumber}</dd>
+        </div>
+        {app.stripeAccountId ? (
+          <div className="flex min-w-0 gap-2">
+            <dt className="shrink-0 text-text-disabled">Stripe</dt>
+            <dd className="truncate text-text-disabled">{app.stripeAccountId}</dd>
+          </div>
+        ) : null}
+        <div className="flex gap-2">
+          <dt className="shrink-0 text-text-disabled">提交</dt>
+          <dd className="text-text-disabled">{formatDateTime(app.submittedAt)}</dd>
+        </div>
+      </dl>
+      <ApplicationActions
+        application={app}
+        onUpdated={onUpdated}
+        variant="stacked"
+      />
+    </article>
+  );
 }
 
 export function AdminMerchantsClient({
@@ -450,148 +542,154 @@ export function AdminMerchantsClient({
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-100px)] space-y-4">
-      <div className="flex items-end justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+    <div className="space-y-5 pb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-sans font-bold text-[20px] text-text-primary">
-            商戶與 KYC 審查
-          </h1>
-          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
+              商戶與 KYC 審查
+            </h1>
+            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+              MERCHANTS
+            </span>
+          </div>
+          <p className="mt-1 font-sans text-[13px] text-text-secondary">
             人工審批商戶入駐申請；批准後自動開通店舖並建立 Stripe Connect 帳戶
           </p>
         </div>
+        <p className="font-mono text-[12px] text-text-secondary sm:shrink-0 sm:self-end">
+          待審核{" "}
+          <span className="font-medium text-brand">{counts.pending}</span>
+        </p>
       </div>
 
       {loadError ? (
-        <p className="font-sans text-[13px] text-warning px-1">{loadError}</p>
+        <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2.5 font-sans text-[13px] text-error">
+          {loadError}
+        </div>
       ) : null}
 
-      <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
-        <div className="flex-1 flex flex-col justify-between space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-full sm:w-80">
-                <input
-                  type="text"
-                  placeholder="搜尋公司名、Handle、電郵、BR 或 Stripe ID..."
-                  value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
-                />
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="absolute left-3 top-2.5 text-text-disabled"
-                  aria-hidden="true"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </div>
-
-              <div className="flex items-center gap-1 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)]">
-                {(Object.keys(FILTER_LABELS) as StatusFilter[]).map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => handleFilterChange(key)}
-                    className={`min-h-[44px] px-3 py-1 rounded-lg font-sans text-[11px] transition-colors ${
-                      statusFilter === key
-                        ? "bg-bg-elevated text-brand font-semibold"
-                        : "text-text-secondary hover:text-text-primary"
-                    }`}
-                  >
-                    {FILTER_LABELS[key]} ({counts[key]})
-                  </button>
-                ))}
-              </div>
-            </div>
+      <div className="space-y-4 border-b border-white/[0.08] pb-5">
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              placeholder="搜尋公司名、Handle、電郵、BR 或 Stripe ID…"
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className={FILTER_INPUT_CLASS}
+            />
           </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(FILTER_LABELS) as StatusFilter[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleFilterChange(key)}
+                className={FILTER_CHIP_CLASS(statusFilter === key)}
+              >
+                {FILTER_LABELS[key]} ({counts[key]})
+              </button>
+            ))}
+          </div>
+        </div>
 
-          <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
-                <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-                  <TableHead className="font-sans text-[11px] text-text-secondary h-10">
-                    公司名稱
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    Handle
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    電郵
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    BR 號碼
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    Stripe Account ID
-                  </TableHead>
-                  <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
-                    申請狀態
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
-                    提交時間
-                  </TableHead>
-                  <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
-                    操作
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginated.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="py-10 text-center font-sans text-[13px] text-text-secondary"
-                    >
-                      暫無{FILTER_LABELS[statusFilter]}申請
-                    </TableCell>
+        {paginated.length === 0 ? (
+          <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
+            暫無{FILTER_LABELS[statusFilter]}申請
+          </p>
+        ) : (
+          <>
+            <div className="md:hidden divide-y divide-white/[0.06]">
+              {paginated.map((app) => (
+                <KycApplicationMobileCard
+                  key={app.id}
+                  app={app}
+                  highlightApplicationId={highlightApplicationId ?? null}
+                  onUpdated={handleUpdated}
+                />
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-lg border border-white/[0.08] md:block">
+              <Table>
+                <TableHeader className="border-b border-white/[0.08] bg-bg-card/30">
+                  <TableRow className="border-transparent hover:bg-transparent">
+                    <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                      公司名稱
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      Handle
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      電郵
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      BR 號碼
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      Stripe ID
+                    </TableHead>
+                    <TableHead className="h-9 text-center font-sans text-[11px] text-text-disabled">
+                      狀態
+                    </TableHead>
+                    <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled">
+                      提交時間
+                    </TableHead>
+                    <TableHead className="h-9 min-w-[11rem] text-right font-sans text-[11px] text-text-disabled">
+                      操作
+                    </TableHead>
                   </TableRow>
-                ) : (
-                  paginated.map((app) => (
+                </TableHeader>
+                <TableBody>
+                  {paginated.map((app, rowIndex) => (
                     <TableRow
                       key={app.id}
                       data-testid={`kyc-row-${app.id}`}
-                      className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
+                      className={`border-white/[0.06] transition-colors hover:bg-brand/10 ${
+                        rowIndex % 2 === 0 ? "bg-bg-card/25" : "bg-white/[0.02]"
+                      } ${
                         highlightApplicationId === app.id
-                          ? "bg-brand/5 ring-1 ring-brand/30"
+                          ? "!bg-brand/10 ring-1 ring-inset ring-brand/30"
                           : ""
                       }`}
                     >
-                      <TableCell className="font-sans font-semibold text-[13px] text-text-primary py-3 whitespace-nowrap">
-                        {app.companyNameEn}
-                        {app.companyNameZh ? (
-                          <span className="font-normal text-text-secondary">
-                            {" "}
-                            （{app.companyNameZh}）
-                          </span>
-                        ) : null}
+                      <TableCell className="max-w-[12rem] py-2.5 font-sans text-[13px] font-semibold text-text-primary">
+                        <span className="line-clamp-2">
+                          {app.companyNameEn}
+                          {app.companyNameZh ? (
+                            <span className="font-normal text-text-secondary">
+                              （{app.companyNameZh}）
+                            </span>
+                          ) : null}
+                        </span>
                       </TableCell>
-                      <TableCell className="font-mono text-[12px] text-text-secondary py-3 whitespace-nowrap">
+                      <TableCell className="py-2.5 font-mono text-[11px] text-text-secondary whitespace-nowrap">
                         {formatHandle(app.shopHandle, app.applicantUsername)}
                       </TableCell>
-                      <TableCell className="font-mono text-[11px] text-text-secondary py-3 whitespace-nowrap">
-                        {app.repEmail}
+                      <TableCell className="max-w-[10rem] py-2.5 font-mono text-[11px] text-text-secondary">
+                        <span className="block truncate">{app.repEmail}</span>
                       </TableCell>
-                      <TableCell className="font-mono text-[11px] text-text-secondary py-3 whitespace-nowrap">
+                      <TableCell className="py-2.5 font-mono text-[11px] text-text-secondary whitespace-nowrap">
                         {app.brNumber}
                       </TableCell>
-                      <TableCell className="font-mono text-[11px] text-text-disabled py-3 whitespace-nowrap">
-                        {app.stripeAccountId ?? "—"}
+                      <TableCell className="max-w-[9rem] py-2.5 font-mono text-[11px] text-text-disabled">
+                        <span className="block truncate">
+                          {app.stripeAccountId ?? "—"}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-center py-3 whitespace-nowrap">
+                      <TableCell className="py-2.5 text-center whitespace-nowrap">
                         <span
-                          className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${statusBadgeClasses(app.status)}`}
+                          className={`inline-block rounded border px-2 py-0.5 font-mono text-[9px] ${statusBadgeClasses(app.status)}`}
                         >
                           {statusLabel(app.status)}
                         </span>
                       </TableCell>
-                      <TableCell className="font-mono text-[11px] text-text-disabled text-right py-3 whitespace-nowrap">
+                      <TableCell className="py-2.5 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                         {formatDateTime(app.submittedAt)}
                         {app.reviewedAt ? (
                           <div className="text-[10px] text-text-disabled">
@@ -599,71 +697,33 @@ export function AdminMerchantsClient({
                           </div>
                         ) : null}
                       </TableCell>
-                      <TableCell className="text-right py-3">
+                      <TableCell className="py-2.5 text-right align-top">
                         <ApplicationActions
                           application={app}
                           onUpdated={handleUpdated}
+                          variant="inline"
                         />
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {filtered.length > 0 ? (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-              <div className="font-mono text-[12px] text-text-secondary">
-                顯示第{" "}
-                <span className="font-bold text-text-primary">
-                  {(page - 1) * PAGE_SIZE + 1}
-                </span>{" "}
-                -{" "}
-                <span className="font-bold text-text-primary">
-                  {Math.min(page * PAGE_SIZE, filtered.length)}
-                </span>{" "}
-                筆，共{" "}
-                <span className="font-bold text-brand">{filtered.length}</span>{" "}
-                筆資料
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={page === 1}
-                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                  className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  上一頁
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPage(p)}
-                    className={`min-h-[44px] h-11 w-11 rounded-lg font-mono text-xs font-semibold transition-all ${
-                      page === p
-                        ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                        : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  disabled={page === totalPages}
-                  onClick={() =>
-                    setPage((prev) => Math.min(prev + 1, totalPages))
-                  }
-                  className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  下一頁
-                </button>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          ) : null}
-        </div>
+          </>
+        )}
+
+        {filtered.length > 0 ? (
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={filtered.length}
+            itemsPerPage={PAGE_SIZE}
+            itemLabel="筆申請"
+            enableScroll={false}
+            showInfoStrip={false}
+          />
+        ) : null}
       </div>
     </div>
   );

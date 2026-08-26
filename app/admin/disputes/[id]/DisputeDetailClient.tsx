@@ -12,6 +12,8 @@ import {
 } from "@/app/actions/admin-moderation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,12 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   categoryBadgeClasses,
   deriveSeverityBand,
   formatCategoryLabel,
   formatModerationDateTime,
-  moderationAuditActionLabel,
   moderationResolutionLabel,
   moderationStatusBadgeClasses,
   moderationStatusLabel,
@@ -33,7 +35,6 @@ import {
   severityBadgeClasses,
   severityLabel,
 } from "@/lib/moderation/admin-case-presenters";
-import { highlightSensitiveKeywords } from "@/lib/moderation/highlight-chat-keywords";
 import {
   isUpheldResolutionOption,
   mapResolutionOptionToInput,
@@ -47,9 +48,20 @@ import type {
   ModerationRefundBreakdownPreview,
   ViolationPersona,
 } from "@/lib/moderation/types";
-import ModerationChatThreadPanel from "./ModerationChatThreadPanel";
+import ModerationAuditTimeline from "./ModerationAuditTimeline";
+import ModerationChatHistoryPanel from "./ModerationChatHistoryPanel";
+import ModerationEvidencePanel from "./ModerationEvidencePanel";
 import ModerationOrderContextPanel from "./ModerationOrderContextPanel";
+import ModerationReportSummaryPanel from "./ModerationReportSummaryPanel";
 import ModerationSubjectHistoryPanel from "./ModerationSubjectHistoryPanel";
+import {
+  BTN_PRIMARY_CLASS,
+  INPUT_CLASS,
+  SELECT_CONTENT_CLASS,
+  SELECT_ITEM_CLASS,
+  SELECT_TRIGGER_CLASS,
+  TEXTAREA_CLASS,
+} from "./moderation-detail-ui";
 
 interface DisputeDetailClientProps {
   bundle: AdminModerationCaseBundle;
@@ -78,9 +90,6 @@ export default function DisputeDetailClient({
       : chatAccess.roomId
         ? [chatAccess.roomId]
         : [];
-  const [selectedChatRoomId, setSelectedChatRoomId] = useState<string | null>(
-    chatRoomIds[0] ?? null,
-  );
 
   const [scoreAdjustment, setScoreAdjustment] = useState("0");
   const [adjustmentReason, setAdjustmentReason] = useState(
@@ -96,7 +105,10 @@ export default function DisputeDetailClient({
   const [evidenceOverrideReason, setEvidenceOverrideReason] = useState("");
   const [notifyReporter, setNotifyReporter] = useState(true);
   const [executeOrderRefund, setExecuteOrderRefund] = useState(false);
-  const [refundOrderId, setRefundOrderId] = useState("");
+  const [refundOrderId, setRefundOrderId] = useState(() => {
+    const eligible = bundle.relatedOrders.filter((order) => order.refundEligible);
+    return eligible.length === 1 ? eligible[0].id : "";
+  });
   const [faultParty, setFaultParty] = useState<
     "seller" | "buyer" | "platform" | "carrier" | "inconclusive" | ""
   >("");
@@ -316,304 +328,239 @@ export default function DisputeDetailClient({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-8">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => router.push("/admin/disputes")}
-        className="text-[#d4c4b7] hover:bg-[#26211C] hover:text-[#eae1da] active:scale-[0.98]"
+        className="text-text-secondary hover:bg-brand/10 hover:text-brand active:scale-[0.98]"
       >
         <ArrowLeft className="mr-1.5 size-4" />
         返回舉報與爭議列表
       </Button>
 
-      <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-        <div className="flex flex-col flex-wrap gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-mono text-[18px] font-bold text-[#eae1da]">
-              {caseDetail.caseNumber}
-            </span>
-            <Badge
-              variant="outline"
-              className={categoryBadgeClasses(caseDetail.primaryCategory)}
-            >
-              {formatCategoryLabel(caseDetail.primaryCategory)}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={severityBadgeClasses(severity)}
-            >
-              {severityLabel(severity)}
-            </Badge>
-            {caseDetail.resolution ? (
-              <Badge variant="outline" className="bg-[#2e2925] text-[#d4c4b7] border-white/10">
-                {moderationResolutionLabel(caseDetail.resolution)}
-              </Badge>
-            ) : null}
+      <header className="space-y-3 border-b border-white/[0.08] pb-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[18px] font-bold tracking-tight text-text-primary">
+            {caseDetail.caseNumber}
+          </span>
+          <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+            MODERATION
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="font-sans text-[20px] font-bold text-text-primary">
+              被舉報：{caseDetail.subject.displayName ?? "未知用戶"}
+            </h1>
+            <p className="mt-1 font-sans text-[13px] text-text-secondary">
+              @{caseDetail.subject.username ?? "—"} · 角色{" "}
+              {caseDetail.subject.role ?? "—"}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-sans text-[12px] text-text-disabled">
+              <span>
+                主要舉報方：
+                <span className="text-text-secondary">
+                  {primaryReporter?.displayName ?? "—"}
+                </span>
+              </span>
+              <span>
+                獨立舉報人數：
+                <span className="text-text-secondary">
+                  {bundle.reporterSummaries.length}
+                </span>
+              </span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             <Badge
               variant="outline"
               className={moderationStatusBadgeClasses(caseDetail.status)}
             >
               {moderationStatusLabel(caseDetail.status)}
             </Badge>
-            <span className="font-mono text-[13px] font-semibold text-[#d4a574]">
-              最終分數 {caseDetail.finalScore ?? 0}
+            <Badge
+              variant="outline"
+              className={categoryBadgeClasses(caseDetail.primaryCategory)}
+            >
+              {formatCategoryLabel(caseDetail.primaryCategory)}
+            </Badge>
+            <Badge variant="outline" className={severityBadgeClasses(severity)}>
+              {severityLabel(severity)}
+            </Badge>
+            <span className="font-mono text-[13px] font-semibold text-brand">
+              分數 {caseDetail.finalScore ?? 0}
             </span>
-            <span className="font-sans text-[12px] text-[#8A8680]">
+            <span className="font-sans text-[12px] text-text-disabled">
               建立於 {formatModerationDateTime(caseDetail.createdAt)}
             </span>
           </div>
         </div>
 
-        <div className="border-t border-white/[0.06] pt-4">
-          <h1 className="font-sans text-[20px] font-bold text-[#eae1da]">
-            被舉報用戶：{caseDetail.subject.displayName ?? "未知用戶"}
-          </h1>
-          <p className="mt-1 font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
-            @{caseDetail.subject.username ?? "—"} · 角色 {caseDetail.subject.role ?? "—"}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-sans text-[12px] text-[#8A8680]">
-            <span>
-              主要舉報方：
-              <span className="text-[#d4c4b7]">
-                {primaryReporter?.displayName ?? "—"}
-              </span>
-            </span>
-            <span>
-              獨立舉報人數：
-              <span className="text-[#d4c4b7]">
-                {bundle.reporterSummaries.length}
-              </span>
-            </span>
-          </div>
-          {activeSanctions.length > 0 ? (
-            <div className="mt-3 space-y-1">
-              <p className="font-sans text-[12px] font-medium text-[#d4c4b7]">
-                有效制裁：
+        {activeSanctions.length > 0 ? (
+          <div className="space-y-1 rounded-lg border border-white/[0.06] bg-bg-card/40 px-3 py-2">
+            <p className="font-sans text-[12px] font-medium text-text-secondary">
+              有效制裁
+            </p>
+            {activeSanctions.map((sanction) => (
+              <p
+                key={sanction.id}
+                className="font-sans text-[12px] text-text-disabled"
+              >
+                {sanctionScopeLabel(sanction.scope)} ·{" "}
+                {sanctionTypeLabel(sanction.type)}
+                {sanction.endsAt
+                  ? ` · 至 ${formatModerationDateTime(sanction.endsAt)}`
+                  : " · 永久"}
               </p>
-              {activeSanctions.map((sanction) => (
-                <p
-                  key={sanction.id}
-                  className="font-sans text-[12px] text-[#8A8680]"
-                >
-                  {sanctionScopeLabel(sanction.scope)} ·{" "}
-                  {sanctionTypeLabel(sanction.type)}
-                  {sanction.endsAt
-                    ? ` · 至 ${formatModerationDateTime(sanction.endsAt)}`
-                    : " · 永久"}
-                </p>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </div>
+            ))}
+          </div>
+        ) : null}
+      </header>
 
-      {subjectHistory ? (
-        <ModerationSubjectHistoryPanel
-          history={subjectHistory}
-          currentFinalScore={caseDetail.finalScore}
-        />
-      ) : null}
+      <ModerationReportSummaryPanel reports={reports} />
 
       {!chatAccess.evidenceSufficient ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 font-sans text-[13px] text-[#ef4444]">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-sans text-[13px] text-error">
           證據不足 — 此類別需調閱對話紀錄。若下方無聊天紀錄，可先標記
           insufficient_evidence 或駁回。
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[55fr_45fr]">
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
-              舉報摘要
-            </h2>
-            <div className="mt-4 space-y-4">
-              {reports.length === 0 ? (
-                <p className="font-sans text-[12px] text-[#8A8680]">暫無舉報紀錄。</p>
-              ) : (
-                reports.map((report) => (
-                  <div
-                    key={report.id}
-                    className="rounded-xl border border-white/[0.06] bg-[#17130f] p-4"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge
-                        variant="outline"
-                        className={categoryBadgeClasses(report.category)}
-                      >
-                        {formatCategoryLabel(report.category)}
-                      </Badge>
-                      <span>
-                        {report.source === "profile"
-                          ? "公開資料"
-                          : report.source === "chat_room"
-                            ? `對話${report.contextId ? ` · ${report.contextId.slice(0, 8)}` : ""}`
-                            : "未知來源"}
-                      </span>
-                      <span className="font-sans text-[12px] text-[#8A8680]">
-                        {report.reporterDisplayName ?? report.reporterUsername ?? "未知"}
-                        · {formatModerationDateTime(report.createdAt)}
-                      </span>
-                      <span className="font-mono text-[12px] text-[#d4a574]">
-                        +{report.contributionScore ?? 0}
-                      </span>
-                    </div>
-                    <p className="mt-2 font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
-                      {highlightSensitiveKeywords(
-                        report.details?.trim() || report.reason,
-                      )}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        <div className="space-y-5">
+          {subjectHistory ? (
+            <ModerationSubjectHistoryPanel
+              history={subjectHistory}
+              currentFinalScore={caseDetail.finalScore}
+            />
+          ) : null}
 
-          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
+          <section className="space-y-4 border-b border-white/[0.08] pb-5">
+            <h2 className="font-sans text-[15px] font-bold text-text-primary">
               用戶上傳證據
             </h2>
-            {attachments.length === 0 ? (
-              <p className="mt-3 font-sans text-[12px] text-[#8A8680]">
-                暫無證據圖片。
-              </p>
-            ) : (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {attachments.map((attachment) => (
-                  <div
-                    key={attachment.id}
-                    className="overflow-hidden rounded-xl border border-white/10 bg-[#17130f]"
-                  >
-                    {attachment.publicUrl ? (
-                      <a
-                        href={attachment.publicUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={attachment.publicUrl}
-                          alt="舉報證據"
-                          className="h-32 w-full object-cover"
-                        />
-                      </a>
-                    ) : (
-                      <div className="flex h-32 items-center justify-center px-3 text-center font-sans text-[11px] text-[#8A8680]">
-                        圖片不可用
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            <ModerationEvidencePanel attachments={attachments} />
+          </section>
 
-          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
-                唯讀聊天室歷史
-              </h2>
-            </div>
-            {chatRoomIds.length > 1 ? (
-              <select
-                value={selectedChatRoomId ?? ""}
-                onChange={(event) =>
-                  setSelectedChatRoomId(event.target.value || null)
-                }
-              >
-                {chatRoomIds.map((roomId) => (
-                  <option key={roomId} value={roomId}>
-                    聊天室 {roomId.slice(0, 8)}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-            {selectedChatRoomId ? (
-              <ModerationChatThreadPanel
-                caseId={caseDetail.id}
-                roomId={selectedChatRoomId}
-                subjectUserId={caseDetail.subject.id}
-              />
-            ) : (
-              <p className="font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
-                此案件尚未綁定可調閱的聊天室紀錄。
-              </p>
-            )}
-          </div>
+          <ModerationChatHistoryPanel
+            caseId={caseDetail.id}
+            subjectUserId={caseDetail.subject.id}
+            chatRoomIds={chatRoomIds}
+          />
         </div>
 
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
+        <div className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <section className="space-y-3 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
+            <h2 className="font-sans text-[15px] font-bold text-text-primary">
               風控分數明細
             </h2>
-            <div className="mt-4 space-y-2 font-sans text-[13px] text-[#d4c4b7]">
-              <p>自動分數 (autoScore)：{caseDetail.autoScore}</p>
+            <div className="space-y-2">
+              <ScoreDetailRow
+                label="自動分數"
+                value={String(caseDetail.autoScore)}
+              />
               {reports.map((report) => (
-                <p key={report.id} className="pl-3 text-[12px] text-[#8A8680]">
-                  - {formatCategoryLabel(report.category)} ·{" "}
-                  {report.reporterDisplayName ?? "未知"} · +
-                  {report.contributionScore ?? 0}
-                </p>
+                <ScoreDetailRow
+                  key={report.id}
+                  label={formatCategoryLabel(report.category)}
+                  value={`+${report.contributionScore ?? 0}`}
+                  hint={report.reporterDisplayName ?? "未知"}
+                />
               ))}
-              <p>管理員調整：{caseDetail.adminAdjustment}</p>
+              <ScoreDetailRow
+                label="管理員調整"
+                value={String(caseDetail.adminAdjustment)}
+              />
               {caseDetail.adjustmentReason ? (
-                <p className="text-[12px] text-[#8A8680]">
+                <p className="font-sans text-[11px] text-text-disabled">
                   調整原因：{caseDetail.adjustmentReason}
                 </p>
               ) : null}
-              <p className="border-t border-white/[0.06] pt-2 font-mono text-[#d4a574]">
-                最終分數：{caseDetail.finalScore ?? 0}
-              </p>
+              <ScoreDetailRow
+                label="最終分數"
+                value={String(caseDetail.finalScore ?? 0)}
+                emphasize
+              />
             </div>
             {caseOpen ? (
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-3 border-t border-white/[0.06] pt-4">
                 <div>
                   <label
                     htmlFor="admin-score-adjustment"
-                    className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]"
+                    className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary"
                   >
                     分數調整 (+/−)
                   </label>
-                  <input
+                  <Input
                     id="admin-score-adjustment"
                     name="adjustment"
                     type="number"
                     value={scoreAdjustment}
                     onChange={(event) => setScoreAdjustment(event.target.value)}
                     disabled={isAdjustPending}
+                    className={INPUT_CLASS}
                   />
                 </div>
                 <div>
                   <label
                     htmlFor="admin-adjustment-reason"
-                    className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]"
+                    className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary"
                   >
                     調整原因
                   </label>
-                  <textarea
+                  <Textarea
                     id="admin-adjustment-reason"
                     name="adjustmentReason"
                     rows={3}
                     value={adjustmentReason}
                     onChange={(event) => setAdjustmentReason(event.target.value)}
                     disabled={isAdjustPending}
+                    className={TEXTAREA_CLASS}
                   />
                 </div>
                 <Button
                   type="button"
                   disabled={isAdjustPending}
                   onClick={handleSaveScoreAdjustment}
-                  className="h-10 w-full bg-[#d4a574] text-[#111] hover:bg-[#e0b585]"
+                  className={BTN_PRIMARY_CLASS}
                 >
                   {isAdjustPending ? "儲存中…" : "儲存調整"}
                 </Button>
               </div>
             ) : null}
-          </div>
+          </section>
+
+          {!caseOpen ? (
+            <section className="space-y-2 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
+              <h2 className="font-sans text-[15px] font-bold text-text-primary">
+                結案摘要
+              </h2>
+              <ScoreDetailRow
+                label="案件狀態"
+                value={moderationStatusLabel(caseDetail.status)}
+              />
+              {caseDetail.resolution ? (
+                <ScoreDetailRow
+                  label="裁定結果"
+                  value={moderationResolutionLabel(caseDetail.resolution)}
+                />
+              ) : null}
+              {caseDetail.resolvedAt ? (
+                <ScoreDetailRow
+                  label="結案時間"
+                  value={formatModerationDateTime(caseDetail.resolvedAt)}
+                />
+              ) : null}
+              <ScoreDetailRow
+                label="最終分數"
+                value={String(caseDetail.finalScore ?? 0)}
+                emphasize
+              />
+            </section>
+          ) : null}
 
           <ModerationOrderContextPanel
             relatedOrders={relatedOrders}
@@ -637,311 +584,342 @@ export default function DisputeDetailClient({
             }}
           />
 
-          <div
-            className={`rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]${caseOpen ? "" : " opacity-70"}`}
-          >
-            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
-              仲裁判定動作
-            </h2>
-            {caseOpen ? (
-              <>
-                <div className="mt-4 space-y-4">
+          {caseOpen ? (
+            <section className="space-y-4 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
+              <h2 className="font-sans text-[15px] font-bold text-text-primary">
+                仲裁判定動作
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                    選擇仲裁結果
+                  </label>
+                  <Select
+                    value={resolutionOption}
+                    onValueChange={(value) =>
+                      setResolutionOption(value as ModerationResolutionOptionValue)
+                    }
+                    disabled={isResolvePending}
+                  >
+                    <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="請選擇一項仲裁判定動作" />
+                    </SelectTrigger>
+                    <SelectContent className={SELECT_CONTENT_CLASS}>
+                      {MODERATION_RESOLUTION_OPTIONS.map((option) => {
+                        const disabled =
+                          !chatAccess.evidenceSufficient &&
+                          option.disabledWhenEvidenceInsufficient;
+                        return (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            disabled={disabled}
+                            className={SELECT_ITEM_CLASS}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
                   <div>
-                    <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                      選擇仲裁結果
+                    <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                      違規身分
                     </label>
                     <Select
-                      value={resolutionOption}
+                      value={violationPersona}
                       onValueChange={(value) =>
-                        setResolutionOption(value as ModerationResolutionOptionValue)
+                        setViolationPersona(value as ViolationPersona)
                       }
                       disabled={isResolvePending}
                     >
-                      <SelectTrigger className="h-10 w-full border-white/10 bg-[#17130f] text-[#eae1da]">
-                        <SelectValue placeholder="請選擇一項仲裁判定動作" />
+                      <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                        <SelectValue placeholder="請選擇違規身分" />
                       </SelectTrigger>
-                      <SelectContent className="border-white/10 bg-[#26211C]">
-                        {MODERATION_RESOLUTION_OPTIONS.map((option) => {
-                          const disabled =
-                            !chatAccess.evidenceSufficient &&
-                            option.disabledWhenEvidenceInsufficient;
-                          return (
-                            <SelectItem
-                              key={option.value}
-                              value={option.value}
-                              disabled={disabled}
-                              className="text-[#d4c4b7]"
-                            >
-                              {option.label}
-                            </SelectItem>
-                          );
-                        })}
+                      <SelectContent className={SELECT_CONTENT_CLASS}>
+                        {VIOLATION_PERSONA_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={option.value}
+                            className={SELECT_ITEM_CLASS}
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+                ) : null}
 
-                  {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
-                    <div>
-                      <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                        違規身分
-                      </label>
-                      <Select
-                        value={violationPersona}
-                        onValueChange={(value) =>
-                          setViolationPersona(value as ViolationPersona)
+                {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
+                  <div className="space-y-3 rounded-lg border border-white/[0.06] bg-bg-page/50 p-3">
+                    <label className="flex items-center gap-2 font-sans text-[12px] text-text-secondary">
+                      <Checkbox
+                        checked={executeOrderRefund}
+                        onCheckedChange={(checked) =>
+                          setExecuteOrderRefund(checked === true)
                         }
                         disabled={isResolvePending}
-                      >
-                        <SelectTrigger className="h-10 w-full border-white/10 bg-[#17130f] text-[#eae1da]">
-                          <SelectValue placeholder="請選擇違規身分" />
-                        </SelectTrigger>
-                        <SelectContent className="border-white/10 bg-[#26211C]">
-                          {VIOLATION_PERSONA_OPTIONS.map((option) => (
-                            <SelectItem
-                              key={option.value}
-                              value={option.value}
-                              className="text-[#d4c4b7]"
+                      />
+                      執行售後退款
+                    </label>
+                    {executeOrderRefund ? (
+                      <>
+                        <div>
+                          <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                            退款訂單
+                          </label>
+                          {eligibleRefundOrders.length === 0 ? (
+                            <p className="font-sans text-[12px] text-text-disabled">
+                              無符合條件的關聯訂單
+                            </p>
+                          ) : eligibleRefundOrders.length === 1 ? (
+                            <p className="font-mono text-[12px] text-text-primary">
+                              {eligibleRefundOrders[0].orderNumber ??
+                                eligibleRefundOrders[0].id.slice(0, 8)}
+                            </p>
+                          ) : (
+                            <Select
+                              value={refundOrderId}
+                              onValueChange={(value) =>
+                                setRefundOrderId(value ?? "")
+                              }
+                              disabled={isResolvePending}
                             >
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null}
-
-                  {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
-                    <div className="space-y-3 rounded-xl border border-white/[0.06] bg-[#17130f] p-3">
-                      <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
-                        <input
-                          type="checkbox"
-                          name="executeOrderRefund"
-                          checked={executeOrderRefund}
-                          onChange={(event) =>
-                            setExecuteOrderRefund(event.target.checked)
-                          }
-                          disabled={isResolvePending}
-                        />
-                        執行售後退款
-                      </label>
-                      {executeOrderRefund ? (
-                        <>
-                          <div>
-                            <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                              退款訂單
-                            </label>
-                            {eligibleRefundOrders.length === 0 ? (
-                              <p className="font-sans text-[12px] text-[#8A8680]">
-                                無符合條件的關聯訂單
-                              </p>
-                            ) : (
-                              <div className="space-y-2">
+                              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                                <SelectValue placeholder="選擇訂單" />
+                              </SelectTrigger>
+                              <SelectContent className={SELECT_CONTENT_CLASS}>
                                 {eligibleRefundOrders.map((order) => (
-                                  <label
+                                  <SelectItem
                                     key={order.id}
-                                    className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]"
+                                    value={order.id}
+                                    className={SELECT_ITEM_CLASS}
                                   >
-                                    <input
-                                      type="radio"
-                                      name="refundOrderId"
-                                      value={order.id}
-                                      checked={refundOrderId === order.id}
-                                      onChange={() => setRefundOrderId(order.id)}
-                                      disabled={isResolvePending}
-                                    />
                                     {order.orderNumber ?? order.id.slice(0, 8)}
-                                  </label>
+                                  </SelectItem>
                                 ))}
-                              </div>
-                            )}
-                          </div>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                            退款責任方
+                          </label>
+                          <Select
+                            value={faultParty}
+                            onValueChange={(value) =>
+                              setFaultParty(
+                                value as
+                                  | "seller"
+                                  | "buyer"
+                                  | "platform"
+                                  | "carrier"
+                                  | "inconclusive"
+                                  | "",
+                              )
+                            }
+                            disabled={isResolvePending}
+                          >
+                            <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                              <SelectValue placeholder="請選擇" />
+                            </SelectTrigger>
+                            <SelectContent className={SELECT_CONTENT_CLASS}>
+                              <SelectItem value="seller" className={SELECT_ITEM_CLASS}>
+                                賣家責任
+                              </SelectItem>
+                              <SelectItem value="buyer" className={SELECT_ITEM_CLASS}>
+                                買家責任
+                              </SelectItem>
+                              <SelectItem value="platform" className={SELECT_ITEM_CLASS}>
+                                平台責任
+                              </SelectItem>
+                              <SelectItem value="carrier" className={SELECT_ITEM_CLASS}>
+                                物流責任
+                              </SelectItem>
+                              <SelectItem
+                                value="inconclusive"
+                                className={SELECT_ITEM_CLASS}
+                              >
+                                無法判定
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {faultParty === "carrier" ? (
                           <div>
-                            <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                              退款責任方
+                            <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                              物流承擔方
                             </label>
-                            <select
-                              name="faultParty"
-                              value={faultParty}
-                              onChange={(event) =>
-                                setFaultParty(
-                                  event.target.value as
-                                    | "seller"
-                                    | "buyer"
-                                    | "platform"
-                                    | "carrier"
-                                    | "inconclusive"
-                                    | "",
+                            <Select
+                              value={carrierLiabilityParty}
+                              onValueChange={(value) =>
+                                setCarrierLiabilityParty(
+                                  value as "seller" | "platform" | "",
                                 )
                               }
                               disabled={isResolvePending}
                             >
-                              <option value="">請選擇</option>
-                              <option value="seller">賣家責任</option>
-                              <option value="buyer">買家責任</option>
-                              <option value="platform">平台責任</option>
-                              <option value="carrier">物流責任</option>
-                              <option value="inconclusive">無法判定</option>
-                            </select>
+                              <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                                <SelectValue placeholder="請選擇" />
+                              </SelectTrigger>
+                              <SelectContent className={SELECT_CONTENT_CLASS}>
+                                <SelectItem value="seller" className={SELECT_ITEM_CLASS}>
+                                  賣家安排物流
+                                </SelectItem>
+                                <SelectItem
+                                  value="platform"
+                                  className={SELECT_ITEM_CLASS}
+                                >
+                                  平台安排物流
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
-                          {faultParty === "carrier" ? (
-                            <div>
-                              <label className="mb-1.5 block font-sans text-[12px] font-medium text-[#d4c4b7]">
-                                物流承擔方
-                              </label>
-                              <select
-                                name="carrierLiabilityParty"
-                                value={carrierLiabilityParty}
-                                onChange={(event) =>
-                                  setCarrierLiabilityParty(
-                                    event.target.value as "seller" | "platform" | "",
-                                  )
-                                }
-                                disabled={isResolvePending}
-                              >
-                                <option value="">請選擇</option>
-                                <option value="seller">賣家安排物流</option>
-                                <option value="platform">平台安排物流</option>
-                              </select>
-                            </div>
-                          ) : null}
-                          {faultParty === "platform" ? (
-                            <textarea
-                              name="platformFaultReason"
-                              rows={2}
-                              placeholder="平台責任原因"
-                              value={platformFaultReason}
-                              onChange={(event) =>
-                                setPlatformFaultReason(event.target.value)
-                              }
-                              disabled={isResolvePending}
-                            />
-                          ) : null}
-                          {canPreviewRefund ? (
-                            <div data-testid="moderation-refund-preview">
-                              {visibleRefundPreviewLoading ? (
-                                <p>載入退款預覽中…</p>
-                              ) : visibleRefundPreviewError ? (
-                                <p>{visibleRefundPreviewError}</p>
-                              ) : visibleRefundPreview ? (
-                                <div>
-                                  <p>政策可退基數：{visibleRefundPreview.eligiblePolicyHkd} HKD</p>
-                                  <p>
-                                    Stripe 手續費：{visibleRefundPreview.stripeFeeNote}
-                                  </p>
-                                  <p>退買家：{visibleRefundPreview.refundToBuyerHkd} HKD</p>
-                                  <p>
-                                    鑑定費留平台：{visibleRefundPreview.authFeeRetainedHkd} HKD
-                                  </p>
-                                  <p>
-                                    賣家追償：{visibleRefundPreview.sellerRecoveryHkd} HKD
-                                  </p>
-                                  <p>
-                                    平台承擔：{visibleRefundPreview.platformAbsorbHkd} HKD
-                                  </p>
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {!chatAccess.evidenceSufficient ? (
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
-                        <input
-                          type="checkbox"
-                          name="evidenceOverride"
-                          checked={evidenceOverride}
-                          onChange={(event) => setEvidenceOverride(event.target.checked)}
-                          disabled={isResolvePending}
-                        />
-                        管理員強制裁定（證據不足覆寫）
-                      </label>
-                      {evidenceOverride ? (
-                        <textarea
-                          name="evidenceOverrideReason"
-                          rows={2}
-                          placeholder="覆寫原因"
-                          value={evidenceOverrideReason}
-                          onChange={(event) =>
-                            setEvidenceOverrideReason(event.target.value)
-                          }
-                          disabled={isResolvePending}
-                        />
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <label className="flex items-center gap-2 font-sans text-[12px] text-[#d4c4b7]">
-                    <input
-                      type="checkbox"
-                      name="notifyReporter"
-                      checked={notifyReporter}
-                      onChange={(event) => setNotifyReporter(event.target.checked)}
-                      disabled={isResolvePending}
-                    />
-                    通知舉報人結果（in-app）
-                  </label>
-                </div>
-
-                <Button
-                  type="button"
-                  disabled={isResolvePending || !resolutionOption}
-                  onClick={handleResolve}
-                  className="mt-4 h-11 w-full bg-[#d4a574] text-[#111] hover:bg-[#e0b585] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span className="mr-2">⚖️</span>
-                  {isResolvePending ? "提交中…" : "執行最終仲裁裁決"}
-                </Button>
-              </>
-            ) : (
-              <p className="mt-2 font-sans text-[12px] text-[#8A8680]">
-                案件已結案
-                {caseDetail.resolvedAt
-                  ? ` · ${formatModerationDateTime(caseDetail.resolvedAt)}`
-                  : ""}
-                {caseDetail.resolution
-                  ? ` · ${moderationResolutionLabel(caseDetail.resolution)}`
-                  : ""}
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-[#26211C] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.50)]">
-            <h2 className="font-sans text-[15px] font-bold text-[#eae1da]">
-              審計紀錄
-            </h2>
-            {auditLog.length === 0 ? (
-              <p className="mt-3 font-sans text-[12px] text-[#8A8680]">
-                尚無審計紀錄。
-              </p>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {auditLog.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="rounded-xl border border-white/[0.06] bg-[#17130f] px-3 py-2"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-sans text-[12px] font-medium text-[#eae1da]">
-                        {moderationAuditActionLabel(entry.action)}
-                      </span>
-                      <span className="font-sans text-[11px] text-[#8A8680]">
-                        {entry.adminDisplayName ?? entry.adminId}
-                      </span>
-                      <span className="font-sans text-[11px] text-[#8A8680]">
-                        {formatModerationDateTime(entry.createdAt)}
-                      </span>
-                    </div>
+                        ) : null}
+                        {faultParty === "platform" ? (
+                          <Textarea
+                            name="platformFaultReason"
+                            rows={2}
+                            placeholder="平台責任原因"
+                            value={platformFaultReason}
+                            onChange={(event) =>
+                              setPlatformFaultReason(event.target.value)
+                            }
+                            disabled={isResolvePending}
+                            className={TEXTAREA_CLASS}
+                          />
+                        ) : null}
+                        {canPreviewRefund ? (
+                          <div
+                            data-testid="moderation-refund-preview"
+                            className="space-y-1 font-sans text-[12px] text-text-secondary"
+                          >
+                            {visibleRefundPreviewLoading ? (
+                              <p>載入退款預覽中…</p>
+                            ) : visibleRefundPreviewError ? (
+                              <p className="text-error">{visibleRefundPreviewError}</p>
+                            ) : visibleRefundPreview ? (
+                              <>
+                                <p>
+                                  政策可退基數：{visibleRefundPreview.eligiblePolicyHkd}{" "}
+                                  HKD
+                                </p>
+                                <p>
+                                  Stripe 手續費：{visibleRefundPreview.stripeFeeNote}
+                                </p>
+                                <p>
+                                  退買家：{visibleRefundPreview.refundToBuyerHkd} HKD
+                                </p>
+                                <p>
+                                  鑑定費留平台：
+                                  {visibleRefundPreview.authFeeRetainedHkd} HKD
+                                </p>
+                                <p>
+                                  賣家追償：{visibleRefundPreview.sellerRecoveryHkd} HKD
+                                </p>
+                                <p>
+                                  平台承擔：{visibleRefundPreview.platformAbsorbHkd} HKD
+                                </p>
+                              </>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
                   </div>
-                ))}
+                ) : null}
+
+                {!chatAccess.evidenceSufficient ? (
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 font-sans text-[12px] text-text-secondary">
+                      <Checkbox
+                        checked={evidenceOverride}
+                        onCheckedChange={(checked) =>
+                          setEvidenceOverride(checked === true)
+                        }
+                        disabled={isResolvePending}
+                      />
+                      管理員強制裁定（證據不足覆寫）
+                    </label>
+                    {evidenceOverride ? (
+                      <Textarea
+                        name="evidenceOverrideReason"
+                        rows={2}
+                        placeholder="覆寫原因"
+                        value={evidenceOverrideReason}
+                        onChange={(event) =>
+                          setEvidenceOverrideReason(event.target.value)
+                        }
+                        disabled={isResolvePending}
+                        className={TEXTAREA_CLASS}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <label className="flex items-center gap-2 font-sans text-[12px] text-text-secondary">
+                  <Checkbox
+                    checked={notifyReporter}
+                    onCheckedChange={(checked) =>
+                      setNotifyReporter(checked === true)
+                    }
+                    disabled={isResolvePending}
+                  />
+                  通知舉報人結果（in-app）
+                </label>
               </div>
-            )}
-          </div>
+
+              <Button
+                type="button"
+                disabled={isResolvePending || !resolutionOption}
+                onClick={handleResolve}
+                className={`mt-4 h-11 ${BTN_PRIMARY_CLASS} disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                {isResolvePending ? "提交中…" : "執行最終仲裁裁決"}
+              </Button>
+            </section>
+          ) : null}
+
+          <ModerationAuditTimeline entries={auditLog} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ScoreDetailRow({
+  label,
+  value,
+  hint,
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 font-sans text-[12px]">
+      <span className="text-text-disabled">
+        {label}
+        {hint ? (
+          <span className="ml-1 text-[11px] text-text-disabled">· {hint}</span>
+        ) : null}
+      </span>
+      <span
+        className={
+          emphasize
+            ? "font-mono text-[13px] font-semibold text-brand"
+            : "font-mono text-[12px] text-text-primary"
+        }
+      >
+        {value}
+      </span>
     </div>
   );
 }

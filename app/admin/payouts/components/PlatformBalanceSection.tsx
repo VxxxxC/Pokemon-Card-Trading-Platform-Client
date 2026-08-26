@@ -1,6 +1,7 @@
 "use client";
 
 import { refreshAdminStripeBalance } from "@/app/actions/admin-payouts";
+import { BTN_OUTLINE_SM_CLASS } from "@/app/admin/campaigns/campaigns-ui";
 import type { AdminPayoutsStripeBalance } from "@/lib/admin-payouts/types";
 import { formatAdminDateTime } from "@/lib/admin-payouts/format";
 import { RefreshCw } from "lucide-react";
@@ -40,13 +41,13 @@ export default function PlatformBalanceSection({
   };
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 relative overflow-hidden">
-      <div className="flex items-start sm:items-center justify-between gap-3 mb-4">
+    <section className="space-y-4 border-b border-white/[0.08] pb-5">
+      <div className="flex items-start justify-between gap-3 sm:items-center">
         <div>
-          <h2 className="font-sans font-bold text-[16px] text-text-primary">
+          <h2 className="font-sans text-[15px] font-semibold text-text-primary">
             Stripe 平台帳戶餘額
           </h2>
-          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+          <p className="mt-0.5 font-sans text-[12px] text-text-secondary">
             平台 Stripe Connect 主帳戶即時資金狀況
           </p>
         </div>
@@ -54,46 +55,48 @@ export default function PlatformBalanceSection({
           type="button"
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="min-h-[44px] h-9 px-3 border border-brand/30 text-brand font-sans text-[12px] rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-all flex items-center gap-1.5 shrink-0 disabled:opacity-60"
+          className={`${BTN_OUTLINE_SM_CLASS} gap-1.5 text-brand border-brand/30 hover:text-brand disabled:opacity-60`}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`size-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+          />
           重新整理
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+          <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
             可用餘額 (Available)
           </span>
-          <span className="font-mono font-bold text-[24px] text-brand tracking-tight leading-none block mt-1">
+          <span className="mt-1 block font-mono text-[22px] font-bold tracking-tight text-brand leading-none">
             HK$ {available.toLocaleString("zh-TW")}
           </span>
         </div>
         <div>
-          <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+          <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
             待結算 (Pending)
           </span>
-          <span className="font-mono font-bold text-[24px] text-text-primary tracking-tight leading-none block mt-1">
+          <span className="mt-1 block font-mono text-[22px] font-bold tracking-tight text-text-primary leading-none">
             HK$ {pending.toLocaleString("zh-TW")}
           </span>
         </div>
         <div>
-          <span className="font-mono text-[11px] text-text-disabled uppercase block tracking-wider">
+          <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
             今日入賬 (Today In)
           </span>
-          <span className="font-mono font-bold text-[24px] text-success tracking-tight leading-none block mt-1">
+          <span className="mt-1 block font-mono text-[22px] font-bold tracking-tight text-success leading-none">
             HK$ {todayIn.toLocaleString("zh-TW")}
           </span>
         </div>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] font-mono text-[11px] text-text-secondary">
+      <p className="font-mono text-[11px] text-text-secondary">
         最後同步：{lastSyncedAt}
         {error ? (
-          <span className="block mt-1 text-warning">{error}</span>
+          <span className="mt-1 block text-warning">{error}</span>
         ) : null}
-      </div>
-    </div>
+      </p>
+    </section>
   );
 }

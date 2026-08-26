@@ -7,13 +7,14 @@ import {
 } from "@/app/actions/admin-payouts";
 import { getMerchantTransferRowId } from "@/lib/admin-payouts/merchant-transfer-row-id";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  BTN_OUTLINE_SM_CLASS,
+  BTN_PRIMARY_CLASS,
+  BTN_PRIMARY_SM_CLASS,
+  FILTER_INPUT_CLASS,
+  FORM_SELECT_TRIGGER_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
+import { Pagination } from "@/app/components/ui/Pagination";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/admin-payouts/format";
 import type {
   MerchantTransferPage,
+  MerchantTransferRow,
   MerchantTransferSort,
   MerchantTransferStatusFilter,
 } from "@/lib/admin-payouts/types";
@@ -45,7 +47,15 @@ import {
 } from "@/lib/stripe/dashboard-urls";
 import { truncateStripeId } from "@/lib/stripe/display";
 import { endOfDay, format, startOfDay, subDays } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Calendar as CalendarIcon, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { DateRange } from "react-day-picker";
@@ -92,6 +102,126 @@ function toIsoDateRange(range: DateRange | undefined): {
     dateFrom: range.from ? startOfDay(range.from).toISOString() : undefined,
     dateTo: range.to ? endOfDay(range.to).toISOString() : undefined,
   };
+}
+
+function MerchantTransferMobileCard({
+  row,
+  isSelected,
+  isPending,
+  retryingOrderId,
+  onToggleSelect,
+  onRetryPayout,
+}: {
+  row: MerchantTransferRow;
+  isSelected: boolean;
+  isPending: boolean;
+  retryingOrderId: string | null;
+  onToggleSelect: () => void;
+  onRetryPayout: () => void;
+}) {
+  const transferLabel =
+    row.stripeTransferId.length > 16
+      ? `${row.stripeTransferId.slice(0, 14)}…`
+      : row.stripeTransferId;
+  const payoutTime =
+    row.payoutStatus === "held" &&
+    (!row.transferredAtIso || row.transferredAt === "—") &&
+    row.payoutHoldUntil
+      ? `保留至 ${row.payoutHoldUntil}`
+      : row.transferredAt;
+
+  return (
+    <article className="space-y-2 px-1 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={onToggleSelect}
+            className="mt-0.5 rounded border-white/20 accent-brand"
+          />
+          <div className="min-w-0">
+            <p className="font-mono text-[11px] text-text-disabled">
+              {row.stripeTransferId.startsWith("tr_") ? (
+                <a
+                  href={getStripeTransferDashboardUrl(row.stripeTransferId)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  {transferLabel}
+                </a>
+              ) : (
+                transferLabel
+              )}
+            </p>
+            <Link
+              href={`/marketplace/${row.merchantId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-sans text-[13px] font-semibold text-brand hover:underline"
+            >
+              {row.merchantName}
+            </Link>
+          </div>
+        </div>
+        <span
+          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${getPayoutStatusBadgeClass(row.payoutStatus)}`}
+        >
+          {formatPayoutStatusLabel(row.payoutStatus)}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[11px]">
+        <span className="text-text-disabled">訂單</span>
+        <Link
+          href={`/profile/merchant/orderDetail/${row.orderId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
+          {row.orderNumber}
+        </Link>
+        <span className="text-text-disabled">商戶實收</span>
+        <span className="font-bold text-success">
+          {formatAdminHkd(row.merchantPayoutAmount)}
+        </span>
+        <span className="text-text-disabled">平台分成</span>
+        <span className="font-bold text-brand">
+          {formatAdminHkd(row.platformCommission)}
+        </span>
+        <span className="text-text-disabled">撥款時間</span>
+        <span className="text-text-secondary">{payoutTime}</span>
+      </div>
+      {row.payoutError && row.payoutStatus === "failed" ? (
+        <p className="font-sans text-[10px] text-warning">{row.payoutError}</p>
+      ) : null}
+      {row.reconciliationWarning ? (
+        <p className="font-sans text-[10px] text-warning">
+          ⚠ {row.reconciliationWarning}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-1.5 pt-1">
+        {row.payoutStatus === "failed" ? (
+          <button
+            type="button"
+            disabled={retryingOrderId === row.orderId || isPending}
+            onClick={onRetryPayout}
+            className={BTN_PRIMARY_SM_CLASS}
+          >
+            重試撥款
+          </button>
+        ) : null}
+        <a
+          href={`/profile/merchant/orderDetail/${row.orderId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${BTN_OUTLINE_SM_CLASS} inline-flex h-8 items-center px-2.5 text-brand`}
+        >
+          查看訂單
+        </a>
+      </div>
+    </article>
+  );
 }
 
 export default function MerchantConnectLedgerTab({
@@ -332,121 +462,64 @@ export default function MerchantConnectLedgerTab({
   const displayError = loadError ?? fetchError;
   const pageSize = pageData.pageSize;
   const totalPages = pageData.totalPages || 1;
-  const startRow =
-    pageData.total === 0 ? 0 : (pageData.page - 1) * pageSize + 1;
-  const endRow = Math.min(pageData.page * pageSize, pageData.total);
-
-  const pageNumbers = useMemo(() => {
-    const pages: number[] = [];
-    for (let p = 1; p <= totalPages; p += 1) {
-      pages.push(p);
-    }
-    return pages;
-  }, [totalPages]);
 
   return (
-    <div className="flex-1 flex flex-col justify-between space-y-4">
+    <div className="space-y-4">
       <BlockingLoadingOverlay
         open={isExportingCsv}
         message="正在導出商戶流水 CSV…"
       />
       {displayError ? (
-        <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 font-sans text-[12px] text-warning">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 font-sans text-[13px] text-warning">
           {displayError}
         </div>
       ) : null}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72 md:w-80">
-          <input
-            type="text"
-            placeholder="搜尋商戶名稱、Stripe 流水號或訂單號..."
+      <div className="flex flex-col gap-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            placeholder="搜尋商戶名稱、Stripe 流水號或訂單號…"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
+            className={FILTER_INPUT_CLASS}
           />
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="absolute left-3 top-2.5 text-text-disabled"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.size > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 animate-fade-in">
-              <span className="font-mono text-xs text-brand bg-brand/10 border border-brand/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">
-                已選 {selectedIds.size} 筆
-              </span>
-              <button
-                type="button"
-                onClick={() => void handleExportCsv(true)}
-                disabled={isPending || isExportingCsv}
-                className="h-9 px-3 bg-brand text-[#17130f] font-sans font-semibold text-xs rounded-xl hover:bg-brand-hover transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10 whitespace-nowrap disabled:opacity-50"
-              >
-                📥 導出已選流水 CSV ({selectedIds.size})
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleExportCsv(false)}
-              disabled={isPending || isExportingCsv}
-              className="h-9 px-4 bg-brand text-[#17130f] font-sans font-semibold text-xs rounded-xl hover:bg-brand-hover transition-all flex items-center gap-1.5 shrink-0 shadow-lg shadow-brand/10 whitespace-nowrap disabled:opacity-50"
-            >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              全量導出商戶 CSV
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <FilterChips
-          options={statusChipOptions}
-          active={statusFilter}
-          onSelect={handleStatusFilterChange}
-        />
-
-        <SortSelect
-          value={sort}
-          options={MERCHANT_SORT_OPTIONS}
-          onChange={handleSortChange}
-        />
-
-        <Popover>
-          <PopoverTrigger className="min-h-[44px] h-10 px-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary hover:bg-bg-elevated hover:border-brand/40 transition-colors flex items-center gap-2">
-            <CalendarIcon className="w-3.5 h-3.5 text-brand" />
-            <span>
-              {dateRange?.from ? (
-                dateRange.to ? (
-                  `${format(dateRange.from, "yyyy/MM/dd")} - ${format(dateRange.to, "yyyy/MM/dd")}`
-                ) : (
-                  `${format(dateRange.from, "yyyy/MM/dd")} - 選擇`
-                )
-              ) : (
-                "撥款日期範圍"
-              )}
-            </span>
-          </PopoverTrigger>
+        <div className="space-y-2.5">
+          <FilterChips
+            options={statusChipOptions}
+            active={statusFilter}
+            onSelect={handleStatusFilterChange}
+          />
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <SortSelect
+                value={sort}
+                options={MERCHANT_SORT_OPTIONS}
+                onChange={handleSortChange}
+              />
+              <Popover>
+                <PopoverTrigger
+                  className={`${FORM_SELECT_TRIGGER_CLASS} inline-flex h-9 w-auto items-center gap-2 rounded-lg border px-3`}
+                >
+                  <CalendarIcon className="size-3.5 text-brand" />
+                  <span className="font-sans text-[12px]">
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        `${format(dateRange.from, "yyyy/MM/dd")} - ${format(dateRange.to, "yyyy/MM/dd")}`
+                      ) : (
+                        `${format(dateRange.from, "yyyy/MM/dd")} - 選擇`
+                      )
+                    ) : (
+                      "撥款日期範圍"
+                    )}
+                  </span>
+                </PopoverTrigger>
           <PopoverContent
             className="w-auto p-0 bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] shadow-2xl z-50"
             align="end"
@@ -488,15 +561,70 @@ export default function MerchantConnectLedgerTab({
             ) : null}
           </PopoverContent>
         </Popover>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedIds.size > 0 ? (
+            <>
+              <span className="rounded-lg border border-brand/20 bg-brand/10 px-2.5 py-1 font-mono text-[11px] text-brand">
+                已選 {selectedIds.size} 筆
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleExportCsv(true)}
+                disabled={isPending || isExportingCsv}
+                className={BTN_OUTLINE_SM_CLASS}
+              >
+                導出已選 ({selectedIds.size})
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleExportCsv(false)}
+              disabled={isPending || isExportingCsv}
+              className={BTN_PRIMARY_CLASS}
+            >
+              全量導出商戶 CSV
+            </button>
+          )}
+        </div>
       </div>
 
-      <div
-        className={`flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto ${isPending ? "opacity-60" : ""}`}
-      >
+      {pageData.rows.length === 0 ? (
+        <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
+          沒有符合篩選條件的商戶流水記錄。
+        </p>
+      ) : (
+        <>
+          <div
+            className={`md:hidden divide-y divide-white/[0.06] ${isPending ? "opacity-60" : ""}`}
+          >
+            {pageData.rows.map((row) => {
+              const rowId = getMerchantTransferRowId(row);
+              return (
+                <MerchantTransferMobileCard
+                  key={rowId}
+                  row={row}
+                  isSelected={selectedIds.has(rowId)}
+                  isPending={isPending}
+                  retryingOrderId={retryingOrderId}
+                  onToggleSelect={() => toggleSelectRow(rowId)}
+                  onRetryPayout={() => handleRetryPayout(row.orderId)}
+                />
+              );
+            })}
+          </div>
+
+          <div
+            className={`hidden overflow-x-auto rounded-lg border border-white/[0.08] md:block ${isPending ? "opacity-60" : ""}`}
+          >
         <Table>
-          <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
-            <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-              <TableHead className="w-10 text-center">
+          <TableHeader className="border-b border-white/[0.08] bg-bg-card/30">
+            <TableRow className="border-transparent hover:bg-transparent">
+              <TableHead className="h-9 w-10 text-center">
                 <input
                   type="checkbox"
                   checked={
@@ -504,61 +632,61 @@ export default function MerchantConnectLedgerTab({
                     selectedIds.size === pageData.rows.length
                   }
                   onChange={toggleSelectAll}
-                  className="rounded border-[rgba(237,232,224,0.2)] bg-bg-card accent-brand cursor-pointer"
+                  className="rounded border-white/20 accent-brand cursor-pointer"
                 />
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 Stripe 流水號
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 訂單號
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-sans text-[11px] text-text-disabled whitespace-nowrap">
                 商戶名稱
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 Stripe 帳戶 ID
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-sans text-[11px] text-text-disabled whitespace-nowrap">
                 訂單類型
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right whitespace-nowrap">
+              <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 卡價小計
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right whitespace-nowrap">
+              <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 佣金率
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right whitespace-nowrap">
+              <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 平台分成
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right whitespace-nowrap">
+              <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 鑑定費
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right whitespace-nowrap">
+              <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 商戶實收 (Transfer)
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center whitespace-nowrap">
+              <TableHead className="h-9 text-center font-sans text-[11px] text-text-disabled whitespace-nowrap">
                 撥款狀態
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center whitespace-nowrap">
+              <TableHead className="h-9 text-center font-sans text-[11px] text-text-disabled whitespace-nowrap">
                 對賬
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 買家確認時間
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 PaymentIntent
               </TableHead>
-              <TableHead className="font-mono text-[11px] text-text-secondary h-10 whitespace-nowrap">
+              <TableHead className="h-9 font-mono text-[11px] text-text-disabled whitespace-nowrap">
                 撥款時間
               </TableHead>
-              <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right whitespace-nowrap">
+              <TableHead className="h-9 min-w-[5.5rem] text-right font-sans text-[11px] text-text-disabled whitespace-nowrap">
                 操作
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pageData.rows.map((row) => {
+            {pageData.rows.map((row, rowIndex) => {
               const rowId = getMerchantTransferRowId(row);
               const isSelected = selectedIds.has(rowId);
               const statusBadge = (
@@ -572,13 +700,11 @@ export default function MerchantConnectLedgerTab({
               return (
                 <TableRow
                   key={rowId}
-                  className={`border-b border-[rgba(237,232,224,0.06)] transition-colors ${
-                    isSelected
-                      ? "bg-[rgba(212,165,116,0.08)]"
-                      : "hover:bg-bg-elevated/40"
-                  }`}
+                  className={`border-white/[0.06] transition-colors hover:bg-brand/10 ${
+                    rowIndex % 2 === 0 ? "bg-bg-card/25" : "bg-white/[0.02]"
+                  } ${isSelected ? "bg-brand/10" : ""}`}
                 >
-                  <TableCell className="w-10 text-center py-3">
+                  <TableCell className="w-10 py-2.5 text-center">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -716,77 +842,53 @@ export default function MerchantConnectLedgerTab({
                       row.transferredAt
                     )}
                   </TableCell>
-                  <TableCell className="text-right py-3 whitespace-nowrap">
-                    {row.payoutStatus === "failed" ? (
-                      <button
-                        type="button"
-                        disabled={retryingOrderId === row.orderId || isPending}
-                        onClick={() => handleRetryPayout(row.orderId)}
+                  <TableCell className="text-right py-2.5 whitespace-nowrap">
+                    <div className="flex justify-end items-center gap-1.5">
+                      {row.payoutStatus === "failed" ? (
+                        <button
+                          type="button"
+                          disabled={retryingOrderId === row.orderId || isPending}
+                          onClick={() => handleRetryPayout(row.orderId)}
+                          className={BTN_PRIMARY_SM_CLASS}
+                        >
+                          重試撥款
+                        </button>
+                      ) : null}
+                      <a
+                        href={`/profile/merchant/orderDetail/${row.orderId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${BTN_OUTLINE_SM_CLASS} inline-flex h-8 items-center px-2.5 text-brand`}
                       >
-                        重試撥款
-                      </button>
-                    ) : null}
-                    <a
-                      href={`/profile/merchant/orderDetail/${row.orderId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="min-h-[44px] h-9 px-2.5 text-brand font-sans text-[11px] font-medium rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-transform whitespace-nowrap inline-flex items-center"
-                    >
-                      查看訂單
-                    </a>
+                        查看訂單
+                      </a>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
             })}
           </TableBody>
         </Table>
-      </div>
+          </div>
 
-      {pageData.total > 0 ? (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-          <div className="font-mono text-[12px] text-text-secondary">
-            顯示第{" "}
-            <span className="font-bold text-text-primary">{startRow}</span> -{" "}
-            <span className="font-bold text-text-primary">{endRow}</span> 筆，共{" "}
-            <span className="font-bold text-brand">{pageData.total}</span> 筆資料
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              disabled={pageData.page === 1 || isPending}
-              onClick={() => handlePageChange(Math.max(pageData.page - 1, 1))}
-              className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              上一頁
-            </button>
-            {pageNumbers.map((p) => (
-              <button
-                key={p}
-                type="button"
-                disabled={isPending}
-                onClick={() => handlePageChange(p)}
-                className={`min-h-[44px] h-11 w-11 rounded-lg font-mono text-xs font-semibold transition-all ${
-                  pageData.page === p
-                    ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                    : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              type="button"
-              disabled={pageData.page === totalPages || isPending}
-              onClick={() =>
-                handlePageChange(Math.min(pageData.page + 1, totalPages))
-              }
-              className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              下一頁
-            </button>
-          </div>
-        </div>
-      ) : null}
+          {pageData.total > 0 && totalPages <= 1 ? (
+            <p className="font-mono text-[12px] text-text-secondary">
+              共 {pageData.total} 筆資料{isPending ? "（更新中…）" : ""}
+            </p>
+          ) : null}
+          {pageData.total > 0 && totalPages > 1 ? (
+            <Pagination
+              currentPage={pageData.page}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              totalItems={pageData.total}
+              itemsPerPage={pageSize}
+              itemLabel="筆資料"
+              enableScroll={false}
+            />
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

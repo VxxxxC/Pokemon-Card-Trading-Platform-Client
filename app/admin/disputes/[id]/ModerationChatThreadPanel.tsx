@@ -7,6 +7,7 @@ import { formatModerationDateTime } from "@/lib/moderation/admin-case-presenters
 import { highlightSensitiveKeywords } from "@/lib/moderation/highlight-chat-keywords";
 import type { AdminModerationChatMessage } from "@/lib/moderation/types";
 import { Button } from "@/components/ui/button";
+import { BTN_OUTLINE_CLASS } from "./moderation-detail-ui";
 
 interface ModerationChatThreadPanelProps {
   caseId: string;
@@ -102,19 +103,19 @@ export default function ModerationChatThreadPanel({
 
   if (loading) {
     return (
-      <p className="font-sans text-[13px] text-[#8A8680]">載入聊天紀錄中…</p>
+      <p className="font-sans text-[13px] text-text-disabled">載入聊天紀錄中…</p>
     );
   }
 
   if (error) {
     return (
-      <p className="font-sans text-[13px] text-[#ef4444]">{error}</p>
+      <p className="font-sans text-[13px] text-error">{error}</p>
     );
   }
 
   if (messages.length === 0) {
     return (
-      <p className="font-sans text-[13px] text-[#8A8680]">
+      <p className="font-sans text-[13px] text-text-disabled">
         此聊天室尚無訊息紀錄。
       </p>
     );
@@ -133,7 +134,7 @@ export default function ModerationChatThreadPanel({
               void loadThread(nextBefore, true);
             }
           }}
-          className="h-8 border-white/10 bg-[#17130f] text-[#d4c4b7] hover:bg-[#2e2925]"
+          className={`h-8 ${BTN_OUTLINE_CLASS}`}
         >
           {loadingOlder ? "載入中…" : "載入更早訊息"}
         </Button>
@@ -147,32 +148,30 @@ export default function ModerationChatThreadPanel({
           return (
             <div
               key={message.id}
-              className={`rounded-xl border px-3 py-2 ${
+              className={`rounded-lg border px-3 py-2 ${
                 isSystem
-                  ? "border-[#d4a574]/20 bg-[#d4a574]/10"
+                  ? "border-brand/20 bg-brand/10"
                   : isSubject
-                    ? "border-white/[0.06] bg-[#17130f]"
-                    : "border-white/[0.04] bg-[#1f1b17]"
+                    ? "border-white/[0.06] bg-bg-card/40"
+                    : "border-white/[0.04] bg-bg-card/20"
               }`}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-sans text-[12px] font-medium text-[#eae1da]">
+                <span className="font-sans text-[12px] font-medium text-text-primary">
                   {message.senderDisplayName ?? "未知用戶"}
                 </span>
-                <span className="font-sans text-[11px] text-[#8A8680]">
+                <span className="font-sans text-[11px] text-text-disabled">
                   {formatModerationDateTime(message.createdAt)}
                 </span>
                 {isSystem ? (
-                  <span className="font-sans text-[10px] text-[#d4a574]">
-                    系統
-                  </span>
+                  <span className="font-sans text-[10px] text-brand">系統</span>
                 ) : null}
               </div>
-              <p className="mt-1 font-sans text-[13px] leading-relaxed text-[#d4c4b7]">
+              <p className="mt-1 font-sans text-[13px] leading-relaxed text-text-secondary">
                 {highlightSensitiveKeywords(message.content)}
               </p>
               {message.offerId || message.memberOrderId || message.merchantOrderId ? (
-                <p className="mt-1 font-mono text-[10px] text-[#8A8680]">
+                <p className="mt-1 font-mono text-[10px] text-text-disabled">
                   {message.offerId ? `offer: ${message.offerId}` : null}
                   {message.memberOrderId
                     ? `order: ${message.memberOrderId}`

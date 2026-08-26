@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAdminCheckInProgram } from "@/app/actions/admin-check-in-program";
-import { listAdminRewardActivities } from "@/app/actions/admin-reward-activities";
+import {
+  getAdminRewardActivityStatusCounts,
+  listAdminRewardActivities,
+} from "@/app/actions/admin-reward-activities";
 import { resolveCampaignTab } from "@/app/admin/campaigns/campaign-tabs";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
@@ -40,14 +43,16 @@ export default async function AdminCampaignsPage({
   const params = await searchParams;
   const initialTab = resolveCampaignTab(params.tab);
 
-  const [activitiesResult, programResult] = await Promise.all([
-    listAdminRewardActivities({
-      status: "all",
-      page: 1,
-      pageSize: REWARD_ACTIVITY_PAGE_SIZE,
-    }),
-    getAdminCheckInProgram(),
-  ]);
+  const [activitiesResult, programResult, statusCountsResult] =
+    await Promise.all([
+      listAdminRewardActivities({
+        status: "all",
+        page: 1,
+        pageSize: REWARD_ACTIVITY_PAGE_SIZE,
+      }),
+      getAdminCheckInProgram(),
+      getAdminRewardActivityStatusCounts(),
+    ]);
 
   return (
     <CampaignsPageShell
@@ -59,6 +64,9 @@ export default async function AdminCampaignsPage({
       }
       activitiesLoadError={
         activitiesResult.success ? null : activitiesResult.error
+      }
+      initialStatusCounts={
+        statusCountsResult.success ? statusCountsResult.data : null
       }
       initialCheckInProgram={
         programResult.success ? programResult.data : null

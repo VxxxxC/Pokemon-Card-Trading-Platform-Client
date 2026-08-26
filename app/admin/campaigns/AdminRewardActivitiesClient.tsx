@@ -2,13 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
+import { Search, X } from "lucide-react";
 import { toast } from "sonner";
 import {
+  getAdminRewardActivityStatusCounts,
   listAdminRewardActivities,
   setAdminRewardActivityStatus,
+  type AdminRewardActivityStatusCountKey,
 } from "@/app/actions/admin-reward-activities";
 import { RewardActivityCard } from "@/app/admin/campaigns/components/RewardActivityCard";
-import { Button } from "@/components/ui/button";
+import { Pagination } from "@/app/components/ui/Pagination";
 import { Input } from "@/components/ui/input";
 import type {
   AdminRewardActivityRow,
@@ -19,10 +22,17 @@ import {
   DISPLAY_STATUS_LABELS,
   REWARD_ACTIVITY_PAGE_SIZE,
 } from "@/lib/admin-rewards/template-form";
+import {
+  BTN_OUTLINE_CLASS,
+  BTN_PRIMARY_CLASS,
+  FILTER_CHIP_CLASS,
+  FILTER_INPUT_CLASS,
+} from "./campaigns-ui";
 
 type AdminRewardActivitiesClientProps = {
   initialRows: AdminRewardActivityRow[];
   initialTotal: number;
+  initialStatusCounts: Record<StatusChipKey, number> | null;
   loadError: string | null;
 };
 
@@ -35,9 +45,16 @@ const STATUS_CHIP_OPTIONS = [
   { key: "archived", label: "已封存" },
 ] as const;
 
+type StatusChipKey = AdminRewardActivityStatusCountKey;
+
+function formatActivityCount(value: number): string {
+  return value.toLocaleString("en-US");
+}
+
 export function AdminRewardActivitiesClient({
   initialRows,
   initialTotal,
+  initialStatusCounts,
   loadError,
 }: AdminRewardActivitiesClientProps) {
   const router = useRouter();
@@ -46,7 +63,25 @@ export function AdminRewardActivitiesClient({
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusCounts, setStatusCounts] = useState<Record<StatusChipKey, number>>(
+    initialStatusCounts ?? {
+      all: initialTotal,
+      draft: 0,
+      active: 0,
+      paused: 0,
+      ended: 0,
+      archived: 0,
+    },
+  );
   const [isPending, startTransition] = useTransition();
+
+  const refreshStatusCounts = useCallback(async () => {
+    const result = await getAdminRewardActivityStatusCounts();
+    if (!result.success) {
+      return;
+    }
+    setStatusCounts(result.data);
+  }, []);
 
   const fetchList = useCallback(
     (nextStatus: string, nextPage: number) => {
@@ -64,6 +99,19 @@ export function AdminRewardActivitiesClient({
         setTotal(result.data.total);
         setPage(result.data.page);
         setStatusFilter(nextStatus);
+        if (
+          nextStatus === "all" ||
+          nextStatus === "draft" ||
+          nextStatus === "active" ||
+          nextStatus === "paused" ||
+          nextStatus === "ended" ||
+          nextStatus === "archived"
+        ) {
+          setStatusCounts((prev) => ({
+            ...prev,
+            [nextStatus]: result.data.total,
+          }));
+        }
       });
     },
     [],
@@ -80,6 +128,7 @@ export function AdminRewardActivitiesClient({
         return;
       }
       toast.success("活動狀態已更新");
+      await refreshStatusCounts();
       fetchList(statusFilter, page);
     });
   };
@@ -93,9 +142,6 @@ export function AdminRewardActivitiesClient({
 
   const totalPages = Math.max(1, Math.ceil(total / REWARD_ACTIVITY_PAGE_SIZE));
   const hasSearch = Boolean(searchQuery.trim());
-  const rangeStart =
-    total === 0 ? 0 : (page - 1) * REWARD_ACTIVITY_PAGE_SIZE + 1;
-  const rangeEnd = Math.min(page * REWARD_ACTIVITY_PAGE_SIZE, total);
 
   const handlePageChange = (nextPage: number) => {
     if (hasSearch) {
@@ -109,177 +155,137 @@ export function AdminRewardActivitiesClient({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {loadError ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-sans text-[13px] text-error">
           {loadError}
         </div>
       ) : null}
 
-      <p className="text-sm text-text-secondary">
-        管理自動發放與限時搶領獎勵，模板與檔期已合併為單一活動。
-      </p>
-
-      <section aria-labelledby="reward-activity-list-heading" className="space-y-3">
-        <div
-          id="reward-activity-list-anchor"
-          className="scroll-mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div>
-            <h2
-              id="reward-activity-list-heading"
-              className="font-sans font-bold text-[15px] text-text-secondary"
-            >
-              活動列表
-            </h2>
-            <span className="font-mono text-[11px] font-normal text-text-disabled">
-              共 {total} 個活動 (每頁 {REWARD_ACTIVITY_PAGE_SIZE} 筆)
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => router.push("/admin/campaigns/new")}>
-              新增一般券
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/admin/campaigns/new?flow=points_mall")}
-            >
-              新增積分商城商品
-            </Button>
-          </div>
+      <div
+        id="reward-activity-list-anchor"
+        className="scroll-mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <h2 className="font-sans text-[15px] font-bold text-text-primary">
+            活動列表
+          </h2>
+          <p className="font-mono text-[11px] text-text-disabled">
+            共 {total.toLocaleString("en-US")} 筆 · 每頁{" "}
+            {REWARD_ACTIVITY_PAGE_SIZE}
+          </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/campaigns/new")}
+            className={BTN_PRIMARY_CLASS}
+          >
+            新增一般券
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/admin/campaigns/new?flow=points_mall")}
+            className={BTN_OUTLINE_CLASS}
+          >
+            新增積分商城商品
+          </button>
+        </div>
+      </div>
 
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-3.5 space-y-3">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {STATUS_CHIP_OPTIONS.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                disabled={isPending}
-                onClick={() => {
-                  setSearchQuery("");
-                  fetchList(chip.key, 1);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-sans text-xs transition-all ${
-                  statusFilter === chip.key
-                    ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
-                    : "bg-bg-page border border-[rgba(237,232,224,0.08)] text-text-secondary hover:text-text-primary hover:bg-bg-hover"
-                }`}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
+      <div className="space-y-3 border-b border-white/[0.08] pb-4">
+        <p className="rounded-lg border border-brand/20 bg-brand/5 px-3 py-2 font-sans text-[11px] leading-relaxed text-text-secondary">
+          搜尋只會篩選<strong className="text-text-primary">目前已載入的本頁</strong>
+          活動；換頁或切換狀態後需重新搜尋。
+        </p>
 
-          <div className="relative w-full">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled text-xs">
-              🔍
-            </span>
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="搜尋活動名稱、編號、類型或獎勵內容（僅篩選本頁）..."
-              className="w-full h-9 pl-8 pr-8 bg-bg-page border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-disabled hover:text-text-primary font-bold text-xs"
-              >
-                ✕
-              </button>
-            ) : null}
-          </div>
-
-          {hasSearch ? (
-            <p className="font-mono text-[10px] text-text-disabled">
-              搜尋僅套用於目前第 {page} 頁的 {rows.length} 筆資料
-            </p>
+        <div className="relative w-full">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+            aria-hidden="true"
+          />
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="搜尋名稱、編號、類型（僅本頁）"
+            className={`w-full ${FILTER_INPUT_CLASS}`}
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-disabled hover:text-text-primary"
+              aria-label="清除搜尋"
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
           ) : null}
         </div>
 
-        <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-          {displayRows.length === 0 ? (
-            <div className="p-8 text-center space-y-2">
-              <p className="font-sans text-sm text-text-secondary font-medium">
-                沒有符合條件的活動記錄
-              </p>
-              <p className="font-sans text-xs text-text-disabled">
-                {hasSearch
-                  ? "請調整搜尋關鍵字或切換狀態篩選"
-                  : DISPLAY_STATUS_LABELS[statusFilter]
-                    ? `目前沒有「${DISPLAY_STATUS_LABELS[statusFilter]}」狀態的活動`
-                    : "請建立新活動或切換其他狀態篩選"}
-              </p>
-            </div>
-          ) : (
-            displayRows.map((row) => (
-              <RewardActivityCard
-                key={row.activity_id}
-                row={row}
-                disabled={isPending}
-                onStatusChange={handleStatus}
-              />
-            ))
-          )}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {STATUS_CHIP_OPTIONS.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                setSearchQuery("");
+                fetchList(chip.key, 1);
+              }}
+              className={FILTER_CHIP_CLASS(statusFilter === chip.key)}
+            >
+              {chip.label} ({formatActivityCount(statusCounts[chip.key])})
+            </button>
+          ))}
         </div>
 
-        {!hasSearch ? (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)]">
-            <p className="font-mono text-xs text-text-secondary">
-              顯示第{" "}
-              <span className="text-text-primary font-bold">{rangeStart}</span> -{" "}
-              <span className="text-text-primary font-bold">{rangeEnd}</span> 筆，共{" "}
-              <span className="text-brand font-bold">{total}</span> 筆活動
-            </p>
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isPending || page <= 1}
-                onClick={() => handlePageChange(page - 1)}
-                className="h-8 px-3 text-xs bg-bg-page border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-text-primary disabled:opacity-40"
-              >
-                ← 上一頁
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map(
-                  (pageNum) => (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`h-8 min-w-[32px] px-2 rounded-lg font-mono text-xs transition-colors ${
-                        page === pageNum
-                          ? "bg-brand text-[#17130f] font-bold"
-                          : "bg-bg-page border border-[rgba(237,232,224,0.08)] text-text-secondary hover:text-text-primary hover:bg-bg-hover"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  ),
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isPending || page >= totalPages}
-                onClick={() => handlePageChange(page + 1)}
-                className="h-8 px-3 text-xs bg-bg-page border-[rgba(237,232,224,0.12)] text-text-secondary hover:text-text-primary disabled:opacity-40"
-              >
-                下一頁 →
-              </Button>
-            </div>
-          </div>
+        {hasSearch ? (
+          <p className="font-mono text-[11px] text-warning">
+            本頁篩選結果：{displayRows.length} / {rows.length} 筆（第 {page} 頁）
+          </p>
         ) : null}
-      </section>
+      </div>
+
+      <div className={`divide-y divide-white/[0.06] ${isPending ? "opacity-60" : ""}`}>
+        {displayRows.length === 0 ? (
+          <div className="py-12 text-center space-y-2">
+            <p className="font-sans text-[14px] text-text-primary">
+              沒有符合條件的活動記錄
+            </p>
+            <p className="font-sans text-[12px] text-text-disabled">
+              {hasSearch
+                ? "請調整搜尋關鍵字或切換狀態篩選"
+                : DISPLAY_STATUS_LABELS[statusFilter]
+                  ? `目前沒有「${DISPLAY_STATUS_LABELS[statusFilter]}」狀態的活動`
+                  : "請建立新活動或切換其他狀態篩選"}
+            </p>
+          </div>
+        ) : (
+          displayRows.map((row) => (
+            <RewardActivityCard
+              key={row.activity_id}
+              row={row}
+              disabled={isPending}
+              onStatusChange={handleStatus}
+            />
+          ))
+        )}
+      </div>
+
+      {!hasSearch && total > 0 ? (
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={total}
+          itemsPerPage={REWARD_ACTIVITY_PAGE_SIZE}
+          itemLabel="筆活動"
+          scrollToViewId="reward-activity-list-anchor"
+          showInfoStrip={false}
+          className="w-full max-w-full"
+        />
+      ) : null}
     </div>
   );
 }

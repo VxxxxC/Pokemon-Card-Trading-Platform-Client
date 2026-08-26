@@ -3437,6 +3437,10 @@ export type Database = {
         Args: { p_page?: number; p_page_size?: number; p_status?: string }
         Returns: Json
       }
+      rpc_admin_reward_activity_status_counts: {
+        Args: never
+        Returns: Json
+      }
       rpc_admin_list_reward_campaigns: {
         Args: { p_page?: number; p_page_size?: number; p_status?: string }
         Returns: Json

@@ -4,13 +4,21 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { listAdminPlatformUsers } from "@/app/actions/admin-user-control";
+import {
+  FILTER_CHIP_CLASS,
+  FILTER_INPUT_CLASS,
+  BTN_OUTLINE_SM_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
+import { Input } from "@/components/ui/input";
 import {
   formatPlatformUserKycLabel,
 } from "@/lib/admin-user-control/format";
 import type {
   PlatformUserKycFilter,
   PlatformUserPage,
+  PlatformUserRow,
   PlatformUserType,
 } from "@/lib/admin-user-control/types";
 import {
@@ -25,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Pagination } from "@/app/components/ui/Pagination";
 
 // 通過 Stripe KYC 即自動 trigger webhook 註冊商戶，故毋須人工入駐審核流程。
 
@@ -74,6 +83,84 @@ function emptyPlatformUserPage(): PlatformUserPage {
     kycCounts: { ...EMPTY_PLATFORM_USER_KYC_COUNTS },
     typeCounts: { member: 0, merchant: 0 },
   };
+}
+
+function userTypeChipClasses(userType: PlatformUserType): string {
+  return userType === "member"
+    ? "border border-white/10 bg-bg-hover text-text-secondary"
+    : "border border-brand/30 bg-brand/15 text-brand";
+}
+
+function kycBadgeClasses(
+  kycStatus: PlatformUserRow["kycStatus"],
+): string {
+  if (kycStatus === "verified") {
+    return "text-success bg-[rgba(16,185,129,0.12)] border-success/20";
+  }
+  if (kycStatus === "pending") {
+    return "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20";
+  }
+  if (kycStatus === "rejected") {
+    return "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20";
+  }
+  return "bg-bg-hover text-text-secondary border border-white/10";
+}
+
+function PlatformUserMobileCard({ user }: { user: PlatformUserRow }) {
+  const typeLabel = user.userType === "member" ? "會員" : "商戶";
+
+  return (
+    <article className="space-y-2 px-1 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses(user.userType)}`}
+            >
+              {typeLabel}
+            </span>
+            <span className="font-sans text-[13px] font-semibold text-text-primary">
+              {user.name}
+            </span>
+          </div>
+          <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+            {user.handle}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${kycBadgeClasses(user.kycStatus)}`}
+        >
+          {user.kycStatus
+            ? formatPlatformUserKycLabel(user.kycStatus)
+            : "未申請"}
+        </span>
+      </div>
+      <dl className="grid grid-cols-1 gap-1 font-mono text-[10px]">
+        <div className="flex min-w-0 gap-2">
+          <dt className="shrink-0 text-text-disabled">電郵</dt>
+          <dd className="truncate text-text-secondary">{user.email}</dd>
+        </div>
+        {user.stripeAccountId ? (
+          <div className="flex min-w-0 gap-2">
+            <dt className="shrink-0 text-text-disabled">Stripe</dt>
+            <dd className="truncate text-text-disabled">{user.stripeAccountId}</dd>
+          </div>
+        ) : null}
+        <div className="flex gap-2">
+          <dt className="shrink-0 text-text-disabled">更新</dt>
+          <dd className="text-text-disabled">{user.updatedAt}</dd>
+        </div>
+      </dl>
+      {user.kycStatus === "pending" && user.applicationId ? (
+        <Link
+          href={`/admin/merchants?applicationId=${user.applicationId}`}
+          className={`${BTN_OUTLINE_SM_CLASS} inline-flex h-9 items-center`}
+        >
+          審核 KYC
+        </Link>
+      ) : null}
+    </article>
+  );
 }
 
 export default function AdminUserControlClient({
@@ -213,47 +300,26 @@ export default function AdminUserControlClient({
     resetPagination();
   };
 
-  const renderCheckboxOption = (
-    key: string,
+  const renderTypeChip = (
+    type: PlatformUserType,
     label: string,
     count: number,
     isActive: boolean,
-    onToggle: () => void,
   ) => (
     <button
-      key={key}
+      key={type}
       type="button"
-      onClick={onToggle}
-      className="flex items-center gap-2.5 text-left py-1 group/item"
+      onClick={() => handleUserTypeToggle(type)}
+      aria-pressed={isActive}
+      className={`${FILTER_CHIP_CLASS(isActive)} gap-1.5`}
     >
-      <div
-        className={`w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 ${
-          isActive
-            ? "bg-brand border-brand"
-            : "border-[rgba(237,232,224,0.20)] group-hover/item:border-brand/50"
-        }`}
-      >
-        {isActive && (
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#1A1612"
-            strokeWidth="3.5"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        )}
-      </div>
+      <span>{label}</span>
       <span
-        className={`font-sans text-[12px] transition-colors ${
-          isActive
-            ? "text-text-primary font-medium"
-            : "text-text-secondary group-hover/item:text-text-primary"
+        className={`font-mono text-[10px] tabular-nums ${
+          isActive ? "text-brand/80" : "text-text-disabled"
         }`}
       >
-        {label} ({count})
+        {count.toLocaleString("en-US")}
       </span>
     </button>
   );
@@ -262,39 +328,32 @@ export default function AdminUserControlClient({
     !userTypeFilter.member && !userTypeFilter.merchant;
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-100px)] space-y-4">
-      {/* ── Page Header ─────────────────────────────────────────────────────── */}
-      <div className="flex items-end justify-between gap-4 bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
+    <div className="space-y-5 pb-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="font-sans font-bold text-[20px] text-text-primary">
-            用戶管理
-          </h1>
-          <p className="font-sans text-[12px] text-text-secondary mt-0.5">
+          <div className="flex items-center gap-2">
+            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
+              用戶管理
+            </h1>
+            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+              USERS
+            </span>
+          </div>
+          <p className="mt-1 font-sans text-[13px] text-text-secondary">
             管理全平台會員與認證商戶帳號、Stripe KYC 認證狀態
           </p>
         </div>
+        <p className="font-mono text-[12px] text-text-secondary sm:shrink-0 sm:self-end">
+          待審核{" "}
+          <span className="font-medium text-brand">{kycCounts.pending}</span>
+        </p>
+      </header>
 
-        {/* 
-          ── Privilege Override Toggle Button (Standalone) ── 
-        <button
-          type="button"
-          onClick={() => setIsOverrideOpen((prev) => !prev)}
-          className={`shrink-0 flex items-center gap-2 h-9 px-3.5 rounded-xl font-sans text-xs font-semibold border transition-all active:scale-[0.98] ${
-            isOverrideOpen
-              ? "bg-warning text-[#17130f] border-warning shadow-md shadow-warning/10"
-              : "bg-bg-elevated text-warning border-warning/20 hover:bg-[rgba(239,68,68,0.10)]"
-          }`}
-        >
-          <span>⚠️</span>
-          <span className="inline">權限覆寫</span>
-          <span className="font-mono text-[10px]">
-            {isOverrideLocked ? "🔒" : "🔓"}
-          </span>
-        </button>
-          */}
-      </div>
-
-      {listError ? <p>{listError}</p> : null}
+      {listError ? (
+        <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2.5 font-sans text-[13px] text-error">
+          {listError}
+        </div>
+      ) : null}
 
       <AnimatePresence>
         {isOverrideOpen && (
@@ -536,271 +595,207 @@ export default function AdminUserControlClient({
         )}
       </AnimatePresence>
 
-      {/* ── Main Data Table Container (Full Height Flex) ────────────────── */}
-      <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
-        {/* ── Platform Users Data Table ─────────────────────────── */}
-        <div className="flex-1 flex flex-col justify-between space-y-4">
-          {/* Toolbar: Search + Type Checkboxes + Filter Chips */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-80">
-                <input
-                  type="text"
-                  placeholder="搜尋名稱、Handle、電郵或 Stripe ID..."
-                  value={userSearch}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full h-9 pl-9 pr-3 bg-bg-page border border-[rgba(237,232,224,0.12)] rounded-xl font-sans text-xs text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/40"
-                />
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="absolute left-3 top-2.5 text-text-disabled"
+      <div className="space-y-4 border-b border-white/[0.08] pb-5">
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              placeholder="搜尋名稱、Handle、電郵或 Stripe ID…"
+              value={userSearch}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className={FILTER_INPUT_CLASS}
+            />
+          </div>
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {renderTypeChip(
+                "member",
+                "會員",
+                typeCounts.member,
+                userTypeFilter.member,
+              )}
+              {renderTypeChip(
+                "merchant",
+                "商戶",
+                typeCounts.merchant,
+                userTypeFilter.merchant,
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(
+                [
+                  { key: "all", label: "全部" },
+                  { key: "pending", label: "待審核" },
+                  { key: "verified", label: "已認證" },
+                  { key: "rejected", label: "已拒絕" },
+                ] as { key: PlatformUserKycFilter; label: string }[]
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleFilterChange(key)}
+                  className={`${FILTER_CHIP_CLASS(kycFilter === key)} gap-1.5`}
                 >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </div>
-
-              {/* User Type Checkboxes */}
-              <div className="flex items-center gap-4 bg-[#17130f] px-3 py-1.5 rounded-xl border border-[rgba(237,232,224,0.08)]">
-                {renderCheckboxOption(
-                  "member",
-                  "會員",
-                  typeCounts.member,
-                  userTypeFilter.member,
-                  () => handleUserTypeToggle("member"),
-                )}
-                {renderCheckboxOption(
-                  "merchant",
-                  "商戶",
-                  typeCounts.merchant,
-                  userTypeFilter.merchant,
-                  () => handleUserTypeToggle("merchant"),
-                )}
-              </div>
-
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1 bg-[#17130f] p-1 rounded-xl border border-[rgba(237,232,224,0.08)]">
-                {(
-                  [
-                    { key: "all", label: "全部" },
-                    { key: "pending", label: "待審核" },
-                    { key: "verified", label: "已認證" },
-                    { key: "rejected", label: "已拒絕" },
-                  ] as { key: PlatformUserKycFilter; label: string }[]
-                ).map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => handleFilterChange(key)}
-                    className={`min-h-[44px] px-3 py-1 rounded-lg font-sans text-[11px] transition-colors ${
+                  <span>{label}</span>
+                  <span
+                    className={`font-mono text-[10px] tabular-nums ${
                       kycFilter === key
-                        ? "bg-bg-elevated text-brand font-semibold"
-                        : "text-text-secondary hover:text-text-primary"
+                        ? "text-brand/80"
+                        : "text-text-disabled"
                     }`}
                   >
-                    {label} ({kycCounts[key]})
-                  </button>
-                ))}
-              </div>
+                    {kycCounts[key].toLocaleString("en-US")}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
-
-          {/* Data Table */}
-          <div className="flex-1 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-bg-elevated/50 sticky top-0 z-10">
-                <TableRow className="border-b border-[rgba(237,232,224,0.08)] hover:bg-transparent">
-                  <TableHead className="font-sans text-[11px] text-text-secondary h-10">
-                    名稱
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    Handle
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    電郵
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10">
-                    Stripe ID
-                  </TableHead>
-                  <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-center">
-                    Stripe KYC 狀態
-                  </TableHead>
-                  <TableHead className="font-mono text-[11px] text-text-secondary h-10 text-right">
-                    Last Update
-                  </TableHead>
-                  <TableHead className="font-sans text-[11px] text-text-secondary h-10 text-right">
-                    操作
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedUsers.map((u) => {
-                  const typeLabel = u.userType === "member" ? "會員" : "商戶";
-                  const typeChipClasses =
-                    u.userType === "member"
-                      ? "bg-bg-hover text-text-secondary border border-[rgba(237,232,224,0.12)]"
-                      : "bg-brand/15 text-brand border border-brand/30";
-
-                  return (
-                    <TableRow
-                      key={u.id}
-                      className="border-b border-[rgba(237,232,224,0.06)] transition-colors"
-                    >
-                      <TableCell className="py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`font-mono text-[10px] px-2 py-0.5 rounded-md shrink-0 ${typeChipClasses}`}
-                          >
-                            {typeLabel}
-                          </span>
-                          <span className="font-sans font-semibold text-[13px] text-text-primary truncate max-w-[180px] sm:max-w-[220px]">
-                            {u.name}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono text-[12px] text-text-secondary py-3 whitespace-nowrap">
-                        {u.handle}
-                      </TableCell>
-                      <TableCell className="py-3 whitespace-nowrap">
-                        <span
-                          className="font-mono text-[11px] text-text-secondary truncate max-w-[160px] sm:max-w-[220px] block"
-                          title={u.email}
-                        >
-                          {u.email}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-3 whitespace-nowrap">
-                        {u.stripeAccountId ? (
-                          <span
-                            className="font-mono text-[11px] text-text-disabled truncate max-w-[120px] block"
-                            title={u.stripeAccountId}
-                          >
-                            {u.stripeAccountId}
-                          </span>
-                        ) : (
-                          <span className="font-mono text-[11px] text-text-disabled">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center py-3 whitespace-nowrap">
-                        {u.kycStatus ? (
-                          <span
-                            className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${
-                              u.kycStatus === "verified"
-                                ? "text-success bg-[rgba(16,185,129,0.12)] border-success/20"
-                                : u.kycStatus === "pending"
-                                  ? "text-brand bg-[rgba(212,165,116,0.12)] border-brand/20"
-                                  : "text-warning bg-[rgba(239,68,68,0.10)] border-warning/20"
-                            }`}
-                          >
-                            {formatPlatformUserKycLabel(u.kycStatus)}
-                          </span>
-                        ) : (
-                          <span className="inline-block font-mono text-[9px] px-2 py-0.5 rounded border bg-bg-hover text-text-secondary border-[rgba(237,232,224,0.12)]">
-                            未申請
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-[11px] text-text-disabled text-right py-3 whitespace-nowrap">
-                        {u.updatedAt}
-                      </TableCell>
-                      <TableCell className="text-right py-3 whitespace-nowrap">
-                        {u.kycStatus === "pending" && u.applicationId ? (
-                          <Link
-                            href={`/admin/merchants?applicationId=${u.applicationId}`}
-                            className="min-h-[44px] h-9 px-2.5 text-brand font-sans text-[11px] font-medium rounded-lg hover:bg-brand/10 active:scale-[0.98] transition-transform whitespace-nowrap inline-flex items-center"
-                          >
-                            審核 KYC
-                          </Link>
-                        ) : (
-                          <span className="font-mono text-[11px] text-text-disabled">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-
-                {paginatedUsers.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className="text-center py-12 align-middle"
-                    >
-                      <p className="font-sans text-[13px] text-text-secondary">
-                        {isTypeFilterEmpty
-                          ? "請至少選擇一種用戶類型以顯示名單。"
-                          : "沒有符合篩選條件的用戶記錄。"}
-                      </p>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* ── Users Table Pagination ─────────────────────────────────── */}
-          {filteredTotal > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-bg-page border border-[rgba(237,232,224,0.08)] rounded-xl">
-              <div className="font-mono text-[12px] text-text-secondary">
-                顯示第{" "}
-                <span className="font-bold text-text-primary">
-                  {(safePage - 1) * pageSize + 1}
-                </span>{" "}
-                -{" "}
-                <span className="font-bold text-text-primary">
-                  {Math.min(safePage * pageSize, filteredTotal)}
-                </span>{" "}
-                筆，共{" "}
-                <span className="font-bold text-brand">
-                  {filteredTotal}
-                </span>{" "}
-                筆資料
-                {isRefreshing ? "（更新中…）" : ""}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={safePage === 1}
-                  onClick={() => setPage(Math.max(safePage - 1, 1))}
-                  className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] disabled:active:scale-100"
-                >
-                  上一頁
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPage(p)}
-                      className={`min-h-[44px] h-11 w-11 rounded-lg font-mono text-xs font-semibold transition-all active:scale-[0.98] ${
-                        safePage === p
-                          ? "bg-brand text-[#17130f] font-bold shadow-sm shadow-brand/20"
-                          : "border border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ),
-                )}
-                <button
-                  type="button"
-                  disabled={safePage === totalPages}
-                  onClick={() => setPage(Math.min(safePage + 1, totalPages))}
-                  className="min-h-[44px] h-11 px-3 rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-card font-sans text-xs text-text-secondary hover:text-text-primary hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.98] disabled:active:scale-100"
-                >
-                  下一頁
-                </button>
-              </div>
-            </div>
-          )}
         </div>
+
+        {paginatedUsers.length === 0 ? (
+          <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
+            {isTypeFilterEmpty
+              ? "請至少選擇一種用戶類型以顯示名單。"
+              : "沒有符合篩選條件的用戶記錄。"}
+          </p>
+        ) : (
+          <>
+            <div className="md:hidden divide-y divide-white/[0.06]">
+              {paginatedUsers.map((user) => (
+                <PlatformUserMobileCard key={user.id} user={user} />
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-lg border border-white/[0.08] md:block">
+              <Table>
+                <TableHeader className="border-b border-white/[0.08] bg-bg-card/30">
+                  <TableRow className="border-transparent hover:bg-transparent">
+                    <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                      名稱
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      Handle
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      電郵
+                    </TableHead>
+                    <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                      Stripe ID
+                    </TableHead>
+                    <TableHead className="h-9 text-center font-sans text-[11px] text-text-disabled">
+                      KYC 狀態
+                    </TableHead>
+                    <TableHead className="h-9 text-right font-mono text-[11px] text-text-disabled">
+                      更新時間
+                    </TableHead>
+                    <TableHead className="h-9 min-w-[5.5rem] text-right font-sans text-[11px] text-text-disabled">
+                      操作
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedUsers.map((u, rowIndex) => {
+                    const typeLabel = u.userType === "member" ? "會員" : "商戶";
+
+                    return (
+                      <TableRow
+                        key={u.id}
+                        className={`border-white/[0.06] transition-colors hover:bg-brand/10 ${
+                          rowIndex % 2 === 0 ? "bg-bg-card/25" : "bg-white/[0.02]"
+                        }`}
+                      >
+                        <TableCell className="max-w-[14rem] py-2.5">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span
+                              className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses(u.userType)}`}
+                            >
+                              {typeLabel}
+                            </span>
+                            <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
+                              {u.name}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-2.5 font-mono text-[11px] text-text-secondary whitespace-nowrap">
+                          {u.handle}
+                        </TableCell>
+                        <TableCell className="max-w-[11rem] py-2.5">
+                          <span
+                            className="block truncate font-mono text-[11px] text-text-secondary"
+                            title={u.email}
+                          >
+                            {u.email}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-[9rem] py-2.5">
+                          {u.stripeAccountId ? (
+                            <span
+                              className="block truncate font-mono text-[11px] text-text-disabled"
+                              title={u.stripeAccountId}
+                            >
+                              {u.stripeAccountId}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-[11px] text-text-disabled">
+                              —
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-center whitespace-nowrap">
+                          <span
+                            className={`inline-block rounded border px-2 py-0.5 font-mono text-[9px] ${kycBadgeClasses(u.kycStatus)}`}
+                          >
+                            {u.kycStatus
+                              ? formatPlatformUserKycLabel(u.kycStatus)
+                              : "未申請"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
+                          {u.updatedAt}
+                        </TableCell>
+                        <TableCell className="py-2.5 text-right align-top">
+                          {u.kycStatus === "pending" && u.applicationId ? (
+                            <Link
+                              href={`/admin/merchants?applicationId=${u.applicationId}`}
+                              className={`${BTN_OUTLINE_SM_CLASS} inline-flex h-8 items-center px-2.5`}
+                            >
+                              審核 KYC
+                            </Link>
+                          ) : (
+                            <span className="font-mono text-[11px] text-text-disabled">
+                              —
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
+
+        {filteredTotal > 0 && totalPages <= 1 ? (
+          <p className="font-mono text-[12px] text-text-secondary">
+            共 {filteredTotal} 筆資料{isRefreshing ? "（更新中…）" : ""}
+          </p>
+        ) : null}
+        {filteredTotal > 0 && totalPages > 1 ? (
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            totalItems={filteredTotal}
+            itemsPerPage={pageSize}
+            itemLabel="筆資料"
+            enableScroll={false}
+          />
+        ) : null}
       </div>
     </div>
   );

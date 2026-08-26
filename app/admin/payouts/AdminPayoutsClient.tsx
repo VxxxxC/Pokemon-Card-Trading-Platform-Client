@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import {
+  FILTER_CHIP_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
 import MerchantConnectLedgerTab from "./components/MerchantConnectLedgerTab";
 import FpsLedgerTab from "./components/FpsLedgerTab";
 import PlatformBalanceSection from "./components/PlatformBalanceSection";
@@ -35,18 +38,55 @@ export default function AdminPayoutsClient({
   const [fpsTotal, setFpsTotal] = useState(initialFpsPage.total);
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-100px)] space-y-4">
-      <div className="bg-bg-card p-4 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <h1 className="font-sans font-bold text-[20px] text-text-primary">
-          財務與結算管控台
-        </h1>
-        <p className="font-sans text-[12px] text-text-secondary mt-0.5">
-          人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與佣金收益監控
-        </p>
-      </div>
+    <div className="space-y-5 pb-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
+              財務與結算管控台
+            </h1>
+            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+              FINANCE
+            </span>
+          </div>
+          <p className="mt-1 font-sans text-[13px] text-text-secondary">
+            人手 FPS 批處理銷帳與 Stripe Connect 商戶賬戶與佣金收益監控
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab("fps")}
+            className={`${FILTER_CHIP_CLASS(activeTab === "fps")} gap-1.5`}
+          >
+            FPS 批次
+            <span
+              className={`font-mono text-[10px] tabular-nums ${
+                activeTab === "fps" ? "text-brand/80" : "text-text-disabled"
+              }`}
+            >
+              {fpsTotal.toLocaleString("en-US")}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("stripe")}
+            className={`${FILTER_CHIP_CLASS(activeTab === "stripe")} gap-1.5`}
+          >
+            商戶流水
+            <span
+              className={`font-mono text-[10px] tabular-nums ${
+                activeTab === "stripe" ? "text-brand/80" : "text-text-disabled"
+              }`}
+            >
+              {merchantTotal.toLocaleString("en-US")}
+            </span>
+          </button>
+        </div>
+      </header>
 
       {loadError ? (
-        <div className="bg-bg-card rounded-2xl border border-warning/30 p-4 font-sans text-sm text-warning">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 font-sans text-[13px] text-warning">
           {loadError}
         </div>
       ) : null}
@@ -56,72 +96,38 @@ export default function AdminPayoutsClient({
         error={data?.stripeBalanceError}
       />
 
-      <div className="w-full bg-[#17130f] p-1.5 rounded-2xl border border-[rgba(237,232,224,0.08)]">
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            onClick={() => setActiveTab("fps")}
-            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
-              activeTab === "fps"
-                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-            }`}
-          >
-            <span className="truncate">🏦 FPS 批次處理</span>
-            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
-              {fpsTotal}
+      {activeTab === "fps" ? (
+        <div className="space-y-4 border-b border-white/[0.08] pb-5">
+          <div className="rounded-lg border border-brand/20 bg-brand/5 px-3 py-2.5 font-sans text-[12px] text-text-secondary">
+            Member FPS 週批 — 下一批處理日：
+            <span className="font-semibold text-brand">
+              {" "}
+              {fpsBatchSchedule.nextBatchDateLabel}（
+              {fpsBatchSchedule.batchWeekdayLabel}）
             </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("stripe")}
-            className={`flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs font-semibold transition-all min-w-0 ${
-              activeTab === "stripe"
-                ? "bg-brand text-[#17130f] font-bold shadow-md shadow-brand/10"
-                : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
-            }`}
-          >
-            <span className="truncate">💳 商戶流水 (Stripe)</span>
-            <span className="font-mono text-[10px] bg-[#17130f]/20 px-1.5 py-0.5 rounded-full shrink-0">
-              {merchantTotal}
+            ；截止：
+            <span className="font-medium text-text-primary">
+              {" "}
+              {fpsBatchSchedule.cutoffLabel}
             </span>
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] p-5 flex flex-col justify-between space-y-4 min-h-[500px]">
-        {activeTab === "fps" && (
-          <div className="flex-1 flex flex-col justify-between space-y-4">
-            <div className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 font-sans text-[12px] text-text-secondary">
-              Member FPS 週批 — 下一批處理日：
-              <span className="text-brand font-semibold">
-                {" "}
-                {fpsBatchSchedule.nextBatchDateLabel}（
-                {fpsBatchSchedule.batchWeekdayLabel}）
-              </span>
-              ；截止：
-              <span className="text-text-primary font-medium">
-                {" "}
-                {fpsBatchSchedule.cutoffLabel}
-              </span>
-              前 ready 的提現單。
-            </div>
-
-            <FpsLedgerTab
-              initialPage={initialFpsPage}
-              loadError={fpsLoadError ?? undefined}
-              onTotalChange={setFpsTotal}
-            />
+            前 ready 的提現單。
           </div>
-        )}
 
-        {activeTab === "stripe" && (
+          <FpsLedgerTab
+            initialPage={initialFpsPage}
+            loadError={fpsLoadError ?? undefined}
+            onTotalChange={setFpsTotal}
+          />
+        </div>
+      ) : (
+        <div className="space-y-4 border-b border-white/[0.08] pb-5">
           <MerchantConnectLedgerTab
             initialPage={initialMerchantPage}
             loadError={merchantLoadError ?? undefined}
             onTotalChange={setMerchantTotal}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

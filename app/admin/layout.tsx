@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/app/components/admin/AdminSidebar";
+import { AdminBreadcrumb } from "@/app/components/admin/AdminBreadcrumb";
 
 export const metadata: Metadata = { title: "後台管理 — HKCardVault" };
 
@@ -23,17 +24,15 @@ export default async function AdminLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       <AdminSidebar />
       <SidebarInset className="min-w-0 bg-[#17130f]">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[rgba(237,232,224,0.08)] bg-bg-card/80 px-4 backdrop-blur-md">
+        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] bg-[#17130f]/90 px-4 backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <SidebarTrigger className="text-text-secondary hover:text-text-primary hover:bg-bg-elevated active:scale-[0.98]" />
+            <SidebarTrigger className="size-8 rounded-lg border border-white/10 text-text-secondary hover:border-brand/30 hover:bg-brand/10 hover:text-brand active:scale-[0.98]" />
             <span
-              className="h-4 w-px bg-[rgba(237,232,224,0.12)]"
+              className="h-4 w-px bg-white/10"
               aria-hidden="true"
             />
-            <span className="font-sans text-sm font-bold text-text-primary">
-              管理員控制台
-            </span>
-            <span className="rounded-full border border-warning/20 bg-[rgba(239,68,68,0.10)] px-2 py-0.5 font-mono text-[10px] text-warning">
+            <AdminBreadcrumb />
+            <span className="rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 font-mono text-[10px] font-medium text-brand">
               ADMIN
             </span>
           </div>

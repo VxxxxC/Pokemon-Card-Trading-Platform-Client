@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { getAdminRewardActivity } from "@/app/actions/admin-reward-activities";
 import { RewardActivityForm } from "@/app/admin/campaigns/RewardActivityForm";
+import { FORM_PAGE_BACK_LINK_CLASS } from "@/app/admin/campaigns/campaigns-ui";
 import { activityRowToForm } from "@/lib/admin-rewards/template-form";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
@@ -50,17 +52,21 @@ export default async function AdminEditRewardActivityPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <div className="font-mono text-[11px] text-text-secondary">
-          <Link href="/admin/campaigns" className="hover:text-brand">
-            積分與獎勵活動
-          </Link>
-          <span className="text-text-disabled"> / 編輯活動</span>
-        </div>
+      <div className="space-y-3">
+        <Link href="/admin/campaigns" className={FORM_PAGE_BACK_LINK_CLASS}>
+          <ChevronLeft className="size-3.5" aria-hidden="true" />
+          返回列表
+        </Link>
+        <div>
+          <div className="font-mono text-[11px] text-text-secondary">
+            <span className="text-text-disabled">積分與獎勵活動</span>
+            <span className="text-text-disabled"> / 編輯活動</span>
+          </div>
         <h1 className="mt-2 font-sans text-[24px] font-bold text-text-primary">
           編輯獎勵活動
         </h1>
         <p className="mt-1 text-sm text-text-secondary">{result.data.title}</p>
+        </div>
       </div>
 
       <RewardActivityForm initialForm={activityRowToForm(result.data)} />

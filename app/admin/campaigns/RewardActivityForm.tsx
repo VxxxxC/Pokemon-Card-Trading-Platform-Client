@@ -1,14 +1,24 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   setAdminRewardActivityStatus,
   upsertAdminRewardActivity,
 } from "@/app/actions/admin-reward-activities";
-import { Button } from "@/components/ui/button";
+import {
+  BTN_OUTLINE_CLASS,
+  BTN_PRIMARY_CLASS,
+  FILTER_CHIP_CLASS,
+  FORM_INPUT_CLASS,
+  FORM_LABEL_CLASS,
+  FORM_SECTION_CLASS,
+  FORM_SELECT_TRIGGER_CLASS,
+  FORM_STICKY_FOOTER_CLASS,
+  SELECT_CONTENT_CLASS,
+  SELECT_ITEM_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,6 +34,7 @@ import {
   buildDefaultFlashSchedule,
   deriveFormFlow,
   DISTRIBUTION_MODE_LABELS,
+  EVENT_ONCE_LABELS,
   FORM_FLOW_DESCRIPTIONS,
   FORM_FLOW_LABELS,
   isCatalogEligibleRewardType,
@@ -33,6 +44,9 @@ import {
   rewardValueForType,
   scopeToOrderKinds,
   shouldShowAutoGrantTriggers,
+  TRIGGER_KIND_LABELS,
+  TRADE_ROLE_LABELS,
+  TYPE_LABELS,
   type AdminRewardFormFlow,
   type OrderKindsScope,
 } from "@/lib/admin-rewards/template-form";
@@ -45,14 +59,28 @@ import type {
 } from "@/lib/admin-rewards/types";
 import { DEFAULT_ADMIN_REWARD_RESTRICTIONS } from "@/lib/admin-rewards/types";
 import { cn } from "@/lib/utils";
-import {
-  blockTitle,
-  fieldInput,
-  fieldLabel,
-  fieldSelect,
-  sectionDivider,
-  sectionShell,
-} from "./admin-form-styles";
+
+const FORM_SECTION_CLASSNAME =
+  "space-y-3 border-b border-white/[0.08] pb-4";
+
+const AUTH_REQUIREMENT_LABELS: Record<"any" | "true" | "false", string> = {
+  any: "全部訂單",
+  true: "僅鑑定單",
+  false: "僅非鑑定單",
+};
+
+const TRIGGER_KIND_SELECT_ITEMS: Record<
+  "event_once" | "trade_count",
+  string
+> = {
+  event_once: TRIGGER_KIND_LABELS.event_once,
+  trade_count: TRIGGER_KIND_LABELS.trade_count,
+};
+
+const TRADE_ROLE_SELECT_ITEMS: Record<"buyer" | "merchant", string> = {
+  buyer: TRADE_ROLE_LABELS.buyer,
+  merchant: TRADE_ROLE_LABELS.merchant,
+};
 
 type RewardActivityFormProps = {
   initialForm?: AdminRewardActivityUpsertInput;
@@ -395,22 +423,35 @@ export function RewardActivityForm({
     form.trigger_conditions.event ?? "profile_complete",
   );
 
+  const orderKindsScope = orderKindsToScope(
+    form.restrictions?.order_kinds ??
+      DEFAULT_ADMIN_REWARD_RESTRICTIONS.order_kinds,
+  );
+  const authRequirement =
+    form.restrictions?.requires_authentication ?? "any";
+  const rewardTypeItems = isPointsMallFlow
+    ? {
+        discount_coupon: TYPE_LABELS.discount_coupon,
+        free_shipping: TYPE_LABELS.free_shipping,
+      }
+    : TYPE_LABELS;
+
   return (
-    <div className="space-y-8">
+    <div className="pb-20">
       {isLegacyCheckInTrigger ? (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-text-primary">
+        <div className="mb-4 rounded-lg border border-brand/20 bg-brand/5 px-3 py-2.5 font-sans text-[12px] text-text-secondary">
           此簽到獎勵已遷移至「簽到計劃」分頁；此活動已封存，無法編輯。
         </div>
       ) : null}
 
-      <div className={sectionShell}>
+      <div className="space-y-4">
         {/* 0. 建立類型 */}
-        <section className="space-y-3">
-          <h2 className={blockTitle}>建立類型</h2>
-          <p className="font-sans text-[12px] text-text-secondary">
+        <section className={FORM_SECTION_CLASSNAME}>
+          <h2 className={FORM_SECTION_CLASS}>建立類型</h2>
+          <p className="font-sans text-[11px] leading-relaxed text-text-secondary">
             {FORM_FLOW_DESCRIPTIONS[formFlow]}
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {(["general", "points_mall"] as const).map((flow) => (
               <button
                 key={flow}
@@ -418,11 +459,10 @@ export function RewardActivityForm({
                 disabled={isEditing || isLegacyCheckInTrigger}
                 onClick={() => handleFlowChange(flow)}
                 className={cn(
-                  "h-9 rounded-xl border px-4 font-sans text-[12px] transition-colors",
-                  formFlow === flow
-                    ? "border-brand/50 bg-brand/10 text-text-primary"
-                    : "border-[rgba(237,232,224,0.12)] bg-transparent text-text-secondary hover:text-text-primary",
-                  isEditing ? "cursor-not-allowed opacity-60" : "",
+                  FILTER_CHIP_CLASS(formFlow === flow),
+                  isEditing || isLegacyCheckInTrigger
+                    ? "cursor-not-allowed opacity-60"
+                    : "",
                 )}
               >
                 {FORM_FLOW_LABELS[flow]}
@@ -430,31 +470,31 @@ export function RewardActivityForm({
             ))}
           </div>
           {isEditing ? (
-            <p className="font-sans text-[11px] text-text-disabled">
+            <p className="font-mono text-[10px] text-text-disabled">
               編輯既有活動時無法變更建立類型。
             </p>
           ) : null}
         </section>
 
         {/* 1. 基本資料 */}
-        <section className="space-y-3">
-          <h2 className={blockTitle}>基本資料</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="activity-title" className={fieldLabel}>
-                活動名稱 <span className="text-warning">*</span>
+        <section className={FORM_SECTION_CLASSNAME}>
+          <h2 className={FORM_SECTION_CLASS}>基本資料</h2>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="activity-title" className={FORM_LABEL_CLASS}>
+                活動名稱 <span className="text-brand">*</span>
               </Label>
               <Input
-                id="template-title"
+                id="activity-title"
                 value={form.title}
                 onChange={(event) =>
                   handleChange({ ...form, title: event.target.value })
                 }
-                className={fieldInput}
+                className={FORM_INPUT_CLASS}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="activity-description" className={fieldLabel}>
+            <div className="space-y-1.5">
+              <Label htmlFor="activity-description" className={FORM_LABEL_CLASS}>
                 描述
               </Label>
               <Input
@@ -463,27 +503,24 @@ export function RewardActivityForm({
                 onChange={(event) =>
                   handleChange({ ...form, description: event.target.value })
                 }
-                className={fieldInput}
+                className={FORM_INPUT_CLASS}
               />
             </div>
           </div>
         </section>
 
         {/* 2. 使用限制與有效期 */}
-        <div className={sectionDivider}>
-          <section className="space-y-3">
-            <h2 className={blockTitle}>使用限制與有效期</h2>
+        <section className={FORM_SECTION_CLASSNAME}>
+            <h2 className={FORM_SECTION_CLASS}>使用限制與有效期</h2>
             <div className="grid gap-3 md:grid-cols-2">
               {isCatalogEligibleRewardType(form.type) ? (
                 <div className="space-y-2">
-                  <Label htmlFor="reward-order-kinds" className={fieldLabel}>
+                  <Label htmlFor="reward-order-kinds" className={FORM_LABEL_CLASS}>
                     適用訂單
                   </Label>
                   <Select
-                    value={orderKindsToScope(
-                      form.restrictions?.order_kinds ??
-                        DEFAULT_ADMIN_REWARD_RESTRICTIONS.order_kinds,
-                    )}
+                    value={orderKindsScope}
+                    items={ORDER_KINDS_SCOPE_LABELS}
                     onValueChange={(value) =>
                       handleChange({
                         ...form,
@@ -494,13 +531,17 @@ export function RewardActivityForm({
                       })
                     }
                   >
-                    <SelectTrigger id="reward-order-kinds" className={fieldSelect}>
-                      <SelectValue />
+                    <SelectTrigger id="reward-order-kinds" className={FORM_SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="選擇適用訂單" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className={SELECT_CONTENT_CLASS}>
                       {(Object.keys(ORDER_KINDS_SCOPE_LABELS) as OrderKindsScope[]).map(
                         (scope) => (
-                          <SelectItem key={scope} value={scope}>
+                          <SelectItem
+                            key={scope}
+                            value={scope}
+                            className={SELECT_ITEM_CLASS}
+                          >
                             {ORDER_KINDS_SCOPE_LABELS[scope]}
                           </SelectItem>
                         ),
@@ -515,9 +556,10 @@ export function RewardActivityForm({
                 </div>
               ) : null}
               <div className="space-y-2">
-                <Label className={fieldLabel}>適用鑑定</Label>
+                <Label className={FORM_LABEL_CLASS}>適用鑑定</Label>
                 <Select
-                  value={form.restrictions?.requires_authentication ?? "any"}
+                  value={authRequirement}
+                  items={AUTH_REQUIREMENT_LABELS}
                   onValueChange={(value) =>
                     handleChange({
                       ...form,
@@ -528,19 +570,25 @@ export function RewardActivityForm({
                     })
                   }
                 >
-                  <SelectTrigger className={fieldSelect}>
-                    <SelectValue />
+                  <SelectTrigger className={FORM_SELECT_TRIGGER_CLASS}>
+                    <SelectValue placeholder="選擇適用鑑定" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">全部訂單</SelectItem>
-                    <SelectItem value="true">僅鑑定單</SelectItem>
-                    <SelectItem value="false">僅非鑑定單</SelectItem>
+                  <SelectContent className={SELECT_CONTENT_CLASS}>
+                    <SelectItem value="any" className={SELECT_ITEM_CLASS}>
+                      全部訂單
+                    </SelectItem>
+                    <SelectItem value="true" className={SELECT_ITEM_CLASS}>
+                      僅鑑定單
+                    </SelectItem>
+                    <SelectItem value="false" className={SELECT_ITEM_CLASS}>
+                      僅非鑑定單
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               {showCouponValidityLimits ? (
                 <div className="space-y-2">
-                  <Label htmlFor="valid-days" className={fieldLabel}>
+                  <Label htmlFor="valid-days" className={FORM_LABEL_CLASS}>
                     領取後有效天數
                   </Label>
                   <Input
@@ -555,13 +603,13 @@ export function RewardActivityForm({
                           : null,
                       })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
               ) : null}
               {showCouponValidityLimits ? (
                 <div className="space-y-2">
-                  <Label htmlFor="max-claims" className={fieldLabel}>
+                  <Label htmlFor="max-claims" className={FORM_LABEL_CLASS}>
                     限量（空白=無限）
                   </Label>
                   <Input
@@ -584,62 +632,60 @@ export function RewardActivityForm({
                         max_claims: Number(raw),
                       });
                     }}
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
               ) : null}
             </div>
-          </section>
-        </div>
+        </section>
 
         {/* 3. 發放方式（一般券） */}
         {!isPointsMallFlow ? (
-        <div className={sectionDivider}>
-          <section className="space-y-3">
-            <h2 className={blockTitle}>發放方式</h2>
+        <section className={FORM_SECTION_CLASSNAME}>
+            <h2 className={FORM_SECTION_CLASS}>發放方式</h2>
             <Select
               value={mode}
+              items={DISTRIBUTION_MODE_LABELS}
               onValueChange={(value) => {
                 if (value) {
                   handleDistributionChange(value);
                 }
               }}
             >
-              <SelectTrigger className={cn(fieldSelect, "max-w-md")}>
-                <SelectValue />
+              <SelectTrigger className={cn(FORM_SELECT_TRIGGER_CLASS, "max-w-md")}>
+                <SelectValue placeholder="選擇發放方式" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto_grant">
+              <SelectContent className={SELECT_CONTENT_CLASS}>
+                <SelectItem value="auto_grant" className={SELECT_ITEM_CLASS}>
                   {DISTRIBUTION_MODE_LABELS.auto_grant}
                 </SelectItem>
-                <SelectItem value="flash_only">
+                <SelectItem value="flash_only" className={SELECT_ITEM_CLASS}>
                   {DISTRIBUTION_MODE_LABELS.flash_only}
                 </SelectItem>
               </SelectContent>
             </Select>
             {mode === "flash_only" ? (
-              <p className="font-sans text-[12px] text-amber-200">
+              <p className="font-sans text-[11px] text-brand">
                 用戶於活動期內主動搶領，先到先得，無需觸發條件。
               </p>
             ) : (
-              <p className="font-sans text-[12px] text-text-secondary">
+              <p className="font-sans text-[11px] text-text-secondary">
                 用戶滿足觸發條件後，系統自動發放入錢包。
               </p>
             )}
-          </section>
-        </div>
+        </section>
         ) : null}
 
         {/* 4. 觸發條件（一般券） */}
         {showTriggerConditions ? (
-          <div className={sectionDivider}>
-            <section className="space-y-3">
-              <h2 className={blockTitle}>觸發條件</h2>
+          <section className={FORM_SECTION_CLASSNAME}>
+              <h2 className={FORM_SECTION_CLASS}>觸發條件</h2>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className={fieldLabel}>條件類型</Label>
+                  <Label className={FORM_LABEL_CLASS}>條件類型</Label>
                   <Select
                     value={triggerKind}
+                    items={TRIGGER_KIND_SELECT_ITEMS}
                     onValueChange={(value) => {
                       const kind = value as AdminRewardTriggerKind;
                       if (kind === "event_once") {
@@ -658,21 +704,26 @@ export function RewardActivityForm({
                       }
                     }}
                   >
-                    <SelectTrigger className={fieldSelect}>
-                      <SelectValue />
+                    <SelectTrigger className={FORM_SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="選擇條件類型" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="event_once">一次性事件</SelectItem>
-                      <SelectItem value="trade_count">成交筆數</SelectItem>
+                    <SelectContent className={SELECT_CONTENT_CLASS}>
+                      <SelectItem value="event_once" className={SELECT_ITEM_CLASS}>
+                        一次性事件
+                      </SelectItem>
+                      <SelectItem value="trade_count" className={SELECT_ITEM_CLASS}>
+                        成交筆數
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {triggerKind === "event_once" ? (
                   <div className="space-y-2">
-                    <Label className={fieldLabel}>事件</Label>
+                    <Label className={FORM_LABEL_CLASS}>事件</Label>
                     <Select
                       value={String(form.trigger_conditions.event ?? "profile_complete")}
+                      items={EVENT_ONCE_LABELS}
                       onValueChange={(value) =>
                         updateTrigger({
                           event: value as AdminRewardEventOnceEvent,
@@ -680,14 +731,22 @@ export function RewardActivityForm({
                         })
                       }
                     >
-                      <SelectTrigger className={fieldSelect}>
-                        <SelectValue />
+                      <SelectTrigger className={FORM_SELECT_TRIGGER_CLASS}>
+                        <SelectValue placeholder="選擇事件" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="profile_complete">完善個人資料</SelectItem>
-                        <SelectItem value="first_listing">首次上架</SelectItem>
-                        <SelectItem value="first_chat">首次聊天</SelectItem>
-                        <SelectItem value="account_registered">註冊完成</SelectItem>
+                      <SelectContent className={SELECT_CONTENT_CLASS}>
+                        <SelectItem value="profile_complete" className={SELECT_ITEM_CLASS}>
+                          完善個人資料
+                        </SelectItem>
+                        <SelectItem value="first_listing" className={SELECT_ITEM_CLASS}>
+                          首次上架
+                        </SelectItem>
+                        <SelectItem value="first_chat" className={SELECT_ITEM_CLASS}>
+                          首次聊天
+                        </SelectItem>
+                        <SelectItem value="account_registered" className={SELECT_ITEM_CLASS}>
+                          註冊完成
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     {eventOnceEvent === "account_registered" ? (
@@ -703,24 +762,29 @@ export function RewardActivityForm({
                 {triggerKind === "trade_count" ? (
                   <div className="grid gap-3 sm:grid-cols-2 md:col-span-2">
                     <div className="space-y-2">
-                      <Label className={fieldLabel}>角色</Label>
+                      <Label className={FORM_LABEL_CLASS}>角色</Label>
                       <Select
                         value={String(form.trigger_conditions.role ?? "buyer")}
+                        items={TRADE_ROLE_SELECT_ITEMS}
                         onValueChange={(value) =>
                           updateTrigger({ role: value, once_per_user: true })
                         }
                       >
-                        <SelectTrigger className={fieldSelect}>
-                          <SelectValue />
+                        <SelectTrigger className={FORM_SELECT_TRIGGER_CLASS}>
+                          <SelectValue placeholder="選擇角色" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="buyer">買家</SelectItem>
-                          <SelectItem value="merchant">商戶</SelectItem>
+                        <SelectContent className={SELECT_CONTENT_CLASS}>
+                          <SelectItem value="buyer" className={SELECT_ITEM_CLASS}>
+                            買家
+                          </SelectItem>
+                          <SelectItem value="merchant" className={SELECT_ITEM_CLASS}>
+                            商戶
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="trade-count" className={fieldLabel}>
+                      <Label htmlFor="trade-count" className={FORM_LABEL_CLASS}>
                         筆數
                       </Label>
                       <Input
@@ -733,27 +797,26 @@ export function RewardActivityForm({
                             once_per_user: true,
                           })
                         }
-                        className={fieldInput}
+                        className={FORM_INPUT_CLASS}
                       />
                     </div>
                   </div>
                 ) : null}
               </div>
-            </section>
-          </div>
+          </section>
         ) : null}
 
         {/* 5. 獎勵內容 */}
-        <div className={sectionDivider}>
-          <section className="space-y-3">
-            <h2 className={blockTitle}>獎勵內容</h2>
+        <section className={FORM_SECTION_CLASSNAME}>
+            <h2 className={FORM_SECTION_CLASS}>獎勵內容</h2>
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
-                <Label className={fieldLabel}>
-                  類型 <span className="text-warning">*</span>
+                <Label className={FORM_LABEL_CLASS}>
+                  類型 <span className="text-brand">*</span>
                 </Label>
                 <Select
                   value={form.type}
+                  items={rewardTypeItems}
                   onValueChange={(value) => {
                     const nextType = value as AdminRewardTemplateType;
                     handleChange({
@@ -770,22 +833,28 @@ export function RewardActivityForm({
                     });
                   }}
                 >
-                  <SelectTrigger className={fieldSelect}>
-                    <SelectValue />
+                  <SelectTrigger className={FORM_SELECT_TRIGGER_CLASS}>
+                    <SelectValue placeholder="選擇類型" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={SELECT_CONTENT_CLASS}>
                     {!isPointsMallFlow ? (
-                      <SelectItem value="points">積分</SelectItem>
+                      <SelectItem value="points" className={SELECT_ITEM_CLASS}>
+                        積分
+                      </SelectItem>
                     ) : null}
-                    <SelectItem value="discount_coupon">折扣券</SelectItem>
-                    <SelectItem value="free_shipping">免運券</SelectItem>
+                    <SelectItem value="discount_coupon" className={SELECT_ITEM_CLASS}>
+                      折扣券
+                    </SelectItem>
+                    <SelectItem value="free_shipping" className={SELECT_ITEM_CLASS}>
+                      免運券
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {form.type === "points" ? (
                 <div className="space-y-2">
-                  <Label htmlFor="reward-points" className={fieldLabel}>
+                  <Label htmlFor="reward-points" className={FORM_LABEL_CLASS}>
                     積分數
                   </Label>
                   <Input
@@ -801,7 +870,7 @@ export function RewardActivityForm({
                         },
                       })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
               ) : null}
@@ -809,7 +878,7 @@ export function RewardActivityForm({
               {form.type === "discount_coupon" ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="reward-amount" className={fieldLabel}>
+                    <Label htmlFor="reward-amount" className={FORM_LABEL_CLASS}>
                       折扣金額 (HK$)
                     </Label>
                     <Input
@@ -825,11 +894,11 @@ export function RewardActivityForm({
                           },
                         })
                       }
-                      className={fieldInput}
+                      className={FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reward-min-spend" className={fieldLabel}>
+                    <Label htmlFor="reward-min-spend" className={FORM_LABEL_CLASS}>
                       最低消費 (HK$)
                     </Label>
                     <Input
@@ -845,7 +914,7 @@ export function RewardActivityForm({
                           },
                         })
                       }
-                      className={fieldInput}
+                      className={FORM_INPUT_CLASS}
                     />
                   </div>
                 </>
@@ -854,7 +923,7 @@ export function RewardActivityForm({
               {form.type === "free_shipping" ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="reward-max-subsidy" className={fieldLabel}>
+                    <Label htmlFor="reward-max-subsidy" className={FORM_LABEL_CLASS}>
                       平台補貼上限 (HK$)
                     </Label>
                     <Input
@@ -870,11 +939,11 @@ export function RewardActivityForm({
                           },
                         })
                       }
-                      className={fieldInput}
+                      className={FORM_INPUT_CLASS}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reward-shipping-min" className={fieldLabel}>
+                    <Label htmlFor="reward-shipping-min" className={FORM_LABEL_CLASS}>
                       最低消費 (HK$)
                     </Label>
                     <Input
@@ -890,28 +959,26 @@ export function RewardActivityForm({
                           },
                         })
                       }
-                      className={fieldInput}
+                      className={FORM_INPUT_CLASS}
                     />
                   </div>
                 </>
               ) : null}
             </div>
-          </section>
-        </div>
+        </section>
 
         {/* 6. 活動期限 */}
         {mode === "auto_grant" || isPointsMallFlow ? (
-          <div className={sectionDivider}>
-            <section className="space-y-3">
-              <h2 className={blockTitle}>活動期限</h2>
-              <p className="font-sans text-[12px] text-text-secondary">
+          <section className={FORM_SECTION_CLASSNAME}>
+              <h2 className={FORM_SECTION_CLASS}>活動期限</h2>
+              <p className="font-sans text-[11px] text-text-secondary">
                 {isPointsMallFlow
                   ? "可選。不設定則發布後持續上架，直至封存或商城庫存用盡。"
                   : "可選。不設定則發布後持續有效，直至封存或模板庫存用盡。"}
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="auto-grant-starts" className={fieldLabel}>
+                  <Label htmlFor="auto-grant-starts" className={FORM_LABEL_CLASS}>
                     開始時間
                   </Label>
                   <Input
@@ -921,11 +988,11 @@ export function RewardActivityForm({
                     onChange={(event) =>
                       updateSchedule({ starts_at: event.target.value })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="auto-grant-ends" className={fieldLabel}>
+                  <Label htmlFor="auto-grant-ends" className={FORM_LABEL_CLASS}>
                     結束時間
                   </Label>
                   <Input
@@ -935,21 +1002,19 @@ export function RewardActivityForm({
                     onChange={(event) =>
                       updateSchedule({ ends_at: event.target.value })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
               </div>
-            </section>
-          </div>
+          </section>
         ) : null}
 
         {mode === "flash_only" && schedule && !isPointsMallFlow ? (
-          <div className={sectionDivider}>
-            <section className="space-y-3">
-              <h2 className={blockTitle}>搶券檔期</h2>
+          <section className={FORM_SECTION_CLASSNAME}>
+              <h2 className={FORM_SECTION_CLASS}>搶券檔期</h2>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-starts" className={fieldLabel}>
+                  <Label htmlFor="schedule-starts" className={FORM_LABEL_CLASS}>
                     開始時間
                   </Label>
                   <Input
@@ -959,11 +1024,11 @@ export function RewardActivityForm({
                     onChange={(event) =>
                       updateSchedule({ starts_at: event.target.value })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-ends" className={fieldLabel}>
+                  <Label htmlFor="schedule-ends" className={FORM_LABEL_CLASS}>
                     結束時間
                   </Label>
                   <Input
@@ -973,11 +1038,11 @@ export function RewardActivityForm({
                     onChange={(event) =>
                       updateSchedule({ ends_at: event.target.value })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-stock" className={fieldLabel}>
+                  <Label htmlFor="schedule-stock" className={FORM_LABEL_CLASS}>
                     場次庫存
                   </Label>
                   <Input
@@ -988,11 +1053,11 @@ export function RewardActivityForm({
                     onChange={(event) =>
                       updateSchedule({ max_claims: Number(event.target.value || 0) })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-per-user" className={fieldLabel}>
+                  <Label htmlFor="schedule-per-user" className={FORM_LABEL_CLASS}>
                     每人限搶
                   </Label>
                   <Input
@@ -1005,11 +1070,11 @@ export function RewardActivityForm({
                         max_claims_per_user: Number(event.target.value || 1),
                       })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="schedule-valid-days" className={fieldLabel}>
+                  <Label htmlFor="schedule-valid-days" className={FORM_LABEL_CLASS}>
                     領取後有效天數（可選）
                   </Label>
                   <Input
@@ -1026,27 +1091,25 @@ export function RewardActivityForm({
                         override_valid_days: raw ? Number(raw) : null,
                       });
                     }}
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                   <p className="font-mono text-[10px] text-text-disabled">
                     留空則使用模板預設有效期。
                   </p>
                 </div>
               </div>
-            </section>
-          </div>
+          </section>
         ) : null}
 
         {isPointsMallFlow ? (
-          <div className={sectionDivider}>
-            <section className="space-y-3">
-              <h2 className={blockTitle}>積分商城設定</h2>
-              <p className="font-sans text-[12px] text-text-secondary">
+          <section className={FORM_SECTION_CLASSNAME}>
+              <h2 className={FORM_SECTION_CLASS}>積分商城設定</h2>
+              <p className="font-sans text-[11px] text-text-secondary">
                 會員可在獎勵頁使用積分兌換此券；無需觸發條件，與搶券活動互斥。
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="catalog-points-cost" className={fieldLabel}>
+                  <Label htmlFor="catalog-points-cost" className={FORM_LABEL_CLASS}>
                     兌換積分
                   </Label>
                   <Input
@@ -1065,11 +1128,11 @@ export function RewardActivityForm({
                         },
                       })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="catalog-stock" className={fieldLabel}>
+                  <Label htmlFor="catalog-stock" className={FORM_LABEL_CLASS}>
                     商城庫存
                   </Label>
                   <Input
@@ -1088,11 +1151,11 @@ export function RewardActivityForm({
                         },
                       })
                     }
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="catalog-max-per-user" className={fieldLabel}>
+                  <Label htmlFor="catalog-max-per-user" className={FORM_LABEL_CLASS}>
                     每人限兌（終身）
                   </Label>
                   <Input
@@ -1118,41 +1181,32 @@ export function RewardActivityForm({
                         },
                       });
                     }}
-                    className={fieldInput}
+                    className={FORM_INPUT_CLASS}
                   />
                 </div>
               </div>
-            </section>
-          </div>
+          </section>
         ) : null}
+      </div>
 
-        {/* 底部操作列 */}
-        <div className={cn(sectionDivider, "space-y-3")}>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={saveDraft}
-              disabled={isPending || isLegacyCheckInTrigger}
-              className="h-9 rounded-xl border-[rgba(237,232,224,0.12)] bg-transparent font-sans text-[12px] text-text-secondary hover:text-text-primary"
-            >
-              儲存草稿
-            </Button>
-            <Link
-              href="/admin/campaigns"
-              className="inline-flex h-9 items-center justify-center rounded-xl px-4 font-sans text-[12px] text-text-secondary hover:text-text-primary"
-            >
-              返回列表
-            </Link>
-          </div>
-          <Button
+      <div className={FORM_STICKY_FOOTER_CLASS}>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={saveDraft}
+            disabled={isPending || isLegacyCheckInTrigger}
+            className={`${BTN_OUTLINE_CLASS} min-w-0 flex-1 disabled:opacity-50 disabled:pointer-events-none`}
+          >
+            儲存草稿
+          </button>
+          <button
             type="button"
             onClick={publish}
             disabled={isPending || isLegacyCheckInTrigger}
-            className="h-11 w-full rounded-xl bg-brand font-sans text-[12px] font-bold text-[#17130f] shadow-md shadow-brand/10 hover:bg-brand-hover active:scale-[0.98]"
+            className={`${BTN_PRIMARY_CLASS} min-w-0 flex-1 disabled:opacity-50 disabled:pointer-events-none`}
           >
-            發布
-          </Button>
+            {isPending ? "處理中…" : "發布"}
+          </button>
         </div>
       </div>
     </div>
