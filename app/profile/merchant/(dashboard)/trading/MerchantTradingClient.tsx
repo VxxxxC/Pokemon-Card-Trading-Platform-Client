@@ -28,47 +28,6 @@ const STATUS_TAB_LABELS: TabStatusFilter[] = [
   "cancelled",
 ];
 
-function isRawMerchantOrder(order: {
-  listing?: { gradingCompany?: string | null };
-  grade?: unknown;
-  cardType?: unknown;
-  isRaw?: unknown;
-  isRawCard?: unknown;
-  gradingCompany?: unknown;
-}): boolean {
-  if (
-    order.cardType === "RAW" ||
-    order.isRaw === true ||
-    order.isRawCard === true
-  ) {
-    return true;
-  }
-
-  const grade = String(order.grade ?? "").toUpperCase().trim();
-  if (/\b(PSA|BGS|CGC|ARS)\b/.test(grade)) {
-    return false;
-  }
-  if (grade.includes("RAW") || grade.includes("裸卡")) {
-    return true;
-  }
-
-  const company = String(
-    order.listing?.gradingCompany ?? order.gradingCompany ?? "",
-  )
-    .toUpperCase()
-    .trim();
-  if (["PSA", "CGC", "BGS", "ARS"].includes(company)) {
-    return false;
-  }
-  return (
-    !company ||
-    company === "RAW" ||
-    company === "RAW CARD" ||
-    company === "NONE" ||
-    company === "裸卡"
-  );
-}
-
 export function MerchantTradingClient({
   initialData,
   initialTabStatus,
@@ -77,7 +36,6 @@ export function MerchantTradingClient({
   const searchParams = useSearchParams();
   const [tabStatus, setTabStatus] = useState<TabStatusFilter>(initialTabStatus);
   const [searchQuery, setSearchQuery] = useState("");
-  const [onlyRawChecked, setOnlyRawChecked] = useState(false);
   const [subPaymentChecked, setSubPaymentChecked] = useState(true);
   const [subGradingChecked, setSubGradingChecked] = useState(true);
 
@@ -104,14 +62,10 @@ export function MerchantTradingClient({
     }
   }, [searchParams]);
 
-  const saleOrders = useMemo(() => {
-    const mapped = orders.map(mapMerchantTradingOrderToSaleOrder);
-    if (!onlyRawChecked) return mapped;
-    return mapped.filter((_, idx) => {
-      const source = orders[idx];
-      return Boolean(source && isRawMerchantOrder(source));
-    });
-  }, [orders, onlyRawChecked]);
+  const saleOrders = useMemo(
+    () => orders.map(mapMerchantTradingOrderToSaleOrder),
+    [orders],
+  );
 
   const needsAction = filterCounts.needsAction;
   const displayError = bootstrapError ?? fetchError;
@@ -155,57 +109,12 @@ export function MerchantTradingClient({
         </div>
       )}
 
-      <div className="relative bg-bg-card rounded-2xl border border-white/5 p-4 shadow-sm flex flex-col gap-2">
-        <label
-          htmlFor="merchant-order-search"
-          className="font-mono pl-1 text-xs text-text-primary uppercase tracking-wider"
-        >
-          訂單搜尋
-        </label>
-        <div className="relative flex items-center">
-          <svg
-            className="absolute left-3.5 text-[#8A8680] pointer-events-none"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <div className="flex items-center bg-[#17130f] border border-white/5 rounded-xl h-11 text-text-primary overflow-hidden w-full transition-all focus-within:border-brand/30">
-            <input
-              id="merchant-order-search"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單ID..."
-              className="pl-10 pr-10 w-full flex-1 h-10 bg-transparent px-4 font-sans text-[13.5px] text-text-primary placeholder-text-disabled focus:outline-none"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="px-3 h-full font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
-              >
-                清除
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       <section
         id="orders-list"
         aria-labelledby="trading-heading"
         className="space-y-4"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-3">
           <h2
             id="trading-heading"
             className="font-sans font-semibold text-[16px] text-text-primary"
@@ -213,19 +122,43 @@ export function MerchantTradingClient({
             交易管理（{paginationMeta.total}）
           </h2>
 
-          <div className="flex gap-2.5 items-center flex-wrap justify-start sm:justify-end">
-            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none px-3 py-1 rounded-lg bg-[#17130f] border border-white/5 hover:border-brand/30 transition-colors">
-              <input
-                type="checkbox"
-                checked={onlyRawChecked}
-                onChange={(e) => setOnlyRawChecked(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer accent-brand"
-              />
-              <span className="font-medium text-text-secondary">只顯示 RAW/裸卡</span>
-            </label>
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled pointer-events-none"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              id="merchant-order-search"
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單ID…"
+              className="w-full h-10 pl-9 pr-10 bg-[#17130f] border border-white/[0.06] rounded-lg font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/30 transition-colors"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
+              >
+                清除
+              </button>
+            ) : null}
+          </div>
 
-            <div className="flex gap-1.5 flex-wrap">
-              {STATUS_TAB_LABELS.map((statusValue) => {
+          <div className="flex gap-1.5 flex-wrap">
+            {STATUS_TAB_LABELS.map((statusValue) => {
                 const label = TAB_STATUS_TO_PARAM[statusValue];
                 const isActive = tabStatus === statusValue;
                 let btnClass =
@@ -253,7 +186,6 @@ export function MerchantTradingClient({
                   </button>
                 );
               })}
-            </div>
           </div>
         </div>
 

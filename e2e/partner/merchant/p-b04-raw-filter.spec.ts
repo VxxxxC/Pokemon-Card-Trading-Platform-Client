@@ -15,6 +15,8 @@ test.use({ viewport: { width: 1280, height: 900 } });
 test.setTimeout(120_000);
 
 test.describe("P-B04 merchant trading RAW filter", () => {
+  test.skip(true, "RAW/裸卡 filter removed from merchant trading UI");
+
   test("只顯示 RAW/裸卡 hides graded PSA/BGS/CGC rows", async ({
     page,
   }, testInfo) => {
