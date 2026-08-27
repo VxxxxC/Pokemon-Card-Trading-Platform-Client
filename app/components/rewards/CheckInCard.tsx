@@ -29,6 +29,8 @@ type CheckInCardProps = {
   initialPointsBalance?: number;
   /** Defer gamification stats until idle (streak / check-in state). */
   deferStatsLoad?: boolean;
+  /** Render inside hero without duplicate card chrome. */
+  embedded?: boolean;
 };
 
 function buildStepsFromProgram(program: CheckInProgramMemberView | null) {
@@ -46,10 +48,44 @@ function buildStepsFromProgram(program: CheckInProgramMemberView | null) {
   });
 }
 
+function CheckInCardSkeleton({ embedded = false }: { embedded?: boolean }) {
+  const pulseCell =
+    "rounded-lg border border-white/[0.06] bg-white/[0.05] animate-pulse min-h-[52px]";
+
+  return (
+    <div
+      className={
+        embedded
+          ? "space-y-3"
+          : "rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card p-3.5 space-y-3"
+      }
+      role="status"
+      aria-label="載入簽到狀態"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="h-4 w-20 rounded bg-white/[0.06] animate-pulse" />
+        <div className="h-4 w-16 rounded bg-white/[0.06] animate-pulse" />
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: 7 }).map((_, index) => (
+          <div key={index} className={pulseCell} />
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <div className="h-9 flex-1 rounded-lg bg-white/[0.06] animate-pulse" />
+        <div className="h-9 w-[4.5rem] rounded-lg bg-white/[0.06] animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 export function CheckInCard({
   onStatsChange,
   initialPointsBalance,
   deferStatsLoad = false,
+  embedded = false,
 }: CheckInCardProps = {}) {
   const isMemberPersonaActive = useIsMemberPersonaActive();
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
@@ -60,6 +96,7 @@ export function CheckInCard({
   const [isStreakLoading, setIsStreakLoading] = useState(
     deferStatsLoad && initialPointsBalance !== undefined,
   );
+  const [isProgramLoading, setIsProgramLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const enqueueGrants = useRewardNotificationStore((s) => s.enqueue);
 
@@ -73,10 +110,12 @@ export function CheckInCard({
   const programPaused = program !== null && !program.isActive;
 
   const loadProgram = useCallback(async () => {
+    setIsProgramLoading(true);
     const result = await getCheckInProgram();
     if (result.success) {
       setProgram(result.data);
     }
+    setIsProgramLoading(false);
   }, []);
 
   const loadStats = useCallback(async () => {
@@ -170,13 +209,7 @@ export function CheckInCard({
   };
 
   if (!isMounted || isLoading) {
-    return (
-      <div
-        className="w-full h-48 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl animate-pulse animate-duration-1000"
-        role="status"
-        aria-label="載入簽到狀態"
-      />
-    );
+    return <CheckInCardSkeleton embedded={embedded} />;
   }
 
   const steps = checkInSteps.length > 0 ? checkInSteps : CHECK_IN_STEPS;
@@ -185,115 +218,139 @@ export function CheckInCard({
   );
   const completedCount = hasCheckedIn ? todayCycleDay : todayCycleDay - 1;
   const streakReady = !isStreakLoading;
+  const isContentLoading = isStreakLoading || isProgramLoading;
 
   return (
-    <div className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-5 shadow-[0_4px_16px_rgba(0,0,0,0.3)] space-y-4">
+    <div
+      className={
+        embedded
+          ? "space-y-3"
+          : "rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card p-3.5 space-y-3"
+      }
+    >
       {programPaused ? (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
           簽到暫停中，請稍後再試。
         </div>
       ) : null}
 
-      <div className="flex justify-between items-center border-b border-[rgba(237,232,224,0.06)] pb-3">
-        <div className="space-y-0.5">
-          <h3 className="font-sans font-black text-[15px] text-[#eae1da] flex items-center gap-1.5">
-            每日簽到
-          </h3>
-        </div>
-        <div className="text-right">
-          <span className="font-mono text-[10px] text-[#d4c4b7] block">
-            當前可用積分
-          </span>
-          <p className="font-mono font-black text-[18px] text-brand leading-none mt-0.5">
-            {userPoints.toLocaleString()}{" "}
-            <span className="text-[11px] font-sans font-bold">PTS</span>
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-sans font-bold text-[14px] text-text-primary leading-none">
+          每日簽到
+        </h3>
+        <p className="font-mono text-[12px] text-text-secondary leading-none shrink-0">
+          {isContentLoading ? (
+            <span className="inline-block h-4 w-16 rounded bg-white/[0.06] animate-pulse align-middle" />
+          ) : (
+            <span className="font-bold text-brand">
+              {userPoints.toLocaleString()} PTS
+            </span>
+          )}
+        </p>
       </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 pt-1">
-        {steps.map((step, idx) => {
+      <div
+        className="grid grid-cols-7 gap-1"
+        aria-busy={isContentLoading}
+      >
+        {isContentLoading
+          ? Array.from({ length: 7 }).map((_, index) => (
+              <div
+                key={index}
+                className="rounded-lg border border-white/[0.06] bg-white/[0.05] animate-pulse min-h-[52px]"
+              />
+            ))
+          : steps.map((step, idx) => {
           const isCompleted = streakReady && idx < completedCount;
           const isToday =
-            streakReady && idx === completedCount && !hasCheckedIn && !isSubmitting;
+            streakReady &&
+            idx === completedCount &&
+            !hasCheckedIn &&
+            !isSubmitting;
           const isFuture = !isCompleted && !isToday;
+          const shortLabel =
+            step.dayNum === 7 ? "禮" : String(step.dayNum);
 
           return (
             <div
               key={step.dayNum}
-              className={`rounded-xl p-2.5 flex flex-col items-center justify-between border transition-all text-center min-h-[76px] ${
+              className={`rounded-lg border px-1 py-1.5 flex flex-col items-center justify-center gap-0.5 text-center min-h-[52px] ${
                 isCompleted
-                  ? "bg-[#10b981]/5 border-[#10b981]/30 text-[#10b981]"
+                  ? "bg-success/5 border-success/30 text-success"
                   : isToday
-                    ? "bg-[rgba(212,165,116,0.08)] border-brand shadow-[0_0_12px_rgba(212,165,116,0.15)] text-brand"
-                    : "bg-[#17130f] border-[rgba(237,232,224,0.06)] text-[#50453b]"
+                    ? "bg-brand/10 border-brand/40 text-brand"
+                    : "bg-bg-page/60 border-white/[0.06] text-text-disabled"
               }`}
             >
               <span
-                className={`font-sans text-[10px] font-bold ${isFuture ? "text-[#50453b]" : ""}`}
+                className={`font-mono text-[9px] font-bold leading-none ${isFuture ? "text-text-disabled" : ""}`}
               >
-                {step.label}
+                {shortLabel}
               </span>
 
-              <div className="my-1 flex items-center justify-center">
-                {isCompleted ? (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3.5"
-                    aria-hidden="true"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  <span
-                    className={`font-mono text-[11px] font-black ${isToday ? "text-brand" : isFuture ? "text-[#50453b]" : "text-[#d4c4b7]"}`}
-                  >
-                    +{step.points}
-                  </span>
-                )}
-              </div>
-
-              <span
-                className={`font-mono text-[8.5px] uppercase tracking-wide block ${isCompleted ? "text-[#10b981]" : isToday ? "text-brand font-black animate-pulse" : "text-[#39342f]"}`}
-              >
-                {isCompleted ? "已簽" : isToday ? "今日" : "鎖定"}
-              </span>
+              {isCompleted ? (
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  aria-hidden="true"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <span
+                  className={`font-mono text-[10px] font-bold leading-none ${isToday ? "text-brand" : isFuture ? "text-text-disabled" : "text-text-secondary"}`}
+                >
+                  +{step.points}
+                </span>
+              )}
             </div>
           );
         })}
       </div>
 
-      <button
-        type="button"
-        disabled={hasCheckedIn || isSubmitting || isStreakLoading || programPaused}
-        onClick={() => void handleCheckInExecute()}
-        className={`w-full h-11 rounded-xl font-sans font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] cursor-pointer shadow-md ${
-          hasCheckedIn || isSubmitting || isStreakLoading || programPaused
-            ? "bg-[#17130f] border border-[rgba(237,232,224,0.06)] text-[#50453b] cursor-not-allowed"
-            : "bg-brand text-[#1A1612] hover:bg-[#e8b896]"
-        }`}
-      >
-        {programPaused
-          ? "簽到暫停"
-          : isStreakLoading
-            ? "載入簽到狀態…"
-            : hasCheckedIn
-              ? "明日請繼續保持收藏習慣"
-              : isSubmitting
-                ? "簽到中…"
-                : "立即簽到打卡獲取積分"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={
+            hasCheckedIn ||
+            isSubmitting ||
+            isContentLoading ||
+            programPaused
+          }
+          onClick={() => void handleCheckInExecute()}
+          className={`flex-1 min-w-0 h-9 rounded-lg font-sans font-semibold text-[12px] transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] cursor-pointer disabled:cursor-not-allowed ${
+            hasCheckedIn || isSubmitting || isContentLoading || programPaused
+              ? "bg-bg-page border border-white/[0.06] text-text-disabled"
+              : "bg-brand text-[#17130f] hover:bg-brand-hover"
+          }`}
+        >
+          {isSubmitting ? (
+            <span className="size-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+          ) : null}
+          {programPaused
+            ? "簽到暫停"
+            : isContentLoading
+              ? "載入中…"
+              : hasCheckedIn
+                ? "今日已簽到"
+                : isSubmitting
+                  ? "簽到中…"
+                  : "立即簽到"}
+        </button>
 
-      <Link
-        href="/profile/user/campaigns"
-        className="mt-3 w-full h-11 rounded-xl font-sans font-bold text-[13px] transition-all flex items-center justify-center gap-1.5 bg-[rgba(212,165,116,0.12)] border border-brand/40 text-brand hover:bg-[rgba(212,165,116,0.18)] active:scale-[0.99]"
-      >
-        ⚡ 限時搶券 · 積分商城
-      </Link>
+        <Link
+          href="/profile/user/campaigns"
+          className={`h-9 shrink-0 rounded-lg border border-brand/30 bg-brand/10 px-3 font-sans font-semibold text-[11px] text-brand transition-colors hover:bg-brand/15 active:scale-[0.99] inline-flex items-center justify-center ${
+            isContentLoading ? "pointer-events-none opacity-50" : ""
+          }`}
+        >
+          積分商城
+        </Link>
+      </div>
     </div>
   );
 }

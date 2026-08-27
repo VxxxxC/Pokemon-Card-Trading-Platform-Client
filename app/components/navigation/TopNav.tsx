@@ -111,7 +111,7 @@ export function TopNav() {
   return (
     <>
       <header className="hidden lg:flex sticky top-0 z-50 w-full h-16 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
-        <div className="max-w-[1200px] mx-auto w-full px-8 flex items-center justify-between">
+        <div className="max-w-[1100px] mx-auto w-full px-8 flex items-center justify-between">
           <Link
             href="/"
             className="flex flex-row items-center font-sans font-semibold text-lg text-brand"

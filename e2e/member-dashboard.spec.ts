@@ -86,7 +86,7 @@ test.describe("Member dashboard and rewards", () => {
       const checkInHeading = page.getByText("每日簽到");
       const pausedButton = page.getByRole("button", { name: "簽到暫停" });
       const checkInActionButton = page.getByRole("button", {
-        name: /立即簽到打卡獲取積分|簽到中…|明日請繼續保持收藏習慣|載入簽到狀態…/,
+        name: /立即簽到|簽到中…|今日已簽到|載入中…/,
       });
       await expect(
         pausedButton.or(checkInActionButton),
@@ -112,7 +112,7 @@ test.describe("Member dashboard and rewards", () => {
         timeout: 20_000,
       });
       await expect(
-        page.getByRole("button", { name: "立即簽到打卡獲取積分" }),
+        page.getByRole("button", { name: "立即簽到" }),
       ).toBeVisible({ timeout: 20_000 });
     } finally {
       if (previousStats) {
@@ -141,7 +141,7 @@ test.describe("Member dashboard and rewards", () => {
     }
 
     const checkInButton = page.getByRole("button", {
-      name: /立即簽到打卡獲取積分|簽到中|明日請繼續保持收藏習慣|載入簽到狀態/,
+      name: /立即簽到|簽到中|今日已簽到|載入中|簽到暫停/,
     });
 
     const buttonLabel = (await checkInButton.textContent())?.trim() ?? "";

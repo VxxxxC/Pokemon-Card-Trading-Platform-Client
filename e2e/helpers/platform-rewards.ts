@@ -1341,7 +1341,7 @@ export async function expectCheckInAffordanceVisible(page: Page): Promise<void> 
   await expect(heading).toBeVisible({ timeout: 20_000 });
   await expect(
     page.getByRole("button", {
-      name: /立即簽到打卡獲取積分|簽到中|明日請繼續保持收藏習慣|載入簽到狀態|簽到暫停/,
+      name: /立即簽到|簽到中|今日已簽到|載入中|簽到暫停/,
     }),
   ).toBeVisible({ timeout: 15_000 });
 }

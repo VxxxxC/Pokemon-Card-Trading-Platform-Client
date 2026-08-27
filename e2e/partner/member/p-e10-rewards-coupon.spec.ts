@@ -30,7 +30,7 @@ test.describe("P-E10 rewards and order payment UI", () => {
       timeout: 20_000,
     });
     await expect(
-      page.getByRole("link", { name: /限時搶券.*積分商城/ }),
+      page.getByRole("link", { name: "積分商城" }),
     ).toBeVisible({ timeout: 20_000 });
     await expect(
       page.getByRole("heading", { name: "🎟️ 我的全域平台折價券中心" }),

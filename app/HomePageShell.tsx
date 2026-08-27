@@ -51,10 +51,10 @@ export function HomePageShell({
       <PwaInstallPrompt />
       <AnnouncementModal announcements={activeAnnouncements} />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8">
+      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8 space-y-4">
         <HeroSearch showCheckIn={showCheckIn} />
         <TrustBanner />
-        {children}
+        <div className="pt-2 space-y-4">{children}</div>
       </main>
 
       <Footer />

@@ -19,7 +19,7 @@ test.describe("Home P0 smoke (M5)", () => {
       timeout: 15_000,
     });
     await expect(page.getByText("認證商家・鑑定託管保障")).toBeVisible();
-    await expect(page.getByText("最新 C2C 現貨上架")).toBeVisible();
+    await expect(page.getByText("最新會員現貨上架")).toBeVisible();
   });
 
   test("buyer home shows check-in affordance", async ({ page }, testInfo) => {

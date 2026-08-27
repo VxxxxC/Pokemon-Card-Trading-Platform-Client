@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Megaphone } from "lucide-react";
+import { Inbox, Megaphone } from "lucide-react";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
@@ -79,66 +79,60 @@ export function MobileHeader() {
         .reduce((acc, curr) => acc + curr.unreadCount, 0);
 
   if (!isMounted) {
-    return <div className="lg:hidden h-14 bg-[#1A1612]" />;
+    return (
+      <div className="lg:hidden h-12 border-b border-white/[0.08] bg-bg-page/90" />
+    );
   }
+
+  const iconButtonClass =
+    "relative flex size-8 items-center justify-center rounded-lg border border-white/10 text-text-secondary transition-colors hover:border-brand/30 hover:bg-brand/10 hover:text-brand active:scale-[0.98]";
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-50 w-full h-14 bg-[#1A1612] border-b border-[rgba(237,232,224,0.08)]">
-        <div className="h-full px-4 flex items-center justify-between">
+      <header className="lg:hidden sticky top-0 z-50 w-full h-12 border-b border-white/[0.08] bg-bg-page/90 backdrop-blur-sm">
+        <div className="h-full px-4 flex items-center justify-between gap-3">
           <Link
             href="/"
-            className="flex flex-row items-center font-sans font-semibold text-lg text-brand"
+            className="flex min-w-0 items-center gap-2.5 active:scale-[0.98]"
           >
-            <div className="max-w-20 mr-3">
-              <Image
-                src="/asset/logo.png"
-                alt="logo"
-                height={50}
-                width={50}
-                className="rounded-xl"
-              />
-            </div>
-            <p>HKCardVault</p>
+            <Image
+              src="/asset/logo.png"
+              alt="HKCardVault"
+              height={32}
+              width={32}
+              className="size-8 shrink-0 rounded-lg border border-white/10 object-cover"
+            />
+            <span className="truncate font-sans text-[15px] font-bold tracking-tight text-text-primary">
+              HKCardVault
+            </span>
           </Link>
 
-          <div className="flex items-center gap-1.5">
-            {/* 📢 官方公告按鈕 */}
+          <div className="flex shrink-0 items-center gap-1.5">
             <Link
               href="/announcements"
               title="官方公告"
-              className="relative p-2 text-[#d4c4b7] hover:text-brand transition-colors rounded-xl active:scale-[0.95]"
+              className={iconButtonClass}
             >
-              <Megaphone className="h-5 w-5" />
-              {hasActiveAnnouncements && (
-                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand" />
+              <Megaphone className="size-4" aria-hidden="true" />
+              {hasActiveAnnouncements ? (
+                <span className="absolute top-1.5 right-1.5 flex size-2">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-brand" />
                 </span>
-              )}
+              ) : null}
             </Link>
 
-            {/* 右側：Inbox 入口 */}
             <button
               type="button"
               onClick={() => {
                 setMobileView("LIST");
                 setIsChatOpen(true);
               }}
-              className="relative p-2 text-[#d4c4b7]"
+              className={iconButtonClass}
+              aria-label="開啟訊息收件匣"
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-                <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-              </svg>
-              {totalUnread > 0 && <ChatUnreadDot />}
+              <Inbox className="size-4" aria-hidden="true" />
+              {totalUnread > 0 ? <ChatUnreadDot /> : null}
             </button>
           </div>
         </div>

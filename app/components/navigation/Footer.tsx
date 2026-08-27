@@ -24,12 +24,10 @@ const footerSections = [
   },
 ];
 
-const paymentMethods = ["Visa", "Mastercard", "Stripe"];
-
 export function Footer() {
   return (
     <footer className="w-full bg-bg-shell border-t border-[rgba(237,232,224,0.08)] mt-auto">
-      <div className="max-w-[1200px] mx-auto px-4 lg:px-8 py-10">
+      <div className="max-w-[1100px] mx-auto px-4 lg:px-8 py-10">
         {/* Main footer grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
           {/* Brand column */}
@@ -51,18 +49,6 @@ export function Footer() {
             >
               🏪 申請商戶入駐
             </Link>
-
-            {/* Payment badges */}
-            <div className="flex items-center gap-2 mt-4">
-              {paymentMethods.map((method) => (
-                <span
-                  key={method}
-                  className="font-mono text-[10px] text-text-disabled border border-[rgba(237,232,224,0.08)] rounded-[4px] px-2 py-1"
-                >
-                  {method}
-                </span>
-              ))}
-            </div>
           </div>
 
           <div>
