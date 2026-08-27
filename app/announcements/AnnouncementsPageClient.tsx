@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Megaphone, Sparkles, Clock, CheckCircle2, History } from "lucide-react";
+import { Megaphone, Clock } from "lucide-react";
 
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { Footer } from "@/app/components/navigation/Footer";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
-import { Badge } from "@/components/ui/badge";
 import { getAnnouncementStatus } from "@/lib/announcements/status";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
 import { AnnouncementDetailLink } from "@/lib/announcements/announcement-detail-link";
+import { cn } from "@/lib/utils";
 
 type AnnouncementsPageClientProps = {
   announcements: PlatformAnnouncement[];
@@ -53,153 +53,144 @@ export function AnnouncementsPageClient({
       <MobileHeader />
       <PwaInlineBanner />
 
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 py-6 lg:py-10 pb-28 lg:pb-12 space-y-8">
-        <div className="relative overflow-hidden rounded-2xl border border-[rgba(237,232,224,0.12)] bg-[#26211C] p-6 sm:p-8 shadow-xl">
-          <div className="absolute -right-10 -bottom-10 h-48 w-48 rounded-full bg-brand/10 blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 font-mono text-xs text-brand">
-              <Megaphone className="h-3.5 w-3.5" />
-              <span>HKCardVault Official Bulletin</span>
-            </div>
-
-            <h1 className="font-sans text-2xl sm:text-3xl font-extrabold tracking-tight text-text-primary flex items-center gap-2.5">
-              📢 平台官方公告與最新活動
-            </h1>
-
-            <p className="font-sans text-xs sm:text-sm text-text-secondary leading-relaxed">
-              即時掌握 HKCardVault 最新活動折扣、代託管金庫服務升級、行情追蹤系統上線資訊與系統維護通知。
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[rgba(237,232,224,0.08)] pb-4">
-          <div className="flex items-center gap-2 p-1 rounded-xl bg-[#26211C] border border-[rgba(237,232,224,0.08)]">
-            <button
-              type="button"
-              onClick={() => setActiveTab("active")}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 font-sans text-xs font-bold transition-all ${
-                activeTab === "active"
-                  ? "bg-brand text-[#17130f] shadow-md"
-                  : "text-text-secondary hover:text-text-primary hover:bg-[#2e2925]"
-              }`}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>進行中活動</span>
-              <Badge
-                variant="outline"
-                className={`ml-1 font-mono text-[10px] ${
-                  activeTab === "active"
-                    ? "border-[#17130f]/30 bg-[#17130f]/10 text-[#17130f]"
-                    : "border-brand/30 text-brand"
-                }`}
-              >
-                {activeAnnouncements.length}
-              </Badge>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("past")}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 font-sans text-xs font-bold transition-all ${
-                activeTab === "past"
-                  ? "bg-brand text-[#17130f] shadow-md"
-                  : "text-text-secondary hover:text-text-primary hover:bg-[#2e2925]"
-              }`}
-            >
-              <History className="h-3.5 w-3.5" />
-              <span>過往公告歷史</span>
-              <Badge
-                variant="outline"
-                className={`ml-1 font-mono text-[10px] ${
-                  activeTab === "past"
-                    ? "border-[#17130f]/30 bg-[#17130f]/10 text-[#17130f]"
-                    : "border-text-disabled text-text-disabled"
-                }`}
-              >
-                {pastAnnouncements.length}
-              </Badge>
-            </button>
-          </div>
-
-          <p className="font-mono text-xs text-text-disabled">
-            顯示項目：{currentDisplayList.length} 則公告
+      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 mt-3 pb-28 lg:pb-10 space-y-4 animate-fadeIn">
+        <section
+          className="rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)] px-3.5 py-3 sm:px-4"
+          aria-labelledby="announcements-heading"
+        >
+          <h1
+            id="announcements-heading"
+            className="font-sans font-semibold text-[15px] sm:text-[16px] text-text-primary tracking-tight"
+          >
+            平台官方公告
+          </h1>
+          <p className="mt-1 font-mono text-[10px] text-text-secondary leading-relaxed">
+            活動折扣、服務升級與系統維護通知
           </p>
-        </div>
+        </section>
 
-        {currentDisplayList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[rgba(237,232,224,0.12)] bg-[#26211C] p-12 text-center">
-            <Megaphone className="h-12 w-12 text-text-disabled mb-3" />
-            <h3 className="font-sans text-base font-bold text-text-primary">
-              目前暫無{activeTab === "active" ? "進行中活動" : "過往公告記錄"}
-            </h3>
-            <p className="mt-1 text-xs text-text-secondary">
-              我們會第一時間於此公佈最新寶可夢卡牌交易特惠與平台升級通知。
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {currentDisplayList.map((item) => {
-              const status = getAnnouncementStatus(item, now);
-
-              return (
-                <div
-                  key={item.id}
-                  className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] transition-all duration-300 hover:border-brand/40 hover:bg-[#2e2925] hover:shadow-2xl"
+        <section
+          className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card overflow-hidden"
+          aria-label="公告列表"
+        >
+          <div className="px-3.5 py-3 sm:px-4 border-b border-[rgba(237,232,224,0.06)] space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("active")}
+                  className={cn(
+                    "font-mono text-[10px] px-2.5 py-1 rounded-md border transition-colors inline-flex items-center gap-1.5",
+                    activeTab === "active"
+                      ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold"
+                      : "text-text-secondary border-[rgba(237,232,224,0.08)] hover:text-text-primary hover:bg-bg-elevated/60",
+                  )}
                 >
-                  <div>
-                    <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#17130f]">
+                  進行中活動
+                  <span className="tabular-nums">{activeAnnouncements.length}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("past")}
+                  className={cn(
+                    "font-mono text-[10px] px-2.5 py-1 rounded-md border transition-colors inline-flex items-center gap-1.5",
+                    activeTab === "past"
+                      ? "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold"
+                      : "text-text-secondary border-[rgba(237,232,224,0.08)] hover:text-text-primary hover:bg-bg-elevated/60",
+                  )}
+                >
+                  過往公告
+                  <span className="tabular-nums">{pastAnnouncements.length}</span>
+                </button>
+              </div>
+              <p className="font-mono text-[10px] text-text-disabled shrink-0">
+                {currentDisplayList.length} 則公告
+              </p>
+            </div>
+          </div>
+
+          {currentDisplayList.length === 0 ? (
+            <div
+              className="px-4 py-10 sm:py-12 text-center"
+              role="status"
+            >
+              <div
+                className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-brand/20 bg-bg-page/60"
+                aria-hidden
+              >
+                <Megaphone className="h-5 w-5 text-brand/70" strokeWidth={1.5} />
+              </div>
+              <p className="font-sans font-semibold text-[13px] text-text-primary">
+                目前暫無{activeTab === "active" ? "進行中活動" : "過往公告"}
+              </p>
+              <p className="mt-1 max-w-xs mx-auto font-sans text-[12px] text-text-disabled leading-relaxed">
+                最新特惠與平台升級通知將於此公佈
+              </p>
+            </div>
+          ) : (
+            <div className="p-3.5 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {currentDisplayList.map((item) => {
+                const status = getAnnouncementStatus(item, now);
+
+                return (
+                  <article
+                    key={item.id}
+                    className="group flex flex-col overflow-hidden rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-page/40 hover:border-brand/25 transition-colors"
+                  >
+                    <div className="relative h-40 sm:h-44 w-full overflow-hidden bg-[#17130f]">
                       <Image
                         src={item.imageUrl}
                         alt={item.title}
                         fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                         unoptimized
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#26211C] via-transparent to-black/20" />
+                      <div className="absolute inset-0 bg-linear-to-t from-[#26211C]/90 via-transparent to-black/10" />
 
-                      <div className="absolute top-3 left-3">
-                        <Badge
-                          variant="outline"
-                          className={`border text-xs font-bold ${status.badgeClass}`}
+                      <div className="absolute top-2.5 left-2.5">
+                        <span
+                          className={cn(
+                            "inline-block rounded-md border px-2 py-0.5 font-mono text-[9px] font-bold",
+                            status.badgeClass,
+                          )}
                         >
                           {status.label}
-                        </Badge>
+                        </span>
                       </div>
 
-                      <div className="absolute bottom-3 left-3">
-                        <span className="flex items-center gap-1.5 rounded-full border border-[rgba(237,232,224,0.15)] bg-black/70 backdrop-blur-md px-3 py-1 font-mono text-[11px] font-semibold text-brand">
-                          <Clock className="h-3 w-3" />
+                      <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                        <span className="inline-flex items-center gap-1 rounded-md border border-[rgba(237,232,224,0.12)] bg-black/60 px-2 py-0.5 font-mono text-[10px] text-brand tabular-nums">
+                          <Clock className="h-3 w-3 shrink-0" aria-hidden />
                           {item.startDate} ~ {item.endDate}
                         </span>
                       </div>
                     </div>
 
-                    <div className="p-5 space-y-3">
-                      <h2 className="font-sans text-base sm:text-lg font-bold text-text-primary leading-snug group-hover:text-brand transition-colors">
+                    <div className="px-3.5 py-3 sm:px-4 flex-1 flex flex-col gap-2">
+                      <h2 className="font-sans text-[14px] font-semibold text-text-primary leading-snug group-hover:text-brand transition-colors">
                         {item.title}
                       </h2>
-
-                      <p className="font-sans text-xs sm:text-sm text-text-secondary leading-relaxed whitespace-pre-line">
+                      <p className="font-sans text-[12px] text-text-secondary leading-relaxed line-clamp-3 whitespace-pre-line">
                         {item.content}
                       </p>
+                      <div className="pt-1 flex items-center justify-between gap-3">
+                        <span className="font-mono text-[10px] text-text-disabled">
+                          官方消息
+                        </span>
+                        {item.linkUrl ? (
+                          <AnnouncementDetailLink
+                            linkUrl={item.linkUrl}
+                            className="h-8 px-3 text-[11px] rounded-lg shrink-0"
+                          />
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="px-5 pb-4 pt-0 flex items-center justify-between gap-3">
-                    <div className="py-1 font-mono text-[11px] text-text-disabled flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      <span>官方消息</span>
-                    </div>
-                    {item.linkUrl ? (
-                      <AnnouncementDetailLink linkUrl={item.linkUrl} />
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
       </main>
 
       <Footer />

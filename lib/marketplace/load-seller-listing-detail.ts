@@ -148,6 +148,7 @@ export async function loadMarketplaceSellerListingDetail(
     displayId: catalog.displayId,
     rarity: catalog.rarity,
     imageUrl: catalog.imageUrl,
+    catalogImageUrl: catalog.imageUrl,
     gradingCompany: listingRow.grading_company,
     gradingScore: listingRow.grading_score,
     price: Number(listingRow.price),

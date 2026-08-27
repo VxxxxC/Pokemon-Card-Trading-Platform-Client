@@ -42,12 +42,17 @@ export interface SKUGroup {
   items: CardInstance[];
 }
 
-function formatSkuCatalogLine(
+export function formatSkuCatalogLine(
   sku: Pick<SKUGroup, "setCode" | "cardNumber" | "cardNo">,
 ): string {
   return [sku.setCode?.trim(), sku.cardNumber?.trim() || sku.cardNo?.trim()]
     .filter(Boolean)
-    .join(" ");
+    .join(" · ");
+}
+
+function formatListingRef(id: string): string {
+  const compact = id.replace(/-/g, "");
+  return compact.length <= 8 ? `#${compact}` : `#${compact.slice(-8)}`;
 }
 
 // ─── Status Display Map ────────────────────────────────────────────────────────
@@ -63,7 +68,7 @@ const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> 
 // ─── Card Instance Row with Edit Dialog ────────────────────────────────────────
 
 interface CardInstanceRowProps {
-  sku: Pick<SKUGroup, "cardName" | "cardNo">;
+  sku: Pick<SKUGroup, "cardName" | "cardNo" | "setCode" | "cardNumber">;
   item: CardInstance;
   inventoryContext?: "merchant" | "member";
 }
@@ -85,49 +90,41 @@ function CardInstanceRow({
           if (canEdit) setIsOpen(true);
         }}
         disabled={!canEdit}
-        className={`w-full flex items-center justify-between py-2.5 px-3 bg-[#17130f]/60 border border-white/[0.03] rounded-xl transition-all select-none group/row text-left ${
+        className={`w-full flex items-center justify-between gap-2 py-2 px-2.5 bg-[#17130f]/60 border border-white/[0.03] rounded-lg transition-all select-none group/row text-left ${
           canEdit
             ? "hover:bg-[#1a1612] cursor-pointer"
             : "opacity-80 cursor-not-allowed"
         }`}
       >
-        {/* Left Info Column */}
-        <div className="flex flex-col gap-0.5 min-w-0 flex-1 items-start">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-mono text-[10px] font-bold text-text-disabled tracking-wider block">
-              #{item.id}
-            </span>
-            {item.offersCount && item.offersCount > 0 ? (
-              <CiBullhorn className="w-4 h-4 text-warning animate-pulse shrink-0" title="有買家叫價！" />
-            ) : null}
-          </div>
-
-          <span className="font-sans text-[14.5px] font-medium text-text-primary truncate w-full">
-            {sku.cardName}
+        <div className="flex flex-wrap items-center gap-1 min-w-0 flex-1">
+          <span className="font-mono text-[9px] text-text-disabled shrink-0">
+            {formatListingRef(item.id)}
           </span>
-
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0">
-              {item.grade}
-            </span>
-            <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${className}`}>
-              {label}
-            </span>
-          </div>
+          {item.offersCount && item.offersCount > 0 ? (
+            <CiBullhorn
+              className="w-3.5 h-3.5 text-warning animate-pulse shrink-0"
+              title="有買家叫價！"
+            />
+          ) : null}
+          <span className="font-mono text-[10px] font-medium text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded shrink-0">
+            {item.grade}
+          </span>
+          <span
+            className={`font-mono text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${className}`}
+          >
+            {label}
+          </span>
+          <span className="font-mono text-[9px] text-text-disabled shrink-0">
+            叫價 {item.offersCount || 0}
+          </span>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 shrink-0 pl-2">
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="font-mono font-semibold text-[15px] md:text-[16px] text-brand">
-              HK$ {item.askPrice.toLocaleString()}
-            </span>
-            <span className="flex items-center justify-center px-3 h-7 font-sans text-[12px] font-medium text-[#17130f] bg-brand rounded-lg hover:bg-brand-hover active:scale-[0.98] transition-all shrink-0">
-              {canEdit ? "編輯" : "盒組"}
-            </span>
-          </div>
-
-          <span className="font-mono text-[11px] text-text-secondary tracking-tight">
-            叫價次數：<span className={item.offersCount && item.offersCount > 0 ? "text-warning font-bold" : ""}>{item.offersCount || 0} 次</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-mono font-bold text-[13px] text-brand tabular-nums">
+            HK$ {item.askPrice.toLocaleString()}
+          </span>
+          <span className="flex items-center justify-center px-2.5 h-7 font-sans text-[11px] font-medium text-[#17130f] bg-brand rounded-md group-hover/row:bg-brand-hover transition-colors shrink-0">
+            {canEdit ? "編輯" : "盒組"}
           </span>
         </div>
       </button>
@@ -202,8 +199,8 @@ export function InventoryAccordion({
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <div className="bg-bg-card rounded-2xl border border-[rgba(237,232,224,0.08)] overflow-hidden">
-      {skuGroups.map((sku, i) => {
+    <div className="divide-y divide-[rgba(237,232,224,0.06)]">
+      {skuGroups.map((sku) => {
         const isOpen = openId === sku.id;
         const activeItems = sku.items.filter((item) => item.status === "active");
         const totalOffers = sku.items.reduce((acc, item) => acc + (item.offersCount || 0), 0);
@@ -211,20 +208,17 @@ export function InventoryAccordion({
         const catalogLine = formatSkuCatalogLine(sku);
 
         return (
-          <div
-            key={sku.id}
-            className={i > 0 ? "border-t border-[rgba(237,232,224,0.08)]" : ""}
-          >
+          <div key={sku.id}>
             <button
               type="button"
               onClick={() => setOpenId(isOpen ? null : sku.id)}
               aria-expanded={isOpen}
               aria-controls={`sku-panel-${sku.id}`}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors cursor-pointer ${
-                isOpen ? "bg-bg-elevated" : "hover:bg-bg-elevated"
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                isOpen ? "bg-bg-elevated/50" : "hover:bg-bg-elevated/40"
               }`}
             >
-              <div className="relative w-14 h-20 rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
+              <div className="relative w-11 h-[3.25rem] rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
                 <Image
                   src={
                     sku.imageUrl?.trim() ||
@@ -248,7 +242,7 @@ export function InventoryAccordion({
                     {sku.cardName}
                   </p>
                   <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">
-                    共計 {sku.items.length} 張現貨
+                    {sku.items.length} 張
                   </span>
                   { activeItems.length > 0 && (
                     <span className="font-mono text-[10px] px-1.5 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]">
@@ -274,6 +268,14 @@ export function InventoryAccordion({
                       </p>
                     ) : null}
                   </div>
+                ) : null}
+              </div>
+
+              <div className="text-right shrink-0 sm:hidden">
+                {sku.items.length > 0 ? (
+                  <p className="font-mono font-bold text-[12px] text-brand tabular-nums">
+                    HK$ {Math.min(...sku.items.map((it) => it.askPrice)).toLocaleString()}
+                  </p>
                 ) : null}
               </div>
 
@@ -322,7 +324,7 @@ export function InventoryAccordion({
               }`}
             >
               <div className="overflow-hidden">
-                <div className="bg-[rgba(212,165,116,0.02)] border-t border-[rgba(212,165,116,0.10)] px-4 pt-4 pb-4 space-y-3">
+                <div className="bg-[rgba(212,165,116,0.02)] border-t border-[rgba(212,165,116,0.08)] px-3 pt-2 pb-2 space-y-2">
 
                   <SkuItemsList sku={sku} inventoryContext={inventoryContext} />
 

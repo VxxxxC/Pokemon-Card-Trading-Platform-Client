@@ -65,6 +65,7 @@ export type MarketplaceSellerListingRow = {
   displayId: string | null;
   rarity: string | null;
   imageUrl: string;
+  catalogImageUrl: string | null;
   gradingCompany: string;
   gradingScore: string | null;
   price: number;
@@ -93,6 +94,7 @@ export function mapSellerListingRpcRow(
     displayId: row.display_id,
     rarity: row.rarity,
     imageUrl: row.image_url?.trim() || "/placeholder-card.png",
+    catalogImageUrl: row.image_url?.trim() || null,
     gradingCompany: row.grading_company,
     gradingScore: row.grading_score,
     price: Number(row.price),
@@ -146,6 +148,7 @@ export function toMarketplaceCardListing(
     marketReferenceSource: row.marketReferenceSource,
     priceVsMarketPct: row.priceVsMarketPct,
     image: options?.imageUrl ?? row.imageUrl,
+    catalogImageUrl: row.catalogImageUrl,
     seller: row.sellerName,
     sellerId: row.sellerId,
     sellerPersona: row.sellerPersona,

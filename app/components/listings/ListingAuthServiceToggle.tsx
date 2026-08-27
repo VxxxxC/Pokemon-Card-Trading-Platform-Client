@@ -11,6 +11,7 @@ import {
 import {
   LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
   buildAuthServiceTooltipBody,
+  buildListingAuthServiceInlineSummary,
 } from "@/lib/listings/auth-service-copy";
 import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 
@@ -26,20 +27,20 @@ export function ListingAuthServiceToggle({
   const authServiceFeeHkd = usePlatformAuthFee();
 
   return (
-    <div className="bg-[#17130f] border border-brand/20 rounded-xl p-4 space-y-2 animate-fadeIn">
+    <div className="bg-[#17130f] border border-brand/20 rounded-lg px-3 py-2 animate-fadeIn">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-sans font-bold text-[#d4c4b7] text-[12.5px]">
+          <span className="font-sans font-bold text-[#d4c4b7] text-[12px]">
             接受買家加購平台鑑定
           </span>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger
                 type="button"
-                className="shrink-0 text-[#8A8680] hover:text-brand"
+                className="shrink-0 text-[#8A8680] hover:text-brand focus:outline-none"
                 aria-label="平台鑑定託管說明"
               >
-                <CircleHelp className="size-4" />
+                <CircleHelp className="size-3.5" />
               </TooltipTrigger>
               <TooltipContent
                 side="top"
@@ -47,6 +48,9 @@ export function ListingAuthServiceToggle({
               >
                 <span className="font-bold block mb-1">
                   {LISTING_AUTH_SERVICE_TOOLTIP_TITLE}
+                </span>
+                <span className="block mb-2 text-text-secondary text-[11px]">
+                  {buildListingAuthServiceInlineSummary(authServiceFeeHkd)}
                 </span>
                 {buildAuthServiceTooltipBody(authServiceFeeHkd)}
               </TooltipContent>
@@ -59,10 +63,6 @@ export function ListingAuthServiceToggle({
           className="data-checked:bg-brand data-unchecked:bg-[#39342f] shrink-0"
         />
       </div>
-      <p className="text-[11px] text-text-secondary leading-relaxed">
-        僅裸卡適用。已評級卡（PSA／CGC 等）無需平台複鑑；開啟後買家可選加購（HK$
-        {authServiceFeeHkd} 由買家承擔）。
-      </p>
     </div>
   );
 }

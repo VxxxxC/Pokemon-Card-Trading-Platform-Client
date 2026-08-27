@@ -127,6 +127,7 @@ export async function getPublicProfilePageBootstrap(
     const [listingsResult, reviewsResult] = await Promise.all([
       searchMarketplaceSellerListings({
         sellerId: baseProfile.id,
+        sellerPersona: reviewPersona,
         page: 1,
         pageSize: 5,
         sortKey: "最新",

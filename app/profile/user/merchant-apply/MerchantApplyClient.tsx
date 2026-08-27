@@ -221,7 +221,7 @@ function StatusCard({
   children: ReactNode;
 }) {
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-2xl mx-auto w-full">
       <Card className="bg-bg-card border-[rgba(212,165,116,0.20)]">
         <CardHeader>
           <CardTitle className="font-sans text-[20px] text-text-primary">
@@ -233,7 +233,7 @@ function StatusCard({
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
-    </main>
+    </div>
   );
 }
 
@@ -413,16 +413,11 @@ export function MerchantApplyClient({
   );
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="font-sans font-bold text-[24px] text-text-primary">
-          商戶入駐申請（KYC）
-        </h1>
-        <p className="mt-2 font-sans text-[14px] text-text-secondary leading-relaxed">
-          請按步驟填寫香港公司資料及上傳證明文件。審批通過後，出款銀行帳戶將於
-          Stripe 開戶時設定。
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto w-full space-y-4 animate-fadeIn">
+      <p className="font-sans text-[13px] text-text-secondary leading-relaxed">
+        請按步驟填寫香港公司資料及上傳證明文件。審批通過後，出款銀行帳戶將於 Stripe
+        開戶時設定。
+      </p>
 
       {isResubmission && (
         <div className="mb-6 rounded-xl border border-warning/30 bg-[rgba(239,68,68,0.08)] p-4">
@@ -632,6 +627,6 @@ export function MerchantApplyClient({
           </Card>
         </div>
       </form>
-    </main>
+    </div>
   );
 }

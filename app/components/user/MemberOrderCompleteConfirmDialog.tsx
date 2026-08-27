@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,7 +137,14 @@ export function MemberOrderCompleteConfirmDialog({
         disabled={disabled || isActionLoading}
         className={triggerClassName}
       >
-        {isActionLoading ? "處理中…" : triggerLabel}
+        {isActionLoading ? (
+          "處理中…"
+        ) : (
+          <>
+            <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
+            {triggerLabel}
+          </>
+        )}
       </AlertDialogTrigger>
 
       <AlertDialogContent className="max-w-md rounded-2xl border border-success/25 bg-[#26211C] p-6 text-[#eae1da]">

@@ -18,4 +18,10 @@ export const HOME_HORIZONTAL_CARD_CLASS =
 export const HOME_HORIZONTAL_CARD_IMAGE_CLASS =
   "relative w-full aspect-5/7 overflow-hidden bg-bg-elevated";
 
+export const HOME_GRID_CARD_CLASS =
+  "rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)] flex flex-col h-full group hover:border-brand/30 hover:shadow-[0_8px_24px_rgba(0,0,0,0.55)] transition-all";
+
+export const HOME_GRID_CARD_SIZES =
+  "(max-width: 640px) 33vw, (max-width: 1280px) 25vw, 20vw";
+
 export const HOME_HORIZONTAL_CARD_SIZES = "(max-width: 768px) 144px, 192px";

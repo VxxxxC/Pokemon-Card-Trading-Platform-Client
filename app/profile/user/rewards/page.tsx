@@ -11,13 +11,9 @@ import type {
   UserCouponView,
 } from "@/lib/rewards/mapUserRewardCoupon";
 
-import { TopNav } from "@/app/components/navigation/TopNav";
-import { MobileHeader } from "@/app/components/navigation/MobileHeader";
-import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
-// 🟢 核心對接：引入全域統一的奢華黑金分頁組件
 import { Pagination } from "@/app/components/ui/Pagination";
 
 interface PlatformMission {
@@ -160,44 +156,15 @@ export default function MemberRewardsPage() {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-bg-page flex flex-col text-[#eae1da]">
-      {/* 越獄後自主承載頂部全域看盤外框 */}
-      <TopNav />
-      <MobileHeader />
-
-      {/* 主線內頁跑道 */}
-      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 lg:px-8 pt-4 pb-28 lg:pb-12 space-y-6 animate-fadeIn">
-        {/* 精緻航線麵包屑引流回總覽 */}
-        <div className="font-mono text-[11px] text-[#d4c4b7] flex items-center gap-1.5 select-none">
-          <Link
-            href="/profile/user"
-            className="hover:text-brand transition-colors"
-          >
-            👤 我的帳號總覽
-          </Link>
-          <span className="text-text-disabled">/</span>
-          <span className="text-text-disabled uppercase">獎勵與任務中心</span>
-        </div>
-
-        {/* Page Header Title */}
-        <div>
-          <h2 className="font-sans font-black text-[22px] lg:text-[26px] text-[#eae1da] tracking-tight">
-            會員獎勵與任務中心
-          </h2>
-          <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-            LOYALTY BONUS & TOKENIZED REWARD HUB
-          </p>
-        </div>
-
-        {/* 頂部常駐：每日簽到打卡組件 */}
-        <CheckInCard />
+    <div className="space-y-4 animate-fadeIn text-text-primary">
+      <CheckInCard />
 
         <Link
           href="/profile/user/campaigns"
@@ -403,10 +370,6 @@ export default function MemberRewardsPage() {
             )}
           </div>
         </section>
-      </main>
-
-      {/* 底部全域手機導航 */}
-      <BottomNav />
       <RewardNotificationHost />
     </div>
   );

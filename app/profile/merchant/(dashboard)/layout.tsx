@@ -12,10 +12,10 @@ export const metadata: Metadata = {
 };
 
 const MERCHANT_TABS: TabItem[] = [
-  { href: "/profile/merchant", label: "總覽", icon: "📊" },
-  { href: "/profile/merchant/inventory", label: "商品管理", icon: "🗂️" },
-  { href: "/profile/merchant/trading", label: "交易管理", icon: "🤝" },
-  { href: "/profile/merchant/finance", label: "資金金流", icon: "💰" },
+  { href: "/profile/merchant", label: "總覽", iconKey: "merchant-overview" },
+  { href: "/profile/merchant/inventory", label: "商品管理", iconKey: "inventory" },
+  { href: "/profile/merchant/trading", label: "交易管理", iconKey: "trading" },
+  { href: "/profile/merchant/finance", label: "資金金流", iconKey: "finance" },
 ];
 
 export default function MerchantProfileLayout({
@@ -28,7 +28,7 @@ export default function MerchantProfileLayout({
       <TopNav />
       <MobileHeader />
 
-      <main className="mt-5 flex-1 max-w-300 mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
+      <main className="mt-5 flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-10">
         {/* 商戶後台分流導航列（輕量外殼 — Hero 已下放至總覽頁承載） */}
         <ProfileTabNav tabs={MERCHANT_TABS} />
 

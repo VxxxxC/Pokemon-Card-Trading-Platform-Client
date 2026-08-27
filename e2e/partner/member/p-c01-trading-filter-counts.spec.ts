@@ -24,7 +24,7 @@ function parseParenCount(label: string): number {
 }
 
 test.describe("P-C01 member trading filter chip counts", () => {
-  test("待處理 chip count matches 交易管理 heading after tab click", async ({
+  test("待處理 chip count stays stable after tab click", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "buyer", "Buyer-only trading chips");
@@ -45,20 +45,13 @@ test.describe("P-C01 member trading filter chip counts", () => {
     await selectTradingStatusTab(page, "待處理");
     await waitForTradingListSettled(page);
 
-    const heading = page.locator("#user-trading-heading");
+    await expect(page.locator("#user-trading-heading")).toHaveText("交易管理");
     await expect
       .poll(
-        async () => {
-          const liveChip = parseParenCount(
-            (await pendingChip.innerText()).trim(),
-          );
-          const liveHeading = parseParenCount(
-            (await heading.innerText()).trim(),
-          );
-          return liveHeading === liveChip ? liveHeading : -1;
-        },
+        async () =>
+          parseParenCount((await pendingChip.innerText()).trim()),
         { timeout: 20_000 },
       )
-      .not.toBe(-1);
+      .toBe(chipCount);
   });
 });

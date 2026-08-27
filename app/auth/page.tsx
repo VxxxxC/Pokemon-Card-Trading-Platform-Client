@@ -134,7 +134,7 @@ export default async function AuthPage({
   }
 
   return (
-    <div className="min-h-dvh bg-bg-page flex">
+    <div className="min-h-dvh bg-bg-page flex flex-col lg:flex-row">
       {/* ── Left panel — Brand + floating relics (desktop only) ── */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden flex-col justify-between p-12">
         {/* Ambient radial glow */}
@@ -247,7 +247,7 @@ export default async function AuthPage({
       </div>
 
       {/* ── Right panel — Auth form ── */}
-      <div className="w-full lg:w-120 lg:border-l lg:border-[rgba(237,232,224,0.08)] flex flex-col items-center px-6 py-20 lg:py-24 lg:px-12 relative">
+      <div className="w-full lg:w-120 lg:flex-none flex-1 flex flex-col min-h-dvh lg:min-h-0 lg:border-l lg:border-[rgba(237,232,224,0.08)] relative">
         {/* Mobile ambient glow */}
         <div
           className="lg:hidden absolute inset-0 pointer-events-none"
@@ -258,7 +258,7 @@ export default async function AuthPage({
         />
 
         {/* Mobile floating relics — behind the form, low-opacity */}
-        <div className="lg:hidden absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div className="lg:hidden absolute inset-0 overflow-hidden pointer-events-none opacity-[0.12]">
           <div
             className="absolute"
             style={{ right: "-5%", top: "5%", transform: "rotate(12deg)" }}
@@ -277,18 +277,17 @@ export default async function AuthPage({
           </div>
         </div>
 
-        {/* Mobile logo */}
-        <Link
-          href="/"
-          className="lg:hidden mb-10 self-start relative z-10 inline-block"
-        >
-          <span className="font-sans font-bold text-[20px] text-text-primary tracking-tight hover:text-brand transition-colors">
-            HKCardVault <span className="text-brand">JP</span>
-          </span>
-        </Link>
+        <div className="relative z-10 flex flex-col flex-1 w-full max-w-100 mx-auto px-5 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-16 lg:justify-center">
+          {/* Mobile logo */}
+          <Link
+            href="/"
+            className="lg:hidden mb-5 self-start inline-block"
+          >
+            <span className="font-sans font-bold text-[18px] text-text-primary tracking-tight hover:text-brand transition-colors">
+              HKCardVault <span className="text-brand">JP</span>
+            </span>
+          </Link>
 
-        {/* Form card */}
-        <div className="w-full max-w-100 relative z-10">
           <Suspense fallback={null}>
             <AuthForm />
           </Suspense>

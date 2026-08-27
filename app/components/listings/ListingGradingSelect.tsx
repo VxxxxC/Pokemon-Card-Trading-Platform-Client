@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_GRADING_OPTION_ID,
   GRADING_OPTION_GROUPS,
+  getGradingOption,
   getGradingOptionsByGroup,
 } from "@/lib/grading/options";
 
@@ -26,8 +27,9 @@ type ListingGradingSelectProps = {
 
 const triggerClassName: Record<ListingGradingSelectVariant, string> = {
   create:
-    "w-full h-10 bg-[#17130f] border border-white/5 rounded-lg px-2 text-[#eae1da] focus:ring-0 text-[12px]",
-  edit: "mt-1 w-full h-10 border-0 bg-transparent px-0 text-[13px] font-bold text-text-primary shadow-none focus:ring-0",
+    "w-full h-9 bg-[#17130f] border border-white/[0.06] rounded-lg px-2.5 text-[#eae1da] focus:ring-0 text-[12px] focus-visible:border-brand/40",
+  edit:
+    "w-full h-9 bg-[#17130f] border border-white/[0.06] rounded-lg px-2.5 text-[13px] font-bold text-text-primary shadow-none focus:ring-0 focus-visible:border-brand/40",
 };
 
 export function ListingGradingSelect({
@@ -42,7 +44,9 @@ export function ListingGradingSelect({
       onValueChange={(next) => onValueChange(next ?? DEFAULT_GRADING_OPTION_ID)}
     >
       <SelectTrigger id={id} className={triggerClassName[variant]}>
-        <SelectValue placeholder="選擇鑑定或裸卡品相" />
+        <SelectValue placeholder="選擇鑑定或裸卡品相">
+          {value ? getGradingOption(value).label : null}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent className="bg-[#26211C] border border-white/10 text-[#eae1da] max-h-72">
         {GRADING_OPTION_GROUPS.map((group) => (

@@ -167,6 +167,66 @@ function merchantBuyerOrderMatchesSearch(
   return haystack.includes(query);
 }
 
+function merchantBuyerOrderNeedsAction(order: UserTradingOrder): boolean {
+  return Boolean(order.pendingPayment || order.canCompleteMerchantPurchase);
+}
+
+function computeMerchantBuyerFilterDeltas(
+  orders: UserTradingOrder[],
+  tabStatus: GetUserTradingOrdersInput["tabStatus"],
+  searchQuery?: string,
+): {
+  status: TradingOrdersFilterCounts["status"];
+  persona: Pick<TradingOrdersFilterCounts["persona"], "all" | "buy">;
+  needsAction: number;
+} {
+  const searchMatched = orders.filter((order) =>
+    merchantBuyerOrderMatchesSearch(order, searchQuery),
+  );
+
+  const status = {
+    all: searchMatched.length,
+    pending: searchMatched.filter((order) => order.status === "pending").length,
+    completed: searchMatched.filter((order) => order.status === "completed")
+      .length,
+    cancelled: searchMatched.filter((order) => order.status === "cancelled")
+      .length,
+  };
+
+  const tabMatched = searchMatched.filter((order) =>
+    merchantBuyerOrderMatchesTab(order, tabStatus),
+  );
+
+  return {
+    status,
+    persona: {
+      all: tabMatched.length,
+      buy: tabMatched.length,
+    },
+    needsAction: searchMatched.filter(merchantBuyerOrderNeedsAction).length,
+  };
+}
+
+function mergeTradingFilterCounts(
+  base: TradingOrdersFilterCounts,
+  merchantDelta: ReturnType<typeof computeMerchantBuyerFilterDeltas>,
+): TradingOrdersFilterCounts {
+  return {
+    persona: {
+      all: base.persona.all + merchantDelta.persona.all,
+      buy: base.persona.buy + merchantDelta.persona.buy,
+      sell: base.persona.sell,
+    },
+    status: {
+      all: base.status.all + merchantDelta.status.all,
+      pending: base.status.pending + merchantDelta.status.pending,
+      completed: base.status.completed + merchantDelta.status.completed,
+      cancelled: base.status.cancelled + merchantDelta.status.cancelled,
+    },
+    needsAction: base.needsAction + merchantDelta.needsAction,
+  };
+}
+
 async function loadReviewedMerchantOrderIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   orderIds: string[],
@@ -815,22 +875,17 @@ export async function searchUserTradingOrders(
     );
 
     const merged = paginateMergedOrders(combined, page, pageSize);
-    const merchantBuyCount = merchantOrdersWithReviewState.filter(
-      (order) => order.persona === "buy",
-    ).length;
+    const merchantDelta = computeMerchantBuyerFilterDeltas(
+      merchantOrdersWithReviewState,
+      input.tabStatus,
+      input.searchQuery,
+    );
 
     return {
       success: true,
       data: merged.data,
       meta: merged.meta,
-      filters: {
-        ...filters,
-        persona: {
-          all: filters.persona.all + merchantBuyCount,
-          buy: filters.persona.buy + merchantBuyCount,
-          sell: filters.persona.sell,
-        },
-      },
+      filters: mergeTradingFilterCounts(filters, merchantDelta),
     };
   } catch (error) {
     console.error("[searchUserTradingOrders]", error);

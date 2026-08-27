@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Zap } from "lucide-react";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import { useUIStore } from "@/app/store/useUIStore";
 import { mapMarketplaceListingToExecutionPayload } from "@/lib/marketplace/map-listing-to-execution";
@@ -119,9 +120,16 @@ function BuyButtonView({
             prefetchMarketplaceListingDetail(listingId);
           }
         }}
-        className={`h-9 px-2 sm:px-4 bg-[#d4a574] text-[#1A1612] font-sans font-bold text-[11px] sm:text-[12px] tracking-wide whitespace-nowrap truncate rounded-xl hover:bg-[#e8b896] active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${className}`}
+        className={`h-8 px-2 bg-brand text-[#1A1612] font-sans font-bold text-[10px] tracking-wide whitespace-nowrap truncate rounded-lg hover:bg-[#e8b896] active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer ${className}`}
       >
-        {label || "⚡ 立即購買"}
+        {label ? (
+          label
+        ) : (
+          <>
+            <Zap className="size-3 shrink-0" strokeWidth={2.25} />
+            立即購買
+          </>
+        )}
       </button>
 
       <BuyNowConfirmDialog

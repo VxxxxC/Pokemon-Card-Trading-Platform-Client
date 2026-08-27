@@ -3,15 +3,20 @@
 import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Inbox, Megaphone } from "lucide-react";
+import { HeaderBreadcrumbNav } from "@/app/components/navigation/HeaderBreadcrumbNav";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
 import { ChatUnreadDot } from "@/app/components/chat/ChatUnreadDot";
 import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
 import { useHasActiveAnnouncements } from "@/lib/announcements/use-has-active-announcements";
+import { getHeaderBreadcrumb } from "@/lib/navigation/header-breadcrumb";
 
 export function MobileHeader() {
+  const pathname = usePathname();
+  const breadcrumb = getHeaderBreadcrumb(pathname);
   const isMounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -91,21 +96,25 @@ export function MobileHeader() {
     <>
       <header className="lg:hidden sticky top-0 z-50 w-full h-12 border-b border-white/[0.08] bg-bg-page/90 backdrop-blur-sm">
         <div className="h-full px-4 flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-2.5 active:scale-[0.98]"
-          >
-            <Image
-              src="/asset/logo.png"
-              alt="HKCardVault"
-              height={32}
-              width={32}
-              className="size-8 shrink-0 rounded-lg border border-white/10 object-cover"
-            />
-            <span className="truncate font-sans text-[15px] font-bold tracking-tight text-text-primary">
-              HKCardVault
-            </span>
-          </Link>
+          {breadcrumb ? (
+            <HeaderBreadcrumbNav breadcrumb={breadcrumb} compact />
+          ) : (
+            <Link
+              href="/"
+              className="flex min-w-0 items-center gap-2.5 active:scale-[0.98]"
+            >
+              <Image
+                src="/asset/logo.png"
+                alt="CardVaultHK"
+                height={32}
+                width={32}
+                className="size-8 shrink-0 rounded-lg border border-white/10 object-cover"
+              />
+              <span className="truncate font-sans text-[15px] font-bold tracking-tight text-text-primary">
+                CardVaultHK
+              </span>
+            </Link>
+          )}
 
           <div className="flex shrink-0 items-center gap-1.5">
             <Link

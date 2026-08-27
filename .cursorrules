@@ -23,6 +23,7 @@ You are an expert full-stack developer assisting in building a trading platform 
 
 4. INTENT CIRCUIT BREAKER (商業意圖熔斷機制 - 防走偏防煞車):
    - Pure code / syntax / refactoring: 100% autonomous, silent execution.
+   - **UI polish / styling tasks**: Follow **UI POLISH PROTOCOL** — no new server actions, RPCs, or data-fetch refactors without approval.
    - Business logic / Schema / Payments: If a prompt involves Database Schema mutations, payment/token/quota deduction rules, or ambiguous business requirements with >1 valid interpretation, STOP BEFORE WRITING CODE.
    - Output a single-line intent confirmation prompt:
      `❓ [INTENT CHECK] <One sentence asking for confirmation on the exact business rule>`
@@ -59,6 +60,7 @@ You are an expert full-stack developer assisting in building a trading platform 
    - **Stable reference** lives in `docs/dev/api.md` and `docs/dev/database.md`; follow-up docs are integration handoffs until the UI is wired, then mark ✅ in the queue.
    - **Backend dev:** Place logic in `app/actions/`, `lib/` — avoid editing `components/` unless wiring a minimal stub for data-flow verification.
    - **Frontend dev:** Wire UI per `frontend.md`; do not change server actions without backend sync.
+   - **UI polish:** Style per DESIGN.md / UI POLISH PROTOCOL; do not change `app/actions/`, `lib/` business logic, or data contracts.
 
 7. PACKAGE MANAGER — BUN ONLY:
    This project uses **Bun** exclusively. **Never** use npm, npx, yarn, pnpm, or pnpm dlx in commands, docs, scripts, or terminal instructions for this repo.
@@ -115,6 +117,47 @@ When adding or wiring any route under `app/` that reads Supabase:
 
 * Pin Bun via `packageManager` in `package.json` / `bun-version-file` in `.github/workflows/ci.yml` — never `bun-version: latest`.
 * Run before push on backend-heavy PRs: `bunx tsc --noEmit`, `bun run lint`, `bun run build:ci`.
+
+# =====================================================================
+
+# UI POLISH PROTOCOL (純 UI 優化守則 — 禁止順手改 logic)
+
+# =====================================================================
+
+When the task is **UI optimization, styling, layout, or DESIGN.md alignment** (e.g.「跟番設計系統」「UI 優化」「改樣式」「hover／排版」), treat it as **presentation-only**. Do **not** expand backend contracts or refactor data/business logic unless the user **explicitly** asks to wire data, add APIs, or fix a bug.
+
+### Activation signals (任一即適用本守則)
+- User mentions UI / styling / design system / Stitch / DESIGN.md / 視覺 / 排版 / 樣式
+- Changes are limited to how existing data **looks**, not what is fetched or mutated
+
+### FORBIDDEN without explicit user approval (STOP → `❓ [INTENT CHECK]`)
+| Area | Examples |
+|------|----------|
+| `app/actions/` | New or changed server actions, RPC args, return shapes |
+| `app/api/` | Routes, webhooks, cron handlers |
+| `lib/` | Payments, escrow, auth rules, DB clients, business helpers |
+| `supabase/migrations/` | Schema, RPC, RLS |
+| Client **data layer** | New `useEffect` fetch loops, debounce refactors, splitting/merging API calls, new state for server-backed counts/filters |
+| Mutations | Changing `onClick` handlers, `runMutation` flows, form submit contracts, validation rules |
+| Architecture | Add/remove `"use server"` / `"use client"`, split files for non-visual reasons |
+
+### ALLOWED (safe UI-only scope)
+- `className`, Tailwind tokens, spacing, typography, colors, borders, shadows, hover/focus states
+- Layout: flex/grid, reorder **visual** blocks without changing event handlers or data flow
+- `components/ui/` and presentational subcomponents (icons, badges, empty-state **copy/layout**)
+- **Client presentation state only**: modal open/close, accordion expand, local highlight — no new server calls
+- Map **existing** props/state to UI (labels, badges, table columns) — same fields, different display
+- `app/**/page.tsx` **only** if change is purely layout/wrapper around unchanged `children` — **no** new `createClient()` / actions
+
+### When display needs data not already available
+1. Do **not** add server actions or RPCs silently.
+2. Output: `❓ [INTENT CHECK] UI 需要 <X>，現有 props/action 無此欄位；要 backend 加 contract 還是先用 placeholder？`
+3. If user says UI-only: use existing fields, omit count, or static placeholder — **never** invent backend.
+
+### Diff discipline
+- Prefer **one screen / route** per task; minimize files outside `components/` and target `*Client.tsx` / route UI.
+- If a styling task touches `app/actions/` or `lib/`, **revert logic hunks** — UI diff should be className/JSX structure only.
+- Mirrors **BACKEND-DRIVEN UI PROTOCOL**: backend wire-up = addition-only; UI polish = **no backend / no data-contract expansion**.
 
 # =====================================================================
 

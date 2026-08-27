@@ -4,7 +4,11 @@ import { useState, useCallback, useTransition } from 'react';
 import { logout } from '@/app/actions/auth';
 import { useUIStore } from '@/app/store/useUIStore';
 
-export function LogoutModal() {
+type LogoutModalProps = {
+  variant?: "card" | "list";
+};
+
+export function LogoutModal({ variant = "card" }: LogoutModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const setUserAuthRole = useUIStore((state) => state.setUserAuthRole);
@@ -26,16 +30,30 @@ export function LogoutModal() {
       <button
         type="button"
         onClick={openModal}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-elevated hover:bg-bg-hover transition-colors active:scale-[0.99] min-h-11 text-left"
+        className={
+          variant === "list"
+            ? "w-full flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4 text-left hover:bg-bg-hover/40 transition-colors min-h-11"
+            : "w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-elevated hover:bg-bg-hover transition-colors active:scale-[0.99] min-h-11 text-left"
+        }
         aria-haspopup="dialog"
       >
         <div className="flex items-center gap-3">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="1.5" aria-hidden="true">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          <span className="font-sans text-[14px] font-medium text-warning">登出</span>
+          {variant === "card" && (
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#ef4444" strokeWidth="1.5" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          )}
+          <span
+            className={
+              variant === "list"
+                ? "font-sans text-[13px] font-semibold text-warning"
+                : "font-sans text-[14px] font-medium text-warning"
+            }
+          >
+            登出
+          </span>
         </div>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#50453b" strokeWidth="1.5" aria-hidden="true">
           <polyline points="9 18 15 12 9 6" />

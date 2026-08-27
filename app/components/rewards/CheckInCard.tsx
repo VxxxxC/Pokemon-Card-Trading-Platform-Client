@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
   executeDailyCheckIn,
@@ -312,45 +311,34 @@ export function CheckInCard({
         })}
       </div>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={
-            hasCheckedIn ||
-            isSubmitting ||
-            isContentLoading ||
-            programPaused
-          }
-          onClick={() => void handleCheckInExecute()}
-          className={`flex-1 min-w-0 h-9 rounded-lg font-sans font-semibold text-[12px] transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] cursor-pointer disabled:cursor-not-allowed ${
-            hasCheckedIn || isSubmitting || isContentLoading || programPaused
-              ? "bg-bg-page border border-white/[0.06] text-text-disabled"
-              : "bg-brand text-[#17130f] hover:bg-brand-hover"
-          }`}
-        >
-          {isSubmitting ? (
-            <span className="size-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-          ) : null}
-          {programPaused
-            ? "簽到暫停"
-            : isContentLoading
-              ? "載入中…"
-              : hasCheckedIn
-                ? "今日已簽到"
-                : isSubmitting
-                  ? "簽到中…"
-                  : "立即簽到"}
-        </button>
-
-        <Link
-          href="/profile/user/campaigns"
-          className={`h-9 shrink-0 rounded-lg border border-brand/30 bg-brand/10 px-3 font-sans font-semibold text-[11px] text-brand transition-colors hover:bg-brand/15 active:scale-[0.99] inline-flex items-center justify-center ${
-            isContentLoading ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          積分商城
-        </Link>
-      </div>
+      <button
+        type="button"
+        disabled={
+          hasCheckedIn ||
+          isSubmitting ||
+          isContentLoading ||
+          programPaused
+        }
+        onClick={() => void handleCheckInExecute()}
+        className={`w-full h-9 rounded-lg font-sans font-semibold text-[12px] transition-all flex items-center justify-center gap-1.5 active:scale-[0.99] cursor-pointer disabled:cursor-not-allowed ${
+          hasCheckedIn || isSubmitting || isContentLoading || programPaused
+            ? "bg-bg-page border border-white/[0.06] text-text-disabled"
+            : "bg-brand text-[#17130f] hover:bg-brand-hover"
+        }`}
+      >
+        {isSubmitting ? (
+          <span className="size-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        ) : null}
+        {programPaused
+          ? "簽到暫停"
+          : isContentLoading
+            ? "載入中…"
+            : hasCheckedIn
+              ? "今日已簽到"
+              : isSubmitting
+                ? "簽到中…"
+                : "立即簽到"}
+      </button>
     </div>
   );
 }

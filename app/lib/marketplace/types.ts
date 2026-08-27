@@ -132,6 +132,7 @@ export type MarketplaceProductListingRow = {
   sellerAvatarUrl: string;
   sellerRating: number;
   sellerTotalTrades: number;
+  sellerPublicReviewCount: number;
   sellerPersona: Database["public"]["Enums"]["seller_persona_type"];
   useAuthentication: boolean;
   createdAt: string;
@@ -255,6 +256,7 @@ export type MarketplaceSellerListingRow = {
   displayId: string | null;
   rarity: string | null;
   imageUrl: string;
+  catalogImageUrl: string | null;
   gradingCompany: string;
   gradingScore: string | null;
   price: number;
@@ -270,6 +272,7 @@ export type MarketplaceSellerListingRow = {
 
 export type MarketplaceSellerListingsInput = {
   sellerId: string;
+  sellerPersona?: Database["public"]["Enums"]["seller_persona_type"];
   query?: string;
   rarities?: string[];
   gradeFilters?: GradeFilter[];

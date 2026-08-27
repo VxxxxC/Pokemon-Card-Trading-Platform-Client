@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { WishlistEntry } from "@/app/lib/wishlist/types";
 import { Pagination } from "@/app/components/ui/Pagination";
 import {
@@ -23,6 +24,10 @@ import {
 import { gradingOptionIdFromWishlistRow } from "@/lib/wishlist/grading";
 
 const ITEMS_PER_PAGE = 5;
+
+const MOBILE_WISHLIST_GRID =
+  "grid grid-cols-[minmax(0,1.5fr)_auto_auto_minmax(52px,0.75fr)] gap-x-1.5 items-center";
+
 
 const RARITY_STYLE: Record<string, string> = {
   SAR: "text-brand border-[#8c7355]/40 bg-[rgba(212,165,116,0.08)]",
@@ -119,9 +124,11 @@ function WishlistThumbnail({
 function TargetPriceCell({
   entry,
   onSave,
+  align = "right",
 }: {
   entry: WishlistEntry;
   onSave?: (entry: WishlistEntry, targetPrice: number | null) => Promise<boolean>;
+  align?: "left" | "right";
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -169,7 +176,9 @@ function TargetPriceCell({
 
   if (isEditing) {
     return (
-      <div className="flex items-center justify-end gap-1">
+      <div
+        className={`flex items-center gap-1 ${align === "left" ? "justify-start" : "justify-end"}`}
+      >
         <input
           type="text"
           inputMode="decimal"
@@ -197,7 +206,9 @@ function TargetPriceCell({
   }
 
   return (
-    <div className="flex items-center justify-end gap-1.5">
+    <div
+      className={`flex items-center gap-1.5 ${align === "left" ? "justify-start" : "justify-end"}`}
+    >
       <p className="font-mono text-[13px] text-text-secondary">
         {formatHkd(entry.targetPrice)}
       </p>
@@ -257,13 +268,11 @@ function GradeCell({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40 hover:border-brand/40 hover:text-brand transition-colors cursor-pointer focus:outline-none"
+        className="inline-flex items-center gap-1 max-w-full font-mono text-[10px] text-text-secondary bg-bg-page/80 border border-[rgba(237,232,224,0.12)] hover:border-brand/35 hover:text-brand px-1.5 py-0.5 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/40"
         aria-label={`更改 ${entry.name} 追蹤規格`}
       >
-        {entry.gradeLabel}
-        <span className="text-[9px] opacity-70" aria-hidden="true">
-          ▾
-        </span>
+        <span className="truncate">{entry.gradeLabel}</span>
+        <ChevronDown className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="center"
@@ -361,7 +370,183 @@ export function WishlistTable({
 
   return (
     <div>
-      <div className="overflow-x-auto -mx-4 lg:mx-0">
+      <div className="lg:hidden">
+        <div
+          className={`${MOBILE_WISHLIST_GRID} pb-2 border-b border-[rgba(237,232,224,0.06)]`}
+        >
+          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider">
+            商品資料
+          </span>
+          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-center">
+            規格
+          </span>
+          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-center">
+            稀有度
+          </span>
+          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-right">
+            參考市價
+          </span>
+        </div>
+        <div className="divide-y divide-[rgba(237,232,224,0.06)]">
+        {paginatedWishlist.map((entry) => {
+          const rowKey = wishlistRowKey(entry);
+          const resolved = resolveWishlistDisplayValue(entry);
+          const displayPrice = resolved.value;
+          const trackedPrice = entry.trackedPrice;
+          const hasTrend = hasWishlistTrendData(
+            entry.trend30d,
+            entry.chartPoints,
+          );
+          const sparklinePoints = getSparklinePoints(entry.chartPoints, 60, 24);
+          const sparklineDirection =
+            entry.trend30d != null && entry.trend30d >= 0 ? "up" : "down";
+          const diffFromTracked =
+            displayPrice != null && trackedPrice != null
+              ? displayPrice - trackedPrice
+              : null;
+          const diffSign = diffFromTracked != null && diffFromTracked >= 0 ? "+" : "";
+          const trendSign =
+            entry.trend30d != null && entry.trend30d >= 0 ? "▲" : "▼";
+          const rarityKey = (entry.rarity ?? "SR").toUpperCase();
+          const productHref = `/marketplace/product/${entry.productId}`;
+          const isSealedEntry =
+            (entry.catalogType && isSealedCatalogType(entry.catalogType)) ||
+            isSealedProductGrade(entry.gradingCompany, entry.gradingScore);
+          const subtitleLabel = isSealedEntry
+            ? entry.cardCode?.trim() || entry.displayId?.trim() || "盒組"
+            : entry.cardCode || entry.displayId || entry.productId;
+
+          return (
+            <div key={rowKey} className="py-2.5">
+              <div className={MOBILE_WISHLIST_GRID}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Link
+                    href={productHref}
+                    className="relative w-8 h-10 rounded-sm bg-bg-elevated border border-[rgba(237,232,224,0.08)] shrink-0 overflow-hidden block"
+                  >
+                    {entry.imageUrl?.trim() ? (
+                      <Image
+                        src={entry.imageUrl.trim()}
+                        alt=""
+                        fill
+                        sizes="32px"
+                        className="object-cover object-top"
+                      />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center font-mono text-[7px] text-text-disabled">
+                        {entry.rarity ?? "—"}
+                      </span>
+                    )}
+                  </Link>
+                  <div className="min-w-0">
+                    <Link
+                      href={productHref}
+                      className="font-sans font-semibold text-[12px] text-text-primary truncate hover:text-brand transition-colors block"
+                    >
+                      {entry.name}
+                    </Link>
+                    <p className="font-mono text-[9px] text-text-disabled truncate leading-tight">
+                      {subtitleLabel}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <GradeCell entry={entry} onGradeChange={onUpdateGrade} />
+                </div>
+                <div className="flex justify-center">
+                  {isSealedEntry ? (
+                    <span className="font-mono text-[9px] text-text-secondary px-1 py-0.5 rounded border border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
+                      盒組
+                    </span>
+                  ) : (
+                    <span
+                      className={`font-mono text-[9px] font-semibold px-1 py-0.5 rounded border ${
+                        RARITY_STYLE[rarityKey] ?? RARITY_STYLE.SR
+                      }`}
+                    >
+                      {entry.rarity ?? "—"}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right min-w-0">
+                  <p className="font-mono font-bold text-[12px] text-text-primary tabular-nums leading-tight">
+                    {formatHkd(displayPrice)}
+                  </p>
+                  {displayPrice == null ? (
+                    <p className="font-mono text-[9px] text-text-disabled leading-tight">
+                      暫無參考價
+                    </p>
+                  ) : resolved.source === "tracked_price" ? (
+                    <p className="font-mono text-[9px] text-text-disabled leading-tight">
+                      追蹤價估計
+                    </p>
+                  ) : diffFromTracked != null ? (
+                    <p
+                      className={`font-mono text-[9px] leading-tight ${
+                        diffFromTracked >= 0 ? "text-warning" : "text-success"
+                      }`}
+                    >
+                      {diffSign}HK$
+                      {Math.abs(diffFromTracked).toLocaleString("en-HK")}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-1.5 pl-10">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 font-mono text-[9px] text-text-disabled">
+                  <span className="text-text-disabled shrink-0">目標</span>
+                  <TargetPriceCell
+                    entry={entry}
+                    onSave={onUpdateTarget}
+                    align="left"
+                  />
+                  {hasTrend && entry.trend30d != null ? (
+                    <span
+                      className={
+                        entry.trend30d >= 0 ? "text-success" : "text-warning"
+                      }
+                    >
+                      30D {trendSign}{Math.abs(entry.trend30d).toFixed(1)}%
+                    </span>
+                  ) : null}
+                  {hasTrend ? (
+                    <MiniSparkline
+                      points={sparklinePoints}
+                      direction={sparklineDirection}
+                      hasData={hasTrend}
+                    />
+                  ) : null}
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={removingKey === rowKey}
+                    className="inline-flex w-7 h-7 items-center justify-center rounded-md text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors font-mono text-sm focus:outline-none shrink-0 disabled:opacity-50"
+                    aria-label={`${entry.name} 更多操作`}
+                  >
+                    ⋯
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-44">
+                    <DropdownMenuItem onClick={() => router.push(productHref)}>
+                      查看商品頁
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={!onRemove}
+                      onClick={() => void handleRemove(entry)}
+                    >
+                      從願望清單移除
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          );
+        })}
+        </div>
+      </div>
+
+      <div className="max-lg:hidden overflow-x-auto -mx-4 lg:mx-0">
         <table className="w-full min-w-160 border-collapse">
           <thead>
             <tr className="border-b border-[rgba(237,232,224,0.08)]">
@@ -449,7 +634,7 @@ export function WishlistTable({
                   key={rowKey}
                   className="border-b border-[rgba(237,232,224,0.04)] hover:bg-bg-elevated/50 transition-colors"
                 >
-                  <td className="py-4 pl-4 lg:pl-0 pr-3">
+                  <td className="py-3 pl-4 lg:pl-0 pr-3">
                     <div className="flex items-center gap-3">
                       <WishlistThumbnail
                         entry={entry}
@@ -468,10 +653,10 @@ export function WishlistTable({
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-3 text-center">
+                  <td className="py-3 px-3 text-center">
                     <GradeCell entry={entry} onGradeChange={onUpdateGrade} />
                   </td>
-                  <td className="py-4 px-3 text-center">
+                  <td className="py-3 px-3 text-center">
                     {isSealedEntry ? (
                       <span className="inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
                         盒組
@@ -486,7 +671,7 @@ export function WishlistTable({
                     </span>
                     )}
                   </td>
-                  <td className="py-4 px-3 text-right">
+                  <td className="py-3 px-3 text-right">
                     <p className="font-mono font-semibold text-[14px] text-text-primary">
                       {formatHkd(displayPrice)}
                     </p>
@@ -510,10 +695,10 @@ export function WishlistTable({
                       </p>
                     ) : null}
                   </td>
-                  <td className="py-4 px-3 text-right">
+                  <td className="py-3 px-3 text-right">
                     <TargetPriceCell entry={entry} onSave={onUpdateTarget} />
                   </td>
-                  <td className="py-4 px-3">
+                  <td className="py-3 px-3">
                     <div className="flex flex-col items-center gap-0.5">
                       {isSealedEntry && !hasTrend ? (
                         <span className="font-mono text-[10px] text-text-disabled">
@@ -543,7 +728,7 @@ export function WishlistTable({
                       )}
                     </div>
                   </td>
-                  <td className="py-4 pl-3 pr-4 lg:pr-0 text-right">
+                  <td className="py-3 pl-3 pr-4 lg:pr-0 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         disabled={removingKey === rowKey}

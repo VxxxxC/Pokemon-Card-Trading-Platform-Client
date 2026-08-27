@@ -88,6 +88,7 @@ import {
 } from "@/lib/marketplace/perf-log";
 import { loadMerchantShippingQuotes } from "@/lib/marketplace/enrich-merchant-shipping";
 import type { ShippingQuoteSupabase } from "@/lib/marketplace/enrich-merchant-shipping";
+import { resolveListingCoverImageUrl } from "@/lib/listings/images";
 import {
   buildMerchantShippingQuote,
   resolveMerchantDeliverySummary,
@@ -263,6 +264,47 @@ async function enrichProductListingRowsWithShipping(
   );
 }
 
+async function enrichSellerListingRowsWithCoverImages(
+  supabase: ShippingQuoteSupabase,
+  rows: ReturnType<typeof mapSellerListingRpcRow>[],
+): Promise<ReturnType<typeof mapSellerListingRpcRow>[]> {
+  if (rows.length === 0) {
+    return rows;
+  }
+
+  const listingIds = rows.map((row) => row.listingId);
+  const { data, error } = await supabase
+    .from("listings")
+    .select("id, images")
+    .in("id", listingIds);
+
+  if (error || !data) {
+    return rows;
+  }
+
+  const imagesByListingId = new Map(
+    data.map((row) => [row.id, row.images]),
+  );
+
+  return rows.map((row) => {
+    const catalogUrl =
+      row.catalogImageUrl?.trim() ||
+      (row.imageUrl.trim() && row.imageUrl !== "/placeholder-card.png"
+        ? row.imageUrl
+        : null);
+    const coverUrl =
+      resolveListingCoverImageUrl(
+        imagesByListingId.get(row.listingId),
+        catalogUrl,
+      ) ?? row.imageUrl;
+
+    return {
+      ...row,
+      imageUrl: coverUrl,
+    };
+  });
+}
+
 async function enrichSellerListingRowsWithShipping(
   supabase: ShippingQuoteSupabase,
   rows: ReturnType<typeof mapSellerListingRpcRow>[],
@@ -271,16 +313,21 @@ async function enrichSellerListingRowsWithShipping(
     return rows;
   }
 
+  const rowsWithCoverImages = await enrichSellerListingRowsWithCoverImages(
+    supabase,
+    rows,
+  );
+
   const quotes = await loadMerchantShippingQuotes(
     supabase,
-    rows.map((row) => ({
+    rowsWithCoverImages.map((row) => ({
       listingId: row.listingId,
       sellerId: row.sellerId,
       sellerPersona: row.sellerPersona,
     })),
   );
 
-  return rows.map((row) =>
+  return rowsWithCoverImages.map((row) =>
     applyShippingQuote(row, quotes.get(row.listingId)),
   );
 }
@@ -346,6 +393,7 @@ function toProductListingRow(
     sellerAvatarUrl: sellerSnippet?.avatarUrl ?? DEFAULT_AVATAR_URL,
     sellerRating: Number(row.seller_rating ?? 0),
     sellerTotalTrades: Number(row.seller_total_trades ?? 0),
+    sellerPublicReviewCount: Number(row.seller_public_review_count ?? 0),
     sellerPersona: row.seller_persona,
     useAuthentication: row.use_authentication,
     createdAt: row.created_at,
@@ -1391,13 +1439,17 @@ export async function getMarketplaceFilterMetadata(): Promise<MarketplaceFilterM
 
 export async function getMarketplaceSellerProfile(
   sellerKey: string,
+  options?: { persona?: import("@/app/lib/reviews/types").ReviewPersona },
 ): Promise<MarketplaceSellerProfileResult> {
   if (!isSupabaseConfigured()) {
     return { success: false, error: "無法連線至大盤市場" };
   }
 
   try {
-    const profile = await loadMarketplaceSellerProfile(sellerKey);
+    const profile = await loadMarketplaceSellerProfile(
+      sellerKey,
+      options?.persona,
+    );
     if (!profile) {
       return { success: false, error: "未找到該商戶" };
     }
@@ -1477,18 +1529,23 @@ export async function searchMarketplaceSellerListings(
       return { success: false, error: "搜尋商戶櫥窗時發生錯誤" };
     }
 
-    const rows = (data ?? []) as SellerListingRpcRow[];
+    const allRows = (data ?? []) as SellerListingRpcRow[];
+    const rows = input.sellerPersona
+      ? allRows.filter((row) => row.seller_persona === input.sellerPersona)
+      : allRows;
     const listings = await enrichSellerListingRowsWithShipping(
       supabase,
       rows.map(mapSellerListingRpcRow),
     );
 
+    const metaRow = rows[0] ?? allRows[0];
+
     return {
       success: true,
       data: {
         listings,
-        meta: toPaginationMeta(rows[0], page, pageSize),
-        priceBounds: readSellerPriceBounds(rows[0]),
+        meta: toPaginationMeta(metaRow, page, pageSize),
+        priceBounds: readSellerPriceBounds(metaRow),
       },
     };
   } catch (error) {

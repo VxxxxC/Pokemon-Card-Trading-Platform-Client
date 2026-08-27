@@ -1,24 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { toast } from "sonner";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
-import type { CardInstance, SKUGroup } from "@/app/components/merchant/InventoryAccordion";
-import { ListingGradingSelect } from "@/app/components/listings/ListingGradingSelect";
+import {
+  formatSkuCatalogLine,
+  type CardInstance,
+  type SKUGroup,
+} from "@/app/components/merchant/InventoryAccordion";
+import { CardListingMerchFields } from "@/app/components/listings/CardListingMerchFields";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DEFAULT_GRADING_OPTION_ID,
-} from "@/lib/grading/options";
-import {
-  LISTING_IMAGE_MAX,
-  LISTING_PHOTO_SLOT_LABELS,
-} from "@/lib/listings/images";
+import { DEFAULT_GRADING_OPTION_ID } from "@/lib/grading/options";
 import {
   buildEditListingPhotoSlots,
   type EditListingPhotoSlot,
@@ -28,13 +25,12 @@ import {
   LISTING_DESCRIPTION_MAX,
   validateImageFile,
 } from "@/lib/listings/validation";
-import { ListingAuthServiceToggle } from "@/app/components/listings/ListingAuthServiceToggle";
 import { useListingGradingAuthFields } from "@/lib/listings/use-listing-grading-auth-fields";
 
 type ListingEditDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  sku: Pick<SKUGroup, "cardName" | "cardNo">;
+  sku: Pick<SKUGroup, "cardName" | "cardNo" | "setCode" | "cardNumber">;
   item: CardInstance;
   inventoryContext?: "merchant" | "member";
   onSaved?: () => void;
@@ -219,210 +215,68 @@ export function ListingEditDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="sm:max-w-[720px] w-full max-w-[calc(100%-2rem)] bg-[#1A1612] border border-[rgba(212,165,116,0.20)] text-text-primary overflow-y-auto max-h-[90dvh] p-5 sm:p-6"
+          className="w-full max-w-[calc(100%-2rem)] sm:max-w-md bg-[#2e2925] border border-white/[0.08] text-text-primary overflow-y-auto max-h-[calc(100dvh-1rem)] p-0 gap-0"
           showCloseButton
         >
-          <DialogHeader>
-            <DialogTitle className="font-sans font-black text-[18px] text-text-primary tracking-tight">
-              卡牌實物詳情與編輯
+          <DialogHeader className="shrink-0 px-3 pt-1.5 pb-1.5 border-b border-white/[0.06] space-y-0.5">
+            <DialogTitle className="font-sans font-bold text-[15px] text-brand leading-tight pr-8">
+              編輯商品
             </DialogTitle>
-            <p className="font-mono text-[10px] text-text-disabled uppercase tracking-wider mt-0.5">
-              #{item.id} · {sku.cardName} · {item.grade}
+            <p className="font-sans text-[12px] text-[#eae1da] font-semibold truncate leading-tight">
+              {sku.cardName}
+            </p>
+            <p className="font-mono text-[10px] text-[#8A8680] truncate uppercase">
+              {[formatSkuCatalogLine(sku), item.grade].filter(Boolean).join(" · ")}
             </p>
           </DialogHeader>
 
           <form
             key={item.id}
             onSubmit={handleSubmit}
-            className="mt-3 space-y-4"
+            className="text-[13px]"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
-                <label
-                  htmlFor={`edit-price-${item.id}`}
-                  className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1"
-                >
-                  售價 (HK$) <span className="text-warning">*</span>
-                </label>
-                <div className="flex items-center mt-1">
-                  <span className="font-mono text-[13px] text-text-disabled mr-1.5 shrink-0">
-                    HK$
-                  </span>
-                  <input
-                    id={`edit-price-${item.id}`}
-                    type="number"
-                    min={1}
-                    required
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full bg-transparent text-text-primary text-[14px] font-black focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
-                <label className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1">
-                  鑑定等級
-                </label>
-                <ListingGradingSelect
-                  variant="edit"
-                  value={gradingOptionId}
-                  onValueChange={setGradingOptionId}
-                />
-              </div>
-            </div>
-
-            {showListingAuthToggle ? (
-              <ListingAuthServiceToggle
-                checked={acceptsBuyerAuth}
-                onCheckedChange={setAcceptsBuyerAuth}
-              />
-            ) : null}
-
-            {inventoryContext === "merchant" ? (
-              <div className="bg-[#17130f] border border-white/5 rounded-xl px-3.5 py-2.5 flex flex-col">
-                <label
-                  htmlFor={`edit-extra-shipping-${item.id}`}
-                  className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1"
-                >
-                  附加運費 (HK$)
-                </label>
-                <div className="flex items-center mt-1">
-                  <span className="font-mono text-[13px] text-text-disabled mr-1.5 shrink-0">
-                    HK$
-                  </span>
-                  <input
-                    id={`edit-extra-shipping-${item.id}`}
-                    name="extraShippingFee"
-                    type="number"
-                    min={0}
-                    max={200}
-                    step={1}
-                    placeholder="0"
-                    value={extraShippingFee}
-                    onChange={(e) => setExtraShippingFee(e.target.value)}
-                  />
-                </div>
-                <p className="mt-1 font-mono text-[10px] text-text-disabled">
-                  選填，疊加店舖基本運費
-                </p>
-              </div>
-            ) : null}
-
-            <div className="bg-[#17130f] border border-white/5 rounded-xl p-3.5 flex flex-col">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor={`edit-desc-${item.id}`}
-                  className="font-mono text-[11px] text-text-disabled uppercase tracking-wider"
-                >
-                  品相描述
-                </label>
-                <span className="font-mono text-[10px] text-[#8A8680]">
-                  {sellerDescription.length}/{LISTING_DESCRIPTION_MAX}
-                </span>
-              </div>
-              <textarea
-                id={`edit-desc-${item.id}`}
-                rows={3}
-                maxLength={LISTING_DESCRIPTION_MAX}
-                value={sellerDescription}
-                onChange={(e) => setSellerDescription(e.target.value)}
-                placeholder="詳細描述卡面狀況、印刷品質、鏡面完整度等..."
-                className="mt-1 w-full bg-transparent text-text-primary text-[12.5px] leading-relaxed placeholder-text-disabled resize-none focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <p className="font-mono text-[11px] text-text-disabled uppercase tracking-wider mb-1.5">
-                實物照片 (必須 6 張) <span className="text-warning">*</span>
-              </p>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {photoSlots.map((slot, index) => {
-                  const slotLabel =
-                    LISTING_PHOTO_SLOT_LABELS[index] ?? `實體照 ${index + 1}`;
-
-                  return (
-                    <div key={index} className="flex flex-col">
-                      <div className="relative aspect-[3/4] rounded-xl border border-white/10 overflow-hidden bg-[#17130f]">
-                        {slot.previewUrl ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => openViewerAt(index)}
-                              className="absolute inset-0 cursor-zoom-in"
-                              aria-label={`預覽${slotLabel}`}
-                            >
-                              <Image
-                                src={slot.previewUrl}
-                                alt={slotLabel}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReplaceClick(index);
-                              }}
-                              className="absolute bottom-1 right-1 z-10 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[9px] text-brand"
-                            >
-                              更換
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleReplaceClick(index)}
-                            className="flex h-full w-full flex-col items-center justify-center gap-1"
-                          >
-                            <span className="font-mono text-[9px] text-text-disabled">
-                              上載
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                      <span className="mt-1 text-center font-mono text-[9px] text-text-disabled">
-                        {slotLabel}
-                      </span>
-                      <input
-                        type="text"
-                        value={slot.remark}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setPhotoSlots((prev) =>
-                            prev.map((entry, idx) =>
-                              idx === index ? { ...entry, remark: value } : entry,
-                            ),
-                          );
-                        }}
-                        placeholder={slotLabel}
-                        className="mt-1 w-full rounded-lg border border-white/5 bg-[#111009] px-1.5 py-1 text-center font-sans text-[11px] text-text-primary placeholder-[#8A8680] focus:border-brand/40 focus:outline-none"
-                      />
-                    </div>
+            <div className="px-3 py-1.5 space-y-1.5">
+              <CardListingMerchFields
+                idPrefix={`edit-${item.id}`}
+                price={price}
+                onPriceChange={setPrice}
+                gradingOptionId={gradingOptionId}
+                onGradingOptionChange={setGradingOptionId}
+                gradingVariant="edit"
+                showAuthToggle={showListingAuthToggle}
+                acceptsBuyerAuth={acceptsBuyerAuth}
+                onAcceptsBuyerAuthChange={setAcceptsBuyerAuth}
+                conditionDesc={sellerDescription}
+                onConditionDescChange={setSellerDescription}
+                showExtraShipping={inventoryContext === "merchant"}
+                extraShippingFee={extraShippingFee}
+                onExtraShippingFeeChange={setExtraShippingFee}
+                itemKind="card"
+                photoMode="edit"
+                editPhotoSlots={photoSlots}
+                onEditPhotoReplaceClick={handleReplaceClick}
+                onEditPhotoViewerOpen={openViewerAt}
+                onEditPhotoRemarkChange={(index, value) => {
+                  setPhotoSlots((prev) =>
+                    prev.map((entry, idx) =>
+                      idx === index ? { ...entry, remark: value } : entry,
+                    ),
                   );
-                })}
-              </div>
+                }}
+                priceGradingRow
+                listingId={item.id}
+                showListingActive
+                isListingActive={isActive}
+                onListingActiveChange={setIsActive}
+                compactEditPhotos
+              />
             </div>
 
-            <div className="flex items-center justify-between border-t border-white/5 pt-2">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="h-4 w-4 cursor-pointer rounded accent-brand"
-                />
-                <span className="font-mono text-[13px] text-text-secondary">
-                  商品上架
-                </span>
-              </label>
-
+            <div className="shrink-0 px-3 py-1.5 border-t border-white/[0.06] bg-[#2e2925]">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="h-10 shrink-0 rounded-xl bg-brand px-5 font-sans text-[13.5px] font-bold text-[#17130f] transition-all hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full h-9 bg-brand hover:bg-[#e8b896] disabled:opacity-60 disabled:cursor-not-allowed text-[#1A1612] font-sans font-bold text-[12px] rounded-lg active:scale-[0.98] transition-all cursor-pointer focus:outline-none"
               >
                 {isSubmitting ? "儲存中…" : "確認儲存修改"}
               </button>

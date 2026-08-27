@@ -214,6 +214,24 @@ body {
     display: none;
 }
 
+/* Native date input — brand-themed calendar picker icon */
+.input-date-theme {
+    color-scheme: dark;
+}
+
+.input-date-theme::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.9;
+    filter: invert(72%) sepia(22%) saturate(700%) hue-rotate(347deg) brightness(96%)
+        contrast(90%);
+}
+
+.input-date-theme:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+    filter: invert(78%) sepia(30%) saturate(800%) hue-rotate(347deg) brightness(102%)
+        contrast(92%);
+}
+
 :root {
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);

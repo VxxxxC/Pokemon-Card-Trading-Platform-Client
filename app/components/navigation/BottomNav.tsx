@@ -2,13 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ClipboardList } from "lucide-react";
+import { useSyncExternalStore } from "react";
 import { useUIStore } from "@/app/store/useUIStore";
 import { getProfileHomePath, getTradingHomePath } from "@/lib/auth/roles";
-import { useSyncExternalStore } from "react";
+import { shouldShowBottomNav } from "@/lib/navigation/bottom-nav-visibility";
 
 export function BottomNav() {
   const pathname = usePathname();
   const openAddAssetModal = useUIStore((state) => state.openAddAssetModal);
+
+  if (!shouldShowBottomNav(pathname)) {
+    return null;
+  }
 
   // 🟢 訂閱沙盒身份
   const userAuthRole = useUIStore((state) => state.userAuthRole);
@@ -38,18 +44,18 @@ export function BottomNav() {
     >
       {/* 🟢 頂級權限型態咬合：未登入為 3 欄，已登入為 5 欄 */}
       <div
-        className={`flex justify-evenly items-center px-1 py-1.5 bg-[rgba(26,22,18,0.92)] backdrop-blur-xl border border-[rgba(237,232,224,0.08)] rounded-[24px] shadow-[0_12px_32px_rgba(0,0,0,0.7)] transition-all duration-300`}
+        className="flex justify-evenly items-center px-1 py-1.5 bg-[rgba(26,22,18,0.92)] backdrop-blur-xl border border-[rgba(237,232,224,0.08)] rounded-[24px] shadow-[0_12px_32px_rgba(0,0,0,0.7)] transition-all duration-300"
       >
         {/* Slot 1: 首頁 */}
         <Link
           href="/"
-          className={`flex flex-col items-center justify-center gap-1 min-h-[50px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none ${
+          className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none ${
             pathname === "/" ? "text-[#d4a574]" : "text-[#d4c4b7]"
           }`}
         >
           {/* 🟢 Bug 修正：對齊正確的首頁路由判定 */}
           <HomeIcon active={pathname === "/"} />
-          <span className="font-sans text-[9px] font-bold tracking-tight">
+          <span className="font-sans text-[10px] font-semibold tracking-tight">
             首頁
           </span>
         </Link>
@@ -57,14 +63,14 @@ export function BottomNav() {
         {/* Slot 2: 大盤市場 */}
         <Link
           href="/marketplace"
-          className={`flex flex-col items-center justify-center gap-1 min-h-[50px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none ${
+          className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none ${
             pathname.startsWith("/marketplace")
               ? "text-[#d4a574]"
               : "text-[#d4c4b7]"
           }`}
         >
           <SearchIcon active={pathname.startsWith("/marketplace")} />
-          <span className="font-sans text-[9px] font-bold tracking-tight">
+          <span className="font-sans text-[10px] font-semibold tracking-tight">
             大盤市場
           </span>
         </Link>
@@ -82,11 +88,11 @@ export function BottomNav() {
           /* 【已登入模式】解鎖正中央「＋」開倉掣及後續雙子星槽位 */
           <>
             {/* Slot 3: 正中央「＋」按鈕 */}
-            <div className="flex flex-col items-center justify-center animate-fadeIn">
+            <div className="flex flex-col items-center justify-center gap-0.5 animate-fadeIn">
               <button
                 type="button"
                 onClick={() => openAddAssetModal({ mode: "merch" })}
-                className="w-8 h-8 bg-[#d4a574] text-[#1A1612] my-1 rounded-lg flex items-center justify-center shadow-lg active:scale-[0.90] transition-all cursor-pointer focus:outline-none"
+                className="w-8 h-8 bg-[#d4a574] text-[#1A1612] rounded-lg flex items-center justify-center shadow-lg active:scale-[0.90] transition-all cursor-pointer focus:outline-none"
               >
                 <svg
                   width="20"
@@ -100,7 +106,7 @@ export function BottomNav() {
                   <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
                 </svg>
               </button>
-              <span className="text-xs font-medium text-brand my-1">
+              <span className="font-sans text-[10px] font-semibold text-brand tracking-tight">
                 新增商品
               </span>
             </div>
@@ -108,12 +114,16 @@ export function BottomNav() {
             {/* Slot 4: 交易管理 */}
             <Link
               href={getTradingPath()}
-              className={`flex flex-col items-center justify-center gap-1 min-h-[50px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none animate-fadeIn ${
+              className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none animate-fadeIn ${
                 isTradingActive ? "text-[#d4a574]" : "text-[#d4c4b7]"
               }`}
             >
-              <TradingIcon active={isTradingActive} />
-              <span className="font-sans text-[9px] font-bold tracking-tight">
+              <ClipboardList
+                className="h-5 w-5 shrink-0"
+                strokeWidth={2.5}
+                aria-hidden
+              />
+              <span className="font-sans text-[10px] font-semibold tracking-tight">
                 交易管理
               </span>
             </Link>
@@ -121,12 +131,12 @@ export function BottomNav() {
             {/* Slot 5: 会员中心 */}
             <Link
               href={getProfilePath()}
-              className={`flex flex-col items-center justify-center gap-1 min-h-[50px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none animate-fadeIn ${
+              className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-[18px] active:scale-[0.93] transition-transform focus:outline-none animate-fadeIn ${
                 isProfileActive ? "text-[#d4a574]" : "text-[#d4c4b7]"
               }`}
             >
               <ProfileIcon active={isProfileActive} />
-              <span className="font-sans text-[9px] font-bold tracking-tight">
+              <span className="font-sans text-[10px] font-semibold tracking-tight">
                 會員中心
               </span>
             </Link>
@@ -172,27 +182,6 @@ function SearchIcon({ active }: { active: boolean }) {
     >
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function TradingIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={active ? "#d4a574" : "#d4c4b7"}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M16 3h5v5" />
-      <path d="M8 21H3v-5" />
-      <path d="M21 3L13 11" />
-      <path d="M3 21l8-8" />
     </svg>
   );
 }

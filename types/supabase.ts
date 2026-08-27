@@ -3340,6 +3340,7 @@ export type Database = {
           seller_persona: Database["public"]["Enums"]["seller_persona_type"]
           seller_rating: number
           seller_total_trades: number
+          seller_public_review_count: number
           total_count: number
           total_pages: number
           use_authentication: boolean
