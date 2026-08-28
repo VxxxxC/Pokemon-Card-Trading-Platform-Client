@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   ADMIN_ROOT_HREF,
   ADMIN_ROOT_LABEL,
   findAdminNavMatch,
+  getAdminNavPageTitle,
   getAdminSubPathLabel,
+  isAdminIndexPage,
 } from "@/app/admin/admin-nav";
 
 type Crumb = {
@@ -30,12 +33,17 @@ function buildAdminBreadcrumbs(pathname: string): Crumb[] {
         { href: pathname, label: subLabel },
       ];
     }
-    return [{ href: ADMIN_ROOT_HREF, label: navMatch.label }];
+    return [{ href: ADMIN_ROOT_HREF, label: getAdminNavPageTitle(navMatch) }];
   }
 
   const crumbs: Crumb[] = [
     { href: ADMIN_ROOT_HREF, label: ADMIN_ROOT_LABEL },
-    { href: navMatch.href, label: navMatch.label },
+    {
+      href: navMatch.href,
+      label: isAdminIndexPage(pathname)
+        ? getAdminNavPageTitle(navMatch)
+        : navMatch.label,
+    },
   ];
 
   if (subLabel) {
@@ -45,38 +53,54 @@ function buildAdminBreadcrumbs(pathname: string): Crumb[] {
   return crumbs;
 }
 
-export function AdminBreadcrumb() {
+export function AdminBreadcrumb({ className }: { className?: string }) {
   const pathname = usePathname();
   const crumbs = buildAdminBreadcrumbs(pathname);
+  const pageHeadingOnBreadcrumb = isAdminIndexPage(pathname);
 
   return (
-    <nav aria-label="麵包屑導航" className="min-w-0">
-      <ol className="flex min-w-0 items-center gap-1">
+    <nav aria-label="麵包屑導航" className={cn("min-w-0", className)}>
+      <ol className="flex min-w-0 items-center gap-0.5 sm:gap-1">
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
+          const isRoot = index === 0;
 
           return (
             <li
               key={`${index}-${crumb.label}`}
-              className="flex min-w-0 items-center gap-1"
+              className="flex min-w-0 items-center gap-0.5 sm:gap-1"
             >
               {index > 0 ? (
                 <ChevronRight
-                  className="size-3 shrink-0 text-text-disabled"
+                  className="size-2.5 shrink-0 text-text-disabled/60"
                   aria-hidden="true"
                 />
               ) : null}
               {isLast ? (
-                <span
-                  className="truncate font-sans text-[13px] font-semibold text-text-primary"
-                  aria-current="page"
-                >
-                  {crumb.label}
-                </span>
+                pageHeadingOnBreadcrumb ? (
+                  <h1
+                    className="truncate font-sans text-[12px] font-semibold text-text-primary sm:text-[13px]"
+                    aria-current="page"
+                  >
+                    {crumb.label}
+                  </h1>
+                ) : (
+                  <span
+                    className="truncate font-sans text-[12px] font-semibold text-text-primary sm:text-[13px]"
+                    aria-current="page"
+                  >
+                    {crumb.label}
+                  </span>
+                )
               ) : (
                 <Link
                   href={crumb.href}
-                  className="truncate font-sans text-[12px] font-medium text-text-secondary transition-colors hover:text-brand active:scale-[0.98]"
+                  className={cn(
+                    "truncate transition-colors hover:text-brand active:scale-[0.98]",
+                    isRoot
+                      ? "max-w-[5.5rem] font-mono text-[10px] text-text-disabled sm:max-w-none sm:text-[11px]"
+                      : "max-w-[6.5rem] font-sans text-[11px] font-medium text-text-secondary sm:max-w-none sm:text-[12px]",
+                  )}
                 >
                   {crumb.label}
                 </Link>

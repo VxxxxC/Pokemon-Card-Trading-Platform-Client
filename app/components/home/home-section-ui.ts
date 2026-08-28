@@ -1,4 +1,4 @@
-export const HOME_SECTION_CLASS = "mb-6 w-full overflow-hidden";
+export const HOME_SECTION_CLASS = "w-full overflow-hidden";
 
 export const HOME_SECTION_HEADER_ROW_CLASS =
   "flex items-center justify-between mb-3";
@@ -10,7 +10,7 @@ export const HOME_SECTION_LINK_CLASS =
   "font-mono text-[12px] font-semibold text-brand hover:text-brand-hover transition-colors shrink-0";
 
 export const HOME_WISHLIST_SECTION_CLASS =
-  "pt-2 mb-6 border-b border-white/[0.08] pb-4";
+  "pt-2 pb-5 border-b border-white/[0.08]";
 
 export const HOME_HORIZONTAL_CARD_CLASS =
   "shrink-0 w-36 md:w-48 rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]";

@@ -17,8 +17,24 @@ export const SELECT_CONTENT_CLASS = "border-white/10 bg-bg-card";
 
 export const SELECT_ITEM_CLASS = "text-text-secondary focus:bg-brand/10 focus:text-brand";
 
-export const SECTION_TITLE_CLASS =
-  "font-sans text-[15px] font-bold text-text-primary";
+/** Flat section rhythm — divider only, no card chrome */
+export const SECTION_BLOCK_CLASS =
+  "space-y-2 border-b border-white/[0.06] pb-4 last:border-b-0";
 
-export const SECTION_SUBTITLE_CLASS =
-  "mt-0.5 font-sans text-[12px] text-text-secondary";
+/** Section divider that stays visible before the next column block (e.g. chat → orders on mobile) */
+export const SECTION_DIVIDER_CLASS =
+  "space-y-2 border-b border-white/[0.06] pb-4";
+
+export const SECTION_TITLE_CLASS =
+  "font-sans text-[14px] font-semibold text-text-primary";
+
+export const META_TEXT_CLASS =
+  "font-sans text-[11px] text-text-disabled";
+
+/** Compact chips — unified size/font for case header meta row */
+export const MODERATION_META_BADGE_CLASS =
+  "h-5 rounded-full px-2 text-[10px] font-sans font-medium leading-none";
+
+/** Expanded accordion / toggle body */
+export const EXPANDED_CONTENT_CLASS =
+  "mt-2 rounded-lg border border-white/[0.06] bg-bg-card/20 px-3 py-3";

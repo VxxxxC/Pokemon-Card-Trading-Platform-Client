@@ -39,10 +39,10 @@ getAdminSystemHealthStatus(): Promise<
 
 | UI block | Source |
 |----------|--------|
-| User ecology | `profiles.role`, `kyc_applications.status = pending` |
-| GMV | `merchant_orders.item_subtotal` where `escrow_status = completed_and_transferred` |
-| Commission | `merchant_orders.commission_amount` (per-order snapshot) |
-| Appraisal | `merchant_orders.auth_fee` where `auth_fee_captured_at IS NOT NULL` |
+| User ecology pie | `profiles.role`; pending KYC subtracted from member slice; `account_sanctions` active `ban` count |
+| GMV | `merchant_orders` + `member_orders` completed rows; sum `item_subtotal` (fallback `final_price`) |
+| Commission | `merchant_orders.commission_amount` where `escrow_status = completed_and_transferred` |
+| Appraisal | `merchant_orders` + `member_orders` where completed and `auth_fee_captured_at IS NOT NULL` |
 | Listings | `listings` where `status = active` |
 | Stripe balance | `stripe.balance.retrieve()` — HKD `available` / `pending` (major units) |
 | Alert count | `reports` where `status IN ('pending', 'reviewing')` |
@@ -92,11 +92,11 @@ SELECT count(*) FROM reports WHERE status IN ('pending', 'reviewing');
 
 ## Phase 3 (health probes) ✅
 
-- `getAdminSystemHealthStatus()` — Supabase head count, Stripe balance probe, crawler static `degraded`
+- `getAdminSystemHealthStatus()` — Supabase head count, Stripe balance probe, crawler `product_grading_market_prices.updated_at` freshness (48h)
 - `lib/admin-dashboard/health-probes.ts` — round-trip latency (ms) per service
 - SSR: `page.tsx` passes `initialServices`; client refresh calls server action (no `Math.random`)
 
 ## Deferred
 
 - Optional RPC `get_admin_dashboard_snapshot()` if row volume grows
-- `bannedUsers` / `activeRatio` (needs schema)
+- `activeRatio` / DAU (needs product definition + activity window)

@@ -13,7 +13,9 @@ Table `platform_announcements`:
 
 | Column | Notes |
 |--------|--------|
-| `title`, `content` | Plain text |
+| `show_on_home_banner` | Homepage banner carousel (`HomeBanner`) |
+| `show_in_announcements` | Modal + `/announcements` list |
+| `title`, `content` | Plain text; `content` may be empty when banner-only |
 | `image_url` | Required https CDN URL (or seed Unsplash) |
 | `image_object_key` | Bunny key for delete-on-replace |
 | `link_url` | Optional `/path` or `https://` |
@@ -23,7 +25,12 @@ Table `platform_announcements`:
 
 RLS: public `SELECT`; admin `ALL` via `is_admin()`. Grants: `anon`/`authenticated` SELECT; `service_role` full CRUD.
 
-SQL helper: `fn_platform_active_announcements()` — active window in HKT, ordered `priority ASC, created_at DESC`.
+SQL helpers:
+
+- `fn_platform_active_announcements()` — active window + `show_in_announcements`
+- `fn_platform_home_banners()` — active window + `show_on_home_banner`
+
+Migration: `20260930120100_platform_announcements_display_surfaces.sql`
 
 ## Server actions
 
@@ -31,8 +38,9 @@ File: `app/actions/admin-announcements.ts`
 
 | Action | Auth | Purpose |
 |--------|------|---------|
-| `getActiveAnnouncementsForDisplay()` | Public | Homepage modal; returns `[]` when Supabase unset (CI) |
-| `getAnnouncementsForPublicList()` | Public | `/announcements` SSR |
+| `getActiveAnnouncementsForDisplay()` | Public | Homepage modal; `show_in_announcements` + active window |
+| `getHomeBannersForDisplay()` | Public | Homepage `HomeBanner`; `show_on_home_banner` + active window |
+| `getAnnouncementsForPublicList()` | Public | `/announcements`; `show_in_announcements` only |
 | `getAnnouncementsForAdmin()` | Admin | Admin table load |
 | `createPlatformAnnouncement(input)` | Admin | Insert; optional `id` for upload-before-save |
 | `updatePlatformAnnouncement(id, input)` | Admin | Update; deletes old Bunny object on key change |

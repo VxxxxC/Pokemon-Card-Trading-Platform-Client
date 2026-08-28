@@ -12,11 +12,13 @@ type MerchantEscrowStatus = Tables<"merchant_orders">["escrow_status"];
 type MerchantAuthSellerTimelineProps = {
   escrowStatus: MerchantEscrowStatus | null;
   payoutStatus?: string | null;
+  embedded?: boolean;
 };
 
 export function MerchantAuthSellerTimeline({
   escrowStatus,
   payoutStatus,
+  embedded = false,
 }: MerchantAuthSellerTimelineProps) {
   const steps = getMerchantAuthSellerTimelineSteps(payoutStatus);
   const currentStepIdx = getMerchantAuthSellerTimelineStepIndex(
@@ -26,10 +28,18 @@ export function MerchantAuthSellerTimeline({
   const isCancelled = escrowStatus === "refunded";
 
   return (
-    <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
-      <h4 className="font-sans font-bold text-[12.5px] text-text-primary">
-        交易狀態
-      </h4>
+    <div
+      className={
+        embedded
+          ? "space-y-4"
+          : "space-y-4 rounded-xl border border-white/5 bg-[#17130f] p-4"
+      }
+    >
+      {!embedded ? (
+        <h4 className="font-sans text-[12.5px] font-bold text-text-primary">
+          交易狀態
+        </h4>
+      ) : null}
 
       {isCancelled ? (
         <p className="text-[12.5px] text-text-disabled">訂單已取消 / 已退款</p>

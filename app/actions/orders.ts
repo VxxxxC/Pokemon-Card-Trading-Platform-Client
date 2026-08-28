@@ -10,6 +10,8 @@ import {
   type BuyerCompleteOrderInput,
   type MemberOrderKind,
 } from "@/lib/member-order/order-kind";
+import type { FpsPayoutRequestStatus } from "@/lib/admin-payouts/types";
+import { normalizeMemberFpsPayoutRequestStatus } from "@/lib/member-order/seller-payout";
 import {
   rpcCancelMemberOrder,
   rpcCompleteMemberOrder,
@@ -354,6 +356,9 @@ export type UserTradingOrderCounterparty = {
   displayName: string;
   username: string | null;
   avatarUrl: string;
+  ratingScore?: number;
+  completedTradesCount?: number;
+  publicReviewCount?: number;
 };
 
 export type UserTradingOrder = {
@@ -453,6 +458,7 @@ export type MemberOrderDetail = UserTradingOrder & {
   sellerFpsId?: string | null;
   sellerFpsName?: string | null;
   sellerPayoutStatus?: Tables<"member_orders">["seller_payout_status"];
+  fpsPayoutRequestStatus?: FpsPayoutRequestStatus;
   payoutHoldUntil?: string | null;
   buyerConfirmedAt?: string | null;
   /** Merchant B2C checkout breakdown (non-auth). */
@@ -535,6 +541,8 @@ type MemberOrderDetailQueryRow = {
     display_name: string | null;
     username: string | null;
     avatar_path: string | null;
+    rating_score: number | null;
+    completed_trades_count: number;
   };
   seller: {
     id: string;
@@ -543,6 +551,8 @@ type MemberOrderDetailQueryRow = {
     avatar_path: string | null;
     fps_id: string | null;
     fps_name: string | null;
+    rating_score: number | null;
+    completed_trades_count: number;
   };
 };
 
@@ -617,12 +627,24 @@ function displayCardName(catalog: {
 function toCounterparty(
   profile: Partial<UserTradingOrderCounterparty> | null | undefined,
 ): UserTradingOrderCounterparty {
-  return {
+  const counterparty: UserTradingOrderCounterparty = {
     id: profile?.id ?? "",
     displayName: profile?.displayName ?? "未知用戶",
     username: profile?.username ?? null,
     avatarUrl: profile?.avatarUrl ?? resolveAvatarUrl(null),
   };
+
+  if (profile?.ratingScore != null) {
+    counterparty.ratingScore = profile.ratingScore;
+  }
+  if (profile?.completedTradesCount != null) {
+    counterparty.completedTradesCount = profile.completedTradesCount;
+  }
+  if (profile?.publicReviewCount != null) {
+    counterparty.publicReviewCount = profile.publicReviewCount;
+  }
+
+  return counterparty;
 }
 
 function toPaginationMeta(
@@ -1639,6 +1661,7 @@ function mapMemberOrderDetailRow(
   viewerId: string,
   hasReviewedByMe: boolean,
   sellerReceivableAmountHkd?: number | null,
+  counterpartyPublicReviewCount?: number,
 ): MemberOrderDetail {
   const isBuyer = row.buyer_id === viewerId;
   const persona = isBuyer ? "buy" : "sell";
@@ -1675,6 +1698,11 @@ function mapMemberOrderDetailRow(
       displayName: counterpartyProfile.display_name ?? "未知用戶",
       username: counterpartyProfile.username,
       avatarUrl: resolveAvatarUrl(counterpartyProfile.avatar_path),
+      ratingScore: Number(counterpartyProfile.rating_score ?? 0),
+      completedTradesCount: Number(
+        counterpartyProfile.completed_trades_count ?? 0,
+      ),
+      publicReviewCount: counterpartyPublicReviewCount ?? 0,
     }),
     listing: {
       gradingCompany: row.listings.grading_company,
@@ -2116,7 +2144,9 @@ export async function getMemberOrderDetail(
             id,
             display_name,
             username,
-            avatar_path
+            avatar_path,
+            rating_score,
+            completed_trades_count
           ),
           seller:profiles!fk_member_orders_seller (
             id,
@@ -2124,7 +2154,9 @@ export async function getMemberOrderDetail(
             username,
             avatar_path,
             fps_id,
-            fps_name
+            fps_name,
+            rating_score,
+            completed_trades_count
           )
         `,
       )
@@ -2145,15 +2177,35 @@ export async function getMemberOrderDetail(
       return { success: false, error: "您沒有權限查閱此訂單" };
     }
 
-    const { data: reviewRows, error: reviewError } = await db
-      .from("transaction_reviews")
-      .select("id")
-      .eq("member_order_id", trimmedOrderId)
-      .eq("reviewer_id", user.id)
-      .limit(1);
+    const counterpartyProfileId =
+      row.buyer_id === user.id ? row.seller_id : row.buyer_id;
+
+    const [{ data: reviewRows, error: reviewError }, { count: publicReviewCount, error: publicReviewCountError }] =
+      await Promise.all([
+        db
+          .from("transaction_reviews")
+          .select("id")
+          .eq("member_order_id", trimmedOrderId)
+          .eq("reviewer_id", user.id)
+          .limit(1),
+        db
+          .from("transaction_reviews")
+          .select("id", { count: "exact", head: true })
+          .eq("reviewee_id", counterpartyProfileId)
+          .eq("reviewee_persona", "member")
+          .eq("is_public", true),
+      ]);
 
     if (reviewError) {
       console.error("[getMemberOrderDetail] reviews", reviewError.message);
+      return { success: false, error: "無法載入訂單" };
+    }
+
+    if (publicReviewCountError) {
+      console.error(
+        "[getMemberOrderDetail] counterparty reviews",
+        publicReviewCountError.message,
+      );
       return { success: false, error: "無法載入訂單" };
     }
 
@@ -2181,14 +2233,34 @@ export async function getMemberOrderDetail(
       }
     }
 
+    let fpsPayoutRequestStatus: FpsPayoutRequestStatus | undefined;
+    if (row.use_authentication) {
+      const { data: fpsRow } = await db
+        .from("payout_requests")
+        .select("status")
+        .eq("order_id", trimmedOrderId)
+        .maybeSingle();
+
+      const normalized = normalizeMemberFpsPayoutRequestStatus(
+        (fpsRow as { status: string | null } | null)?.status,
+      );
+      if (normalized) {
+        fpsPayoutRequestStatus = normalized;
+      }
+    }
+
     return {
       success: true,
-      data: mapMemberOrderDetailRow(
-        row,
-        user.id,
-        hasReviewedByMe,
-        sellerReceivableAmountHkd,
-      ),
+      data: {
+        ...mapMemberOrderDetailRow(
+          row,
+          user.id,
+          hasReviewedByMe,
+          sellerReceivableAmountHkd,
+          publicReviewCount ?? 0,
+        ),
+        ...(fpsPayoutRequestStatus ? { fpsPayoutRequestStatus } : {}),
+      },
     };
   } catch (error) {
     console.error("[getMemberOrderDetail]", error);

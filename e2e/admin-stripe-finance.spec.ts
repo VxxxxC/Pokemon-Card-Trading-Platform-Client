@@ -35,52 +35,32 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
 
     await loginAsAdmin(page);
     await gotoAdminPage(page, "/admin/dashboard");
-    
-    // Screenshot Desktop Dashboard
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, "desktop-dashboard.png"), fullPage: true });
 
-    // Check no console error and no hydration mismatch warning
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, "desktop-dashboard.png"),
+      fullPage: true,
+    });
+
     expect(consoleErrors, `Console errors found: ${consoleErrors.join("\n")}`).toHaveLength(0);
     expect(hydrationWarnings, `Hydration warnings found: ${hydrationWarnings.join("\n")}`).toHaveLength(0);
 
-    // Locate "平台淨營收統計" card
-    const netRevenueCard = page.locator("div", { hasText: "平台淨營收統計" }).filter({
-      has: page.locator("span", { hasText: "平台淨營收統計" }),
-    }).first();
+    await expect(page.getByRole("heading", { name: "數據總覽" })).toBeVisible();
+    await expect(page.getByText("核心營收與成交指標")).toBeVisible();
+    await expect(page.getByText("平台淨營收", { exact: true })).toBeVisible();
+    await expect(page.getByText("本月總營收")).toBeVisible();
+    await expect(page.getByText("交易量分析")).toBeVisible();
+    await expect(page.getByText("stripe可用餘額")).toBeVisible();
 
-    await expect(netRevenueCard).toBeVisible();
+    const stripeBalanceText = await page
+      .locator("span", { hasText: "stripe可用餘額" })
+      .locator("xpath=ancestor::div[1]")
+      .locator("p.font-mono")
+      .first()
+      .innerText();
 
-    // Check for 3rd Row: "Stripe 平台帳戶餘額"
-    const stripeBalanceRow = netRevenueCard.locator("div", { hasText: "Stripe 平台帳戶餘額" }).first();
-    await expect(stripeBalanceRow).toBeVisible();
-
-    // Check 3 fields: 可用餘額 (Available), 待結算 (Pending), 幣種
-    const availableLabel = stripeBalanceRow.locator("text=可用餘額 (Available)");
-    const pendingLabel = stripeBalanceRow.locator("text=待結算 (Pending)");
-    const currencyLabel = stripeBalanceRow.locator("text=幣種");
-
-    await expect(availableLabel).toBeVisible();
-    await expect(pendingLabel).toBeVisible();
-    await expect(currencyLabel).toBeVisible();
-
-    // Check amounts are font-mono and have valid numeric text (not empty, not NaN, not undefined)
-    const availableAmount = stripeBalanceRow.locator("span.font-mono", { hasText: "HK$" }).first();
-    const pendingAmount = stripeBalanceRow.locator("span.font-mono", { hasText: "HK$" }).nth(1);
-    const currencyValue = stripeBalanceRow.locator("span.font-mono", { hasText: "HKD" });
-
-    const availableText = await availableAmount.innerText();
-    const pendingText = await pendingAmount.innerText();
-    const currencyText = await currencyValue.innerText();
-
-    console.log(`[Dashboard] Available: "${availableText}", Pending: "${pendingText}", Currency: "${currencyText}"`);
-
-    expect(availableText).toMatch(/HK\$\s*[\d,]+/);
-    expect(pendingText).toMatch(/HK\$\s*[\d,]+/);
-    expect(currencyText).toBe("HKD");
-    expect(availableText).not.toContain("NaN");
-    expect(availableText).not.toContain("undefined");
-    expect(pendingText).not.toContain("NaN");
-    expect(pendingText).not.toContain("undefined");
+    expect(stripeBalanceText).toMatch(/HK\$\s*[\d,]+|—/);
+    expect(stripeBalanceText).not.toContain("NaN");
+    expect(stripeBalanceText).not.toContain("undefined");
   });
 
   test("Route 2: /admin/payouts verification", async ({ page }) => {
@@ -99,18 +79,17 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     const pageHeader = page.locator("h1", { hasText: "財務與結算管控台" });
     await expect(pageHeader).toBeVisible();
 
-    const stripeContainer = page.locator("div", { hasText: "Stripe 平台帳戶餘額" }).filter({
-      has: page.locator("h2", { hasText: "Stripe 平台帳戶餘額" }),
+    const stripeContainer = page.locator("div", { hasText: "Stripe 平台餘額" }).filter({
+      has: page.locator("h2", { hasText: "Stripe 平台餘額" }),
     }).first();
     await expect(stripeContainer).toBeVisible();
 
-    // Check 3 columns: 可用餘額 (Available), 待結算 (Pending), 今日入賬 (Today In)
-    await expect(stripeContainer.locator("text=可用餘額 (Available)")).toBeVisible();
-    await expect(stripeContainer.locator("text=待結算 (Pending)")).toBeVisible();
-    await expect(stripeContainer.locator("text=今日入賬 (Today In)")).toBeVisible();
+    // Check balance metrics
+    await expect(stripeContainer.getByText("可用", { exact: true })).toBeVisible();
+    await expect(stripeContainer.getByText("待結算", { exact: true })).toBeVisible();
 
     // "重新整理" button click -> toast "已重新整理 Stripe 帳戶餘額"
-    const refreshBtn = stripeContainer.locator("button", { hasText: "重新整理" });
+    const refreshBtn = stripeContainer.getByRole("button", { name: "重新整理" });
     await expect(refreshBtn).toBeVisible();
     const toastMsg = page
       .locator("[data-sonner-toast]")
@@ -219,7 +198,7 @@ test.describe("Admin Finance Stripe Phase 1 Acceptance", () => {
     await fpsTabBtn.click();
 
     // 1. FPS ledger search input is present and accepts text
-    const fpsSearchInput = page.locator('input[placeholder*="搜尋提現單號"]');
+    const fpsSearchInput = page.locator('input[placeholder*="搜尋單號"]');
     await fpsSearchInput.fill("test-search-token");
     await expect(fpsSearchInput).toHaveValue("test-search-token");
     await page.waitForTimeout(500);

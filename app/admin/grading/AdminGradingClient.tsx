@@ -4,12 +4,14 @@ import type { ComponentType, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CheckCircle2,
   ClipboardCheck,
   Package,
   Search,
   ShieldCheck,
   Truck,
   X,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -29,6 +31,12 @@ import {
   type AdminGradingFaultParty,
   type AdminGradingTabCounts,
 } from "@/app/actions/admin-grading";
+import {
+  BTN_OUTLINE_SM_CLASS,
+  FILTER_CHIP_SM_CLASS,
+  FILTER_INPUT_CLASS,
+} from "@/app/admin/campaigns/campaigns-ui";
+import { Pagination } from "@/app/components/ui/Pagination";
 import { formatHongKongDateTime } from "@/lib/datetime/hong-kong";
 import {
   DEFAULT_GRADING_OPTION_ID,
@@ -84,11 +92,35 @@ const PAGE_SIZE = 20;
 const INPUT_CLASS =
   "h-10 rounded-lg border border-white/10 bg-transparent px-3 text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/40 outline-none";
 
-const BTN_OUTLINE_CLASS =
-  "border-[rgba(237,232,224,0.12)] bg-transparent hover:border-brand/30 hover:bg-brand/10 hover:text-brand text-text-primary text-[12px] active:scale-[0.98]";
-
 const BTN_BRAND_CLASS =
   "bg-brand text-bg-page hover:bg-brand-hover font-sans active:scale-[0.98]";
+
+function formatAdminGradingEscrowStatus(
+  status: string,
+  orderKind: AdminGradingOrderKind,
+): string {
+  const memberLabels: Record<string, string> = {
+    payment: "待付款",
+    custody: "保管中",
+    grading: "鑑定中",
+    shipped: "已發貨",
+    released: "已釋放",
+    cancelled: "已取消",
+  };
+
+  const merchantLabels: Record<string, string> = {
+    pending_payment: "待付款",
+    payment_held: "待入庫",
+    shipped: "運送中",
+    authenticating: "鑑定中",
+    authenticated: "待買家收貨",
+    completed_and_transferred: "已完成",
+    refunded: "已退款",
+  };
+
+  const labels = orderKind === "member" ? memberLabels : merchantLabels;
+  return labels[status] ?? status;
+}
 
 function formatDateTime(iso: string | null): string {
   return formatHongKongDateTime(iso);
@@ -218,6 +250,8 @@ function refundStatusBadge(row: AdminGradingQueueRow): {
   return null;
 }
 
+type GradingDecisionMode = "pass" | "fail";
+
 type AdminGradingClientProps = {
   initialRows: AdminGradingQueueRow[];
   initialTotal: number;
@@ -254,6 +288,8 @@ export function AdminGradingClient({
   const [fpsReference, setFpsReference] = useState("");
   const [settlementNotes, setSettlementNotes] = useState("");
   const [sellerReturnTracking, setSellerReturnTracking] = useState("");
+  const [gradingDecisionMode, setGradingDecisionMode] =
+    useState<GradingDecisionMode>("pass");
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
@@ -366,6 +402,7 @@ export function AdminGradingClient({
     setFpsReference("");
     setSettlementNotes("");
     setSellerReturnTracking("");
+    setGradingDecisionMode("pass");
     setAuditRows([]);
     loadAudit(row);
   };
@@ -445,37 +482,15 @@ export function AdminGradingClient({
   };
 
   return (
-    <div className="space-y-5 pb-8">
-      {/* ── Page header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-              鑑定工作台
-            </h1>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-              GRADING OPS
-            </span>
-          </div>
-          <p className="mt-1 font-sans text-[13px] text-text-secondary">
-            統一處理 Member C2C 與 Merchant B2C 鑑定訂單入庫、鑑定、出庫與退款
-          </p>
-        </div>
-        <p className="font-mono text-[12px] text-text-secondary sm:shrink-0 sm:self-end">
-          本頁顯示{" "}
-          <span className="font-medium text-text-primary">{rows.length}</span> 筆
-        </p>
-      </div>
-
+    <div className="space-y-4 pb-8">
       {loadError ? (
-        <div className="rounded-xl border border-error/30 bg-error/10 px-4 py-3 font-sans text-[13px] text-error">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2.5 font-sans text-[13px] text-error">
           {loadError}
         </div>
       ) : null}
 
-      {/* ── Filters: search → 來源 → 佇列 chips ─────────────────────── */}
-      <div className="space-y-4 border-b border-white/[0.08] pb-5">
-        <div className="flex w-full min-w-0 items-center gap-2">
+      <div className="space-y-3 border-b border-white/[0.08] pb-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
@@ -484,8 +499,8 @@ export function AdminGradingClient({
             <Input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
-              placeholder="搜尋訂單號、買家、賣家、物流單號"
-              className="h-11 w-full border-white/10 bg-transparent pl-10 text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+              placeholder="搜尋訂單、買家、物流…"
+              className={FILTER_INPUT_CLASS}
             />
           </div>
 
@@ -498,7 +513,7 @@ export function AdminGradingClient({
           >
             <SelectTrigger
               aria-label="訂單來源"
-              className="h-11 min-h-[44px] w-auto shrink-0 rounded-lg border border-white/10 bg-transparent px-3 font-sans text-[13px] text-text-primary transition-colors hover:border-brand/30 hover:bg-brand/10 focus-visible:border-brand/40 focus-visible:ring-0"
+              className="h-9 min-h-9 w-full rounded-lg border border-white/10 bg-transparent px-3 font-sans text-[12px] text-text-primary transition-colors hover:border-brand/30 hover:bg-brand/10 focus-visible:border-brand/40 focus-visible:ring-0 sm:w-[9.5rem]"
             >
               <SelectValue placeholder="全部來源">
                 {ORDER_KIND_LABELS[orderKind]}
@@ -517,7 +532,6 @@ export function AdminGradingClient({
         </div>
 
         <FilterChipRow
-          label="佇列"
           options={tabChipOptions}
           active={tab}
           onSelect={(key) => {
@@ -527,70 +541,76 @@ export function AdminGradingClient({
         />
       </div>
 
-      {/* ── Queue table ─────────────────────────────────────────────── */}
-      <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="border-b border-white/[0.08]">
-              <TableRow className="border-white/[0.06] hover:bg-transparent">
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  訂單號
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  來源
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  買家
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  賣方
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  商品
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  入庫物流
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  出庫物流
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  退款
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary">
-                  更新時間
-                </TableHead>
-                <TableHead className="font-sans text-[12px] font-semibold text-text-secondary" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-12 text-center text-text-secondary">
+          <ShieldCheck className="size-8 text-brand/60" aria-hidden="true" />
+          <p className="font-sans text-[14px] text-text-primary">
+            此分頁暫無鑑定訂單
+          </p>
+          <p className="font-sans text-[12px] text-text-disabled">
+            切換佇列或調整篩選條件
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="divide-y divide-white/[0.06] md:hidden">
+            {rows.map((row) => (
+              <GradingQueueMobileCard
+                key={`${row.order_kind}-${row.order_id}`}
+                row={row}
+                onOpen={() => openDetail(row)}
+              />
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-lg border border-white/[0.08] md:block">
+            <Table>
+              <TableHeader className="border-b border-white/[0.08] bg-bg-card/30">
                 <TableRow className="border-transparent hover:bg-transparent">
-                  <TableCell colSpan={10} className="py-16 text-center">
-                    <div className="flex flex-col items-center gap-3 text-text-secondary">
-                      <ShieldCheck className="size-8 text-brand/60" aria-hidden="true" />
-                      <p className="font-sans text-[14px] text-text-primary">
-                        此分頁暫無鑑定訂單
-                      </p>
-                      <p className="font-sans text-[12px] text-text-disabled">
-                        請切換其他佇列分頁，或調整來源篩選與搜尋條件。
-                      </p>
-                    </div>
-                  </TableCell>
+                  <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                    訂單號
+                  </TableHead>
+                  <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                    來源
+                  </TableHead>
+                  <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                    買家
+                  </TableHead>
+                  <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                    賣方
+                  </TableHead>
+                  <TableHead className="h-9 font-sans text-[11px] text-text-disabled">
+                    商品
+                  </TableHead>
+                  <TableHead className="h-9 font-mono text-[11px] text-text-disabled">
+                    入庫
+                  </TableHead>
+                  <TableHead className="hidden h-9 font-mono text-[11px] text-text-disabled lg:table-cell">
+                    出庫
+                  </TableHead>
+                  <TableHead className="hidden h-9 font-sans text-[11px] text-text-disabled lg:table-cell">
+                    退款
+                  </TableHead>
+                  <TableHead className="hidden h-9 font-mono text-[11px] text-text-disabled xl:table-cell">
+                    更新
+                  </TableHead>
+                  <TableHead className="h-9 w-[4.5rem]" />
                 </TableRow>
-              ) : (
-                rows.map((row) => {
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => {
                   const refundBadge = refundStatusBadge(row);
                   return (
                     <TableRow
                       key={`${row.order_kind}-${row.order_id}`}
                       className="border-white/[0.06] transition-colors duration-200 even:bg-transparent odd:bg-bg-card/40 hover:bg-brand/10"
                     >
-                      <TableCell>
-                        <span className="font-mono text-[13px] font-medium text-text-primary">
+                      <TableCell className="py-2.5">
+                        <span className="font-mono text-[12px] font-medium text-text-primary">
                           {row.order_number ?? row.order_id.slice(0, 8)}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2.5">
                         <Badge
                           variant="outline"
                           className={
@@ -602,32 +622,32 @@ export function AdminGradingClient({
                           {row.order_kind === "member" ? "C2C" : "B2C"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-sans text-[13px] text-text-primary">
+                      <TableCell className="max-w-[7rem] py-2.5">
+                        <span className="truncate font-sans text-[12px] text-text-primary">
                           {row.buyer_display_name ?? row.buyer_username ?? "—"}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-sans text-[13px] text-text-primary">
+                      <TableCell className="max-w-[7rem] py-2.5">
+                        <span className="truncate font-sans text-[12px] text-text-primary">
                           {formatParty(row)}
                         </span>
                       </TableCell>
-                      <TableCell className="max-w-[180px]">
-                        <span className="truncate font-sans text-[13px] text-text-primary">
+                      <TableCell className="max-w-[10rem] py-2.5">
+                        <span className="truncate font-sans text-[12px] text-text-primary">
                           {formatProductName(row)}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-[12px] text-text-secondary">
+                      <TableCell className="py-2.5">
+                        <span className="font-mono text-[11px] text-text-secondary">
                           {row.inbound_tracking_no ?? "—"}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-[12px] text-text-secondary">
+                      <TableCell className="hidden py-2.5 lg:table-cell">
+                        <span className="font-mono text-[11px] text-text-secondary">
                           {row.outbound_tracking_no ?? "—"}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden py-2.5 lg:table-cell">
                         {refundBadge ? (
                           <Badge
                             variant="outline"
@@ -636,63 +656,46 @@ export function AdminGradingClient({
                             {refundBadge.label}
                           </Badge>
                         ) : (
-                          <span className="font-sans text-[12px] text-text-disabled">
+                          <span className="font-sans text-[11px] text-text-disabled">
                             —
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-[12px] text-text-secondary">
+                      <TableCell className="hidden py-2.5 xl:table-cell">
+                        <span className="font-mono text-[11px] text-text-secondary">
                           {formatDateTime(row.updated_at)}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="py-2.5">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => openDetail(row)}
-                          className={BTN_OUTLINE_CLASS}
+                          className={BTN_OUTLINE_SM_CLASS}
                         >
                           處理
                         </Button>
                       </TableCell>
                     </TableRow>
                   );
-                })
-              )}
-            </TableBody>
-          </Table>
-      </div>
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
 
-      {/* ── Pagination ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between font-mono text-[12px] text-text-secondary">
-        <span>
-          共 {total} 筆 · 第 {page} / {totalPages} 頁
-        </span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isPending || page <= 1}
-            onClick={() => refreshQueue(page - 1)}
-            className={BTN_OUTLINE_CLASS}
-          >
-            上一頁
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isPending || page >= totalPages}
-            onClick={() => refreshQueue(page + 1)}
-            className={BTN_OUTLINE_CLASS}
-          >
-            下一頁
-          </Button>
-        </div>
-      </div>
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={total}
+        itemsPerPage={PAGE_SIZE}
+        itemLabel="筆"
+        onPageChange={(nextPage) => refreshQueue(nextPage)}
+        enableScroll={false}
+        className={isPending ? "pointer-events-none opacity-60" : undefined}
+      />
 
       {/* ── Detail dialog ───────────────────────────────────────────── */}
       <Dialog
@@ -728,9 +731,12 @@ export function AdminGradingClient({
                       </Badge>
                       <Badge
                         variant="outline"
-                        className="border-white/10 font-mono text-[11px] text-text-secondary"
+                        className="border-white/10 font-sans text-[11px] text-text-secondary"
                       >
-                        {selected.escrow_status}
+                        {formatAdminGradingEscrowStatus(
+                          selected.escrow_status,
+                          selected.order_kind,
+                        )}
                       </Badge>
                     </div>
                     <DialogDescription className="sr-only">
@@ -798,138 +804,162 @@ export function AdminGradingClient({
 
                 {tab === "grading" ? (
                   <ActionPanel icon={ClipboardCheck} title="鑑定作業">
-                    <select
-                      name="gradingOptionId"
-                      value={gradingOptionId}
-                      onChange={(event) => setGradingOptionId(event.target.value)}
-                      className={cnSelectClass("w-full")}
-                    >
-                      <option value="">請選擇鑑定等級（必填）</option>
-                      {GRADING_OPTION_GROUPS.filter(
-                        (group) => group.key !== "RAW",
-                      ).map((group) => (
-                        <optgroup key={group.key} label={group.label}>
-                          {getGradingOptionsByGroup(group.key).map((option) => (
-                            <option key={option.id} value={option.id}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    <textarea
-                      value={notes}
-                      onChange={(event) => setNotes(event.target.value)}
-                      placeholder="鑑定備註（選填）"
-                      className={cnTextareaClass()}
+                    <GradingDecisionToggle
+                      mode={gradingDecisionMode}
+                      onChange={setGradingDecisionMode}
                     />
-                    <Button
-                      type="button"
-                      disabled={isPending || !gradingOptionId}
-                      className={BTN_BRAND_CLASS}
-                      onClick={() =>
-                        runMutation(
-                          () =>
-                            adminPassGrading({
-                              orderKind: selected.order_kind,
-                              orderId: selected.order_id,
-                              gradingOptionId,
-                              notes,
-                            }),
-                          "鑑定已標記為通過",
-                        )
-                      }
-                    >
-                      鑑定通過
-                    </Button>
 
-                    <div className="rounded-xl border border-warning/25 bg-warning/5 p-4">
-                      <p className="font-sans text-[12px] text-warning">
-                        {formatGradingFailWarning(selected, faultParty)}
-                      </p>
-                      <select
-                        name="faultParty"
-                        value={faultParty}
-                        onChange={(event) =>
-                          setFaultParty(
-                            event.target.value as AdminGradingFaultParty | "",
-                          )
-                        }
-                        className={cnSelectClass("mt-3 w-full")}
-                      >
-                        <option value="">請選擇責任方（必填）</option>
-                        <option value="buyer">買家</option>
-                        <option value="seller">賣家</option>
-                        <option value="platform">平台</option>
-                        <option value="carrier">物流</option>
-                        <option value="inconclusive">無法判定</option>
-                      </select>
-                      {faultParty === "carrier" ? (
-                        <select
-                          name="carrierLiabilityParty"
-                          value={carrierLiabilityParty}
-                          onChange={(event) =>
-                            setCarrierLiabilityParty(
-                              event.target.value as "seller" | "platform" | "",
-                            )
-                          }
-                          className={cnSelectClass("mt-2 w-full")}
-                        >
-                          <option value="">物流承擔方（必填）</option>
-                          <option value="seller">賣家物流</option>
-                          <option value="platform">平台物流</option>
-                        </select>
-                      ) : null}
-                      <textarea
-                        value={failReason}
-                        onChange={(event) => setFailReason(event.target.value)}
-                        placeholder="失敗原因（選填）"
-                        className={cnTextareaClass("mt-2 min-h-[64px]")}
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        className="mt-3 active:scale-[0.98]"
-                        disabled={
-                          isPending ||
-                          !faultParty ||
-                          (faultParty === "carrier" && !carrierLiabilityParty)
-                        }
-                        onClick={() =>
-                          runMutation(
-                            async () => {
-                              if (!faultParty) {
-                                return { success: false, error: "請選擇責任方" };
+                    <div
+                      className={`space-y-3 rounded-lg border p-3 ${
+                        gradingDecisionMode === "pass"
+                          ? "border-white/10 bg-bg-page/30"
+                          : "border-warning/25 bg-warning/5"
+                      }`}
+                    >
+                      {gradingDecisionMode === "pass" ? (
+                        <>
+                          <select
+                            name="gradingOptionId"
+                            value={gradingOptionId}
+                            onChange={(event) =>
+                              setGradingOptionId(event.target.value)
+                            }
+                            className={cnSelectClass("w-full")}
+                          >
+                            <option value="">請選擇鑑定等級（必填）</option>
+                            {GRADING_OPTION_GROUPS.filter(
+                              (group) => group.key !== "RAW",
+                            ).map((group) => (
+                              <optgroup key={group.key} label={group.label}>
+                                {getGradingOptionsByGroup(group.key).map(
+                                  (option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ),
+                                )}
+                              </optgroup>
+                            ))}
+                          </select>
+                          <textarea
+                            value={notes}
+                            onChange={(event) => setNotes(event.target.value)}
+                            placeholder="鑑定備註（選填）"
+                            className={cnTextareaClass()}
+                          />
+                          <Button
+                            type="button"
+                            disabled={isPending || !gradingOptionId}
+                            className={`${BTN_BRAND_CLASS} w-full`}
+                            onClick={() =>
+                              runMutation(
+                                () =>
+                                  adminPassGrading({
+                                    orderKind: selected.order_kind,
+                                    orderId: selected.order_id,
+                                    gradingOptionId,
+                                    notes,
+                                  }),
+                                "鑑定已標記為通過",
+                              )
+                            }
+                          >
+                            確認通過
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-sans text-[12px] leading-relaxed text-warning">
+                            {formatGradingFailWarning(selected, faultParty)}
+                          </p>
+                          <select
+                            name="faultParty"
+                            value={faultParty}
+                            onChange={(event) =>
+                              setFaultParty(
+                                event.target.value as AdminGradingFaultParty | "",
+                              )
+                            }
+                            className={cnSelectClass("w-full")}
+                          >
+                            <option value="">請選擇責任方（必填）</option>
+                            <option value="buyer">買家</option>
+                            <option value="seller">賣家</option>
+                            <option value="platform">平台</option>
+                            <option value="carrier">物流</option>
+                            <option value="inconclusive">無法判定</option>
+                          </select>
+                          {faultParty === "carrier" ? (
+                            <select
+                              name="carrierLiabilityParty"
+                              value={carrierLiabilityParty}
+                              onChange={(event) =>
+                                setCarrierLiabilityParty(
+                                  event.target.value as "seller" | "platform" | "",
+                                )
                               }
-                              if (
-                                faultParty === "carrier" &&
-                                !carrierLiabilityParty
-                              ) {
-                                return {
-                                  success: false,
-                                  error: "物流責任請選擇承擔方",
-                                };
-                              }
-                              const result = await adminFailGradingAndRefund({
-                                orderKind: selected.order_kind,
-                                orderId: selected.order_id,
-                                faultParty,
-                                reason: failReason,
-                                ...(faultParty === "carrier" &&
-                                carrierLiabilityParty
-                                  ? { carrierLiabilityParty }
-                                  : {}),
-                              });
-                              return result.success
-                                ? { success: true }
-                                : { success: false, error: result.error };
-                            },
-                            "已釋放未扣款餘額",
-                          )
-                        }
-                      >
-                        鑑定失敗並釋放餘額
-                      </Button>
+                              className={cnSelectClass("w-full")}
+                            >
+                              <option value="">物流承擔方（必填）</option>
+                              <option value="seller">賣家物流</option>
+                              <option value="platform">平台物流</option>
+                            </select>
+                          ) : null}
+                          <textarea
+                            value={failReason}
+                            onChange={(event) => setFailReason(event.target.value)}
+                            placeholder="失敗原因（選填）"
+                            className={cnTextareaClass("min-h-[64px]")}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            className="w-full active:scale-[0.98]"
+                            disabled={
+                              isPending ||
+                              !faultParty ||
+                              (faultParty === "carrier" && !carrierLiabilityParty)
+                            }
+                            onClick={() =>
+                              runMutation(
+                                async () => {
+                                  if (!faultParty) {
+                                    return {
+                                      success: false,
+                                      error: "請選擇責任方",
+                                    };
+                                  }
+                                  if (
+                                    faultParty === "carrier" &&
+                                    !carrierLiabilityParty
+                                  ) {
+                                    return {
+                                      success: false,
+                                      error: "物流責任請選擇承擔方",
+                                    };
+                                  }
+                                  const result = await adminFailGradingAndRefund({
+                                    orderKind: selected.order_kind,
+                                    orderId: selected.order_id,
+                                    faultParty,
+                                    reason: failReason,
+                                    ...(faultParty === "carrier" &&
+                                    carrierLiabilityParty
+                                      ? { carrierLiabilityParty }
+                                      : {}),
+                                  });
+                                  return result.success
+                                    ? { success: true }
+                                    : { success: false, error: result.error };
+                                },
+                                "已釋放未扣款餘額",
+                              )
+                            }
+                          >
+                            確認失敗並釋放餘額
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </ActionPanel>
                 ) : null}
@@ -1066,41 +1096,149 @@ export function AdminGradingClient({
   );
 }
 
+function GradingDecisionToggle({
+  mode,
+  onChange,
+}: {
+  mode: GradingDecisionMode;
+  onChange: (mode: GradingDecisionMode) => void;
+}) {
+  return (
+    <div
+      className="grid grid-cols-2 rounded-lg border border-white/10 bg-bg-page/50 p-1"
+      role="tablist"
+      aria-label="鑑定結果"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "pass"}
+        onClick={() => onChange("pass")}
+        className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md font-sans text-[12px] font-semibold transition-all active:scale-[0.98] ${
+          mode === "pass"
+            ? "bg-brand text-[#17130f] shadow-sm"
+            : "text-text-secondary hover:text-text-primary"
+        }`}
+      >
+        <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
+        通過
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "fail"}
+        onClick={() => onChange("fail")}
+        className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md font-sans text-[12px] font-semibold transition-all active:scale-[0.98] ${
+          mode === "fail"
+            ? "bg-warning/20 text-warning"
+            : "text-text-secondary hover:text-warning"
+        }`}
+      >
+        <XCircle className="size-3.5 shrink-0" aria-hidden="true" />
+        失敗
+      </button>
+    </div>
+  );
+}
+
+function GradingQueueMobileCard({
+  row,
+  onOpen,
+}: {
+  row: AdminGradingQueueRow;
+  onOpen: () => void;
+}) {
+  const refundBadge = refundStatusBadge(row);
+
+  return (
+    <article className="space-y-2 px-1 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-mono text-[13px] font-medium text-text-primary">
+            {row.order_number ?? row.order_id.slice(0, 8)}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant="outline"
+              className={
+                row.order_kind === "member"
+                  ? "border-brand/25 bg-brand/10 text-brand"
+                  : "border-white/10 bg-bg-elevated text-text-secondary"
+              }
+            >
+              {row.order_kind === "member" ? "C2C" : "B2C"}
+            </Badge>
+            {refundBadge ? (
+              <Badge variant="outline" className={refundBadge.className}>
+                {refundBadge.label}
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onOpen}
+          className={BTN_OUTLINE_SM_CLASS}
+        >
+          處理
+        </Button>
+      </div>
+
+      <dl className="grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-1 font-sans text-[12px]">
+        <dt className="text-text-disabled">買家</dt>
+        <dd className="truncate text-text-primary">
+          {row.buyer_display_name ?? row.buyer_username ?? "—"}
+        </dd>
+        <dt className="text-text-disabled">賣方</dt>
+        <dd className="truncate text-text-primary">{formatParty(row)}</dd>
+        <dt className="text-text-disabled">商品</dt>
+        <dd className="truncate text-text-primary">{formatProductName(row)}</dd>
+        <dt className="text-text-disabled">入庫</dt>
+        <dd className="truncate font-mono text-[11px] text-text-secondary">
+          {row.inbound_tracking_no ?? "—"}
+        </dd>
+      </dl>
+    </article>
+  );
+}
+
 function FilterChipRow<K extends string>({
-  label,
   options,
   active,
   onSelect,
 }: {
-  label: string;
   options: { key: K; label: string; count: number }[];
   active: K;
   onSelect: (key: K) => void;
 }) {
   return (
-    <div className="space-y-2">
-      <span className="font-sans text-[11px] font-medium uppercase tracking-wide text-text-secondary">
-        {label}
-      </span>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {options.map(({ key, label: optionLabel, count }) => {
-          const selected = active === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onSelect(key)}
-              className={`min-h-[36px] rounded-lg border px-3 py-1.5 font-sans text-[12px] transition-colors active:scale-[0.98] ${
-                selected
-                  ? "border-brand/40 bg-brand/15 font-semibold text-brand"
-                  : "border-transparent text-text-secondary hover:border-brand/30 hover:bg-brand/10 hover:text-brand"
-              }`}
-            >
-              {optionLabel} ({count})
-            </button>
-          );
-        })}
-      </div>
+    <div
+      className="min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      <div className="flex gap-1 pb-0.5">
+          {options.map(({ key, label: optionLabel, count }) => {
+            const selected = active === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSelect(key)}
+                className={`${FILTER_CHIP_SM_CLASS(selected)} shrink-0 gap-1`}
+              >
+                <span>{optionLabel}</span>
+                <span
+                  className={`font-mono text-[9px] tabular-nums ${
+                    selected ? "text-brand/80" : "text-text-disabled"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
     </div>
   );
 }

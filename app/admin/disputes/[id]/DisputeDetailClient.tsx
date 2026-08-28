@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   adjustAdminModerationCaseScore,
@@ -57,6 +56,10 @@ import ModerationSubjectHistoryPanel from "./ModerationSubjectHistoryPanel";
 import {
   BTN_PRIMARY_CLASS,
   INPUT_CLASS,
+  META_TEXT_CLASS,
+  MODERATION_META_BADGE_CLASS,
+  SECTION_BLOCK_CLASS,
+  SECTION_TITLE_CLASS,
   SELECT_CONTENT_CLASS,
   SELECT_ITEM_CLASS,
   SELECT_TRIGGER_CLASS,
@@ -83,7 +86,14 @@ export default function DisputeDetailClient({
     bundle;
   const severity = deriveSeverityBand(caseDetail.finalScore);
   const primaryReporter = bundle.reporterSummaries[0];
+  const primaryReporterUsername = primaryReporter
+    ? reports.find((r) => r.reporterId === primaryReporter.id)?.reporterUsername
+    : null;
   const caseOpen = isCaseOpen(caseDetail.status);
+  const showScoreBreakdown =
+    caseOpen ||
+    caseDetail.adminAdjustment !== 0 ||
+    reports.length > 1;
   const chatRoomIds =
     chatAccess.roomIds.length > 0
       ? chatAccess.roomIds
@@ -328,79 +338,67 @@ export default function DisputeDetailClient({
   };
 
   return (
-    <div className="space-y-5 pb-8">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.push("/admin/disputes")}
-        className="text-text-secondary hover:bg-brand/10 hover:text-brand active:scale-[0.98]"
-      >
-        <ArrowLeft className="mr-1.5 size-4" />
-        返回舉報與爭議列表
-      </Button>
-
-      <header className="space-y-3 border-b border-white/[0.08] pb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[18px] font-bold tracking-tight text-text-primary">
-            {caseDetail.caseNumber}
-          </span>
-          <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-            MODERATION
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="font-sans text-[20px] font-bold text-text-primary">
+    <div className="pb-8">
+      <header className={`${SECTION_BLOCK_CLASS} space-y-2`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+              <p className="font-mono text-[10px] text-text-disabled">
+                {caseDetail.caseNumber}
+              </p>
+              <p className={META_TEXT_CLASS}>
+                {formatModerationDateTime(caseDetail.createdAt)}
+              </p>
+            </div>
+            <h1 className="mt-1 font-sans text-[17px] font-bold leading-snug text-text-primary sm:text-[19px]">
               被舉報：{caseDetail.subject.displayName ?? "未知用戶"}
             </h1>
-            <p className="mt-1 font-sans text-[13px] text-text-secondary">
-              @{caseDetail.subject.username ?? "—"} · 角色{" "}
+            <p className={`mt-0.5 ${META_TEXT_CLASS} text-text-secondary`}>
+              @{caseDetail.subject.username ?? "—"} ·{" "}
               {caseDetail.subject.role ?? "—"}
             </p>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-sans text-[12px] text-text-disabled">
-              <span>
-                主要舉報方：
-                <span className="text-text-secondary">
-                  {primaryReporter?.displayName ?? "—"}
-                </span>
-              </span>
-              <span>
-                獨立舉報人數：
-                <span className="text-text-secondary">
-                  {bundle.reporterSummaries.length}
-                </span>
-              </span>
-            </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-            <Badge
-              variant="outline"
-              className={moderationStatusBadgeClasses(caseDetail.status)}
-            >
-              {moderationStatusLabel(caseDetail.status)}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={categoryBadgeClasses(caseDetail.primaryCategory)}
-            >
-              {formatCategoryLabel(caseDetail.primaryCategory)}
-            </Badge>
-            <Badge variant="outline" className={severityBadgeClasses(severity)}>
-              {severityLabel(severity)}
-            </Badge>
-            <span className="font-mono text-[13px] font-semibold text-brand">
-              分數 {caseDetail.finalScore ?? 0}
-            </span>
-            <span className="font-sans text-[12px] text-text-disabled">
-              建立於 {formatModerationDateTime(caseDetail.createdAt)}
-            </span>
-          </div>
+          <Badge
+            variant="outline"
+            className={`shrink-0 ${MODERATION_META_BADGE_CLASS} ${moderationStatusBadgeClasses(caseDetail.status)}`}
+          >
+            {moderationStatusLabel(caseDetail.status)}
+          </Badge>
         </div>
 
+        <div className="flex flex-wrap items-center gap-1">
+          <Badge
+            variant="outline"
+            className={`${MODERATION_META_BADGE_CLASS} ${categoryBadgeClasses(caseDetail.primaryCategory)}`}
+          >
+            {formatCategoryLabel(caseDetail.primaryCategory)}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`${MODERATION_META_BADGE_CLASS} ${severityBadgeClasses(severity)}`}
+          >
+            {severityLabel(severity)}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`${MODERATION_META_BADGE_CLASS} border-brand/20 bg-brand/10 text-brand`}
+          >
+            分數 {caseDetail.finalScore ?? 0}
+          </Badge>
+        </div>
+
+        <p className={META_TEXT_CLASS}>
+          主要舉報方{" "}
+          <span className="text-text-secondary">
+            {primaryReporter?.displayName ?? "—"}
+            {primaryReporterUsername ? ` · @${primaryReporterUsername}` : null}
+          </span>
+          <span className="text-text-disabled/50"> · </span>
+          {bundle.reporterSummaries.length} 人舉報
+        </p>
+
         {activeSanctions.length > 0 ? (
-          <div className="space-y-1 rounded-lg border border-white/[0.06] bg-bg-card/40 px-3 py-2">
+          <div className="space-y-0.5">
             <p className="font-sans text-[12px] font-medium text-text-secondary">
               有效制裁
             </p>
@@ -420,17 +418,21 @@ export default function DisputeDetailClient({
         ) : null}
       </header>
 
-      <ModerationReportSummaryPanel reports={reports} />
+      <ModerationReportSummaryPanel
+        reports={reports}
+        primaryCategory={caseDetail.primaryCategory}
+        primaryReporterId={primaryReporter?.id}
+      />
 
       {!chatAccess.evidenceSufficient ? (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 font-sans text-[13px] text-error">
+        <p className={`${SECTION_BLOCK_CLASS} font-sans text-[13px] text-error`}>
           證據不足 — 此類別需調閱對話紀錄。若下方無聊天紀錄，可先標記
           insufficient_evidence 或駁回。
-        </div>
+        </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[55fr_45fr]">
-        <div className="space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[55fr_45fr] lg:gap-8">
+        <div>
           {subjectHistory ? (
             <ModerationSubjectHistoryPanel
               history={subjectHistory}
@@ -438,11 +440,16 @@ export default function DisputeDetailClient({
             />
           ) : null}
 
-          <section className="space-y-4 border-b border-white/[0.08] pb-5">
-            <h2 className="font-sans text-[15px] font-bold text-text-primary">
-              用戶上傳證據
-            </h2>
-            <ModerationEvidencePanel attachments={attachments} />
+          <section className={SECTION_BLOCK_CLASS}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className={SECTION_TITLE_CLASS}>用戶上傳證據</h2>
+              {attachments.length === 0 ? (
+                <span className={META_TEXT_CLASS}>暫無</span>
+              ) : null}
+            </div>
+            {attachments.length > 0 ? (
+              <ModerationEvidencePanel attachments={attachments} />
+            ) : null}
           </section>
 
           <ModerationChatHistoryPanel
@@ -452,40 +459,40 @@ export default function DisputeDetailClient({
           />
         </div>
 
-        <div className="space-y-5 lg:sticky lg:top-4 lg:self-start">
-          <section className="space-y-3 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
-            <h2 className="font-sans text-[15px] font-bold text-text-primary">
-              風控分數明細
-            </h2>
-            <div className="space-y-2">
-              <ScoreDetailRow
-                label="自動分數"
-                value={String(caseDetail.autoScore)}
-              />
-              {reports.map((report) => (
-                <ScoreDetailRow
-                  key={report.id}
-                  label={formatCategoryLabel(report.category)}
-                  value={`+${report.contributionScore ?? 0}`}
-                  hint={report.reporterDisplayName ?? "未知"}
-                />
-              ))}
-              <ScoreDetailRow
-                label="管理員調整"
-                value={String(caseDetail.adminAdjustment)}
-              />
-              {caseDetail.adjustmentReason ? (
-                <p className="font-sans text-[11px] text-text-disabled">
-                  調整原因：{caseDetail.adjustmentReason}
-                </p>
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          {caseOpen ? (
+            <section className={SECTION_BLOCK_CLASS}>
+              <h2 className={SECTION_TITLE_CLASS}>風控分數明細</h2>
+              {showScoreBreakdown ? (
+                <div className="space-y-1.5">
+                  <ScoreDetailRow
+                    label="自動分數"
+                    value={String(caseDetail.autoScore)}
+                  />
+                  {reports.map((report) => (
+                    <ScoreDetailRow
+                      key={report.id}
+                      label={formatCategoryLabel(report.category)}
+                      value={`+${report.contributionScore ?? 0}`}
+                      hint={report.reporterDisplayName ?? "未知"}
+                    />
+                  ))}
+                  <ScoreDetailRow
+                    label="管理員調整"
+                    value={String(caseDetail.adminAdjustment)}
+                  />
+                  {caseDetail.adjustmentReason ? (
+                    <p className={META_TEXT_CLASS}>
+                      調整原因：{caseDetail.adjustmentReason}
+                    </p>
+                  ) : null}
+                  <ScoreDetailRow
+                    label="最終分數"
+                    value={String(caseDetail.finalScore ?? 0)}
+                    emphasize
+                  />
+                </div>
               ) : null}
-              <ScoreDetailRow
-                label="最終分數"
-                value={String(caseDetail.finalScore ?? 0)}
-                emphasize
-              />
-            </div>
-            {caseOpen ? (
               <div className="mt-4 space-y-3 border-t border-white/[0.06] pt-4">
                 <div>
                   <label
@@ -530,35 +537,6 @@ export default function DisputeDetailClient({
                   {isAdjustPending ? "儲存中…" : "儲存調整"}
                 </Button>
               </div>
-            ) : null}
-          </section>
-
-          {!caseOpen ? (
-            <section className="space-y-2 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
-              <h2 className="font-sans text-[15px] font-bold text-text-primary">
-                結案摘要
-              </h2>
-              <ScoreDetailRow
-                label="案件狀態"
-                value={moderationStatusLabel(caseDetail.status)}
-              />
-              {caseDetail.resolution ? (
-                <ScoreDetailRow
-                  label="裁定結果"
-                  value={moderationResolutionLabel(caseDetail.resolution)}
-                />
-              ) : null}
-              {caseDetail.resolvedAt ? (
-                <ScoreDetailRow
-                  label="結案時間"
-                  value={formatModerationDateTime(caseDetail.resolvedAt)}
-                />
-              ) : null}
-              <ScoreDetailRow
-                label="最終分數"
-                value={String(caseDetail.finalScore ?? 0)}
-                emphasize
-              />
             </section>
           ) : null}
 
@@ -585,10 +563,8 @@ export default function DisputeDetailClient({
           />
 
           {caseOpen ? (
-            <section className="space-y-4 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
-              <h2 className="font-sans text-[15px] font-bold text-text-primary">
-                仲裁判定動作
-              </h2>
+            <section className={SECTION_BLOCK_CLASS}>
+              <h2 className={SECTION_TITLE_CLASS}>仲裁判定動作</h2>
               <div className="space-y-4">
                 <div>
                   <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
@@ -655,7 +631,7 @@ export default function DisputeDetailClient({
                 ) : null}
 
                 {resolutionOption && isUpheldResolutionOption(resolutionOption) ? (
-                  <div className="space-y-3 rounded-lg border border-white/[0.06] bg-bg-page/50 p-3">
+                  <div className="space-y-3 border-t border-white/[0.06] pt-3">
                     <label className="flex items-center gap-2 font-sans text-[12px] text-text-secondary">
                       <Checkbox
                         checked={executeOrderRefund}
@@ -886,6 +862,61 @@ export default function DisputeDetailClient({
           ) : null}
 
           <ModerationAuditTimeline entries={auditLog} />
+
+          {!caseOpen ? (
+            <section className={SECTION_BLOCK_CLASS}>
+              <h2 className={SECTION_TITLE_CLASS}>案件結果</h2>
+              <div className="space-y-1.5">
+                <ScoreDetailRow
+                  label="案件狀態"
+                  value={moderationStatusLabel(caseDetail.status)}
+                />
+                {caseDetail.resolution ? (
+                  <ScoreDetailRow
+                    label="裁定結果"
+                    value={moderationResolutionLabel(caseDetail.resolution)}
+                  />
+                ) : null}
+                {caseDetail.resolvedAt ? (
+                  <ScoreDetailRow
+                    label="結案時間"
+                    value={formatModerationDateTime(caseDetail.resolvedAt)}
+                  />
+                ) : null}
+              </div>
+              {showScoreBreakdown ? (
+                <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+                  <p className={META_TEXT_CLASS}>分數明細</p>
+                  <ScoreDetailRow
+                    label="自動分數"
+                    value={String(caseDetail.autoScore)}
+                  />
+                  {reports.map((report) => (
+                    <ScoreDetailRow
+                      key={report.id}
+                      label={formatCategoryLabel(report.category)}
+                      value={`+${report.contributionScore ?? 0}`}
+                      hint={report.reporterDisplayName ?? "未知"}
+                    />
+                  ))}
+                  <ScoreDetailRow
+                    label="管理員調整"
+                    value={String(caseDetail.adminAdjustment)}
+                  />
+                  {caseDetail.adjustmentReason ? (
+                    <p className={META_TEXT_CLASS}>
+                      調整原因：{caseDetail.adjustmentReason}
+                    </p>
+                  ) : null}
+                  <ScoreDetailRow
+                    label="最終分數"
+                    value={String(caseDetail.finalScore ?? 0)}
+                    emphasize
+                  />
+                </div>
+              ) : null}
+            </section>
+          ) : null}
         </div>
       </div>
     </div>
@@ -905,10 +936,10 @@ function ScoreDetailRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 font-sans text-[12px]">
-      <span className="text-text-disabled">
+      <span className={META_TEXT_CLASS}>
         {label}
         {hint ? (
-          <span className="ml-1 text-[11px] text-text-disabled">· {hint}</span>
+          <span className="text-text-disabled/70"> · {hint}</span>
         ) : null}
       </span>
       <span

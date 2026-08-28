@@ -50,6 +50,13 @@ export const EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS: MerchantTransferStatusCounts
     frozen: 0,
   };
 
+/** Tab badge: exclude successfully processed (paid) transfers. */
+export function getMerchantTransferPendingCount(
+  counts: MerchantTransferStatusCounts,
+): number {
+  return Math.max(0, counts.all - counts.paid);
+}
+
 export type MerchantTransferRow = {
   orderId: string;
   orderNumber: string;
@@ -184,6 +191,8 @@ export type FpsPayoutPage = {
 export type ListAdminPayoutRequestsInput = {
   page?: number;
   pageSize?: number;
+  /** Server export path may raise page size cap (admin UI list should omit). */
+  maxPageSize?: number;
   search?: string;
   statusFilter?: FpsPayoutStatusFilter;
   sort?: FpsPayoutSort;
@@ -195,9 +204,22 @@ export type ListAdminPayoutRequestsResult =
   | { success: true; data: FpsPayoutPage }
   | { success: false; error: string };
 
+export type FpsPayoutExportPayload = {
+  rows: FpsPayoutRow[];
+  totalMatching: number;
+  exportedCount: number;
+  exportCap: number;
+  capped: boolean;
+};
+
+export type ListAdminPayoutRequestsExportResult =
+  | { success: true; data: FpsPayoutExportPayload }
+  | { success: false; error: string };
+
 export const FPS_PAYOUT_REQUESTS_PAGE_SIZE = 10;
 export const FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE = 50;
 export const FPS_EXPORT_CAP = 2000;
+export const FPS_EXPORT_CHUNK_SIZE = 200;
 export const FPS_SELLER_NAME_SORT_FETCH_CAP = 5000;
 
 export const FPS_INCOMPLETE_STATUSES: FpsPayoutRequestStatus[] = [

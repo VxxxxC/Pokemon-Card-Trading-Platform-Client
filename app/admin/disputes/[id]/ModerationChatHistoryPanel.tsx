@@ -9,10 +9,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ModerationChatThreadPanel from "./ModerationChatThreadPanel";
+import { ModerationExpandToggle } from "./ModerationExpandToggle";
 import {
   SELECT_CONTENT_CLASS,
   SELECT_ITEM_CLASS,
   SELECT_TRIGGER_CLASS,
+  SECTION_DIVIDER_CLASS,
+  SECTION_TITLE_CLASS,
+  META_TEXT_CLASS,
+  EXPANDED_CONTENT_CLASS,
 } from "./moderation-detail-ui";
 
 type ModerationChatHistoryPanelProps = {
@@ -39,25 +44,20 @@ export default function ModerationChatHistoryPanel({
     : null;
 
   return (
-    <section className="space-y-3 border-b border-white/[0.08] pb-5 last:border-b-0">
+    <section className={SECTION_DIVIDER_CLASS}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-sans text-[15px] font-bold text-text-primary">
-          唯讀聊天室歷史
-        </h2>
+        <h2 className={SECTION_TITLE_CLASS}>唯讀聊天室歷史</h2>
         {hasRooms ? (
           <div className="flex items-center gap-3">
             {roomSummary ? (
-              <span className="font-mono text-[12px] text-text-disabled">
+              <span className={`${META_TEXT_CLASS} font-mono`}>
                 {roomSummary}
               </span>
             ) : null}
-            <button
-              type="button"
-              onClick={() => setOpen((value) => !value)}
-              className="font-sans text-[12px] text-brand hover:text-text-primary"
-            >
-              {open ? "收合" : "展開"}
-            </button>
+            <ModerationExpandToggle
+              open={open}
+              onToggle={() => setOpen((value) => !value)}
+            />
           </div>
         ) : null}
       </div>
@@ -67,7 +67,7 @@ export default function ModerationChatHistoryPanel({
           此案件尚未綁定可調閱的聊天室紀錄。
         </p>
       ) : open ? (
-        <div className="space-y-3">
+        <div className={`${EXPANDED_CONTENT_CLASS} space-y-3`}>
           {chatRoomIds.length > 1 ? (
             <Select
               value={selectedChatRoomId ?? ""}

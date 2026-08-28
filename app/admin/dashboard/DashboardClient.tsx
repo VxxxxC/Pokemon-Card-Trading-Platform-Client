@@ -1,9 +1,19 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   TrendingUp,
   RefreshCw,
@@ -11,13 +21,43 @@ import {
 } from "lucide-react";
 import { getAdminSystemHealthStatus } from "@/app/actions/admin-dashboard";
 import {
-  BTN_OUTLINE_SM_CLASS,
   FORM_SECTION_CLASS,
 } from "@/app/admin/campaigns/campaigns-ui";
 import type {
   AdminDashboardMetrics,
   AdminDashboardSystemService,
+  AdminDashboardTrendPoint,
 } from "@/lib/admin-dashboard/types";
+import { formatHkd } from "@/lib/admin-dashboard/format";
+import {
+  buildMonthTrend,
+  ADMIN_DASHBOARD_TREND_DEFAULT_MONTHS,
+  ADMIN_DASHBOARD_TREND_MAX_MONTHS,
+} from "@/lib/admin-dashboard/trends";
+
+const EMPTY_TREND = buildMonthTrend([], ADMIN_DASHBOARD_TREND_MAX_MONTHS);
+
+type DashboardTrendRange = "6m" | "12m";
+
+const TREND_RANGE_MONTHS: Record<DashboardTrendRange, number> = {
+  "6m": ADMIN_DASHBOARD_TREND_DEFAULT_MONTHS,
+  "12m": ADMIN_DASHBOARD_TREND_MAX_MONTHS,
+};
+
+function sliceTrendPoints(
+  points: AdminDashboardTrendPoint[],
+  range: DashboardTrendRange,
+): AdminDashboardTrendPoint[] {
+  const monthCount = TREND_RANGE_MONTHS[range];
+  if (points.length <= monthCount) {
+    return points;
+  }
+  return points.slice(points.length - monthCount);
+}
+
+function trendRangeLabel(range: DashboardTrendRange): string {
+  return range === "6m" ? "近六月趨勢" : "近十二月趨勢";
+}
 
 type AdminDashboardClientProps = {
   metrics: AdminDashboardMetrics | null;
@@ -45,7 +85,9 @@ const EMPTY_METRICS: AdminDashboardMetrics = {
   },
   marketVolume: {
     totalGmv: "HK$ 0",
+    monthlyGmv: "HK$ 0",
     settledCount: "0 筆",
+    monthlySettledCount: "0 筆",
     listingCount: "0 件",
     growthRate: null,
   },
@@ -55,8 +97,12 @@ const EMPTY_METRICS: AdminDashboardMetrics = {
     commissionRate: "8.0%",
     commissionGrowth: null,
     appraisalTotal: "HK$ 0",
+    monthlyAppraisal: "HK$ 0",
+    monthlyNetRevenue: "HK$ 0",
+    totalNetRevenue: "HK$ 0",
+    monthlyAppraisalCount: "0 筆交易",
     appraisalFeePerCard: "HK$ 150",
-    totalAppraisals: "0 筆",
+    totalAppraisals: "0 筆交易",
   },
   stripeBalance: {
     availableFormatted: "—",
@@ -72,6 +118,10 @@ const EMPTY_METRICS: AdminDashboardMetrics = {
     pendingGrading: 0,
   },
   syncedAt: new Date(0).toISOString(),
+  trends: {
+    netRevenue: EMPTY_TREND,
+    gmv: EMPTY_TREND,
+  },
 };
 
 function formatSyncedAt(iso: string): string {
@@ -97,28 +147,12 @@ function hasGrowthValue(value: string | null): boolean {
   return normalized !== "N/A" && normalized !== "—";
 }
 
-function formatOptionalMetric(value: string | null): string {
-  return value ?? "—";
-}
-
 function serviceStatusDotClass(
   status: AdminDashboardSystemService["status"],
 ): string {
-  if (status === "offline") return "bg-warning";
-  if (status === "degraded") return "bg-brand";
-  return "bg-success";
-}
-
-function serviceStatusChipClass(
-  status: AdminDashboardSystemService["status"],
-): string {
-  if (status === "offline") {
-    return "border-warning/30 bg-warning/5";
-  }
-  if (status === "degraded") {
-    return "border-brand/30 bg-brand/5";
-  }
-  return "border-white/[0.08]";
+  if (status === "offline") return "bg-warning/80";
+  if (status === "degraded") return "bg-brand/70";
+  return "bg-text-disabled/35";
 }
 
 function serviceStatusLabel(
@@ -144,7 +178,167 @@ function formatHealthToastDescription(
   }
 
   const maxLatency = Math.max(...services.map((service) => service.latency), 0);
-  return `後台 Supabase、Stripe 及爬蟲引擎已檢測 (最高延遲 ${maxLatency}ms)`;
+  return `後台服務器、支付託管及爬蟲引擎已檢測（最高延遲 ${maxLatency} 毫秒）`;
+}
+
+function DashboardTrendChart({
+  points,
+  rangeLabel,
+}: {
+  points: AdminDashboardTrendPoint[];
+  rangeLabel: string;
+}) {
+  const gradientId = useId().replace(/:/g, "");
+  const chartData = useMemo(
+    () =>
+      points.map((point) => ({
+        label: point.label,
+        value: point.value,
+      })),
+    [points],
+  );
+
+  const hasData = chartData.some((point) => point.value > 0);
+  const values = chartData.map((point) => point.value);
+  const trendUp =
+    values.length >= 2 && values[values.length - 1] >= values[0];
+  const strokeColor = trendUp ? "#d4a574" : "#f59e0b";
+  const xTickInterval = chartData.length > 6 ? 1 : 0;
+
+  if (chartData.length < 2) {
+    return null;
+  }
+
+  if (!hasData) {
+    return (
+      <div
+        className="flex h-14 w-full items-center justify-center rounded-md border border-dashed border-white/[0.06] font-mono text-[9px] text-text-disabled sm:h-16"
+        role="img"
+        aria-label={`${rangeLabel}暫無數據`}
+      >
+        暫無趨勢
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-full min-w-0 overflow-visible px-1"
+      role="img"
+      aria-label={rangeLabel}
+    >
+      <ResponsiveContainer width="100%" height={80}>
+        <AreaChart
+          data={chartData}
+          margin={{ top: 8, right: 16, left: 16, bottom: 4 }}
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={strokeColor} stopOpacity={0.35} />
+              <stop offset="100%" stopColor={strokeColor} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <XAxis
+            dataKey="label"
+            axisLine={false}
+            tickLine={false}
+            interval={xTickInterval}
+            padding={{ left: 24, right: 24 }}
+            tickMargin={8}
+            tick={{
+              fill: "rgba(237, 232, 224, 0.45)",
+              fontSize: 9,
+              fontFamily: "var(--font-mono, ui-monospace, monospace)",
+            }}
+          />
+          <YAxis hide domain={[0, "auto"]} />
+          <Tooltip
+            cursor={{ stroke: "rgba(255,255,255,0.12)", strokeWidth: 1 }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) {
+                return null;
+              }
+
+              const row = payload[0]?.payload as
+                | { label: string; value: number }
+                | undefined;
+              if (!row) {
+                return null;
+              }
+
+              return (
+                <div className="rounded border border-white/10 bg-bg-card px-2 py-1 font-mono text-[10px] text-text-primary shadow-lg">
+                  {row.label} {formatHkd(row.value)}
+                </div>
+              );
+            }}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={strokeColor}
+            strokeWidth={1.5}
+            fill={`url(#${gradientId})`}
+            dot={{
+              r: 2.5,
+              fill: strokeColor,
+              strokeWidth: 0,
+            }}
+            activeDot={{
+              r: 3.5,
+              fill: strokeColor,
+              stroke: "#17130f",
+              strokeWidth: 1,
+            }}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function DashboardTrendRangeToggle({
+  value,
+  onChange,
+}: {
+  value: DashboardTrendRange;
+  onChange: (range: DashboardTrendRange) => void;
+}) {
+  return (
+    <div
+      className="flex flex-col items-end gap-1"
+      title="僅切換下方趨勢圖顯示範圍；本月與歷史統計數字不受影響"
+    >
+      <span className="font-mono text-[9px] text-text-disabled">
+        趨勢圖時間範圍
+      </span>
+      <div
+        className="inline-flex rounded-md border border-white/[0.08] p-0.5"
+        role="group"
+        aria-label="趨勢圖時間範圍（不影響統計數字）"
+      >
+        {(["6m", "12m"] as const).map((range) => {
+          const active = value === range;
+          return (
+            <button
+              key={range}
+              type="button"
+              onClick={() => onChange(range)}
+              aria-pressed={active}
+              className={`rounded px-2 py-0.5 font-mono text-[9px] transition-colors ${
+                active
+                  ? "bg-brand/15 text-brand"
+                  : "text-text-disabled hover:text-text-secondary"
+              }`}
+            >
+              {range === "6m" ? "6M" : "12M"}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function AdminDashboardClient({
@@ -156,19 +350,38 @@ export default function AdminDashboardClient({
   const router = useRouter();
   const [isRefreshingMetrics, startMetricsRefresh] = useTransition();
 
-  const dashboardMetrics = metrics ?? EMPTY_METRICS;
-  const userEcology = dashboardMetrics.userEcology;
-  const marketVolume = dashboardMetrics.marketVolume;
-  const revenues = dashboardMetrics.revenues;
-  const stripeBalance = dashboardMetrics.stripeBalance;
-  const unprocessedReports = dashboardMetrics.alerts.unprocessedReports;
-  const pendingKyc = dashboardMetrics.alerts.pendingKyc;
-  const pendingGrading = dashboardMetrics.alerts.pendingGrading;
-
   const [services, setServices] = useState<AdminDashboardSystemService[]>(
     initialServices,
   );
   const [isRefreshingServices, startServicesRefresh] = useTransition();
+
+  useEffect(() => {
+    setServices(initialServices);
+  }, [initialServices]);
+
+  const hasMetrics = metrics != null;
+  const dashboardMetrics = metrics ?? EMPTY_METRICS;
+  const userEcology = dashboardMetrics.userEcology;
+  const marketVolume = dashboardMetrics.marketVolume;
+  const revenues = dashboardMetrics.revenues;
+  const trends = dashboardMetrics.trends;
+  const stripeBalance = dashboardMetrics.stripeBalance;
+  const unprocessedReports = dashboardMetrics.alerts.unprocessedReports;
+  const pendingKyc = dashboardMetrics.alerts.pendingKyc;
+  const pendingGrading = dashboardMetrics.alerts.pendingGrading;
+  const bannedUsers = userEcology.bannedUsers;
+
+  const [trendRange, setTrendRange] = useState<DashboardTrendRange>("6m");
+
+  const trendRangeHeading = trendRangeLabel(trendRange);
+  const slicedNetRevenueTrend = useMemo(
+    () => sliceTrendPoints(trends.netRevenue, trendRange),
+    [trends.netRevenue, trendRange],
+  );
+  const slicedGmvTrend = useMemo(
+    () => sliceTrendPoints(trends.gmv, trendRange),
+    [trends.gmv, trendRange],
+  );
 
   const syncedAtLabel = isRefreshingMetrics
     ? "更新中…"
@@ -192,7 +405,7 @@ export default function AdminDashboardClient({
     if (pendingKyc > 0) {
       items.push({
         id: "kyc",
-        label: "KYC 待審核",
+        label: "商戶入駐待審",
         count: pendingKyc,
         onClick: () => router.push("/admin/merchants"),
         countClassName: "text-brand",
@@ -264,36 +477,34 @@ export default function AdminDashboardClient({
 
   return (
     <div className="space-y-5 pb-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-              數據總覽
-            </h1>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-              DASHBOARD
-            </span>
-          </div>
-          <p className="mt-1 font-mono text-[12px] text-text-secondary">
+      <header>
+        <div className="mt-1 flex items-center gap-2">
+          <p className="font-mono text-[10px] text-text-disabled">
             {syncedAtLabel}
           </p>
+          <button
+            type="button"
+            onClick={handleRefreshMetrics}
+            disabled={isRefreshingMetrics}
+            aria-label="重新整理數據"
+            className="inline-flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-disabled/70 transition-colors hover:text-brand disabled:opacity-60"
+          >
+            <RefreshCw
+              className={`size-3 ${isRefreshingMetrics ? "animate-spin" : ""}`}
+            />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleRefreshMetrics}
-          disabled={isRefreshingMetrics}
-          className={`${BTN_OUTLINE_SM_CLASS} shrink-0 gap-1.5 text-brand border-brand/30 disabled:opacity-60`}
-        >
-          <RefreshCw
-            className={`size-3.5 ${isRefreshingMetrics ? "animate-spin" : ""}`}
-          />
-          重新整理數據
-        </button>
       </header>
 
       {loadError ? (
         <div className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2.5 font-sans text-[13px] text-warning">
           {loadError}
+        </div>
+      ) : null}
+
+      {!hasMetrics && !loadError ? (
+        <div className="rounded-lg border border-white/[0.08] bg-bg-card px-3 py-2.5 font-sans text-[13px] text-text-secondary">
+          無法載入儀表板數據。
         </div>
       ) : null}
 
@@ -303,97 +514,177 @@ export default function AdminDashboardClient({
         </div>
       ) : null}
 
-      <section className="space-y-4 border-b border-white/[0.08] pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className={FORM_SECTION_CLASS}>核心營收與 GMV KPI</h2>
-          <span className="rounded-lg border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[10px] text-brand">
-            佣金率 {revenues.commissionRate}
-          </span>
+      {hasMetrics ? (
+        <>
+      <section className="space-y-6 border-b border-white/[0.08] pb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className={FORM_SECTION_CLASS}>核心營收與成交指標</h2>
+          <DashboardTrendRangeToggle
+            value={trendRange}
+            onChange={setTrendRange}
+          />
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className="space-y-4">
-            <p className="font-sans text-[12px] font-semibold text-text-secondary">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="space-y-4 rounded-xl border border-[rgba(237,232,224,0.12)] bg-bg-card p-4 shadow-sm shadow-black/30">
+            <p className="font-sans text-[13px] font-semibold text-text-secondary">
               平台淨營收
             </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
-                  佣金
+            <div className="flex flex-col divide-y divide-white/[0.06]">
+              <div className="pb-4">
+                <span className="font-mono text-[10px] tracking-wide text-text-disabled">
+                  本月總營收
                 </span>
-                <p className="mt-1 font-mono text-[22px] font-bold tracking-tight text-text-primary">
-                  {revenues.totalCommission}
+                <p className="mt-2 font-mono text-[20px] font-bold tracking-tight tabular-nums text-brand sm:text-[24px]">
+                  {revenues.monthlyNetRevenue}
                 </p>
-                <p className="mt-1 font-mono text-[10px] text-text-secondary">
-                  本月 {revenues.monthlyCommission}
+                <p className="mt-2 font-mono text-[11px] leading-relaxed text-text-secondary">
+                  歷史總營收 {revenues.totalNetRevenue}
                 </p>
-                {hasGrowthValue(revenues.commissionGrowth) ? (
-                  <span className="mt-1 inline-flex items-center gap-0.5 rounded border border-success/20 bg-success/10 px-1.5 py-0.5 font-mono text-[10px] text-success">
-                    <TrendingUp className="size-3" />
-                    {revenues.commissionGrowth}
+                <div className="mt-3 space-y-1.5">
+                  <span className="font-mono text-[9px] text-text-disabled">
+                    {trendRangeHeading}
                   </span>
+                  <DashboardTrendChart
+                    points={slicedNetRevenueTrend}
+                    rangeLabel={trendRangeHeading}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col divide-y divide-white/[0.06] pb-4 pt-4 sm:flex-row sm:divide-x sm:divide-y-0">
+                <div className="pb-4 sm:flex-1 sm:pb-0 sm:pr-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[10px] tracking-wide text-text-disabled">
+                      本月佣金
+                    </span>
+                    <span className="rounded-lg border border-brand/20 bg-brand/10 px-2 py-0.5 font-mono text-[10px] text-brand">
+                      佣金率 {revenues.commissionRate}
+                    </span>
+                  </div>
+                  <p className="mt-2 font-mono text-[18px] font-bold tracking-tight tabular-nums text-brand sm:text-[22px]">
+                    {revenues.monthlyCommission}
+                  </p>
+                  <p className="mt-2 font-mono text-[11px] leading-relaxed text-text-secondary">
+                    歷史營收 {revenues.totalCommission}
+                  </p>
+                  {hasGrowthValue(revenues.commissionGrowth) ? (
+                    <span className="mt-2 inline-flex items-center gap-0.5 rounded border border-success/20 bg-success/10 px-1.5 py-0.5 font-mono text-[10px] text-success">
+                      <TrendingUp className="size-3" />
+                      {revenues.commissionGrowth}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="pt-4 sm:flex-1 sm:pt-0 sm:pl-5">
+                  <span className="block font-mono text-[10px] tracking-wide text-text-disabled">
+                    本月鑑定費
+                  </span>
+                  <p className="mt-2 font-mono text-[18px] font-bold tracking-tight tabular-nums text-brand sm:text-[22px]">
+                    {revenues.monthlyAppraisal}
+                  </p>
+                  <p className="mt-2 font-mono text-[11px] leading-relaxed text-text-secondary">
+                    歷史總值 {revenues.appraisalTotal}
+                  </p>
+                </div>
+              </div>
+              <div className="pt-4">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+                    stripe可用餘額
+                  </span>
+                  <p className="min-w-0 truncate font-mono text-[13px] font-semibold tabular-nums text-brand">
+                    {stripeBalance.availableFormatted}
+                  </p>
+                </div>
+                {stripeBalance.unavailable ? (
+                  <p className="mt-2 font-mono text-[11px] text-warning">
+                    {stripeBalance.unavailableReason ?? "餘額暫不可用"}
+                  </p>
                 ) : null}
               </div>
-              <div>
-                <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
-                  鑑定費用
-                </span>
-                <p className="mt-1 font-mono text-[22px] font-bold tracking-tight text-text-primary">
-                  {revenues.appraisalTotal}
-                </p>
-                <p className="mt-1 font-mono text-[10px] text-text-secondary">
-                  {revenues.totalAppraisals} · {revenues.appraisalFeePerCard}/件
-                </p>
-              </div>
             </div>
-            <p className="border-t border-white/[0.06] pt-3 font-mono text-[10px] text-text-disabled">
-              Stripe 可用 {stripeBalance.availableFormatted}
-              <span className="mx-1.5 text-white/20">·</span>
-              待結算 {stripeBalance.pendingFormatted}
-              {stripeBalance.unavailable ? (
-                <span className="mt-1 block text-warning">
-                  {stripeBalance.unavailableReason ?? "餘額暫不可用"}
-                </span>
-              ) : null}
-            </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-sans text-[12px] font-semibold text-text-secondary">
+          <div className="space-y-4 rounded-xl border border-[rgba(237,232,224,0.12)] bg-bg-card p-4 shadow-sm shadow-black/30">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-sans text-[13px] font-semibold text-text-secondary">
                 交易量分析
               </p>
-              {hasGrowthValue(marketVolume.growthRate) ? (
-                <span className="inline-flex items-center gap-0.5 rounded border border-success/20 bg-success/10 px-1.5 py-0.5 font-mono text-[10px] text-success">
-                  <TrendingUp className="size-3" />
-                  {marketVolume.growthRate} vs 上月
-                </span>
-              ) : null}
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-3">
               <div>
-                <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
-                  總成交
+                <span className="font-mono text-[10px] tracking-wide text-text-disabled">
+                  本月總成交
                 </span>
-                <p className="mt-1 font-mono text-[20px] font-bold text-brand">
-                  {marketVolume.totalGmv}
+                <p className="mt-1.5 font-mono text-[20px] font-bold tabular-nums text-brand sm:text-[22px]">
+                  {marketVolume.monthlyGmv}
                 </p>
+                <p className="mt-2 font-mono text-[11px] leading-relaxed text-text-secondary">
+                  歷史總值 {marketVolume.totalGmv}
+                </p>
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-mono text-[9px] text-text-disabled">
+                      {trendRangeHeading}
+                    </span>
+                    {hasGrowthValue(marketVolume.growthRate) ? (
+                      <span className="inline-flex items-center gap-0.5 rounded border border-success/20 bg-success/10 px-1.5 py-0.5 font-mono text-[10px] text-success">
+                        <TrendingUp className="size-3" />
+                        {marketVolume.growthRate} 較上月
+                      </span>
+                    ) : null}
+                  </div>
+                  <DashboardTrendChart
+                    points={slicedGmvTrend}
+                    rangeLabel={trendRangeHeading}
+                  />
+                </div>
               </div>
-              <div>
-                <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
-                  成交量
-                </span>
-                <p className="mt-1 font-mono text-[18px] font-bold text-text-primary">
-                  {marketVolume.settledCount}
-                </p>
-              </div>
-              <div>
-                <span className="block font-mono text-[10px] uppercase tracking-wide text-text-disabled">
-                  現貨總數
-                </span>
-                <p className="mt-1 font-mono text-[18px] font-bold text-text-primary">
-                  {marketVolume.listingCount}
-                </p>
+              <div className="grid grid-cols-2 gap-x-4 border-t border-white/[0.06] pt-3">
+                <div className="flex flex-col gap-y-3">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+                      本月成交量
+                    </span>
+                    <p className="font-mono text-[15px] font-bold tabular-nums text-text-primary">
+                      {marketVolume.monthlySettledCount}
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+                      活躍掛單
+                    </span>
+                    <p className="font-mono text-[15px] font-bold tabular-nums text-text-primary">
+                      {marketVolume.listingCount}
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+                      本月鑑定
+                    </span>
+                    <p className="min-w-0 truncate font-mono text-[11px] font-semibold tabular-nums text-text-secondary">
+                      {revenues.monthlyAppraisalCount}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-y-3">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+                      歷史成交量
+                    </span>
+                    <p className="font-mono text-[15px] font-bold tabular-nums text-text-primary">
+                      {marketVolume.settledCount}
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 items-baseline gap-2 min-h-[22px]" aria-hidden />
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+                      歷史鑑定
+                    </span>
+                    <p className="min-w-0 truncate font-mono text-[11px] font-semibold tabular-nums text-text-secondary">
+                      {revenues.totalAppraisals}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -401,26 +692,8 @@ export default function AdminDashboardClient({
       </section>
 
       <section className="space-y-4 border-b border-white/[0.08] pb-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className={FORM_SECTION_CLASS}>用戶生態大盤</h2>
-            <p className="mt-1 font-sans text-[12px] text-text-secondary">
-              全平台會員角色分佈
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg border border-success/20 bg-success/10 px-2.5 py-1 font-mono text-[10px] text-success">
-              活躍 {formatOptionalMetric(userEcology.activeRatio)} (
-              {formatOptionalMetric(userEcology.activeCount)})
-            </span>
-            <span className="rounded-lg border border-warning/20 bg-warning/10 px-2.5 py-1 font-mono text-[10px] text-warning">
-              已封鎖 {formatOptionalMetric(
-                userEcology.bannedUsers === null
-                  ? null
-                  : String(userEcology.bannedUsers),
-              )}
-            </span>
-          </div>
+        <div>
+          <h2 className={FORM_SECTION_CLASS}>全平台會員角色分佈</h2>
         </div>
 
         <div className="mx-auto max-w-sm">
@@ -497,17 +770,39 @@ export default function AdminDashboardClient({
                 className="font-mono text-[10px] text-text-secondary"
               >
                 <span style={{ color: item.color }}>●</span>{" "}
-                {item.role.split(" ")[0]} {item.pctStr}
+                {item.role} {item.pctStr}
               </span>
             ))}
           </div>
+          {bannedUsers != null && bannedUsers > 0 ? (
+            <p className="mt-2 text-center font-mono text-[10px] text-text-disabled">
+              已封鎖帳戶 {bannedUsers.toLocaleString("zh-TW")}
+            </p>
+          ) : null}
         </div>
       </section>
+        </>
+      ) : null}
 
       <section className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.08] pb-3">
-          <h2 className={`${FORM_SECTION_CLASS} shrink-0`}>系統運作狀態</h2>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-1">
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="font-sans text-[10px] text-text-disabled">
+              系統運作狀態
+            </span>
+            <button
+              type="button"
+              onClick={handleRefreshServices}
+              disabled={isRefreshingServices}
+              aria-label="檢測系統狀態"
+              className="inline-flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-disabled/70 transition-colors hover:text-text-secondary disabled:opacity-60"
+            >
+              <RefreshCw
+                className={`size-3 ${isRefreshingServices ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             {services.map((service) => {
               const statusLabel = serviceStatusLabel(service.status);
               return (
@@ -518,20 +813,20 @@ export default function AdminDashboardClient({
                       ? `${service.name}：${statusLabel}`
                       : service.name
                   }
-                  className={`flex min-w-0 max-w-[9.5rem] items-center gap-1.5 rounded-lg border px-2 py-1.5 ${serviceStatusChipClass(service.status)}`}
+                  className="flex min-w-0 max-w-[9.5rem] items-center gap-1"
                 >
                   <span
-                    className={`size-1.5 shrink-0 rounded-full ${serviceStatusDotClass(service.status)}`}
+                    className={`size-1 shrink-0 rounded-full ${serviceStatusDotClass(service.status)}`}
                   />
-                  <span className="truncate font-sans text-[11px] text-text-secondary">
+                  <span className="truncate font-mono text-[10px] text-text-disabled">
                     {service.name}
                   </span>
                   {statusLabel ? (
                     <span
                       className={`shrink-0 font-mono text-[9px] ${
                         service.status === "offline"
-                          ? "text-warning"
-                          : "text-brand"
+                          ? "text-warning/80"
+                          : "text-brand/80"
                       }`}
                     >
                       {statusLabel}
@@ -540,24 +835,19 @@ export default function AdminDashboardClient({
                 </div>
               );
             })}
-            <button
-              type="button"
-              onClick={handleRefreshServices}
-              disabled={isRefreshingServices}
-              className={`${BTN_OUTLINE_SM_CLASS} shrink-0 gap-1 px-2 py-1 text-[11px] text-text-secondary disabled:opacity-60`}
-            >
-              <RefreshCw
-                className={`size-3 ${isRefreshingServices ? "animate-spin" : ""}`}
-              />
-              檢測
-            </button>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h2 className={FORM_SECTION_CLASS}>待辦</h2>
-          {todoItems.length === 0 ? (
-            <p className="py-6 text-center font-sans text-[13px] text-text-secondary">
+        <div className="space-y-4 rounded-xl border border-[rgba(237,232,224,0.12)] bg-bg-card p-4 shadow-sm shadow-black/30">
+          <p className="font-sans text-[13px] font-semibold text-text-secondary">
+            待辦
+          </p>
+          {!hasMetrics ? (
+            <p className="py-4 text-center font-sans text-[13px] text-text-secondary">
+              暫無待處理項目
+            </p>
+          ) : todoItems.length === 0 ? (
+            <p className="py-4 text-center font-sans text-[13px] text-text-secondary">
               暫無待處理項目
             </p>
           ) : (
@@ -576,7 +866,7 @@ export default function AdminDashboardClient({
                     <span
                       className={`font-mono text-[13px] tabular-nums ${item.countClassName ?? "text-text-primary"}`}
                     >
-                      {item.count.toLocaleString("en-US")}
+                      {item.count.toLocaleString("zh-TW")}
                     </span>
                     <span className="font-sans text-[11px] text-brand">
                       前往

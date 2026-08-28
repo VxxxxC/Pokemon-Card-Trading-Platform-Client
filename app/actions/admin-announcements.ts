@@ -11,6 +11,8 @@ import {
   type PlatformAnnouncementInput,
 } from "@/lib/announcements/types";
 import { validateAnnouncementInput } from "@/lib/announcements/validation";
+import { mapAnnouncementToHomeBannerItem } from "@/lib/announcements/map-home-banner";
+import type { HomeBannerItem } from "@/app/lib/home/types";
 import { deleteAnnouncementPosterFromBunny } from "@/lib/storage/bunny";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -48,11 +50,14 @@ async function requireAdmin(): Promise<
   return { ok: true, adminId: user.id };
 }
 
+type AnnouncementSurfaceFilter = "home_banner" | "announcements" | "all";
+
 async function readAnnouncements(
   useAdminClient: boolean,
-  options?: { activeOnly?: boolean },
+  options?: { activeOnly?: boolean; surface?: AnnouncementSurfaceFilter },
 ): Promise<PlatformAnnouncement[]> {
   const today = getHktTodayDateString();
+  const surface = options?.surface ?? "all";
 
   if (useAdminClient) {
     const admin = createAdminClient();
@@ -67,6 +72,12 @@ async function readAnnouncements(
         .eq("is_active", true)
         .lte("start_date", today)
         .gte("end_date", today);
+    }
+
+    if (surface === "home_banner") {
+      query = query.eq("show_on_home_banner", true);
+    } else if (surface === "announcements") {
+      query = query.eq("show_in_announcements", true);
     }
 
     const { data, error } = await query;
@@ -93,6 +104,12 @@ async function readAnnouncements(
       .gte("end_date", today);
   }
 
+  if (surface === "home_banner") {
+    query = query.eq("show_on_home_banner", true);
+  } else if (surface === "announcements") {
+    query = query.eq("show_in_announcements", true);
+  }
+
   const { data, error } = await query;
 
   if (error) {
@@ -108,8 +125,30 @@ export async function getActiveAnnouncementsForDisplay(): Promise<AnnouncementLi
     return { success: true, data: [] };
   }
 
-  const data = await readAnnouncements(false, { activeOnly: true });
+  const data = await readAnnouncements(false, {
+    activeOnly: true,
+    surface: "announcements",
+  });
   return { success: true, data };
+}
+
+type HomeBannerListResult =
+  | { success: true; data: HomeBannerItem[] }
+  | { success: false; error: string };
+
+export async function getHomeBannersForDisplay(): Promise<HomeBannerListResult> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, data: [] };
+  }
+
+  const data = await readAnnouncements(false, {
+    activeOnly: true,
+    surface: "home_banner",
+  });
+  return {
+    success: true,
+    data: data.map(mapAnnouncementToHomeBannerItem),
+  };
 }
 
 export async function getAnnouncementsForPublicList(): Promise<AnnouncementListResult> {
@@ -117,7 +156,7 @@ export async function getAnnouncementsForPublicList(): Promise<AnnouncementListR
     return { success: true, data: [] };
   }
 
-  const data = await readAnnouncements(false);
+  const data = await readAnnouncements(false, { surface: "announcements" });
   return { success: true, data };
 }
 
@@ -203,6 +242,8 @@ export async function updatePlatformAnnouncement(
       end_date: input.endDate,
       is_active: input.isActive,
       priority: input.priority ?? existingRow.priority,
+      show_on_home_banner: input.showOnHomeBanner ?? false,
+      show_in_announcements: input.showInAnnouncements ?? true,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

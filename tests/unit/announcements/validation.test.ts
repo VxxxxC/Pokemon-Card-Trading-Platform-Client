@@ -22,10 +22,31 @@ describe("validateAnnouncementInput", () => {
     ).toBe("請輸入公告標題");
   });
 
-  it("rejects empty content", () => {
+  it("rejects empty content when announcements surface is enabled", () => {
     expect(
       validateAnnouncementInput({ ...validInput, content: "" }),
     ).toBe("請輸入公告內容");
+  });
+
+  it("allows empty content for banner-only surface", () => {
+    expect(
+      validateAnnouncementInput({
+        ...validInput,
+        content: "",
+        showOnHomeBanner: true,
+        showInAnnouncements: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("rejects when no display surface is selected", () => {
+    expect(
+      validateAnnouncementInput({
+        ...validInput,
+        showOnHomeBanner: false,
+        showInAnnouncements: false,
+      }),
+    ).toBe("請至少選擇一個展示位置（首頁 Banner 或公告）");
   });
 
   it("rejects blob image URLs", () => {

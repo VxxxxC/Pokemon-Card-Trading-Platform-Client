@@ -62,10 +62,16 @@ function isMissingRpcError(message: string): boolean {
 type AdminActivityRpcClient = {
   rpc(
     fn: "rpc_admin_list_reward_activities",
-    args: { p_status: string; p_page: number; p_page_size: number },
+    args: {
+      p_status: string;
+      p_page: number;
+      p_page_size: number;
+      p_search?: string | null;
+    },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "rpc_admin_reward_activity_status_counts",
+    args?: { p_search?: string | null },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "rpc_admin_get_reward_activity",
@@ -180,6 +186,7 @@ export async function listAdminRewardActivities(params?: {
   status?: string;
   page?: number;
   pageSize?: number;
+  search?: string;
 }): Promise<
   ActionResult<{
     rows: AdminRewardActivityRow[];
@@ -195,12 +202,14 @@ export async function listAdminRewardActivities(params?: {
 
   try {
     const supabase = asAdminActivityRpcClient(await createClient());
+    const search = params?.search?.trim() ?? "";
     const { data, error } = await supabase.rpc(
       "rpc_admin_list_reward_activities",
       {
         p_status: params?.status ?? "all",
         p_page: params?.page ?? 1,
         p_page_size: params?.pageSize ?? 50,
+        p_search: search.length > 0 ? search : null,
       },
     );
 
@@ -248,7 +257,9 @@ function parseAdminRewardActivityStatusCounts(
   return next;
 }
 
-export async function getAdminRewardActivityStatusCounts(): Promise<
+export async function getAdminRewardActivityStatusCounts(params?: {
+  search?: string;
+}): Promise<
   ActionResult<Record<AdminRewardActivityStatusCountKey, number>>
 > {
   const guard = await requireAdmin();
@@ -258,8 +269,12 @@ export async function getAdminRewardActivityStatusCounts(): Promise<
 
   try {
     const supabase = asAdminActivityRpcClient(await createClient());
+    const search = params?.search?.trim() ?? "";
     const { data, error } = await supabase.rpc(
       "rpc_admin_reward_activity_status_counts",
+      {
+        p_search: search.length > 0 ? search : null,
+      },
     );
 
     if (error) {

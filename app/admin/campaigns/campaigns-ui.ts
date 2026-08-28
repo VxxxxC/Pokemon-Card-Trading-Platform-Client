@@ -5,6 +5,24 @@ export const FILTER_CHIP_CLASS = (active: boolean) =>
       : "border-white/10 text-text-secondary hover:border-brand/30 hover:bg-brand/10 hover:text-brand"
   }`;
 
+export const FILTER_CHIP_SM_CLASS = (active: boolean) =>
+  `inline-flex h-7 min-h-7 items-center justify-center rounded-md border px-2.5 py-0.5 font-sans text-[11px] transition-colors active:scale-[0.98] ${
+    active
+      ? "border-brand/40 bg-brand/15 font-semibold text-brand"
+      : "border-white/10 text-text-secondary hover:border-brand/30 hover:bg-brand/10 hover:text-brand"
+  }`;
+
+/** Primary page-level view switch — underline tabs (not pill chips). */
+export const ADMIN_PAGE_TAB_NAV_CLASS =
+  "flex min-w-0 gap-0 overflow-x-auto border-b border-white/[0.08] scrollbar-none";
+
+export const ADMIN_PAGE_TAB_CLASS = (active: boolean) =>
+  `inline-flex shrink-0 items-center gap-1.5 px-3 pb-2.5 pt-0.5 font-sans text-[13px] transition-colors border-b-2 -mb-px active:scale-[0.98] ${
+    active
+      ? "border-brand font-semibold text-brand"
+      : "border-transparent text-text-secondary hover:text-text-primary"
+  }`;
+
 export const FILTER_INPUT_CLASS =
   "h-9 rounded-lg border border-white/10 bg-transparent pl-9 pr-8 text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/40 outline-none";
 

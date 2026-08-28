@@ -69,7 +69,7 @@ function ListingCoverImage({
       alt={`${listing.name} — ${listing.gradeLabel}`}
       fill
       className="object-cover group-hover:scale-[1.02] transition-transform duration-500"
-      sizes="(max-width: 768px) 67vw, 180px"
+      sizes="(max-width: 768px) 67vw, 220px"
       priority={index < 3}
       onError={handleError}
     />
@@ -141,7 +141,7 @@ export function PremiumMarket({
                 <article className="flex flex-col h-full bg-bg-card rounded-xl border border-[rgba(237,232,224,0.08)] p-2.5 hover:bg-[#26211C] transition-colors group">
                   <Link
                     href={detailHref}
-                    className="relative w-full aspect-5/7 max-h-[13.5rem] mx-auto rounded-lg overflow-hidden bg-bg-elevated block mb-2 border border-white/5"
+                    className="relative w-full aspect-[3/4] mx-auto rounded-lg overflow-hidden bg-bg-elevated block mb-2 border border-white/5"
                   >
                     <ListingCoverImage listing={listing} index={index} />
                     {showWishlist && (

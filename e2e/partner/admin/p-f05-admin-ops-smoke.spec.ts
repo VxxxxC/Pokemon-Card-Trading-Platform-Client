@@ -26,7 +26,7 @@ test.describe("P-F05 admin ops shells", () => {
     await expect(page.getByText("平台淨營收統計")).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByText("Stripe 平台帳戶餘額")).toBeVisible();
+    await expect(page.getByText("Stripe 平台餘額")).toBeVisible();
 
     await gotoAdminPage(page, "/admin/settings");
     await expect(page.locator("#financials-heading")).toBeVisible({

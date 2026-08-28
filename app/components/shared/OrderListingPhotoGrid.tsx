@@ -26,7 +26,7 @@ export function OrderListingPhotoGrid({
       <span className="font-mono text-[10px] text-[#8A8680] uppercase block mb-2">
         {label} ({images.length})
       </span>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {images.map((imageUrl, idx) => {
           const remarkText = remarks?.[idx];
           return (
@@ -40,7 +40,7 @@ export function OrderListingPhotoGrid({
                 src={imageUrl}
                 alt={`${altPrefix} ${idx + 1}`}
                 fill
-                sizes="(max-width: 768px) 45vw, 120px"
+                sizes="(max-width: 768px) 30vw, 120px"
                 className="object-cover hover:scale-105 transition-transform duration-300"
                 unoptimized
               />

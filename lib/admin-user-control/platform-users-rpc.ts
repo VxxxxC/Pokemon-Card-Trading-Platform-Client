@@ -147,16 +147,38 @@ export function mapRpcRowToPlatformUserRow(
   email: string,
 ): PlatformUserRow {
   const userType = mapProfileRoleToUserType(row.role);
-  const name =
-    userType === "merchant"
-      ? row.shop_name?.trim() || row.display_name
-      : row.display_name;
+  const memberName = row.display_name?.trim() || null;
+  const memberHandleRaw = row.username?.trim();
+  const memberHandle = memberHandleRaw
+    ? memberHandleRaw.startsWith("@")
+      ? memberHandleRaw
+      : `@${memberHandleRaw}`
+    : null;
+
+  if (userType === "merchant") {
+    return {
+      id: row.id,
+      userType,
+      name: row.shop_name?.trim() || row.display_name,
+      handle: formatPlatformUserHandle(row.username, row.shop_handle),
+      memberName,
+      memberHandle,
+      email,
+      stripeAccountId: row.stripe_account_id,
+      kycStatus: parseKycStatus(row.ui_kyc_status),
+      applicationId: row.application_id,
+      updatedAt: formatPlatformUserDateTime(row.updated_at),
+      updatedAtIso: row.updated_at,
+    };
+  }
 
   return {
     id: row.id,
     userType,
-    name,
+    name: row.display_name,
     handle: formatPlatformUserHandle(row.username, row.shop_handle),
+    memberName: null,
+    memberHandle: null,
     email,
     stripeAccountId: row.stripe_account_id,
     kycStatus: parseKycStatus(row.ui_kyc_status),

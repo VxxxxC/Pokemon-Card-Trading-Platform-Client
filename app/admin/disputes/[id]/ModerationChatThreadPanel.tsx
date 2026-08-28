@@ -4,15 +4,52 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminModerationChatThread } from "@/app/actions/admin-moderation";
 import { formatModerationDateTime } from "@/lib/moderation/admin-case-presenters";
+import {
+  formatModerationChatMessageContent,
+  isModerationChatSystemEvent,
+  shortModerationRefId,
+} from "@/lib/moderation/format-chat-message";
 import { highlightSensitiveKeywords } from "@/lib/moderation/highlight-chat-keywords";
 import type { AdminModerationChatMessage } from "@/lib/moderation/types";
 import { Button } from "@/components/ui/button";
-import { BTN_OUTLINE_CLASS } from "./moderation-detail-ui";
+import { BTN_OUTLINE_CLASS, META_TEXT_CLASS } from "./moderation-detail-ui";
 
 interface ModerationChatThreadPanelProps {
   caseId: string;
   roomId: string;
   subjectUserId: string;
+}
+
+function ChatMessageRefs({ message }: { message: AdminModerationChatMessage }) {
+  const refs: { label: string; value: string }[] = [];
+
+  if (message.offerId) {
+    refs.push({ label: "開價", value: shortModerationRefId(message.offerId) });
+  }
+  if (message.memberOrderId) {
+    refs.push({ label: "訂單", value: shortModerationRefId(message.memberOrderId) });
+  }
+  if (message.merchantOrderId) {
+    refs.push({
+      label: "商戶訂單",
+      value: shortModerationRefId(message.merchantOrderId),
+    });
+  }
+
+  if (refs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+      {refs.map((ref) => (
+        <span key={`${ref.label}-${ref.value}`} className={META_TEXT_CLASS}>
+          {ref.label}{" "}
+          <span className="font-mono text-text-disabled/80">{ref.value}</span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function ModerationChatThreadPanel({
@@ -108,9 +145,7 @@ export default function ModerationChatThreadPanel({
   }
 
   if (error) {
-    return (
-      <p className="font-sans text-[13px] text-error">{error}</p>
-    );
+    return <p className="font-sans text-[13px] text-error">{error}</p>;
   }
 
   if (messages.length === 0) {
@@ -122,7 +157,7 @@ export default function ModerationChatThreadPanel({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {hasMore ? (
         <Button
           type="button"
@@ -140,47 +175,47 @@ export default function ModerationChatThreadPanel({
         </Button>
       ) : null}
 
-      <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+      <div className="max-h-[420px] divide-y divide-white/[0.06] overflow-y-auto pr-1">
         {messages.map((message) => {
           const isSubject = message.senderId === subjectUserId;
-          const isSystem = message.isSystemWarning;
+          const isSystemEvent = isModerationChatSystemEvent(message.content);
+          const isSystem = message.isSystemWarning || isSystemEvent;
+          const displayContent = formatModerationChatMessageContent(
+            message.content,
+          );
 
           return (
             <div
               key={message.id}
-              className={`rounded-lg border px-3 py-2 ${
-                isSystem
-                  ? "border-brand/20 bg-brand/10"
-                  : isSubject
-                    ? "border-white/[0.06] bg-bg-card/40"
-                    : "border-white/[0.04] bg-bg-card/20"
+              className={`py-2.5 first:pt-0 ${
+                isSystem ? "bg-brand/5 -mx-1 px-1 rounded-md" : ""
               }`}
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-sans text-[12px] font-medium text-text-primary">
-                  {message.senderDisplayName ?? "未知用戶"}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span
+                  className={`font-sans text-[12px] font-medium ${
+                    isSystem ? "text-brand" : "text-text-primary"
+                  }`}
+                >
+                  {isSystemEvent
+                    ? "系統通知"
+                    : (message.senderDisplayName ?? "未知用戶")}
                 </span>
-                <span className="font-sans text-[11px] text-text-disabled">
+                {!isSystemEvent && isSubject ? (
+                  <span className={META_TEXT_CLASS}>被舉報人</span>
+                ) : null}
+                <span className={META_TEXT_CLASS}>
                   {formatModerationDateTime(message.createdAt)}
                 </span>
-                {isSystem ? (
-                  <span className="font-sans text-[10px] text-brand">系統</span>
-                ) : null}
               </div>
-              <p className="mt-1 font-sans text-[13px] leading-relaxed text-text-secondary">
-                {highlightSensitiveKeywords(message.content)}
+              <p
+                className={`mt-1 font-sans text-[13px] leading-relaxed ${
+                  isSystem ? "text-text-primary" : "text-text-secondary"
+                }`}
+              >
+                {highlightSensitiveKeywords(displayContent)}
               </p>
-              {message.offerId || message.memberOrderId || message.merchantOrderId ? (
-                <p className="mt-1 font-mono text-[10px] text-text-disabled">
-                  {message.offerId ? `offer: ${message.offerId}` : null}
-                  {message.memberOrderId
-                    ? `order: ${message.memberOrderId}`
-                    : null}
-                  {message.merchantOrderId
-                    ? `merchant_order: ${message.merchantOrderId}`
-                    : null}
-                </p>
-              ) : null}
+              <ChatMessageRefs message={message} />
             </div>
           );
         })}

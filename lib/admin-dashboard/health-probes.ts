@@ -15,7 +15,7 @@ async function probeSupabase(): Promise<AdminDashboardSystemService> {
   const base: Omit<AdminDashboardSystemService, "status" | "latency"> = {
     id: "supabase",
     name: "後台服務器",
-    subName: "Database & Auth Engine",
+    subName: "資料庫與認證引擎",
   };
 
   try {
@@ -39,8 +39,8 @@ async function probeSupabase(): Promise<AdminDashboardSystemService> {
 async function probeStripe(): Promise<AdminDashboardSystemService> {
   const base: Omit<AdminDashboardSystemService, "status" | "latency"> = {
     id: "stripe",
-    name: "Stripe API",
-    subName: "Escrow & Payout Gateway",
+    name: "支付託管",
+    subName: "託管與撥款通道",
   };
 
   if (!isStripeConfigured()) {
@@ -62,14 +62,48 @@ async function probeStripe(): Promise<AdminDashboardSystemService> {
   }
 }
 
-function probeCrawler(): AdminDashboardSystemService {
-  return {
+const CRAWLER_FRESHNESS_MS = 48 * 60 * 60 * 1000;
+
+async function probeCrawler(): Promise<AdminDashboardSystemService> {
+  const base: Omit<AdminDashboardSystemService, "status" | "latency"> = {
     id: "crawler",
     name: "爬蟲引擎",
-    subName: "Market Real-time Aggregator",
-    status: "degraded",
-    latency: 0,
+    subName: "行情即時匯集",
   };
+
+  try {
+    const { latency, result } = await measureLatency(async () => {
+      const admin = createAdminClient();
+      return admin
+        .from("product_grading_market_prices")
+        .select("updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    });
+
+    if (result.error) {
+      return { ...base, status: "offline", latency };
+    }
+
+    const updatedAt = result.data?.updated_at;
+    if (!updatedAt) {
+      return { ...base, status: "degraded", latency };
+    }
+
+    const ageMs = Date.now() - Date.parse(updatedAt);
+    if (Number.isNaN(ageMs)) {
+      return { ...base, status: "degraded", latency };
+    }
+
+    return {
+      ...base,
+      status: ageMs <= CRAWLER_FRESHNESS_MS ? "online" : "degraded",
+      latency,
+    };
+  } catch {
+    return { ...base, status: "offline", latency: 0 };
+  }
 }
 
 export async function runAdminDashboardHealthProbes(): Promise<
@@ -80,5 +114,7 @@ export async function runAdminDashboardHealthProbes(): Promise<
     probeStripe(),
   ]);
 
-  return [supabase, probeCrawler(), stripe];
+  const crawler = await probeCrawler();
+
+  return [supabase, crawler, stripe];
 }

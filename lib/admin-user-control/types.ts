@@ -17,6 +17,10 @@ export type PlatformUserRow = {
   userType: PlatformUserType;
   name: string;
   handle: string;
+  /** Member persona display name — populated for merchant rows. */
+  memberName: string | null;
+  /** Member persona @handle — populated for merchant rows. */
+  memberHandle: string | null;
   email: string;
   stripeAccountId: string | null;
   kycStatus: PlatformUserKycStatus;

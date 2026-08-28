@@ -6,6 +6,7 @@ import {
   getActiveAnnouncementsForDisplay,
   getAnnouncementsForAdmin,
   getAnnouncementsForPublicList,
+  getHomeBannersForDisplay,
   togglePlatformAnnouncementActive,
   updatePlatformAnnouncement,
 } from "@/app/actions/admin-announcements";
@@ -196,6 +197,58 @@ describe.skipIf(!hasBaseIntegrationEnv()).sequential(
             result.data.some((item) => item.id === testAnnouncementId),
           ).toBe(false);
         }
+      });
+    });
+
+    it("excludes banner-only item from announcements but includes in home banners", async () => {
+      const bannerOnlyId = randomUUID();
+      const bannerTitle = `INTEGRATION_TEST_BANNER_ONLY_${runId}`;
+
+      await runAsAdmin(async () => {
+        const result = await createPlatformAnnouncement({
+          id: bannerOnlyId,
+          title: bannerTitle,
+          content: "",
+          imageUrl: DEFAULT_ANNOUNCEMENT_POSTER_URL,
+          startDate,
+          endDate,
+          isActive: true,
+          priority: 998,
+          showOnHomeBanner: true,
+          showInAnnouncements: false,
+        });
+        expect(result.success).toBe(true);
+      });
+
+      await runAsBuyer(async () => {
+        const activeResult = await getActiveAnnouncementsForDisplay();
+        expect(activeResult.success).toBe(true);
+        if (activeResult.success) {
+          expect(
+            activeResult.data.some((item) => item.id === bannerOnlyId),
+          ).toBe(false);
+        }
+
+        const listResult = await getAnnouncementsForPublicList();
+        expect(listResult.success).toBe(true);
+        if (listResult.success) {
+          expect(
+            listResult.data.some((item) => item.id === bannerOnlyId),
+          ).toBe(false);
+        }
+
+        const bannerResult = await getHomeBannersForDisplay();
+        expect(bannerResult.success).toBe(true);
+        if (bannerResult.success) {
+          expect(
+            bannerResult.data.some((item) => item.id === bannerOnlyId),
+          ).toBe(true);
+        }
+      });
+
+      await runAsAdmin(async () => {
+        const deleteResult = await deletePlatformAnnouncement(bannerOnlyId);
+        expect(deleteResult.success).toBe(true);
       });
     });
 

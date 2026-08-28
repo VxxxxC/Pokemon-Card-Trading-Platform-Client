@@ -15,6 +15,7 @@ type MerchantB2cDirectTimelineProps = {
   perspective?: "seller" | "buyer";
   shippingMethod?: string | null;
   payoutStatus?: string | null;
+  embedded?: boolean;
 };
 
 export function MerchantB2cDirectTimeline({
@@ -22,6 +23,7 @@ export function MerchantB2cDirectTimeline({
   perspective = "seller",
   shippingMethod,
   payoutStatus,
+  embedded = false,
 }: MerchantB2cDirectTimelineProps) {
   const timelineSteps = getMerchantDirectTimelineSteps(
     shippingMethod,
@@ -34,10 +36,18 @@ export function MerchantB2cDirectTimeline({
   const isCancelled = escrowStatus === "refunded";
 
   return (
-    <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
-      <h4 className="font-sans font-bold text-[12.5px] text-text-primary">
-        交易狀態
-      </h4>
+    <div
+      className={
+        embedded
+          ? "space-y-4"
+          : "space-y-4 rounded-xl border border-white/5 bg-[#17130f] p-4"
+      }
+    >
+      {!embedded ? (
+        <h4 className="font-sans text-[12.5px] font-bold text-text-primary">
+          交易狀態
+        </h4>
+      ) : null}
 
       {isCancelled ? (
         <p className="text-[12.5px] text-text-disabled">訂單已取消 / 已退款</p>

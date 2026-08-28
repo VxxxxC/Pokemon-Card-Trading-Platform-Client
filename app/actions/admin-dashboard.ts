@@ -7,6 +7,7 @@ import {
   formatHkd,
   formatIntegerCount,
   formatPercentRate,
+  countInRange,
   sumInRange,
 } from "@/lib/admin-dashboard/format";
 import {
@@ -20,6 +21,14 @@ import {
   getHktRollingWindowStartIso,
 } from "@/lib/admin-dashboard/hkt-month-bounds";
 import { runAdminDashboardHealthProbes } from "@/lib/admin-dashboard/health-probes";
+import {
+  mapAuthFeeRows,
+  mapCommissionRows,
+  mapGmvRows,
+  mergeRecognizedRows,
+  resolveOrderRecognitionAt,
+} from "@/lib/admin-dashboard/order-aggregates";
+import { buildMonthTrend, ADMIN_DASHBOARD_TREND_MAX_MONTHS } from "@/lib/admin-dashboard/trends";
 import type {
   AdminDashboardEcologySegment,
   AdminDashboardHealthResult,
@@ -115,6 +124,23 @@ async function fetchPendingKycCount(): Promise<number> {
   return count ?? 0;
 }
 
+async function fetchBannedUsersCount(): Promise<number> {
+  const admin = createAdminClient();
+  const nowIso = new Date().toISOString();
+  const { data, error } = await admin
+    .from("account_sanctions")
+    .select("user_id")
+    .is("revoked_at", null)
+    .eq("type", "ban")
+    .or(`ends_at.is.null,ends_at.gt.${nowIso}`);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return new Set((data ?? []).map((row) => row.user_id)).size;
+}
+
 async function fetchActiveListingCount(): Promise<number> {
   const admin = createAdminClient();
   const { count, error } = await admin
@@ -197,13 +223,6 @@ function buildEcologySegment(
   };
 }
 
-function resolveOrderRecognitionAt(
-  buyerConfirmedAt: string | null,
-  updatedAt: string | null,
-): string | null {
-  return buyerConfirmedAt ?? updatedAt;
-}
-
 export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsResult> {
   const guard = await requireAdmin();
   if (!guard.ok) {
@@ -224,8 +243,11 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       listingCount,
       unprocessedReportsCount,
       pendingGradingResult,
-      completedOrdersResult,
-      capturedAuthFeesResult,
+      completedMerchantOrdersResult,
+      completedMemberOrdersResult,
+      merchantAuthFeesResult,
+      memberAuthFeesResult,
+      bannedUsersCount,
       stripeBalance,
     ] = await Promise.all([
       fetchProfileCount("member"),
@@ -238,13 +260,26 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       admin
         .from("merchant_orders")
         .select(
-          "item_subtotal, commission_amount, commission_rate_applied, buyer_confirmed_at, updated_at",
+          "item_subtotal, final_price, commission_amount, commission_rate_applied, buyer_confirmed_at, updated_at",
         )
         .eq("escrow_status", "completed_and_transferred"),
       admin
+        .from("member_orders")
+        .select(
+          "item_subtotal, final_price, buyer_confirmed_at, updated_at",
+        )
+        .eq("status", "completed"),
+      admin
         .from("merchant_orders")
         .select("auth_fee, auth_fee_captured_at")
+        .eq("escrow_status", "completed_and_transferred")
         .not("auth_fee_captured_at", "is", null),
+      admin
+        .from("member_orders")
+        .select("auth_fee, auth_fee_captured_at")
+        .eq("status", "completed")
+        .not("auth_fee_captured_at", "is", null),
+      fetchBannedUsersCount(),
       resolveStripeBalanceMetrics(),
     ]);
 
@@ -252,45 +287,56 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       return { success: false, error: pendingGradingResult.error };
     }
 
-    if (completedOrdersResult.error) {
+    if (completedMerchantOrdersResult.error) {
       console.error(
-        "[getAdminDashboardMetrics] completed orders",
-        completedOrdersResult.error.message,
+        "[getAdminDashboardMetrics] merchant completed orders",
+        completedMerchantOrdersResult.error.message,
       );
       return { success: false, error: "無法載入訂單統計" };
     }
 
-    if (capturedAuthFeesResult.error) {
+    if (completedMemberOrdersResult.error) {
       console.error(
-        "[getAdminDashboardMetrics] auth fees",
-        capturedAuthFeesResult.error.message,
+        "[getAdminDashboardMetrics] member completed orders",
+        completedMemberOrdersResult.error.message,
+      );
+      return { success: false, error: "無法載入訂單統計" };
+    }
+
+    if (merchantAuthFeesResult.error) {
+      console.error(
+        "[getAdminDashboardMetrics] merchant auth fees",
+        merchantAuthFeesResult.error.message,
       );
       return { success: false, error: "無法載入鑑定費統計" };
     }
 
-    const completedOrders = completedOrdersResult.data ?? [];
-    const capturedAuthFees = capturedAuthFeesResult.data ?? [];
+    if (memberAuthFeesResult.error) {
+      console.error(
+        "[getAdminDashboardMetrics] member auth fees",
+        memberAuthFeesResult.error.message,
+      );
+      return { success: false, error: "無法載入鑑定費統計" };
+    }
 
-    const gmvRows = completedOrders.map((order) => ({
-      amount: order.item_subtotal ?? 0,
-      recognizedAt: resolveOrderRecognitionAt(
-        order.buyer_confirmed_at,
-        order.updated_at,
-      ),
-    }));
+    const completedMerchantOrders = completedMerchantOrdersResult.data ?? [];
+    const completedMemberOrders = completedMemberOrdersResult.data ?? [];
+    const merchantAuthFees = merchantAuthFeesResult.data ?? [];
+    const memberAuthFees = memberAuthFeesResult.data ?? [];
 
-    const commissionRows = completedOrders.map((order) => ({
-      amount: order.commission_amount ?? 0,
-      recognizedAt: resolveOrderRecognitionAt(
-        order.buyer_confirmed_at,
-        order.updated_at,
-      ),
-    }));
+    const gmvRows = mergeRecognizedRows(
+      mapGmvRows(completedMerchantOrders),
+      mapGmvRows(completedMemberOrders),
+    );
 
-    const authFeeRows = capturedAuthFees.map((order) => ({
-      amount: order.auth_fee ?? 0,
-      recognizedAt: order.auth_fee_captured_at,
-    }));
+    const commissionRows = mapCommissionRows(completedMerchantOrders);
+
+    const authFeeRows = mergeRecognizedRows(
+      mapAuthFeeRows(merchantAuthFees),
+      mapAuthFeeRows(memberAuthFees),
+    );
+
+    const capturedAuthFeeCount = merchantAuthFees.length + memberAuthFees.length;
 
     const totalGmv = gmvRows.reduce((sum, row) => sum + row.amount, 0);
     const totalCommission = commissionRows.reduce(
@@ -320,8 +366,32 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       previousMonth.startIso,
       previousMonth.endIso,
     );
+    const currentMonthAppraisal = sumInRange(
+      authFeeRows,
+      currentMonth.startIso,
+      currentMonth.endIso,
+    );
+    const monthlyAppraisalCount = countInRange(
+      authFeeRows.map((row) => row.recognizedAt),
+      currentMonth.startIso,
+      currentMonth.endIso,
+    );
 
-    const recentCompletedOrders = completedOrders.filter((order) => {
+    const settledRecognitionAts = mergeRecognizedRows(
+      mapGmvRows(completedMerchantOrders),
+      mapGmvRows(completedMemberOrders),
+    ).map((row) => row.recognizedAt);
+
+    const monthlySettledCount = countInRange(
+      settledRecognitionAts,
+      currentMonth.startIso,
+      currentMonth.endIso,
+    );
+
+    const settledOrderCount =
+      completedMerchantOrders.length + completedMemberOrders.length;
+
+    const recentCompletedOrders = completedMerchantOrders.filter((order) => {
       const recognizedAt = resolveOrderRecognitionAt(
         order.buyer_confirmed_at,
         order.updated_at,
@@ -352,22 +422,24 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
     const configuredAuthFeeLabel = formatAuthFeeLabel(await fetchPlatformAuthFeeHkd());
 
     const appraisalFeePerCard =
-      capturedAuthFees.length > 0
-        ? formatHkd(totalAppraisal / capturedAuthFees.length)
+      capturedAuthFeeCount > 0
+        ? formatHkd(totalAppraisal / capturedAuthFeeCount)
         : configuredAuthFeeLabel;
 
-    const ecologyDenominator = memberCount + merchantCount + pendingKycCount;
+    const memberExclusiveCount = Math.max(0, memberCount - pendingKycCount);
+    const ecologyDenominator =
+      memberExclusiveCount + merchantCount + pendingKycCount;
     const distribution: AdminDashboardEcologySegment[] = [
       buildEcologySegment(
         "user",
-        "一般會員 (USER)",
-        memberCount,
+        "一般會員",
+        memberExclusiveCount,
         ecologyDenominator,
         "個人買家與卡牌玩家",
       ),
       buildEcologySegment(
         "merchant",
-        "認證商戶 (MERCHANT)",
+        "認證商戶",
         merchantCount,
         ecologyDenominator,
         "已通過企業或實體店驗證",
@@ -385,14 +457,16 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
       userEcology: {
         totalUsers,
         totalUsersFormatted: formatIntegerCount(totalUsers),
-        bannedUsers: null,
+        bannedUsers: bannedUsersCount,
         activeRatio: null,
         activeCount: null,
         distribution,
       },
       marketVolume: {
         totalGmv: formatHkd(totalGmv),
-        settledCount: formatCountWithUnit(completedOrders.length, "筆"),
+        monthlyGmv: formatHkd(currentMonthGmv),
+        settledCount: formatCountWithUnit(settledOrderCount, "筆"),
+        monthlySettledCount: formatCountWithUnit(monthlySettledCount, "筆"),
         listingCount: formatCountWithUnit(listingCount, "件"),
         growthRate: formatGrowthPct(currentMonthGmv, previousMonthGmv),
       },
@@ -405,8 +479,14 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
           previousMonthCommission,
         ),
         appraisalTotal: formatHkd(totalAppraisal),
+        monthlyAppraisal: formatHkd(currentMonthAppraisal),
+        monthlyNetRevenue: formatHkd(
+          currentMonthCommission + currentMonthAppraisal,
+        ),
+        totalNetRevenue: formatHkd(totalCommission + totalAppraisal),
+        monthlyAppraisalCount: formatCountWithUnit(monthlyAppraisalCount, "筆交易"),
         appraisalFeePerCard,
-        totalAppraisals: formatCountWithUnit(capturedAuthFees.length, "筆"),
+        totalAppraisals: formatCountWithUnit(capturedAuthFeeCount, "筆交易"),
       },
       stripeBalance,
       alerts: {
@@ -415,6 +495,13 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetricsR
         pendingGrading: pendingGradingResult.data,
       },
       syncedAt: new Date().toISOString(),
+      trends: {
+        netRevenue: buildMonthTrend(
+          [...commissionRows, ...authFeeRows],
+          ADMIN_DASHBOARD_TREND_MAX_MONTHS,
+        ),
+        gmv: buildMonthTrend(gmvRows, ADMIN_DASHBOARD_TREND_MAX_MONTHS),
+      },
     };
 
     return { success: true, data };

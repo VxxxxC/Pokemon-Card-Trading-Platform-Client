@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import {
   BTN_OUTLINE_SM_CLASS,
   BTN_PRIMARY_SM_CLASS,
-  FILTER_CHIP_CLASS,
+  FILTER_CHIP_SM_CLASS,
   FILTER_INPUT_CLASS,
 } from "@/app/admin/campaigns/campaigns-ui";
 import { Pagination } from "@/app/components/ui/Pagination";
@@ -27,12 +27,10 @@ import {
 } from "@/components/ui/popover";
 import {
   getKycDocumentSignedUrl,
-  getStripePayoutBankSummary,
   retryKycProvisioning,
   reviewKycApplication,
   type AdminKycApplicationListItem,
 } from "@/app/actions/admin-kyc";
-import type { StripeAccountPayoutSummary } from "@/lib/stripe/account-summary";
 import { KYC_DOCUMENT_TYPE_LABELS } from "@/lib/kyc/documents";
 import { formatHongKongDateTime } from "@/lib/datetime/hong-kong";
 
@@ -80,6 +78,46 @@ function formatDateTime(iso: string | null): string {
   return formatHongKongDateTime(iso);
 }
 
+function statusDotClasses(
+  status: AdminKycApplicationListItem["status"],
+): string {
+  if (status === "approved") {
+    return "bg-success";
+  }
+  if (status === "pending") {
+    return "bg-brand";
+  }
+  return "bg-warning";
+}
+
+function statusLabelClasses(
+  status: AdminKycApplicationListItem["status"],
+): string {
+  if (status === "approved") {
+    return "text-success";
+  }
+  if (status === "pending") {
+    return "text-brand";
+  }
+  return "text-warning";
+}
+
+function KycApplicationStatusDot({
+  status,
+}: {
+  status: AdminKycApplicationListItem["status"];
+}) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[9px]">
+      <span
+        className={`size-1.5 shrink-0 rounded-full ${statusDotClasses(status)}`}
+        aria-hidden="true"
+      />
+      <span className={statusLabelClasses(status)}>{statusLabel(status)}</span>
+    </span>
+  );
+}
+
 function statusBadgeClasses(
   status: AdminKycApplicationListItem["status"],
 ): string {
@@ -96,98 +134,6 @@ function statusLabel(status: AdminKycApplicationListItem["status"]): string {
   if (status === "approved") return "已批准";
   if (status === "pending") return "待審核";
   return "已拒絕";
-}
-
-function StripePayoutPopover({ applicationId }: { applicationId: string }) {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState<StripeAccountPayoutSummary | null>(
-    null,
-  );
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  async function loadSummary() {
-    setLoading(true);
-    setLoadError(null);
-    const result = await getStripePayoutBankSummary(applicationId);
-    setLoading(false);
-    if (result.success) {
-      setSummary(result.data);
-    } else {
-      setLoadError(result.error);
-    }
-  }
-
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-    if (nextOpen && !summary && !loading) {
-      void loadSummary();
-    }
-  }
-
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger
-        className={`${BTN_OUTLINE_SM_CLASS} h-9`}
-      >
-        Stripe 出款
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        className="w-72 p-3 bg-bg-card border-[rgba(237,232,224,0.12)]"
-      >
-        {loading ? (
-          <p className="font-sans text-[12px] text-text-secondary">載入中…</p>
-        ) : loadError ? (
-          <p className="font-sans text-[12px] text-warning">{loadError}</p>
-        ) : summary ? (
-          <div className="space-y-2">
-            <p className="font-sans text-[11px] text-text-secondary">
-              收款：{summary.chargesEnabled ? "已啟用" : "未啟用"} · 出款：
-              {summary.payoutsEnabled ? "已啟用" : "未啟用"}
-            </p>
-            {summary.bankAccounts.length === 0 ? (
-              <p className="font-sans text-[12px] text-text-secondary">
-                商戶尚未完成 Stripe onboarding 綁定出款銀行
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {summary.bankAccounts.map((bank) => (
-                  <li
-                    key={bank.id}
-                    className="font-sans text-[12px] text-text-primary"
-                  >
-                    <div>
-                      {bank.bankName ?? "銀行"} · ****{bank.last4}
-                    </div>
-                    {bank.accountHolderName ? (
-                      <div className="text-text-secondary text-[11px]">
-                        {bank.accountHolderName}
-                      </div>
-                    ) : null}
-                    <div className="text-text-disabled text-[10px]">
-                      {bank.currency.toUpperCase()} · {bank.status}
-                      {bank.defaultForCurrency ? " · 預設" : ""}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <a
-              href={summary.dashboardUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block font-sans text-[11px] text-brand underline"
-            >
-              在 Stripe Dashboard 查看
-            </a>
-          </div>
-        ) : (
-          <p className="font-sans text-[12px] text-text-secondary">—</p>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 function ApplicationActions({
@@ -262,29 +208,89 @@ function ApplicationActions({
   }
 
   if (application.status === "pending") {
-    const actionButtonClass =
-      variant === "stacked"
-        ? "h-9 w-full sm:w-auto"
-        : "h-8 shrink-0 px-2.5";
+    const inlineActionClass = "h-8 shrink-0 px-2.5";
+    const stackedActionClass = "h-8 flex-1 min-w-0";
 
-    return (
-      <div
-        className={
-          variant === "stacked"
-            ? "flex flex-col items-stretch gap-2"
-            : "flex min-w-[11rem] flex-col items-end gap-2"
-        }
-      >
-        <div
-          className={
-            variant === "stacked"
-              ? "flex flex-col gap-1.5"
-              : "flex flex-wrap items-center justify-end gap-1.5"
-          }
-        >
+    if (variant === "stacked") {
+      return (
+        <div className="flex flex-col gap-2.5">
           <Popover>
             <PopoverTrigger
-              className={`${BTN_OUTLINE_SM_CLASS} ${actionButtonClass}`}
+              className="inline-flex items-center gap-1 self-start font-mono text-[11px] text-text-disabled transition-colors hover:text-brand active:scale-[0.98]"
+            >
+              <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+              查看文件
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="w-56 border-[rgba(237,232,224,0.12)] bg-bg-card p-2"
+            >
+              <div className="flex flex-col gap-1">
+                {application.documents.map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => openDocument(doc.id)}
+                    className="rounded-lg px-2 py-1.5 text-left font-sans text-[12px] text-text-primary hover:bg-bg-elevated"
+                  >
+                    {KYC_DOCUMENT_TYPE_LABELS[doc.documentType]}
+                    {doc.stripeFileId ? " ✓" : ""}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => handleReview("approve")}
+              className={`${BTN_PRIMARY_SM_CLASS} ${stackedActionClass} disabled:opacity-50`}
+            >
+              {isPending ? "處理中…" : "批准"}
+            </button>
+            {!showReject ? (
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setShowReject(true)}
+                className={`${BTN_OUTLINE_SM_CLASS} ${stackedActionClass} border-warning/30 text-warning hover:border-warning/50 hover:bg-warning/10 hover:text-warning disabled:opacity-50`}
+              >
+                拒絕
+              </button>
+            ) : null}
+          </div>
+
+          {showReject ? (
+            <div className="w-full space-y-2">
+              <input
+                type="text"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="拒絕原因（必填）"
+                className="h-9 w-full rounded-lg border border-white/10 bg-transparent px-3 font-sans text-[12px] text-text-primary placeholder:text-text-disabled focus-visible:border-warning/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/30"
+              />
+              <button
+                type="button"
+                disabled={isPending || !rejectReason.trim()}
+                onClick={() => handleReview("reject")}
+                className={`${BTN_OUTLINE_SM_CLASS} h-9 w-full border-warning/40 text-warning hover:border-warning/50 hover:bg-warning/10 hover:text-warning disabled:opacity-50`}
+              >
+                確認拒絕
+              </button>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-w-[11rem] flex-col items-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <Popover>
+            <PopoverTrigger
+              className={`${BTN_OUTLINE_SM_CLASS} ${inlineActionClass}`}
             >
               查看文件
             </PopoverTrigger>
@@ -312,7 +318,7 @@ function ApplicationActions({
             type="button"
             disabled={isPending}
             onClick={() => handleReview("approve")}
-            className={`${BTN_PRIMARY_SM_CLASS} ${actionButtonClass} disabled:opacity-50`}
+            className={`${BTN_PRIMARY_SM_CLASS} ${inlineActionClass} disabled:opacity-50`}
           >
             {isPending ? "處理中…" : "批准"}
           </button>
@@ -321,7 +327,7 @@ function ApplicationActions({
               type="button"
               disabled={isPending}
               onClick={() => setShowReject(true)}
-              className={`${BTN_OUTLINE_SM_CLASS} ${actionButtonClass} border-warning/30 text-warning hover:border-warning/50 hover:bg-warning/10 hover:text-warning disabled:opacity-50`}
+              className={`${BTN_OUTLINE_SM_CLASS} ${inlineActionClass} border-warning/30 text-warning hover:border-warning/50 hover:bg-warning/10 hover:text-warning disabled:opacity-50`}
             >
               拒絕
             </button>
@@ -329,11 +335,7 @@ function ApplicationActions({
         </div>
 
         {showReject ? (
-          <div
-            className={
-              variant === "stacked" ? "w-full space-y-2" : "w-full min-w-[11rem] space-y-2"
-            }
-          >
+          <div className="w-full min-w-[11rem] space-y-2">
             <input
               type="text"
               value={rejectReason}
@@ -366,10 +368,6 @@ function ApplicationActions({
         {isPending ? "重試中…" : "重試 Stripe 開通"}
       </button>
     );
-  }
-
-  if (application.status === "approved" && application.stripeAccountId) {
-    return <StripePayoutPopover applicationId={application.id} />;
   }
 
   if (application.status === "rejected" && application.rejectReason) {
@@ -418,11 +416,7 @@ function KycApplicationMobileCard({
             {formatHandle(app.shopHandle, app.applicantUsername)}
           </p>
         </div>
-        <span
-          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${statusBadgeClasses(app.status)}`}
-        >
-          {statusLabel(app.status)}
-        </span>
+        <KycApplicationStatusDot status={app.status} />
       </div>
       <dl className="grid grid-cols-1 gap-1 font-mono text-[10px]">
         <div className="flex min-w-0 gap-2">
@@ -543,25 +537,9 @@ export function AdminMerchantsClient({
 
   return (
     <div className="space-y-5 pb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-              商戶與 KYC 審查
-            </h1>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-              MERCHANTS
-            </span>
-          </div>
-          <p className="mt-1 font-sans text-[13px] text-text-secondary">
-            人工審批商戶入駐申請；批准後自動開通店舖並建立 Stripe Connect 帳戶
-          </p>
-        </div>
-        <p className="font-mono text-[12px] text-text-secondary sm:shrink-0 sm:self-end">
-          待審核{" "}
-          <span className="font-medium text-brand">{counts.pending}</span>
-        </p>
-      </div>
+      <p className="font-sans text-[13px] text-text-secondary">
+        人工審批商戶入駐申請；批准後自動開通店舖並建立 Stripe Connect 帳戶
+      </p>
 
       {loadError ? (
         <div className="rounded-lg border border-error/30 bg-error/10 px-3 py-2.5 font-sans text-[13px] text-error">
@@ -584,13 +562,13 @@ export function AdminMerchantsClient({
               className={FILTER_INPUT_CLASS}
             />
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {(Object.keys(FILTER_LABELS) as StatusFilter[]).map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => handleFilterChange(key)}
-                className={FILTER_CHIP_CLASS(statusFilter === key)}
+                className={FILTER_CHIP_SM_CLASS(statusFilter === key)}
               >
                 {FILTER_LABELS[key]} ({counts[key]})
               </button>

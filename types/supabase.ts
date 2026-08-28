@@ -1640,6 +1640,8 @@ export type Database = {
           is_active: boolean
           link_url: string | null
           priority: number
+          show_in_announcements: boolean
+          show_on_home_banner: boolean
           start_date: string
           title: string
           updated_at: string
@@ -1655,6 +1657,8 @@ export type Database = {
           is_active?: boolean
           link_url?: string | null
           priority?: number
+          show_in_announcements?: boolean
+          show_on_home_banner?: boolean
           start_date: string
           title: string
           updated_at?: string
@@ -1670,6 +1674,8 @@ export type Database = {
           is_active?: boolean
           link_url?: string | null
           priority?: number
+          show_in_announcements?: boolean
+          show_on_home_banner?: boolean
           start_date?: string
           title?: string
           updated_at?: string
@@ -3158,6 +3164,34 @@ export type Database = {
           is_active: boolean
           link_url: string | null
           priority: number
+          show_in_announcements: boolean
+          show_on_home_banner: boolean
+          start_date: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "platform_announcements"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      fn_platform_home_banners: {
+        Args: never
+        Returns: {
+          content: string
+          created_at: string
+          created_by: string | null
+          end_date: string
+          id: string
+          image_object_key: string | null
+          image_url: string
+          is_active: boolean
+          link_url: string | null
+          priority: number
+          show_in_announcements: boolean
+          show_on_home_banner: boolean
           start_date: string
           title: string
           updated_at: string
@@ -3435,11 +3469,16 @@ export type Database = {
         Returns: Json
       }
       rpc_admin_list_reward_activities: {
-        Args: { p_page?: number; p_page_size?: number; p_status?: string }
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_status?: string
+        }
         Returns: Json
       }
       rpc_admin_reward_activity_status_counts: {
-        Args: never
+        Args: { p_search?: string }
         Returns: Json
       }
       rpc_admin_list_reward_campaigns: {

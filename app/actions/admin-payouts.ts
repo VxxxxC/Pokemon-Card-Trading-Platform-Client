@@ -15,6 +15,7 @@ import type {
   ListAdminMerchantTransfersInput,
   ListAdminMerchantTransfersResult,
   ListAdminPayoutRequestsInput,
+  ListAdminPayoutRequestsExportResult,
   ListAdminPayoutRequestsResult,
   MerchantTransferPage,
   MerchantTransferPayoutStatus,
@@ -27,6 +28,7 @@ import {
   EMPTY_FPS_PAYOUT_STATUS_COUNTS,
   EMPTY_MERCHANT_TRANSFER_STATUS_COUNTS,
   FPS_EXPORT_CAP,
+  FPS_EXPORT_CHUNK_SIZE,
   FPS_INCOMPLETE_STATUSES,
   FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE,
   FPS_PAYOUT_REQUESTS_PAGE_SIZE,
@@ -687,9 +689,12 @@ function normalizeFpsPayoutStatus(
   return "pending";
 }
 
-function resolveFpsPageSize(pageSize?: number): number {
+function resolveFpsPageSize(
+  pageSize?: number,
+  maxPageSize = FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE,
+): number {
   const size = Math.floor(pageSize ?? FPS_PAYOUT_REQUESTS_PAGE_SIZE);
-  return Math.min(FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE, Math.max(1, size));
+  return Math.min(maxPageSize, Math.max(1, size));
 }
 
 function isFpsSellerNameSort(
@@ -730,20 +735,35 @@ async function resolveSearchRequestIds(
     return [];
   }
 
+  const fullUuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (fullUuidPattern.test(term)) {
+    const { data, error } = await admin
+      .from("payout_requests")
+      .select("id")
+      .eq("id", term)
+      .limit(1);
+
+    if (error) {
+      console.error("[resolveSearchRequestIds]", error);
+      throw new FpsPayoutQueryError("無法搜尋提現單號");
+    }
+
+    return (data ?? []).map((row) => row.id);
+  }
+
   const { data, error } = await admin
     .from("payout_requests")
     .select("id")
-    .limit(FPS_SELLER_NAME_SORT_FETCH_CAP);
+    .filter("id::text", "ilike", `%${term}%`)
+    .limit(50);
 
   if (error) {
     console.error("[resolveSearchRequestIds]", error);
     throw new FpsPayoutQueryError("無法搜尋提現單號");
   }
 
-  const needle = term.toLowerCase();
-  return (data ?? [])
-    .map((row) => row.id)
-    .filter((id) => id.toLowerCase().includes(needle));
+  return (data ?? []).map((row) => row.id);
 }
 
 async function resolveSearchOrderIds(
@@ -984,7 +1004,10 @@ async function fetchFpsPayoutPage(
 ): Promise<FpsPayoutPage> {
   const admin = createAdminClient();
   const page = resolvePage(input.page);
-  const pageSize = resolveFpsPageSize(input.pageSize);
+  const pageSize = resolveFpsPageSize(
+    input.pageSize,
+    input.maxPageSize ?? FPS_PAYOUT_REQUESTS_MAX_PAGE_SIZE,
+  );
   const sort = input.sort ?? "submittedAt-desc";
   const search = input.search?.trim();
 
@@ -1115,8 +1138,8 @@ export async function listAdminPayoutRequests(
 }
 
 export async function listAdminPayoutRequestsForExport(
-  input: Omit<ListAdminPayoutRequestsInput, "page" | "pageSize">,
-): Promise<ListAdminPayoutRequestsResult> {
+  input: Omit<ListAdminPayoutRequestsInput, "page" | "pageSize" | "maxPageSize">,
+): Promise<ListAdminPayoutRequestsExportResult> {
   const guard = await requireAdmin();
   if (!guard.ok) {
     return { success: false, error: guard.error };
@@ -1129,22 +1152,61 @@ export async function listAdminPayoutRequestsForExport(
       pageSize: 1,
     });
 
-    const exportSize = Math.min(firstPage.total, FPS_EXPORT_CAP);
-
-    if (exportSize === 0) {
+    const totalMatching = firstPage.total;
+    if (totalMatching === 0) {
       return {
         success: true,
-        data: emptyFpsPayoutPage(1, FPS_PAYOUT_REQUESTS_PAGE_SIZE),
+        data: {
+          rows: [],
+          totalMatching: 0,
+          exportedCount: 0,
+          exportCap: FPS_EXPORT_CAP,
+          capped: false,
+        },
       };
     }
 
-    const data = await fetchFpsPayoutPage({
-      ...input,
-      page: 1,
-      pageSize: exportSize,
-    });
+    const exportTarget = Math.min(totalMatching, FPS_EXPORT_CAP);
+    const rows: FpsPayoutRow[] = [];
+    let fetched = 0;
+    let page = 1;
 
-    return { success: true, data };
+    while (fetched < exportTarget) {
+      const chunkSize = Math.min(
+        FPS_EXPORT_CHUNK_SIZE,
+        exportTarget - fetched,
+      );
+      const data = await fetchFpsPayoutPage({
+        ...input,
+        page,
+        pageSize: chunkSize,
+        maxPageSize: FPS_EXPORT_CHUNK_SIZE,
+      });
+
+      if (data.rows.length === 0) {
+        break;
+      }
+
+      rows.push(...data.rows);
+      fetched += data.rows.length;
+
+      if (data.rows.length < chunkSize) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return {
+      success: true,
+      data: {
+        rows,
+        totalMatching,
+        exportedCount: rows.length,
+        exportCap: FPS_EXPORT_CAP,
+        capped: totalMatching > FPS_EXPORT_CAP,
+      },
+    };
   } catch (error) {
     if (error instanceof FpsPayoutQueryError) {
       return { success: false, error: error.message };

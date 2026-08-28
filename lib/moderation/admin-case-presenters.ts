@@ -215,3 +215,84 @@ export function moderationOrderSourceLabel(
       return source ?? "—";
   }
 }
+
+export function moderationMemberOrderStatusLabel(
+  status: string | null | undefined,
+): string {
+  switch (status) {
+    case "pending":
+      return "進行中";
+    case "completed":
+      return "已完成";
+    case "cancelled":
+      return "已取消";
+    default:
+      return status ?? "—";
+  }
+}
+
+export function moderationOrderEscrowLabel(
+  escrowStatus: string | null | undefined,
+  persona: "member" | "merchant",
+): string {
+  if (!escrowStatus) {
+    return "—";
+  }
+
+  if (persona === "merchant") {
+    switch (escrowStatus) {
+      case "pending_payment":
+        return "待買家付款";
+      case "payment_held":
+        return "款項已託管，待入庫";
+      case "shipped":
+        return "運送中";
+      case "authenticating":
+        return "鑑定中";
+      case "authenticated":
+        return "待買家確認收貨";
+      case "completed_and_transferred":
+        return "已完成";
+      case "refunded":
+        return "已退款";
+      default:
+        return escrowStatus;
+    }
+  }
+
+  switch (escrowStatus) {
+    case "payment":
+      return "待買家付款";
+    case "custody":
+      return "待賣家寄送平台";
+    case "grading":
+      return "平台鑑定中";
+    case "shipped":
+      return "待買家確認收貨";
+    case "released":
+      return "款項已釋放";
+    case "cancelled":
+      return "已取消";
+    default:
+      return escrowStatus;
+  }
+}
+
+export function moderationOrderRefundSummary(
+  order: {
+    refundEligible?: boolean;
+    refundIneligibleReason?: string | null;
+    refundStatus?: string | null;
+  },
+): string {
+  if (order.refundEligible) {
+    return "可執行售後退款";
+  }
+  if (order.refundIneligibleReason) {
+    return `暫不可退 — ${order.refundIneligibleReason}`;
+  }
+  if (order.refundStatus) {
+    return moderationRefundStatusLabel(order.refundStatus);
+  }
+  return "—";
+}

@@ -20,11 +20,18 @@ function isValidLinkUrl(value: string): boolean {
 export function validateAnnouncementInput(
   input: PlatformAnnouncementInput,
 ): string | null {
+  const showOnHomeBanner = input.showOnHomeBanner ?? false;
+  const showInAnnouncements = input.showInAnnouncements ?? true;
+
+  if (!showOnHomeBanner && !showInAnnouncements) {
+    return "請至少選擇一個展示位置（首頁 Banner 或公告）";
+  }
+
   if (!input.title.trim()) {
     return "請輸入公告標題";
   }
 
-  if (!input.content.trim()) {
+  if (showInAnnouncements && !input.content.trim()) {
     return "請輸入公告內容";
   }
 

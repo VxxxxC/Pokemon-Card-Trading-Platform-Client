@@ -8,7 +8,10 @@ import {
   type CampaignTab,
   campaignTabToQuery,
 } from "./campaign-tabs";
-import { FILTER_CHIP_CLASS } from "./campaigns-ui";
+import {
+  ADMIN_PAGE_TAB_CLASS,
+  ADMIN_PAGE_TAB_NAV_CLASS,
+} from "./campaigns-ui";
 import type { CheckInProgramRow } from "@/lib/admin-check-in-program/types";
 import type { AdminRewardActivityRow } from "@/lib/admin-rewards/types";
 import type { AdminRewardActivityStatusCountKey } from "@/app/actions/admin-reward-activities";
@@ -46,47 +49,42 @@ export function CampaignsPageShell({
 
   return (
     <div className="space-y-5 pb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-              積分與獎勵活動
-            </h1>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-              CAMPAIGNS
-            </span>
-          </div>
-          <p className="mt-1 font-sans text-[13px] text-text-secondary">
-            管理獎勵活動（自動發放、限時搶領）與簽到計劃。
-          </p>
-        </div>
+      <p className="font-sans text-[13px] text-text-secondary">
+        管理獎勵活動（自動發放、限時搶領）與簽到計劃。
+      </p>
 
-        <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
-          <button
-            type="button"
-            onClick={() => handleTabChange("activities")}
-            className={FILTER_CHIP_CLASS(activeTab === "activities")}
+      <nav
+        className={ADMIN_PAGE_TAB_NAV_CLASS}
+        aria-label="積分與獎勵活動檢視"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "activities"}
+          onClick={() => handleTabChange("activities")}
+          className={ADMIN_PAGE_TAB_CLASS(activeTab === "activities")}
+        >
+          獎勵活動
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "check_in"}
+          onClick={() => handleTabChange("check_in")}
+          className={ADMIN_PAGE_TAB_CLASS(activeTab === "check_in")}
+        >
+          簽到計劃
+          <span
+            className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
+              checkInActive
+                ? "bg-success/15 text-success"
+                : "bg-white/5 text-text-disabled"
+            }`}
           >
-            獎勵活動
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange("check_in")}
-            className={`${FILTER_CHIP_CLASS(activeTab === "check_in")} gap-1.5`}
-          >
-            簽到計劃
-            <span
-              className={`rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
-                checkInActive
-                  ? "bg-success/15 text-success"
-                  : "bg-white/5 text-text-disabled"
-              }`}
-            >
-              {checkInActive ? "已啟用" : "已關閉"}
-            </span>
-          </button>
-        </div>
-      </div>
+            {checkInActive ? "已啟用" : "已關閉"}
+          </span>
+        </button>
+      </nav>
 
       {activeTab === "activities" ? (
         <AdminRewardActivitiesClient

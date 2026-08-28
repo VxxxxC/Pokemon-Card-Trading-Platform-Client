@@ -79,15 +79,16 @@ test.describe("Admin announcements workflow", () => {
       timeout: 20_000,
     });
 
+    await page.getByRole("link", { name: "新增公告" }).click();
+    await expect(page).toHaveURL(/\/admin\/announcements\/new/, {
+      timeout: 10_000,
+    });
+
+    await page.getByPlaceholder("公告標題").fill(initialTitle);
     await page
-      .getByPlaceholder("請輸入吸引人的活動或公告標題...")
-      .fill(initialTitle);
-    await page
-      .getByPlaceholder("請輸入公告詳細說明、活動辦法、限制條件等...")
+      .getByPlaceholder("公告內文")
       .fill("E2E announcement body for automated workflow verification.");
-    await page
-      .getByPlaceholder("例如: /catalog 或 https://...")
-      .fill("/catalog");
+    await page.getByPlaceholder("/catalog 或 URL").fill("/catalog");
 
     await page.getByRole("button", { name: "新增公告" }).click();
     await expect(page.getByText("已成功新增公告！")).toBeVisible({
@@ -96,17 +97,21 @@ test.describe("Admin announcements workflow", () => {
     await expect(page.getByText(initialTitle)).toBeVisible();
 
     const row = page
-      .getByRole("heading", { name: initialTitle, level: 3 })
-      .locator("xpath=ancestor::div[contains(@class,'rounded-xl')]")
+      .locator("article")
+      .filter({ hasText: initialTitle })
       .first();
-    await row.getByRole("button", { name: "編輯" }).click();
+    await row.getByRole("link", { name: "編輯" }).click();
+    await expect(page).toHaveURL(/\/admin\/announcements\/[^/]+\/edit/, {
+      timeout: 10_000,
+    });
     await expect(page.getByRole("button", { name: "儲存變更" })).toBeVisible({
       timeout: 10_000,
     });
-    await page
-      .getByPlaceholder("請輸入吸引人的活動或公告標題...")
-      .fill(updatedTitle);
+    await page.getByPlaceholder("公告標題").fill(updatedTitle);
     await page.getByRole("button", { name: "儲存變更" }).click();
+    await expect(page.getByText("已成功更新公告！")).toBeVisible({
+      timeout: 10_000,
+    });
     await expect(
       page.getByRole("heading", { name: updatedTitle, level: 3 }),
     ).toBeVisible({ timeout: 20_000 });

@@ -1,3 +1,8 @@
+export type AdminDashboardTrendPoint = {
+  label: string;
+  value: number;
+};
+
 export type AdminDashboardEcologySegment = {
   key: "user" | "merchant" | "pending";
   role: string;
@@ -20,7 +25,9 @@ export type AdminDashboardMetrics = {
   };
   marketVolume: {
     totalGmv: string;
+    monthlyGmv: string;
     settledCount: string;
+    monthlySettledCount: string;
     listingCount: string;
     growthRate: string | null;
   };
@@ -30,6 +37,10 @@ export type AdminDashboardMetrics = {
     commissionRate: string;
     commissionGrowth: string | null;
     appraisalTotal: string;
+    monthlyAppraisal: string;
+    monthlyNetRevenue: string;
+    totalNetRevenue: string;
+    monthlyAppraisalCount: string;
     appraisalFeePerCard: string;
     totalAppraisals: string;
   };
@@ -47,6 +58,10 @@ export type AdminDashboardMetrics = {
     pendingGrading: number;
   };
   syncedAt: string;
+  trends: {
+    netRevenue: AdminDashboardTrendPoint[];
+    gmv: AdminDashboardTrendPoint[];
+  };
 };
 
 export type AdminDashboardMetricsResult =

@@ -54,8 +54,9 @@ const NAV_ITEMS = ADMIN_NAV_ITEMS.map((item) => ({
 const NAV_BUTTON_CLASS =
   "h-9 gap-2.5 rounded-lg border border-transparent px-2.5 font-sans text-[12px] font-medium text-text-secondary shadow-none transition-colors active:scale-[0.98] hover:border-brand/30 hover:bg-brand/10 hover:text-brand data-[active=true]:border-brand/40 data-[active=true]:bg-brand/15 data-[active=true]:font-semibold data-[active=true]:text-brand group-data-[collapsible=icon]:size-9! group-data-[collapsible=icon]:border-white/10 group-data-[collapsible=icon]:p-2!";
 
-export function AdminSidebar() {
+export function AdminSidebar({ authEmail }: { authEmail: string }) {
   const pathname = usePathname();
+  const emailInitial = authEmail.charAt(0).toUpperCase();
 
   return (
     <Sidebar collapsible="icon" className="w-[250px] md:w-64">
@@ -65,26 +66,18 @@ export function AdminSidebar() {
             <div className="relative shrink-0 overflow-hidden rounded-lg border border-white/10">
               <Image
                 src="/asset/logo.png"
-                alt="HKCardVault Logo"
+                alt="卡巢"
                 width={100}
                 height={100}
                 className="h-9 w-9 rounded-lg object-cover"
                 priority
               />
             </div>
-            <div className="flex min-w-0 flex-col justify-center">
-              <div className="flex items-center gap-1.5">
-                <h1 className="truncate font-sans text-[14px] font-bold tracking-tight text-text-primary">
-                  HKCardVault
-                </h1>
-                <span className="inline-flex shrink-0 items-center rounded-full border border-brand/20 bg-brand/10 px-2 py-0.5 font-mono text-[9px] font-medium text-brand">
-                  ADMIN
-                </span>
+              <div className="flex min-w-0 flex-col justify-center">
+                <p className="truncate font-sans text-[14px] font-bold tracking-tight text-text-primary">
+                  管理控制台
+                </p>
               </div>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-text-disabled">
-                後台管理
-              </p>
-            </div>
           </div>
 
           <div className="hidden items-center justify-center group-data-[collapsible=icon]:flex">
@@ -139,15 +132,18 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t border-white/[0.06] p-3">
         <div className="flex items-center gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-brand/20 bg-brand/10 font-mono text-[11px] font-bold text-brand">
-            A
+            {emailInitial}
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate font-mono text-[11px] font-semibold text-text-primary">
-              admin@hkcv
+            <p
+              className="break-all font-mono text-[11px] font-semibold leading-snug text-text-primary"
+              title={authEmail}
+            >
+              {authEmail}
             </p>
             <div className="flex items-center gap-1.5">
               <span className="truncate font-sans text-[10px] text-text-secondary">
-                超級管理員
+                平台管理員
               </span>
               <span className="text-text-disabled">·</span>
               <Link

@@ -6,6 +6,7 @@
 
 | Surface | Files |
 |---------|--------|
+| Homepage banner | `app/page.tsx` → `getHomeBannersForDisplay()` → `HomePageShell` → `HomeBanner.tsx` |
 | Homepage modal | `app/page.tsx` → `app/HomePageShell.tsx` → `app/components/announcements/AnnouncementModal.tsx` |
 | Public list | `app/announcements/page.tsx` (SSR) + `AnnouncementsPageClient.tsx` (tabs) |
 | Admin CRUD | `app/admin/announcements/page.tsx` |
@@ -19,6 +20,7 @@
 - [x] Pending file uploads via `uploadAnnouncementPosterImage()` before save
 - [x] `pendingAnnouncementId` = `crypto.randomUUID()` on new form; existing `id` on edit
 - [x] Never persist `blob:` preview URLs — Bunny CDN, manual https, or `DEFAULT_ANNOUNCEMENT_POSTER_URL`
+- [x] Display surface toggles: 首頁 Banner / 公告渠道
 - [x] Toggle/delete wired to server actions
 - [x] Loading/saving states + existing `feedbackMessage` toast
 

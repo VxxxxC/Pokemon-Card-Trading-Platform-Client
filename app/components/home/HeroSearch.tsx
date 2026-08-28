@@ -81,12 +81,12 @@ export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
   }, [closeDropdown]);
 
   const heroPadding = showCheckInCard
-    ? "px-4 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-6"
-    : "px-4 py-3 sm:px-5 sm:py-3.5 lg:px-8 lg:py-4";
+    ? "px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5"
+    : "px-3 py-2.5 sm:px-4 sm:py-3 lg:px-6 lg:py-3.5";
 
   return (
     <section
-      className="relative mt-4 rounded-[16px] overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
+      className="relative mt-3 rounded-[12px] overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
       aria-labelledby="hero-search-heading"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[rgba(212,165,116,0.06)] via-transparent to-[rgba(212,165,116,0.03)]" />
@@ -104,11 +104,11 @@ export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
               id="hero-search-heading"
               className={`font-sans font-black text-text-primary leading-tight tracking-tight ${
                 showCheckInCard
-                  ? "text-[20px] sm:text-[22px] lg:text-[30px] mb-3"
-                  : "text-[18px] sm:text-[20px] lg:text-[26px] mb-2"
+                  ? "text-[18px] sm:text-[20px] lg:text-[26px] mb-2.5"
+                  : "text-[16px] sm:text-[18px] lg:text-[22px] mb-1.5"
               }`}
             >
-              搜尋你的目標神卡
+              搜尋你的目標卡牌
             </h1>
 
             <div
@@ -128,8 +128,8 @@ export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
                   }
                 }}
                 placeholder="輸入卡牌編號 (例: SV8a-123)"
-                className={`w-full pl-10 pr-4 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-[8px] font-sans text-[13.5px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(140,115,85,0.40)] ${
-                  showCheckInCard ? "h-11" : "h-10"
+                className={`w-full pl-9 pr-3 bg-bg-elevated border border-[rgba(237,232,224,0.12)] rounded-[8px] font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:ring-2 focus:ring-[rgba(140,115,85,0.40)] ${
+                  showCheckInCard ? "h-10" : "h-9"
                 }`}
                 aria-label="搜尋卡牌編號"
                 autoComplete="off"
@@ -222,8 +222,8 @@ export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
               type="button"
               onClick={executeSearch}
               disabled={isSearching}
-              className={`inline-flex items-center justify-center shrink-0 px-4 sm:px-6 bg-brand text-[#17130f] font-sans font-semibold text-[13px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover cursor-pointer focus:outline-none disabled:opacity-70 ${
-                showCheckInCard ? "h-11" : "h-10"
+              className={`inline-flex items-center justify-center shrink-0 px-3.5 sm:px-5 bg-brand text-[#17130f] font-sans font-semibold text-[12px] rounded-[8px] active:scale-[0.98] transition-transform hover:bg-brand-hover cursor-pointer focus:outline-none disabled:opacity-70 ${
+                showCheckInCard ? "h-10" : "h-9"
               }`}
             >
               {isSearching ? "搜尋中…" : "搜尋"}
@@ -251,9 +251,9 @@ export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
 function SearchIcon() {
   return (
     <svg
-      className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled"
-      width="18"
-      height="18"
+      className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-disabled"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

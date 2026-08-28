@@ -6,6 +6,8 @@ import {
   moderationAuditActionLabel,
 } from "@/lib/moderation/admin-case-presenters";
 import type { AdminModerationAuditRow } from "@/lib/moderation/types";
+import { ModerationExpandToggle } from "./ModerationExpandToggle";
+import { SECTION_BLOCK_CLASS, SECTION_TITLE_CLASS, META_TEXT_CLASS, EXPANDED_CONTENT_CLASS } from "./moderation-detail-ui";
 
 type ModerationAuditTimelineProps = {
   entries: AdminModerationAuditRow[];
@@ -17,23 +19,16 @@ export default function ModerationAuditTimeline({
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="space-y-3">
+    <section className={SECTION_BLOCK_CLASS}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-sans text-[15px] font-bold text-text-primary">
-          審計紀錄
-        </h2>
+        <h2 className={SECTION_TITLE_CLASS}>審計紀錄</h2>
         {entries.length > 0 ? (
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[12px] text-text-disabled">
-              共 {entries.length} 筆
-            </span>
-            <button
-              type="button"
-              onClick={() => setOpen((value) => !value)}
-              className="font-sans text-[12px] text-brand hover:text-text-primary"
-            >
-              {open ? "收合" : "展開"}
-            </button>
+            <span className={META_TEXT_CLASS}>共 {entries.length} 筆</span>
+            <ModerationExpandToggle
+              open={open}
+              onToggle={() => setOpen((value) => !value)}
+            />
           </div>
         ) : null}
       </div>
@@ -41,7 +36,7 @@ export default function ModerationAuditTimeline({
       {entries.length === 0 ? (
         <p className="font-sans text-[12px] text-text-disabled">尚無審計紀錄。</p>
       ) : open ? (
-        <ol className="relative space-y-0">
+        <ol className={`${EXPANDED_CONTENT_CLASS} relative space-y-0`}>
           {entries.map((entry, index) => {
             const isLast = index === entries.length - 1;
             return (

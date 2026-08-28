@@ -36,7 +36,7 @@ export default function ModerationEvidencePanel({
             return (
               <div
                 key={attachment.id}
-                className="flex aspect-square items-center justify-center rounded-lg border border-white/10 bg-bg-card/40 px-2 text-center font-sans text-[11px] text-text-disabled"
+                className="flex aspect-square items-center justify-center rounded-lg bg-bg-card/40 px-2 text-center font-sans text-[11px] text-text-disabled"
               >
                 圖片不可用
               </div>
@@ -55,7 +55,7 @@ export default function ModerationEvidencePanel({
                 setViewerIndex(imageIndex);
                 setViewerOpen(true);
               }}
-              className="relative aspect-square overflow-hidden rounded-lg border border-white/10 bg-bg-card/40 cursor-zoom-in transition-colors hover:border-brand/30 hover:bg-brand/5 active:scale-[0.98]"
+              className="relative aspect-square overflow-hidden rounded-lg bg-bg-card/40 cursor-zoom-in transition-colors hover:bg-brand/5 active:scale-[0.98]"
               aria-label={`查看舉報證據 ${imageIndex + 1}`}
             >
               <Image

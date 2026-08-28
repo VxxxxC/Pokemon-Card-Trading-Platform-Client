@@ -8,7 +8,6 @@ import {
 } from "@/app/actions/admin-payouts";
 import {
   BTN_OUTLINE_SM_CLASS,
-  BTN_PRIMARY_CLASS,
   BTN_PRIMARY_SM_CLASS,
   FILTER_INPUT_CLASS,
 } from "@/app/admin/campaigns/campaigns-ui";
@@ -43,8 +42,8 @@ import type {
   FpsPayoutSort,
   FpsPayoutStatusFilter,
 } from "@/lib/admin-payouts/types";
-import { FPS_PAYOUT_REQUESTS_PAGE_SIZE } from "@/lib/admin-payouts/types";
-import { Search } from "lucide-react";
+import { FPS_EXPORT_CAP, FPS_PAYOUT_REQUESTS_PAGE_SIZE } from "@/lib/admin-payouts/types";
+import { Download, Search } from "lucide-react";
 import Link from "next/link";
 import {
   useCallback,
@@ -56,13 +55,13 @@ import {
 } from "react";
 import { toast } from "sonner";
 import BlockingLoadingOverlay from "./BlockingLoadingOverlay";
-import { FilterChips, SortSelect } from "./payouts-shared";
+import { FilterChips, SelectionCountBadge, SortSelect } from "./payouts-shared";
 
 const FPS_SORT_OPTIONS: { value: FpsPayoutSort; label: string }[] = [
-  { value: "submittedAt-desc", label: "提交時間：最新優先" },
-  { value: "submittedAt-asc", label: "提交時間：最舊優先" },
-  { value: "userName-asc", label: "用戶名稱：A → Z" },
-  { value: "userName-desc", label: "用戶名稱：Z → A" },
+  { value: "submittedAt-desc", label: "最新" },
+  { value: "submittedAt-asc", label: "最舊" },
+  { value: "userName-asc", label: "名稱 A→Z" },
+  { value: "userName-desc", label: "名稱 Z→A" },
 ];
 
 const STATUS_FILTER_OPTIONS: {
@@ -88,6 +87,21 @@ function formatRequestId(requestId: string): string {
   return `#${requestId.slice(0, 8)}`;
 }
 
+function isFpsRowSelectable(row: FpsPayoutRow): boolean {
+  return (
+    isFpsPayoutIncomplete(row.status) &&
+    !isFpsPayoutBlockedForComplete({
+      status: row.status,
+      fpsId: row.fpsId,
+      fpsName: row.fpsName,
+    })
+  );
+}
+
+function getSelectableFpsRequestIds(rows: FpsPayoutRow[]): string[] {
+  return rows.filter(isFpsRowSelectable).map((row) => row.requestId);
+}
+
 function FpsPayoutMobileCard({
   row,
   isSelected,
@@ -109,68 +123,138 @@ function FpsPayoutMobileCard({
 }) {
   const canAct = isFpsPayoutIncomplete(row.status);
 
+  const handleCardSelectToggle = () => {
+    if (!canSelect || isMutating) {
+      return;
+    }
+    onToggleSelect();
+  };
+
   return (
-    <article className="space-y-2 px-1 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex items-start gap-2">
-          {canSelect ? (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={onToggleSelect}
-              className="mt-0.5 rounded border-white/20 accent-brand"
-            />
-          ) : null}
-          <div className="min-w-0">
-            <p className="font-mono text-[11px] text-text-disabled">
-              {formatRequestId(row.requestId)}
-            </p>
+    <article
+      className={`space-y-2.5 px-1 py-3 ${
+        canSelect
+          ? `cursor-pointer rounded-lg transition-colors hover:bg-brand/5 ${
+              isSelected ? "bg-brand/10" : ""
+            }`
+          : ""
+      }`}
+      onClick={canSelect ? handleCardSelectToggle : undefined}
+    >
+      <div className="flex items-start gap-2">
+        {canSelect ? (
+          <input
+            type="checkbox"
+            checked={isSelected}
+            readOnly
+            tabIndex={-1}
+            aria-hidden="true"
+            className="mt-1 shrink-0 rounded border-white/20 accent-brand pointer-events-none"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
             <Link
               href={`/profile/${row.sellerId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-sans text-[13px] font-semibold text-brand hover:underline"
+              onClick={(event) => event.stopPropagation()}
+              className="truncate font-sans text-[14px] font-semibold text-brand hover:underline"
             >
               {row.sellerName}
             </Link>
+            <span
+              className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${getFpsPayoutStatusBadgeClass(row.status)}`}
+            >
+              {formatFpsPayoutStatusLabel(row.status)}
+            </span>
           </div>
         </div>
-        <span
-          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${getFpsPayoutStatusBadgeClass(row.status)}`}
-        >
-          {formatFpsPayoutStatusLabel(row.status)}
-        </span>
       </div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[11px]">
-        <span className="text-text-disabled">訂單</span>
-        <Link
-          href={`/profile/user/orderDetail/${row.orderNumber}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-brand hover:underline"
-        >
-          {row.orderNumber}
-        </Link>
-        <span className="text-text-disabled">金額</span>
-        <span className="font-bold text-text-primary">
-          {formatAdminHkd(row.amount)}
+
+      <div className="flex items-baseline justify-between gap-3 rounded-lg bg-bg-page/30 px-3 py-2">
+        <span className="font-sans text-[10px] text-text-disabled shrink-0">
+          提現金額
         </span>
-        <span className="text-text-disabled">FPS ID</span>
-        <span className="font-bold text-brand">{row.fpsId}</span>
-        <span className="text-text-disabled">提交</span>
-        <span className="text-text-secondary">{row.submittedAt}</span>
+        <div className="min-w-0 text-right">
+          <p className="font-mono text-[16px] font-bold leading-none text-text-primary">
+            {formatAdminHkd(row.amount)}
+          </p>
+          {row.fpsTransferFeeHkd > 0 ? (
+            <p className="mt-1 font-mono text-[10px] text-text-disabled">
+              毛額 {formatAdminHkd(row.grossPayoutHkd)} · 手續費{" "}
+              {formatAdminHkd(row.fpsTransferFeeHkd)}
+            </p>
+          ) : null}
+        </div>
       </div>
+
+      <div className="space-y-1.5 rounded-lg bg-bg-page/20 px-3 py-2 font-mono text-[11px]">
+        <div className="flex items-center justify-between gap-3">
+          <span className="shrink-0 text-text-disabled">訂單</span>
+          <Link
+            href={`/profile/user/orderDetail/${row.orderNumber}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className="truncate text-right text-brand hover:underline"
+          >
+            {row.orderNumber}
+          </Link>
+        </div>
+        {row.fpsName ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="shrink-0 text-text-disabled">收款人</span>
+            <span className="truncate text-right text-text-primary">
+              {row.fpsName}
+            </span>
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between gap-3">
+          <span className="shrink-0 text-text-disabled">FPS ID</span>
+          <span className="truncate text-right font-bold text-text-primary">
+            {row.fpsId}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="shrink-0 text-text-disabled">提交時間</span>
+          <span className="truncate text-right text-text-secondary">
+            {row.submittedAt}
+          </span>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <span className="shrink-0 text-text-disabled">提現單號</span>
+          <span className="break-all text-right text-text-secondary">
+            {row.requestId}
+          </span>
+        </div>
+        {row.status === "completed" ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="shrink-0 text-text-disabled">FPS 參考</span>
+            <span
+              className="truncate text-right text-text-primary"
+              title={row.adminFpsReference ?? undefined}
+            >
+              {row.adminFpsReference ?? "—"}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
       {blockedForComplete ? (
         <p className="font-sans text-[10px] text-text-disabled">待賣家補 FPS</p>
       ) : null}
       {canAct ? (
-        <div className="flex flex-wrap gap-1.5 pt-1">
+        <div
+          className="flex gap-2"
+          onClick={(event) => event.stopPropagation()}
+        >
           {!blockedForComplete ? (
             <button
               type="button"
               onClick={onComplete}
               disabled={isMutating}
-              className={BTN_PRIMARY_SM_CLASS}
+              className={`${BTN_PRIMARY_SM_CLASS} flex-1`}
             >
               銷帳
             </button>
@@ -179,7 +263,7 @@ function FpsPayoutMobileCard({
             type="button"
             onClick={onReject}
             disabled={isMutating}
-            className={`${BTN_OUTLINE_SM_CLASS} border-warning/30 text-warning hover:border-warning/40 hover:bg-warning/10 hover:text-warning`}
+            className={`${BTN_OUTLINE_SM_CLASS} flex-1 border-warning/30 text-warning hover:border-warning/40 hover:bg-warning/10 hover:text-warning`}
           >
             駁回
           </button>
@@ -205,6 +289,7 @@ export default function FpsLedgerTab({
     useState<FpsPayoutStatusFilter>("incomplete");
   const [sort, setSort] = useState<FpsPayoutSort>("submittedAt-desc");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [allFilteredSelected, setAllFilteredSelected] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [completeDialogRequestId, setCompleteDialogRequestId] = useState<
     string | null
@@ -251,7 +336,7 @@ export default function FpsLedgerTab({
 
         setFetchError(null);
         setPageData(result.data);
-        onTotalChange?.(result.data.total);
+        onTotalChange?.(result.data.statusCounts.incomplete);
       });
     },
     [pageData.page, debouncedSearch, statusFilter, sort, onTotalChange],
@@ -277,48 +362,59 @@ export default function FpsLedgerTab({
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handleStatusFilterChange = (filter: FpsPayoutStatusFilter) => {
     setStatusFilter(filter);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handleSortChange = (value: FpsPayoutSort) => {
     setSort(value);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handlePageChange = (page: number) => {
-    setSelectedIds(new Set());
+    if (!allFilteredSelected) {
+      resetSelection();
+    }
     fetchPage({ page });
   };
 
-  const toggleSelectAll = () => {
-    const selectableIds = pageData.rows
-      .filter(
-        (row) =>
-          isFpsPayoutIncomplete(row.status) &&
-          !isFpsPayoutBlockedForComplete({
-            status: row.status,
-            fpsId: row.fpsId,
-            fpsName: row.fpsName,
-          }),
-      )
-      .map((row) => row.requestId);
+  const resetSelection = () => {
+    setAllFilteredSelected(false);
+    setSelectedIds(new Set());
+  };
 
-    if (
-      selectableIds.length > 0 &&
-      selectableIds.every((id) => selectedIds.has(id))
-    ) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(selectableIds));
+  const clearSelection = () => {
+    resetSelection();
+  };
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      resetSelection();
+      return;
     }
+
+    const selectableIds = getSelectableFpsRequestIds(pageData.rows);
+    if (selectableIds.length === 0) {
+      return;
+    }
+
+    setAllFilteredSelected(true);
+    setSelectedIds(new Set(selectableIds));
   };
 
   const toggleSelectRow = (id: string) => {
+    if (allFilteredSelected) {
+      setAllFilteredSelected(false);
+      setSelectedIds(
+        new Set(getSelectableFpsRequestIds(pageData.rows).filter((rowId) => rowId !== id)),
+      );
+      return;
+    }
+
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -339,11 +435,18 @@ export default function FpsLedgerTab({
         return;
       }
 
-      let targetRows = result.data.rows;
+      const { rows: exportRows, totalMatching, exportedCount, capped } =
+        result.data;
+
+      let targetRows = exportRows;
       if (exportSelectedOnly) {
-        targetRows = targetRows.filter((row) =>
-          selectedIds.has(row.requestId),
-        );
+        if (allFilteredSelected) {
+          targetRows = exportRows.filter((row) => isFpsRowSelectable(row));
+        } else {
+          targetRows = exportRows.filter((row) =>
+            selectedIds.has(row.requestId),
+          );
+        }
       }
 
       if (targetRows.length === 0) {
@@ -382,6 +485,18 @@ export default function FpsLedgerTab({
       link.click();
       document.body.removeChild(link);
 
+      if (exportSelectedOnly) {
+        toast.success(`已成功導出 ${targetRows.length} 筆 FPS Payout CSV 文件！`);
+        return;
+      }
+
+      if (capped) {
+        toast.success(
+          `已導出 ${exportedCount} 筆（共 ${totalMatching} 筆符合篩選，已達單次上限 ${FPS_EXPORT_CAP}）`,
+        );
+        return;
+      }
+
       toast.success(`已成功導出 ${targetRows.length} 筆 FPS Payout CSV 文件！`);
     } finally {
       setIsExportingCsv(false);
@@ -414,12 +529,16 @@ export default function FpsLedgerTab({
       );
       setCompleteDialogRequestId(null);
       setAdminFpsReference("");
-      setSelectedIds((prev) => {
-        if (!prev.has(completeDialogRequestId)) return prev;
-        const next = new Set(prev);
-        next.delete(completeDialogRequestId);
-        return next;
-      });
+      if (allFilteredSelected) {
+        setAllFilteredSelected(false);
+      } else {
+        setSelectedIds((prev) => {
+          if (!prev.has(completeDialogRequestId)) return prev;
+          const next = new Set(prev);
+          next.delete(completeDialogRequestId);
+          return next;
+        });
+      }
       fetchPage({});
     } finally {
       setIsMutating(false);
@@ -440,12 +559,16 @@ export default function FpsLedgerTab({
 
       const actionLabel = "已標記失敗";
       toast.success(`${formatRequestId(requestId)} ${actionLabel}`);
-      setSelectedIds((prev) => {
-        if (!prev.has(requestId)) return prev;
-        const next = new Set(prev);
-        next.delete(requestId);
-        return next;
-      });
+      if (allFilteredSelected) {
+        setAllFilteredSelected(false);
+      } else {
+        setSelectedIds((prev) => {
+          if (!prev.has(requestId)) return prev;
+          const next = new Set(prev);
+          next.delete(requestId);
+          return next;
+        });
+      }
       fetchPage({});
     } finally {
       setIsMutating(false);
@@ -453,7 +576,7 @@ export default function FpsLedgerTab({
   };
 
   const handleBatchComplete = async () => {
-    if (selectedIds.size === 0) return;
+    if (!hasSelection) return;
 
     const confirmed = window.confirm(
       "批量銷帳不記錄 FPS 參考號，確認繼續？",
@@ -462,8 +585,29 @@ export default function FpsLedgerTab({
 
     setIsMutating(true);
     try {
+      let requestIds: string[];
+      if (allFilteredSelected) {
+        const exportResult = await listAdminPayoutRequestsForExport({
+          search: debouncedSearch || undefined,
+          statusFilter,
+          sort,
+        });
+        if (!exportResult.success) {
+          toast.error(exportResult.error);
+          return;
+        }
+        requestIds = getSelectableFpsRequestIds(exportResult.data.rows);
+      } else {
+        requestIds = [...selectedIds];
+      }
+
+      if (requestIds.length === 0) {
+        toast.warning("沒有可銷帳的提現單");
+        return;
+      }
+
       const result = await batchCompleteAdminPayoutRequests({
-        requestIds: [...selectedIds],
+        requestIds,
       });
 
       if (!result.success) {
@@ -472,7 +616,7 @@ export default function FpsLedgerTab({
       }
 
       toast.success(`已批量完成 ${result.completedCount} 筆提現單銷帳！`);
-      setSelectedIds(new Set());
+      resetSelection();
       fetchPage({});
     } finally {
       setIsMutating(false);
@@ -482,20 +626,22 @@ export default function FpsLedgerTab({
   const totalPages = pageData.totalPages;
 
   const selectableRowIds = useMemo(
-    () =>
-      pageData.rows
-        .filter(
-          (row) =>
-            isFpsPayoutIncomplete(row.status) &&
-            !isFpsPayoutBlockedForComplete({
-              status: row.status,
-              fpsId: row.fpsId,
-              fpsName: row.fpsName,
-            }),
-        )
-        .map((row) => row.requestId),
+    () => getSelectableFpsRequestIds(pageData.rows),
     [pageData.rows],
   );
+
+  const selectableFilterTotal = useMemo(() => {
+    if (statusFilter === "incomplete" || statusFilter === "all") {
+      return pageData.statusCounts.incomplete;
+    }
+    return 0;
+  }, [statusFilter, pageData.statusCounts.incomplete]);
+
+  const selectedCount = allFilteredSelected
+    ? selectableFilterTotal
+    : selectedIds.size;
+
+  const hasSelection = allFilteredSelected || selectedIds.size > 0;
 
   const displayError = loadError ?? fetchError;
 
@@ -557,7 +703,10 @@ export default function FpsLedgerTab({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3">
+      <section
+        className="space-y-2 border-b border-white/[0.08] pb-4"
+        aria-label="FPS 提現篩選與操作"
+      >
         <div className="relative">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
@@ -565,63 +714,84 @@ export default function FpsLedgerTab({
           />
           <Input
             type="search"
-            placeholder="搜尋提現單號、訂單號、用戶名稱或 FPS ID…"
+            placeholder="搜尋單號、用戶、FPS…"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             className={FILTER_INPUT_CLASS}
           />
         </div>
 
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <FilterChips
-              options={statusChipOptions}
-              active={statusFilter}
-              onSelect={handleStatusFilterChange}
+        <div className="flex items-center gap-2 md:block">
+          <FilterChips
+            options={statusChipOptions}
+            active={statusFilter}
+            onSelect={handleStatusFilterChange}
+            scrollable
+            className="min-w-0 flex-1 md:flex-none"
+          />
+          <div className="shrink-0 md:hidden">
+            <SortSelect
+              compact
+              value={sort}
+              options={FPS_SORT_OPTIONS}
+              onChange={handleSortChange}
             />
           </div>
+        </div>
+
+        <div className="hidden items-center justify-between gap-2 md:flex">
+          {selectableRowIds.length > 0 ? (
+            <div className="flex items-center gap-2 text-[11px]">
+              {hasSelection ? (
+                <SelectionCountBadge
+                  count={selectedCount}
+                  onClear={clearSelection}
+                  disabled={isExportingCsv || isMutating}
+                />
+              ) : null}
+              {!allFilteredSelected && selectableRowIds.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  disabled={isExportingCsv || isMutating}
+                  className="shrink-0 font-sans text-brand transition-colors hover:underline disabled:opacity-50"
+                >
+                  全選
+                </button>
+              ) : null}
+              {hasSelection ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBatchComplete}
+                    disabled={isExportingCsv || isMutating}
+                    className={BTN_PRIMARY_SM_CLASS}
+                  >
+                    批量銷帳
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportCsv(true)}
+                    disabled={isExportingCsv || isMutating}
+                    className={`${BTN_OUTLINE_SM_CLASS} shrink-0 gap-1.5 text-brand`}
+                  >
+                    <Download className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>導出記錄</span>
+                  </button>
+                </>
+              ) : null}
+            </div>
+          ) : (
+            <div />
+          )}
           <SortSelect
+            compact
             value={sort}
             options={FPS_SORT_OPTIONS}
             onChange={handleSortChange}
           />
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.size > 0 ? (
-            <>
-              <span className="rounded-lg border border-brand/20 bg-brand/10 px-2.5 py-1 font-mono text-[11px] text-brand">
-                已選 {selectedIds.size} 筆
-              </span>
-              <button
-                type="button"
-                onClick={() => handleExportCsv(true)}
-                disabled={isExportingCsv || isMutating}
-                className={BTN_OUTLINE_SM_CLASS}
-              >
-                導出已選 ({selectedIds.size})
-              </button>
-              <button
-                type="button"
-                onClick={handleBatchComplete}
-                disabled={isExportingCsv || isMutating}
-                className={BTN_PRIMARY_SM_CLASS}
-              >
-                批量銷帳
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleExportCsv(false)}
-              disabled={isExportingCsv || isMutating}
-              className={BTN_PRIMARY_CLASS}
-            >
-              全量導出 Payout CSV
-            </button>
-          )}
-        </div>
-      </div>
+      </section>
 
       {pageData.rows.length === 0 ? (
         <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
@@ -629,18 +799,80 @@ export default function FpsLedgerTab({
         </p>
       ) : (
         <>
-          <div
-            className={`md:hidden divide-y divide-white/[0.06] ${isPending ? "opacity-60" : ""}`}
-          >
+          <div className="md:hidden">
+            {(selectedIds.size > 0 || selectableRowIds.length > 0) && (
+              <div
+                className="mb-2.5 flex items-center justify-between gap-2 px-1 min-h-8 text-[11px]"
+              >
+                {hasSelection ? (
+                  <>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <SelectionCountBadge
+                        count={selectedCount}
+                        onClear={clearSelection}
+                        disabled={isExportingCsv || isMutating}
+                      />
+                      {!allFilteredSelected && selectableRowIds.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={toggleSelectAll}
+                          disabled={isExportingCsv || isMutating}
+                          className="shrink-0 font-sans text-[10px] text-brand transition-colors hover:underline disabled:opacity-50"
+                        >
+                          全選
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleBatchComplete}
+                        disabled={isExportingCsv || isMutating}
+                        className={`${BTN_PRIMARY_SM_CLASS} px-2.5`}
+                      >
+                        銷帳
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExportCsv(true)}
+                        disabled={isExportingCsv || isMutating}
+                        className={`${BTN_OUTLINE_SM_CLASS} shrink-0 gap-1 text-brand`}
+                      >
+                        <Download
+                          className="size-3.5 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>導出記錄</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={toggleSelectAll}
+                      disabled={isExportingCsv || isMutating}
+                      className="shrink-0 font-sans text-brand transition-colors hover:underline disabled:opacity-50"
+                    >
+                      全選
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <div
+              className={`space-y-2 ${isPending ? "opacity-60" : ""}`}
+            >
             {pageData.rows.map((row) => {
-              const isSelected = selectedIds.has(row.requestId);
               const blockedForComplete = isFpsPayoutBlockedForComplete({
                 status: row.status,
                 fpsId: row.fpsId,
                 fpsName: row.fpsName,
               });
-              const canSelect =
-                isFpsPayoutIncomplete(row.status) && !blockedForComplete;
+              const canSelect = isFpsRowSelectable(row);
+              const isSelected =
+                canSelect &&
+                (allFilteredSelected || selectedIds.has(row.requestId));
 
               return (
                 <FpsPayoutMobileCard
@@ -659,6 +891,7 @@ export default function FpsLedgerTab({
                 />
               );
             })}
+            </div>
           </div>
 
           <div
@@ -671,8 +904,9 @@ export default function FpsLedgerTab({
                 <input
                   type="checkbox"
                   checked={
-                    selectableRowIds.length > 0 &&
-                    selectableRowIds.every((id) => selectedIds.has(id))
+                    allFilteredSelected ||
+                    (selectableRowIds.length > 0 &&
+                      selectableRowIds.every((id) => selectedIds.has(id)))
                   }
                   onChange={toggleSelectAll}
                   disabled={selectableRowIds.length === 0}
@@ -713,14 +947,16 @@ export default function FpsLedgerTab({
           </TableHeader>
           <TableBody>
             {pageData.rows.map((row, rowIndex) => {
-              const isSelected = selectedIds.has(row.requestId);
-              const canAct = isFpsPayoutIncomplete(row.status);
               const blockedForComplete = isFpsPayoutBlockedForComplete({
                 status: row.status,
                 fpsId: row.fpsId,
                 fpsName: row.fpsName,
               });
-              const canSelect = canAct && !blockedForComplete;
+              const canSelect = isFpsRowSelectable(row);
+              const isSelected =
+                canSelect &&
+                (allFilteredSelected || selectedIds.has(row.requestId));
+              const canAct = isFpsPayoutIncomplete(row.status);
 
               return (
                 <TableRow

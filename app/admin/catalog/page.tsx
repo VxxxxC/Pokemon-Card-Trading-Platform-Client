@@ -38,9 +38,12 @@ import {
 } from "@/lib/constants/commerce";
 import {
   FILTER_CHIP_CLASS,
+  FILTER_CHIP_SM_CLASS,
   FILTER_INPUT_CLASS,
+  FILTER_SEARCH_CLASS,
   FILTER_SELECT_TRIGGER_CLASS,
   MANUAL_FIELD_ERROR_CLASS,
+  MANUAL_FORM_BLOCK_CLASS,
   MANUAL_INPUT_CLASS,
   MANUAL_INPUT_MONO_CLASS,
   MANUAL_LABEL_CLASS,
@@ -576,42 +579,15 @@ export default function AdminCatalogPage() {
 
   return (
     <div className="space-y-5 pb-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-              卡牌字典資料庫
-            </h1>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-              CATALOG
-            </span>
-          </div>
-          <p className="mt-1 font-sans text-[13px] text-text-secondary">
-            檢視平台卡牌字典；手動錄入供無 API 覆蓋的小眾或舊版卡牌
-          </p>
-        </div>
-        {!isLoading ? (
-          <p className="font-mono text-[12px] text-text-secondary sm:shrink-0 sm:self-end">
-            共{" "}
-            <span className="font-medium text-text-primary">
-              {formatCatalogCount(kindCounts.card + kindCounts.box_set)}
-            </span>{" "}
-            筆
-            {manualForKind.length > 0 ? (
-              <span className="text-text-disabled">
-                {" "}
-                · 待寫入 {manualForKind.length}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-      </div>
+      <p className="font-sans text-[13px] text-text-secondary">
+        檢視平台卡牌字典；手動錄入供無 API 覆蓋的小眾或舊版卡牌
+      </p>
 
-      <div className="sticky top-0 z-20 -mx-4 space-y-2 border-b border-white/[0.08] bg-[#17130f]/95 px-4 pb-3 backdrop-blur-sm lg:-mx-6 lg:px-6">
-        <div className="flex w-full min-w-0 items-center gap-2">
+      <div className="sticky top-0 z-20 -mx-4 space-y-1.5 border-b border-white/[0.08] bg-[#17130f]/95 px-4 pb-2 backdrop-blur-sm lg:-mx-6 lg:px-6">
+        <div className="flex w-full min-w-0 items-center gap-1.5">
           <div className="relative min-w-0 flex-1">
             <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-text-disabled"
               aria-hidden="true"
             />
             <Input
@@ -619,7 +595,7 @@ export default function AdminCatalogPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="搜尋編號、卡名、系列…"
-              className="h-11 w-full border-white/10 bg-transparent pl-10 text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-brand/40"
+              className={FILTER_SEARCH_CLASS}
             />
             <SmartSearch
               query={query}
@@ -633,54 +609,54 @@ export default function AdminCatalogPage() {
             type="button"
             variant="outline"
             onClick={handleOpenManualDialog}
-            className={`h-11 shrink-0 px-3 sm:px-4 ${BTN_OUTLINE_CLASS}`}
+            className={`h-8 shrink-0 px-2.5 text-[11px] sm:px-3 ${BTN_OUTLINE_CLASS}`}
           >
-            <Plus className="size-4 sm:mr-1.5" aria-hidden="true" />
+            <Plus className="size-3.5 sm:mr-1" aria-hidden="true" />
             <span className="hidden sm:inline">手動錄入</span>
             <span className="sm:hidden">錄入</span>
           </Button>
-          <div className="hidden sm:flex shrink-0 items-center gap-1.5">
+          <div className="hidden sm:flex shrink-0 items-center gap-1">
             <button
               type="button"
               onClick={() => setItemKind("card")}
-              className={FILTER_CHIP_CLASS(itemKind === "card")}
+              className={FILTER_CHIP_SM_CLASS(itemKind === "card")}
             >
               獨立卡 ({formatCatalogCount(kindCounts.card)})
             </button>
             <button
               type="button"
               onClick={() => setItemKind("box_set")}
-              className={FILTER_CHIP_CLASS(itemKind === "box_set")}
+              className={FILTER_CHIP_SM_CLASS(itemKind === "box_set")}
             >
               Box ({formatCatalogCount(kindCounts.box_set)})
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto sm:hidden">
+        <div className="flex items-center gap-1 overflow-x-auto sm:hidden">
           <button
             type="button"
             onClick={() => setItemKind("card")}
-            className={FILTER_CHIP_CLASS(itemKind === "card")}
+            className={FILTER_CHIP_SM_CLASS(itemKind === "card")}
           >
             獨立卡 ({formatCatalogCount(kindCounts.card)})
           </button>
           <button
             type="button"
             onClick={() => setItemKind("box_set")}
-            className={FILTER_CHIP_CLASS(itemKind === "box_set")}
+            className={FILTER_CHIP_SM_CLASS(itemKind === "box_set")}
           >
             Box ({formatCatalogCount(kindCounts.box_set)})
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Input
             type="text"
             value={setCodeFilter}
             onChange={(e) => setSetCodeFilter(e.target.value)}
             placeholder="系列代碼"
-            className={`w-28 sm:w-32 ${FILTER_INPUT_CLASS}`}
+            className={`w-24 sm:w-28 ${FILTER_INPUT_CLASS}`}
             aria-label="系列代碼篩選"
           />
           <Select
@@ -714,7 +690,7 @@ export default function AdminCatalogPage() {
                 setSetCodeFilter("");
                 setRarityFilter("all");
               }}
-              className="font-sans text-[12px] text-brand hover:text-text-primary"
+              className="font-sans text-[11px] text-brand hover:text-text-primary"
             >
               清除篩選
             </button>
@@ -741,38 +717,37 @@ export default function AdminCatalogPage() {
           className="fixed inset-0 top-0 left-0 z-[70] w-full max-w-full sm:max-w-full h-[100dvh] max-h-[100dvh] translate-x-0 translate-y-0 rounded-none p-0 gap-0 flex flex-col overflow-hidden bg-bg-card border-0 ring-0"
         >
           {/* Sticky header */}
-          <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-4 px-5 py-4 border-b border-[rgba(237,232,224,0.08)] bg-bg-card">
-            <DialogTitle className="font-sans font-bold text-[18px] text-text-primary">
+          <DialogHeader className="shrink-0 flex flex-row items-center justify-between gap-3 px-4 py-3 border-b border-[rgba(237,232,224,0.08)] bg-bg-card">
+            <DialogTitle className="font-sans font-semibold text-[16px] text-text-primary">
               手動錄入卡牌
             </DialogTitle>
             <button
               type="button"
               onClick={handleCloseManualDialog}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors"
+              className="flex size-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary"
               aria-label="關閉"
             >
               ✕
             </button>
           </DialogHeader>
 
-          {/* Scrollable body */}
-          <div className="flex-1 overflow-y-auto px-4 py-3">
-            <div className="mx-auto max-w-3xl space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex-1 overflow-y-auto px-4 py-2">
+            <div className="mx-auto max-w-3xl space-y-3">
+              <div className={`${MANUAL_FORM_BLOCK_CLASS} flex flex-col gap-2.5 sm:flex-row sm:items-end sm:justify-between`}>
                 <div className="space-y-1.5 shrink-0">
                   <span className={MANUAL_SECTION_CLASS}>類型</span>
-                  <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setManualTab("card")}
-                      className={FILTER_CHIP_CLASS(manualTab === "card")}
+                      className={FILTER_CHIP_SM_CLASS(manualTab === "card")}
                     >
                       獨立卡
                     </button>
                     <button
                       type="button"
                       onClick={() => setManualTab("box_set")}
-                      className={FILTER_CHIP_CLASS(manualTab === "box_set")}
+                      className={FILTER_CHIP_SM_CLASS(manualTab === "box_set")}
                     >
                       Box / Set
                     </button>
@@ -780,7 +755,7 @@ export default function AdminCatalogPage() {
                 </div>
 
                 {manualTab === "box_set" ? (
-                  <div className="min-w-0 flex-1 space-y-1.5 sm:max-w-[14rem]">
+                  <div className="min-w-0 flex-1 space-y-1 sm:max-w-[14rem]">
                     <Label className={MANUAL_LABEL_CLASS}>
                       品類 <span className="text-warning">*</span>
                     </Label>
@@ -820,14 +795,7 @@ export default function AdminCatalogPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                ) : (
-                  <p className="font-sans text-[12px] text-text-secondary sm:pb-1">
-                    即將新增：
-                    <span className="ml-1 font-semibold text-brand">
-                      獨立卡（single_card）
-                    </span>
-                  </p>
-                )}
+                ) : null}
               </div>
 
               {manualTab === "card"
@@ -838,20 +806,20 @@ export default function AdminCatalogPage() {
 
           {/* Sticky footer */}
           <DialogFooter
-            className="shrink-0 -mx-0 -mb-0 flex-row justify-stretch gap-2 border-t border-[rgba(237,232,224,0.08)] bg-bg-page px-4 py-2.5 rounded-none m-0"
+            className="shrink-0 flex-row justify-stretch gap-2 border-t border-[rgba(237,232,224,0.08)] bg-bg-page px-4 py-2 m-0 rounded-none"
           >
             <Button
               type="button"
               variant="outline"
               onClick={handleCloseManualDialog}
-              className="h-9 min-h-0 flex-1 px-4 rounded-lg border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary font-sans font-semibold text-[13px] hover:bg-bg-elevated hover:text-text-primary active:scale-[0.98] sm:flex-none sm:min-w-[5.5rem]"
+              className="h-8 min-h-0 flex-1 px-3 rounded-lg border-[rgba(237,232,224,0.12)] bg-bg-card text-text-secondary font-sans font-semibold text-[12px] hover:bg-bg-elevated hover:text-text-primary active:scale-[0.98] sm:flex-none sm:min-w-[5rem]"
             >
               取消
             </Button>
             <Button
               type="button"
               onClick={handleManualSubmit}
-              className="h-9 min-h-0 flex-1 px-4 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-lg hover:bg-brand-hover active:scale-[0.98] sm:flex-none sm:min-w-[5.5rem]"
+              className="h-8 min-h-0 flex-1 px-3 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg hover:bg-brand-hover active:scale-[0.98] sm:flex-none sm:min-w-[5rem]"
             >
               送出
             </Button>
@@ -1006,11 +974,11 @@ export default function AdminCatalogPage() {
       (current as ManualBoxSetEntry).category === "jan_code";
 
     return (
-      <div className="space-y-4">
-        <section className="space-y-2">
+      <div className="space-y-3">
+        <section className={MANUAL_FORM_BLOCK_CLASS}>
           <h3 className={MANUAL_SECTION_CLASS}>基本資訊</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5 min-w-0">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="space-y-1 min-w-0">
               <Label className={MANUAL_LABEL_CLASS}>
                 編號 <span className="text-warning">*</span>
               </Label>
@@ -1029,7 +997,7 @@ export default function AdminCatalogPage() {
               />
             </div>
 
-            <div className="space-y-1.5 min-w-0">
+            <div className="space-y-1 min-w-0">
               <Label className={MANUAL_LABEL_CLASS}>
                 系列代碼 <span className="text-warning">*</span>
               </Label>
@@ -1053,10 +1021,10 @@ export default function AdminCatalogPage() {
           ) : null}
         </section>
 
-        <section className="space-y-2">
+        <section className={MANUAL_FORM_BLOCK_CLASS}>
           <h3 className={MANUAL_SECTION_CLASS}>名稱（至少填一種）</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5 min-w-0">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="space-y-1 min-w-0">
               <Label className={MANUAL_LABEL_CLASS}>英文</Label>
               <Input
                 type="text"
@@ -1071,7 +1039,7 @@ export default function AdminCatalogPage() {
               />
             </div>
 
-            <div className="space-y-1.5 min-w-0">
+            <div className="space-y-1 min-w-0">
               <Label className={MANUAL_LABEL_CLASS}>中文</Label>
               <Input
                 type="text"
@@ -1086,7 +1054,7 @@ export default function AdminCatalogPage() {
               />
             </div>
 
-            <div className="space-y-1.5 min-w-0 col-span-2 sm:col-span-1">
+            <div className="space-y-1 min-w-0">
               <Label className={MANUAL_LABEL_CLASS}>日文</Label>
               <Input
                 type="text"
@@ -1100,56 +1068,55 @@ export default function AdminCatalogPage() {
                 }`}
               />
             </div>
+          </div>
 
-            <div className="space-y-1.5 min-w-0 col-span-2 sm:col-span-1">
-              <Label className={MANUAL_LABEL_CLASS}>
-                罕有度 <span className="text-warning">*</span>
-              </Label>
-              <Select
-                value={current.rarity}
-                onValueChange={(value) =>
-                  updateManualField(kind, "rarity", value ?? "")
-                }
+          <div className="space-y-1">
+            <Label className={MANUAL_LABEL_CLASS}>
+              罕有度 <span className="text-warning">*</span>
+            </Label>
+            <Select
+              value={current.rarity}
+              onValueChange={(value) =>
+                updateManualField(kind, "rarity", value ?? "")
+              }
+            >
+              <SelectTrigger
+                className={`${MANUAL_SELECT_TRIGGER_CLASS} font-mono ${
+                  formErrors.rarity ? MANUAL_FIELD_ERROR_CLASS : ""
+                }`}
               >
-                <SelectTrigger
-                  className={`${MANUAL_SELECT_TRIGGER_CLASS} font-mono ${
-                    formErrors.rarity ? MANUAL_FIELD_ERROR_CLASS : ""
-                  }`}
-                >
-                  <SelectValue placeholder="選擇罕有度">
-                    {current.rarity
-                      ? (RARITY_LABEL_BY_VALUE[current.rarity] ?? current.rarity)
-                      : null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className={SELECT_CONTENT_CLASS}>
-                  {RARITY_OPTIONS.map((option) => (
-                    <SelectItem
-                      key={option.value}
-                      value={option.value}
-                      className={SELECT_ITEM_CLASS}
-                    >
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <SelectValue placeholder="選擇罕有度">
+                  {current.rarity
+                    ? (RARITY_LABEL_BY_VALUE[current.rarity] ?? current.rarity)
+                    : null}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className={SELECT_CONTENT_CLASS}>
+                {RARITY_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className={SELECT_ITEM_CLASS}
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {formErrors.nameLanguages ? (
-            <p className="font-sans text-[12px] text-warning">
+            <p className="font-sans text-[11px] text-warning">
               請至少輸入一種語言名稱（英文／中文／日文）
             </p>
           ) : null}
         </section>
 
-        <section className="space-y-2">
+        <section className={MANUAL_FORM_BLOCK_CLASS}>
           <h3 className={MANUAL_SECTION_CLASS}>卡牌圖片</h3>
-          <div className="flex gap-3 rounded-lg border border-white/[0.08] bg-bg-page/50 p-3">
-            <div className="shrink-0">
-              {imagePreview ? (
-                <div className="relative h-[88px] w-16">
+          <div className="flex gap-2.5">
+            {imagePreview ? (
+              <div className="relative h-20 w-14 shrink-0">
                   <Image
                     src={imagePreview}
                     alt="預覽"
@@ -1169,7 +1136,7 @@ export default function AdminCatalogPage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex h-[88px] w-16 items-center justify-center rounded-lg border border-dashed border-white/[0.16] bg-transparent">
+                <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-md border border-dashed border-white/[0.12] bg-transparent">
                   <svg
                     width="20"
                     height="20"
@@ -1184,22 +1151,20 @@ export default function AdminCatalogPage() {
                   </svg>
                 </div>
               )}
-            </div>
-
-            <div className="min-w-0 flex-1 space-y-2">
+            <div className="min-w-0 flex-1 space-y-1.5">
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
-                className="w-full text-[11px] font-mono text-text-secondary file:mr-2 file:h-8 file:rounded-lg file:border-0 file:bg-brand/15 file:px-3 file:font-sans file:text-[11px] file:font-bold file:text-brand file:cursor-pointer hover:file:bg-brand/25"
+                className="w-full text-[10px] font-sans text-text-disabled file:mr-2 file:h-7 file:rounded-md file:border-0 file:bg-brand/15 file:px-2.5 file:text-[10px] file:font-semibold file:text-brand file:cursor-pointer hover:file:bg-brand/25"
               />
               <Input
                 type="text"
                 value={current.imageSource}
                 onChange={handleImageUrlChange}
                 placeholder="或貼上圖片 URL"
-                className={`${MANUAL_INPUT_MONO_CLASS} h-8 text-[12px] ${
+                className={`${MANUAL_INPUT_MONO_CLASS} h-8 text-[11px] ${
                   formErrors.image ? MANUAL_FIELD_ERROR_CLASS : ""
                 }`}
               />

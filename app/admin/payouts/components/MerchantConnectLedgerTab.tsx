@@ -40,12 +40,17 @@ import type {
   MerchantTransferSort,
   MerchantTransferStatusFilter,
 } from "@/lib/admin-payouts/types";
-import { MERCHANT_TRANSFERS_PAGE_SIZE } from "@/lib/admin-payouts/types";
+import {
+  MERCHANT_TRANSFERS_PAGE_SIZE,
+  MERCHANT_TRANSFERS_EXPORT_CAP,
+  getMerchantTransferPendingCount,
+} from "@/lib/admin-payouts/types";
 import {
   getStripeConnectDashboardUrl,
   getStripeTransferDashboardUrl,
 } from "@/lib/stripe/dashboard-urls";
 import { truncateStripeId } from "@/lib/stripe/display";
+import { cn } from "@/lib/utils";
 import { endOfDay, format, startOfDay, subDays } from "date-fns";
 import {
   Table,
@@ -55,13 +60,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar as CalendarIcon, Search } from "lucide-react";
+import { Calendar as CalendarIcon, Download, Search } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import BlockingLoadingOverlay from "./BlockingLoadingOverlay";
-import { FilterChips, SortSelect } from "./payouts-shared";
+import { FilterChips, SelectionCountBadge, SortSelect } from "./payouts-shared";
 
 const MERCHANT_SORT_OPTIONS: { value: MerchantTransferSort; label: string }[] =
   [
@@ -70,6 +75,16 @@ const MERCHANT_SORT_OPTIONS: { value: MerchantTransferSort; label: string }[] =
     { value: "merchantName-asc", label: "商戶名稱：A → Z" },
     { value: "merchantName-desc", label: "商戶名稱：Z → A" },
   ];
+
+const MERCHANT_SORT_OPTIONS_MOBILE: {
+  value: MerchantTransferSort;
+  label: string;
+}[] = [
+  { value: "transferred_at-desc", label: "最新" },
+  { value: "transferred_at-asc", label: "最舊" },
+  { value: "merchantName-asc", label: "名稱 A→Z" },
+  { value: "merchantName-desc", label: "名稱 Z→A" },
+];
 
 const STATUS_FILTER_OPTIONS: {
   key: MerchantTransferStatusFilter;
@@ -104,6 +119,93 @@ function toIsoDateRange(range: DateRange | undefined): {
   };
 }
 
+function MerchantDateRangeFilter({
+  dateRange,
+  onChange,
+  compact = false,
+  triggerClassName,
+}: {
+  dateRange: DateRange | undefined;
+  onChange: (range: DateRange | undefined) => void;
+  compact?: boolean;
+  triggerClassName?: string;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        className={cn(
+          FORM_SELECT_TRIGGER_CLASS,
+          "inline-flex w-auto shrink-0 items-center rounded-lg border",
+          compact
+            ? "h-8 gap-1 px-2 text-[11px]"
+            : "h-9 gap-2 px-3 text-[12px]",
+          triggerClassName,
+        )}
+      >
+        <CalendarIcon
+          className={compact ? "size-3 shrink-0 text-brand" : "size-3.5 text-brand"}
+          aria-hidden="true"
+        />
+        <span className="font-sans">
+          {dateRange?.from ? (
+            dateRange.to ? (
+              compact ? (
+                `${format(dateRange.from, "MM/dd")}-${format(dateRange.to, "MM/dd")}`
+              ) : (
+                `${format(dateRange.from, "yyyy/MM/dd")} - ${format(dateRange.to, "yyyy/MM/dd")}`
+              )
+            ) : (
+              `${format(dateRange.from, "yyyy/MM/dd")} - 選擇`
+            )
+          ) : (
+            "撥款日期"
+          )}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-auto p-0 bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] shadow-2xl z-50"
+        align="end"
+      >
+        <div className="p-3 border-b border-white/10 flex items-center justify-between gap-4">
+          <span className="font-sans text-xs font-semibold text-text-primary">
+            撥款日期範圍篩選
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                from: subDays(new Date(), 30),
+                to: new Date(),
+              })
+            }
+            className="font-mono text-[11px] text-brand hover:underline"
+          >
+            近 30 天
+          </button>
+        </div>
+        <Calendar
+          mode="range"
+          selected={dateRange}
+          onSelect={onChange}
+          numberOfMonths={1}
+          className="p-3"
+        />
+        {dateRange?.from ? (
+          <div className="p-3 border-t border-white/10 flex justify-end">
+            <button
+              type="button"
+              onClick={() => onChange(undefined)}
+              className="font-mono text-[11px] text-text-secondary hover:text-brand"
+            >
+              清除日期
+            </button>
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function MerchantTransferMobileCard({
   row,
   isSelected,
@@ -130,15 +232,29 @@ function MerchantTransferMobileCard({
       ? `保留至 ${row.payoutHoldUntil}`
       : row.transferredAt;
 
+  const handleCardSelectToggle = () => {
+    if (isPending) {
+      return;
+    }
+    onToggleSelect();
+  };
+
   return (
-    <article className="space-y-2 px-1 py-3">
+    <article
+      className={`space-y-2.5 px-1 py-3 cursor-pointer rounded-lg transition-colors hover:bg-brand/5 ${
+        isSelected ? "bg-brand/10" : ""
+      }`}
+      onClick={handleCardSelectToggle}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={onToggleSelect}
-            className="mt-0.5 rounded border-white/20 accent-brand"
+            readOnly
+            tabIndex={-1}
+            aria-hidden="true"
+            className="mt-1 shrink-0 rounded border-white/20 accent-brand pointer-events-none"
           />
           <div className="min-w-0">
             <p className="font-mono text-[11px] text-text-disabled">
@@ -147,6 +263,7 @@ function MerchantTransferMobileCard({
                   href={getStripeTransferDashboardUrl(row.stripeTransferId)}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(event) => event.stopPropagation()}
                   className="text-brand hover:underline"
                 >
                   {transferLabel}
@@ -159,6 +276,7 @@ function MerchantTransferMobileCard({
               href={`/marketplace/${row.merchantId}`}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(event) => event.stopPropagation()}
               className="font-sans text-[13px] font-semibold text-brand hover:underline"
             >
               {row.merchantName}
@@ -177,6 +295,7 @@ function MerchantTransferMobileCard({
           href={`/profile/merchant/orderDetail/${row.orderId}`}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
           className="text-brand hover:underline"
         >
           {row.orderNumber}
@@ -200,7 +319,10 @@ function MerchantTransferMobileCard({
           ⚠ {row.reconciliationWarning}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-1.5 pt-1">
+      <div
+        className="flex flex-wrap gap-1.5 pt-1"
+        onClick={(event) => event.stopPropagation()}
+      >
         {row.payoutStatus === "failed" ? (
           <button
             type="button"
@@ -241,6 +363,7 @@ export default function MerchantConnectLedgerTab({
   const [sort, setSort] = useState<MerchantTransferSort>("transferred_at-desc");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [allFilteredSelected, setAllFilteredSelected] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const skipFilterFetchRef = useRef(true);
 
@@ -289,7 +412,9 @@ export default function MerchantConnectLedgerTab({
 
         setFetchError(null);
         setPageData(result.data);
-        onTotalChange?.(result.data.total);
+        onTotalChange?.(
+          getMerchantTransferPendingCount(result.data.statusCounts),
+        );
       });
     },
     [
@@ -322,47 +447,80 @@ export default function MerchantConnectLedgerTab({
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handleStatusFilterChange = (filter: MerchantTransferStatusFilter) => {
     setStatusFilter(filter);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handleSortChange = (value: MerchantTransferSort) => {
     setSort(value);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
-    setSelectedIds(new Set());
+    resetSelection();
   };
 
   const handlePageChange = (page: number) => {
-    setSelectedIds(new Set());
+    if (!allFilteredSelected) {
+      resetSelection();
+    }
     fetchPage({ page });
   };
 
+  const resetSelection = () => {
+    setAllFilteredSelected(false);
+    setSelectedIds(new Set());
+  };
+
+  const isRowSelected = (id: string) =>
+    allFilteredSelected || selectedIds.has(id);
+
+  const selectedCount = allFilteredSelected
+    ? pageData.total
+    : selectedIds.size;
+
+  const hasSelection = allFilteredSelected || selectedIds.size > 0;
+
   const toggleSelectAll = () => {
-    if (selectedIds.size === pageData.rows.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(
-        new Set(pageData.rows.map((row) => getMerchantTransferRowId(row))),
-      );
+    if (allFilteredSelected) {
+      resetSelection();
+      return;
     }
+    setAllFilteredSelected(true);
+    setSelectedIds(
+      new Set(pageData.rows.map((row) => getMerchantTransferRowId(row))),
+    );
   };
 
   const toggleSelectRow = (id: string) => {
+    if (allFilteredSelected) {
+      setAllFilteredSelected(false);
+      setSelectedIds(
+        new Set(
+          pageData.rows
+            .map((row) => getMerchantTransferRowId(row))
+            .filter((rowId) => rowId !== id),
+        ),
+      );
+      return;
+    }
+
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelectedIds(next);
   };
 
-  const handleExportCsv = async (exportSelectedOnly = false) => {
+  const clearSelection = () => {
+    resetSelection();
+  };
+
+  const handleExportCsv = async () => {
     const { dateFrom, dateTo } = toIsoDateRange(dateRange);
 
     setIsExportingCsv(true);
@@ -381,11 +539,7 @@ export default function MerchantConnectLedgerTab({
       }
 
       let targetRows = result.data.rows;
-      if (exportSelectedOnly) {
-        targetRows = targetRows.filter((row) =>
-          selectedIds.has(getMerchantTransferRowId(row)),
-        );
-      }
+      const totalMatching = result.data.total;
 
       if (targetRows.length === 0) {
         toast.warning("沒有可導出的商戶流水紀錄！");
@@ -427,6 +581,14 @@ export default function MerchantConnectLedgerTab({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      const capped = totalMatching > MERCHANT_TRANSFERS_EXPORT_CAP;
+      if (capped) {
+        toast.success(
+          `已導出 ${targetRows.length} 筆（共 ${totalMatching.toLocaleString("en-US")} 筆符合篩選，已達單次上限 ${MERCHANT_TRANSFERS_EXPORT_CAP.toLocaleString("en-US")}）`,
+        );
+        return;
+      }
 
       toast.success(`已成功導出 ${targetRows.length} 筆商戶流水 CSV 文件！`);
     } catch {
@@ -475,123 +637,111 @@ export default function MerchantConnectLedgerTab({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            placeholder="搜尋商戶名稱、Stripe 流水號或訂單號…"
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className={FILTER_INPUT_CLASS}
-          />
+      <section
+        className="space-y-2 border-b border-white/[0.08] pb-4"
+        aria-label="商戶流水篩選與操作"
+      >
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              placeholder="搜尋商戶名稱、Stripe 流水號或訂單號…"
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className={FILTER_INPUT_CLASS}
+            />
+          </div>
+          <div className="shrink-0 md:hidden">
+            <MerchantDateRangeFilter
+              compact
+              triggerClassName="h-9"
+              dateRange={dateRange}
+              onChange={handleDateRangeChange}
+            />
+          </div>
         </div>
 
-        <div className="space-y-2.5">
+        <div className="flex items-center gap-2 md:block">
           <FilterChips
             options={statusChipOptions}
             active={statusFilter}
             onSelect={handleStatusFilterChange}
+            scrollable
+            className="min-w-0 flex-1 md:flex-none"
           />
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <SortSelect
-                value={sort}
-                options={MERCHANT_SORT_OPTIONS}
-                onChange={handleSortChange}
-              />
-              <Popover>
-                <PopoverTrigger
-                  className={`${FORM_SELECT_TRIGGER_CLASS} inline-flex h-9 w-auto items-center gap-2 rounded-lg border px-3`}
-                >
-                  <CalendarIcon className="size-3.5 text-brand" />
-                  <span className="font-sans text-[12px]">
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        `${format(dateRange.from, "yyyy/MM/dd")} - ${format(dateRange.to, "yyyy/MM/dd")}`
-                      ) : (
-                        `${format(dateRange.from, "yyyy/MM/dd")} - 選擇`
-                      )
-                    ) : (
-                      "撥款日期範圍"
-                    )}
-                  </span>
-                </PopoverTrigger>
-          <PopoverContent
-            className="w-auto p-0 bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] shadow-2xl z-50"
-            align="end"
-          >
-            <div className="p-3 border-b border-white/10 flex items-center justify-between gap-4">
-              <span className="font-sans text-xs font-semibold text-text-primary">
-                撥款日期範圍篩選
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  handleDateRangeChange({
-                    from: subDays(new Date(), 30),
-                    to: new Date(),
-                  })
-                }
-                className="font-mono text-[11px] text-brand hover:underline"
-              >
-                近 30 天
-              </button>
-            </div>
-            <Calendar
-              mode="range"
-              selected={dateRange}
-              onSelect={handleDateRangeChange}
-              numberOfMonths={1}
-              className="p-3"
+          <div className="shrink-0 md:hidden">
+            <SortSelect
+              compact
+              value={sort}
+              options={MERCHANT_SORT_OPTIONS_MOBILE}
+              onChange={handleSortChange}
+              ariaLabelPrefix="撥款時間"
             />
-            {dateRange?.from ? (
-              <div className="p-3 border-t border-white/10 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => handleDateRangeChange(undefined)}
-                  className="font-mono text-[11px] text-text-secondary hover:text-brand"
-                >
-                  清除日期
-                </button>
-              </div>
-            ) : null}
-          </PopoverContent>
-        </Popover>
-            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.size > 0 ? (
-            <>
-              <span className="rounded-lg border border-brand/20 bg-brand/10 px-2.5 py-1 font-mono text-[11px] text-brand">
-                已選 {selectedIds.size} 筆
-              </span>
-              <button
-                type="button"
-                onClick={() => void handleExportCsv(true)}
-                disabled={isPending || isExportingCsv}
-                className={BTN_OUTLINE_SM_CLASS}
-              >
-                導出已選 ({selectedIds.size})
-              </button>
-            </>
+        <div className="hidden items-center justify-between gap-2 md:flex">
+          {pageData.rows.length > 0 ? (
+            <div className="flex items-center gap-2 text-[11px]">
+              {hasSelection ? (
+                <SelectionCountBadge
+                  count={selectedCount}
+                  onClear={clearSelection}
+                  disabled={isPending || isExportingCsv}
+                />
+              ) : null}
+              {!allFilteredSelected && pageData.total > 0 ? (
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  disabled={isPending || isExportingCsv}
+                  className="shrink-0 font-sans text-brand transition-colors hover:underline disabled:opacity-50"
+                >
+                  全選
+                </button>
+              ) : null}
+              {hasSelection ? (
+                <button
+                  type="button"
+                  onClick={() => void handleExportCsv()}
+                  disabled={isPending || isExportingCsv}
+                  className={`${BTN_OUTLINE_SM_CLASS} shrink-0 gap-1.5 text-brand`}
+                >
+                  <Download className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span>導出記錄</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void handleExportCsv()}
+                  disabled={isPending || isExportingCsv}
+                  className={BTN_PRIMARY_CLASS}
+                >
+                  全量導出商戶 CSV
+                </button>
+              )}
+            </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => void handleExportCsv(false)}
-              disabled={isPending || isExportingCsv}
-              className={BTN_PRIMARY_CLASS}
-            >
-              全量導出商戶 CSV
-            </button>
+            <div />
           )}
+          <div className="flex items-center gap-2">
+            <MerchantDateRangeFilter
+              dateRange={dateRange}
+              onChange={handleDateRangeChange}
+            />
+            <SortSelect
+              value={sort}
+              options={MERCHANT_SORT_OPTIONS}
+              onChange={handleSortChange}
+              ariaLabelPrefix="撥款時間"
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
       {pageData.rows.length === 0 ? (
         <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
@@ -599,16 +749,56 @@ export default function MerchantConnectLedgerTab({
         </p>
       ) : (
         <>
-          <div
-            className={`md:hidden divide-y divide-white/[0.06] ${isPending ? "opacity-60" : ""}`}
-          >
+          <div className="md:hidden">
+            {pageData.rows.length > 0 ? (
+              <div
+                className="mb-2.5 flex items-center justify-between gap-2 px-1 min-h-8 text-[11px]"
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {hasSelection ? (
+                    <SelectionCountBadge
+                      count={selectedCount}
+                      onClear={clearSelection}
+                      disabled={isPending || isExportingCsv}
+                    />
+                  ) : null}
+                  {!allFilteredSelected && pageData.total > 0 ? (
+                    <button
+                      type="button"
+                      onClick={toggleSelectAll}
+                      disabled={isPending || isExportingCsv}
+                      className="shrink-0 font-sans text-[10px] text-brand transition-colors hover:underline disabled:opacity-50"
+                    >
+                      全選
+                    </button>
+                  ) : null}
+                </div>
+                {hasSelection ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleExportCsv()}
+                    disabled={isPending || isExportingCsv}
+                    className={`${BTN_OUTLINE_SM_CLASS} shrink-0 gap-1 text-brand`}
+                  >
+                    <Download
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span>導出記錄</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            <div
+              className={`space-y-2 ${isPending ? "opacity-60" : ""}`}
+            >
             {pageData.rows.map((row) => {
               const rowId = getMerchantTransferRowId(row);
               return (
                 <MerchantTransferMobileCard
                   key={rowId}
                   row={row}
-                  isSelected={selectedIds.has(rowId)}
+                  isSelected={isRowSelected(rowId)}
                   isPending={isPending}
                   retryingOrderId={retryingOrderId}
                   onToggleSelect={() => toggleSelectRow(rowId)}
@@ -616,6 +806,7 @@ export default function MerchantConnectLedgerTab({
                 />
               );
             })}
+            </div>
           </div>
 
           <div
@@ -628,8 +819,11 @@ export default function MerchantConnectLedgerTab({
                 <input
                   type="checkbox"
                   checked={
-                    pageData.rows.length > 0 &&
-                    selectedIds.size === pageData.rows.length
+                    allFilteredSelected ||
+                    (pageData.rows.length > 0 &&
+                      pageData.rows.every((row) =>
+                        isRowSelected(getMerchantTransferRowId(row)),
+                      ))
                   }
                   onChange={toggleSelectAll}
                   className="rounded border-white/20 accent-brand cursor-pointer"
@@ -688,7 +882,7 @@ export default function MerchantConnectLedgerTab({
           <TableBody>
             {pageData.rows.map((row, rowIndex) => {
               const rowId = getMerchantTransferRowId(row);
-              const isSelected = selectedIds.has(rowId);
+              const isSelected = isRowSelected(rowId);
               const statusBadge = (
                 <span
                   className={`inline-block font-mono text-[9px] px-2 py-0.5 rounded border ${getPayoutStatusBadgeClass(row.payoutStatus)}`}

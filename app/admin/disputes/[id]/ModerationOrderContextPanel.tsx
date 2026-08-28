@@ -10,12 +10,14 @@ import type { MemberOrderDbStatus } from "@/app/lib/member-order/p2p";
 import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
 import {
   formatModerationDateTime,
+  moderationMemberOrderStatusLabel,
+  moderationOrderEscrowLabel,
   moderationOrderPersonaLabel,
+  moderationOrderRefundSummary,
   moderationOrderSourceLabel,
-  moderationRefundStatusLabel,
 } from "@/lib/moderation/admin-case-presenters";
 import { Button } from "@/components/ui/button";
-import { BTN_OUTLINE_CLASS } from "./moderation-detail-ui";
+import { BTN_OUTLINE_CLASS, SECTION_BLOCK_CLASS, SECTION_TITLE_CLASS, META_TEXT_CLASS, EXPANDED_CONTENT_CLASS } from "./moderation-detail-ui";
 import type {
   AdminModerationOrderSummary,
   ReportCategorySlug,
@@ -58,19 +60,37 @@ function MemberOrderTimeline({
   );
 }
 
-function orderSummaryLine(order: AdminModerationOrderSummary): string {
-  const parts = [`HK$${order.finalPrice}`];
-  if (order.escrowStatus) {
-    parts.push(order.escrowStatus);
-  }
-  if (order.refundEligible) {
-    parts.push("可退款");
-  } else if (order.refundIneligibleReason) {
-    parts.push(order.refundIneligibleReason);
-  } else if (order.refundStatus) {
-    parts.push(moderationRefundStatusLabel(order.refundStatus));
-  }
-  return parts.join(" · ");
+function OrderDetailRow({
+  label,
+  value,
+  hint,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 font-sans text-[12px]">
+      <span className={META_TEXT_CLASS}>{label}</span>
+      <span className="min-w-0 text-right">
+        <span
+          className={
+            valueClassName ??
+            "font-sans text-[12px] text-text-secondary"
+          }
+        >
+          {value}
+        </span>
+        {hint ? (
+          <span className="mt-0.5 block font-sans text-[11px] text-text-disabled">
+            {hint}
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
 }
 
 function OrderContextCard({
@@ -91,28 +111,17 @@ function OrderContextCard({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-bg-card/40">
+    <div className="border-b border-white/[0.06] last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-brand/5 active:scale-[0.99]"
+        className="flex w-full items-start gap-2 py-2.5 text-left transition-colors hover:text-text-primary active:scale-[0.99]"
         aria-expanded={open}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[13px] font-semibold text-text-primary">
-              {order.orderNumber ?? order.id.slice(0, 8)}
-            </span>
-            <span className="font-sans text-[11px] text-text-disabled">
-              {moderationOrderPersonaLabel(order.persona)}
-            </span>
-            <span className="font-sans text-[11px] text-text-disabled">
-              {moderationOrderSourceLabel(order.source)}
-            </span>
-          </div>
-          <p className="mt-1 truncate font-sans text-[11px] text-text-disabled">
-            {orderSummaryLine(order)}
-          </p>
+          <span className="font-mono text-[13px] font-semibold text-text-primary">
+            {order.orderNumber ?? order.id.slice(0, 8)}
+          </span>
         </div>
         <ChevronDown
           className={`mt-0.5 size-4 shrink-0 text-text-disabled transition-transform ${
@@ -123,45 +132,73 @@ function OrderContextCard({
       </button>
 
       {open ? (
-        <div className="space-y-3 border-t border-white/[0.06] px-3 pb-3 pt-3">
-          <div className="space-y-1 font-sans text-[12px] text-text-secondary">
-            <p>
-              金額：HK${order.finalPrice}
-              {order.totalAmount != null
-                ? `（含運費 HK$${order.totalAmount}）`
-                : ""}
-            </p>
-            <p>
-              Escrow：{order.escrowStatus ?? "—"}
-              {order.status ? ` · 狀態 ${order.status}` : ""}
-            </p>
+        <div className={`${EXPANDED_CONTENT_CLASS} space-y-3`}>
+          <dl className="space-y-1.5">
+            <OrderDetailRow
+              label="訂單類型"
+              value={moderationOrderPersonaLabel(order.persona)}
+            />
+            {order.source ? (
+              <OrderDetailRow
+                label="關聯來源"
+                value={moderationOrderSourceLabel(order.source)}
+              />
+            ) : null}
+            <OrderDetailRow
+              label="訂單金額"
+              value={`HK$${order.finalPrice}`}
+              hint={
+                order.totalAmount != null &&
+                order.totalAmount !== order.finalPrice
+                  ? `含運費共 HK$${order.totalAmount}`
+                  : undefined
+              }
+            />
+            <OrderDetailRow
+              label="交易階段"
+              value={moderationOrderEscrowLabel(
+                order.escrowStatus,
+                order.persona,
+              )}
+            />
+            <OrderDetailRow
+              label="訂單狀態"
+              value={moderationMemberOrderStatusLabel(order.status)}
+            />
             {order.inboundTrackingNo ? (
-              <p>入庫物流：{order.inboundTrackingNo}</p>
+              <OrderDetailRow
+                label="入庫物流"
+                value={order.inboundTrackingNo}
+              />
             ) : null}
             {order.outboundTrackingNo ? (
-              <p>出庫物流：{order.outboundTrackingNo}</p>
+              <OrderDetailRow
+                label="出庫物流"
+                value={order.outboundTrackingNo}
+              />
             ) : null}
             {order.createdAt ? (
-              <p>建立於 {formatModerationDateTime(order.createdAt)}</p>
+              <OrderDetailRow
+                label="建立時間"
+                value={formatModerationDateTime(order.createdAt)}
+              />
             ) : null}
             {order.refundWindowEndsAt ? (
-              <p>
-                退款窗口至 {formatModerationDateTime(order.refundWindowEndsAt)}
-              </p>
+              <OrderDetailRow
+                label="退款期限"
+                value={formatModerationDateTime(order.refundWindowEndsAt)}
+              />
             ) : null}
-            {order.refundStatus ? (
-              <p>
-                退款狀態：{moderationRefundStatusLabel(order.refundStatus)}
-              </p>
-            ) : null}
-            {order.refundEligible ? (
-              <p className="text-success">可執行售後退款</p>
-            ) : order.refundIneligibleReason ? (
-              <p className="text-text-disabled">
-                不可退款：{order.refundIneligibleReason}
-              </p>
-            ) : null}
-          </div>
+            <OrderDetailRow
+              label="售後退款"
+              value={moderationOrderRefundSummary(order)}
+              valueClassName={
+                order.refundEligible
+                  ? "font-sans text-[12px] text-success"
+                  : "font-sans text-[12px] text-text-secondary"
+              }
+            />
+          </dl>
 
           {!caseOpen &&
           caseId &&
@@ -180,14 +217,16 @@ function OrderContextCard({
             </Button>
           ) : null}
 
-          <Link
-            href={orderDetailHref(order)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-block font-sans text-[12px] text-brand underline"
-          >
-            在新分頁開啟訂單詳情
-          </Link>
+          <div className="flex justify-end">
+            <Link
+              href={orderDetailHref(order)}
+              target="_blank"
+              rel="noreferrer"
+              className="font-sans text-[12px] text-brand underline"
+            >
+              在新分頁開啟訂單詳情
+            </Link>
+          </div>
 
           {order.persona === "member" ? (
             <MemberOrderTimeline order={order} />
@@ -225,15 +264,11 @@ export default function ModerationOrderContextPanel({
   const defaultExpandSingle = relatedOrders.length === 1;
 
   return (
-    <section className="space-y-3 rounded-lg border border-white/[0.08] bg-bg-card/30 p-4">
+    <section className={SECTION_BLOCK_CLASS}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-sans text-[15px] font-bold text-text-primary">
-          關聯訂單
-        </h2>
+        <h2 className={SECTION_TITLE_CLASS}>關聯訂單</h2>
         {relatedOrders.length > 0 ? (
-          <span className="font-mono text-[12px] text-text-disabled">
-            共 {relatedOrders.length} 筆
-          </span>
+          <span className={META_TEXT_CLASS}>共 {relatedOrders.length} 筆</span>
         ) : null}
       </div>
 
@@ -244,7 +279,7 @@ export default function ModerationOrderContextPanel({
             : "暫無關聯訂單紀錄。"}
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-white/[0.06]">
           {relatedOrders.map((order) => (
             <OrderContextCard
               key={`${order.persona}-${order.id}`}

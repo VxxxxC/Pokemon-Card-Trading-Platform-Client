@@ -24,7 +24,7 @@ const steps = [
 export function TrustBanner() {
   return (
     <section
-      className="border-y border-white/[0.08] py-2 sm:py-2.5"
+      className="border-y border-white/[0.08] py-3 sm:py-3.5"
       aria-labelledby="trust-heading"
     >
       <h2

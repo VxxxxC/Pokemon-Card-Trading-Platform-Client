@@ -5,7 +5,6 @@ import {
   computeFpsGrossPayoutHkd,
   computeFpsNetPayoutAmount,
 } from "@/lib/platform/fps-payout-config";
-import { AUTH_ESCROW_SF_LEG_FEE_HKD } from "@/lib/auth-escrow/defaults";
 import { seedMerchantPendingPaymentOrder } from "./merchant-orders";
 
 export type MemberOrderFinancialSnapshot = {
@@ -14,8 +13,10 @@ export type MemberOrderFinancialSnapshot = {
   authFee: number;
   platformSubsidyAmount: number;
   buyerTotalAmount: number;
+  orderGrossTotal: number;
   sellerReceivableAmount: number;
   inboundShippingFee: number;
+  outboundShippingFee: number;
 };
 
 function createE2eAdminClient() {
@@ -43,17 +44,17 @@ function parseHkdAmount(text: string | null | undefined): number {
   return match ? Number(match[1]) : 0;
 }
 
-function authOrderInvoice(page: Page) {
+function memberAuthOrderInvoice(page: Page) {
   return page
-    .getByText("🧾 交易資產最終交收電子收據")
-    .locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
+    .getByText("帳單明細", { exact: true })
+    .locator("xpath=ancestor::div[contains(@class,'rounded-lg')][1]");
 }
 
-async function readInvoiceRowAmount(
+async function readMemberAuthInvoiceRowAmount(
   page: Page,
   label: string | RegExp,
 ): Promise<number> {
-  const invoice = authOrderInvoice(page);
+  const invoice = memberAuthOrderInvoice(page);
   const labelEl =
     typeof label === "string"
       ? invoice.getByText(label, { exact: true })
@@ -72,7 +73,7 @@ export async function getMemberOrderFinancialSnapshot(
   const { data, error } = await admin
     .from("member_orders")
     .select(
-      "id, final_price, auth_fee, platform_subsidy_amount, buyer_total_amount, inbound_shipping_fee, item_subtotal",
+      "id, final_price, auth_fee, platform_subsidy_amount, buyer_total_amount, inbound_shipping_fee, outbound_shipping_fee, item_subtotal",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -87,9 +88,11 @@ export async function getMemberOrderFinancialSnapshot(
   const authFee = Number(data.auth_fee ?? 0);
   const platformSubsidyAmount = Number(data.platform_subsidy_amount ?? 0);
   const inboundShippingFee = Number(data.inbound_shipping_fee ?? 0);
+  const outboundShippingFee = Number(data.outbound_shipping_fee ?? 0);
+  const orderGrossTotal =
+    finalPrice + authFee + inboundShippingFee + outboundShippingFee;
   const buyerTotalAmount = Number(
-    data.buyer_total_amount ??
-      finalPrice + authFee + inboundShippingFee * 2 - platformSubsidyAmount,
+    data.buyer_total_amount ?? orderGrossTotal - platformSubsidyAmount,
   );
   const sellerReceivableAmount = computeFpsNetPayoutAmount(
     computeFpsGrossPayoutHkd(finalPrice, inboundShippingFee),
@@ -101,8 +104,10 @@ export async function getMemberOrderFinancialSnapshot(
     authFee,
     platformSubsidyAmount,
     buyerTotalAmount,
+    orderGrossTotal,
     sellerReceivableAmount,
     inboundShippingFee,
+    outboundShippingFee,
   };
 }
 
@@ -149,28 +154,58 @@ export async function assertMemberAuthInvoiceMatchesSnapshot(
   snapshot: MemberOrderFinancialSnapshot,
   persona: "buyer" | "seller",
 ): Promise<void> {
-  await expect(page.getByText("🧾 交易資產最終交收電子收據")).toBeVisible({
+  await expect(page.getByText("帳單明細", { exact: true })).toBeVisible({
     timeout: 20_000,
   });
 
-  expect(await readInvoiceRowAmount(page, "商品最終成交價")).toBe(
+  expect(await readMemberAuthInvoiceRowAmount(page, "商品最終成交價")).toBe(
     snapshot.finalPrice,
   );
-  expect(await readInvoiceRowAmount(page, "速遞本港運費")).toBe(
-    AUTH_ESCROW_SF_LEG_FEE_HKD,
-  );
-  expect(await readInvoiceRowAmount(page, "平台優惠")).toBe(
-    snapshot.platformSubsidyAmount,
-  );
-  expect(await readInvoiceRowAmount(page, "鑑定服務費")).toBe(snapshot.authFee);
 
-  const totalLabel =
-    persona === "seller" ? "最終實收總額" : "最終扣款總額";
-  const expectedTotal =
-    persona === "seller"
-      ? snapshot.sellerReceivableAmount
-      : snapshot.buyerTotalAmount;
-  expect(await readInvoiceRowAmount(page, totalLabel)).toBe(expectedTotal);
+  if (persona === "seller") {
+    expect(
+      await readMemberAuthInvoiceRowAmount(page, "運費（賣家寄送平台）"),
+    ).toBe(snapshot.inboundShippingFee);
+    expect(
+      await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）(B)"),
+    ).toBe(snapshot.outboundShippingFee);
+    expect(await readMemberAuthInvoiceRowAmount(page, "鑑定服務費 (C)")).toBe(
+      snapshot.authFee,
+    );
+    if (snapshot.platformSubsidyAmount > 0) {
+      expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠")).toBe(
+        snapshot.platformSubsidyAmount,
+      );
+    }
+    expect(await readMemberAuthInvoiceRowAmount(page, "總金額 (A)")).toBe(
+      snapshot.orderGrossTotal,
+    );
+    expect(await readMemberAuthInvoiceRowAmount(page, "最終實收總額")).toBe(
+      snapshot.sellerReceivableAmount,
+    );
+    return;
+  }
+
+  expect(
+    await readMemberAuthInvoiceRowAmount(page, "運費（賣家寄送平台）"),
+  ).toBe(snapshot.inboundShippingFee);
+  expect(
+    await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）(B)"),
+  ).toBe(snapshot.outboundShippingFee);
+  if (snapshot.platformSubsidyAmount > 0) {
+    expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠")).toBe(
+      snapshot.platformSubsidyAmount,
+    );
+  }
+  expect(await readMemberAuthInvoiceRowAmount(page, "鑑定服務費 (C)")).toBe(
+    snapshot.authFee,
+  );
+  expect(await readMemberAuthInvoiceRowAmount(page, "總金額 (A)")).toBe(
+    snapshot.orderGrossTotal,
+  );
+  expect(await readMemberAuthInvoiceRowAmount(page, "最終扣款總額")).toBe(
+    snapshot.buyerTotalAmount,
+  );
 }
 
 export async function getMemberOrderNumber(orderId: string): Promise<string> {

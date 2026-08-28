@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Search, X } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -18,14 +18,13 @@ import type {
   AdminRewardActivityStatus,
 } from "@/lib/admin-rewards/types";
 import {
-  activityMatchesSearch,
   DISPLAY_STATUS_LABELS,
   REWARD_ACTIVITY_PAGE_SIZE,
 } from "@/lib/admin-rewards/template-form";
 import {
-  BTN_OUTLINE_CLASS,
-  BTN_PRIMARY_CLASS,
-  FILTER_CHIP_CLASS,
+  BTN_OUTLINE_SM_CLASS,
+  BTN_PRIMARY_SM_CLASS,
+  FILTER_CHIP_SM_CLASS,
   FILTER_INPUT_CLASS,
 } from "./campaigns-ui";
 
@@ -74,9 +73,13 @@ export function AdminRewardActivitiesClient({
     },
   );
   const [isPending, startTransition] = useTransition();
+  const skipInitialFetch = useRef(true);
 
-  const refreshStatusCounts = useCallback(async () => {
-    const result = await getAdminRewardActivityStatusCounts();
+  const refreshStatusCounts = useCallback(async (search?: string) => {
+    const trimmed = search?.trim() ?? "";
+    const result = await getAdminRewardActivityStatusCounts({
+      search: trimmed.length > 0 ? trimmed : undefined,
+    });
     if (!result.success) {
       return;
     }
@@ -84,12 +87,14 @@ export function AdminRewardActivitiesClient({
   }, []);
 
   const fetchList = useCallback(
-    (nextStatus: string, nextPage: number) => {
+    (nextStatus: string, nextPage: number, nextSearch: string) => {
       startTransition(async () => {
+        const trimmedSearch = nextSearch.trim();
         const result = await listAdminRewardActivities({
           status: nextStatus,
           page: nextPage,
           pageSize: REWARD_ACTIVITY_PAGE_SIZE,
+          search: trimmedSearch.length > 0 ? trimmedSearch : undefined,
         });
         if (!result.success) {
           toast.error(result.error);
@@ -99,23 +104,31 @@ export function AdminRewardActivitiesClient({
         setTotal(result.data.total);
         setPage(result.data.page);
         setStatusFilter(nextStatus);
-        if (
-          nextStatus === "all" ||
-          nextStatus === "draft" ||
-          nextStatus === "active" ||
-          nextStatus === "paused" ||
-          nextStatus === "ended" ||
-          nextStatus === "archived"
-        ) {
-          setStatusCounts((prev) => ({
-            ...prev,
-            [nextStatus]: result.data.total,
-          }));
+
+        const countsResult = await getAdminRewardActivityStatusCounts({
+          search: trimmedSearch.length > 0 ? trimmedSearch : undefined,
+        });
+        if (countsResult.success) {
+          setStatusCounts(countsResult.data);
         }
       });
     },
     [],
   );
+
+  useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      return;
+    }
+
+    const delay = searchQuery.trim() ? 300 : 0;
+    const timer = window.setTimeout(() => {
+      fetchList(statusFilter, page, searchQuery);
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchList, page, searchQuery, statusFilter]);
 
   const handleStatus = (
     row: AdminRewardActivityRow,
@@ -128,30 +141,33 @@ export function AdminRewardActivitiesClient({
         return;
       }
       toast.success("活動狀態已更新");
-      await refreshStatusCounts();
-      fetchList(statusFilter, page);
+      await refreshStatusCounts(searchQuery);
+      fetchList(statusFilter, page, searchQuery);
     });
   };
-
-  const displayRows = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return rows;
-    }
-    return rows.filter((row) => activityMatchesSearch(row, searchQuery));
-  }, [rows, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(total / REWARD_ACTIVITY_PAGE_SIZE));
   const hasSearch = Boolean(searchQuery.trim());
 
   const handlePageChange = (nextPage: number) => {
-    if (hasSearch) {
-      return;
-    }
     const clamped = Math.max(1, Math.min(totalPages, nextPage));
-    fetchList(statusFilter, clamped);
+    setPage(clamped);
     document
       .getElementById("reward-activity-list-anchor")
       ?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (page !== 1) {
+      setPage(1);
+    }
+  };
+
+  const handleStatusChipClick = (chipKey: StatusChipKey) => {
+    setSearchQuery("");
+    setPage(1);
+    setStatusFilter(chipKey);
   };
 
   return (
@@ -171,22 +187,21 @@ export function AdminRewardActivitiesClient({
             活動列表
           </h2>
           <p className="font-mono text-[11px] text-text-disabled">
-            共 {total.toLocaleString("en-US")} 筆 · 每頁{" "}
-            {REWARD_ACTIVITY_PAGE_SIZE}
+            共 {total.toLocaleString("en-US")} 筆
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => router.push("/admin/campaigns/new")}
-            className={BTN_PRIMARY_CLASS}
+            className={BTN_PRIMARY_SM_CLASS}
           >
             新增一般券
           </button>
           <button
             type="button"
             onClick={() => router.push("/admin/campaigns/new?flow=points_mall")}
-            className={BTN_OUTLINE_CLASS}
+            className={BTN_OUTLINE_SM_CLASS}
           >
             新增積分商城商品
           </button>
@@ -194,11 +209,6 @@ export function AdminRewardActivitiesClient({
       </div>
 
       <div className="space-y-3 border-b border-white/[0.08] pb-4">
-        <p className="rounded-lg border border-brand/20 bg-brand/5 px-3 py-2 font-sans text-[11px] leading-relaxed text-text-secondary">
-          搜尋只會篩選<strong className="text-text-primary">目前已載入的本頁</strong>
-          活動；換頁或切換狀態後需重新搜尋。
-        </p>
-
         <div className="relative w-full">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
@@ -207,14 +217,14 @@ export function AdminRewardActivitiesClient({
           <Input
             type="text"
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="搜尋名稱、編號、類型（僅本頁）"
+            onChange={(event) => handleSearchChange(event.target.value)}
+            placeholder="搜尋名稱、編號、類型"
             className={`w-full ${FILTER_INPUT_CLASS}`}
           />
           {searchQuery ? (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => handleSearchChange("")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-disabled hover:text-text-primary"
               aria-label="清除搜尋"
             >
@@ -223,17 +233,14 @@ export function AdminRewardActivitiesClient({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1">
           {STATUS_CHIP_OPTIONS.map((chip) => (
             <button
               key={chip.key}
               type="button"
               disabled={isPending}
-              onClick={() => {
-                setSearchQuery("");
-                fetchList(chip.key, 1);
-              }}
-              className={FILTER_CHIP_CLASS(statusFilter === chip.key)}
+              onClick={() => handleStatusChipClick(chip.key)}
+              className={FILTER_CHIP_SM_CLASS(statusFilter === chip.key)}
             >
               {chip.label} ({formatActivityCount(statusCounts[chip.key])})
             </button>
@@ -241,14 +248,14 @@ export function AdminRewardActivitiesClient({
         </div>
 
         {hasSearch ? (
-          <p className="font-mono text-[11px] text-warning">
-            本頁篩選結果：{displayRows.length} / {rows.length} 筆（第 {page} 頁）
+          <p className="font-mono text-[11px] text-text-disabled">
+            搜尋結果 {total.toLocaleString("en-US")} 筆（第 {page} 頁）
           </p>
         ) : null}
       </div>
 
       <div className={`divide-y divide-white/[0.06] ${isPending ? "opacity-60" : ""}`}>
-        {displayRows.length === 0 ? (
+        {rows.length === 0 ? (
           <div className="py-12 text-center space-y-2">
             <p className="font-sans text-[14px] text-text-primary">
               沒有符合條件的活動記錄
@@ -262,7 +269,7 @@ export function AdminRewardActivitiesClient({
             </p>
           </div>
         ) : (
-          displayRows.map((row) => (
+          rows.map((row) => (
             <RewardActivityCard
               key={row.activity_id}
               row={row}
@@ -273,7 +280,7 @@ export function AdminRewardActivitiesClient({
         )}
       </div>
 
-      {!hasSearch && total > 0 ? (
+      {total > 0 ? (
         <Pagination
           currentPage={page}
           totalPages={totalPages}

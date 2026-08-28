@@ -9,10 +9,12 @@ import { Footer } from "@/app/components/navigation/Footer";
 import { PriceTicker } from "@/app/components/ticker/PriceTicker";
 import type { HomePriceTickerItem } from "@/lib/home/load-home-ticker";
 import { HeroSearch } from "@/app/components/home/HeroSearch";
+import { HomeBanner } from "@/app/components/home/HomeBanner";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
 import { AnnouncementModal } from "@/app/components/announcements/AnnouncementModal";
 import { markHomeClientMount } from "@/app/lib/home/perf-log-client";
+import type { HomeBannerItem } from "@/app/lib/home/types";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
 
 const PwaInstallPrompt = dynamic(
@@ -26,6 +28,7 @@ const PwaInstallPrompt = dynamic(
 export type HomePageShellProps = {
   currentUserId: string | null;
   activeAnnouncements: PlatformAnnouncement[];
+  homeBanners?: HomeBannerItem[];
   tickerItems?: HomePriceTickerItem[];
   children: ReactNode;
 };
@@ -33,6 +36,7 @@ export type HomePageShellProps = {
 export function HomePageShell({
   currentUserId,
   activeAnnouncements,
+  homeBanners = [],
   tickerItems = [],
   children,
 }: HomePageShellProps) {
@@ -51,10 +55,11 @@ export function HomePageShell({
       <PwaInstallPrompt />
       <AnnouncementModal announcements={activeAnnouncements} />
 
-      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8 space-y-4">
+      <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8 space-y-6">
         <HeroSearch showCheckIn={showCheckIn} />
+        <HomeBanner banners={homeBanners} />
         <TrustBanner />
-        <div className="pt-2 space-y-4">{children}</div>
+        <div className="pt-4 sm:pt-5 space-y-7 sm:space-y-8">{children}</div>
       </main>
 
       <Footer />

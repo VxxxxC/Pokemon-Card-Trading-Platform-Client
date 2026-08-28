@@ -50,7 +50,7 @@ Import types from `@/lib/admin-dashboard/types`.
 
 | UI | Notes |
 |----|-------|
-| 活躍用戶比率 / 已封鎖 (`—`) | Needs schema + product definition |
+| 活躍用戶比率 (`—`) | Needs activity window / `last_seen` schema |
 
 ## Acceptance checklist
 
@@ -58,7 +58,9 @@ Import types from `@/lib/admin-dashboard/types`.
 - [ ] Stripe available/pending match Stripe Dashboard (test mode) when key set.
 - [ ] Stripe row shows unavailable message when key missing (DB metrics still load).
 - [ ] Refresh button re-fetches SSR without full page navigation.
-- [ ] `loadError` renders plain error text when action fails.
+- [ ] `loadError` renders plain error text; KPI / pie hidden (no mock zeros).
+- [ ] Ecology pie excludes pending KYC from member slice; **已封鎖帳戶** when `bannedUsers > 0`.
+- [ ] `initialServices` syncs after `router.refresh()`.
 - [ ] Growth badges show `N/A` when prior month has no data.
 - [ ] Alert banner appears only when `unprocessedReports > 0`.
 - [ ] KYC banner appears only when `pendingKyc > 0`; CTA links to `/admin/merchants`.

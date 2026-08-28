@@ -1,8 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { dismissBlockingOverlays } from "./overlays";
 
-const GRADING_SEARCH_PLACEHOLDER =
-  "搜尋訂單號、買家、賣家、物流單號";
+const GRADING_SEARCH_PLACEHOLDER = "搜尋訂單、買家、物流…";
 
 export async function openAdminGradingTab(
   page: Page,

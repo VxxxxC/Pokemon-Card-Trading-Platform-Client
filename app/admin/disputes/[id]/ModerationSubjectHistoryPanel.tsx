@@ -13,6 +13,8 @@ import {
   sanctionTypeLabel,
 } from "@/lib/moderation/admin-case-presenters";
 import type { AdminSubjectModerationHistory } from "@/lib/moderation/types";
+import { ModerationExpandToggle } from "./ModerationExpandToggle";
+import { SECTION_BLOCK_CLASS, SECTION_TITLE_CLASS, META_TEXT_CLASS, EXPANDED_CONTENT_CLASS } from "./moderation-detail-ui";
 
 type ModerationSubjectHistoryPanelProps = {
   history: AdminSubjectModerationHistory;
@@ -31,23 +33,20 @@ export default function ModerationSubjectHistoryPanel({
     (currentFinalScore ?? 0) >= 30 && stats.upheldCount >= 1;
 
   return (
-    <section className="space-y-3 border-b border-white/[0.08] pb-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-sans text-[15px] font-bold text-text-primary">
-            被舉報人歷史檔案
-          </h2>
-          <p className="mt-1 font-sans text-[12px] text-text-disabled">
-            歷史參考 — 不影響本案風控分數
-          </p>
+    <section className={SECTION_BLOCK_CLASS}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className={SECTION_TITLE_CLASS}>被舉報人歷史檔案</h2>
+          {open ? (
+            <p className={`mt-0.5 ${META_TEXT_CLASS}`}>
+              歷史參考 — 不影響本案風控分數
+            </p>
+          ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          className="font-sans text-[12px] text-brand hover:text-text-primary"
-        >
-          {open ? "收合" : "展開"}
-        </button>
+        <ModerationExpandToggle
+          open={open}
+          onToggle={() => setOpen((value) => !value)}
+        />
       </div>
 
       {stats.upheldCount >= 1 || stats.priorCaseCount >= 1 ? (
@@ -62,13 +61,13 @@ export default function ModerationSubjectHistoryPanel({
       ) : null}
 
       {showRepeatHint ? (
-        <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 font-sans text-[12px] text-warning">
+        <p className="font-sans text-[12px] text-warning">
           建議：被舉報人曾有成立裁定，可考慮加重制裁（仍須 Admin 手動選擇）。
-        </div>
+        </p>
       ) : null}
 
       {open ? (
-        <div className="mt-4 space-y-4">
+        <div className={`${EXPANDED_CONTENT_CLASS} space-y-4`}>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Stat label="歷史案件" value={stats.priorCaseCount} />
             <Stat label="裁定成立" value={stats.upheldCount} />
@@ -198,9 +197,9 @@ export default function ModerationSubjectHistoryPanel({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-bg-card/40 px-3 py-2">
+    <div className="py-1">
       <p className="font-sans text-[11px] text-text-disabled">{label}</p>
-      <p className="mt-1 font-mono text-[16px] font-semibold text-text-primary">
+      <p className="mt-0.5 font-mono text-[15px] font-semibold text-text-primary">
         {value}
       </p>
     </div>

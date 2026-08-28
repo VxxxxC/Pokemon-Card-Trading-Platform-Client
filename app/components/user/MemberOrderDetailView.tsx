@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import { MessageSquareText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IoChevronBack } from "react-icons/io5";
 import { toast } from "sonner";
 import {
   cancelMemberOrder,
@@ -12,7 +12,6 @@ import {
   submitInboundTracking,
   type MemberOrderDetail,
 } from "@/app/actions/orders";
-import { MemberAuthAdminDevPanel } from "@/app/components/user/MemberAuthAdminDevPanel";
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { FpsIdCollectDialog } from "@/app/components/user/FpsIdCollectDialog";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
@@ -43,9 +42,12 @@ import {
   isPendingMemberOrderStatus,
 } from "@/app/lib/member-order/p2p";
 import {
+  formatAuthPayoutDisplayId,
   formatSellerPayoutHoldUntilLabel,
-  formatSellerPayoutStatusLabel,
+  resolveMemberSellerPayoutSurface,
 } from "@/lib/member-order/seller-payout";
+import { SellerReputationMeta } from "@/lib/marketplace/seller-reputation-meta";
+import { resolveSellerProfilePath } from "@/lib/marketplace/seller-identity";
 import {
   computeFpsGrossPayoutHkd,
   computeFpsNetPayoutAmount,
@@ -83,6 +85,12 @@ function sellerNeedsFpsDetails(order: MemberOrderDetail): boolean {
   );
 }
 
+const ORDER_DETAIL_CARD_CLASS =
+  "rounded-lg border border-white/[0.08] bg-bg-card/20 p-4";
+
+const ORDER_ALERT_CLASS =
+  "rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2";
+
 export function MemberOrderDetailView({
   order,
   onRefresh,
@@ -97,12 +105,21 @@ export function MemberOrderDetailView({
   const isBuyer = !isSeller;
   const counterpartLabel = isBuyer ? "賣家" : "買家";
   const counterpartName = order.counterparty.displayName;
+  const counterpartProfileHref = resolveSellerProfilePath({
+    sellerId: order.counterparty.id,
+    sellerUsername: order.counterparty.username,
+    sellerPersona: "member",
+  });
   const gradeLabel = formatListingGrade(order.listing);
   const cardMeta =
     (order.product.cardNumber ?? order.product.displayId ?? "—") +
     " · 等級: " +
     gradeLabel;
   const displayOrderNumber = order.orderNumber ?? order.id;
+  const displayPayoutId =
+    isSeller && order.useAuthentication
+      ? formatAuthPayoutDisplayId(order.orderNumber, order.id)
+      : null;
   const createdAtLabel = formatMemberOrderDateTime(order.createdAt);
   const useMerchantB2cEscrowUi = order.orderKind === "merchant";
   const useMeetupUi =
@@ -276,8 +293,27 @@ export function MemberOrderDetailView({
     onOpenReview(order.id, order.counterparty.id);
   };
 
+  const showMerchantBuyerPayoutStatus =
+    isBuyer &&
+    order.orderKind === "merchant" &&
+    shouldShowMerchantBuyerPayoutStatus(
+      order.merchantPayoutStatus,
+      order.pendingPayment,
+    );
+  const showSellerPayoutStatus =
+    isSeller &&
+    order.useAuthentication &&
+    (order.sellerPayoutStatus || order.fpsPayoutRequestStatus);
+  const sellerPayoutSurface =
+    isSeller && order.useAuthentication
+      ? resolveMemberSellerPayoutSurface(
+          order.sellerPayoutStatus,
+          order.fpsPayoutRequestStatus,
+        )
+      : null;
+
   return (
-    <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-6 space-y-5 animate-fadeIn lg:mx-[20%]">
+    <div className="mx-auto w-full max-w-2xl space-y-4 pb-6 animate-fadeIn">
       <FpsIdCollectDialog
         open={fpsDialogOpen}
         onOpenChange={handleFpsDialogOpenChange}
@@ -286,222 +322,302 @@ export function MemberOrderDetailView({
         onSaved={onRefresh}
       />
 
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="h-10 w-10 px-2.5 rounded-lg bg-bg-elevated font-sans text-md font-medium text-brand focus:outline-none"
-        >
-          <IoChevronBack />
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-y-2">
-        <div>
-          <span
-            className={cn(
-              "font-sans text-sm font-black tracking-wide uppercase px-2 py-0.5 rounded border",
-              isSeller
-                ? "text-warning bg-warning/10 border-warning/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
-                : "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30 shadow-[0_0_12px_rgba(56,189,248,0.15)]",
-            )}
-          >
-            {isSeller ? "賣出交易" : "買入交易"}
-          </span>
+      <section
+        className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
+        aria-label="訂單摘要"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-flex items-center rounded-md border px-2 py-0.5 font-sans text-[11px] font-medium",
+                isSeller
+                  ? "border-warning/30 bg-warning/10 text-warning"
+                  : "border-sky-400/30 bg-sky-400/10 text-sky-400",
+              )}
+            >
+              {isSeller ? "賣出交易" : "買入交易"}
+            </span>
+            {order.useAuthentication ? (
+              <span className="inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 font-sans text-[11px] font-medium text-brand">
+                鑑定訂單
+              </span>
+            ) : null}
+          </div>
+          {createdAtLabel ? (
+            <span className="shrink-0 font-mono text-[10px] text-text-disabled">
+              建立 {createdAtLabel}
+            </span>
+          ) : null}
         </div>
 
-        <div className="justify-items-start space-y-2">
-          <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
-            {order.product.cardName}
+        <div className="space-y-3">
+          <div className="min-w-0">
+            <p className="font-sans text-[10px] text-text-disabled">訂單號碼</p>
+            <h1
+              className="truncate font-mono text-[18px] font-bold leading-tight text-text-primary sm:text-[20px]"
+              title={displayOrderNumber}
+            >
+              {displayOrderNumber}
+            </h1>
           </div>
-          <div className="w-full flex flex-col p-6 border border-brand/20 rounded-lg items-start space-y-3">
-            <div className="font-mono text-[11px] text-text-secondary">
-              {cardMeta}
+
+          <div className="overflow-hidden rounded-lg bg-bg-page/25">
+            <div className="px-3 py-2.5">
+              <p className="truncate font-sans text-[15px] font-semibold text-text-primary">
+                {order.product.cardName}
+              </p>
+              <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+                {cardMeta}
+              </p>
             </div>
-            <div className="font-mono text-[12.5px] text-brand mt-1 space-y-1">
-              <p>商品上架序號: {order.listingId}</p>
-              <p>訂單號碼: {displayOrderNumber}</p>
-              {createdAtLabel ? (
-                <p className="font-mono text-[11px] text-text-disabled mt-1">
-                  {"建立時間: " + createdAtLabel}
-                </p>
-              ) : null}
-            </div>
-            <div className="relative w-10 h-10 shrink-0 shadow-xs mb-1">
+
+            <Link
+              href={counterpartProfileHref}
+              className="flex items-center gap-2 border-t border-white/[0.06] px-3 py-2 transition-colors hover:bg-bg-page/40"
+              title={`${counterpartLabel}：${counterpartName}`}
+            >
               <ProfileAvatar
                 avatarUrl={order.counterparty.avatarUrl}
                 displayName={counterpartName}
-                className="w-10 h-10 border border-white/10"
-                fallbackClassName="bg-[#17130f] text-brand text-xs font-bold"
+                className="h-7 w-7 shrink-0 border border-white/10"
+                fallbackClassName="bg-[#17130f] text-brand text-[10px] font-bold"
               />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="font-sans text-[10px] text-text-disabled shrink-0">
+                    {counterpartLabel}
+                  </span>
+                  <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
+                    {counterpartName}
+                  </span>
+                  <SellerReputationMeta
+                    rating={order.counterparty.ratingScore ?? 0}
+                    reviewCount={order.counterparty.publicReviewCount}
+                    totalTrades={order.counterparty.completedTradesCount}
+                  />
+                </div>
+              </div>
+              <span
+                className="shrink-0 font-sans text-[10px] text-brand"
+                aria-hidden="true"
+              >
+                →
+              </span>
+            </Link>
+          </div>
+        </div>
+
+        <dl
+          className="grid gap-2 rounded-lg bg-bg-page/25 px-3 py-2.5 font-mono text-[11px] sm:grid-cols-2"
+        >
+          <div className="min-w-0">
+            <dt className="text-text-disabled">上架序號</dt>
+            <dd
+              className="mt-0.5 break-all text-text-secondary"
+              title={order.listingId}
+            >
+              {order.listingId}
+            </dd>
+          </div>
+          {displayPayoutId ? (
+            <div className="min-w-0 sm:col-span-2">
+              <dt className="text-text-disabled">提現單號</dt>
+              <dd className="mt-0.5 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="break-all font-medium text-brand"
+                    title={displayPayoutId}
+                  >
+                    {displayPayoutId}
+                  </span>
+                  {sellerPayoutSurface ? (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded border px-1.5 py-0.5 font-sans text-[10px] font-semibold",
+                        sellerPayoutSurface.badgeClass,
+                      )}
+                    >
+                      {sellerPayoutSurface.label}
+                    </span>
+                  ) : null}
+                </div>
+                {showSellerPayoutStatus && buyerConfirmedLabel ? (
+                  <p className="text-[10px] text-text-disabled">
+                    買家確認收貨：{buyerConfirmedLabel}
+                  </p>
+                ) : null}
+                {showSellerPayoutStatus &&
+                payoutHoldUntilLabel &&
+                (order.sellerPayoutStatus === "held" ||
+                  order.sellerPayoutStatus === "ready") ? (
+                  <p className="text-[10px] text-text-disabled">
+                    撥款解凍時間：{payoutHoldUntilLabel}
+                  </p>
+                ) : null}
+                {showSellerPayoutStatus &&
+                order.itemSubtotalAuth != null &&
+                (order.sellerPayoutStatus === "held" ||
+                  order.sellerPayoutStatus === "ready") ? (
+                  <p className="text-[10px] text-text-disabled">
+                    預計 FPS 到賬：HK${" "}
+                    {computeFpsNetPayoutAmount(
+                      computeFpsGrossPayoutHkd(
+                        order.itemSubtotalAuth,
+                        order.inboundShippingFeeAuth ?? 0,
+                      ),
+                    ).toLocaleString("zh-TW")}
+                  </p>
+                ) : null}
+              </dd>
             </div>
-            <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
-              {counterpartLabel}：{counterpartName}
-            </p>
+          ) : null}
+        </dl>
+
+        {showMerchantBuyerPayoutStatus ? (
+          <div className="space-y-1 rounded-lg border border-brand/15 bg-brand/5 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-sans text-[11px] text-text-disabled">
+                撥款狀態
+              </span>
+              <span className="font-sans text-[12px] font-semibold text-brand">
+                {formatMerchantPayoutStatusLabel(order.merchantPayoutStatus)}
+              </span>
+            </div>
+            {buyerConfirmedLabel ? (
+              <p className="font-mono text-[10px] text-text-disabled">
+                買家確認收貨：{buyerConfirmedLabel}
+              </p>
+            ) : null}
+            {order.merchantPayoutStatus === "held" &&
+            merchantPayoutHoldUntilLabel ? (
+              <p className="font-mono text-[10px] text-text-disabled">
+                款項保留於平台，預計於 {merchantPayoutHoldUntilLabel} 撥至商戶
+              </p>
+            ) : null}
           </div>
-        </div>
-      </div>
+        ) : null}
 
-      {needsSellerFps ? (
-        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-2">
-          <p className="text-[12.5px] text-text-secondary leading-relaxed">
-            請補充轉數快收款人姓名及 ID／電話／電郵，以便平台於買家確認收貨後撥款。
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setFpsDialogOpen(true)}
-              className="text-[12px] font-semibold text-brand underline-offset-2 hover:underline"
-            >
-              立即填寫
-            </button>
-            <Link
-              href="/profile/user/settings"
-              className="text-[12px] font-semibold text-brand underline-offset-2 hover:underline"
-            >
-              前往個人設定
-            </Link>
-          </div>
-        </div>
-      ) : null}
+      </section>
 
-      {isSeller &&
-      order.useAuthentication &&
-      order.sellerSettlementStatus === "pending" ? (
-        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 space-y-1">
-          <p className="text-[12.5px] font-semibold text-warning">
-            鑑定失敗追償待處理
-          </p>
-          <p className="text-[12px] text-text-secondary leading-relaxed">
-            平台判定為賣方責任。請依平台通知向平台繳付追償款項
-            {order.sellerReceivableAmountHkd != null
-              ? `（HK$ ${order.sellerReceivableAmountHkd.toLocaleString("zh-HK", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}）`
-              : ""}
-            ，完成後平台將安排寄回卡牌。
-          </p>
-        </div>
-      ) : null}
+      {(needsSellerFps ||
+        (isSeller &&
+          order.useAuthentication &&
+          order.sellerSettlementStatus === "pending")) && (
+        <div className="space-y-3" aria-label="待辦提醒">
+          {needsSellerFps ? (
+            <div className={ORDER_ALERT_CLASS}>
+              <p className="text-[12px] text-text-secondary leading-relaxed">
+                請補充轉數快收款人姓名及 ID／電話／電郵，以便平台於買家確認收貨後撥款。
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFpsDialogOpen(true)}
+                  className="text-[12px] font-semibold text-brand underline-offset-2 hover:underline"
+                >
+                  立即填寫
+                </button>
+                <Link
+                  href="/profile/user/settings"
+                  className="text-[12px] font-semibold text-brand underline-offset-2 hover:underline"
+                >
+                  前往個人設定
+                </Link>
+              </div>
+            </div>
+          ) : null}
 
-      {isBuyer &&
-        order.orderKind === "merchant" &&
-        shouldShowMerchantBuyerPayoutStatus(
-          order.merchantPayoutStatus,
-          order.pendingPayment,
-        ) ? (
-        <div className="rounded-xl border border-white/5 bg-[#17130f] p-4 space-y-1">
-          <p className="text-[12px] text-text-secondary">撥款狀態</p>
-          <p className="text-[13px] font-semibold text-brand">
-            {formatMerchantPayoutStatusLabel(order.merchantPayoutStatus)}
-          </p>
-          {buyerConfirmedLabel ? (
-            <p className="text-[11px] font-mono text-text-disabled">
-              買家確認收貨：{buyerConfirmedLabel}
-            </p>
-          ) : null}
-          {order.merchantPayoutStatus === "held" &&
-          merchantPayoutHoldUntilLabel ? (
-            <p className="text-[11px] font-mono text-text-disabled">
-              款項保留於平台，預計於 {merchantPayoutHoldUntilLabel} 撥至商戶
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {isSeller && order.useAuthentication && order.sellerPayoutStatus ? (
-        <div className="rounded-xl border border-white/5 bg-[#17130f] p-4 space-y-1">
-          <p className="text-[12px] text-text-secondary">賣家撥款狀態</p>
-          <p className="text-[13px] font-semibold text-brand">
-            {formatSellerPayoutStatusLabel(order.sellerPayoutStatus)}
-          </p>
-          {buyerConfirmedLabel ? (
-            <p className="text-[11px] font-mono text-text-disabled">
-              買家確認收貨：{buyerConfirmedLabel}
-            </p>
-          ) : null}
-          {payoutHoldUntilLabel &&
-          (order.sellerPayoutStatus === "held" ||
-            order.sellerPayoutStatus === "ready") ? (
-            <p className="text-[11px] font-mono text-text-disabled">
-              撥款解凍時間：{payoutHoldUntilLabel}
-            </p>
-          ) : null}
-          {order.itemSubtotalAuth != null &&
-          (order.sellerPayoutStatus === "held" ||
-            order.sellerPayoutStatus === "ready") ? (
-            <p className="text-[11px] font-mono text-text-disabled">
-              預計 FPS 到賬：HK${" "}
-              {computeFpsNetPayoutAmount(
-                computeFpsGrossPayoutHkd(
-                  order.itemSubtotalAuth,
-                  order.inboundShippingFeeAuth ?? 0,
-                ),
-              ).toLocaleString("zh-TW")}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {showMerchantPendingPaymentBanner && (
-        <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
-          <p className="text-[12.5px] text-text-secondary leading-relaxed">
-            {isMerchantPaymentExpired
-              ? "此訂單付款期限已過，掛單已釋放。請返回市集重新下單。"
-              : isBuyer
-                ? "此訂單尚未完成託管付款，請於 48 小時內完成 Stripe 全額支付，資金將由平台鎖定託管。"
-                : "等待買家完成託管付款，收款後方可安排出貨。"}
-          </p>
-          {order.paymentExpiresAt && !isMerchantPaymentExpired ? (
-            <p
-              className={
-                isExpiringSoon
-                  ? "font-mono text-[11px] text-warning"
-                  : "font-mono text-[11px] text-text-disabled"
-              }
-            >
-              {countdownLabel}
-            </p>
-          ) : null}
-          {isBuyer && !isMerchantPaymentExpired && (
-            <button
-              type="button"
-              disabled={isActionLoading}
-              onClick={() => router.push("/checkout/" + order.id)}
-              className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-sans font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              前往付款
-            </button>
-          )}
-          {isBuyer && isMerchantPaymentExpired ? (
-            <Link
-              href="/marketplace"
-              className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-brand/25 bg-brand/10 font-sans text-[13px] font-semibold text-brand"
-            >
-              返回市集重新下單
-            </Link>
+          {isSeller &&
+          order.useAuthentication &&
+          order.sellerSettlementStatus === "pending" ? (
+            <div className={ORDER_ALERT_CLASS}>
+              <p className="text-[12px] font-semibold text-warning">
+                鑑定失敗追償待處理
+              </p>
+              <p className="text-[12px] text-text-secondary leading-relaxed">
+                平台判定為賣方責任。請依平台通知向平台繳付追償款項
+                {order.sellerReceivableAmountHkd != null
+                  ? `（HK$ ${order.sellerReceivableAmountHkd.toLocaleString("zh-HK", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}）`
+                  : ""}
+                ，完成後平台將安排寄回卡牌。
+              </p>
+            </div>
           ) : null}
         </div>
       )}
 
-      {useMerchantB2cEscrowUi ? (
-        <div className="space-y-4">
-          {order.useAuthentication ? (
-            <MerchantAuthSellerTimeline
-              escrowStatus={order.merchantEscrowStatus ?? null}
-              payoutStatus={order.merchantPayoutStatus}
-            />
-          ) : (
-            <MerchantB2cDirectTimeline
-              escrowStatus={order.merchantEscrowStatus ?? null}
-              perspective="buyer"
-              shippingMethod={order.shippingMethod}
-              payoutStatus={order.merchantPayoutStatus}
-            />
-          )}
+      <section
+        className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
+        aria-label="交易進度"
+      >
+        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+          交易進度
+        </h2>
 
-          {isPendingEscrowPayment ? null : isBuyer &&
+        {showMerchantPendingPaymentBanner ? (
+          <div className="space-y-3 rounded-lg border border-brand/20 bg-brand/5 p-3">
+            <p className="text-[12px] text-text-secondary leading-relaxed">
+              {isMerchantPaymentExpired
+                ? "此訂單付款期限已過，掛單已釋放。請返回市集重新下單。"
+                : isBuyer
+                  ? "此訂單尚未完成託管付款，請於 48 小時內完成 Stripe 全額支付，資金將由平台鎖定託管。"
+                  : "等待買家完成託管付款，收款後方可安排出貨。"}
+            </p>
+            {order.paymentExpiresAt && !isMerchantPaymentExpired ? (
+              <p
+                className={
+                  isExpiringSoon
+                    ? "font-mono text-[11px] text-warning"
+                    : "font-mono text-[11px] text-text-disabled"
+                }
+              >
+                {countdownLabel}
+              </p>
+            ) : null}
+            {isBuyer && !isMerchantPaymentExpired ? (
+              <button
+                type="button"
+                disabled={isActionLoading}
+                onClick={() => router.push("/checkout/" + order.id)}
+                className="w-full h-10 rounded-xl bg-brand text-[#1A1612] font-sans font-semibold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                前往付款
+              </button>
+            ) : null}
+            {isBuyer && isMerchantPaymentExpired ? (
+              <Link
+                href="/marketplace"
+                className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-brand/25 bg-brand/10 font-sans text-[13px] font-semibold text-brand"
+              >
+                返回市集重新下單
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
+
+        {useMerchantB2cEscrowUi ? (
+          <div className="space-y-4">
+            {order.useAuthentication ? (
+              <MerchantAuthSellerTimeline
+                embedded
+                escrowStatus={order.merchantEscrowStatus ?? null}
+                payoutStatus={order.merchantPayoutStatus}
+              />
+            ) : (
+              <MerchantB2cDirectTimeline
+                embedded
+                escrowStatus={order.merchantEscrowStatus ?? null}
+                perspective="buyer"
+                shippingMethod={order.shippingMethod}
+                payoutStatus={order.merchantPayoutStatus}
+              />
+            )}
+
+            {isPendingEscrowPayment ? null : isBuyer &&
             order.merchantEscrowStatus === "payment_held" ? (
             order.shippingMethod === "meetup" ? (
               canCompletePurchase ? (
@@ -529,11 +645,11 @@ export function MemberOrderDetailView({
             order.meetupDetail ||
             order.buyerRemark ||
             order.sfAddress) ? (
-            <div className="p-4 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-2">
-              <h3 className="font-sans font-bold text-[14px] text-[#eae1da]">
+            <div className="space-y-2 border-t border-white/[0.06] pt-4">
+              <h3 className="font-sans text-[13px] font-semibold text-text-primary">
                 交收資料
               </h3>
-              <div className="font-mono text-[12px] space-y-1.5 text-text-secondary">
+              <div className="space-y-1.5 font-mono text-[12px] text-text-secondary">
                 {order.shippingMethod === "meetup" ? (
                   <>
                     {order.buyerPhone ? (
@@ -612,7 +728,7 @@ export function MemberOrderDetailView({
         </div>
       ) : useMeetupUi ? (
         <div className="space-y-4">
-          <MemberP2pOrderTimeline status={order.status} />
+          <MemberP2pOrderTimeline embedded status={order.status} />
 
           {isPending && !isPendingEscrowPayment && (
             <div className="space-y-3">
@@ -683,22 +799,24 @@ export function MemberOrderDetailView({
               data-testid="order-review-cta"
               disabled={isActionLoading}
               onClick={handleOpenReview}
-              className="w-full h-10 font-sans font-semibold text-[13px] rounded-xl border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-brand font-sans text-[13px] font-semibold text-[#17130f] transition-colors hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ✍️ 給予對手評價
+              <MessageSquareText className="size-3.5 shrink-0" aria-hidden="true" />
+              給予對手評價
             </button>
           )}
         </div>
       ) : (
         <div className="space-y-4">
           <MemberAuthOrderTimeline
+            embedded
             status={order.status}
             escrowStatus={order.escrowStatus}
             paymentConfirmedAt={order.paymentConfirmedAt}
           />
 
           {order.escrowStatus === "payment" && order.canPay && isBuyer ? (
-            <div className="space-y-3 rounded-xl border border-brand/20 bg-[#17130f] p-4">
+            <div className="space-y-3 border-t border-white/[0.06] pt-4">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 此訂單尚未完成託管付款，請前往結帳頁完成卡價與鑑定服務費支付。
               </p>
@@ -714,7 +832,7 @@ export function MemberOrderDetailView({
           ) : null}
 
           {order.escrowStatus === "custody" && isSeller ? (
-            <div className="space-y-3 rounded-xl border border-white/5 bg-[#17130f] p-4">
+            <div className="space-y-3 border-t border-white/[0.06] pt-4">
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 請將卡牌寄往平台倉庫，並填寫快遞公司與物流單號。
               </p>
@@ -764,13 +882,13 @@ export function MemberOrderDetailView({
           ) : null}
 
           {order.escrowStatus === "custody" && isBuyer ? (
-            <p className="text-[12.5px] text-text-secondary">
+            <p className="border-t border-white/[0.06] pt-4 text-[12px] text-text-secondary">
               等待賣家將卡牌寄至平台倉庫…
             </p>
           ) : null}
 
           {order.escrowStatus === "shipped" ? (
-            <div className="space-y-2 rounded-xl border border-white/5 bg-[#17130f] p-4">
+            <div className="space-y-2 border-t border-white/[0.06] pt-4">
               {order.outboundTrackingNo ? (
                 <p className="font-mono text-[12px] text-brand">
                   平台代發物流：
@@ -809,7 +927,7 @@ export function MemberOrderDetailView({
           ) : null}
 
           {order.status === "cancelled" && order.useAuthentication ? (
-            <p className="text-[12px] text-text-secondary">
+            <p className="border-t border-white/[0.06] pt-4 text-[12px] text-text-secondary">
               鑑定失敗或交易已取消，模擬全額退款已標記（測試模式）。
             </p>
           ) : null}
@@ -846,27 +964,23 @@ export function MemberOrderDetailView({
             </AlertDialog>
           ) : null}
 
-          <MemberAuthAdminDevPanel
-            orderId={order.id}
-            escrowStatus={order.escrowStatus}
-            onRefresh={onRefresh}
-          />
-
           {showReviewCta && (
             <button
               type="button"
               data-testid="order-review-cta"
               disabled={isActionLoading}
               onClick={handleOpenReview}
-              className="w-full h-10 font-sans font-semibold text-[13px] rounded-xl border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-brand font-sans text-[13px] font-semibold text-[#17130f] transition-colors hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ✍️ 給予對手評價
+              <MessageSquareText className="size-3.5 shrink-0" aria-hidden="true" />
+              給予對手評價
             </button>
           )}
         </div>
       )}
+      </section>
 
-      <div className="grid grid-cols-1 gap-6 items-start">
+      <section className="space-y-3" aria-label="帳單明細">
         {useMerchantB2cEscrowUi ? (
           <MemberMerchantB2cOrderInvoice
             itemSubtotal={order.itemSubtotal ?? order.finalPrice}
@@ -894,27 +1008,23 @@ export function MemberOrderDetailView({
             authFee={order.authFeeAuth}
             itemSubtotal={order.itemSubtotalAuth}
             inboundShippingFee={order.inboundShippingFeeAuth}
+            outboundShippingFee={order.outboundShippingFeeAuth}
           />
         )}
+      </section>
 
-        <OrderListingPhotoGrid
-          images={galleryImages}
-          altPrefix={order.product.cardName + " 實物照"}
-          onImageClick={(photoIdx) => {
-            setViewerIndex(photoIdx);
-            setIsViewerOpen(true);
-          }}
-        />
-      </div>
-
-      <div className="pt-2">
-        <Link
-          href="/profile/user/trading"
-          className="font-sans text-[13px] font-bold text-brand hover:underline"
-        >
-          返回交易管理
-        </Link>
-      </div>
+      {galleryImages.length > 0 ? (
+        <section aria-label="實物照">
+          <OrderListingPhotoGrid
+            images={galleryImages}
+            altPrefix={order.product.cardName + " 實物照"}
+            onImageClick={(photoIdx) => {
+              setViewerIndex(photoIdx);
+              setIsViewerOpen(true);
+            }}
+          />
+        </section>
+      ) : null}
 
       <ImageViewer
         isOpen={isViewerOpen}

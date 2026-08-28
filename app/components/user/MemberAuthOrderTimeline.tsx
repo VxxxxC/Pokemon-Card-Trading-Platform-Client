@@ -13,12 +13,14 @@ type MemberAuthOrderTimelineProps = {
   status: MemberOrderDbStatus | null | undefined;
   escrowStatus?: MemberEscrowStatus | null;
   paymentConfirmedAt?: string | null;
+  embedded?: boolean;
 };
 
 export function MemberAuthOrderTimeline({
   status,
   escrowStatus,
   paymentConfirmedAt,
+  embedded = false,
 }: MemberAuthOrderTimelineProps) {
   const currentStepIdx = getAuthEscrowStepIndexFromStatus(
     escrowStatus,
@@ -30,10 +32,18 @@ export function MemberAuthOrderTimeline({
     status === "cancelled" || escrowStatus === "cancelled";
 
   return (
-    <div className="p-4 bg-[#17130f] border border-white/5 rounded-xl space-y-4">
-      <h4 className="font-sans font-bold text-[12.5px] text-text-primary">
-        交易狀態
-      </h4>
+    <div
+      className={
+        embedded
+          ? "space-y-4"
+          : "space-y-4 rounded-xl border border-white/5 bg-[#17130f] p-4"
+      }
+    >
+      {!embedded ? (
+        <h4 className="font-sans text-[12.5px] font-bold text-text-primary">
+          交易狀態
+        </h4>
+      ) : null}
 
       {isCancelled ? (
         <div className="relative pl-6 before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">

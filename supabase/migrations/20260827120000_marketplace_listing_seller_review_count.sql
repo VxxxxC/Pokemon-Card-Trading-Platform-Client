@@ -1,5 +1,14 @@
 -- Expose public review count on product detail order book rows (distinct from total_trades).
 
+DROP FUNCTION IF EXISTS public.get_marketplace_product_listings(
+  text,
+  jsonb,
+  boolean,
+  text,
+  integer,
+  integer
+);
+
 CREATE OR REPLACE FUNCTION public.get_marketplace_product_listings(
   p_product_id text,
   p_grade_filters jsonb DEFAULT NULL,

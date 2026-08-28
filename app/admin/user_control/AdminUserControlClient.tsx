@@ -7,7 +7,9 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { listAdminPlatformUsers } from "@/app/actions/admin-user-control";
 import {
-  FILTER_CHIP_CLASS,
+  ADMIN_PAGE_TAB_CLASS,
+  ADMIN_PAGE_TAB_NAV_CLASS,
+  FILTER_CHIP_SM_CLASS,
   FILTER_INPUT_CLASS,
   BTN_OUTLINE_SM_CLASS,
 } from "@/app/admin/campaigns/campaigns-ui";
@@ -106,36 +108,172 @@ function kycBadgeClasses(
   return "bg-bg-hover text-text-secondary border border-white/10";
 }
 
-function PlatformUserMobileCard({ user }: { user: PlatformUserRow }) {
-  const typeLabel = user.userType === "member" ? "會員" : "商戶";
+function kycDotClasses(kycStatus: PlatformUserRow["kycStatus"]): string {
+  if (kycStatus === "verified") {
+    return "bg-success";
+  }
+  if (kycStatus === "pending") {
+    return "bg-brand";
+  }
+  if (kycStatus === "rejected") {
+    return "bg-warning";
+  }
+  return "bg-text-disabled";
+}
+
+function kycLabelClasses(kycStatus: PlatformUserRow["kycStatus"]): string {
+  if (kycStatus === "verified") {
+    return "text-success";
+  }
+  if (kycStatus === "pending") {
+    return "text-brand";
+  }
+  if (kycStatus === "rejected") {
+    return "text-warning";
+  }
+  return "text-text-secondary";
+}
+
+function PlatformUserKycStatusDot({
+  kycStatus,
+}: {
+  kycStatus: NonNullable<PlatformUserRow["kycStatus"]>;
+}) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 font-mono text-[9px]">
+      <span
+        className={`size-1.5 shrink-0 rounded-full ${kycDotClasses(kycStatus)}`}
+        aria-hidden="true"
+      />
+      <span className={kycLabelClasses(kycStatus)}>
+        {formatPlatformUserKycLabel(kycStatus)}
+      </span>
+    </span>
+  );
+}
+
+function PlatformUserTypeBadges({ userType }: { userType: PlatformUserType }) {
+  if (userType === "member") {
+    return (
+      <span
+        className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses("member")}`}
+      >
+        會員
+      </span>
+    );
+  }
 
   return (
-    <article className="space-y-2 px-1 py-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses(user.userType)}`}
-            >
-              {typeLabel}
-            </span>
-            <span className="font-sans text-[13px] font-semibold text-text-primary">
-              {user.name}
-            </span>
-          </div>
-          <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
-            {user.handle}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded border px-2 py-0.5 font-mono text-[9px] ${kycBadgeClasses(user.kycStatus)}`}
-        >
-          {user.kycStatus
-            ? formatPlatformUserKycLabel(user.kycStatus)
-            : "未申請"}
-        </span>
+    <>
+      <span
+        className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses("merchant")}`}
+      >
+        商戶
+      </span>
+      <span
+        className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses("member")}`}
+      >
+        會員
+      </span>
+    </>
+  );
+}
+
+function PlatformUserMemberPersonaLine({
+  memberHandle,
+  memberName,
+  primaryHandle,
+  className,
+}: {
+  memberHandle: string | null;
+  memberName: string | null;
+  primaryHandle?: string;
+  className?: string;
+}) {
+  const showHandle =
+    memberHandle && memberHandle !== primaryHandle;
+  if (!showHandle && !memberName) {
+    return null;
+  }
+
+  const parts: string[] = [];
+  if (showHandle) {
+    parts.push(`會員 ${memberHandle}`);
+  } else if (memberName) {
+    parts.push("會員");
+  }
+  if (memberName) {
+    parts.push(memberName);
+  }
+
+  return (
+    <p className={`font-mono text-[10px] text-text-disabled ${className ?? ""}`}>
+      {parts.join(" · ")}
+    </p>
+  );
+}
+
+function PlatformUserMerchantPersonaBlock({
+  shopHandle,
+  memberHandle,
+  memberName,
+}: {
+  shopHandle: string;
+  memberHandle: string | null;
+  memberName: string | null;
+}) {
+  const showMemberHandle =
+    memberHandle && memberHandle !== shopHandle;
+  const showMemberRow = showMemberHandle || memberName;
+
+  return (
+    <div className="mt-1.5 space-y-1 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5">
+      <div className="flex min-w-0 items-baseline gap-2 font-mono text-[10px] leading-snug">
+        <span className="shrink-0 text-text-disabled">店鋪</span>
+        <span className="truncate text-text-secondary">{shopHandle}</span>
       </div>
-      <dl className="grid grid-cols-1 gap-1 font-mono text-[10px]">
+      {showMemberRow ? (
+        <div className="flex min-w-0 items-baseline gap-2 font-mono text-[10px] leading-snug">
+          <span className="shrink-0 text-text-disabled">會員</span>
+          <span className="truncate text-text-secondary">
+            {[showMemberHandle ? memberHandle : null, memberName]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PlatformUserMobileCard({ user }: { user: PlatformUserRow }) {
+  return (
+    <article className="space-y-1.5 px-1 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-1">
+            <PlatformUserTypeBadges userType={user.userType} />
+          </div>
+          <p className="mt-4 font-sans text-[13px] font-semibold leading-snug text-text-primary">
+            {user.name}
+          </p>
+          {user.userType === "merchant" ? (
+            <PlatformUserMerchantPersonaBlock
+              shopHandle={user.handle}
+              memberHandle={user.memberHandle}
+              memberName={user.memberName}
+            />
+          ) : (
+            <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+              {user.handle}
+            </p>
+          )}
+        </div>
+        {user.kycStatus ? (
+          <PlatformUserKycStatusDot kycStatus={user.kycStatus} />
+        ) : null}
+      </div>
+      <dl className="grid grid-cols-1 gap-0.5 pt-0.5 font-mono text-[10px]">
         <div className="flex min-w-0 gap-2">
           <dt className="shrink-0 text-text-disabled">電郵</dt>
           <dd className="truncate text-text-secondary">{user.email}</dd>
@@ -179,10 +317,7 @@ export default function AdminUserControlClient({
   const [userSearch, setUserSearch] = useState("");
   const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
   const [kycFilter, setKycFilter] = useState<PlatformUserKycFilter>("pending");
-  const [userTypeFilter, setUserTypeFilter] = useState<{
-    member: boolean;
-    merchant: boolean;
-  }>({ member: true, merchant: true });
+  const [userTypeTab, setUserTypeTab] = useState<"all" | PlatformUserType>("all");
 
   const [page, setPage] = useState(initialPage.page);
   const pageSize = PLATFORM_USERS_PAGE_SIZE;
@@ -194,15 +329,11 @@ export default function AdminUserControlClient({
   const [overrideReason, setOverrideReason] = useState("");
 
   const resolveUserTypes = useCallback((): PlatformUserType[] => {
-    const types: PlatformUserType[] = [];
-    if (userTypeFilter.member) {
-      types.push("member");
+    if (userTypeTab === "all") {
+      return ["member", "merchant"];
     }
-    if (userTypeFilter.merchant) {
-      types.push("merchant");
-    }
-    return types;
-  }, [userTypeFilter]);
+    return [userTypeTab];
+  }, [userTypeTab]);
 
   const effectiveSearch = debouncedUserSearch;
 
@@ -246,7 +377,7 @@ export default function AdminUserControlClient({
       return;
     }
     refreshUsers(page);
-  }, [page, kycFilter, userTypeFilter, debouncedUserSearch, refreshUsers]);
+  }, [page, kycFilter, userTypeTab, debouncedUserSearch, refreshUsers]);
 
   const typeCounts = pageData.typeCounts;
   const kycCounts = pageData.kycCounts;
@@ -295,57 +426,30 @@ export default function AdminUserControlClient({
     resetPagination();
   };
 
-  const handleUserTypeToggle = (type: PlatformUserType) => {
-    setUserTypeFilter((prev) => ({ ...prev, [type]: !prev[type] }));
+  const handleUserTypeTabChange = (tab: "all" | PlatformUserType) => {
+    setUserTypeTab(tab);
     resetPagination();
   };
 
-  const renderTypeChip = (
-    type: PlatformUserType,
-    label: string,
-    count: number,
-    isActive: boolean,
-  ) => (
-    <button
-      key={type}
-      type="button"
-      onClick={() => handleUserTypeToggle(type)}
-      aria-pressed={isActive}
-      className={`${FILTER_CHIP_CLASS(isActive)} gap-1.5`}
-    >
-      <span>{label}</span>
-      <span
-        className={`font-mono text-[10px] tabular-nums ${
-          isActive ? "text-brand/80" : "text-text-disabled"
-        }`}
-      >
-        {count.toLocaleString("en-US")}
-      </span>
-    </button>
-  );
-
-  const isTypeFilterEmpty =
-    !userTypeFilter.member && !userTypeFilter.merchant;
+  const userTypeTabs: {
+    key: "all" | PlatformUserType;
+    label: string;
+    count: number;
+  }[] = [
+    {
+      key: "all",
+      label: "全部",
+      count: typeCounts.member + typeCounts.merchant,
+    },
+    { key: "member", label: "會員", count: typeCounts.member },
+    { key: "merchant", label: "商戶", count: typeCounts.merchant },
+  ];
 
   return (
     <div className="space-y-5 pb-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-              用戶管理
-            </h1>
-            <span className="rounded-full border border-brand/20 bg-brand/10 px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-              USERS
-            </span>
-          </div>
-          <p className="mt-1 font-sans text-[13px] text-text-secondary">
-            管理全平台會員與認證商戶帳號、Stripe KYC 認證狀態
-          </p>
-        </div>
-        <p className="font-mono text-[12px] text-text-secondary sm:shrink-0 sm:self-end">
-          待審核{" "}
-          <span className="font-medium text-brand">{kycCounts.pending}</span>
+      <header>
+        <p className="font-sans text-[13px] text-text-secondary">
+          管理全平台會員與認證商戶帳號、Stripe KYC 認證狀態
         </p>
       </header>
 
@@ -597,35 +701,42 @@ export default function AdminUserControlClient({
 
       <div className="space-y-4 border-b border-white/[0.08] pb-5">
         <div className="flex flex-col gap-3">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
-              aria-hidden="true"
-            />
-            <Input
-              type="search"
-              placeholder="搜尋名稱、Handle、電郵或 Stripe ID…"
-              value={userSearch}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className={FILTER_INPUT_CLASS}
-            />
-          </div>
           <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {renderTypeChip(
-                "member",
-                "會員",
-                typeCounts.member,
-                userTypeFilter.member,
-              )}
-              {renderTypeChip(
-                "merchant",
-                "商戶",
-                typeCounts.merchant,
-                userTypeFilter.merchant,
-              )}
+            <nav className={ADMIN_PAGE_TAB_NAV_CLASS} aria-label="用戶類型">
+              {userTypeTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => handleUserTypeTabChange(tab.key)}
+                  className={ADMIN_PAGE_TAB_CLASS(userTypeTab === tab.key)}
+                >
+                  {tab.label}
+                  <span
+                    className={`font-mono text-[10px] tabular-nums ${
+                      userTypeTab === tab.key
+                        ? "text-brand/80"
+                        : "text-text-disabled"
+                    }`}
+                  >
+                    {tab.count.toLocaleString("en-US")}
+                  </span>
+                </button>
+              ))}
+            </nav>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-disabled"
+                aria-hidden="true"
+              />
+              <Input
+                type="search"
+                placeholder="搜尋名稱、Handle、電郵或 Stripe ID…"
+                value={userSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className={FILTER_INPUT_CLASS}
+              />
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1">
               {(
                 [
                   { key: "all", label: "全部" },
@@ -638,11 +749,11 @@ export default function AdminUserControlClient({
                   key={key}
                   type="button"
                   onClick={() => handleFilterChange(key)}
-                  className={`${FILTER_CHIP_CLASS(kycFilter === key)} gap-1.5`}
+                  className={`${FILTER_CHIP_SM_CLASS(kycFilter === key)} gap-1`}
                 >
                   <span>{label}</span>
                   <span
-                    className={`font-mono text-[10px] tabular-nums ${
+                    className={`font-mono text-[9px] tabular-nums ${
                       kycFilter === key
                         ? "text-brand/80"
                         : "text-text-disabled"
@@ -658,9 +769,7 @@ export default function AdminUserControlClient({
 
         {paginatedUsers.length === 0 ? (
           <p className="py-10 text-center font-sans text-[13px] text-text-secondary">
-            {isTypeFilterEmpty
-              ? "請至少選擇一種用戶類型以顯示名單。"
-              : "沒有符合篩選條件的用戶記錄。"}
+            沒有符合篩選條件的用戶記錄。
           </p>
         ) : (
           <>
@@ -698,10 +807,7 @@ export default function AdminUserControlClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedUsers.map((u, rowIndex) => {
-                    const typeLabel = u.userType === "member" ? "會員" : "商戶";
-
-                    return (
+                  {paginatedUsers.map((u, rowIndex) => (
                       <TableRow
                         key={u.id}
                         className={`border-white/[0.06] transition-colors hover:bg-brand/10 ${
@@ -710,18 +816,29 @@ export default function AdminUserControlClient({
                       >
                         <TableCell className="max-w-[14rem] py-2.5">
                           <div className="flex min-w-0 items-center gap-2">
-                            <span
-                              className={`shrink-0 rounded-md px-2 py-0.5 font-mono text-[10px] ${userTypeChipClasses(u.userType)}`}
-                            >
-                              {typeLabel}
-                            </span>
+                            <PlatformUserTypeBadges userType={u.userType} />
                             <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
                               {u.name}
                             </span>
                           </div>
+                          {u.userType === "merchant" ? (
+                            <PlatformUserMemberPersonaLine
+                              memberHandle={u.memberHandle}
+                              memberName={u.memberName}
+                              primaryHandle={u.handle}
+                              className="mt-1"
+                            />
+                          ) : null}
                         </TableCell>
                         <TableCell className="py-2.5 font-mono text-[11px] text-text-secondary whitespace-nowrap">
-                          {u.handle}
+                          <span className="block">{u.handle}</span>
+                          {u.userType === "merchant" &&
+                          u.memberHandle &&
+                          u.memberHandle !== u.handle ? (
+                            <span className="mt-0.5 block text-[10px] text-text-disabled">
+                              {u.memberHandle}
+                            </span>
+                          ) : null}
                         </TableCell>
                         <TableCell className="max-w-[11rem] py-2.5">
                           <span
@@ -746,13 +863,17 @@ export default function AdminUserControlClient({
                           )}
                         </TableCell>
                         <TableCell className="py-2.5 text-center whitespace-nowrap">
-                          <span
-                            className={`inline-block rounded border px-2 py-0.5 font-mono text-[9px] ${kycBadgeClasses(u.kycStatus)}`}
-                          >
-                            {u.kycStatus
-                              ? formatPlatformUserKycLabel(u.kycStatus)
-                              : "未申請"}
-                          </span>
+                          {u.kycStatus ? (
+                            <span
+                              className={`inline-block rounded border px-2 py-0.5 font-mono text-[9px] ${kycBadgeClasses(u.kycStatus)}`}
+                            >
+                              {formatPlatformUserKycLabel(u.kycStatus)}
+                            </span>
+                          ) : (
+                            <span className="font-mono text-[11px] text-text-disabled">
+                              —
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="py-2.5 text-right font-mono text-[11px] text-text-disabled whitespace-nowrap">
                           {u.updatedAt}
@@ -772,8 +893,7 @@ export default function AdminUserControlClient({
                           )}
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
+                  ))}
                 </TableBody>
               </Table>
             </div>

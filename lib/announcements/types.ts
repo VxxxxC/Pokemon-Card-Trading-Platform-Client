@@ -10,6 +10,8 @@ export type PlatformAnnouncement = {
   endDate: string;
   isActive: boolean;
   priority: number;
+  showOnHomeBanner: boolean;
+  showInAnnouncements: boolean;
   imageObjectKey?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -25,6 +27,8 @@ export type PlatformAnnouncementInput = {
   endDate: string;
   isActive: boolean;
   priority?: number;
+  showOnHomeBanner?: boolean;
+  showInAnnouncements?: boolean;
 };
 
 type AnnouncementRow = Tables<"platform_announcements">;
@@ -40,6 +44,8 @@ export function mapAnnouncementRow(row: AnnouncementRow): PlatformAnnouncement {
     endDate: row.end_date,
     isActive: row.is_active,
     priority: row.priority,
+    showOnHomeBanner: row.show_on_home_banner,
+    showInAnnouncements: row.show_in_announcements,
     imageObjectKey: row.image_object_key,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -54,7 +60,7 @@ export function mapAnnouncementToDbRow(
 } {
   return {
     title: input.title,
-    content: input.content,
+    content: input.content.trim(),
     image_url: input.imageUrl,
     image_object_key: input.imageObjectKey ?? null,
     link_url: input.linkUrl?.trim() || null,
@@ -62,6 +68,8 @@ export function mapAnnouncementToDbRow(
     end_date: input.endDate,
     is_active: input.isActive,
     priority: input.priority ?? 0,
+    show_on_home_banner: input.showOnHomeBanner ?? false,
+    show_in_announcements: input.showInAnnouncements ?? true,
     created_by: createdBy ?? null,
   };
 }
