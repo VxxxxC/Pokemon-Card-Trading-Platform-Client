@@ -642,7 +642,7 @@ export function ProductDetailClient({
             {showCombinedMarketEmpty ? (
               <ProductMarketDataEmptyPanel
                 title="市場參考數據"
-                message="暫無 SNKRDUNK / 平台成交聚合資料；參考均價與走勢將於有成交後顯示。"
+                message="參考均價與走勢將於有成交後顯示。"
                 compact
               />
             ) : isMarketPriceLoading ? (
