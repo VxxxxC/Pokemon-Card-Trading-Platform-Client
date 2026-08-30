@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type RefObject,
@@ -33,33 +34,61 @@ export function useChatThreadPagination({
 }: UseChatThreadPaginationOptions) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const stickToBottomRef = useRef(true);
+  const pendingInitialScrollRef = useRef(true);
   const isPrependingRef = useRef(false);
   const loadingOlderRef = useRef(false);
   const loadOlderRequestIdRef = useRef(0);
   const prevRoomIdRef = useRef(activeRoomId);
   const prevMessageCountRef = useRef(messageCount);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const isNearBottom = useCallback(() => {
+    const element = scrollRef.current;
+    if (!element) {
+      return true;
+    }
+
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+    return distanceFromBottom < SCROLL_EDGE_THRESHOLD_PX;
+  }, [scrollRef]);
 
   const scrollToBottom = useCallback(() => {
     const element = scrollRef.current;
     if (!element) {
       return;
     }
+
     element.scrollTop = element.scrollHeight;
+    bottomAnchorRef.current?.scrollIntoView({ block: "end", behavior: "auto" });
   }, [scrollRef]);
 
+  const finishPendingInitialScroll = useCallback(() => {
+    if (isNearBottom()) {
+      pendingInitialScrollRef.current = false;
+    }
+  }, [isNearBottom]);
+
+  const scheduleScrollToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      requestAnimationFrame(() => {
+        scrollToBottom();
+        finishPendingInitialScroll();
+      });
+    });
+  }, [finishPendingInitialScroll, scrollToBottom]);
+
   const updateStickToBottom = useCallback(() => {
-    const element = scrollRef.current;
-    if (!element) {
+    stickToBottomRef.current = isNearBottom();
+  }, [isNearBottom]);
+
+  const requestOlderMessages = useCallback(() => {
+    if (pendingInitialScrollRef.current) {
       return;
     }
 
-    const distanceFromBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight;
-    stickToBottomRef.current = distanceFromBottom < SCROLL_EDGE_THRESHOLD_PX;
-  }, [scrollRef]);
-
-  const requestOlderMessages = useCallback(() => {
     const element = scrollRef.current;
     if (
       !element ||
@@ -117,7 +146,7 @@ export function useChatThreadPagination({
 
     updateStickToBottom();
 
-    if (element.scrollTop > SCROLL_EDGE_THRESHOLD_PX) {
+    if (pendingInitialScrollRef.current || element.scrollTop > SCROLL_EDGE_THRESHOLD_PX) {
       return;
     }
 
@@ -138,10 +167,8 @@ export function useChatThreadPagination({
     if (prevRoomIdRef.current !== activeRoomId) {
       prevRoomIdRef.current = activeRoomId;
       stickToBottomRef.current = true;
+      pendingInitialScrollRef.current = true;
       prevMessageCountRef.current = messageCount;
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
       return;
     }
 
@@ -151,9 +178,7 @@ export function useChatThreadPagination({
     }
 
     if (messageCount > prevMessageCountRef.current && stickToBottomRef.current) {
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
+      scheduleScrollToBottom();
     }
 
     prevMessageCountRef.current = messageCount;
@@ -161,17 +186,40 @@ export function useChatThreadPagination({
     activeRoomId,
     isChatOpen,
     messageCount,
+    scheduleScrollToBottom,
+  ]);
+
+  useLayoutEffect(() => {
+    if (!isChatOpen || isThreadLoading) {
+      return;
+    }
+
+    if (pendingInitialScrollRef.current) {
+      scrollToBottom();
+    }
+  }, [
+    activeRoomId,
+    isChatOpen,
+    isThreadLoading,
+    messageCount,
     scrollToBottom,
   ]);
 
   useEffect(() => {
-    if (isChatOpen && !isThreadLoading && activeRoom?.threadHydrated) {
-      stickToBottomRef.current = true;
-      requestAnimationFrame(() => {
-        scrollToBottom();
-      });
+    if (!isChatOpen || isThreadLoading) {
+      return;
     }
-  }, [activeRoom?.threadHydrated, activeRoomId, isChatOpen, isThreadLoading, scrollToBottom]);
+
+    if (pendingInitialScrollRef.current) {
+      scheduleScrollToBottom();
+    }
+  }, [
+    activeRoomId,
+    isChatOpen,
+    isThreadLoading,
+    messageCount,
+    scheduleScrollToBottom,
+  ]);
 
   useEffect(() => {
     const root = scrollRef.current;
@@ -189,6 +237,10 @@ export function useChatThreadPagination({
 
     const observer = new IntersectionObserver(
       (entries) => {
+        if (pendingInitialScrollRef.current) {
+          return;
+        }
+
         if (entries.some((entry) => entry.isIntersecting)) {
           requestOlderMessages();
         }
@@ -222,5 +274,6 @@ export function useChatThreadPagination({
     handleScroll,
     showAllHistoryLoaded,
     topSentinelRef,
+    bottomAnchorRef,
   };
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type MouseEvent } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   type MarketplaceListing,
 } from "@/app/components/marketplace/MarketplaceCard";
@@ -13,12 +13,12 @@ import {
 } from "@/app/components/market/WishlistButton";
 import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
+import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import {
   HOME_GRID_CARD_CLASS,
   HOME_GRID_CARD_SIZES,
   HOME_HORIZONTAL_CARD_IMAGE_CLASS,
 } from "@/app/components/home/home-section-ui";
-import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 
 function resolveProductDetailHref(listing: MarketplaceListing): string {
   const explicitHref = listing.detailHref?.trim();
@@ -131,6 +131,7 @@ export function HomeShelfListingCard({
   layout = "shelf",
   onLinkClick,
 }: HomeShelfListingCardProps) {
+  const router = useRouter();
   const isOwnListing =
     currentUserId != null &&
     listing.sellerId != null &&
@@ -141,17 +142,28 @@ export function HomeShelfListingCard({
     ? `${listing.set.toUpperCase()} · ${displayCardNo}`
     : displayCardNo;
   const displayName = resolveListingDisplayName(listing);
-  const bodyPaddingClass = layout === "grid" ? "p-2 space-y-1" : "p-3 space-y-1";
-  const actionPaddingClass =
-    layout === "grid" ? "px-2 pb-2 pt-0.5" : "px-3 pb-3 pt-0.5";
-  const titleClass =
-    layout === "grid"
-      ? "font-sans font-bold text-[12px] text-text-primary truncate leading-tight mb-0.5 group-hover:text-brand transition-colors"
-      : "font-sans font-bold text-[13px] text-text-primary truncate leading-tight mb-0.5 group-hover:text-brand transition-colors";
-  const priceClass =
-    layout === "grid"
-      ? "font-mono font-bold text-[13px] text-brand leading-none tabular-nums shrink-0"
-      : "font-mono font-bold text-[14px] text-brand leading-none tabular-nums shrink-0";
+  const isGridLayout = layout === "grid";
+  const bodyPaddingClass = isGridLayout
+    ? "px-1.5 pt-1.5 pb-1 space-y-0.5"
+    : "p-3 space-y-1";
+  const actionPaddingClass = isGridLayout
+    ? "px-1.5 pb-1.5 pt-0.5"
+    : "px-3 pb-3 pt-0.5";
+  const titleClass = isGridLayout
+    ? "font-sans font-semibold text-[12px] text-[#eae1da] truncate leading-tight group-hover:text-brand transition-colors"
+    : "font-sans font-bold text-[13px] text-text-primary truncate leading-tight mb-0.5 group-hover:text-brand transition-colors";
+  const metaClass = isGridLayout
+    ? "font-mono text-[9px] text-[#8A8680] truncate leading-tight"
+    : "font-mono text-[10px] text-text-disabled truncate leading-tight";
+  const priceClass = isGridLayout
+    ? "font-mono font-bold text-[12px] text-brand leading-none tabular-nums shrink-0"
+    : "font-mono font-bold text-[14px] text-brand leading-none tabular-nums shrink-0";
+  const imageAreaClass = isGridLayout
+    ? "relative w-full aspect-[3/4] overflow-hidden bg-[#17130f]"
+    : HOME_HORIZONTAL_CARD_IMAGE_CLASS;
+  const buyButtonClass = isGridLayout
+    ? "w-full h-7 px-1 text-[10px]"
+    : "w-full py-1 h-8 text-[12px]";
   const wishlistProductId = listing.productId ?? listing.id;
   const wishlistIsFavored = isWishlistFavored(
     favoredKeys,
@@ -159,118 +171,158 @@ export function HomeShelfListingCard({
     listing.gradingCompany,
     listing.gradingScore,
   );
-  const gradeLabel = formatTradeGradeLabel(
-    listing.grade.authority,
-    listing.grade.score || null,
-  );
+
+  const handleCardActivate = (event: MouseEvent<HTMLElement>) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-shelf-card-action]")) {
+      return;
+    }
+
+    if (onLinkClick) {
+      onLinkClick(event as unknown as MouseEvent<HTMLAnchorElement>);
+      if (event.defaultPrevented) {
+        return;
+      }
+    }
+
+    router.push(productDetailHref);
+  };
 
   return (
     <div
-      className={`h-full ${isOwnListing ? "rounded-xl ring-2 ring-brand/50 ring-offset-2 ring-offset-[#17130f]" : ""}`}
+      className="h-full"
     >
       <article
-        className={`${HOME_GRID_CARD_CLASS} ${className ?? ""}`}
+        role="link"
+        tabIndex={0}
+        onClick={handleCardActivate}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
+          event.preventDefault();
+          handleCardActivate(event as unknown as MouseEvent<HTMLElement>);
+        }}
+        className={`relative cursor-pointer ${HOME_GRID_CARD_CLASS} ${className ?? ""}`}
       >
-        <div className="flex flex-col flex-1 min-h-0">
-          <Link
-            href={productDetailHref}
-            prefetch
-            onClick={onLinkClick}
-            className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset"
-            aria-label={`查看 ${displayName} 商品詳情`}
-          >
-            <div className={`${HOME_HORIZONTAL_CARD_IMAGE_CLASS} group`}>
-              <ShelfCardImage
-                imageUrl={listing.image}
-                catalogImageUrl={catalogImageUrl ?? listing.catalogImageUrl}
-                alt={
-                  hasDisplayableRarity(listing.rarity)
-                    ? `${displayName} — ${listing.rarity}`
-                    : displayName
-                }
-                priority={imagePriority}
-              />
-              <span className="absolute top-2 left-2 pointer-events-none">
-                <p className="self-start font-mono text-[10px] font-bold text-text-primary bg-[rgba(23,19,15,0.85)] backdrop-blur-md px-2 py-0.5 rounded-[4px] leading-none border border-white/10">
-                  {gradeLabel}
-                </p>
+        <div className="relative flex flex-col flex-1 min-h-0">
+          <div className={`${imageAreaClass} group`}>
+            <ShelfCardImage
+              imageUrl={listing.image}
+              catalogImageUrl={catalogImageUrl ?? listing.catalogImageUrl}
+              alt={
+                hasDisplayableRarity(listing.rarity)
+                  ? `${displayName} — ${listing.rarity}`
+                  : displayName
+              }
+              priority={imagePriority}
+            />
+            {isGridLayout && hasDisplayableRarity(listing.rarity) ? (
+              <div className="absolute top-1.5 left-1.5 pointer-events-none z-10">
+                <RarityBadge rarity={listing.rarity} />
+              </div>
+            ) : !isGridLayout ? (
+              <div className="absolute top-2 left-2 pointer-events-none z-10">
+                <GradeBadge
+                  authority={listing.grade.authority}
+                  score={listing.grade.score}
+                  size="sm"
+                />
+              </div>
+            ) : null}
+            {showWishlist ? (
+              <div
+                className="absolute top-1 right-1 z-20"
+                data-shelf-card-action="true"
+              >
+                <WishlistButton
+                  productId={wishlistProductId}
+                  gradingCompany={listing.gradingCompany}
+                  gradingScore={listing.gradingScore}
+                  trackedPrice={listing.price > 0 ? listing.price : null}
+                  initialIsFavored={wishlistIsFavored}
+                  currentUserId={currentUserId}
+                  size="sm"
+                />
+              </div>
+            ) : null}
+            {listedLabel ? (
+              <span className="absolute bottom-0 right-0 left-0 text-center font-mono text-[10px] text-text-disabled bg-[rgba(23,19,15,0.75)] backdrop-blur-md py-1 pointer-events-none">
+                {listedLabel}
               </span>
-              {showWishlist ? (
-                <div
-                  className="absolute top-2 right-2 z-20"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <WishlistButton
-                    productId={wishlistProductId}
-                    gradingCompany={listing.gradingCompany}
-                    gradingScore={listing.gradingScore}
-                    trackedPrice={listing.price > 0 ? listing.price : null}
-                    initialIsFavored={wishlistIsFavored}
-                    currentUserId={currentUserId}
-                  />
-                </div>
-              ) : null}
-              {listedLabel ? (
-                <span className="absolute bottom-0 right-0 left-0 text-center font-mono text-[10px] text-text-disabled bg-[rgba(23,19,15,0.75)] backdrop-blur-md py-1 pointer-events-none">
-                  {listedLabel}
+            ) : null}
+          </div>
+
+          <div className={bodyPaddingClass}>
+            <h3 className={titleClass}>{displayName}</h3>
+            <p className={metaClass}>{displaySetLine}</p>
+            <div className="flex items-center justify-between gap-1 min-w-0 pt-0.5">
+              <p className={priceClass}>
+                HK$ {listing.price.toLocaleString("en-HK")}
+              </p>
+              {showSeller && !isGridLayout ? (
+                <span className="font-sans text-[10px] text-text-secondary truncate max-w-[4.5rem] text-right">
+                  {listing.seller}
+                  {isOwnListing ? (
+                    <span className="text-brand font-bold"> (你)</span>
+                  ) : null}
                 </span>
               ) : null}
             </div>
-
-            <div className={bodyPaddingClass}>
-              <div className="space-y-0.5">
-                <h3 className={titleClass}>{displayName}</h3>
-                <p className="font-mono text-[10px] text-text-disabled truncate leading-tight">
-                  {displaySetLine}
-                </p>
-                {hasDisplayableRarity(listing.rarity) ? (
-                  <div className="pt-0.5">
-                    <RarityBadge
-                      rarity={listing.rarity}
-                      className={
-                        layout === "grid"
-                          ? "text-[9px] px-1.5 py-0"
-                          : undefined
-                      }
-                    />
-                  </div>
-                ) : null}
+            {isGridLayout ? (
+              <div className="min-h-[16px]">
+                <GradeBadge
+                  authority={listing.grade.authority}
+                  score={listing.grade.score}
+                  size="sm"
+                />
               </div>
-
-              <div className="flex items-center justify-between gap-1 min-w-0">
-                <p className={priceClass}>
-                  HK$ {listing.price.toLocaleString("en-HK")}
-                </p>
-                {showSeller ? (
-                  <span className="font-sans text-[10px] text-text-secondary truncate max-w-[4.5rem] text-right">
-                    {listing.seller}
-                    {isOwnListing ? (
-                      <span className="text-brand font-bold"> (你)</span>
-                    ) : null}
-                  </span>
-                ) : null}
+            ) : null}
+            {!isGridLayout && hasDisplayableRarity(listing.rarity) ? (
+              <div className="pt-0.5">
+                <RarityBadge rarity={listing.rarity} />
               </div>
-              {showMerchantBadge && listing.sellerPersona === "merchant" ? (
-                <div className="pt-0.5">
-                  <CertifiedMerchantBadge className="scale-[0.92] origin-left" />
-                </div>
-              ) : null}
-            </div>
-          </Link>
+            ) : null}
+            {showSeller && isGridLayout ? (
+              <div className="flex items-center gap-1 min-h-[18px] min-w-0">
+                {showMerchantBadge && listing.sellerPersona === "merchant" ? (
+                  <CertifiedMerchantBadge className="shrink-0 scale-[0.92] origin-left" />
+                ) : null}
+                <p className="truncate font-sans text-[10px] text-[#8A8680] min-w-0 flex-1 leading-tight">
+                  {listing.seller}
+                  {isOwnListing ? (
+                    <span className="text-brand font-bold"> (你)</span>
+                  ) : null}
+                </p>
+              </div>
+            ) : null}
+            {!isGridLayout && showMerchantBadge && listing.sellerPersona === "merchant" ? (
+              <div className="pt-0.5">
+                <CertifiedMerchantBadge className="scale-[0.92] origin-left" />
+              </div>
+            ) : null}
+          </div>
 
-          <div className={`${actionPaddingClass} w-full mt-auto shrink-0`}>
+          <div
+            className={`${actionPaddingClass} w-full mt-auto shrink-0`}
+            data-shelf-card-action={isOwnListing ? undefined : "true"}
+          >
             {isOwnListing ? (
               <button
                 type="button"
                 disabled
-                className="w-full h-8 px-2 bg-[#1A1612] border border-brand/30 text-brand/70 font-sans font-bold text-[10px] tracking-wide whitespace-nowrap truncate rounded-lg cursor-not-allowed flex items-center justify-center gap-1"
+                className={`${buyButtonClass} bg-[#1A1612] text-brand/70 font-sans font-bold tracking-wide whitespace-nowrap truncate rounded-lg cursor-not-allowed flex items-center justify-center gap-0.5`}
               >
                 我的掛單 · 無法出價
               </button>
             ) : (
               <BuyButton
                 listing={listing}
-                className="w-full py-1 h-8 text-[12px]"
+                className={buyButtonClass}
                 currentUserId={currentUserId}
               />
             )}

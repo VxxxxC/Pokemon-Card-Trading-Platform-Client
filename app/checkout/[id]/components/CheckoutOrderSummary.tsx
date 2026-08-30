@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { CheckoutSession } from "@/lib/checkout/types";
 
 type CheckoutOrderSummaryProps = {
@@ -34,114 +33,71 @@ export function CheckoutOrderSummary({
   extraShippingNote,
   children,
 }: CheckoutOrderSummaryProps) {
-  const { product, counterparty } = session;
-  const rarity = product.displayId ?? product.cardNumber ?? "—";
-
   return (
-    <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-5 space-y-4 shadow-lg">
-      <h3 className="font-sans font-bold text-[14.5px] text-[#eae1da] border-b border-white/5 pb-2">
-        🧾 訂單財務明細總結
+    <div className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-4">
+      <h3 className="font-sans text-[13px] font-semibold text-text-primary border-b border-white/[0.06] pb-2">
+        帳單明細
       </h3>
 
-      <div className="flex gap-4 items-center bg-[#17130f] p-3 rounded-xl border border-white/5">
-        <div className="relative w-14 h-20 rounded-lg overflow-hidden shrink-0 border border-white/10">
-          <Image
-            src={product.imageUrl}
-            alt={product.cardName}
-            fill
-            className="object-cover"
-            unoptimized
-          />
-        </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <span className="inline-flex font-mono text-[9px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded">
-            {product.gradeLabel}
-          </span>
-          <h3 className="font-sans font-bold text-[13px] text-[#eae1da] truncate">
-            {product.cardName}
-          </h3>
-          <p className="font-mono text-[10px] text-text-disabled">
-            {product.setCode} · {rarity}
-          </p>
-          <p className="font-sans text-[11px] text-text-secondary truncate">
-            賣方: {counterparty.name}
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-2 font-sans text-[13px] text-[#d4c4b7]">
-        <div className="flex justify-between">
+      <div className="space-y-2 font-mono text-[12px] text-text-secondary">
+        <div className="flex justify-between gap-3">
           <span>卡牌商品總額</span>
-          <span className="font-mono text-[#eae1da]">
+          <span className="text-text-primary">
             HK$ {session.pricing.itemSubtotal.toLocaleString()}
           </span>
         </div>
         {showShippingRow ? (
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-3">
             <span>{shippingLabel}</span>
-            <span className="font-mono text-[#eae1da]">HK$ {shippingFee}</span>
+            <span className="text-text-primary">HK$ {shippingFee}</span>
           </div>
         ) : null}
         {showAuthEscrowShippingRows ? (
           <>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <span>運費（賣家寄送平台）</span>
-              <span className="font-mono text-[#eae1da]">
+              <span className="text-text-primary">
                 HK$ {inboundShippingFee}
               </span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-3">
               <span>運費（平台寄送買家）</span>
-              <span className="font-mono text-[#eae1da]">
+              <span className="text-text-primary">
                 HK$ {outboundShippingFee}
               </span>
             </div>
           </>
         ) : null}
         {extraShippingNote ? (
-          <p className="font-mono text-[10.5px] text-text-disabled">
+          <p className="font-sans text-[10.5px] text-text-disabled">
             {extraShippingNote}
           </p>
         ) : null}
         {showAuthFeeRow ? (
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-3 text-brand">
             <span>官方第三方鑑定費</span>
-            <span
-              className={
-                authFee > 0
-                  ? "font-mono text-brand font-semibold"
-                  : "font-mono text-[#eae1da]"
-              }
-            >
-              HK$ {authFee}
-            </span>
+            <span className="font-semibold">HK$ {authFee}</span>
           </div>
         ) : null}
         {platformSubsidyAmount > 0 ? (
-          <div className="flex justify-between text-brand">
+          <div className="flex justify-between gap-3 text-[#ef4444]">
             <span>平台優惠</span>
-            <span className="font-mono font-semibold">
+            <span className="font-semibold">
               - HK$ {platformSubsidyAmount.toLocaleString()}
             </span>
           </div>
         ) : null}
-        <div className="border-t border-white/5 pt-3 flex justify-between items-baseline">
-          <span className="font-bold text-[#eae1da]">託管安全支付總額</span>
-          <span className="font-mono font-black text-[22px] text-brand">
+        <div className="flex justify-between items-center gap-3 border-t border-white/[0.06] pt-3 font-sans text-[14px]">
+          <span className="font-semibold text-text-primary">付款總額</span>
+          <span className="font-mono text-[20px] font-bold text-brand">
             HK$ {totalAmount.toLocaleString()}
           </span>
         </div>
       </div>
 
-      <div className="bg-[#17130f] rounded-xl p-3 border border-white/5 space-y-1">
-        <p className="font-sans font-bold text-[11px] text-brand">
-          🔒 Platform Escrow 託管安全防護中
-        </p>
-        <p className="font-sans text-[10.5px] text-text-disabled leading-relaxed">
-          本筆資金將由 Stripe
-          託管鎖定。在您確認收貨、複驗品相前，賣家無法提現。
-        </p>
-      </div>
+      <p className="font-sans text-[10.5px] text-text-disabled leading-relaxed rounded-lg border border-white/[0.06] bg-[#17130f] px-3 py-2.5">
+        款項由 Stripe 託管鎖定；確認收貨前賣方無法提現。
+      </p>
 
       {children}
     </div>

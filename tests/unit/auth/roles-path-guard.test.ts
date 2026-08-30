@@ -24,4 +24,21 @@ describe("isPathAllowedForRole", () => {
       false,
     );
   });
+
+  it("restricts admin to admin console, auth, and api routes", () => {
+    expect(isPathAllowedForRole("ADMIN", "/admin/dashboard")).toBe(true);
+    expect(isPathAllowedForRole("ADMIN", "/auth")).toBe(true);
+    expect(isPathAllowedForRole("ADMIN", "/api/admin/upload-announcement-image")).toBe(
+      true,
+    );
+    expect(isPathAllowedForRole("ADMIN", "/")).toBe(false);
+    expect(isPathAllowedForRole("ADMIN", "/profile/user")).toBe(false);
+    expect(isPathAllowedForRole("ADMIN", "/profile/merchant")).toBe(false);
+    expect(isPathAllowedForRole("ADMIN", "/marketplace")).toBe(false);
+  });
+
+  it("blocks non-admin users from admin routes", () => {
+    expect(isPathAllowedForRole("USER", "/admin/dashboard")).toBe(false);
+    expect(isPathAllowedForRole("MERCHANT", "/admin/dashboard")).toBe(false);
+  });
 });

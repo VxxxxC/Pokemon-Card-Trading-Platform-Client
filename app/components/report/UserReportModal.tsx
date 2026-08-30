@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,15 +112,15 @@ export function UserReportModal({
 
   const titleText =
     targetType === "chat_message"
-      ? "🚩 提交交易違規舉報"
+      ? "提交交易違規舉報"
       : targetType === "merchant"
-        ? "🚩 舉報該商戶用戶"
-        : "🚩 舉報該用戶";
+        ? "舉報該商戶用戶"
+        : "舉報該用戶";
 
   const descriptionText =
     targetType === "chat_message"
-      ? "Secure Risk Mediation Protocol"
-      : "Merchant Compliance Audit Protocol";
+      ? "填寫舉報表單並提交"
+      : "填寫商戶舉報表單並提交";
 
   const clearEvidenceFiles = useCallback(() => {
     setPendingEvidenceFiles((current) => {
@@ -301,17 +303,28 @@ export function UserReportModal({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="bg-[#26211C] text-[#eae1da] border border-white/10 ring-0 shadow-[0_12px_40px_rgba(239,68,68,0.15)] rounded-2xl max-w-sm p-6 animate-scaleUp">
-        <AlertDialogHeader className="text-left place-items-start gap-1">
-          <AlertDialogTitle className="text-[16px] font-black text-[#eae1da] flex items-center gap-2">
+      <AlertDialogContent
+        className="max-w-sm gap-0 rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-5 text-[#eae1da] ring-0 shadow-[0_16px_48px_rgba(0,0,0,0.45)] animate-scaleUp max-h-[min(90dvh,calc(100dvh-2rem))] overflow-y-auto sm:p-6"
+      >
+        <AlertDialogCancel
+          variant="ghost"
+          size="icon"
+          aria-label="關閉"
+          className="absolute right-3 top-3 z-10 size-8 shrink-0 rounded-lg border border-white/10 bg-[#17130f] text-[#8A8680] hover:bg-[#1A1612] hover:text-[#eae1da]"
+        >
+          <X className="size-4" aria-hidden />
+        </AlertDialogCancel>
+
+        <AlertDialogHeader className="text-left place-items-start gap-1 pb-3 pr-8">
+          <AlertDialogTitle className="text-[15px] font-black text-[#eae1da]">
             {titleText}
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-[11px] font-mono leading-normal text-[#8A8680] uppercase tracking-wider">
+          <AlertDialogDescription className="sr-only">
             {descriptionText}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-4 py-3 font-sans text-[13px] w-full">
+        <div className="space-y-3.5 py-1 font-sans text-[13px] w-full">
           <div className="space-y-1.5">
             <label className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide">
               選擇舉報事項類別
@@ -338,11 +351,19 @@ export function UserReportModal({
               </SelectContent>
             </Select>
             {categoryUserHint ? (
-              <p>{categoryUserHint}</p>
+              <p className="text-[11px] leading-relaxed text-[#8A8680]">
+                {categoryUserHint}
+              </p>
             ) : null}
-            {uploadRecommended ? <p>建議上傳截圖作為證據。</p> : null}
+            {uploadRecommended ? (
+              <p className="text-[11px] leading-relaxed text-[#8A8680]">
+                建議上傳截圖作為證據。
+              </p>
+            ) : null}
             {requiresChatEvidence ? (
-              <p>此類別需在對話視窗內舉報，請返回聊天後再提交。</p>
+              <p className="text-[11px] leading-relaxed text-warning">
+                此類別需在對話視窗內舉報，請返回聊天後再提交。
+              </p>
             ) : null}
           </div>
 
@@ -351,13 +372,13 @@ export function UserReportModal({
               htmlFor="user-report-details"
               className="block font-mono text-[11px] text-[#d4c4b7] uppercase tracking-wide"
             >
-              舉報或投訴之詳細事實敍述
+              詳細說明
             </label>
             <textarea
               id="user-report-details"
               value={reportDetails}
               onChange={(event) => setReportDetails(event.target.value)}
-              placeholder={`請具體提供與 ${targetUserName} 相關的違規事實（例如：收到貨件與敘述嚴重不符、使用侮辱性詞彙、誘導私下交易等），以利風控官快速調閱存證。`}
+              placeholder={`請描述與 ${targetUserName} 相關的違規事實（例如：貨品不符、辱罵言論、誘導私下交易）`}
               rows={3}
               className="w-full bg-[#17130f] border border-white/5 rounded-xl text-[12.5px] font-sans text-[#eae1da] placeholder:text-[#50453b] p-3 focus:outline-none focus:border-brand/40 transition-colors resize-none leading-relaxed"
             />
@@ -382,25 +403,39 @@ export function UserReportModal({
                 isSubmitting ||
                 pendingEvidenceFiles.length >= REPORT_EVIDENCE_MAX_COUNT
               }
+              className={cn(
+                "inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[rgba(237,232,224,0.1)] bg-transparent px-3 text-[11px] font-medium text-[#8A8680] transition-colors",
+                "hover:border-[rgba(237,232,224,0.18)] hover:bg-[#17130f]/40 hover:text-[#d4c4b7] disabled:cursor-not-allowed disabled:opacity-50",
+              )}
             >
+              <ImagePlus className="size-3 shrink-0 opacity-70" aria-hidden />
               選擇證據圖片
             </button>
-            <p>
+            <p className="text-[10px] leading-relaxed text-[#8A8680]">
               單張不可超過 {Math.round(REPORT_EVIDENCE_MAX_BYTES / (1024 * 1024))}
               MB，支援 JPG / PNG / WEBP / HEIC。
             </p>
             {pendingEvidenceFiles.length > 0 ? (
-              <div>
+              <div className="grid grid-cols-3 gap-2">
                 {pendingEvidenceFiles.map((item) => (
-                  <div key={item.id}>
+                  <div
+                    key={item.id}
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-[rgba(237,232,224,0.08)] bg-[#17130f]"
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.previewUrl} alt="證據預覽" />
+                    <img
+                      src={item.previewUrl}
+                      alt="證據預覽"
+                      className="h-full w-full object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => handleRemoveEvidenceFile(item.id)}
                       disabled={isSubmitting}
+                      aria-label="移除證據圖片"
+                      className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md border border-white/10 bg-[#17130f]/90 text-[#eae1da] opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
                     >
-                      移除
+                      <X className="size-3" aria-hidden />
                     </button>
                   </div>
                 ))}
@@ -408,31 +443,21 @@ export function UserReportModal({
             ) : null}
           </div>
 
-          <p className="font-sans text-[11px] leading-normal text-[#8A8680]">
-            ⚠️
-            聲明：平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨賬戶風控扣分限制。
+          <p className="rounded-xl border border-warning/20 bg-warning/5 px-3 py-2.5 text-[11px] leading-relaxed text-[#c9b8a8]">
+            <span className="font-semibold text-warning">聲明：</span>
+            平台嚴格禁止惡意惡作劇或虛假舉報。一經查實虛報，將面臨賬戶風控扣分限制。
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 pt-1 w-full">
+        <div className="pt-4 w-full">
           <AlertDialogAction
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting || requiresChatEvidence}
-            className="w-full h-11 bg-[#ef4444] hover:bg-[#dc2626] text-white font-sans font-black text-[13px] rounded-xl cursor-pointer shadow-[0_4px_20px_rgba(239,68,68,0.18)] active:scale-[0.97] transition-all focus:outline-none"
+            className="h-11 w-full rounded-xl bg-brand font-sans text-[13px] font-semibold text-[#17130f] transition-colors hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting ? "提交中…" : "🚀 確認提交安全審查"}
+            {isSubmitting ? "提交中…" : "確認提交"}
           </AlertDialogAction>
-          <AlertDialogCancel
-            onClick={() => {
-              setReportCategory("");
-              setReportDetails("");
-              clearEvidenceFiles();
-            }}
-            className="w-full h-10 bg-[#120F0C] hover:bg-[#1A1612] border border-white/[0.03] text-[#736c65] hover:text-[#eae1da] font-sans font-bold text-[12px] rounded-xl cursor-pointer transition-colors focus:outline-none"
-          >
-            取消返回
-          </AlertDialogCancel>
         </div>
       </AlertDialogContent>
     </AlertDialog>

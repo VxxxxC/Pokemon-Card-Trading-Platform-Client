@@ -341,7 +341,7 @@ export async function clickHoldingsRowOverflowItem(
   menuLabel: string,
 ): Promise<void> {
   await row.scrollIntoViewIfNeeded();
-  await row.getByRole("button", { name: "⋯" }).click();
+  await row.getByRole("button", { name: /更多操作/ }).click();
   const menuItem = page.getByRole("menuitem", { name: menuLabel });
   await expect(menuItem).toBeVisible({ timeout: 10_000 });
   await menuItem.click();
@@ -363,8 +363,13 @@ export async function selectHoldingsRowGrade(
       : undefined,
   );
   const trigger = row.getByLabel(`更改 ${productName} 鑑定規格`);
-  await trigger.scrollIntoViewIfNeeded();
-  await trigger.click();
+  if (await trigger.isVisible().catch(() => false)) {
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+  } else {
+    await row.getByRole("button", { name: /更多操作/ }).click();
+    await page.getByRole("menuitem", { name: "更改鑑定規格" }).click();
+  }
 
   const menuItem = page.getByRole("menuitem", {
     name: gradeOptionLabel,
@@ -382,10 +387,7 @@ export async function selectHoldingsRowGrade(
           productName,
           purchasePrice,
         );
-        const text = await refreshed
-          .getByLabel(`更改 ${productName} 鑑定規格`)
-          .textContent()
-          .catch(() => null);
+        const text = await refreshed.textContent();
         return text?.includes(gradeOptionLabel) ?? false;
       },
       { timeout: 30_000 },
@@ -408,7 +410,7 @@ export async function openHoldingsRowMenu(
   productName: string,
 ): Promise<void> {
   const row = holdingsRow(page, productName);
-  await row.getByRole("button").filter({ hasText: "⋯" }).click();
+  await row.getByRole("button", { name: /更多操作/ }).click();
 }
 
 export async function hobbyGradingSelectTrigger(

@@ -2,12 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
+import {
+  InventoryStatusTabs,
+  inventoryEmptyMessageForStatus,
+} from "@/app/components/inventory/InventoryStatusTabs";
 import { InventoryAccordion } from "@/app/components/merchant/InventoryAccordion";
 import { Pagination } from "@/app/components/ui/Pagination";
 import {
   useInventory,
   type InventoryInitialData,
 } from "@/app/lib/hooks/useInventory";
+import {
+  DEFAULT_INVENTORY_STATUS_FILTER,
+  type InventoryStatusFilter,
+} from "@/app/lib/inventory/types";
 import { INVENTORY_DEFAULT_PAGE_SIZE } from "@/lib/listings/constants";
 
 type UserInventoryClientProps = {
@@ -20,6 +28,8 @@ export function UserInventoryClient({
   bootstrapError,
 }: UserInventoryClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<InventoryStatusFilter>(DEFAULT_INVENTORY_STATUS_FILTER);
 
   const {
     groups: skuGroups,
@@ -38,6 +48,7 @@ export function UserInventoryClient({
     pageSize: INVENTORY_DEFAULT_PAGE_SIZE,
     initialData,
     sellerPersona: "member",
+    statusFilter,
   });
 
   useEffect(() => {
@@ -51,9 +62,11 @@ export function UserInventoryClient({
     };
   }, [refetch]);
 
-  const totalItems = summary?.totalListings ?? 0;
-  const activeCount = summary?.activeCount ?? 0;
-  const soldCount = summary?.soldCount ?? 0;
+  const statusCounts: Record<InventoryStatusFilter, number> = {
+    active: summary?.activeCount ?? 0,
+    inactive: summary?.inactiveCount ?? 0,
+    sold: summary?.soldCount ?? 0,
+  };
 
   return (
     <div
@@ -68,38 +81,18 @@ export function UserInventoryClient({
       ) : null}
 
       <section
-        aria-labelledby="listings-heading"
+        id="listings-heading"
+        aria-label="掛單列表"
         className="rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
       >
-        <div
-          className="flex divide-x divide-[rgba(237,232,224,0.06)] border-b border-[rgba(237,232,224,0.06)]"
-          aria-label="庫存摘要"
-        >
-          {[
-            { label: "現貨", value: totalItems, suffix: "件" },
-            { label: "上架中", value: activeCount, suffix: "件" },
-            { label: "已售出", value: soldCount, suffix: "件" },
-          ].map(({ label, value, suffix }) => (
-            <div
-              key={label}
-              className="flex-1 min-w-0 px-2 py-2.5 sm:px-3 sm:py-3 text-center"
-            >
-              <p className="font-mono text-[9px] sm:text-[10px] text-text-secondary truncate">
-                {label}
-              </p>
-              <p className="font-mono font-semibold text-[13px] sm:text-[15px] text-text-primary mt-0.5 tabular-nums">
-                {isSummaryLoading ? "—" : value}
-                {!isSummaryLoading ? (
-                  <span className="text-[10px] text-text-disabled font-normal ml-0.5">
-                    {suffix}
-                  </span>
-                ) : null}
-              </p>
-            </div>
-          ))}
-        </div>
+        <InventoryStatusTabs
+          activeTab={statusFilter}
+          counts={statusCounts}
+          isLoading={isSummaryLoading}
+          onChange={setStatusFilter}
+        />
 
-        <div className="px-3 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
+        <div className="px-3 py-2.5 sm:px-4">
           <div className="relative">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-disabled pointer-events-none"
@@ -126,43 +119,14 @@ export function UserInventoryClient({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
-          <h2
-            id="listings-heading"
-            className="font-sans font-semibold text-[15px] text-text-primary min-w-0 truncate"
-          >
-            所有商品
-          </h2>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span
-              className="font-mono text-[10px] px-2 py-0.5 rounded text-success bg-[rgba(16,185,129,0.12)]"
-              aria-label={`共 ${totalGroups} 款卡牌`}
-            >
-              <data value={totalGroups} className="not-italic" aria-hidden="true">
-                {totalGroups}
-              </data>
-              <span aria-hidden="true"> 款</span>
-            </span>
-            <span
-              className="font-mono text-[10px] px-2 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20"
-              aria-label={`${totalItems} 張現貨`}
-            >
-              <data value={totalItems} className="not-italic" aria-hidden="true">
-                {totalItems}
-              </data>
-              <span aria-hidden="true"> 張現貨</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="px-3 py-1 sm:px-4">
+        <div className="px-3 py-1 sm:px-4 border-t border-[rgba(237,232,224,0.06)]">
           {isLoading && skuGroups.length === 0 ? (
             <p className="font-mono text-[13px] text-text-secondary py-12 text-center">
               載入中…
             </p>
           ) : skuGroups.length === 0 ? (
             <p className="font-mono text-[13px] text-text-secondary py-12 text-center">
-              暫無上架商品
+              {inventoryEmptyMessageForStatus(statusFilter)}
             </p>
           ) : (
             <InventoryAccordion skuGroups={skuGroups} analytics={false} />

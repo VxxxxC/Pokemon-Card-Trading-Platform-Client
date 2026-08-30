@@ -20,7 +20,12 @@ export function PortfolioStatsSkeleton({
         }
       >
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex-1 min-w-0 px-2 py-2.5 sm:px-4 sm:py-3 space-y-1.5">
+          <div
+            key={i}
+            className={`min-w-0 py-2.5 sm:py-3 space-y-1.5 ${
+              i === 2 ? "flex-[1.55] px-2 sm:px-3" : "flex-[0.85] px-2.5 sm:px-4"
+            }`}
+          >
             <Skeleton className="h-2.5 bg-[#17130f] w-2/3 rounded" />
             <Skeleton className="h-4 sm:h-5 bg-[#17130f] w-full rounded-md" />
             <Skeleton className="hidden sm:block h-2.5 bg-[#17130f] w-1/2 rounded" />

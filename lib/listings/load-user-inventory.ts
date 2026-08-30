@@ -1,5 +1,6 @@
 import type {
   InventoryGroupsPage,
+  InventoryStatusFilter,
   InventorySummary,
 } from "@/app/lib/inventory/types";
 import {
@@ -25,6 +26,7 @@ export type UserInventoryViewInput = {
   pageSize: number;
   query: string;
   sellerPersona?: "member" | "merchant";
+  statusFilter?: InventoryStatusFilter;
 };
 
 export type UserInventoryView = {
@@ -35,7 +37,7 @@ export type UserInventoryView = {
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const CATALOG_LIST_COLUMNS =
-  "id, name_zh, name_en, name_ja, card_number, display_id, set_code, image_url";
+  "id, name_zh, name_en, name_ja, card_number, display_id, set_code, image_url, rarity";
 
 const EMPTY_SUMMARY: InventorySummary = {
   totalListings: 0,
@@ -201,7 +203,10 @@ export async function loadUserInventoryView(
   return {
     summary: summarizeInventoryListings(listings),
     page: buildInventoryGroupsPage(
-      filterInventoryListingsForDisplay(listings),
+      filterInventoryListingsForDisplay(
+        listings,
+        input.statusFilter ?? "active",
+      ),
       catalogById,
       statsByListingId,
       input,

@@ -16,6 +16,13 @@ import {
   readCachedOfferCardContext,
   writeCachedOfferCardContext,
 } from "@/app/lib/chat/offerCardContextCache";
+import { GradeBadge } from "@/app/components/cards/GradeBadge";
+import {
+  SYSTEM_OFFER_ACCEPTED_TEXT,
+  SYSTEM_OFFER_CANCELLED_TEXT,
+  SYSTEM_OFFER_REJECTED_TEXT,
+  SYSTEM_ORDER_CANCELLED_TEXT,
+} from "@/app/lib/chat/offerSystemMessageCopy";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import {
   AlertDialog,
@@ -33,13 +40,13 @@ import {
   Card,
   CardContent,
   CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import {
   isCatalogImageUrl,
   isValidOfferCardImageUrl,
+  needsOfferCardListingImageFetch,
+  resolveOfferCardHeroImageUrl,
 } from "@/app/lib/chat/offerCardImage";
 import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
 import type { Tables } from "@/types/supabase";
@@ -113,6 +120,23 @@ function needsAcceptedOrderContext(
   return !context.orderId;
 }
 
+function shouldShowOfferCardGrade(
+  authority: string | undefined,
+  score: string | null | undefined,
+): boolean {
+  const trimmedAuthority = authority?.trim() ?? "";
+  if (!trimmedAuthority) {
+    return false;
+  }
+
+  const normalized = trimmedAuthority.toUpperCase();
+  if (normalized === "RAW" || normalized === "RAW CARD") {
+    return Boolean(score?.trim());
+  }
+
+  return true;
+}
+
 function OfferCardThumbnail({
   imageUrl,
   cardName,
@@ -122,8 +146,8 @@ function OfferCardThumbnail({
 }) {
   if (!isValidOfferCardImageUrl(imageUrl)) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-[#17130f] px-1 text-center font-mono text-[9px] leading-tight text-text-disabled">
-        卡牌圖
+      <div className="absolute inset-0 flex items-center justify-center bg-[#17130f] px-2 text-center font-mono text-[10px] leading-tight text-text-disabled">
+        暫無圖片
       </div>
     );
   }
@@ -137,7 +161,7 @@ function OfferCardThumbnail({
         alt={cardName}
         fill
         className="object-cover"
-        sizes="64px"
+        sizes="min(95vw, 360px)"
       />
     );
   }
@@ -152,6 +176,23 @@ function OfferCardThumbnail({
   );
 }
 
+function OfferCardHeroImage({
+  imageUrl,
+  cardName,
+}: {
+  imageUrl?: string;
+  cardName: string;
+}) {
+  return (
+    <div className="relative mx-auto w-[42.1875%] aspect-5/7 overflow-hidden bg-[#17130f]">
+      <OfferCardThumbnail
+        imageUrl={imageUrl}
+        cardName={cardName}
+      />
+    </div>
+  );
+}
+
 export function OfferCardComponent({
   message,
   currentUserId,
@@ -160,6 +201,10 @@ export function OfferCardComponent({
 }: OfferCardProps) {
   const router = useRouter();
   const activeRoomId = useHkCardVaultStore((state) => state.activeRoomId);
+  const roomMessages = useHkCardVaultStore((state) => {
+    const room = state.chats.find((entry) => entry.id === (roomId ?? activeRoomId));
+    return room?.messages ?? [];
+  });
   const setIsChatOpen = useHkCardVaultStore((state) => state.setIsChatOpen);
   const applyOfferModification = useHkCardVaultStore(
     (state) => state.applyOfferModification,
@@ -224,7 +269,11 @@ export function OfferCardComponent({
       }
 
       const cached = readCachedOfferCardContext(offerId);
-      if (cached && !needsAcceptedOrderContext(cached)) {
+      if (
+        cached &&
+        !needsAcceptedOrderContext(cached) &&
+        !needsOfferCardListingImageFetch(cached)
+      ) {
         applyFetchedContext(cached);
         setContextError(null);
         setIsLoadingContext(false);
@@ -266,13 +315,14 @@ export function OfferCardComponent({
     const hydrated = isRenderableOfferContext(initialContext);
     const terminal = isTerminalOfferStatus(initialContext?.offer.status);
     const needsOrderContext = needsAcceptedOrderContext(initialContext);
+    const needsListingImage = needsOfferCardListingImageFetch(initialContext);
 
-    if (hydrated && terminal && !needsOrderContext) {
+    if (hydrated && terminal && !needsOrderContext && !needsListingImage) {
       setIsLoadingContext(false);
       return;
     }
 
-    if (hydrated && !needsOrderContext) {
+    if (hydrated && !needsOrderContext && !needsListingImage) {
       setIsLoadingContext(false);
       return;
     }
@@ -291,38 +341,39 @@ export function OfferCardComponent({
   const isPending = offerStatus === "pending";
   const isAccepted = offerStatus === "accepted";
   const isRejected = offerStatus === "rejected";
+  const isCancelled = offerStatus === "cancelled";
   const useAuthentication = context?.offer.use_authentication ?? false;
 
   const statusBadge = useMemo(() => {
     if (isAccepted) {
       return {
         label: "● 已接受",
-        cls: "text-success bg-success/10 border border-success/20",
+        cls: "text-brand",
       };
     }
     if (isRejected) {
       return {
         label: "● 已拒絕",
-        cls: "text-error bg-error/10 border border-error/20",
+        cls: "text-error",
+      };
+    }
+    if (isCancelled) {
+      return {
+        label: "● 已取消",
+        cls: "text-text-disabled",
       };
     }
     if (modifiedCount >= 1) {
       return {
         label: "● 出價已修改",
-        cls: "text-orange-400 bg-orange-500/20 font-black border border-orange-500/30",
+        cls: "text-orange-400 font-black",
       };
     }
     return {
       label: "● 待確認",
-      cls: "text-brand bg-brand/10 border border-brand/20",
+      cls: "text-brand",
     };
-  }, [isAccepted, isRejected, modifiedCount]);
-
-  const cardTone = isAccepted
-    ? "border-[#10b981]/30 bg-[#1A1612]/90 text-text-disabled shadow-none"
-    : isRejected
-      ? "border-error/20 bg-error/5 text-text-disabled"
-      : "border-brand/25 bg-[rgba(212,165,116,0.06)] text-[#eae1da] shadow-md";
+  }, [isAccepted, isCancelled, isRejected, modifiedCount]);
 
   const handleAccept = async () => {
     if (!offerId || isAccepting) return;
@@ -510,6 +561,28 @@ export function OfferCardComponent({
       ? `/profile/user/orderDetail/${resolvedOrderId}`
       : null);
 
+  const isOrderCancelled = useMemo(() => {
+    if (!resolvedOrderId) {
+      return false;
+    }
+
+    return roomMessages.some(
+      (message) =>
+        message.type === "system_order_cancelled" &&
+        message.orderData?.orderId === resolvedOrderId,
+    );
+  }, [resolvedOrderId, roomMessages]);
+
+  const cardTone = isRejected
+    ? "border-error/20 bg-[#26211C] text-[#eae1da] shadow-none ring-0"
+    : isOrderCancelled || isCancelled
+      ? "border-white/[0.06] bg-[#26211C]/90 text-text-secondary shadow-none ring-0"
+      : "border-white/[0.06] bg-[#26211C] text-[#eae1da] shadow-none ring-0";
+
+  const statusNoteClass = "rounded-md border border-brand/20 bg-[#1A1612] px-2.5 py-1.5";
+  const statusNoteTextClass =
+    "text-[11px] font-medium leading-snug text-text-secondary";
+
   const cardMeta = [
     context.setCode,
     context.cardNumber ?? context.displayId,
@@ -517,88 +590,93 @@ export function OfferCardComponent({
     .filter(Boolean)
     .join(" · ");
 
-  const productHref = `/marketplace/product/${context.productId}`;
+  const displayStatusBadge = isOrderCancelled
+    ? { label: "● 已取消", cls: "text-text-disabled" }
+    : statusBadge;
+
+  const showGradeBadge = shouldShowOfferCardGrade(
+    context.gradeAuthority,
+    context.gradeScore,
+  );
+  const heroImageUrl = resolveOfferCardHeroImageUrl(context);
 
   return (
     <Card
-      className={`my-2 w-full overflow-hidden border font-sans text-[12.5px] transition-all duration-300 ${cardTone}`}
+      className={`my-2 w-full overflow-hidden rounded-lg border font-sans text-[12.5px] transition-all duration-300 gap-0 py-0 ${cardTone}`}
     >
-      <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-white/5 pb-3">
-        <div className="space-y-1">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-brand">
-            ⚡ 議價出價卡片
-          </p>
-          <CardTitle className="text-[13px] font-black text-[#eae1da]">
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1.5">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-brand">
+          ⚡ 議價出價卡片
+        </p>
+        <span
+          className={`shrink-0 font-mono text-[9px] font-bold ${displayStatusBadge.cls}`}
+        >
+          {displayStatusBadge.label}
+        </span>
+      </div>
+
+      <OfferCardHeroImage
+        imageUrl={heroImageUrl}
+        cardName={context.cardName}
+      />
+
+      <div className="space-y-0.5 px-3 pt-2 pb-1">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <h3 className="min-w-0 truncate font-sans font-bold text-[13px] leading-tight text-text-primary">
             {context.cardName}
-          </CardTitle>
-          {cardMeta ? (
-            <p className="font-mono text-[10px] text-text-disabled">{cardMeta}</p>
+          </h3>
+          {showGradeBadge ? (
+            <GradeBadge
+              authority={context.gradeAuthority ?? ""}
+              score={context.gradeScore ?? ""}
+              size="sm"
+            />
           ) : null}
         </div>
-        <span
-          className={`shrink-0 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold ${statusBadge.cls}`}
+        {cardMeta ? (
+          <p className="truncate font-mono text-[10px] leading-tight text-text-disabled">
+            {cardMeta}
+          </p>
+        ) : null}
+        <p
+          className="truncate font-mono text-[9px] leading-tight tabular-nums text-text-disabled"
+          title={`上架序號：${context.listingId}`}
         >
-          {statusBadge.label}
-        </span>
-      </CardHeader>
+          上架序號：{context.listingId}
+        </p>
+        <p className="pt-0.5 font-mono text-[14px] font-bold leading-none tabular-nums text-brand">
+          HK$ {offerPrice.toLocaleString("en-HK")}
+        </p>
+      </div>
 
-      <CardContent className="space-y-3 pt-3">
+      <CardContent className="space-y-2 px-3 pb-2.5 pt-1.5">
+        {isPending && isSeller ? (
+          <div className={statusNoteClass}>
+            <p className={statusNoteTextClass}>請確認是否接受此出價。</p>
+          </div>
+        ) : null}
+
         {useAuthentication && isPending && isSeller ? (
-          <Alert className="border-brand/35 bg-brand/15 text-brand shadow-sm">
-            <AlertDescription className="text-[12px] font-semibold leading-relaxed">
+          <div className={statusNoteClass}>
+            <p className={statusNoteTextClass}>
               🔍 買家要求平台鑑定加購服務（HK$
               {authServiceFeeHkd.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
-            </AlertDescription>
-          </Alert>
-        ) : null}
-
-        <div className="flex gap-3">
-          <div className="relative h-[88px] w-[64px] shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#17130f]">
-            <OfferCardThumbnail
-              imageUrl={context.imageUrl}
-              cardName={context.cardName}
-            />
-          </div>
-
-          <div className="min-w-0 flex-1 space-y-2">
-            <p className="leading-relaxed">
-              <span className="font-bold text-brand">{context.buyerName}</span>
-              <span className="text-text-disabled"> 出價 </span>
-              <span className="font-mono text-[15px] font-black text-brand">
-                HK$ {offerPrice.toLocaleString()}
-              </span>
             </p>
-            {useAuthentication ? (
-              <p className="inline-flex items-center gap-1 rounded border border-brand/25 bg-brand/10 px-2 py-0.5 font-mono text-[10px] font-bold text-brand">
-                🔍 含平台鑑定加購 (HK${" "}
-                {authServiceFeeHkd.toLocaleString()})
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => {
-                router.push(productHref);
-                setIsChatOpen(false);
-              }}
-              className="text-left text-[11px] font-bold text-brand underline underline-offset-2 hover:text-[#e8b896]"
-            >
-              查看商品詳情 →
-            </button>
           </div>
-        </div>
+        ) : null}
 
         {useAuthentication && isPending && isBuyer ? (
-          <Alert className="border-brand/25 bg-brand/10 text-brand">
-            <AlertDescription className="text-[11.5px] leading-relaxed">
+          <div className={statusNoteClass}>
+            <p className={statusNoteTextClass}>
               您已加購平台第三方鑑定服務；賣家接受後將走託管鑑定流程。
-            </AlertDescription>
-          </Alert>
+            </p>
+          </div>
         ) : null}
 
-        {isAccepted ? (
-          <Alert className="border-[#10b981]/30 bg-[#10b981]/10 text-[#10b981]">
-            <AlertDescription className="text-[12px] font-medium leading-relaxed">
-              ✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）
+        {isAccepted && !isOrderCancelled ? (
+          <div className={statusNoteClass}>
+            <p className={statusNoteTextClass}>
+              ✅ 賣家已接受出價，商品已成功鎖定
               {resolvedOrderKind === "merchant" && context.pendingPayment
                 ? "；請完成託管付款以鎖定資產。"
                 : null}
@@ -608,17 +686,44 @@ export function OfferCardComponent({
               resolvedPaymentHref
                 ? "；請完成託管付款以啟動鑑定流程。"
                 : null}
-            </AlertDescription>
-          </Alert>
+            </p>
+          </div>
+        ) : null}
+
+        {isOrderCancelled ? (
+          <div className="rounded-md border border-error/20 bg-[#17130f] px-2.5 py-1.5">
+            <p className={statusNoteTextClass}>
+              {SYSTEM_ORDER_CANCELLED_TEXT} 商品已解除鎖定，交易流程已終止。
+            </p>
+          </div>
+        ) : null}
+
+        {isRejected ? (
+          <div className="rounded-md border border-error/25 bg-[#1A1612] px-2.5 py-1.5">
+            <p className="text-[11px] font-medium leading-snug text-error/90">
+              {SYSTEM_OFFER_REJECTED_TEXT}
+            </p>
+          </div>
+        ) : null}
+
+        {isCancelled ? (
+          <div className="rounded-md border border-white/10 bg-[#1A1612] px-2.5 py-1.5">
+            <p className="text-[11px] font-medium leading-snug text-text-disabled">
+              {SYSTEM_OFFER_CANCELLED_TEXT}
+            </p>
+          </div>
         ) : null}
 
         {isPending && isBuyer ? (
-          <div className="space-y-1 border-t border-white/5 pt-2">
-            <p className="font-mono text-[11px] italic text-text-disabled">
-              ⏳ 等待賣家回應中...
+          <div className={statusNoteClass}>
+            <p className={statusNoteTextClass}>
+              ⏳ 等待賣家回應中… 您的出價為{" "}
+              <span className="font-mono font-bold text-brand">
+                HK$ {offerPrice.toLocaleString()}
+              </span>
             </p>
             {modifiedCount >= 1 ? (
-              <p className="font-mono text-[10px] text-text-disabled/80">
+              <p className="mt-1 font-mono text-[9.5px] text-text-disabled">
                 （已達修改上限）
               </p>
             ) : null}
@@ -627,13 +732,13 @@ export function OfferCardComponent({
       </CardContent>
 
       {isPending ? (
-        <CardFooter className="flex flex-wrap gap-2 border-t border-white/5 bg-transparent px-4 py-3">
+        <CardFooter className="flex flex-col gap-2 border-t-0 bg-transparent px-3 py-2.5">
           {isSeller ? (
             <>
               <AlertDialog>
                 <AlertDialogTrigger
                   disabled={isAccepting}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#10b981] px-3 text-[11px] font-bold text-white hover:bg-[#0fa573] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-brand text-[12px] font-bold text-[#1A1612] hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isAccepting ? (
                     <>
@@ -699,7 +804,7 @@ export function OfferCardComponent({
               <AlertDialog>
                 <AlertDialogTrigger
                   disabled={isRejecting}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-error/40 bg-transparent px-3 text-[11px] font-bold text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-transparent text-[12px] font-bold text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isRejecting ? (
                     <>
@@ -754,7 +859,7 @@ export function OfferCardComponent({
                 render={
                   <button
                     type="button"
-                    className="ml-auto inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-orange-500/40 bg-transparent px-3 text-[11px] font-bold text-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-transparent text-[12px] font-bold text-brand hover:bg-brand/10 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 }
               >
@@ -839,8 +944,8 @@ export function OfferCardComponent({
         </CardFooter>
       ) : null}
 
-      {isAccepted && isBuyer ? (
-        <CardFooter className="flex flex-col gap-2 border-t border-white/5 bg-transparent px-4 py-3">
+      {isAccepted && isBuyer && !isOrderCancelled ? (
+        <CardFooter className="flex flex-col gap-2 border-t-0 bg-transparent px-3 py-2.5">
           {resolvedPaymentHref ? (
             <Button
               type="button"
@@ -866,7 +971,7 @@ export function OfferCardComponent({
               }}
             >
               {resolvedOrderKind === "member" && !useAuthentication
-                ? "查看訂單 / 交收指引"
+                ? "查看訂單"
                 : "查看訂單詳情"}
             </Button>
           ) : null}

@@ -117,6 +117,17 @@ export function MarketplacePageClient({
   const urlQuery = searchParams.get("q");
   const urlRarity = searchParams.get("rarity");
   const urlKind = searchParams.get("kind");
+  const urlSource = searchParams.get("source");
+  const urlFilter = searchParams.get("filter");
+
+  const urlSellerSource =
+    urlSource === "merchant" || urlFilter === "merchant"
+      ? "MERCHANT"
+      : urlSource === "member" ||
+          urlSource === "c2c" ||
+          urlFilter === "c2c"
+        ? "MEMBER"
+        : null;
 
   const query = useMarketStore((state) => state.query);
   const setQuery = useMarketStore((state) => state.setQuery);
@@ -277,7 +288,7 @@ export function MarketplacePageClient({
   const lastSyncedParamsKey = useRef("");
 
   useEffect(() => {
-    const currentParamsKey = `${urlQuery}-${urlRarity}-${urlKind}`;
+    const currentParamsKey = `${urlQuery}-${urlRarity}-${urlKind}-${urlSellerSource}`;
     if (lastSyncedParamsKey.current === currentParamsKey) return;
     if (urlQuery !== null) setQuery(urlQuery);
     if (urlRarity !== null) {
@@ -292,16 +303,22 @@ export function MarketplacePageClient({
     if (urlKind === "sealed_product" && !activeProductKinds.includes("sealed_product")) {
       toggleProductKind("sealed_product");
     }
+    if (urlSellerSource && !activeTypes.includes(urlSellerSource)) {
+      toggleType(urlSellerSource);
+    }
     lastSyncedParamsKey.current = currentParamsKey;
   }, [
     urlQuery,
     urlRarity,
     urlKind,
+    urlSellerSource,
     setQuery,
     toggleRarity,
     toggleProductKind,
+    toggleType,
     activeRarities,
     activeProductKinds,
+    activeTypes,
   ]);
 
   useEffect(() => {

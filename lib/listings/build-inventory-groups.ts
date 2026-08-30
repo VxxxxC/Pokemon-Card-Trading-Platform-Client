@@ -57,8 +57,9 @@ export function matchesInventorySearch(
 
 export function filterInventoryListingsForDisplay(
   listings: InventoryListingRow[],
+  status: InventoryListingRow["status"] = "active",
 ): InventoryListingRow[] {
-  return listings.filter((listing) => listing.status === "active");
+  return listings.filter((listing) => listing.status === status);
 }
 
 export function groupListingsByProduct(input: {
@@ -100,6 +101,7 @@ export function groupListingsByProduct(input: {
         catalog?.card_number?.trim() ||
         catalog?.display_id?.trim() ||
         "",
+      rarity: catalog?.rarity?.trim() || null,
       thumbnailSeed: productId,
       imageUrl: catalog?.image_url ?? null,
       items: sortedListings.map((listing) => {
@@ -163,7 +165,7 @@ export function summarizeInventoryListings(
   }
 
   return {
-    totalListings: activeCount,
+    totalListings: activeCount + inactiveCount,
     activeCount,
     soldCount,
     inactiveCount,

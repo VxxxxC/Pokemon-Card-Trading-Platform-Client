@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
 import { AnnouncementDetailLink } from "@/lib/announcements/announcement-detail-link";
+import { markAnnouncementsAsRead } from "@/lib/announcements/read-state";
 
 type AnnouncementModalProps = {
   announcements: PlatformAnnouncement[];
@@ -71,6 +72,7 @@ export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
   const handleClose = () => {
     setOpen(false);
     sessionStorage.setItem("hasSeenAnnouncementsModal", "true");
+    markAnnouncementsAsRead(activeAnnouncements);
   };
 
   if (activeAnnouncements.length === 0) {

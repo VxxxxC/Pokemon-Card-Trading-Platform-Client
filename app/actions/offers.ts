@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateHomeListingsCache } from "@/lib/home/revalidate-home-listings";
 import { createClient } from "@/lib/supabase/server";
 import {
   resolveOfferCardDisplayImage,
 } from "@/app/lib/chat/offerCardImage";
+import { parseListingImageUrls } from "@/lib/listings/images";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
 import {
@@ -12,6 +14,7 @@ import {
   formatStandardOfferMessageContent,
 } from "@/lib/listings/auth-service-copy";
 import { fetchPlatformAuthFeeHkd } from "@/lib/platform/resolve-display-auth-fee";
+import { formatListingGrade } from "@/lib/marketplace/listing-display";
 import type { Tables } from "@/types/supabase";
 import type { MemberOrderKind } from "@/lib/member-order/order-kind";
 
@@ -114,7 +117,10 @@ export type OfferCardContext = {
   cardNumber: string | null;
   setCode: string;
   displayId: string | null;
+  gradeAuthority?: string;
+  gradeScore?: string | null;
   imageUrl?: string;
+  listingImageUrls?: string[];
   buyerName: string;
   sellerId: string;
   authServiceFeeHkd: number;
@@ -130,6 +136,10 @@ export type GetOfferCardContextResult =
   | { success: true; data: OfferCardContext }
   | { success: false; error: string };
 
+export type BatchGetOfferCardContextsResult =
+  | { success: true; data: Record<string, OfferCardContext> }
+  | { success: false; error: string };
+
 type OfferCardQueryRow = {
   id: string;
   buyer_id: string;
@@ -143,6 +153,8 @@ type OfferCardQueryRow = {
     id: string;
     product_id: string;
     images: unknown;
+    grading_company: string;
+    grading_score: string | null;
     product_catalog: {
       id: string;
       name_zh: string | null;
@@ -255,6 +267,58 @@ async function resolveAcceptedOfferOrderContext(
   }
 
   return {};
+}
+
+async function buildOfferCardContextFromRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  data: OfferCardQueryRow,
+  buyerName: string,
+  authServiceFeeHkd: number,
+): Promise<OfferCardContext | null> {
+  const listing = data.listings;
+  const catalog = listing?.product_catalog;
+  if (!catalog || !data.listing_id) {
+    return null;
+  }
+
+  const cardName =
+    catalog.name_zh?.trim() || catalog.name_ja?.trim() || "未命名卡牌";
+  const { authority: gradeAuthority, score: gradeScore } = formatListingGrade(
+    listing.grading_company,
+    listing.grading_score,
+  );
+
+  const orderContext = await resolveAcceptedOfferOrderContext(
+    supabase,
+    data.id,
+    data.status,
+  );
+
+  return {
+    offer: {
+      id: data.id,
+      buyer_id: data.buyer_id,
+      offer_price: Number(data.offer_price),
+      status: data.status,
+      modified_count: readModifiedCount(data),
+      room_id: data.room_id,
+      use_authentication: data.use_authentication,
+    },
+    listingId: data.listing_id,
+    productId: catalog.id,
+    cardName,
+    cardNumber: catalog.card_number,
+    setCode: catalog.set_code,
+    displayId: catalog.display_id,
+    gradeAuthority,
+    gradeScore: gradeScore || null,
+    listingImageUrls: parseListingImageUrls(listing.images),
+    imageUrl: resolveOfferCardDisplayImage(listing.images, catalog.image_url),
+    buyerName,
+    sellerId: data.chat_rooms.seller_id,
+    authServiceFeeHkd,
+    ...orderContext,
+  };
 }
 
 function formatModifyOfferMessageContent(newPrice: number): string {
@@ -391,6 +455,8 @@ export async function getOfferCardContext(
             id,
             product_id,
             images,
+            grading_company,
+            grading_score,
             product_catalog!inner (
               id,
               name_zh,
@@ -418,10 +484,6 @@ export async function getOfferCardContext(
       return { success: false, error: "找不到此出價紀錄" };
     }
 
-    const listing = data.listings;
-    const catalog = listing.product_catalog;
-    const room = data.chat_rooms;
-
     const { data: buyerProfile, error: buyerError } = await supabase
       .from("profiles")
       .select("display_name")
@@ -432,48 +494,128 @@ export async function getOfferCardContext(
       console.error("[getOfferCardContext] buyer profile", buyerError.message);
     }
 
-    const cardName =
-      catalog.name_zh?.trim() ||
-      catalog.name_ja?.trim() ||
-      "未命名卡牌";
-
-    const orderContext = await resolveAcceptedOfferOrderContext(
-      supabase,
-      data.id,
-      data.status,
-    );
     const authServiceFeeHkd = await fetchPlatformAuthFeeHkd();
+    const context = await buildOfferCardContextFromRow(
+      supabase,
+      data,
+      buyerProfile?.display_name?.trim() || "買家",
+      authServiceFeeHkd,
+    );
 
-    return {
-      success: true,
-      data: {
-        offer: {
-          id: data.id,
-          buyer_id: data.buyer_id,
-          offer_price: Number(data.offer_price),
-          status: data.status,
-          modified_count: readModifiedCount(data),
-          room_id: data.room_id,
-          use_authentication: data.use_authentication,
-        },
-        listingId: data.listing_id,
-        productId: catalog.id,
-        cardName,
-        cardNumber: catalog.card_number,
-        setCode: catalog.set_code,
-        displayId: catalog.display_id,
-        imageUrl: resolveOfferCardDisplayImage(
-          listing.images,
-          catalog.image_url,
-        ),
-        buyerName: buyerProfile?.display_name?.trim() || "買家",
-        sellerId: room.seller_id,
-        authServiceFeeHkd,
-        ...orderContext,
-      },
-    };
+    if (!context) {
+      return { success: false, error: "找不到此出價紀錄" };
+    }
+
+    return { success: true, data: context };
   } catch (error) {
     console.error("[getOfferCardContext]", error);
+    return { success: false, error: "載入出價卡片時發生錯誤" };
+  }
+}
+
+export async function batchGetOfferCardContexts(
+  offerIds: string[],
+): Promise<BatchGetOfferCardContextsResult> {
+  const uniqueIds = [...new Set(offerIds.map((id) => id.trim()).filter(Boolean))];
+  if (uniqueIds.length === 0) {
+    return { success: true, data: {} };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "服務尚未設定" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入" };
+    }
+
+    const { data: rows, error } = await supabase
+      .from("offers")
+      .select(
+        `
+          id,
+          buyer_id,
+          offer_price,
+          status,
+          modified_count,
+          room_id,
+          listing_id,
+          use_authentication,
+          listings!inner (
+            id,
+            product_id,
+            images,
+            grading_company,
+            grading_score,
+            product_catalog!inner (
+              id,
+              name_zh,
+              name_ja,
+              card_number,
+              set_code,
+              display_id,
+              image_url
+            )
+          ),
+          chat_rooms!inner (
+            seller_id
+          )
+        `,
+      )
+      .in("id", uniqueIds);
+
+    if (error) {
+      console.error("[batchGetOfferCardContexts]", error.message);
+      return { success: false, error: "無法載入出價資料" };
+    }
+
+    const offerRows = (rows ?? []) as OfferCardQueryRow[];
+    if (offerRows.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    const buyerIds = [...new Set(offerRows.map((row) => row.buyer_id))];
+    const { data: buyerProfiles, error: buyerError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", buyerIds)
+      .returns<{ id: string; display_name: string }[]>();
+
+    if (buyerError) {
+      console.error("[batchGetOfferCardContexts] buyer profiles", buyerError.message);
+    }
+
+    const buyerNameById = new Map(
+      (buyerProfiles ?? []).map((profile) => [
+        profile.id,
+        profile.display_name?.trim() || "買家",
+      ]),
+    );
+
+    const authServiceFeeHkd = await fetchPlatformAuthFeeHkd();
+    const data: Record<string, OfferCardContext> = {};
+
+    for (const row of offerRows) {
+      const context = await buildOfferCardContextFromRow(
+        supabase,
+        row,
+        buyerNameById.get(row.buyer_id) ?? "買家",
+        authServiceFeeHkd,
+      );
+      if (context) {
+        data[row.id] = context;
+      }
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("[batchGetOfferCardContexts]", error);
     return { success: false, error: "載入出價卡片時發生錯誤" };
   }
 }
@@ -614,6 +756,7 @@ export async function acceptOffer(offerId: string): Promise<AcceptOfferResult> {
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidatePath("/profile/user/inventory");
     revalidatePath("/profile/user/collection");
     revalidatePath("/profile/merchant/inventory");

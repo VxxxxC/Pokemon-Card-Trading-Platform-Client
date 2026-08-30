@@ -651,18 +651,18 @@ export default function AdminDashboardClient({
                   </div>
                   <div className="flex min-w-0 items-baseline gap-2">
                     <span className="shrink-0 font-mono text-[10px] text-text-disabled">
-                      活躍掛單
+                      本月鑑定
                     </span>
                     <p className="font-mono text-[15px] font-bold tabular-nums text-text-primary">
-                      {marketVolume.listingCount}
+                      {revenues.monthlyAppraisalCount}
                     </p>
                   </div>
                   <div className="flex min-w-0 items-baseline gap-2">
                     <span className="shrink-0 font-mono text-[10px] text-text-disabled">
-                      本月鑑定
+                      活躍掛單
                     </span>
-                    <p className="min-w-0 truncate font-mono text-[11px] font-semibold tabular-nums text-text-secondary">
-                      {revenues.monthlyAppraisalCount}
+                    <p className="font-mono text-[15px] font-bold tabular-nums text-text-primary">
+                      {marketVolume.listingCount}
                     </p>
                   </div>
                 </div>
@@ -675,15 +675,15 @@ export default function AdminDashboardClient({
                       {marketVolume.settledCount}
                     </p>
                   </div>
-                  <div className="flex min-w-0 items-baseline gap-2 min-h-[22px]" aria-hidden />
                   <div className="flex min-w-0 items-baseline gap-2">
                     <span className="shrink-0 font-mono text-[10px] text-text-disabled">
                       歷史鑑定
                     </span>
-                    <p className="min-w-0 truncate font-mono text-[11px] font-semibold tabular-nums text-text-secondary">
+                    <p className="font-mono text-[15px] font-bold tabular-nums text-text-primary">
                       {revenues.totalAppraisals}
                     </p>
                   </div>
+                  <div className="flex min-w-0 items-baseline gap-2 min-h-[22px]" aria-hidden />
                 </div>
               </div>
             </div>

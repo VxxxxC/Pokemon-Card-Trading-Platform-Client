@@ -7,6 +7,10 @@ import {
 } from "@/app/actions/admin-payouts";
 import { getMerchantTransferRowId } from "@/lib/admin-payouts/merchant-transfer-row-id";
 import {
+  CALENDAR_POPOVER_CONTENT_CLASS,
+  CALENDAR_TRIGGER_ICON_CLASS,
+} from "@/lib/ui/calendar-theme";
+import {
   BTN_OUTLINE_SM_CLASS,
   BTN_PRIMARY_CLASS,
   BTN_PRIMARY_SM_CLASS,
@@ -143,7 +147,10 @@ function MerchantDateRangeFilter({
         )}
       >
         <CalendarIcon
-          className={compact ? "size-3 shrink-0 text-brand" : "size-3.5 text-brand"}
+          className={cn(
+            CALENDAR_TRIGGER_ICON_CLASS,
+            compact ? "size-3" : "size-3.5",
+          )}
           aria-hidden="true"
         />
         <span className="font-sans">
@@ -163,10 +170,10 @@ function MerchantDateRangeFilter({
         </span>
       </PopoverTrigger>
       <PopoverContent
-        className="w-auto p-0 bg-[#26211C] border border-white/10 rounded-xl text-[#eae1da] shadow-2xl z-50"
+        className={cn(CALENDAR_POPOVER_CONTENT_CLASS, "z-50")}
         align="end"
       >
-        <div className="p-3 border-b border-white/10 flex items-center justify-between gap-4">
+        <div className="p-3 border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between gap-4">
           <span className="font-sans text-xs font-semibold text-text-primary">
             撥款日期範圍篩選
           </span>
@@ -191,7 +198,7 @@ function MerchantDateRangeFilter({
           className="p-3"
         />
         {dateRange?.from ? (
-          <div className="p-3 border-t border-white/10 flex justify-end">
+          <div className="p-3 border-t border-[rgba(237,232,224,0.08)] flex justify-end">
             <button
               type="button"
               onClick={() => onChange(undefined)}

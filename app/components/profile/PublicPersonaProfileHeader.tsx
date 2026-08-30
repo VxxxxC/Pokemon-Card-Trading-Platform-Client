@@ -333,7 +333,7 @@ export function PublicPersonaProfileHeader({
               </span>
             </div>
             <div className="w-px bg-white/[0.06] shrink-0" />
-            <div className="flex-1 min-w-0 text-right">
+            <div className="flex-1 min-w-0">
               <span className="font-mono text-[9px] text-[#8A8680] uppercase tracking-wider block">
                 公開掛單
               </span>

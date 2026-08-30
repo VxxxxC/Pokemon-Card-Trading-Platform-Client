@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateHomeListingsCache } from "@/lib/home/revalidate-home-listings";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -268,6 +269,7 @@ export async function buyNowListing(
     const orderDetailHref = `/profile/user/orderDetail/${orderId}`;
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidatePath("/profile/user/trading");
     revalidatePath("/profile/merchant/trading");
 

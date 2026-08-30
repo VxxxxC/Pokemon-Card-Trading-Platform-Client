@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateHomeListingsCache } from "@/lib/home/revalidate-home-listings";
 import {
   isCardCatalogType,
   isSealedCatalogType,
@@ -598,6 +599,7 @@ export async function updateCardListing(
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidatePath("/profile/user/inventory");
     revalidatePath("/profile/merchant/inventory");
 
@@ -811,6 +813,7 @@ export async function createCardListing(
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidatePath("/profile/user/collection");
     revalidatePath("/profile/user/inventory");
     revalidatePath("/profile/merchant/inventory");
@@ -1126,6 +1129,7 @@ export async function createSealedListing(
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidatePath("/profile/user/collection");
     revalidatePath("/profile/user/inventory");
     revalidatePath("/profile/merchant/inventory");

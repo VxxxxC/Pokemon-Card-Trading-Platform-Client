@@ -52,22 +52,29 @@ export function getAnnouncementStatus(
   };
 }
 
+export function sortAnnouncementsForPublicDisplay(
+  announcements: PlatformAnnouncement[],
+): PlatformAnnouncement[] {
+  return [...announcements].sort((a, b) => {
+    const byCreated = b.createdAt.localeCompare(a.createdAt);
+    if (byCreated !== 0) {
+      return byCreated;
+    }
+    return a.priority - b.priority;
+  });
+}
+
 export function getActiveAnnouncements(
   announcements: PlatformAnnouncement[],
   now: Date = new Date(),
 ): PlatformAnnouncement[] {
-  return announcements
-    .filter(
+  return sortAnnouncementsForPublicDisplay(
+    announcements.filter(
       (item) =>
         item.isActive &&
         isAnnouncementInActiveWindow(item.startDate, item.endDate, now),
-    )
-    .sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
-      return b.createdAt.localeCompare(a.createdAt);
-    });
+    ),
+  );
 }
 
 export function sortAnnouncementsForAdmin(

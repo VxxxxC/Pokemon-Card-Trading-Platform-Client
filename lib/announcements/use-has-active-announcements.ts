@@ -1,24 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { getActiveAnnouncementsForDisplay } from "@/app/actions/admin-announcements";
+import {
+  ANNOUNCEMENT_READ_STATE_EVENT,
+  hasUnreadAnnouncements,
+} from "@/lib/announcements/read-state";
 
+/** Nav megaphone dot — true when at least one active announcement is unread. */
 export function useHasActiveAnnouncements(): boolean {
-  const [hasActive, setHasActive] = useState(false);
+  const pathname = usePathname();
+  const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    void getActiveAnnouncementsForDisplay().then((result) => {
-      if (!cancelled && result.success) {
-        setHasActive(result.data.length > 0);
+    const sync = async () => {
+      const result = await getActiveAnnouncementsForDisplay();
+      if (cancelled || !result.success) {
+        return;
       }
-    });
 
+      setHasUnread(hasUnreadAnnouncements(result.data));
+    };
+
+    void sync();
+
+    const onReadStateChange = () => {
+      void sync();
+    };
+
+    window.addEventListener(ANNOUNCEMENT_READ_STATE_EVENT, onReadStateChange);
     return () => {
       cancelled = true;
+      window.removeEventListener(
+        ANNOUNCEMENT_READ_STATE_EVENT,
+        onReadStateChange,
+      );
     };
-  }, []);
+  }, [pathname]);
 
-  return hasActive;
+  return hasUnread;
 }

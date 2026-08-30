@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { CheckoutProductCard } from "@/app/checkout/[id]/components/CheckoutProductCard";
 import { Switch } from "@/components/ui/switch";
 import { CheckoutCouponPicker } from "@/app/checkout/[id]/components/CheckoutCouponPicker";
 import type {
@@ -28,70 +28,46 @@ export function MerchantDirectReview({
   onCouponChange,
   authFee,
 }: MerchantDirectReviewProps) {
-  const { product, counterparty } = session;
-  const rarity = product.displayId ?? product.cardNumber ?? "—";
   const showDirectDeliverySection = !form.authServiceEnabled;
 
   return (
-    <div className="space-y-6">
-      <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
-        <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-          🃏 1. 核對現貨資產品相
+    <div className="space-y-4">
+      <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
+        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+          商品資訊
         </h2>
-        <div className="flex gap-4 items-center bg-[#17130f] p-3 rounded-xl border border-white/5">
-          <div className="relative w-16 h-22 rounded-lg overflow-hidden shrink-0 border border-white/10">
-            <Image
-              src={product.imageUrl}
-              alt={product.cardName}
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <span className="inline-flex font-mono text-[9px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded">
-              {product.gradeLabel}
-            </span>
-            <h3 className="font-sans font-bold text-[14px] text-[#eae1da] truncate">
-              {product.cardName}
-            </h3>
-            <p className="font-mono text-[11px] text-text-disabled">
-              {product.setCode} · {rarity}
-            </p>
-            <p className="font-sans text-[11px] text-text-secondary truncate">
-              賣方: {counterparty.name}
-            </p>
-          </div>
-        </div>
+        <CheckoutProductCard session={session} />
       </section>
 
       {showDirectDeliverySection ? (
-        <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-4">
-          <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-            📦 2. 選擇交收方式
-          </h2>
-          <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
-            快遞公司由商戶出貨時安排；面交／自取地點可於訂單內與商戶協調。
-          </p>
+        <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-4">
+          <div className="space-y-1">
+            <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+              交收方式
+            </h2>
+            <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
+              快遞由商戶出貨時安排；面交／自取地點可於訂單內與商戶協調。
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => onFormChange({ shippingType: "sf" })}
-              className={`h-11 rounded-xl border font-sans text-[13px] font-bold transition-all ${form.shippingType === "sf" ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/10 text-[#d4c4b7]"}`}
+              className={`h-11 rounded-xl border font-sans text-[13px] font-semibold transition-all ${form.shippingType === "sf" ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/10 text-[#d4c4b7]"}`}
             >
-              🚚 快遞寄貨
+              快遞寄貨
             </button>
             <button
               type="button"
               onClick={() => onFormChange({ shippingType: "meetup" })}
-              className={`h-11 rounded-xl border font-sans text-[13px] font-bold transition-all ${form.shippingType === "meetup" ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/10 text-[#d4c4b7]"}`}
+              className={`h-11 rounded-xl border font-sans text-[13px] font-semibold transition-all ${form.shippingType === "meetup" ? "bg-brand/10 border-brand text-brand" : "bg-[#17130f] border-white/10 text-[#d4c4b7]"}`}
             >
-              🤝 面交／自取
+              面交／自取
             </button>
           </div>
 
           {form.shippingType === "sf" ? (
-            <div className="space-y-3 pt-2 font-sans text-[13px]">
+            <div className="space-y-3 pt-1 font-sans text-[13px]">
               <div>
                 <label
                   htmlFor="p-tel"
@@ -131,7 +107,7 @@ export function MerchantDirectReview({
               </div>
             </div>
           ) : (
-            <div className="space-y-3 pt-2 font-sans text-[13px]">
+            <div className="space-y-3 pt-1 font-sans text-[13px]">
               <div>
                 <label
                   htmlFor="p-tel-meet"
@@ -174,14 +150,14 @@ export function MerchantDirectReview({
         </section>
       ) : null}
 
-      <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4">
+      <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 space-y-1">
-            <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-              🔍 3. 啟用鑑定服務
+            <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+              平台鑑定服務
             </h2>
-            <p className="font-sans text-[12px] text-[#d4c4b7] leading-relaxed">
-              專業第三方官方認證、複驗品相及真偽防偽包裝
+            <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
+              第三方官方認證、複驗品相及防偽包裝
             </p>
           </div>
           <Switch
@@ -202,11 +178,10 @@ export function MerchantDirectReview({
           </p>
         ) : null}
         {form.authServiceEnabled ? (
-          <div className="mt-3 bg-[#17130f] rounded-xl p-3 border border-brand/20 space-y-2">
+          <div className="mt-3 rounded-lg border border-brand/20 bg-[#17130f] p-3 space-y-2">
             <p className="font-sans text-[11px] text-brand leading-relaxed">
-              ✓
-              鑑定服務已啟用：將由專業第三方鑑定機構對卡牌進行全面品相檢測，並提供官方認證報告。鑑定費用
-              HK${authFee} 將計入訂單總額。
+              鑑定服務已啟用：第三方鑑定機構將檢測品相並提供認證報告。鑑定費 HK$
+              {authFee} 將計入訂單總額。
             </p>
             <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
               鑑定服務開始後鑑定費一般不予退還；售後窗口與規則見{" "}
@@ -219,26 +194,12 @@ export function MerchantDirectReview({
         ) : null}
       </section>
 
-      <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
-        <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-          🎟️ 5. 平台優惠券
-        </h2>
-        <CheckoutCouponPicker
-          orderId={session.orderId}
-          shippingMethod={form.authServiceEnabled ? "sf" : form.shippingType}
-          selectedCouponId={selectedCouponId}
-          onSelectCoupon={onCouponChange}
-          disabled={paymentLocked}
-          useAuth={form.authServiceEnabled}
-        />
-      </section>
-
-      <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
+      <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
         <label
           htmlFor="p-rem"
-          className="font-sans font-bold text-[15px] text-[#eae1da] block"
+          className="font-sans text-[13px] font-semibold text-text-primary block"
         >
-          ✍️ 4. 給賣家的特殊交割備註 (Remark)
+          給賣家備註
         </label>
         <textarea
           id="p-rem"
@@ -247,8 +208,22 @@ export function MerchantDirectReview({
           onChange={(event) =>
             onFormChange({ buyerRemark: event.target.value })
           }
-          placeholder="例：請賣家發貨時加固氣泡紙，避免壓傷卡盒。謝謝！"
+          placeholder="例：請賣家發貨時加固氣泡紙，避免壓傷卡盒。"
           className="w-full bg-[#17130f] border border-white/10 rounded-xl p-3 font-sans text-[13px] text-[#eae1da] resize-none"
+        />
+      </section>
+
+      <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
+        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+          平台優惠券
+        </h2>
+        <CheckoutCouponPicker
+          orderId={session.orderId}
+          shippingMethod={form.authServiceEnabled ? "sf" : form.shippingType}
+          selectedCouponId={selectedCouponId}
+          onSelectCoupon={onCouponChange}
+          disabled={paymentLocked}
+          useAuth={form.authServiceEnabled}
         />
       </section>
     </div>

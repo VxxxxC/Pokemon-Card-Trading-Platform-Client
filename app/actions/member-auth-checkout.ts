@@ -28,6 +28,7 @@ type ActionResult<T> =
 export type MemberAuthCheckoutOrder = {
   orderId: string;
   orderNumber: string | null;
+  listingId: string;
   escrowStatus: MemberEscrowStatus | null;
   isPayable: boolean;
   canPay: boolean;
@@ -317,6 +318,7 @@ function mapCheckoutSnapshot(
   return {
     orderId: row.id,
     orderNumber: row.order_number,
+    listingId: row.listing_id,
     escrowStatus: row.escrow_status,
     isPayable,
     canPay: isBuyer && authActions.canPay && row.payment_confirmed_at == null,

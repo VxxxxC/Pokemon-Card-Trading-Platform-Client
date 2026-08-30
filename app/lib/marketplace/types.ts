@@ -179,7 +179,10 @@ export type MarketplaceProductListingsResult =
 export type MarketplaceProductTradeHistoryRow = {
   orderId: string;
   createdAt: string;
+  /** Preformatted label — prefer GradeBadge + grading fields in UI */
   grade: string;
+  gradingCompany: string;
+  gradingScore: string | null;
   price: number;
 };
 

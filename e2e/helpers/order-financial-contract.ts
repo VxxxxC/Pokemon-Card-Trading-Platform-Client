@@ -396,9 +396,7 @@ export async function getMerchantOrderFinancialSnapshot(
 }
 
 function merchantB2cInvoice(page: Page) {
-  return page
-    .getByText("🧾 商戶託管交易收據")
-    .locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
+  return page.getByRole("region", { name: "帳單明細" });
 }
 
 async function readMerchantInvoiceRowAmount(
@@ -421,7 +419,7 @@ export async function assertMerchantB2cInvoiceMatchesSnapshot(
   page: Page,
   snapshot: MerchantOrderFinancialSnapshot,
 ): Promise<void> {
-  await expect(page.getByText("🧾 商戶託管交易收據")).toBeVisible({
+  await expect(page.getByRole("region", { name: "帳單明細" })).toBeVisible({
     timeout: 20_000,
   });
 

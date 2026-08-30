@@ -56,8 +56,8 @@ export function HomePageShell({
       <AnnouncementModal announcements={activeAnnouncements} />
 
       <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 pb-28 lg:pb-8 space-y-6">
-        <HeroSearch showCheckIn={showCheckIn} />
         <HomeBanner banners={homeBanners} />
+        <HeroSearch showCheckIn={showCheckIn} />
         <TrustBanner />
         <div className="pt-4 sm:pt-5 space-y-7 sm:space-y-8">{children}</div>
       </main>

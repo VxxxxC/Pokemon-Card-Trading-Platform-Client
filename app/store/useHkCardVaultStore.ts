@@ -7,6 +7,7 @@ import { partnerTierForPersona } from "@/app/lib/chat/partnerRoomKey";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
 import { useUIStore } from "@/app/store/useUIStore";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
+import { shouldIncrementUnreadForInboundMessage } from "@/lib/chat/viewing-chat-thread";
 import type { Tables } from "@/types/supabase";
 
 type OfferLedgerStatus = Tables<"offers">["status"];
@@ -32,6 +33,7 @@ export interface SpecialTransactionData {
   offerId?: string;
   modifiedCount?: number;
   imageUrl?: string;
+  listingImageUrls?: string[];
   useAuthentication?: boolean;
   initialStatus?: "pending" | "accepted" | "rejected" | "countered";
 }
@@ -46,7 +48,9 @@ export interface Message {
   sender: "me" | "them" | "system";
   text: string;
   timestamp: string;
-  type?: "text" | "special_transaction" | "system_order_completed";
+  type?: "text" | "special_transaction" | "system_order_completed" | "system_order_cancelled";
+  /** Present on SYSTEM_OFFER_* rows when the DB message carries offer_id */
+  offerId?: string;
   specialData?: SpecialTransactionData;
   orderData?: OrderCompletedData;
 }
@@ -245,6 +249,8 @@ interface HkCardVaultStore {
     messageCreatedAt: string;
     offerStatus: "pending" | "accepted" | "rejected" | "cancelled";
     useAuthentication?: boolean;
+    imageUrl?: string;
+    listingImageUrls?: string[];
   }) => void;
 
   applyOfferModification: (payload: {
@@ -547,6 +553,8 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
           sellerName: payload.sellerName,
           offerId: payload.offerId,
           modifiedCount,
+          listingImageUrls: payload.listingImageUrls,
+          imageUrl: payload.imageUrl,
           initialStatus,
           useAuthentication: payload.useAuthentication ?? false,
         },
@@ -815,9 +823,15 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
 
   appendRoomMessage: (roomId, message) =>
     set((state) => {
-      const shouldIncrementUnread =
-        message.sender === "them" &&
-        (state.activeRoomId !== roomId || !state.isChatOpen);
+      const shouldIncrementUnread = shouldIncrementUnreadForInboundMessage(
+        {
+          isChatOpen: state.isChatOpen,
+          activeRoomId: state.activeRoomId,
+          mobileView: state.mobileView,
+        },
+        roomId,
+        message.sender,
+      );
 
       const chats = state.chats.map((room) => {
         if (room.id !== roomId) return room;

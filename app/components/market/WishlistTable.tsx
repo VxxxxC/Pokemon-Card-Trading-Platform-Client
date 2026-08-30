@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronDown, MoreVertical } from "lucide-react";
 import type { WishlistEntry } from "@/app/lib/wishlist/types";
 import { Pagination } from "@/app/components/ui/Pagination";
 import {
@@ -12,6 +12,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { GRADING_OPTIONS } from "@/lib/grading/options";
@@ -25,8 +28,22 @@ import { gradingOptionIdFromWishlistRow } from "@/lib/wishlist/grading";
 
 const ITEMS_PER_PAGE = 5;
 
-const MOBILE_WISHLIST_GRID =
-  "grid grid-cols-[minmax(0,1.5fr)_auto_auto_minmax(52px,0.75fr)] gap-x-1.5 items-center";
+const MOBILE_WISHLIST_ROW_GRID =
+  "grid grid-cols-[minmax(0,1fr)_4.25rem_4.5rem] gap-x-1.5 items-center";
+
+const MOBILE_WISHLIST_PRICE_HEADER =
+  "font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-right";
+
+function formatWishlistMobilePrice(value: number | null): string {
+  if (value == null) return "—";
+  return `$${value.toLocaleString("en-HK")}`;
+}
+
+function truncateWishlistMobileName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length <= 5) return trimmed;
+  return `${trimmed.slice(0, 5)}…`;
+}
 
 
 const RARITY_STYLE: Record<string, string> = {
@@ -36,6 +53,12 @@ const RARITY_STYLE: Record<string, string> = {
   AR: "text-[#7ec8a0] border-[#7ec8a0]/30 bg-[rgba(126,200,160,0.08)]",
   CSR: "text-[#c084fc] border-[#c084fc]/30 bg-[rgba(192,132,252,0.08)]",
 };
+
+function hasDisplayRarity(rarity: string | null | undefined): boolean {
+  const trimmed = rarity?.trim();
+  if (!trimmed) return false;
+  return trimmed !== "—" && trimmed !== "-" && trimmed !== "–";
+}
 
 function formatHkd(value: number | null): string {
   if (value == null) return "—";
@@ -114,7 +137,7 @@ function WishlistThumbnail({
         />
       ) : (
         <span className="absolute inset-0 flex items-center justify-center font-mono text-[8px] text-text-disabled">
-          {entry.rarity ?? "—"}
+          {hasDisplayRarity(entry.rarity) ? entry.rarity!.trim() : "—"}
         </span>
       )}
     </Link>
@@ -125,14 +148,41 @@ function TargetPriceCell({
   entry,
   onSave,
   align = "right",
+  hideEditButton = false,
+  shortCurrency = false,
+  editing: controlledEditing,
+  onEditingChange,
 }: {
   entry: WishlistEntry;
   onSave?: (entry: WishlistEntry, targetPrice: number | null) => Promise<boolean>;
-  align?: "left" | "right";
+  align?: "left" | "right" | "center";
+  hideEditButton?: boolean;
+  shortCurrency?: boolean;
+  editing?: boolean;
+  onEditingChange?: (editing: boolean) => void;
 }) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [internalEditing, setInternalEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const isEditing = controlledEditing ?? internalEditing;
+
+  const setIsEditing = (value: boolean) => {
+    if (onEditingChange) {
+      onEditingChange(value);
+    } else {
+      setInternalEditing(value);
+    }
+  };
+
+  useEffect(() => {
+    if (controlledEditing) {
+      setDraft(
+        entry.targetPrice != null && entry.targetPrice > 0
+          ? String(entry.targetPrice)
+          : "",
+      );
+    }
+  }, [controlledEditing, entry.targetPrice]);
 
   const startEdit = () => {
     setDraft(
@@ -174,11 +224,16 @@ function TargetPriceCell({
     }
   };
 
+  const alignClass =
+    align === "left"
+      ? "justify-start"
+      : align === "center"
+        ? "justify-center"
+        : "justify-end";
+
   if (isEditing) {
     return (
-      <div
-        className={`flex items-center gap-1 ${align === "left" ? "justify-start" : "justify-end"}`}
-      >
+      <div className={`flex items-center gap-1 ${alignClass}`}>
         <input
           type="text"
           inputMode="decimal"
@@ -189,9 +244,11 @@ function TargetPriceCell({
             if (event.key === "Escape") cancelEdit();
           }}
           disabled={isSaving}
-          placeholder="HK$"
+          placeholder={shortCurrency ? "$" : "HK$"}
           aria-label={`編輯 ${entry.name} 目標價`}
-          className="w-24 rounded border border-[rgba(237,232,224,0.15)] bg-[#17130f] px-2 py-1 text-right font-mono text-[12px] text-text-primary"
+          className={`rounded border border-[rgba(237,232,224,0.15)] bg-[#17130f] px-2 py-1 font-mono text-[12px] text-text-primary ${
+            hideEditButton ? "w-16 text-center" : "w-24 text-right"
+          }`}
         />
         <button
           type="button"
@@ -206,13 +263,21 @@ function TargetPriceCell({
   }
 
   return (
-    <div
-      className={`flex items-center gap-1.5 ${align === "left" ? "justify-start" : "justify-end"}`}
-    >
-      <p className="font-mono text-[13px] text-text-secondary">
-        {formatHkd(entry.targetPrice)}
+    <div className={`flex items-center gap-1.5 ${alignClass}`}>
+      <p
+        className={`font-mono text-text-secondary tabular-nums ${
+          hideEditButton
+            ? shortCurrency
+              ? "text-[12px] font-semibold leading-tight truncate max-w-full"
+              : "text-[11px] leading-tight truncate max-w-full"
+            : "text-[13px]"
+        } ${align === "center" ? "text-center" : ""}`}
+      >
+        {shortCurrency
+          ? formatWishlistMobilePrice(entry.targetPrice)
+          : formatHkd(entry.targetPrice)}
       </p>
-      {onSave ? (
+      {onSave && !hideEditButton ? (
         <button
           type="button"
           onClick={startEdit}
@@ -237,9 +302,11 @@ function TargetPriceCell({
 function GradeCell({
   entry,
   onGradeChange,
+  readOnly = false,
 }: {
   entry: WishlistEntry;
   onGradeChange?: (entry: WishlistEntry, option: GradingOption) => Promise<boolean>;
+  readOnly?: boolean;
 }) {
   const selectedId = gradingOptionIdFromWishlistRow(
     entry.gradingCompany,
@@ -257,10 +324,10 @@ function GradeCell({
     );
   }
 
-  if (!onGradeChange) {
+  if (!onGradeChange || readOnly) {
     return (
-      <span className="inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
-        {entry.gradeLabel}
+      <span className="inline-flex items-center max-w-full font-mono text-[10px] text-text-secondary bg-bg-page/80 border border-[rgba(237,232,224,0.12)] px-1.5 py-0.5 rounded-md">
+        <span className="truncate">{entry.gradeLabel}</span>
       </span>
     );
   }
@@ -293,6 +360,48 @@ function GradeCell({
   );
 }
 
+function WishlistGradeMenuSection({
+  entry,
+  onGradeChange,
+}: {
+  entry: WishlistEntry;
+  onGradeChange?: (
+    entry: WishlistEntry,
+    option: GradingOption,
+  ) => Promise<boolean>;
+}) {
+  if (
+    !onGradeChange ||
+    (entry.catalogType && isSealedCatalogType(entry.catalogType)) ||
+    isSealedProductGrade(entry.gradingCompany, entry.gradingScore)
+  ) {
+    return null;
+  }
+
+  const selectedId = gradingOptionIdFromWishlistRow(
+    entry.gradingCompany,
+    entry.gradingScore,
+  );
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>更改追蹤規格</DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="max-h-64 overflow-y-auto">
+        {GRADING_OPTIONS.map((option) => (
+          <DropdownMenuItem
+            key={option.id}
+            disabled={option.id === selectedId}
+            onClick={() => void onGradeChange(entry, option)}
+            className="font-mono text-[11px]"
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+  );
+}
+
 export type { WishlistEntry };
 
 interface WishlistTableProps {
@@ -319,6 +428,9 @@ export function WishlistTable({
   const router = useRouter();
   const [wishPage, setWishPage] = useState(1);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
+  const [mobileEditingTargetKey, setMobileEditingTargetKey] = useState<
+    string | null
+  >(null);
 
   const totalWishPages = Math.ceil(entries.length / ITEMS_PER_PAGE);
   const safePage =
@@ -372,20 +484,13 @@ export function WishlistTable({
     <div>
       <div className="lg:hidden">
         <div
-          className={`${MOBILE_WISHLIST_GRID} pb-2 border-b border-[rgba(237,232,224,0.06)]`}
+          className={`${MOBILE_WISHLIST_ROW_GRID} pb-2 border-b border-[rgba(237,232,224,0.06)] pr-7`}
         >
           <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider">
             商品資料
           </span>
-          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-center">
-            規格
-          </span>
-          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-center">
-            稀有度
-          </span>
-          <span className="font-mono text-[9px] text-text-disabled/80 uppercase tracking-wider text-right">
-            參考市價
-          </span>
+          <span className={MOBILE_WISHLIST_PRICE_HEADER}>目標價</span>
+          <span className={MOBILE_WISHLIST_PRICE_HEADER}>參考市價</span>
         </div>
         <div className="divide-y divide-[rgba(237,232,224,0.06)]">
         {paginatedWishlist.map((entry) => {
@@ -407,7 +512,7 @@ export function WishlistTable({
           const diffSign = diffFromTracked != null && diffFromTracked >= 0 ? "+" : "";
           const trendSign =
             entry.trend30d != null && entry.trend30d >= 0 ? "▲" : "▼";
-          const rarityKey = (entry.rarity ?? "SR").toUpperCase();
+          const rarityKey = entry.rarity?.trim().toUpperCase() ?? "";
           const productHref = `/marketplace/product/${entry.productId}`;
           const isSealedEntry =
             (entry.catalogType && isSealedCatalogType(entry.catalogType)) ||
@@ -417,128 +522,140 @@ export function WishlistTable({
             : entry.cardCode || entry.displayId || entry.productId;
 
           return (
-            <div key={rowKey} className="py-2.5">
-              <div className={MOBILE_WISHLIST_GRID}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <Link
-                    href={productHref}
-                    className="relative w-8 h-10 rounded-sm bg-bg-elevated border border-[rgba(237,232,224,0.08)] shrink-0 overflow-hidden block"
+            <div
+              key={rowKey}
+              className={`relative ${MOBILE_WISHLIST_ROW_GRID} py-3 pr-7`}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={removingKey === rowKey}
+                  className="absolute top-1/2 right-0 z-10 inline-flex w-7 h-7 -translate-y-1/2 items-center justify-center rounded-md text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors focus:outline-none disabled:opacity-50"
+                  aria-label={`${entry.name} 更多操作`}
+                >
+                  <MoreVertical className="size-4" aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-44">
+                  <DropdownMenuItem onClick={() => router.push(productHref)}>
+                    查看商品頁
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!onUpdateTarget}
+                    onClick={() => setMobileEditingTargetKey(rowKey)}
                   >
-                    {entry.imageUrl?.trim() ? (
-                      <Image
-                        src={entry.imageUrl.trim()}
-                        alt=""
-                        fill
-                        sizes="32px"
-                        className="object-cover object-top"
-                      />
-                    ) : (
-                      <span className="absolute inset-0 flex items-center justify-center font-mono text-[7px] text-text-disabled">
-                        {entry.rarity ?? "—"}
-                      </span>
-                    )}
-                  </Link>
-                  <div className="min-w-0">
-                    <Link
-                      href={productHref}
-                      className="font-sans font-semibold text-[12px] text-text-primary truncate hover:text-brand transition-colors block"
-                    >
-                      {entry.name}
-                    </Link>
-                    <p className="font-mono text-[9px] text-text-disabled truncate leading-tight">
-                      {subtitleLabel}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-center">
-                  <GradeCell entry={entry} onGradeChange={onUpdateGrade} />
-                </div>
-                <div className="flex justify-center">
-                  {isSealedEntry ? (
-                    <span className="font-mono text-[9px] text-text-secondary px-1 py-0.5 rounded border border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
-                      盒組
-                    </span>
+                    編輯目標價
+                  </DropdownMenuItem>
+                  <WishlistGradeMenuSection
+                    entry={entry}
+                    onGradeChange={onUpdateGrade}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={!onRemove}
+                    onClick={() => void handleRemove(entry)}
+                  >
+                    從願望清單移除
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <div className="flex items-center gap-2 min-w-0">
+                <Link
+                  href={productHref}
+                  className="relative w-9 aspect-5/7 rounded-sm bg-bg-elevated border border-[rgba(237,232,224,0.08)] shrink-0 overflow-hidden block"
+                >
+                  {entry.imageUrl?.trim() ? (
+                    <Image
+                      src={entry.imageUrl.trim()}
+                      alt=""
+                      fill
+                      sizes="36px"
+                      className="object-cover object-top"
+                    />
                   ) : (
-                    <span
-                      className={`font-mono text-[9px] font-semibold px-1 py-0.5 rounded border ${
-                        RARITY_STYLE[rarityKey] ?? RARITY_STYLE.SR
-                      }`}
-                    >
-                      {entry.rarity ?? "—"}
+                    <span className="absolute inset-0 flex items-center justify-center font-mono text-[7px] text-text-disabled">
+                      {hasDisplayRarity(entry.rarity)
+                        ? entry.rarity!.trim()
+                        : "—"}
                     </span>
                   )}
-                </div>
-                <div className="text-right min-w-0">
-                  <p className="font-mono font-bold text-[12px] text-text-primary tabular-nums leading-tight">
-                    {formatHkd(displayPrice)}
-                  </p>
-                  {displayPrice == null ? (
-                    <p className="font-mono text-[9px] text-text-disabled leading-tight">
-                      暫無參考價
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={productHref}
+                    title={entry.name}
+                    className="font-sans font-semibold text-[12px] text-text-primary leading-tight hover:text-brand transition-colors block"
+                  >
+                    {truncateWishlistMobileName(entry.name)}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                    <p className="font-mono text-[9px] text-text-disabled leading-tight truncate">
+                      {subtitleLabel}
                     </p>
-                  ) : resolved.source === "tracked_price" ? (
-                    <p className="font-mono text-[9px] text-text-disabled leading-tight">
-                      追蹤價估計
-                    </p>
-                  ) : diffFromTracked != null ? (
-                    <p
-                      className={`font-mono text-[9px] leading-tight ${
-                        diffFromTracked >= 0 ? "text-warning" : "text-success"
-                      }`}
-                    >
-                      {diffSign}HK$
-                      {Math.abs(diffFromTracked).toLocaleString("en-HK")}
-                    </p>
-                  ) : null}
+                    {isSealedEntry ? (
+                      <span className="font-mono text-[9px] text-text-secondary px-1 py-0.5 rounded border border-[rgba(237,232,224,0.12)] bg-bg-elevated/40 shrink-0">
+                        盒組
+                      </span>
+                    ) : hasDisplayRarity(entry.rarity) ? (
+                      <span
+                        className={`font-mono text-[9px] font-semibold px-1 py-0.5 rounded border shrink-0 ${
+                          RARITY_STYLE[rarityKey] ?? RARITY_STYLE.SR
+                        }`}
+                      >
+                        {entry.rarity!.trim()}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
+                    <GradeCell
+                      entry={entry}
+                      onGradeChange={onUpdateGrade}
+                      readOnly
+                    />
+                    {hasTrend && entry.trend30d != null ? (
+                      <span
+                        className={`font-mono text-[9px] ${
+                          entry.trend30d >= 0 ? "text-success" : "text-warning"
+                        }`}
+                      >
+                        30D {trendSign}{Math.abs(entry.trend30d).toFixed(1)}%
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2 mt-1.5 pl-10">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 font-mono text-[9px] text-text-disabled">
-                  <span className="text-text-disabled shrink-0">目標</span>
-                  <TargetPriceCell
-                    entry={entry}
-                    onSave={onUpdateTarget}
-                    align="left"
-                  />
-                  {hasTrend && entry.trend30d != null ? (
-                    <span
-                      className={
-                        entry.trend30d >= 0 ? "text-success" : "text-warning"
-                      }
-                    >
-                      30D {trendSign}{Math.abs(entry.trend30d).toFixed(1)}%
-                    </span>
-                  ) : null}
-                  {hasTrend ? (
-                    <MiniSparkline
-                      points={sparklinePoints}
-                      direction={sparklineDirection}
-                      hasData={hasTrend}
-                    />
-                  ) : null}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    disabled={removingKey === rowKey}
-                    className="inline-flex w-7 h-7 items-center justify-center rounded-md text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors font-mono text-sm focus:outline-none shrink-0 disabled:opacity-50"
-                    aria-label={`${entry.name} 更多操作`}
+              <div className="text-right tabular-nums min-w-0 self-center">
+                <TargetPriceCell
+                  entry={entry}
+                  onSave={onUpdateTarget}
+                  align="right"
+                  hideEditButton
+                  shortCurrency
+                  editing={mobileEditingTargetKey === rowKey}
+                  onEditingChange={(editing) => {
+                    if (!editing) {
+                      setMobileEditingTargetKey(null);
+                    }
+                  }}
+                />
+              </div>
+              <div className="text-right tabular-nums min-w-0 self-center">
+                <p className="font-mono font-bold text-[12px] text-text-primary leading-tight truncate">
+                  {formatWishlistMobilePrice(displayPrice)}
+                </p>
+                {displayPrice == null ? (
+                  <p className="font-mono text-[9px] text-text-disabled leading-tight">
+                    暫無參考價
+                  </p>
+                ) : resolved.source === "tracked_price" ? null : diffFromTracked != null ? (
+                  <p
+                    className={`font-mono text-[9px] leading-tight truncate ${
+                      diffFromTracked >= 0 ? "text-warning" : "text-success"
+                    }`}
                   >
-                    ⋯
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-44">
-                    <DropdownMenuItem onClick={() => router.push(productHref)}>
-                      查看商品頁
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      disabled={!onRemove}
-                      onClick={() => void handleRemove(entry)}
-                    >
-                      從願望清單移除
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                    {diffSign}$
+                    {Math.abs(diffFromTracked).toLocaleString("en-HK")}
+                  </p>
+                ) : null}
               </div>
             </div>
           );
@@ -620,7 +737,7 @@ export function WishlistTable({
               const diffSign = diffFromTracked != null && diffFromTracked >= 0 ? "+" : "";
               const trendSign =
                 entry.trend30d != null && entry.trend30d >= 0 ? "▲" : "▼";
-              const rarityKey = (entry.rarity ?? "SR").toUpperCase();
+              const rarityKey = entry.rarity?.trim().toUpperCase() ?? "";
               const productHref = `/marketplace/product/${entry.productId}`;
               const isSealedEntry =
                 (entry.catalogType && isSealedCatalogType(entry.catalogType)) ||
@@ -661,15 +778,15 @@ export function WishlistTable({
                       <span className="inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border text-text-secondary border-[rgba(237,232,224,0.12)] bg-bg-elevated/40">
                         盒組
                       </span>
-                    ) : (
+                    ) : hasDisplayRarity(entry.rarity) ? (
                     <span
                       className={`inline-block font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
                         RARITY_STYLE[rarityKey] ?? RARITY_STYLE.SR
                       }`}
                     >
-                      {entry.rarity ?? "—"}
+                      {entry.rarity!.trim()}
                     </span>
-                    )}
+                    ) : null}
                   </td>
                   <td className="py-3 px-3 text-right">
                     <p className="font-mono font-semibold text-[14px] text-text-primary">
@@ -732,10 +849,10 @@ export function WishlistTable({
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         disabled={removingKey === rowKey}
-                        className="inline-flex w-8 h-8 items-center justify-center rounded-lg border border-transparent hover:bg-[#322a24] hover:border-[rgba(237,232,224,0.10)] text-[#d4c4b7] hover:text-[#eae1da] transition-all font-mono text-[15px] focus:outline-none cursor-pointer select-none disabled:opacity-50"
+                        className="inline-flex w-8 h-8 items-center justify-center rounded-lg border border-transparent hover:bg-[#322a24] hover:border-[rgba(237,232,224,0.10)] text-[#d4c4b7] hover:text-[#eae1da] transition-all focus:outline-none cursor-pointer select-none disabled:opacity-50"
                         aria-label={`${entry.name} 更多操作`}
                       >
-                        ⋯
+                        <MoreVertical className="size-4" aria-hidden="true" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="min-w-44">
                         <DropdownMenuItem

@@ -1,13 +1,14 @@
 import type { Message } from "@/app/store/useHkCardVaultStore";
 import type { Tables } from "@/types/supabase";
+import {
+  SYSTEM_OFFER_ACCEPTED_TEXT,
+  SYSTEM_OFFER_REJECTED_TEXT,
+  SYSTEM_ORDER_CANCELLED_TEXT,
+} from "@/app/lib/chat/offerSystemMessageCopy";
 
 export type RealtimeChatMessageRow = Tables<"chat_messages">;
 
-const SYSTEM_ACCEPT_TEXT =
-  "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）";
-const SYSTEM_REJECT_TEXT = "❌ 賣家已拒絕此出價";
 const SYSTEM_ORDER_COMPLETED_TEXT = "✅ 交易已順利完成";
-const SYSTEM_ORDER_CANCELLED_TEXT = "❌ 此筆訂單已取消";
 
 export function isAmlSensitiveChatContent(content: string): boolean {
   return content.includes("私下") && content.includes("過數");
@@ -48,9 +49,10 @@ export function mapChatMessageRowToStoreMessage(
     return {
       id: row.id,
       sender: "system",
-      text: SYSTEM_ACCEPT_TEXT,
+      text: SYSTEM_OFFER_ACCEPTED_TEXT,
       timestamp,
       type: "text",
+      offerId: row.offer_id ?? undefined,
       orderData: merchantOrderId
         ? { orderId: merchantOrderId, orderKind: "merchant" }
         : memberOrderId
@@ -63,9 +65,10 @@ export function mapChatMessageRowToStoreMessage(
     return {
       id: row.id,
       sender: "system",
-      text: SYSTEM_REJECT_TEXT,
+      text: SYSTEM_OFFER_REJECTED_TEXT,
       timestamp,
       type: "text",
+      offerId: row.offer_id ?? undefined,
     };
   }
 
@@ -87,12 +90,19 @@ export function mapChatMessageRowToStoreMessage(
   }
 
   if (content === "SYSTEM_ORDER_CANCELLED") {
+    const merchantOrderId = row.merchant_order_id?.trim();
+    const memberOrderId = row.member_order_id?.trim();
     return {
       id: row.id,
       sender: "system",
       text: SYSTEM_ORDER_CANCELLED_TEXT,
       timestamp,
-      type: "text",
+      type: "system_order_cancelled",
+      orderData: merchantOrderId
+        ? { orderId: merchantOrderId, orderKind: "merchant" }
+        : memberOrderId
+          ? { orderId: memberOrderId, orderKind: "member" }
+          : undefined,
     };
   }
 

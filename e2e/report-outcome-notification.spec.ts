@@ -30,7 +30,7 @@ async function fillAndSubmitProfileReport(
   await dialog.getByRole("combobox").click();
   await page.getByRole("option", { name: /惡意欺詐 \/ 虛假交易/ }).click();
   await dialog.locator("textarea").fill(details);
-  await dialog.getByRole("button", { name: /確認提交安全審查/ }).click();
+  await dialog.getByRole("button", { name: /確認提交/ }).click();
 
   await expect(page.getByText("舉報信號已受理")).toBeVisible({
     timeout: 45_000,

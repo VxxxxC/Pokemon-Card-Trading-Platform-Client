@@ -39,6 +39,7 @@ type MerchantEscrowStatus = Tables<"merchant_orders">["escrow_status"];
 export type MerchantCheckoutOrder = {
   orderId: string;
   orderNumber: string | null;
+  listingId: string;
   escrowStatus: MerchantEscrowStatus;
   isPayable: boolean;
   createdAt: string | null;
@@ -499,6 +500,7 @@ export async function loadMerchantCheckoutOrder(
       data: {
         orderId: row.id,
         orderNumber: row.order_number,
+        listingId: row.listing_id,
         escrowStatus: row.escrow_status,
         isPayable: row.escrow_status === "pending_payment",
         createdAt,

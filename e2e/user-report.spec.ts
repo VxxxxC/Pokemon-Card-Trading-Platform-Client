@@ -47,7 +47,7 @@ async function fillAndSubmitReportDialog(
   await dialog.locator("textarea").fill(details);
 
   await dialog
-    .getByRole("button", { name: /確認提交安全審查/ })
+    .getByRole("button", { name: /確認提交/ })
     .click();
 
   await expect(page.getByText("舉報信號已受理")).toBeVisible({
@@ -72,7 +72,7 @@ async function submitReportDialogExpectError(
   await dialog.locator("textarea").fill(details);
 
   await dialog
-    .getByRole("button", { name: /確認提交安全審查/ })
+    .getByRole("button", { name: /確認提交/ })
     .click();
 
   await expect
@@ -128,7 +128,7 @@ async function submitReportDialogExpectError(
     )
     .toBe("error");
   await expect(
-    dialog.getByRole("button", { name: /確認提交安全審查/ }),
+    dialog.getByRole("button", { name: /確認提交/ }),
   ).toBeVisible({ timeout: 10_000 });
 }
 
@@ -268,7 +268,7 @@ test.describe("User report submission", () => {
     ).toBeVisible();
 
     const submitButton = dialog.getByRole("button", {
-      name: /確認提交安全審查/,
+      name: /確認提交/,
     });
     await expect(submitButton).toBeDisabled();
   });
@@ -304,7 +304,7 @@ test.describe("User report submission", () => {
     await dialog.locator("textarea").fill("E2E chat report with evidence");
     await dialog.locator('input[type="file"]').setInputFiles(LISTING_PHOTO_FIXTURE);
     await dialog
-      .getByRole("button", { name: /確認提交安全審查/ })
+      .getByRole("button", { name: /確認提交/ })
       .click();
 
     await expect(page.getByText("舉報信號已受理")).toBeVisible({

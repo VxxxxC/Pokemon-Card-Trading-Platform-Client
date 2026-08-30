@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { Megaphone, Clock } from "lucide-react";
 
@@ -9,9 +9,10 @@ import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
 import { Footer } from "@/app/components/navigation/Footer";
 import { PwaInlineBanner } from "@/app/components/pwa/PwaInlineBanner";
-import { getAnnouncementStatus } from "@/lib/announcements/status";
+import { getAnnouncementStatus, sortAnnouncementsForPublicDisplay } from "@/lib/announcements/status";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
 import { AnnouncementDetailLink } from "@/lib/announcements/announcement-detail-link";
+import { markAnnouncementsAsRead } from "@/lib/announcements/read-state";
 import { cn } from "@/lib/utils";
 
 type AnnouncementsPageClientProps = {
@@ -38,14 +39,18 @@ export function AnnouncementsPageClient({
     });
 
     return {
-      activeAnnouncements: activeList,
-      pastAnnouncements: pastList,
+      activeAnnouncements: sortAnnouncementsForPublicDisplay(activeList),
+      pastAnnouncements: sortAnnouncementsForPublicDisplay(pastList),
       now: nowDate,
     };
   }, [announcements]);
 
   const currentDisplayList =
     activeTab === "active" ? activeAnnouncements : pastAnnouncements;
+
+  useEffect(() => {
+    markAnnouncementsAsRead(activeAnnouncements);
+  }, [activeAnnouncements]);
 
   return (
     <div className="min-h-[100dvh] bg-bg-page text-text-primary flex flex-col font-sans overflow-x-hidden">

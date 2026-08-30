@@ -36,7 +36,7 @@ test.describe("P-F04 merchant ops and member-seller trading", () => {
     await expect(page.locator("#listings-heading")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText("所有商品")).toBeVisible();
+    await expect(page.getByRole("tab", { name: /上架中/ })).toBeVisible();
 
     await page.goto("/profile/merchant/settings", {
       waitUntil: "domcontentloaded",

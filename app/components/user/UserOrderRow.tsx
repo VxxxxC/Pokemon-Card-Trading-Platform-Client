@@ -54,19 +54,22 @@ interface UserOrderRowProps {
   };
 }
 
-function formatOrderRef(orderNumber: string): string {
+function formatOrderNumberLabel(orderNumber: string): string {
   const compact = orderNumber.replace(/^#/, "").trim();
-  if (compact.length <= 14) {
-    return `#${compact}`;
+  if (!compact) {
+    return "";
   }
-  return `#${compact.slice(0, 6)}…${compact.slice(-6)}`;
+  if (/^ORD-/i.test(compact) || compact.length <= 24) {
+    return compact;
+  }
+  return `${compact.slice(0, 8)}…${compact.slice(-8)}`;
 }
 
 export const ORDER_ROW_CHIP_BASE =
   "inline-flex items-center shrink-0 font-mono text-[10px] font-semibold leading-none px-2 py-0.5 rounded-full border";
 
 export const ORDER_ROW_CHIP_TONES = {
-  buy: "text-[#3b9eff] bg-[#3b9eff]/10 border-[#3b9eff]/25",
+  buy: "font-medium text-[#8A8680] bg-white/[0.03] border-white/[0.06]",
   sell: "text-warning bg-warning/10 border-warning/25",
   warning: "text-warning bg-warning/10 border-warning/25",
   blue: "text-[#3b9eff] bg-[#3b9eff]/10 border-[#3b9eff]/25",
@@ -140,7 +143,7 @@ export function UserOrderRow({
 }: UserOrderRowProps) {
   const router = useRouter();
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const displayOrderNumber = orderNumber ?? order.id;
+  const displayOrderNumber = orderNumber?.trim() || null;
   const navigateOrderId = detailOrderId ?? order.id;
 
   const isBuyer = order.userContext === "BUYER";
@@ -165,11 +168,14 @@ export function UserOrderRow({
   const { countdownLabel, isExpired, isExpiringSoon } = usePaymentCountdown(
     isPendingEscrowPayment ? dbOrderContext?.paymentExpiresAt : null,
   );
+  const showCheckoutPaymentButton =
+    isBuyer &&
+    !isExpired &&
+    (canCheckoutMerchantOrder || canPayAuthOrder);
   const showPendingActions =
     isPendingDbOrder &&
     (canCompleteOrder ||
-      canPayAuthOrder ||
-      canCheckoutMerchantOrder ||
+      showCheckoutPaymentButton ||
       Boolean(dbOrderContext?.canCancel));
   const showReviewCta =
     dbOrderContext?.dbStatus === "completed" &&
@@ -265,9 +271,10 @@ export function UserOrderRow({
               {order.grade}
             </span>
           </div>
-          <p className="font-mono text-[10px] text-text-disabled truncate mt-0.5">
-            {formatOrderRef(displayOrderNumber)}
-            {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
+          {displayOrderNumber ? (
+            <p className="font-mono text-[10px] text-text-disabled truncate">
+              訂單號碼 {formatOrderNumberLabel(displayOrderNumber)}
+              {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
               <span
                 className={cn(
                   "ml-1.5",
@@ -278,7 +285,8 @@ export function UserOrderRow({
                 {isExpired ? "付款已過期" : countdownLabel}
               </span>
             ) : null}
-          </p>
+            </p>
+          ) : null}
           <p className="text-[10px] text-text-disabled truncate mt-0.5">
             {counterpartLabel}：{counterpartName}
             {order.createdAt ? (
@@ -296,17 +304,7 @@ export function UserOrderRow({
               className="flex flex-wrap justify-end gap-1"
               onClick={(event) => event.stopPropagation()}
             >
-              {showPendingActions && canCheckoutMerchantOrder && !isExpired && (
-                <button
-                  type="button"
-                  disabled={isActionLoading}
-                  onClick={() => router.push("/checkout/" + navigateOrderId)}
-                  className="font-sans text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50"
-                >
-                  付款
-                </button>
-              )}
-              {showPendingActions && canPayAuthOrder && (
+              {showPendingActions && showCheckoutPaymentButton && (
                 <button
                   type="button"
                   disabled={isActionLoading}
@@ -321,7 +319,7 @@ export function UserOrderRow({
                   disabled={isActionLoading}
                   isActionLoading={isActionLoading}
                   onConfirm={handleComplete}
-                  triggerClassName="font-sans text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-success/15 text-success border border-success/25 hover:bg-success/25 transition-colors disabled:opacity-50"
+                  triggerClassName="font-sans text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50"
                 />
               )}
               {showReviewCta && (
@@ -383,20 +381,26 @@ export function UserOrderRow({
             ) : null}
           </p>
 
-          <p className="font-mono text-[10px] text-text-disabled truncate">
-            {formatOrderRef(displayOrderNumber)}
-            {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
-              <span
-                className={cn(
-                  "ml-1.5",
-                  isExpired || isExpiringSoon ? "text-warning" : "text-text-disabled",
-                )}
-                suppressHydrationWarning
-              >
-                {isExpired ? "付款已過期" : countdownLabel}
-              </span>
-            ) : null}
-          </p>
+          {displayOrderNumber || (isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt) ? (
+            <p className="font-mono text-[10px] text-text-disabled truncate">
+              {displayOrderNumber
+                ? `訂單號碼 ${formatOrderNumberLabel(displayOrderNumber)}`
+                : null}
+              {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
+                <span
+                  className={cn(
+                    displayOrderNumber ? "ml-1.5" : null,
+                    isExpired || isExpiringSoon
+                      ? "text-warning"
+                      : "text-text-disabled",
+                  )}
+                  suppressHydrationWarning
+                >
+                  {isExpired ? "付款已過期" : countdownLabel}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
         </div>
 
         <div className="shrink-0 self-center">
@@ -411,21 +415,7 @@ export function UserOrderRow({
           className="flex flex-col gap-2 w-full mt-3 pt-3 border-t border-[rgba(237,232,224,0.06)]"
           onClick={(event) => event.stopPropagation()}
         >
-          {showPendingActions && canCheckoutMerchantOrder && !isExpired && (
-            <button
-              type="button"
-              disabled={isActionLoading}
-              onClick={() => router.push("/checkout/" + navigateOrderId)}
-              className={cn(
-                orderRowActionBtnClass,
-                "px-3 bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25",
-              )}
-            >
-              <CreditCard className="size-3.5 shrink-0" aria-hidden />
-              前往付款
-            </button>
-          )}
-          {showPendingActions && canPayAuthOrder && (
+          {showPendingActions && showCheckoutPaymentButton && (
             <button
               type="button"
               disabled={isActionLoading}
@@ -447,7 +437,7 @@ export function UserOrderRow({
                 onConfirm={handleComplete}
                 triggerClassName={cn(
                   orderRowActionBtnClass,
-                  "px-3 bg-success/15 text-success border border-success/25 hover:bg-success/25",
+                  "px-3 bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25",
                 )}
               />
             </div>

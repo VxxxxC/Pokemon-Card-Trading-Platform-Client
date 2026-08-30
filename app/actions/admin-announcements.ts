@@ -3,7 +3,7 @@
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { getHktTodayDateString } from "@/lib/announcements/hkt-dates";
-import { sortAnnouncementsForAdmin } from "@/lib/announcements/status";
+import { sortAnnouncementsForAdmin, sortAnnouncementsForPublicDisplay } from "@/lib/announcements/status";
 import {
   mapAnnouncementRow,
   mapAnnouncementToDbRow,
@@ -94,7 +94,6 @@ async function readAnnouncements(
   let query = supabase
     .from("platform_announcements")
     .select("*")
-    .order("priority", { ascending: true })
     .order("created_at", { ascending: false });
 
   if (options?.activeOnly) {
@@ -129,7 +128,7 @@ export async function getActiveAnnouncementsForDisplay(): Promise<AnnouncementLi
     activeOnly: true,
     surface: "announcements",
   });
-  return { success: true, data };
+  return { success: true, data: sortAnnouncementsForPublicDisplay(data) };
 }
 
 type HomeBannerListResult =
@@ -147,7 +146,9 @@ export async function getHomeBannersForDisplay(): Promise<HomeBannerListResult> 
   });
   return {
     success: true,
-    data: data.map(mapAnnouncementToHomeBannerItem),
+    data: sortAnnouncementsForPublicDisplay(data).map(
+      mapAnnouncementToHomeBannerItem,
+    ),
   };
 }
 
@@ -157,7 +158,7 @@ export async function getAnnouncementsForPublicList(): Promise<AnnouncementListR
   }
 
   const data = await readAnnouncements(false, { surface: "announcements" });
-  return { success: true, data };
+  return { success: true, data: sortAnnouncementsForPublicDisplay(data) };
 }
 
 export async function getAnnouncementsForAdmin(): Promise<AnnouncementListResult> {

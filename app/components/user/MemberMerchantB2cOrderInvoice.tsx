@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { MemberOrderInvoiceRow } from "@/app/components/user/member-order-invoice-row";
 
 type MemberMerchantB2cOrderInvoiceProps = {
   itemSubtotal: number;
@@ -30,49 +30,32 @@ export function MemberMerchantB2cOrderInvoice({
   authFee = 0,
 }: MemberMerchantB2cOrderInvoiceProps) {
   return (
-    <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
-      <div className="flex items-center justify-between pb-2">
-        <h3 className="font-sans font-extrabold text-[14.5px] text-[#eae1da]">
-          🧾 商戶託管交易收據
-        </h3>
-        <span
-          className={cn(
-            "font-sans text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded border",
-            isSeller
-              ? "text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30"
-              : "text-[#38bdf8] bg-[#38bdf8]/10 border-[#38bdf8]/30",
-          )}
-        >
-          {isSeller ? "賣出交易" : "買入交易"}
-        </span>
-      </div>
+    <div className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
+      <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+        帳單明細
+      </h3>
 
-      <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
-        <div className="flex justify-between">
-          <span>商品成交價</span>
-          <span className="text-text-primary">
-            {"HK$ " + itemSubtotal.toLocaleString("zh-TW")}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span>運費（{formatShippingMethodLabel(shippingMethod)}）</span>
-          <span className="text-text-primary">
-            {"HK$ " + shippingFee.toLocaleString("zh-TW")}
-          </span>
-        </div>
+      <div className="space-y-2 border-t border-white/[0.06] pt-3 font-mono text-[12px] text-text-secondary">
+        <MemberOrderInvoiceRow label="商品成交價" amount={itemSubtotal} />
+        <MemberOrderInvoiceRow
+          label={`運費（${formatShippingMethodLabel(shippingMethod)}）`}
+          amount={shippingFee}
+        />
         {authFee > 0 ? (
-          <div className="flex justify-between">
+          <div className="flex justify-between text-brand">
             <span>官方第三方鑑定費</span>
-            <span className="text-text-primary">
+            <span className="font-bold">
               {"HK$ " + authFee.toLocaleString("zh-TW")}
             </span>
           </div>
         ) : null}
 
-        <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
-          <span>{isSeller ? "買家託管總額" : "託管付款總額"}</span>
+        <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] pt-3 font-sans text-[14px]">
+          <span className="font-semibold text-text-primary">
+            {isSeller ? "買家託管總額" : "託管付款總額"}
+          </span>
           <span
-            className="text-brand font-mono text-[18px] md:text-[24px]"
+            className="font-mono text-[18px] font-bold text-brand sm:text-[20px]"
             data-testid="order-payment-amount"
           >
             {"HK$ " + totalAmount.toLocaleString("zh-TW")}

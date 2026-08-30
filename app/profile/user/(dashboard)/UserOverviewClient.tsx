@@ -315,19 +315,35 @@ export function UserOverviewClient({
           {isOverviewLoading ? (
             <PortfolioStatsSkeleton count={3} embedded />
           ) : (
-            portfolioStats.map(({ label, value, note }) => (
-              <div key={label} className="flex-1 min-w-0 px-3 py-3 sm:px-4 sm:py-3.5">
-                <p className="font-mono text-[9px] sm:text-[10px] text-text-secondary truncate leading-tight">
-                  {label}
-                </p>
-                <p className="font-mono font-bold text-[13px] sm:text-[15px] text-text-primary leading-tight mt-1 truncate tabular-nums">
-                  {value}
-                </p>
-                <p className="font-mono text-[9px] text-text-disabled truncate mt-0.5 hidden sm:block">
-                  {note}
-                </p>
-              </div>
-            ))
+            portfolioStats.map(({ label, value, note }, index) => {
+              const isValuation = index === portfolioStats.length - 1;
+              return (
+                <div
+                  key={label}
+                  className={`min-w-0 py-3 sm:py-3.5 ${
+                    isValuation
+                      ? "flex-[1.55] px-2 sm:px-3"
+                      : "flex-[0.85] px-2.5 sm:px-4"
+                  }`}
+                >
+                  <p className="font-mono text-[9px] sm:text-[10px] text-text-secondary truncate leading-tight">
+                    {label}
+                  </p>
+                  <p
+                    className={`font-mono font-bold text-text-primary leading-tight mt-1 tabular-nums ${
+                      isValuation
+                        ? "text-[11px] sm:text-[13px]"
+                        : "text-[13px] sm:text-[15px] truncate"
+                    }`}
+                  >
+                    {value}
+                  </p>
+                  <p className="font-mono text-[9px] text-text-disabled truncate mt-0.5 hidden sm:block">
+                    {note}
+                  </p>
+                </div>
+              );
+            })
           )}
         </div>
 

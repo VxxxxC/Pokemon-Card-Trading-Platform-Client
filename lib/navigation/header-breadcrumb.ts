@@ -10,6 +10,11 @@ const HEADER_BREADCRUMBS: Record<string, HeaderBreadcrumb> = {
     parentLabel: "首頁",
     currentLabel: "官方公告",
   },
+  "/about": {
+    parentHref: "/",
+    parentLabel: "首頁",
+    currentLabel: "關於平台",
+  },
   "/profile/user/settings": {
     parentHref: "/profile/user",
     parentLabel: "我的帳號總覽",

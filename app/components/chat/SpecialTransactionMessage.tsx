@@ -22,6 +22,7 @@ export interface SpecialTransactionProps {
   isMe: boolean;
   currentUserId: string | null;
   roomId?: string;
+  listingImageUrls?: string[];
 }
 
 function mapInitialStatusToOfferStatus(
@@ -53,6 +54,7 @@ function buildHydratedContext(
     cardNumber: null,
     setCode: "",
     displayId: null,
+    listingImageUrls: props.listingImageUrls,
     imageUrl: props.imageUrl,
     buyerName: props.buyerName,
     sellerId: props.sellerId,
@@ -106,6 +108,7 @@ export function buildOfferCardHydrationFromSpecialData(
     cardId: specialData.cardId,
     offerId: specialData.offerId,
     imageUrl: specialData.imageUrl,
+    listingImageUrls: specialData.listingImageUrls,
     offerPrice: specialData.offerPrice,
     initialModifiedCount: specialData.modifiedCount ?? 0,
     useAuthentication: specialData.useAuthentication,

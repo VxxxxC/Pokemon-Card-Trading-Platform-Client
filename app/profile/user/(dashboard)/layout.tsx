@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 const USER_TABS: TabItem[] = [
   { href: "/profile/user", label: "總覽", iconKey: "overview" },
   { href: "/profile/user/collection", label: "卡牌庫", iconKey: "collection" },
-  { href: "/profile/user/inventory", label: "商品管理", iconKey: "inventory" },
+  { href: "/profile/user/inventory", label: "我的掛單", iconKey: "my-listings" },
   { href: "/profile/user/trading", label: "交易管理", iconKey: "trading" },
 ];
 

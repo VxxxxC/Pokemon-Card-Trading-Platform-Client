@@ -494,13 +494,15 @@ function toPaginationMetaFromCount(
 function toTradeHistoryRow(
   row: TradeHistoryQueryRow,
 ): MarketplaceProductTradeHistoryRow {
+  const gradingCompany = row.listings.grading_company;
+  const gradingScore = row.listings.grading_score?.trim() || null;
+
   return {
     orderId: row.id,
     createdAt: row.created_at ?? "",
-    grade: formatTradeGradeLabel(
-      row.listings.grading_company,
-      row.listings.grading_score,
-    ),
+    gradingCompany,
+    gradingScore,
+    grade: formatTradeGradeLabel(gradingCompany, gradingScore),
     price: Number(row.final_price),
   };
 }

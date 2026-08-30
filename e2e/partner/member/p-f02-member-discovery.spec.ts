@@ -65,7 +65,7 @@ test.describe("P-F02 member discovery, trading, and legal", () => {
     await expect(page.locator("#listings-heading")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText("所有商品")).toBeVisible();
+    await expect(page.getByRole("tab", { name: /上架中/ })).toBeVisible();
 
     await gotoTradingPage(page);
     await expect(page.getByRole("button", { name: /^待處理/ }).first()).toBeVisible();

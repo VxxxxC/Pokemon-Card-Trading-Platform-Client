@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { getUserChatInboxLobby } from "@/app/actions/chat";
+import { readChatLocalCache } from "@/app/lib/chat/chatLocalCache";
 import { hydrateChatRoomThread } from "@/app/lib/chat/hydrateChatRoomThread";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import {
@@ -14,6 +15,8 @@ import {
 } from "@/app/lib/chat/mergeChatRooms";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
 import { roomMatchesViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
+import { roomHasPersistedThreadTail } from "@/app/lib/chat/roomHydration";
+import { useChatLocalCachePersistence } from "@/app/lib/hooks/useChatLocalCachePersistence";
 import { useChatRoomRealtime } from "@/app/lib/hooks/useChatRoomRealtime";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 import { useIsDesktopChat } from "@/app/lib/hooks/useIsDesktopChat";
@@ -46,6 +49,7 @@ export function GlobalChatOverlay() {
   const threadRequestIdRef = useRef(0);
   const lastLobbySyncAtRef = useRef(0);
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cacheRestoreKeyRef = useRef<string | null>(null);
   const LOBBY_STALE_MS = 30_000;
   const [inboxLoading, setInboxLoading] = useState(false);
   const [isLobbyRefreshing, setIsLobbyRefreshing] = useState(false);
@@ -54,6 +58,25 @@ export function GlobalChatOverlay() {
   );
 
   useChatRoomRealtime({ enabled: Boolean(currentUserId) });
+  useChatLocalCachePersistence(currentUserId, activeListingPersona);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      cacheRestoreKeyRef.current = null;
+      return;
+    }
+
+    const restoreKey = `${currentUserId}:${activeListingPersona}`;
+    if (cacheRestoreKeyRef.current === restoreKey) {
+      return;
+    }
+    cacheRestoreKeyRef.current = restoreKey;
+
+    const cached = readChatLocalCache(currentUserId, activeListingPersona);
+    if (cached && cached.length > 0) {
+      setChats(cached);
+    }
+  }, [activeListingPersona, currentUserId, setChats]);
 
   const applyLobbyMerge = useCallback(
     (dbRooms: Parameters<typeof mergeChatRoomsWithDb>[1]) => {
@@ -161,14 +184,15 @@ export function GlobalChatOverlay() {
       .getState()
       .chats.find((room) => room.id === roomId);
 
+    const hasCachedThread = roomHasPersistedThreadTail(activeRoom);
     const requestId = ++threadRequestIdRef.current;
-    setThreadLoadingRoomId(roomId);
+
+    if (!hasCachedThread) {
+      setThreadLoadingRoomId(roomId);
+    }
 
     try {
-      const result = await hydrateChatRoomThread(
-        roomId,
-        activeRoom?.threadHydrated ? { force: true } : undefined,
-      );
+      const result = await hydrateChatRoomThread(roomId);
 
       if (requestId !== threadRequestIdRef.current) {
         return;

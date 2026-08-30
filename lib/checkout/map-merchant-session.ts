@@ -12,6 +12,7 @@ export function mapMerchantCheckoutToSession(
     orderKind: "merchant" as const,
     orderId: order.orderId,
     orderNumber: order.orderNumber,
+    listingId: order.listingId,
     isPayable: order.isPayable,
     paymentExpiresAt: order.paymentExpiresAt,
     product: order.product,

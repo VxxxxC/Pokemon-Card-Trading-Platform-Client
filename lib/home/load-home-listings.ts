@@ -30,6 +30,7 @@ type ListingRow = Pick<
   | "created_at"
   | "use_authentication"
   | "seller_persona"
+  | "status"
 >;
 
 type ProfileRow = Pick<Tables<"profiles">, "id" | "display_name" | "role">;
@@ -84,7 +85,7 @@ export async function fetchHomeListingsByPersona(
   const { data: listingRows, error: listingError } = await supabase
     .from("listings")
     .select(
-      "id, product_id, price, grading_company, grading_score, seller_id, images, created_at, use_authentication, seller_persona",
+      "id, product_id, price, grading_company, grading_score, seller_id, images, created_at, use_authentication, seller_persona, status",
     )
     .eq("status", "active")
     .eq("seller_persona", persona)
@@ -96,7 +97,9 @@ export async function fetchHomeListingsByPersona(
     throw new Error("無法載入首頁掛單");
   }
 
-  const listings = (listingRows ?? []) as ListingRow[];
+  const listings = ((listingRows ?? []) as ListingRow[]).filter(
+    (row) => row.status === "active",
+  );
   if (listings.length === 0) {
     if (isHomePerfLogEnabled()) {
       homePerfLog(

@@ -141,18 +141,9 @@ export function AdminSidebar({ authEmail }: { authEmail: string }) {
             >
               {authEmail}
             </p>
-            <div className="flex items-center gap-1.5">
-              <span className="truncate font-sans text-[10px] text-text-secondary">
-                平台管理員
-              </span>
-              <span className="text-text-disabled">·</span>
-              <Link
-                href="/profile/user"
-                className="inline-flex items-center gap-0.5 font-sans text-[10px] font-semibold text-brand transition-colors hover:underline active:scale-[0.98]"
-              >
-                前台 →
-              </Link>
-            </div>
+            <p className="truncate font-sans text-[10px] text-text-secondary">
+              平台管理員
+            </p>
           </div>
         </div>
       </SidebarFooter>

@@ -135,7 +135,10 @@ export function MemberOrderCompleteConfirmDialog({
     >
       <AlertDialogTrigger
         disabled={disabled || isActionLoading}
-        className={triggerClassName}
+        className={cn(
+          "inline-flex items-center justify-center gap-1.5",
+          triggerClassName,
+        )}
       >
         {isActionLoading ? (
           "處理中…"

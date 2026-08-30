@@ -36,8 +36,12 @@ test.describe("P-E07 member collection", () => {
       timeout: 20_000,
     });
 
-    await expect(page.getByRole("button", { name: "卡名 A→Z" })).toBeVisible();
-    await page.getByRole("button", { name: "最新加入" }).click();
+    const sortTrigger = page.getByRole("combobox", { name: "願望清單排序" });
+    await expect(sortTrigger).toBeVisible();
+    await expect(sortTrigger).toContainText("按卡名排序");
+    await sortTrigger.click();
+    await page.getByRole("option", { name: "最新加入" }).click();
+    await expect(sortTrigger).toContainText("最新加入");
     await expect(page.getByText("追蹤願望清單")).toBeVisible({
       timeout: 20_000,
     });

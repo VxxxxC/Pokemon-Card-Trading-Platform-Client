@@ -105,13 +105,13 @@ export function MobileHeader() {
             >
               <Image
                 src="/asset/logo.png"
-                alt="CardVaultHK"
+                alt="HKCardvault"
                 height={32}
                 width={32}
                 className="size-8 shrink-0 rounded-lg border border-white/10 object-cover"
               />
               <span className="truncate font-sans text-[15px] font-bold tracking-tight text-text-primary">
-                CardVaultHK
+                HKCardvault
               </span>
             </Link>
           )}

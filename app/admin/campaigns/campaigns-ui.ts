@@ -46,6 +46,8 @@ export const FORM_LABEL_CLASS = "font-mono text-[11px] text-text-secondary";
 export const FORM_INPUT_CLASS =
   "h-9 rounded-lg border border-white/10 bg-transparent px-3 font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/40 outline-none";
 
+export const FORM_DATE_INPUT_CLASS = `${FORM_INPUT_CLASS} input-date-theme`;
+
 export const FORM_INPUT_MONO_CLASS = `${FORM_INPUT_CLASS} font-mono`;
 
 export const FORM_SELECT_TRIGGER_CLASS =
@@ -73,3 +75,9 @@ export const FORM_PAGE_BACK_LINK_CLASS =
 
 export const FORM_TEXTAREA_CLASS =
   "min-h-[10rem] w-full rounded-lg border border-white/10 bg-transparent px-3 py-2 font-sans text-[12px] leading-relaxed text-text-primary placeholder:text-text-disabled focus-visible:border-brand/40 focus-visible:ring-2 focus-visible:ring-brand/40 outline-none resize-y disabled:opacity-50";
+
+export {
+  CALENDAR_POPOVER_CONTENT_CLASS,
+  CALENDAR_TRIGGER_ICON_CLASS,
+  INPUT_DATE_THEME_CLASS,
+} from "@/lib/ui/calendar-theme";

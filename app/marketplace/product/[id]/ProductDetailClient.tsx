@@ -7,6 +7,7 @@ import { Pagination } from "@/app/components/ui/Pagination";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
+import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
 import {
   getMarketplaceProductListings,
@@ -370,7 +371,7 @@ export function ProductDetailClient({
           setSelectedGradeFilterId(gradeOption.id);
           setGradeFilterSheetOpen(false);
         }}
-        className={`font-mono text-[10px] font-bold h-7 px-3 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
+        className={`font-mono text-[10px] font-bold h-7 px-2.5 rounded-md border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
           isActive
             ? "bg-brand border-brand text-[#1A1612]"
             : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
@@ -495,83 +496,100 @@ export function ProductDetailClient({
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[#8A8680] uppercase tracking-wider select-none">
-                  <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto scrollbar-none min-w-0 flex-1">
-                    {visibleGradeFilterOptions.map(renderGradeFilterChip)}
-                  </div>
-
-                  <Sheet
-                    open={gradeFilterSheetOpen}
-                    onOpenChange={setGradeFilterSheetOpen}
+                <div className="space-y-2 select-none">
+                  <div
+                    className="flex h-9 items-stretch overflow-hidden rounded-lg border border-white/8 bg-[#1A1612] font-sans text-[11px] text-[#eae1da]"
                   >
-                    <SheetTrigger
-                      className="lg:hidden h-8 shrink-0 rounded-[6px] border border-white/5 bg-[#1A1612] px-3 font-sans text-[11px] text-[#eae1da] hover:bg-[#2c2722] transition-colors normal-case"
+                    <Sheet
+                      open={gradeFilterSheetOpen}
+                      onOpenChange={setGradeFilterSheetOpen}
                     >
-                      篩選 · {selectedGradeLabel}
-                    </SheetTrigger>
-                    <SheetContent side="bottom" className="bg-[#1A1612] border-white/10">
-                      <SheetHeader>
-                        <SheetTitle className="text-[#eae1da]">
-                          規格篩選
-                        </SheetTitle>
-                      </SheetHeader>
-                      <div className="flex flex-wrap gap-2 pt-2 pb-4">
-                        {visibleGradeFilterOptions.map(renderGradeFilterChip)}
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  {!isSealedProduct ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <label
-                        htmlFor="graded-only-switch"
-                        className="text-[10px] font-bold text-[#8A8680] cursor-pointer select-none normal-case"
+                      <SheetTrigger
+                        className="lg:hidden flex min-w-0 flex-1 items-center border-r border-white/8 px-3 text-left text-[#eae1da] transition-colors hover:bg-[#2c2722] focus:outline-none"
                       >
-                        已鑑定
-                      </label>
-                      <Switch
-                        id="graded-only-switch"
-                        checked={onlyGraded}
-                        onCheckedChange={handleOnlyGradedChange}
-                        className="scale-90 data-[state=checked]:bg-brand"
-                      />
+                        <span className="truncate">
+                          篩選 · {selectedGradeLabel}
+                        </span>
+                      </SheetTrigger>
+                      <SheetContent
+                        side="bottom"
+                        className="bg-[#1A1612] border-white/10"
+                      >
+                        <SheetHeader>
+                          <SheetTitle className="text-[#eae1da]">
+                            規格篩選
+                          </SheetTitle>
+                        </SheetHeader>
+                        <div className="flex flex-wrap gap-2 pt-2 pb-4">
+                          {visibleGradeFilterOptions.map(renderGradeFilterChip)}
+                        </div>
+                      </SheetContent>
+                    </Sheet>
+
+                    <div
+                      className="hidden lg:flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto border-r border-white/8 px-2 scrollbar-none"
+                    >
+                      {visibleGradeFilterOptions.map(renderGradeFilterChip)}
                     </div>
-                  ) : null}
 
-                  <Select
-                    value={subSortKey}
-                    onValueChange={(value) =>
-                      setSubSortKey(value as SubSortKey)
-                    }
-                  >
-                    <SelectTrigger className="w-[7.5rem] min-w-[7.5rem] h-8 bg-[#1A1612] border border-white/5 rounded-[6px] text-[#eae1da] font-sans text-[11px] hover:bg-[#2c2722] transition-colors focus-visible:ring-0 focus-visible:border-brand/40 shrink-0">
-                      <span className="truncate">
-                        {subSortKey === "price_asc" && "最平售價優先"}
-                        {subSortKey === "grade_desc" && "鑑定等級最高"}
-                        {subSortKey === "rating_desc" && "賣家評級最高"}
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
-                      <SelectItem
-                        value="price_asc"
-                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                    {!isSealedProduct ? (
+                      <div
+                        className="flex shrink-0 items-center gap-2 border-r border-white/8 px-3"
                       >
-                        最平售價優先
-                      </SelectItem>
-                      <SelectItem
-                        value="grade_desc"
-                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                        <label
+                          htmlFor="graded-only-switch"
+                          className="text-[10px] font-medium text-[#8A8680] cursor-pointer whitespace-nowrap"
+                        >
+                          已鑑定
+                        </label>
+                        <Switch
+                          id="graded-only-switch"
+                          checked={onlyGraded}
+                          onCheckedChange={handleOnlyGradedChange}
+                          className="scale-90 data-[state=checked]:bg-brand"
+                        />
+                      </div>
+                    ) : null}
+
+                    <div className="min-w-0 flex-1 lg:w-[8.5rem] lg:flex-none">
+                      <Select
+                        value={subSortKey}
+                        onValueChange={(value) =>
+                          setSubSortKey(value as SubSortKey)
+                        }
                       >
-                        鑑定等級最高
-                      </SelectItem>
-                      <SelectItem
-                        value="rating_desc"
-                        className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
-                      >
-                        賣家評級最高
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                        <SelectTrigger
+                          className="h-9 w-full min-w-0 rounded-none border-0 bg-transparent px-3 text-[11px] text-[#eae1da] shadow-none hover:bg-[#2c2722] transition-colors focus-visible:ring-0"
+                        >
+                          <span className="truncate">
+                            {subSortKey === "price_asc" && "最平售價優先"}
+                            {subSortKey === "grade_desc" && "鑑定等級最高"}
+                            {subSortKey === "rating_desc" && "賣家評級最高"}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#26211C] border border-white/10 rounded-lg text-[#eae1da] font-sans text-[12px] shadow-2xl">
+                          <SelectItem
+                            value="price_asc"
+                            className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                          >
+                            最平售價優先
+                          </SelectItem>
+                          <SelectItem
+                            value="grade_desc"
+                            className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                          >
+                            鑑定等級最高
+                          </SelectItem>
+                          <SelectItem
+                            value="rating_desc"
+                            className="focus:bg-[#322a24] focus:text-brand cursor-pointer transition-colors"
+                          >
+                            賣家評級最高
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -790,24 +808,35 @@ export function ProductDetailClient({
                     暫無成交紀錄
                   </div>
                 ) : (
-                  tradeHistory.map((item) => (
+                  tradeHistory.map((item) => {
+                    const grade = formatListingGrade(
+                      item.gradingCompany,
+                      item.gradingScore,
+                    );
+
+                    return (
                     <div
                       key={item.orderId}
                       className="flex items-center justify-between font-mono text-[12px] p-2.5 bg-[#17130f] rounded-lg border border-white/[0.04]"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <RelativeDateTime
                           value={item.createdAt}
-                          className="text-[#8A8680]"
+                          className="text-[#8A8680] shrink-0"
                         />
-                        <span className="text-[#50453b]">|</span>
-                        <span className="text-brand">{item.grade}</span>
+                        <span className="text-[#50453b] shrink-0">|</span>
+                        <GradeBadge
+                          authority={grade.authority}
+                          score={grade.score}
+                          size="sm"
+                        />
                       </div>
-                      <span className="font-bold text-[#22c55e]">
+                      <span className="font-bold text-[#22c55e] shrink-0">
                         HK$ {item.price.toLocaleString("en-HK")}
                       </span>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 

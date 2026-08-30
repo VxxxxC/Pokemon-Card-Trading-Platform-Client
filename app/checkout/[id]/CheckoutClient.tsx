@@ -246,7 +246,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
         variantConfig?.showFulfillmentForm ?? true,
       );
       if (validationError) {
-        toast.error("⚠️ 資料未補全", { description: validationError });
+        toast.error("資料未補全", { description: validationError });
         return;
       }
     }
@@ -259,7 +259,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
     }
 
     setIsPreparingPayment(true);
-    toast.info("🔒 正在加密並建立安全託管保障...", {
+    toast.info("正在建立安全託管付款...", {
       description: "託管協定成立中，正在調用 Stripe 安全金流網絡...",
       duration: 2000,
     });
@@ -289,7 +289,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
         setSelectedCouponId(null);
         setCouponPreviewSubsidy(0);
       }
-      toast.error("⚠️ 無法建立託管付款", { description: result.error });
+      toast.error("無法建立託管付款", { description: result.error });
       return;
     }
 
@@ -310,7 +310,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
         : current,
     );
     setStep(2);
-    toast.success("✅ 託管付款已建立", {
+    toast.success("託管付款已建立", {
       description: `請輸入付款資料以完成 HK$ ${result.data.totalAmount.toLocaleString()} 支付。`,
     });
   };
@@ -367,18 +367,18 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
           <IoChevronBack />
         </button>
 
-        <div className="border-b border-[rgba(237,232,224,0.08)] pb-4 space-y-3">
-          <h1 className="font-sans font-black text-[20px] md:text-[24px] text-[#eae1da]">
+        <div className="space-y-3 border-b border-white/[0.08] pb-4">
+          <h1 className="font-sans text-[20px] font-bold text-text-primary md:text-[22px]">
             {step === 1 ? "訂單確認" : "安全託管付款"}
           </h1>
-          <p className="font-mono text-[9px] text-brand uppercase tracking-widest">
-            {session.product.cardName}・商品序號: {orderReference}
+          <p className="font-mono text-[11px] text-text-disabled">
+            訂單號碼 {orderReference}
           </p>
           <CheckoutWizardStepper variant={session.variant} step={step} />
         </div>
 
         {!session.isPayable ? (
-          <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4">
+          <div className="rounded-lg border border-brand/20 bg-bg-card/20 p-4">
             <p className="font-sans text-[12.5px] text-brand">
               此訂單已完成付款或已進入下一階段，無法重複支付。
             </p>
@@ -386,9 +386,9 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
         ) : null}
 
         {session.isPayable && session.paymentExpiresAt ? (
-          <div className="bg-[#26211C] border border-brand/20 rounded-2xl p-4 space-y-1">
-            <p className="font-sans text-[12.5px] text-text-secondary">
-              請於 48 小時內完成託管付款，逾期訂單將自動取消。
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand/20 bg-bg-card/20 px-4 py-3">
+            <p className="font-sans text-[12px] text-text-secondary">
+              請於 48 小時內完成託管付款，逾期將自動取消
             </p>
             <p
               className={
@@ -402,8 +402,8 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-7 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
+          <div className="lg:col-span-7 space-y-4">
             {step === 1 ? (
               <CheckoutReviewStep
                 session={session}
@@ -415,9 +415,9 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
                 authFee={pricing.authFee}
               />
             ) : (
-              <section className="bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl p-4 space-y-3">
-                <h2 className="font-sans font-bold text-[15px] text-[#eae1da]">
-                  💳 輸入付款資料
+              <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-2">
+                <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+                  輸入付款資料
                 </h2>
                 <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
                   請確認訂單金額後完成 Stripe 安全託管付款。如需修改交收或鑑定選項，請返回上一步。
@@ -461,7 +461,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
                       <span>正在處理安全金流支付...</span>
                     </>
                   ) : (
-                    <span>⚡ 繼續付款</span>
+                    <span>繼續付款</span>
                   )}
                 </button>
               ) : clientSecret && stripeInstance ? (

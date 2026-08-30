@@ -16,6 +16,18 @@ import { useUIStore } from "@/app/store/useUIStore";
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import { MEMBER_PERSONA_FEATURES_BLOCKED_ERROR } from "@/lib/auth/member-persona-features";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const WISHLIST_SORT_OPTIONS = [
+  { value: "name", label: "按卡名排序" },
+  { value: "recent", label: "最新加入" },
+] as const;
 
 type UserCollectionClientProps = {
   initialData: CollectionInitialData;
@@ -65,6 +77,10 @@ export function UserCollectionClient({
     updateTargetPrice,
     updateGrade,
   } = useWishlist({ deferLoad: true });
+
+  const wishlistSortLabel =
+    WISHLIST_SORT_OPTIONS.find((option) => option.value === wishlistSort)
+      ?.label ?? "排序";
 
   const sortedWishlistEntries = useMemo(() => {
     if (wishlistSort === "recent") {
@@ -168,7 +184,7 @@ export function UserCollectionClient({
               <p className="font-mono text-[10px] text-text-secondary uppercase tracking-wider">
                 總身家估值
               </p>
-              <p className="font-mono font-bold text-[20px] sm:text-[24px] text-text-primary leading-tight mt-1 tabular-nums">
+              <p className="font-mono font-bold text-[20px] sm:text-[24px] text-brand leading-tight mt-1 tabular-nums">
                 {isSummaryLoading ? (
                   <span className="text-text-disabled text-[18px]">載入中…</span>
                 ) : (
@@ -192,9 +208,9 @@ export function UserCollectionClient({
             <button
               type="button"
               onClick={() => openAddAssetModal({ mode: "hobby" })}
-              className="flex items-center gap-1.5 px-3 h-9 bg-brand hover:bg-brand-hover text-[#1A1612] font-sans text-[12px] font-semibold rounded-lg active:scale-[0.98] transition-all shrink-0 cursor-pointer focus:outline-none"
+              className="flex items-center gap-1 px-2.5 h-8 bg-brand hover:bg-brand-hover text-[#1A1612] font-sans text-[11px] font-semibold rounded-lg active:scale-[0.98] transition-all shrink-0 cursor-pointer focus:outline-none"
             >
-              <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <Plus className="h-3 w-3 shrink-0" aria-hidden />
               <span className="hidden sm:inline">收錄新卡</span>
               <span className="sm:hidden">收錄</span>
             </button>
@@ -204,7 +220,7 @@ export function UserCollectionClient({
           {[
             { label: "持有", value: portfolioSummary.cardCount },
             { label: "已鑑定", value: portfolioSummary.gradedCount },
-            { label: "Raw", value: portfolioSummary.rawCount },
+            { label: "裸卡", value: portfolioSummary.rawCount },
             { label: "已上架", value: portfolioSummary.listedCount },
           ].map(({ label, value }) => (
             <div key={label} className="flex-1 min-w-0 px-2 py-2.5 sm:px-3 sm:py-3 text-center sm:text-left">
@@ -219,7 +235,7 @@ export function UserCollectionClient({
         </div>
       </section>
 
-      <div className="relative">
+      <div className="relative hidden lg:block">
         <div className="relative flex items-center">
           <Search
             className="absolute left-3 h-4 w-4 text-text-disabled pointer-events-none"
@@ -320,47 +336,33 @@ export function UserCollectionClient({
             className="font-sans font-semibold text-[15px] text-text-primary min-w-0 truncate"
           >
             追蹤願望清單
-            {!isWishlistLoading && wishlistEntries.length > 0 ? (
-              <span
-                className="font-mono text-[12px] text-text-disabled ml-1.5"
-                aria-label={`共 ${wishlistEntries.length} 項追蹤`}
-              >
-                <data
-                  value={wishlistEntries.length}
-                  className="not-italic"
-                  aria-hidden="true"
-                >
-                  {wishlistEntries.length}
-                </data>
-              </span>
-            ) : null}
           </h2>
-          <div
-            className="flex shrink-0 rounded-lg border border-[rgba(237,232,224,0.08)] bg-bg-page/60 p-0.5"
-            role="group"
-            aria-label="願望清單排序"
+          <Select
+            value={wishlistSort}
+            onValueChange={(value) =>
+              setWishlistSort(value as "name" | "recent")
+            }
           >
-            {(
-              [
-                { key: "name", label: "卡名", smLabel: "A→Z" },
-                { key: "recent", label: "最新加入", smLabel: "最新" },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setWishlistSort(option.key)}
-                className={`px-2.5 py-1 rounded-md font-mono text-[10px] transition-colors ${
-                  wishlistSort === option.key
-                    ? "bg-brand text-[#1A1612] font-bold shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                <span className="sm:hidden">{option.smLabel}</span>
-                <span className="hidden sm:inline">{option.label}</span>
-              </button>
-            ))}
-          </div>
+            <SelectTrigger
+              aria-label="願望清單排序"
+              className="h-8 w-[104px] shrink-0 rounded-lg border border-[rgba(237,232,224,0.08)] bg-bg-page/60 px-2.5 font-mono text-[10px] text-text-secondary hover:border-brand/30 hover:text-text-primary focus-visible:ring-0 focus-visible:border-brand/40"
+            >
+              <SelectValue placeholder="排序">{wishlistSortLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent
+              className="bg-bg-card border border-[rgba(237,232,224,0.08)] rounded-lg font-mono text-[11px] shadow-2xl"
+            >
+              {WISHLIST_SORT_OPTIONS.map((option) => (
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className="focus:bg-brand/10 focus:text-brand cursor-pointer"
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="bg-bg-card rounded-xl border border-[rgba(237,232,224,0.08)] px-3 py-1 sm:px-4 overflow-hidden">
           <WishlistTable

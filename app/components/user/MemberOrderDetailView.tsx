@@ -326,27 +326,20 @@ export function MemberOrderDetailView({
         className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
         aria-label="訂單摘要"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              className={cn(
-                "inline-flex items-center rounded-md border px-2 py-0.5 font-sans text-[11px] font-medium",
-                isSeller
-                  ? "border-warning/30 bg-warning/10 text-warning"
-                  : "border-sky-400/30 bg-sky-400/10 text-sky-400",
-              )}
-            >
-              {isSeller ? "賣出交易" : "買入交易"}
-            </span>
-            {order.useAuthentication ? (
-              <span className="inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 font-sans text-[11px] font-medium text-brand">
-                鑑定訂單
-              </span>
-            ) : null}
-          </div>
-          {createdAtLabel ? (
-            <span className="shrink-0 font-mono text-[10px] text-text-disabled">
-              建立 {createdAtLabel}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span
+            className={cn(
+              "inline-flex items-center rounded-md border px-2 py-0.5 font-sans text-[11px] font-medium",
+              isSeller
+                ? "border-warning/30 bg-warning/10 text-warning"
+                : "border-sky-400/30 bg-sky-400/10 text-sky-400",
+            )}
+          >
+            {isSeller ? "賣出交易" : "買入交易"}
+          </span>
+          {order.useAuthentication ? (
+            <span className="inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 font-sans text-[11px] font-medium text-brand">
+              鑑定訂單
             </span>
           ) : null}
         </div>
@@ -419,6 +412,11 @@ export function MemberOrderDetailView({
             >
               {order.listingId}
             </dd>
+            {createdAtLabel ? (
+              <p className="mt-1 font-mono text-[10px] text-text-disabled">
+                建立 {createdAtLabel}
+              </p>
+            ) : null}
           </div>
           {displayPayoutId ? (
             <div className="min-w-0 sm:col-span-2">

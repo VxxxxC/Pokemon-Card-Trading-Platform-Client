@@ -31,7 +31,7 @@ test.describe("Member inventory smoke", () => {
     await expect(page.locator("#listings-heading")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText("所有商品")).toBeVisible();
+    await expect(page.getByRole("tab", { name: /上架中/ })).toBeVisible();
     await expect(page.getByText(/款 卡牌/)).toBeVisible();
   });
 });

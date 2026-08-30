@@ -11,7 +11,6 @@ import { BuyButton } from "@/app/components/transactions/GlobalTxButtons";
 import { PriceSpreadBadge } from "@/app/components/marketplace/PriceSpreadBadge";
 import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 import type { Database, Tables } from "@/types/supabase";
-import { formatTradeGradeLabel } from "@/lib/marketplace/listing-display";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
 
 export type MarketplaceListing = {
@@ -93,11 +92,6 @@ function hasDisplayableRarity(
   return trimmed !== "" && trimmed !== "-";
 }
 
-function isRawGradeAuthority(authority: string): boolean {
-  const normalized = authority.toUpperCase().trim();
-  return normalized === "RAW" || normalized === "RAW CARD";
-}
-
 export function MarketplaceCard({
   listing,
   currentUserId: currentUserIdProp,
@@ -171,13 +165,11 @@ function MarketplaceCardView({
   );
 
   return (
-    <div
-      className={`h-full ${isOwnListing ? "rounded-xl ring-2 ring-brand/50 ring-offset-2 ring-offset-[#17130f]" : ""}`}
-    >
+    <div className="h-full">
     <motion.article
       whileHover={{ y: -2, scale: 1.01 }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group bg-[#26211C] rounded-xl overflow-hidden border border-white/[0.06] flex flex-col h-full"
+      className="group bg-[#26211C] rounded-lg overflow-hidden border border-white/[0.06] flex flex-col h-full"
     >
       <Link
         href={productDetailHref}
@@ -194,7 +186,7 @@ function MarketplaceCardView({
                 : displayName
             }
             fill
-            className="object-contain p-1.5 group-hover:scale-[1.02] transition-transform duration-300"
+            className="object-cover group-hover:scale-[1.02] transition-transform duration-300"
             sizes="(max-width: 640px) 33vw, (max-width: 1280px) 25vw, 20vw"
             priority={imagePriority ?? false}
             loading={imagePriority ? undefined : "lazy"}
@@ -202,21 +194,13 @@ function MarketplaceCardView({
           <div className="absolute inset-0 bg-linear-to-tr from-transparent via-[rgba(212,165,116,0.06)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
           {hasDisplayableRarity(listing.rarity) ? (
-            <div className="absolute top-1.5 left-1.5 pointer-events-none">
+            <div className="absolute top-1.5 left-1.5 pointer-events-none z-10">
               <RarityBadge rarity={listing.rarity} />
             </div>
           ) : null}
 
-          {isOwnListing ? (
-            <div className="absolute bottom-1.5 left-1.5 pointer-events-none z-20">
-              <span className="font-mono text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-brand text-[#1A1612]">
-                我的掛單
-              </span>
-            </div>
-          ) : null}
-
           <div
-            className="absolute top-1.5 right-1.5 z-10"
+            className="absolute top-1 right-1 z-10"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
@@ -227,47 +211,37 @@ function MarketplaceCardView({
               trackedPrice={listing.price > 0 ? listing.price : null}
               initialIsFavored={wishlistIsFavored}
               currentUserId={currentUserId}
+              size="sm"
             />
           </div>
         </div>
 
-        <div className="p-2 space-y-1">
+        <div className="px-1.5 pt-1.5 pb-1 space-y-0.5">
           <h3 className="font-sans font-semibold text-[12px] text-[#eae1da] leading-tight truncate group-hover:text-brand transition-colors">
             {displayName}
           </h3>
-          <p className="font-mono text-[10px] text-[#8A8680] truncate leading-tight">
+          <p className="font-mono text-[9px] text-[#8A8680] truncate leading-tight">
             {displaySetAndCardNo}
           </p>
-          <div className="flex items-center justify-between gap-1 min-w-0">
-            <div className="min-w-0 shrink">
-              {isRawGradeAuthority(listing.grade.authority) ? (
-                <span className="inline-flex font-mono text-[10px] font-medium text-text-primary bg-brand/15 rounded px-1.5 py-0.5">
-                  {formatTradeGradeLabel(
-                    listing.grade.authority,
-                    listing.grade.score || null,
-                  )}
-                </span>
-              ) : (
-                <GradeBadge
-                  authority={listing.grade.authority}
-                  score={listing.grade.score}
-                  size="sm"
-                />
-              )}
-            </div>
-            <p className="font-mono font-bold text-[13px] text-[#eae1da] leading-none shrink-0">
+          <div className="flex items-center justify-between gap-1 min-w-0 pt-0.5">
+            <p className="font-mono font-bold text-[12px] text-brand leading-none shrink-0 tabular-nums">
               {formattedPrice}
             </p>
-          </div>
-          {listing.priceVsMarketPct != null ? (
-            <div className="min-h-[14px]">
+            {listing.priceVsMarketPct != null ? (
               <PriceSpreadBadge
                 priceVsMarketPct={listing.priceVsMarketPct}
-                className="text-[9px] min-w-0 truncate"
+                className="text-[9px] min-w-0 truncate shrink-0"
               />
-            </div>
-          ) : null}
-          <div className="flex items-center gap-1 min-h-[20px] min-w-0">
+            ) : null}
+          </div>
+          <div className="min-h-[16px]">
+            <GradeBadge
+              authority={listing.grade.authority}
+              score={listing.grade.score}
+              size="sm"
+            />
+          </div>
+          <div className="flex items-center gap-1 min-h-[18px] min-w-0">
             {listing.sellerPersona === "merchant" ? (
               <CertifiedMerchantBadge className="shrink-0 scale-[0.92] origin-left" />
             ) : null}
@@ -282,7 +256,7 @@ function MarketplaceCardView({
       </Link>
 
       <div
-        className="px-2 pb-2 pt-1 mt-auto shrink-0 w-full"
+        className="px-1.5 pb-1.5 pt-0.5 mt-auto shrink-0 w-full"
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
@@ -290,7 +264,7 @@ function MarketplaceCardView({
           <button
             type="button"
             disabled
-            className="w-full h-8 px-2 bg-[#1A1612] border border-brand/30 text-brand/70 font-sans font-bold text-[10px] tracking-wide whitespace-nowrap truncate rounded-lg cursor-not-allowed flex items-center justify-center gap-1"
+            className="w-full h-7 px-1 bg-[#1A1612] text-brand/70 font-sans font-bold text-[10px] tracking-wide whitespace-nowrap truncate rounded-lg cursor-not-allowed flex items-center justify-center gap-0.5"
           >
             我的掛單 · 無法出價
           </button>

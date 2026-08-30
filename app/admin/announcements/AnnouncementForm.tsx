@@ -33,8 +33,13 @@ import {
   FORM_TOGGLE_ROW_CLASS,
 } from "@/app/admin/campaigns/campaigns-ui";
 import { DEFAULT_ANNOUNCEMENT_POSTER_URL } from "@/lib/announcements/defaults";
+import {
+  CALENDAR_POPOVER_CONTENT_CLASS,
+  CALENDAR_TRIGGER_ICON_CLASS,
+} from "@/lib/ui/calendar-theme";
 import { uploadAnnouncementPosterImage } from "@/lib/announcements/client-upload";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
+import { cn } from "@/lib/utils";
 
 type AnnouncementFormProps = {
   mode: "create" | "edit";
@@ -67,7 +72,6 @@ export function AnnouncementForm({
       ? new Date(announcement.endDate + "T23:59:59")
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   );
-  const [isActive, setIsActive] = useState(announcement?.isActive ?? true);
   const [showOnHomeBanner, setShowOnHomeBanner] = useState(
     announcement?.showOnHomeBanner ?? false,
   );
@@ -149,7 +153,7 @@ export function AnnouncementForm({
         linkUrl: linkUrl.trim(),
         startDate: formattedStartDate,
         endDate: formattedEndDate,
-        isActive,
+        isActive: mode === "edit" ? (announcement?.isActive ?? true) : true,
         priority,
         showOnHomeBanner,
         showInAnnouncements,
@@ -286,13 +290,10 @@ export function AnnouncementForm({
             <PopoverTrigger
               className={`${FORM_INPUT_CLASS} flex w-full items-center gap-2 font-mono text-[12px]`}
             >
-              <CalendarIcon className="size-3.5 shrink-0 text-brand" />
+              <CalendarIcon className={cn("size-3.5", CALENDAR_TRIGGER_ICON_CLASS)} />
               {format(startDate, "yyyy-MM-dd")}
             </PopoverTrigger>
-            <PopoverContent
-              className="w-auto border border-white/10 bg-bg-card p-0 shadow-2xl"
-              align="start"
-            >
+            <PopoverContent className={CALENDAR_POPOVER_CONTENT_CLASS} align="start">
               <Calendar
                 mode="single"
                 selected={startDate}
@@ -308,13 +309,10 @@ export function AnnouncementForm({
             <PopoverTrigger
               className={`${FORM_INPUT_CLASS} flex w-full items-center gap-2 font-mono text-[12px]`}
             >
-              <CalendarIcon className="size-3.5 shrink-0 text-brand" />
+              <CalendarIcon className={cn("size-3.5", CALENDAR_TRIGGER_ICON_CLASS)} />
               {format(endDate, "yyyy-MM-dd")}
             </PopoverTrigger>
-            <PopoverContent
-              className="w-auto border border-white/10 bg-bg-card p-0 shadow-2xl"
-              align="start"
-            >
+            <PopoverContent className={CALENDAR_POPOVER_CONTENT_CLASS} align="start">
               <Calendar
                 mode="single"
                 selected={endDate}
@@ -347,17 +345,6 @@ export function AnnouncementForm({
             className={FORM_SWITCH_CLASS}
           />
         </div>
-      </div>
-
-      <div className={FORM_TOGGLE_ROW_CLASS}>
-        <span className="font-sans text-[12px] font-semibold text-text-primary">
-          上架
-        </span>
-        <Switch
-          checked={isActive}
-          onCheckedChange={setIsActive}
-          className={FORM_SWITCH_CLASS}
-        />
       </div>
 
       <button

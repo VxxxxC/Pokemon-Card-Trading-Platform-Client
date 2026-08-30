@@ -98,7 +98,27 @@ function isMerchantDashboardPath(pathname: string): boolean {
   );
 }
 
+function isAdminAllowedPath(pathname: string): boolean {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return true;
+  }
+
+  if (pathname === "/auth" || pathname.startsWith("/auth/")) {
+    return true;
+  }
+
+  if (pathname.startsWith("/api/")) {
+    return true;
+  }
+
+  return false;
+}
+
 export function isPathAllowedForRole(role: AuthRole, pathname: string): boolean {
+  if (role === "ADMIN") {
+    return isAdminAllowedPath(pathname);
+  }
+
   const requiresAuth =
     pathname === "/profile" ||
     isMemberDashboardPath(pathname) ||
@@ -110,15 +130,15 @@ export function isPathAllowedForRole(role: AuthRole, pathname: string): boolean 
   }
 
   if (pathname.startsWith("/admin")) {
-    return role === "ADMIN";
+    return false;
   }
 
   if (isMerchantDashboardPath(pathname)) {
-    return role === "MERCHANT" || role === "ADMIN";
+    return role === "MERCHANT";
   }
 
   if (pathname === "/profile" || isMemberDashboardPath(pathname)) {
-    return role === "USER" || role === "MERCHANT" || role === "ADMIN";
+    return role === "USER" || role === "MERCHANT";
   }
 
   return true;

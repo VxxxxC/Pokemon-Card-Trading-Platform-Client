@@ -75,7 +75,8 @@ export function NewArrivals({
   const controls = useAnimationControls();
 
   const [dragConstraints, setDragConstraints] = useState({ left: 0, right: 0 });
-  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const [pauseMarquee, setPauseMarquee] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const currentX = useRef(0);
 
   useEffect(() => {
@@ -96,7 +97,7 @@ export function NewArrivals({
     const speed = 0.6;
 
     const animate = () => {
-      if (!isUserInteracting && trackRef.current) {
+      if (!pauseMarquee && !isDragging && trackRef.current) {
         currentX.current -= speed;
 
         const halfWidth = trackRef.current.scrollWidth / 3;
@@ -111,7 +112,7 @@ export function NewArrivals({
 
     animationFrameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isUserInteracting, controls, arrivals.length]);
+  }, [pauseMarquee, isDragging, controls, arrivals.length]);
 
   const handleDrag = (
     _event: PointerEvent | MouseEvent | TouchEvent,
@@ -137,7 +138,7 @@ export function NewArrivals({
           最新會員現貨上架
         </h2>
         <Link
-          href="/marketplace?filter=c2c&sort=newest"
+          href="/marketplace?source=member"
           className={HOME_SECTION_LINK_CLASS}
         >
           查看全部 →
@@ -153,16 +154,21 @@ export function NewArrivals({
           ref={containerRef}
           className="w-full overflow-hidden pb-4 -mx-1 px-1 scrollbar-none [&::-webkit-scrollbar]:hidden select-none"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          onMouseEnter={() => setIsUserInteracting(true)}
-          onMouseLeave={() => setIsUserInteracting(false)}
-          onTouchStart={() => setIsUserInteracting(true)}
-          onTouchEnd={() => setIsUserInteracting(false)}
+          onMouseEnter={() => setPauseMarquee(true)}
+          onMouseLeave={() => {
+            setPauseMarquee(false);
+            setIsDragging(false);
+          }}
+          onTouchStart={() => setPauseMarquee(true)}
+          onTouchEnd={() => setPauseMarquee(false)}
         >
           <motion.div
             ref={trackRef}
             drag="x"
             dragConstraints={dragConstraints}
             dragElastic={0.1}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={() => setIsDragging(false)}
             onDrag={handleDrag}
             animate={controls}
             className="flex gap-3 w-max active:cursor-grabbing cursor-grab"
@@ -176,7 +182,6 @@ export function NewArrivals({
               return (
                 <div
                   key={`${item.id}-${index}`}
-                  onClick={(e) => isUserInteracting && e.stopPropagation()}
                   className={`${HOME_HORIZONTAL_CARD_CLASS} select-none`}
                 >
                   <HomeShelfListingCard
@@ -189,7 +194,7 @@ export function NewArrivals({
                     imagePriority={index < 3}
                     className="h-full border-0 shadow-none hover:shadow-none"
                     onLinkClick={(e) => {
-                      if (isUserInteracting) {
+                      if (isDragging) {
                         e.preventDefault();
                       }
                     }}

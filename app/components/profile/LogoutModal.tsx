@@ -2,6 +2,10 @@
 
 import { useState, useCallback, useTransition } from 'react';
 import { logout } from '@/app/actions/auth';
+import {
+  clearChatLocalCacheOnLogout,
+} from '@/app/lib/hooks/useChatLocalCachePersistence';
+import { useCurrentUserId } from '@/app/lib/hooks/useCurrentUserId';
 import { useUIStore } from '@/app/store/useUIStore';
 
 type LogoutModalProps = {
@@ -12,17 +16,19 @@ export function LogoutModal({ variant = "card" }: LogoutModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const setUserAuthRole = useUIStore((state) => state.setUserAuthRole);
+  const currentUserId = useCurrentUserId();
 
   const openModal = useCallback(() => setIsOpen(true), []);
   const closeModal = useCallback(() => setIsOpen(false), []);
 
   const handleLogout = useCallback(() => {
     startTransition(async () => {
+      clearChatLocalCacheOnLogout(currentUserId);
       setUserAuthRole('GUEST');
       setIsOpen(false);
       await logout();
     });
-  }, [setUserAuthRole]);
+  }, [currentUserId, setUserAuthRole]);
 
   return (
     <>

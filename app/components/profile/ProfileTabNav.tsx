@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
-  Gem,
+  Layers,
   LayoutDashboard,
   Store,
+  Tag,
   UserCircle,
   Wallet,
   type LucideIcon,
@@ -16,6 +17,7 @@ export type TabIconKey =
   | "overview"
   | "collection"
   | "inventory"
+  | "my-listings"
   | "trading"
   | "finance"
   | "merchant-overview"
@@ -23,8 +25,9 @@ export type TabIconKey =
 
 const TAB_ICON_MAP: Record<TabIconKey, LucideIcon> = {
   overview: UserCircle,
-  collection: Gem,
+  collection: Layers,
   inventory: Store,
+  "my-listings": Tag,
   trading: ClipboardList,
   finance: Wallet,
   "merchant-overview": LayoutDashboard,

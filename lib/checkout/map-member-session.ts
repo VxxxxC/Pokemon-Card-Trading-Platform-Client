@@ -9,6 +9,7 @@ export function mapMemberCheckoutToSession(
     orderKind: "member",
     orderId: order.orderId,
     orderNumber: order.orderNumber,
+    listingId: order.listingId,
     isPayable: order.isPayable,
     paymentExpiresAt: null,
     product: order.product,

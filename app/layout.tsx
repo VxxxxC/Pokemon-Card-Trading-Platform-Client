@@ -315,7 +315,14 @@ export default async function RootLayout({
           </AppSerwistProvider>
         </RoleProvider>
 
-        <Toaster position="top-center" closeButton richColors expand={false} />
+        <Toaster
+          position="top-center"
+          closeButton
+          expand={false}
+          gap={10}
+          offset={{ top: "0.75rem" }}
+          mobileOffset={{ top: "0.75rem" }}
+        />
         <Suspense fallback={null}>
           <PasswordUpdatedToast />
         </Suspense>

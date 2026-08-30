@@ -60,7 +60,7 @@ function CheckoutEscrowPaymentForm({
 
     if (error) {
       setIsConfirming(false);
-      toast.error("⚠️ 付款未完成", {
+      toast.error("付款未完成", {
         description: error.message ?? "請確認卡片資料後重試。",
       });
       return;
@@ -69,7 +69,7 @@ function CheckoutEscrowPaymentForm({
     if (isPaymentIntentAuthorized(paymentIntent?.status)) {
       const settled = await pollCheckoutPaid();
       if (settled) {
-        toast.success("🎉 付款已送出！", {
+        toast.success("付款已送出", {
           description:
             session.orderKind === "member"
               ? "平台已託管款項，請依指引將卡牌寄往平台倉庫。"
@@ -96,6 +96,11 @@ function CheckoutEscrowPaymentForm({
         options={{
           layout: "tabs",
           wallets: { applePay: "never", googlePay: "never" },
+          defaultValues: {
+            billingDetails: {
+              address: { country: "HK" },
+            },
+          },
         }}
       />
       <button
@@ -110,7 +115,7 @@ function CheckoutEscrowPaymentForm({
             <span>正在處理安全金流支付...</span>
           </>
         ) : (
-          <span>🔒 確認支付 HK$ {totalAmount.toLocaleString()}</span>
+          <span>確認支付 HK$ {totalAmount.toLocaleString()}</span>
         )}
       </button>
     </div>
@@ -135,6 +140,7 @@ export function CheckoutPaymentStep({
         stripe={stripePromise}
         options={{
           clientSecret,
+          locale: "zh-HK",
           appearance: {
             theme: "night",
             labels: "floating",

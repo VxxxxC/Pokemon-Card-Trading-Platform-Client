@@ -106,7 +106,7 @@ export function PremiumMarket({
         <h2 id="premium-heading" className={HOME_SECTION_TITLE_CLASS}>
           認證商家・鑑定託管保障
         </h2>
-        <Link href="/marketplace" className={HOME_SECTION_LINK_CLASS}>
+        <Link href="/marketplace?source=merchant" className={HOME_SECTION_LINK_CLASS}>
           查看全部 →
         </Link>
       </div>
@@ -145,13 +145,14 @@ export function PremiumMarket({
                   >
                     <ListingCoverImage listing={listing} index={index} />
                     {showWishlist && (
-                      <div className="absolute top-3 right-3 z-10 animate-fadeIn">
+                      <div className="absolute top-1.5 right-1.5 z-10 animate-fadeIn">
                         <WishlistButton
                           productId={listing.productId}
                           gradingCompany={listing.gradingCompany}
                           gradingScore={listing.gradingScore}
                           trackedPrice={listing.price > 0 ? listing.price : null}
                           currentUserId={currentUserId}
+                          size="sm"
                           initialIsFavored={isWishlistFavored(
                             favoredKeySet,
                             listing.productId,

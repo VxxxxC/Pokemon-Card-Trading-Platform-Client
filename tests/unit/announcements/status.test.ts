@@ -71,7 +71,7 @@ describe("announcement status", () => {
     expect(status.label).toBe("進行中");
   });
 
-  it("sorts active announcements by priority then createdAt desc", () => {
+  it("sorts active announcements by createdAt desc", () => {
     const announcements = [
       buildAnnouncement({
         id: "a",

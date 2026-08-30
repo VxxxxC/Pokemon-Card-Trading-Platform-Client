@@ -16,8 +16,7 @@ export function buildListingAuthServiceInlineSummary(feeHkd: number): string {
 export const LISTING_AUTH_SERVICE_TOOLTIP_BODY =
   buildAuthServiceTooltipBody(DEFAULT_AUTH_FEE_HKD);
 
-export const BUYER_AUTH_DISABLED_COPY =
-  "此賣家不接受平台鑑定加購，僅支援面交議價。";
+export const BUYER_AUTH_DISABLED_COPY = "此賣家不接受平台鑑定加購。";
 
 /** Buyer slide-over / checkout: what enabling the switch does. */
 export function buildBuyerAuthAddOnDescription(feeHkd: number): string {

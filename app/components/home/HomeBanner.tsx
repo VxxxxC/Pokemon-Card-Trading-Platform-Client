@@ -110,7 +110,7 @@ export function HomeBanner({ banners = [] }: HomeBannerProps) {
 
   return (
     <section
-      className={HOME_SECTION_CLASS}
+      className={`${HOME_SECTION_CLASS} mt-2 sm:mt-3`}
       aria-labelledby="home-banner-heading"
     >
       <div className="mb-3">

@@ -33,6 +33,7 @@ export type CheckoutSessionBase = {
   orderKind: "merchant" | "member";
   orderId: string;
   orderNumber: string | null;
+  listingId: string;
   isPayable: boolean;
   paymentExpiresAt: string | null;
   product: CheckoutProduct;

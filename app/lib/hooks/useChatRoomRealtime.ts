@@ -5,6 +5,10 @@ import { getOfferCardContext } from "@/app/actions/offers";
 import { hydrateChatRoomThread } from "@/app/lib/chat/hydrateChatRoomThread";
 import { isDbChatRoomId } from "@/app/lib/chat/constants";
 import { persistMarkRoomReadAsync } from "@/app/lib/chat/persistMarkRoomRead";
+import { refreshInboxLobbyInStore } from "@/lib/chat/refresh-inbox-lobby";
+import {
+  isViewingChatThread,
+} from "@/lib/chat/viewing-chat-thread";
 import {
   decodeOfferRealtimeEvent,
   getLastPersistedMessageTimestamp,
@@ -100,11 +104,16 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
         applyOfferPriceSync,
         activeRoomId,
         isChatOpen,
+        mobileView,
       } = useHkCardVaultStore.getState();
 
       const isIncoming = row.sender_id !== currentUserId;
       const isActiveOpenThread =
-        isChatOpen && activeRoomId === row.room_id && isIncoming;
+        isIncoming &&
+        isViewingChatThread(
+          { isChatOpen, activeRoomId, mobileView },
+          row.room_id,
+        );
 
       const markActiveThreadReadIfNeeded = () => {
         if (isActiveOpenThread) {
@@ -119,7 +128,13 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
       }
 
       const message = mapChatMessageRowToStoreMessage(row, currentUserId);
+      const hadRoom = useHkCardVaultStore
+        .getState()
+        .chats.some((room) => room.id === row.room_id);
       appendRoomMessage(row.room_id, message);
+      if (!hadRoom) {
+        await refreshInboxLobbyInStore();
+      }
       markActiveThreadReadIfNeeded();
 
       const event = decodeOfferRealtimeEvent(row);

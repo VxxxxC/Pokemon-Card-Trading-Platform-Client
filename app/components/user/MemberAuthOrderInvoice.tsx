@@ -8,6 +8,7 @@ import {
   computeFpsGrossPayoutHkd,
   computeFpsNetPayoutAmount,
 } from "@/lib/platform/fps-payout-config";
+import { MemberOrderInvoiceRow } from "@/app/components/user/member-order-invoice-row";
 import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 
 type MemberAuthOrderInvoiceProps = {
@@ -27,29 +28,6 @@ type MemberAuthOrderInvoiceProps = {
   inboundShippingFee?: number;
   outboundShippingFee?: number;
 };
-
-function InvoiceRow({
-  label,
-  amount,
-  suffix,
-  valueClassName = "text-text-primary",
-  labelClassName,
-}: {
-  label: string;
-  amount: number;
-  suffix?: string;
-  valueClassName?: string;
-  labelClassName?: string;
-}) {
-  return (
-    <div className="flex justify-between gap-3">
-      <span className={labelClassName}>{label}</span>
-      <span className={valueClassName}>
-        {suffix ?? "HK$ " + amount.toLocaleString("zh-TW")}
-      </span>
-    </div>
-  );
-}
 
 export function MemberAuthOrderInvoice({
   finalPrice,
@@ -99,12 +77,12 @@ export function MemberAuthOrderInvoice({
       </h3>
 
       <div className="space-y-2 border-t border-white/[0.06] pt-3 font-mono text-[12px] text-text-secondary">
-        <InvoiceRow label="商品最終成交價" amount={cardPrice} />
-        <InvoiceRow
+        <MemberOrderInvoiceRow label="商品最終成交價" amount={cardPrice} />
+        <MemberOrderInvoiceRow
           label="運費（賣家寄送平台）"
           amount={inboundFee}
         />
-        <InvoiceRow
+        <MemberOrderInvoiceRow
           label="運費（平台寄送買家）(B)"
           amount={outboundFee}
         />
@@ -115,7 +93,7 @@ export function MemberAuthOrderInvoice({
           </span>
         </div>
         {showSubsidy ? (
-          <InvoiceRow
+          <MemberOrderInvoiceRow
             label="平台優惠"
             amount={resolvedSubsidy}
             suffix={"-HK$ " + resolvedSubsidy.toLocaleString("zh-TW")}

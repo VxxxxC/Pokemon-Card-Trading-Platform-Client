@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateHomeListingsCache } from "@/lib/home/revalidate-home-listings";
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import {
   TRADING_DEFAULT_PAGE_SIZE,
@@ -2360,6 +2361,7 @@ export async function cancelMemberOrder(
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidateMemberOrderPaths(trimmedOrderId);
 
     return { success: true };
@@ -2460,6 +2462,7 @@ export async function cancelMerchantAuthOrder(
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidateMerchantOrderPaths(trimmedOrderId);
 
     return { success: true };
@@ -2667,6 +2670,7 @@ export async function completeMerchantOrder(
     }
 
     revalidatePath("/marketplace");
+    revalidateHomeListingsCache();
     revalidateMerchantOrderPaths(trimmedOrderId);
     revalidateMemberOrderPaths(trimmedOrderId);
 
