@@ -219,7 +219,7 @@ export function UserOverviewClient({
             className="absolute top-3 right-3 z-12 p-1 text-text-secondary hover:text-brand transition-colors"
             title="設定"
           >
-            <Settings className="h-5 w-5" aria-hidden />
+            <Settings className="h-4 w-4" aria-hidden />
           </Link>
 
           <div className="flex items-start gap-3 pr-8">

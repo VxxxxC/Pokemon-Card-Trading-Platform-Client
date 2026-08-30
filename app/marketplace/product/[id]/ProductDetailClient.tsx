@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useUIStore } from "@/app/store/useUIStore";
 import { Pagination } from "@/app/components/ui/Pagination";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { RarityBadge } from "@/app/components/cards/RarityBadge";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import { AskOrderBookRow } from "@/app/components/marketplace/AskOrderBookRow";
@@ -59,11 +58,11 @@ import {
   isRawGradingOptionId,
 } from "@/lib/marketplace/collect-listing-grade-ids";
 import Link from "next/link";
+import { HeaderBreadcrumbNav } from "@/app/components/navigation/HeaderBreadcrumbNav";
 import { TrustBanner } from "@/app/components/home/TrustBanner";
-import { IoChevronBack, IoTrendingDown, IoTrendingUp } from "react-icons/io5";
+import { IoTrendingDown, IoTrendingUp } from "react-icons/io5";
 import {
   PRODUCT_DETAIL_PANEL_CLASS,
-  PRODUCT_DETAIL_SECTION_META_CLASS,
   PRODUCT_DETAIL_SECTION_TITLE_CLASS,
 } from "./product-detail-ui";
 
@@ -105,7 +104,6 @@ export function ProductDetailClient({
   initialMarketGrades,
   initialFavoredKeys = [],
 }: ProductDetailClientProps) {
-  const router = useRouter();
   const userAuthRole = useUIStore((state) => state.userAuthRole);
   const openExecutionSlideOver = useUIStore(
     (state) => state.openExecutionSlideOver,
@@ -382,33 +380,38 @@ export function ProductDetailClient({
     );
   };
 
+  const renderMarketGradeChip = (gradeOption: {
+    gradeKey: string;
+    label: string;
+  }) => {
+    const isActive = selectedMarketGradeKey === gradeOption.gradeKey;
+    return (
+      <button
+        key={gradeOption.gradeKey}
+        type="button"
+        onClick={() => handleMarketGradeSelect(gradeOption.gradeKey)}
+        className={`font-mono text-[10px] font-bold h-7 px-2.5 rounded-md border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
+          isActive
+            ? "bg-brand border-brand text-[#1A1612]"
+            : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
+        }`}
+      >
+        {gradeOption.label}
+      </button>
+    );
+  };
+
   return (
     <div className="flex-1 w-full flex flex-col bg-[#17130f]">
       <main className="flex-1 max-w-[1100px] mx-auto w-full px-4 lg:px-8 py-4 pb-28 lg:pb-10 animate-fadeIn">
-        <div className="flex items-center gap-2 mb-4 min-w-0">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="h-8 w-8 shrink-0 rounded-lg bg-[#1A1612] border border-white/[0.06] flex items-center justify-center text-brand focus:outline-none"
-            aria-label="返回"
-          >
-            <IoChevronBack className="size-4" />
-          </button>
-          <nav
-            className="font-sans text-[12px] text-[#d4c4b7] flex items-center gap-1.5 min-w-0 select-none"
-            aria-label="麵包屑"
-          >
-            <Link
-              href="/marketplace"
-              className="text-[#eae1da] hover:text-brand transition-colors font-semibold shrink-0"
-            >
-              市場
-            </Link>
-            <span className="text-[#50453b]">/</span>
-            <span className="text-[#8A8680] truncate font-mono text-[11px] uppercase">
-              {breadcrumbLabel}
-            </span>
-          </nav>
+        <div className="mb-4 min-w-0">
+          <HeaderBreadcrumbNav
+            breadcrumb={{
+              parentHref: "/marketplace",
+              parentLabel: "大盤市場",
+              currentLabel: breadcrumbLabel,
+            }}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-6 items-start">
@@ -673,76 +676,59 @@ export function ProductDetailClient({
               />
             ) : (
               <div
-                className={`relative ${PRODUCT_DETAIL_PANEL_CLASS} p-3 flex items-center justify-between transition-opacity duration-200 ${
+                className={`relative ${PRODUCT_DETAIL_PANEL_CLASS} p-4 space-y-3 transition-opacity duration-200 ${
                   isMarketPriceRefreshing ? "opacity-60" : "opacity-100"
                 }`}
               >
-                <div className="min-w-0 flex-1">
-                  <span className={`${PRODUCT_DETAIL_SECTION_META_CLASS} block mb-1`}>
-                    {marketIndexTitle}
-                  </span>
-                  <div className="flex items-baseline gap-2">
-                    <p className="font-mono font-black text-[24px] sm:text-[28px] text-[#eae1da] leading-none">
-                      {hasMarketAvg
-                        ? `HK$ ${marketPrice!.toLocaleString("en-HK")}`
-                        : "—"}
-                    </p>
-                    {marketTrend30d != null ? (
-                      <span
-                        className={`inline-flex items-center gap-0.5 font-mono text-[12px] font-bold ${
-                          marketTrend30d > 0
-                            ? "text-[#10b981]"
-                            : marketTrend30d < 0
-                              ? "text-[#ef4444]"
-                              : "text-[#8A8680]"
-                        }`}
-                      >
-                        {marketTrend30d > 0 ? (
-                          <IoTrendingUp
-                            className="size-3.5 shrink-0"
-                            aria-hidden
-                          />
-                        ) : marketTrend30d < 0 ? (
-                          <IoTrendingDown
-                            className="size-3.5 shrink-0"
-                            aria-hidden
-                          />
-                        ) : null}
-                        {marketTrend30d > 0 ? "+" : ""}
-                        {marketTrend30d.toFixed(1)}%
+                <p className="font-sans text-[11px] text-text-secondary leading-snug">
+                  {marketIndexTitle}
+                </p>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <p className="font-mono font-black text-[22px] sm:text-[24px] text-[#eae1da] leading-none tracking-tight">
+                    {hasMarketAvg
+                      ? `HK$ ${marketPrice!.toLocaleString("en-HK")}`
+                      : "—"}
+                  </p>
+                  {marketTrend30d != null ? (
+                    <span
+                      className={`inline-flex items-center gap-1 font-mono text-[12px] font-bold shrink-0 ${
+                        marketTrend30d > 0
+                          ? "text-[#10b981]"
+                          : marketTrend30d < 0
+                            ? "text-[#ef4444]"
+                            : "text-[#8A8680]"
+                      }`}
+                    >
+                      {marketTrend30d > 0 ? (
+                        <IoTrendingUp className="size-3.5 shrink-0" aria-hidden />
+                      ) : marketTrend30d < 0 ? (
+                        <IoTrendingDown className="size-3.5 shrink-0" aria-hidden />
+                      ) : null}
+                      {marketTrend30d > 0 ? "+" : ""}
+                      {marketTrend30d.toFixed(1)}%
+                      <span className="font-sans font-medium text-[10px] opacity-80">
+                        30日
                       </span>
-                    ) : null}
-                  </div>
-                  {!hasMarketAvg ? (
-                    <p className="font-sans text-[12px] text-text-disabled mt-1.5">
-                      此規格暫無參考均價
-                    </p>
-                  ) : null}
-                  {availableMarketGrades.length > 1 ? (
-                    <div className="flex items-center gap-1.5 overflow-x-auto pt-2 scrollbar-none -mx-1 px-1">
-                      {availableMarketGrades.map((gradeOption) => {
-                        const isActive =
-                          selectedMarketGradeKey === gradeOption.gradeKey;
-                        return (
-                          <button
-                            key={gradeOption.gradeKey}
-                            type="button"
-                            onClick={() =>
-                              handleMarketGradeSelect(gradeOption.gradeKey)
-                            }
-                            className={`font-mono text-[10px] font-bold h-6 px-2.5 rounded-full border transition-all shrink-0 active:scale-[0.96] cursor-pointer focus:outline-none ${
-                              isActive
-                                ? "bg-brand border-brand text-[#1A1612]"
-                                : "bg-[#1A1612] border-white/5 text-[#8A8680] hover:text-[#eae1da] hover:border-white/10"
-                            }`}
-                          >
-                            {gradeOption.label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    </span>
                   ) : null}
                 </div>
+                {!hasMarketAvg ? (
+                  <p className="font-sans text-[12px] text-text-disabled">
+                    此規格暫無參考均價
+                  </p>
+                ) : null}
+                {availableMarketGrades.length > 1 ? (
+                  <div className="space-y-2 border-t border-white/[0.06] pt-3">
+                    <span className="font-mono text-[10px] text-[#8A8680]">
+                      參考規格
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                      {availableMarketGrades.map((gradeOption) =>
+                        renderMarketGradeChip(gradeOption),
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
 

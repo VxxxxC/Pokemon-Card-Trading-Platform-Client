@@ -105,7 +105,7 @@ export default function MerchantOrderDetailPage() {
 
   if (!isMounted || isLoading) {
     return (
-      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="w-9 h-9 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
@@ -114,7 +114,7 @@ export default function MerchantOrderDetailPage() {
   if (!isOrderReady) {
     if (fetchError) {
       return (
-        <div className="min-h-screen bg-[#17130f] text-text-primary p-6 flex flex-col items-center justify-center gap-4">
+        <div className="py-16 text-center space-y-4">
           <p className="font-sans text-[14px] text-text-disabled">{fetchError}</p>
           <Link
             href="/profile/merchant/trading"
@@ -127,7 +127,7 @@ export default function MerchantOrderDetailPage() {
     }
 
     return (
-      <div className="min-h-screen bg-[#17130f] flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="w-9 h-9 rounded-full border-2 border-brand border-t-transparent animate-spin" />
       </div>
     );
@@ -135,7 +135,7 @@ export default function MerchantOrderDetailPage() {
 
   if (fetchError || !order) {
     return (
-      <div className="min-h-screen bg-[#17130f] text-text-primary p-6 flex flex-col items-center justify-center gap-4">
+      <div className="py-16 text-center space-y-4">
         <p className="font-sans text-[14px] text-text-disabled">
           {fetchError ?? "找不到指定的交易訂單記錄。"}
         </p>

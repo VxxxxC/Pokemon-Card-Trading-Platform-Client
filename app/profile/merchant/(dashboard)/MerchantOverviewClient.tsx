@@ -168,7 +168,7 @@ export function MerchantOverviewClient({
             className="absolute top-3 right-3 z-12 p-1 text-text-secondary hover:text-brand transition-colors"
             title="店舖設定"
           >
-            <CiSettings size={20} aria-hidden="true" />
+            <CiSettings size={16} aria-hidden="true" />
           </Link>
 
           <div className="flex items-start gap-3 pr-8">

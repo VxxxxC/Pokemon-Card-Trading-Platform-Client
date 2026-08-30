@@ -19,7 +19,6 @@ import {
   formatTradeGradeLabel,
 } from "@/lib/marketplace/listing-display";
 import {
-  formatSellerIdentityLabel,
   resolveSellerProfilePath,
 } from "@/lib/marketplace/seller-identity";
 import { isSealedProductGrade } from "@/lib/catalog/item-kind";
@@ -168,17 +167,15 @@ export function ExecutionSlideOver({
   const remarks = detail?.imagesDetail?.map((img) => img.remark) ?? [];
 
   const sellerDisplayName =
-    detail?.sellerDisplayName?.trim() || order.sellerName;
+    detail?.sellerDisplayName?.trim() || order.sellerName?.trim() || "賣家";
   const sellerUsername = detail?.sellerUsername ?? order.sellerUsername ?? null;
-  const sellerLabel = formatSellerIdentityLabel(
-    sellerDisplayName,
-    sellerUsername,
-  );
   const sellerProfileHref = resolveSellerProfilePath({
     sellerId: order.sellerId,
     sellerUsername,
     sellerPersona: order.sellerPersona,
   });
+
+  const sellerDescription = detail?.sellerDescription?.trim() ?? "";
 
   const gradeBadgeLabel = (() => {
     const { authority, score } = order.customGrade;
@@ -314,7 +311,7 @@ export function ExecutionSlideOver({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="font-sans font-semibold text-[13px] text-[#eae1da] truncate">
-                        {sellerLabel}
+                        {sellerDisplayName}
                       </span>
                       {order.sellerPersona === "merchant" ? (
                         <CertifiedMerchantBadge />
@@ -345,6 +342,23 @@ export function ExecutionSlideOver({
                     HK$ {order.price.toLocaleString("en-HK")}
                   </span>
                 </div>
+              </div>
+
+              <div className="mt-2.5 space-y-1.5 border-t border-white/[0.06] pt-2.5">
+                {sellerDescription ? (
+                  <div className="space-y-0.5">
+                    <p className="font-sans font-semibold text-[11px] text-[#eae1da]">
+                      商品描述
+                    </p>
+                    <p className="font-sans text-[11px] text-text-secondary leading-snug whitespace-pre-wrap break-words">
+                      {sellerDescription}
+                    </p>
+                  </div>
+                ) : null}
+                <p className="font-mono text-[9px] text-[#8A8680] leading-tight break-all">
+                  <span className="text-[#8A8680]/80">上架序號 </span>
+                  {listingId}
+                </p>
               </div>
             </div>
 

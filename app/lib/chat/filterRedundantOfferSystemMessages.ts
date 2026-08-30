@@ -1,7 +1,7 @@
 import type { Message } from "@/app/store/useHkCardVaultStore";
 import {
-  SYSTEM_OFFER_ACCEPTED_TEXT,
-  SYSTEM_OFFER_REJECTED_TEXT,
+  isSystemOfferAcceptedText,
+  isSystemOfferRejectedText,
 } from "@/app/lib/chat/offerSystemMessageCopy";
 
 function collectOfferCardIds(messages: Message[]): Set<string> {
@@ -24,8 +24,8 @@ function isRedundantOfferSystemBubble(
   }
 
   const isOfferStatusCopy =
-    message.text === SYSTEM_OFFER_ACCEPTED_TEXT ||
-    message.text === SYSTEM_OFFER_REJECTED_TEXT;
+    isSystemOfferAcceptedText(message.text) ||
+    isSystemOfferRejectedText(message.text);
   if (!isOfferStatusCopy) {
     return false;
   }

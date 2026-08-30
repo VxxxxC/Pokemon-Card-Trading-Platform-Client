@@ -167,7 +167,7 @@ test.describe("Member dashboard and rewards", () => {
     await gotoMemberRewardsPage(page);
     await dismissBlockingOverlays(page);
 
-    await expect(page.getByText("可領取 / 可使用")).toBeVisible({
+    await expect(page.getByText("可使用")).toBeVisible({
       timeout: 20_000,
     });
 

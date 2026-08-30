@@ -8,6 +8,10 @@ import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
 import { useUIStore } from "@/app/store/useUIStore";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import { shouldIncrementUnreadForInboundMessage } from "@/lib/chat/viewing-chat-thread";
+import {
+  resolveSystemOfferAcceptedText,
+  resolveSystemOfferRejectedText,
+} from "@/app/lib/chat/offerSystemMessageCopy";
 import type { Tables } from "@/types/supabase";
 
 type OfferLedgerStatus = Tables<"offers">["status"];
@@ -25,6 +29,7 @@ export type OfferLedgerEntry = {
 export interface SpecialTransactionData {
   cardName: string;
   cardId: string;
+  listingId?: string;
   offerPrice: number;
   buyerName: string;
   buyerId: string;
@@ -241,6 +246,7 @@ interface HkCardVaultStore {
     sellerName: string;
     cardName: string;
     cardId: string;
+    listingId?: string;
     offerId: string;
     offerPrice: number;
     modifiedCount?: number;
@@ -546,6 +552,7 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         specialData: {
           cardName: payload.cardName,
           cardId: payload.cardId,
+          listingId: payload.listingId,
           offerPrice: payload.offerPrice,
           buyerName: payload.buyerName,
           buyerId: payload.buyerId,
@@ -717,9 +724,18 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
             return message;
           });
 
+          const offerSpecialData = updatedMessages.find(
+            (message) =>
+              message.type === "special_transaction" &&
+              message.specialData?.offerId === offerId,
+          )?.specialData;
+          const isSellerView =
+            offerSpecialData != null &&
+            room.partnerId === offerSpecialData.buyerId;
+
           return {
             ...room,
-            lastMessage: "✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）",
+            lastMessage: resolveSystemOfferAcceptedText(isSellerView),
             messages: updatedMessages,
           };
         }),
@@ -766,9 +782,18 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
             return message;
           });
 
+          const offerSpecialData = updatedMessages.find(
+            (message) =>
+              message.type === "special_transaction" &&
+              message.specialData?.offerId === offerId,
+          )?.specialData;
+          const isSellerView =
+            offerSpecialData != null &&
+            room.partnerId === offerSpecialData.buyerId;
+
           return {
             ...room,
-            lastMessage: "❌ 賣家已拒絕此出價",
+            lastMessage: resolveSystemOfferRejectedText(isSellerView),
             messages: updatedMessages,
           };
         }),

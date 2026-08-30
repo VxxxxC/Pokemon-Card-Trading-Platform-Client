@@ -30,11 +30,11 @@ export function InventoryPageSkeleton() {
         ))}
       </div>
 
-      <div className="px-3 py-2.5 sm:px-4">
+      <div className="px-3 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
         <div className="h-9 rounded-lg border border-[rgba(237,232,224,0.06)] bg-bg-elevated/25" />
       </div>
 
-      <div className="border-t border-[rgba(237,232,224,0.06)] divide-y divide-[rgba(237,232,224,0.06)]">
+      <div className="px-2 sm:px-3 py-2.5 space-y-2.5 divide-y divide-[rgba(237,232,224,0.06)]">
         {Array.from({ length: 3 }).map((_, index) => (
           <InventoryAccordionRowSkeleton key={index} />
         ))}

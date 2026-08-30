@@ -314,6 +314,7 @@ const MessageThread = memo(function MessageThread({
                 sellerName={msg.specialData.sellerName}
                 cardName={msg.specialData.cardName}
                 cardId={msg.specialData.cardId}
+                listingId={msg.specialData.listingId}
                 offerId={msg.specialData.offerId}
                 imageUrl={msg.specialData.imageUrl}
                 listingImageUrls={msg.specialData.listingImageUrls}
@@ -438,6 +439,7 @@ const MobileMessageThread = memo(function MobileMessageThread({
                 sellerName={msg.specialData.sellerName}
                 cardName={msg.specialData.cardName}
                 cardId={msg.specialData.cardId}
+                listingId={msg.specialData.listingId}
                 offerId={msg.specialData.offerId}
                 imageUrl={msg.specialData.imageUrl}
                 listingImageUrls={msg.specialData.listingImageUrls}
@@ -568,9 +570,6 @@ function ChatLobbyEmptyState({
       <div className="flex flex-col items-center justify-center py-8 px-3 text-center">
         <p className="font-sans text-[12px] text-text-secondary select-none">
           尚無對話
-        </p>
-        <p className="font-mono text-[10px] text-text-disabled mt-1 select-none">
-          點擊「新增聊天」開始對話
         </p>
       </div>
     );

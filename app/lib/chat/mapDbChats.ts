@@ -6,8 +6,8 @@ import type {
 import { resolveOfferCardDisplayImage } from "@/app/lib/chat/offerCardImage";
 import { parseListingImageUrls } from "@/lib/listings/images";
 import {
-  SYSTEM_OFFER_ACCEPTED_TEXT,
-  SYSTEM_OFFER_REJECTED_TEXT,
+  resolveSystemOfferAcceptedText,
+  resolveSystemOfferRejectedText,
   SYSTEM_ORDER_CANCELLED_TEXT,
 } from "@/app/lib/chat/offerSystemMessageCopy";
 import type { Tables } from "@/types/supabase";
@@ -43,7 +43,9 @@ export type DbOfferSnippet = {
   status: Tables<"offers">["status"];
   modified_count: number;
   use_authentication: boolean;
+  listing_id?: string | null;
   listings: {
+    id?: string;
     product_id: string;
     images: unknown;
     product_catalog: CatalogSnippet | null;
@@ -174,6 +176,8 @@ function buildSpecialData(
   return {
     cardName,
     cardId: catalog.id,
+    listingId:
+      offer.listing_id?.trim() || offer.listings?.id?.trim() || catalog.id,
     offerPrice: Number(offer.offer_price),
     buyerName: partyDisplayName(buyer),
     buyerId: buyer.id,
@@ -249,7 +253,7 @@ function mapDbMessage(
     return {
       id: row.id,
       sender: "system",
-      text: SYSTEM_OFFER_ACCEPTED_TEXT,
+      text: resolveSystemOfferAcceptedText(currentUserId === seller.id),
       timestamp,
       type: "text",
       offerId: row.offer_id ?? undefined,
@@ -265,7 +269,7 @@ function mapDbMessage(
     return {
       id: row.id,
       sender: "system",
-      text: SYSTEM_OFFER_REJECTED_TEXT,
+      text: resolveSystemOfferRejectedText(currentUserId === seller.id),
       timestamp,
       type: "text",
       offerId: row.offer_id ?? undefined,
@@ -399,12 +403,16 @@ function mapRoomToStore(
   };
 }
 
-function mapLastMessagePreview(row: DbChatMessageRow): string {
+function mapLastMessagePreview(
+  row: DbChatMessageRow,
+  room: DbChatRoomBaseRow,
+  currentUserId: string,
+): string {
   switch (row.content) {
     case "SYSTEM_OFFER_ACCEPTED":
-      return SYSTEM_OFFER_ACCEPTED_TEXT;
+      return resolveSystemOfferAcceptedText(currentUserId === room.seller_id);
     case "SYSTEM_OFFER_REJECTED":
-      return SYSTEM_OFFER_REJECTED_TEXT;
+      return resolveSystemOfferRejectedText(currentUserId === room.seller_id);
     case "SYSTEM_ORDER_COMPLETED":
       return "✅ 交易已順利完成";
     case "SYSTEM_ORDER_CANCELLED":
@@ -431,7 +439,7 @@ export function assembleDbChatLobbyRooms(
 
     return {
       ...base,
-      lastMessage: mapLastMessagePreview(last),
+      lastMessage: mapLastMessagePreview(last, room, currentUserId),
       timestamp: last.created_at ?? base.timestamp,
       messages: [],
     };

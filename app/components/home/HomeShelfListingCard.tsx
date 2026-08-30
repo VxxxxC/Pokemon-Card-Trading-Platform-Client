@@ -222,8 +222,8 @@ export function HomeShelfListingCard({
               priority={imagePriority}
             />
             {isGridLayout && hasDisplayableRarity(listing.rarity) ? (
-              <div className="absolute top-1.5 left-1.5 pointer-events-none z-10">
-                <RarityBadge rarity={listing.rarity} />
+              <div className="absolute bottom-1.5 right-1.5 pointer-events-none z-10">
+                <RarityBadge rarity={listing.rarity} size="sm" />
               </div>
             ) : !isGridLayout ? (
               <div className="absolute top-2 left-2 pointer-events-none z-10">
@@ -284,7 +284,7 @@ export function HomeShelfListingCard({
             ) : null}
             {!isGridLayout && hasDisplayableRarity(listing.rarity) ? (
               <div className="pt-0.5">
-                <RarityBadge rarity={listing.rarity} />
+                <RarityBadge rarity={listing.rarity} size="sm" />
               </div>
             ) : null}
             {showSeller && isGridLayout ? (

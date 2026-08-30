@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export default function MerchantPerformanceLayout({
+export default function MerchantAnalyticsLayout({
   children,
 }: {
   children: ReactNode;

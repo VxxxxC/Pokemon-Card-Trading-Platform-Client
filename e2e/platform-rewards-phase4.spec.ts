@@ -119,7 +119,7 @@ test.describe("Platform rewards Phase 4 E2E", () => {
     expect(userRewardId).toBeTruthy();
 
     await gotoMemberRewardsPage(page);
-    await expect(page.getByText("可領取 / 可使用")).toBeVisible({
+    await expect(page.getByText("可使用")).toBeVisible({
       timeout: 20_000,
     });
 

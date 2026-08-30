@@ -34,14 +34,14 @@ test.describe("P-F03 member rewards and report", () => {
     await ensureMemberPersona(page);
     await page.goto("/profile/user/rewards", { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
-    await expect(page.getByText("可領取 / 可使用")).toBeVisible({
+    await expect(page.getByText("可使用")).toBeVisible({
       timeout: 20_000,
     });
     await expect(
       page.getByRole("link", { name: /限時搶券.*積分商城/ }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "🎟️ 我的全域平台折價券中心" }),
+      page.getByRole("heading", { name: "我的優惠劵" }),
     ).toBeVisible();
 
     await page.goto("/profile/user/campaigns", { waitUntil: "domcontentloaded" });

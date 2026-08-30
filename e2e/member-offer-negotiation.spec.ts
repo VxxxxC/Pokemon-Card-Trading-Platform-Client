@@ -20,7 +20,6 @@ import {
   offerAmountLabelFromListingPrice,
   offerCardWithAmount,
   openBothChatRooms,
-  chatConsoleRoot,
   submitBuyerOfferFromDetail,
   waitForBuyerOfferCardRejected,
   waitForSellerOfferCardVisible,
@@ -280,13 +279,9 @@ test.describe("Member offer negotiation", () => {
       });
 
       await ensureChatRoomActive(sellerPage, roomId, buyerDisplayName);
-      const sellerOfferCard = chatConsoleRoot(sellerPage)
-        .locator("div.my-2.w-full")
-        .filter({ hasText: "⚡ 議價出價卡片" })
-        .filter({
-          has: sellerPage.getByRole("button", { name: "接受出價" }),
-        })
-        .last();
+      const sellerOfferCard = offerCardWithAmount(sellerPage, modifyAmount).filter({
+        has: sellerPage.getByRole("button", { name: "接受出價" }),
+      });
       await expect(sellerOfferCard).toBeVisible({ timeout: 45_000 });
       await expect(
         sellerOfferCard.getByRole("button", { name: "接受出價" }),

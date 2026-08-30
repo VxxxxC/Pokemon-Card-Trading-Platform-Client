@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { ProfileSubpageShell } from "@/app/components/profile/ProfileSubpageShell";
 
 export const metadata: Metadata = {
   title: "店舖設定 — HKCardVault",
@@ -12,5 +11,5 @@ export default function MerchantSettingsLayout({
 }: {
   children: ReactNode;
 }) {
-  return <ProfileSubpageShell>{children}</ProfileSubpageShell>;
+  return children;
 }

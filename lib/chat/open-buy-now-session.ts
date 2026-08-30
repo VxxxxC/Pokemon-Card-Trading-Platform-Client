@@ -18,6 +18,7 @@ export function openBuyNowChatSession(payload: BuyNowListingPayload): void {
     sellerName: payload.sellerName,
     cardName: payload.cardName,
     cardId: payload.productId,
+    listingId: payload.listingId,
     offerId: payload.offerId,
     offerPrice: payload.offerPrice,
     modifiedCount: 0,

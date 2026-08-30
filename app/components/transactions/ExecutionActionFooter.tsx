@@ -1,18 +1,25 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Hourglass } from "lucide-react";
 import { toast } from "sonner";
 import { buyNowListing } from "@/app/actions/buy-now";
-import { makeOffer } from "@/app/actions/offers";
+import {
+  getBuyerPendingOfferForListing,
+  makeOffer,
+} from "@/app/actions/offers";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { useMarketplaceListingDetail } from "@/app/lib/hooks/useMarketplaceListingDetail";
 import { useCurrentUserId } from "@/app/lib/hooks/useCurrentUserId";
+import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { completeBuyNowFlow } from "@/lib/chat/complete-buy-now-flow";
 import { SELF_OFFER_ERROR_MESSAGE } from "@/lib/auth/dual-persona";
+import { MERCHANT_BUYER_PERSONA_HINT } from "@/lib/auth/member-persona-features";
+import { switchToMemberPersonaForBuyerAction } from "@/lib/auth/switch-to-member-persona-for-buyer-action";
 import { isSealedProductGrade } from "@/lib/catalog/item-kind";
 import { buildSellerListingDetailHref } from "@/lib/marketplace/listing-detail-href";
 import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
@@ -43,12 +50,17 @@ export function ExecutionActionFooter({
   onUseAuthenticationChange,
 }: ExecutionActionFooterProps) {
   const router = useRouter();
-  const priceInputId = useId();
+  const priceInputId = "exe-negotiation-price";
   const [customPrice, setCustomPrice] = useState("");
   const [internalUseAuthentication, setInternalUseAuthentication] =
     useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const [pendingOffer, setPendingOffer] = useState<{
+    offerId: string;
+    offerPrice: number;
+  } | null>(null);
+  const [isPendingOfferLoading, setIsPendingOfferLoading] = useState(false);
   const authServiceFeeHkd = usePlatformAuthFee();
 
   const useAuthentication = useAuthenticationProp ?? internalUseAuthentication;
@@ -57,6 +69,7 @@ export function ExecutionActionFooter({
 
   const userAuthRole = useUIStore((state) => state.userAuthRole);
   const isGuest = userAuthRole === "GUEST";
+  const isMemberPersonaActive = useIsMemberPersonaActive();
   const currentUserId = useCurrentUserId();
   const isOwnListing =
     currentUserId != null && order.sellerId === currentUserId;
@@ -72,10 +85,35 @@ export function ExecutionActionFooter({
 
   useEffect(() => {
     setCustomPrice("");
+    setPendingOffer(null);
     if (onUseAuthenticationChange == null) {
       setInternalUseAuthentication(false);
     }
   }, [listingId, onUseAuthenticationChange]);
+
+  useEffect(() => {
+    if (!listingId || isGuest || isOwnListing) {
+      setPendingOffer(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsPendingOfferLoading(true);
+
+    void getBuyerPendingOfferForListing(listingId).then((result) => {
+      if (cancelled) return;
+      if (result.success) {
+        setPendingOffer(result.data);
+      } else {
+        setPendingOffer(null);
+      }
+      setIsPendingOfferLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listingId, isGuest, isOwnListing]);
 
   useEffect(() => {
     if (detail?.useAuthentication === false) {
@@ -91,6 +129,8 @@ export function ExecutionActionFooter({
     useAuthentication && listingAcceptsBuyerAuth && !isSealedListing;
   const buyNowTotal = order.price + (authFeeApplied ? authServiceFeeHkd : 0);
   const canBuyNow = !isOwnListing && !isGuest;
+  const showMerchantBuyerPersonaHint =
+    !isGuest && !isOwnListing && !isMemberPersonaActive;
 
   const guestRedirectPath = buildSellerListingDetailHref(
     order.sellerId,
@@ -138,6 +178,11 @@ export function ExecutionActionFooter({
       return;
     }
 
+    if (pendingOffer) {
+      toast.error("您已有進行中的出價，請於聊天室等待賣家回應或修改出價。");
+      return;
+    }
+
     if (!customPrice || Number(customPrice) <= 0) {
       toast.error("⚠️ 請輸入有效的預期出價金額");
       return;
@@ -169,6 +214,13 @@ export function ExecutionActionFooter({
 
       const { room, offer, message } = result.data;
 
+      setPendingOffer({
+        offerId: offer.id,
+        offerPrice: Number(offer.offer_price),
+      });
+
+      switchToMemberPersonaForBuyerAction();
+
       openOfferChatSession({
         roomId: room.id,
         partnerId: order.sellerId,
@@ -181,6 +233,7 @@ export function ExecutionActionFooter({
         sellerName: order.sellerName,
         cardName: card.name,
         cardId: productId,
+        listingId,
         offerId: offer.id,
         offerPrice: offer.offer_price,
         listingImageUrls: detail?.images,
@@ -209,6 +262,11 @@ export function ExecutionActionFooter({
 
   const footerInner = (
     <div className="px-4 py-2.5 border-t border-white/[0.07] bg-[#26211C] space-y-2">
+      {showMerchantBuyerPersonaHint ? (
+        <p className="font-sans text-[11px] leading-snug text-text-disabled">
+          {MERCHANT_BUYER_PERSONA_HINT}
+        </p>
+      ) : null}
       {isGuest ? (
         <Link
           href={`/auth?redirect=${encodeURIComponent(guestRedirectPath)}`}
@@ -220,6 +278,20 @@ export function ExecutionActionFooter({
         <p className="font-sans text-[11px] text-[#8A8680]">
           這是您的掛單，無法對自己的商品出價
         </p>
+      ) : pendingOffer ? (
+        <div
+          className="flex items-start gap-2 rounded-lg border border-brand/20 bg-[#17130f] px-3 py-2"
+          role="status"
+        >
+          <Hourglass className="size-3.5 shrink-0 mt-0.5 text-brand/80" aria-hidden />
+          <p className="font-sans text-[11px] leading-snug text-text-secondary">
+            等待賣家回應中… 您的出價為{" "}
+            <span className="font-mono font-bold text-brand">
+              HK$ {pendingOffer.offerPrice.toLocaleString("en-HK")}
+            </span>
+            。請於聊天室修改出價或等待賣家處理。
+          </p>
+        </div>
       ) : (
         <div
           className="flex h-9 min-w-0 rounded-lg border border-white/[0.08] bg-[#17130f] overflow-hidden focus-within:border-brand/40 transition-colors"
@@ -236,11 +308,17 @@ export function ExecutionActionFooter({
             value={customPrice}
             onChange={(e) => setCustomPrice(e.target.value)}
             placeholder="輸入理想價錢"
-            className="flex-1 min-w-0 h-full bg-transparent px-2 font-mono text-[13px] text-brand focus:outline-none"
+            disabled={isPendingOfferLoading}
+            className="flex-1 min-w-0 h-full bg-transparent px-2 font-mono text-[13px] text-brand focus:outline-none disabled:opacity-50"
           />
           <button
             type="button"
-            disabled={isSubmitting || isBuyingNow || !listingId}
+            disabled={
+              isSubmitting ||
+              isBuyingNow ||
+              isPendingOfferLoading ||
+              !listingId
+            }
             onClick={() => void handleSendCounterOffer()}
             className="shrink-0 px-3 border-l border-white/[0.08] text-[#eae1da] font-sans font-semibold text-[12px] hover:bg-[#2c2722] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1.5 focus:outline-none disabled:opacity-50"
           >

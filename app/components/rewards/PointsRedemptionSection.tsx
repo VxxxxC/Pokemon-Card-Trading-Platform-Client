@@ -10,7 +10,6 @@ import {
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import type { PointsRedemptionCatalogView } from "@/lib/admin-rewards/types";
 import { Pagination } from "@/app/components/ui/Pagination";
-import { rewardLabelFromCatalogItem } from "@/lib/rewards/mapPointsRedemptionCatalog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -40,6 +39,31 @@ function sortPointsCatalog(
   }
   sorted.sort((a, b) => a.pointsCost - b.pointsCost);
   return sorted;
+}
+
+function catalogStubLabel(item: PointsRedemptionCatalogView): string {
+  if (item.template.type === "free_shipping") {
+    const cap = Number(item.template.rewardValue.max_subsidy_hkd ?? 0);
+    return cap > 0 ? `HK$${cap}` : "免運";
+  }
+
+  const amount = Number(item.template.rewardValue.amount_hkd ?? 0);
+  return amount > 0 ? `HK$${amount}` : `${item.pointsCost}`;
+}
+
+function catalogStubHint(item: PointsRedemptionCatalogView): string {
+  if (item.template.type === "free_shipping") {
+    return "免運";
+  }
+
+  const amount = Number(item.template.rewardValue.amount_hkd ?? 0);
+  return amount > 0 ? "折扣" : "PTS";
+}
+
+function showCatalogSubtitle(item: PointsRedemptionCatalogView): boolean {
+  const title = item.template.title?.trim() ?? "";
+  const description = item.template.description?.trim() ?? "";
+  return description.length > 0 && description !== title;
 }
 
 export function PointsRedemptionSection({
@@ -133,41 +157,24 @@ export function PointsRedemptionSection({
 
   if (isLoading) {
     return (
-      <section className="space-y-3">
-        <div>
-          <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-            🪙 積分商城
-          </h3>
-          <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
-            POINTS REDEMPTION STORE
-          </p>
-        </div>
-        <div className="flex items-center gap-2 py-8 justify-center text-text-disabled font-sans text-[13px]">
-          <Spinner className="size-4" />
-          載入積分商城…
-        </div>
+      <section className="flex items-center gap-2 py-6 text-[12px] text-text-secondary">
+        <Spinner className="size-4 text-brand" />
+        載入積分商城…
       </section>
     );
   }
 
   if (loadError) {
     return (
-      <section className="space-y-3">
-        <div>
-          <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-            🪙 積分商城
-          </h3>
-        </div>
-        <div className="py-8 text-center text-error font-sans text-[13px]">
-          {loadError}
-        </div>
+      <section className="py-6 text-[12px] text-text-secondary">
+        {loadError}
       </section>
     );
   }
 
   if (items.length === 0) {
     return (
-      <section className="rounded-2xl border border-[rgba(237,232,224,0.08)] bg-[#26211C] p-8 text-center text-sm text-[#d4c4b7]">
+      <section className="py-10 text-center text-[12px] text-text-disabled">
         積分商城暫無可兌換商品
       </section>
     );
@@ -184,97 +191,102 @@ export function PointsRedemptionSection({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        {showHeading ? (
-          <div>
-            <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-              🪙 積分商城
-            </h3>
-            <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
-              POINTS REDEMPTION STORE
-            </p>
-          </div>
+      {showHeading ? (
+        <div>
+          <h3 className="font-sans font-bold text-[15px] text-text-primary">
+            積分商城
+          </h3>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {paginated ? (
+          <select
+            value={sort}
+            onChange={(event) => {
+              setSort(event.target.value as PointsSort);
+              setPage(1);
+            }}
+            className="h-8 rounded-lg border border-white/[0.06] bg-bg-card px-2 font-sans text-[11px] text-text-primary"
+          >
+            <option value="points_asc">積分由低至高</option>
+            <option value="points_desc">積分由高至低</option>
+            <option value="stock_desc">庫存優先</option>
+          </select>
         ) : (
           <div />
         )}
-        <div className="flex flex-wrap items-center gap-2">
-          {paginated ? (
-            <select
-              value={sort}
-              onChange={(event) => {
-                setSort(event.target.value as PointsSort);
-                setPage(1);
-              }}
-              className="h-9 px-2 rounded-lg bg-[#17130f] border border-white/5 font-sans text-[12px] text-text-primary"
-            >
-              <option value="points_asc">積分由低至高</option>
-              <option value="points_desc">積分由高至低</option>
-              <option value="stock_desc">庫存優先</option>
-            </select>
-          ) : null}
-          {pointsBalance != null ? (
-            <p className="font-mono text-[11px] text-brand">
-              可用積分 {pointsBalance.toLocaleString()} PTS
-            </p>
-          ) : null}
-        </div>
+        {pointsBalance != null ? (
+          <p className="font-mono text-[11px] text-brand">
+            可用積分 {pointsBalance.toLocaleString()} PTS
+          </p>
+        ) : null}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
         {visibleItems.map((item) => {
           const soldOut = item.stock <= 0;
           const atUserLimit =
             item.maxRedemptionsPerUser != null &&
             item.userRedemptionCount >= item.maxRedemptionsPerUser;
-          const label = rewardLabelFromCatalogItem(item);
+          const showSubtitle = showCatalogSubtitle(item);
 
           return (
             <div
               key={item.catalogId}
-              className="bg-[#26211C] border border-[rgba(237,232,224,0.1)] rounded-2xl p-4 flex flex-col justify-between gap-4"
+              className="overflow-hidden rounded-xl border border-white/[0.08] bg-bg-card"
             >
-              <div className="space-y-2">
-                <p className="font-mono font-black text-[22px] tracking-tight text-[#eae1da]">
-                  {label}
-                </p>
-                <h4 className="font-sans font-bold text-[13.5px] text-[#eae1da]">
-                  {item.template.title}
-                </h4>
-                {item.template.description ? (
-                  <p className="font-sans text-[11px] text-[#d4c4b7]">
-                    {item.template.description}
+              <div className="flex items-stretch">
+                <div className="relative flex w-[4.5rem] shrink-0 flex-col items-center justify-center px-2 py-3.5">
+                  <div className="absolute left-1.5 top-3 bottom-3 w-0.5 rounded-full bg-brand/70" />
+                  <p className="text-center font-mono text-[13px] font-bold leading-tight tabular-nums text-brand">
+                    {catalogStubLabel(item)}
                   </p>
-                ) : null}
+                  <p className="mt-1 text-center font-sans text-[9px] leading-tight text-text-disabled">
+                    {catalogStubHint(item)}
+                  </p>
+                </div>
+
+                <div className="min-w-0 flex-1 border-l border-dashed border-white/10 py-3 pr-3 pl-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="min-w-0 font-sans text-[14px] font-bold leading-snug text-text-primary line-clamp-2">
+                      {item.template.title}
+                    </h4>
+                    <span className="shrink-0 font-mono text-[10px] font-bold tabular-nums text-brand">
+                      {item.pointsCost.toLocaleString()} PTS
+                    </span>
+                  </div>
+
+                  {showSubtitle ? (
+                    <p className="mt-0.5 font-sans text-[12px] leading-snug text-brand line-clamp-2">
+                      {item.template.description}
+                    </p>
+                  ) : null}
+
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-sans text-[10px] text-text-disabled">
+                    <span>{soldOut ? "已兌完" : `剩餘 ${item.stock}`}</span>
+                    {item.maxRedemptionsPerUser != null ? (
+                      <span>
+                        已兌 {item.userRedemptionCount}/{item.maxRedemptionsPerUser}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 pt-3 border-t border-[rgba(237,232,224,0.06)]">
-                <div className="font-mono text-[11px] text-[#d4c4b7]">
-                  <span className="text-brand font-bold">
-                    {item.pointsCost.toLocaleString()} PTS
-                  </span>
-                  <span className="text-[#50453b] mx-1">·</span>
-                  <span>
-                    {soldOut ? "已兌完" : `剩餘 ${item.stock}`}
-                  </span>
-                  {item.maxRedemptionsPerUser != null ? (
-                    <>
-                      <span className="text-[#50453b] mx-1">·</span>
-                      <span>
-                        已兌 {item.userRedemptionCount}/
-                        {item.maxRedemptionsPerUser}
-                      </span>
-                    </>
-                  ) : null}
-                </div>
+              <div className="border-t border-white/[0.06] px-3 py-2">
                 <Button
                   type="button"
                   size="sm"
                   disabled={!item.canRedeem || isPending}
                   onClick={() => handleRedeem(item)}
-                  className="h-8 rounded-lg bg-brand text-[#17130f] font-sans text-[12px] font-bold hover:bg-brand-hover disabled:opacity-50"
+                  className="h-9 w-full"
                 >
                   {redeemingId === item.catalogId ? (
-                    <Spinner className="size-3.5" />
+                    <span className="inline-flex items-center gap-2">
+                      <Spinner className="size-4" />
+                      兌換中…
+                    </span>
                   ) : soldOut ? (
                     "已兌完"
                   ) : atUserLimit ? (

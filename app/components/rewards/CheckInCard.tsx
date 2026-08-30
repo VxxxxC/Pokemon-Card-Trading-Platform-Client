@@ -30,6 +30,8 @@ type CheckInCardProps = {
   deferStatsLoad?: boolean;
   /** Render inside hero without duplicate card chrome. */
   embedded?: boolean;
+  /** Hide PTS in card header (show balance elsewhere on page). */
+  hidePointsBalance?: boolean;
 };
 
 function buildStepsFromProgram(program: CheckInProgramMemberView | null) {
@@ -47,7 +49,13 @@ function buildStepsFromProgram(program: CheckInProgramMemberView | null) {
   });
 }
 
-function CheckInCardSkeleton({ embedded = false }: { embedded?: boolean }) {
+function CheckInCardSkeleton({
+  embedded = false,
+  hidePointsBalance = false,
+}: {
+  embedded?: boolean;
+  hidePointsBalance?: boolean;
+}) {
   const pulseCell =
     "rounded-lg border border-white/[0.06] bg-white/[0.05] animate-pulse min-h-[52px]";
 
@@ -63,7 +71,9 @@ function CheckInCardSkeleton({ embedded = false }: { embedded?: boolean }) {
     >
       <div className="flex items-center justify-between gap-3">
         <div className="h-4 w-20 rounded bg-white/[0.06] animate-pulse" />
-        <div className="h-4 w-16 rounded bg-white/[0.06] animate-pulse" />
+        {hidePointsBalance ? null : (
+          <div className="h-4 w-16 rounded bg-white/[0.06] animate-pulse" />
+        )}
       </div>
 
       <div className="grid grid-cols-7 gap-1">
@@ -85,6 +95,7 @@ export function CheckInCard({
   initialPointsBalance,
   deferStatsLoad = false,
   embedded = false,
+  hidePointsBalance = false,
 }: CheckInCardProps = {}) {
   const isMemberPersonaActive = useIsMemberPersonaActive();
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
@@ -208,7 +219,12 @@ export function CheckInCard({
   };
 
   if (!isMounted || isLoading) {
-    return <CheckInCardSkeleton embedded={embedded} />;
+    return (
+      <CheckInCardSkeleton
+        embedded={embedded}
+        hidePointsBalance={hidePointsBalance}
+      />
+    );
   }
 
   const steps = checkInSteps.length > 0 ? checkInSteps : CHECK_IN_STEPS;
@@ -233,19 +249,27 @@ export function CheckInCard({
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between gap-3">
+      <div
+        className={
+          hidePointsBalance
+            ? ""
+            : "flex items-center justify-between gap-3"
+        }
+      >
         <h3 className="font-sans font-bold text-[14px] text-text-primary leading-none">
           每日簽到
         </h3>
-        <p className="font-mono text-[12px] text-text-secondary leading-none shrink-0">
-          {isContentLoading ? (
-            <span className="inline-block h-4 w-16 rounded bg-white/[0.06] animate-pulse align-middle" />
-          ) : (
-            <span className="font-bold text-brand">
-              {userPoints.toLocaleString()} PTS
-            </span>
-          )}
-        </p>
+        {hidePointsBalance ? null : (
+          <p className="font-mono text-[12px] text-text-secondary leading-none shrink-0">
+            {isContentLoading ? (
+              <span className="inline-block h-4 w-16 rounded bg-white/[0.06] animate-pulse align-middle" />
+            ) : (
+              <span className="font-bold text-brand">
+                {userPoints.toLocaleString()} PTS
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
       <div

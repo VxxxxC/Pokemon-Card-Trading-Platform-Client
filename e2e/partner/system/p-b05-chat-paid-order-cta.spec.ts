@@ -48,7 +48,7 @@ test.describe("P-B05 chat paid order CTA", () => {
 
     const consoleRoot = chatConsoleRoot(page);
     await expect(
-      consoleRoot.getByRole("button", { name: /前往付款|前往託管結帳/ }),
+      consoleRoot.getByRole("button", { name: /前往付款|前往結帳/ }),
     ).toHaveCount(0);
   });
 });

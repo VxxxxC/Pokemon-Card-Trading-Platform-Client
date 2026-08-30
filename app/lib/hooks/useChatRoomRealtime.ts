@@ -127,7 +127,26 @@ export function useChatRoomRealtime({ enabled }: UseChatRoomRealtimeOptions) {
         return;
       }
 
-      const message = mapChatMessageRowToStoreMessage(row, currentUserId);
+      const roomState = useHkCardVaultStore
+        .getState()
+        .chats.find((room) => room.id === row.room_id);
+      const sellerId =
+        roomState?.messages.find((message) => message.specialData?.sellerId)
+          ?.specialData?.sellerId ??
+        (roomState?.partnerId != null &&
+        roomState.messages.some(
+          (message) =>
+            message.specialData?.buyerId != null &&
+            roomState.partnerId === message.specialData.buyerId,
+        )
+          ? currentUserId
+          : roomState?.partnerId);
+
+      const message = mapChatMessageRowToStoreMessage(
+        row,
+        currentUserId,
+        sellerId,
+      );
       const hadRoom = useHkCardVaultStore
         .getState()
         .chats.some((room) => room.id === row.room_id);

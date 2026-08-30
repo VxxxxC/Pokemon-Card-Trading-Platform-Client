@@ -3,6 +3,13 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import {
+  AlertTriangle,
+  CircleCheck,
+  CircleX,
+  Hourglass,
+  Search,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   acceptOffer,
@@ -18,9 +25,9 @@ import {
 } from "@/app/lib/chat/offerCardContextCache";
 import { GradeBadge } from "@/app/components/cards/GradeBadge";
 import {
-  SYSTEM_OFFER_ACCEPTED_TEXT,
+  resolveOfferAcceptedCardStatusText,
+  resolveSystemOfferRejectedText,
   SYSTEM_OFFER_CANCELLED_TEXT,
-  SYSTEM_OFFER_REJECTED_TEXT,
   SYSTEM_ORDER_CANCELLED_TEXT,
 } from "@/app/lib/chat/offerSystemMessageCopy";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
@@ -50,6 +57,7 @@ import {
 } from "@/app/lib/chat/offerCardImage";
 import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
 import type { Tables } from "@/types/supabase";
+import { ChatInlineIconText } from "./ChatInlineIconText";
 
 export type OfferCardMessage = {
   id: string;
@@ -560,18 +568,34 @@ export function OfferCardComponent({
     (resolvedOrderId
       ? `/profile/user/orderDetail/${resolvedOrderId}`
       : null);
+  const resolvedSellerOrderDetailHref = resolvedOrderId
+    ? resolvedOrderKind === "merchant"
+      ? `/profile/merchant/orderDetail/${resolvedOrderId}`
+      : `/profile/user/orderDetail/${resolvedOrderId}`
+    : null;
 
-  const isOrderCancelled = useMemo(() => {
-    if (!resolvedOrderId) {
-      return false;
-    }
+  const isOrderCancelled = resolvedOrderId
+    ? roomMessages.some(
+        (message) =>
+          message.type === "system_order_cancelled" &&
+          message.orderData?.orderId === resolvedOrderId,
+      )
+    : false;
 
-    return roomMessages.some(
-      (message) =>
-        message.type === "system_order_cancelled" &&
-        message.orderData?.orderId === resolvedOrderId,
-    );
-  }, [resolvedOrderId, roomMessages]);
+  const acceptedStatusSuffix =
+    resolvedOrderKind === "merchant" && context.pendingPayment
+      ? "merchant_payment"
+      : resolvedOrderKind === "member" &&
+          useAuthentication &&
+          isBuyer &&
+          resolvedPaymentHref
+        ? "auth_payment"
+        : "none";
+
+  const acceptedStatusText = resolveOfferAcceptedCardStatusText({
+    isSeller,
+    suffix: acceptedStatusSuffix,
+  });
 
   const cardTone = isRejected
     ? "border-error/20 bg-[#26211C] text-[#eae1da] shadow-none ring-0"
@@ -604,10 +628,7 @@ export function OfferCardComponent({
     <Card
       className={`my-2 w-full overflow-hidden rounded-lg border font-sans text-[12.5px] transition-all duration-300 gap-0 py-0 ${cardTone}`}
     >
-      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1.5">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-brand">
-          ⚡ 議價出價卡片
-        </p>
+      <div className="flex items-center justify-end gap-2 px-3 pt-2.5 pb-1.5">
         <span
           className={`shrink-0 font-mono text-[9px] font-bold ${displayStatusBadge.cls}`}
         >
@@ -659,8 +680,10 @@ export function OfferCardComponent({
         {useAuthentication && isPending && isSeller ? (
           <div className={statusNoteClass}>
             <p className={statusNoteTextClass}>
-              🔍 買家要求平台鑑定加購服務（HK$
-              {authServiceFeeHkd.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
+              <ChatInlineIconText icon={Search} iconClassName="text-brand/80">
+                買家要求平台鑑定加購服務（HK$
+                {authServiceFeeHkd.toLocaleString()}），成交後需寄卡至平台鑑定，請確認可配合託管流程後再接受出價。
+              </ChatInlineIconText>
             </p>
           </div>
         ) : null}
@@ -676,16 +699,9 @@ export function OfferCardComponent({
         {isAccepted && !isOrderCancelled ? (
           <div className={statusNoteClass}>
             <p className={statusNoteTextClass}>
-              ✅ 賣家已接受出價，商品已成功鎖定
-              {resolvedOrderKind === "merchant" && context.pendingPayment
-                ? "；請完成託管付款以鎖定資產。"
-                : null}
-              {resolvedOrderKind === "member" &&
-              useAuthentication &&
-              isBuyer &&
-              resolvedPaymentHref
-                ? "；請完成託管付款以啟動鑑定流程。"
-                : null}
+              <ChatInlineIconText icon={CircleCheck} iconClassName="text-success">
+                {acceptedStatusText}
+              </ChatInlineIconText>
             </p>
           </div>
         ) : null}
@@ -693,7 +709,9 @@ export function OfferCardComponent({
         {isOrderCancelled ? (
           <div className="rounded-md border border-error/20 bg-[#17130f] px-2.5 py-1.5">
             <p className={statusNoteTextClass}>
-              {SYSTEM_ORDER_CANCELLED_TEXT} 商品已解除鎖定，交易流程已終止。
+              <ChatInlineIconText icon={CircleX} iconClassName="text-error/90">
+                {SYSTEM_ORDER_CANCELLED_TEXT} 商品已解除鎖定，交易流程已終止。
+              </ChatInlineIconText>
             </p>
           </div>
         ) : null}
@@ -701,7 +719,9 @@ export function OfferCardComponent({
         {isRejected ? (
           <div className="rounded-md border border-error/25 bg-[#1A1612] px-2.5 py-1.5">
             <p className="text-[11px] font-medium leading-snug text-error/90">
-              {SYSTEM_OFFER_REJECTED_TEXT}
+              <ChatInlineIconText icon={CircleX}>
+                {resolveSystemOfferRejectedText(isSeller)}
+              </ChatInlineIconText>
             </p>
           </div>
         ) : null}
@@ -709,7 +729,9 @@ export function OfferCardComponent({
         {isCancelled ? (
           <div className="rounded-md border border-white/10 bg-[#1A1612] px-2.5 py-1.5">
             <p className="text-[11px] font-medium leading-snug text-text-disabled">
-              {SYSTEM_OFFER_CANCELLED_TEXT}
+              <ChatInlineIconText icon={CircleX} iconClassName="text-text-disabled">
+                {SYSTEM_OFFER_CANCELLED_TEXT}
+              </ChatInlineIconText>
             </p>
           </div>
         ) : null}
@@ -717,10 +739,12 @@ export function OfferCardComponent({
         {isPending && isBuyer ? (
           <div className={statusNoteClass}>
             <p className={statusNoteTextClass}>
-              ⏳ 等待賣家回應中… 您的出價為{" "}
-              <span className="font-mono font-bold text-brand">
-                HK$ {offerPrice.toLocaleString()}
-              </span>
+              <ChatInlineIconText icon={Hourglass} iconClassName="text-brand/80">
+                等待賣家回應中… 您的出價為{" "}
+                <span className="font-mono font-bold text-brand">
+                  HK$ {offerPrice.toLocaleString()}
+                </span>
+              </ChatInlineIconText>
             </p>
             {modifiedCount >= 1 ? (
               <p className="mt-1 font-mono text-[9.5px] text-text-disabled">
@@ -749,25 +773,22 @@ export function OfferCardComponent({
                     "接受出價"
                   )}
                 </AlertDialogTrigger>
-                <AlertDialogContent className="max-w-sm rounded-2xl border border-[#10b981]/30 bg-[#26211C] p-6 text-[#eae1da]">
+                <AlertDialogContent className="max-w-sm rounded-2xl border border-brand/25 bg-bg-card p-6 text-text-primary shadow-[0_0_50px_rgba(0,0,0,0.45)]">
                   <AlertDialogHeader className="text-left">
-                    <AlertDialogTitle className="text-[15px] font-black">
+                    <AlertDialogTitle className="text-[15px] font-bold text-[#eae1da]">
                       確認接受出價
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="text-[11px] font-mono uppercase tracking-wider text-[#8A8680]">
-                      Accept Offer
-                    </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <p className="py-3 text-[12.5px] leading-relaxed text-[#d4c4b7]">
+                  <p className="py-3 text-[12.5px] leading-relaxed text-text-secondary">
                     您即將以{" "}
-                    <span className="font-mono font-black text-[#10b981]">
+                    <span className="font-mono font-bold tabular-nums text-brand">
                       HK$ {offerPrice.toLocaleString()}
                     </span>{" "}
                     接受來自{" "}
                     <span className="font-bold text-brand">
                       {context.buyerName}
                     </span>{" "}
-                    的出價。確認後商品將進入 Hold 貨狀態。
+                    的出價。確認後商品將進入待交易狀態。
                     {useAuthentication ? (
                       <>
                         {" "}
@@ -783,7 +804,7 @@ export function OfferCardComponent({
                         void handleAccept();
                       }}
                       disabled={isAccepting}
-                      className="h-11 rounded-xl bg-[#10b981] font-black text-white hover:bg-[#0fa573] disabled:opacity-50"
+                      className="h-11 rounded-xl bg-brand font-bold text-[#1A1612] hover:bg-brand-hover disabled:opacity-50"
                     >
                       {isAccepting ? (
                         <span className="inline-flex items-center gap-2">
@@ -794,7 +815,7 @@ export function OfferCardComponent({
                         "確認接受"
                       )}
                     </AlertDialogAction>
-                    <AlertDialogCancel className="h-10 rounded-xl border border-white/10 bg-[#120F0C]">
+                    <AlertDialogCancel className="h-10 rounded-xl border border-[rgba(237,232,224,0.12)] bg-bg-page/80 text-text-secondary hover:bg-bg-elevated/40 hover:text-text-primary">
                       返回
                     </AlertDialogCancel>
                   </div>
@@ -884,8 +905,9 @@ export function OfferCardComponent({
 
                 <div className="space-y-4 py-3">
                   <Alert className="border-orange-500/30 bg-orange-500/10 text-orange-400">
+                    <AlertTriangle className="size-4" />
                     <AlertDescription className="text-[11.5px] leading-relaxed">
-                      ⚠️ 每筆出價僅能修改一次價格，提交後將重新進入賣家複核隊列。
+                      每筆出價僅能修改一次價格，提交後將重新進入賣家複核隊列。
                     </AlertDescription>
                   </Alert>
 
@@ -956,7 +978,7 @@ export function OfferCardComponent({
               }}
             >
               {resolvedOrderKind === "merchant" && context.pendingPayment
-                ? "前往託管結帳"
+                ? "前往結帳"
                 : "前往付款"}
             </Button>
           ) : null}
@@ -975,6 +997,22 @@ export function OfferCardComponent({
                 : "查看訂單詳情"}
             </Button>
           ) : null}
+        </CardFooter>
+      ) : null}
+
+      {isAccepted && isSeller && !isOrderCancelled && resolvedSellerOrderDetailHref ? (
+        <CardFooter className="flex flex-col gap-2 border-t-0 bg-transparent px-3 py-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-full rounded-lg border-white/15 bg-transparent text-[12px] font-bold text-brand hover:bg-brand/10"
+            onClick={() => {
+              router.push(resolvedSellerOrderDetailHref);
+              setIsChatOpen(false);
+            }}
+          >
+            查看訂單
+          </Button>
         </CardFooter>
       ) : null}
     </Card>

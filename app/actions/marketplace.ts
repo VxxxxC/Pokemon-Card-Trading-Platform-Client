@@ -1007,18 +1007,15 @@ export async function getMarketplaceListingDetail(
       return { success: false, error: "找不到此掛單" };
     }
 
-    const { data: sellerProfile, error: sellerProfileError } = await supabase
-      .from("profiles")
-      .select("display_name, username")
-      .eq("id", data.seller_id)
-      .maybeSingle<Pick<Tables<"profiles">, "display_name" | "username">>();
-
-    if (sellerProfileError) {
-      console.error(
-        "[getMarketplaceListingDetail] seller profile",
-        sellerProfileError.message,
-      );
-    }
+    const sellerSnippets = await loadListingSellerSnippets(supabase, [
+      {
+        sellerId: data.seller_id,
+        sellerPersona: data.seller_persona,
+      },
+    ]);
+    const sellerSnippet = sellerSnippets.get(
+      listingSellerSnippetKey(data.seller_id, data.seller_persona),
+    );
 
     let shippingFields: MarketplaceMerchantShippingFields = {};
     if (data.seller_persona === "merchant") {
@@ -1051,8 +1048,8 @@ export async function getMarketplaceListingDetail(
       }
     }
 
-    const sellerDisplayName = sellerProfile?.display_name?.trim() ?? "";
-    const sellerUsername = sellerProfile?.username?.trim() || null;
+    const sellerDisplayName = sellerSnippet?.displayName?.trim() ?? "";
+    const sellerUsername = sellerSnippet?.username ?? null;
 
     return {
       success: true,

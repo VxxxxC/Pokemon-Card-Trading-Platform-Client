@@ -66,9 +66,9 @@ test.describe("P-F04 merchant ops and member-seller trading", () => {
     await page.goto("/profile/merchant/performance", {
       waitUntil: "domcontentloaded",
     });
-    await expect(
-      page.getByRole("heading", { name: "店舖經營與業績分析" }),
-    ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("歷史累計總營業額")).toBeVisible({
+      timeout: 20_000,
+    });
   });
 
   test("member-persona trading as seller", async ({ page }, testInfo) => {

@@ -246,9 +246,11 @@ test.describe("Global Chat realtime — dual browser journey", () => {
           has: buyerPage.getByText("● 已接受"),
         });
         await expect(
-          buyerOfferCard.getByText("✅ 賣家已接受出價，商品已成功鎖定（Hold 貨）"),
+          buyerOfferCard.getByText("賣家已接受出價，商品已成功鎖定"),
         ).toBeVisible({ timeout: 30_000 });
-        await expect(buyerOfferCard.getByText("⏳ 等待賣家回應中...")).toHaveCount(0);
+        await expect(
+          buyerOfferCard.getByText("等待賣家回應中"),
+        ).toHaveCount(0);
       });
     } finally {
       await buyerContext.close();

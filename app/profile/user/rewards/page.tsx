@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 
 import { getUserRewardCoupons } from "@/app/actions/rewards";
@@ -11,7 +11,7 @@ import type {
   UserCouponView,
 } from "@/lib/rewards/mapUserRewardCoupon";
 
-import { CheckInCard } from "@/app/components/rewards/CheckInCard";
+import { CheckInCard, type CheckInCardStats } from "@/app/components/rewards/CheckInCard";
 import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
 import { Pagination } from "@/app/components/ui/Pagination";
@@ -74,7 +74,7 @@ const COUPON_CENTER_TABS: CouponCenterTab[] = [
 ];
 
 const COUPON_TAB_LABELS: Record<CouponCenterTab, string> = {
-  redeemable: "可領取 / 可使用",
+  redeemable: "可使用",
   locked: "可解鎖",
   redeemed: "歷史已使用",
   expired: "不可領用 (已過期)",
@@ -82,6 +82,59 @@ const COUPON_TAB_LABELS: Record<CouponCenterTab, string> = {
 
 // 🟢 嚴格依照意圖：設定每頁 6 個 Item 的 Chunk 限制線
 const ITEMS_PER_PAGE = 6;
+
+const COUPON_TICKET_SURFACE = "bg-bg-card";
+
+function CouponTicketDivider() {
+  return (
+    <div className="relative w-0 shrink-0 self-stretch py-3" aria-hidden>
+      <div className="absolute inset-y-4 left-0 border-l border-dashed border-white/15" />
+      <div
+        className={`absolute -left-[5px] top-2 size-[10px] rounded-full ${COUPON_TICKET_SURFACE}`}
+      />
+      <div
+        className={`absolute -left-[5px] bottom-2 size-[10px] rounded-full ${COUPON_TICKET_SURFACE}`}
+      />
+    </div>
+  );
+}
+
+type CouponTicketShellProps = {
+  accentClass: string;
+  borderClass: string;
+  bgClass: string;
+  stubClass: string;
+  valueLabel: string;
+  children: ReactNode;
+};
+
+function CouponTicketShell({
+  accentClass,
+  borderClass,
+  bgClass,
+  stubClass,
+  valueLabel,
+  children,
+}: CouponTicketShellProps) {
+  return (
+    <div
+      className={`relative flex overflow-hidden rounded-xl border transition-colors ${borderClass} ${bgClass}`}
+    >
+      <div className="relative flex w-[4.25rem] shrink-0 flex-col items-center justify-center px-2 py-3.5">
+        <div
+          className={`absolute left-1.5 top-3 bottom-3 w-0.5 rounded-full ${accentClass}`}
+        />
+        <p
+          className={`text-center font-mono text-[13px] font-bold leading-tight tabular-nums ${stubClass}`}
+        >
+          {valueLabel}
+        </p>
+      </div>
+      <CouponTicketDivider />
+      <div className="min-w-0 flex-1 py-3.5 pr-3 pl-2">{children}</div>
+    </div>
+  );
+}
 
 export default function MemberRewardsPage() {
   const [_missions] = useState<PlatformMission[]>(INITIAL_MISSIONS);
@@ -91,6 +144,11 @@ export default function MemberRewardsPage() {
   const [isCouponLoading, setIsCouponLoading] = useState(true);
   const [couponLoadError, setCouponLoadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CouponCenterTab>("redeemable");
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+
+  const handleCheckInStatsChange = (stats: CheckInCardStats) => {
+    setPointsBalance(stats.pointsBalance);
+  };
 
   // ── 🟢 核心加裝：React 19 零 useEffect 狀態指紋分頁引擎 ──
   // 當 activeTab 切換時，過濾指紋改變，分頁數會主動、非阻塞式歸位回第 1 頁，打穿溢出 Bug
@@ -163,29 +221,58 @@ export default function MemberRewardsPage() {
   }
 
   return (
-    <div className="space-y-4 animate-fadeIn text-text-primary">
-      <CheckInCard />
+    <div className="space-y-5 animate-fadeIn text-text-primary">
+      <section
+        className="overflow-hidden rounded-xl border border-white/[0.06] bg-bg-card"
+        aria-label="積分與簽到"
+      >
+        <div
+          className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3"
+          aria-label="帳戶總積分餘額"
+        >
+          <p className="font-sans text-[12px] font-medium text-text-secondary">
+            帳戶總積分餘額
+          </p>
+          {pointsBalance === null ? (
+            <span
+              className="h-5 w-20 rounded bg-white/[0.06] animate-pulse"
+              aria-hidden
+            />
+          ) : (
+            <p className="font-mono text-[17px] font-bold tabular-nums leading-none text-brand">
+              {pointsBalance.toLocaleString()} PTS
+            </p>
+          )}
+        </div>
+
+        <div className="px-3.5 py-3">
+          <CheckInCard
+            embedded
+            hidePointsBalance
+            onStatsChange={handleCheckInStatsChange}
+          />
+        </div>
 
         <Link
           href="/profile/user/campaigns"
-          className="block w-full rounded-2xl border border-brand/30 bg-[rgba(212,165,116,0.08)] px-5 py-4 text-center font-sans font-bold text-[14px] text-brand hover:bg-[rgba(212,165,116,0.14)] transition-colors"
+          className="flex items-center justify-between gap-2 border-t border-white/[0.06] px-4 py-3 font-sans text-[13px] font-semibold text-brand transition-colors hover:bg-white/[0.02]"
         >
-          前往限時搶券 · 積分商城 →
+          <span>前往限時搶券 · 積分商城</span>
+          <span className="font-mono text-[12px]">→</span>
         </Link>
+      </section>
 
-        {/* ── 智能三態 Coupon 中心 ── */}
-        <section id="redeem-list" className="space-y-4 pt-2">
-          <div>
-            <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
-              🎟️ 我的全域平台折價券中心
-            </h3>
-            <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">
-              CREDENTIAL COUPON & VOUCHER INVENTORY
-            </p>
-          </div>
+      <section
+        id="redeem-list"
+        className="overflow-hidden rounded-xl border border-white/[0.06] bg-bg-card"
+      >
+        <div className="border-b border-white/[0.06] px-4 py-3">
+          <h2 className="font-sans font-bold text-[15px] text-text-primary">
+            我的優惠劵
+          </h2>
+        </div>
 
-          {/* 完美的平滑無彈跳 Tab 控制器 */}
-          <div className="flex border-b border-[rgba(237,232,224,0.08)] overflow-x-auto scrollbar-none">
+        <div className="flex overflow-x-auto border-b border-white/[0.06] scrollbar-none">
             {COUPON_CENTER_TABS.map((tab) => {
               const count =
                 tab === "locked"
@@ -195,164 +282,155 @@ export default function MemberRewardsPage() {
               return (
                 <button
                   key={tab}
+                  type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`pb-3 px-4 font-sans text-[13.5px] font-semibold transition-all relative cursor-pointer shrink-0 ${isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"}`}
+                  className={`relative shrink-0 cursor-pointer px-2.5 pb-2 pt-2 font-sans text-[12px] font-semibold transition-colors ${
+                    isActive
+                      ? "text-brand"
+                      : "text-text-secondary hover:text-text-primary"
+                  }`}
                 >
-                  {COUPON_TAB_LABELS[tab]} ({count})
-                  {isActive && (
-                    <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
-                  )}
+                  <span className="inline-flex items-center gap-1">
+                    {COUPON_TAB_LABELS[tab]}
+                    <span
+                      className={`rounded-full px-1 py-0.5 font-mono text-[9px] font-bold tabular-nums leading-none ${
+                        isActive
+                          ? "bg-brand/15 text-brand"
+                          : "bg-white/[0.05] text-text-disabled"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </span>
+                  {isActive ? (
+                    <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand" />
+                  ) : null}
                 </button>
               );
             })}
           </div>
 
-          {/* 券流列表流 */}
-          <div className="pt-2">
+          <div className="px-3.5 py-3.5">
             {couponLoadError ? (
-              <div className="py-12 text-center bg-[#26211C]/30 border border-[rgba(237,232,224,0.04)] rounded-2xl text-error font-sans text-[13px]">
+              <div className="py-8 text-center font-sans text-[12px] text-error">
                 {couponLoadError}
               </div>
             ) : isCouponLoading ? (
               <CouponGridSkeleton />
             ) : (
-              <div className="space-y-6">
-                {/* 🟢 更換為切片後的分頁隊列數據 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
                   {paginatedCoupons.length === 0 ? (
-                    <div className="col-span-full py-12 text-center bg-[#26211C]/30 border border-[rgba(237,232,224,0.04)] rounded-2xl text-text-disabled font-sans text-[13px]">
+                    <div className="col-span-full py-8 text-center font-sans text-[12px] text-text-disabled">
                       {activeTab === "locked"
                         ? "目前沒有可預覽的解鎖獎勵"
                         : "目前沒有該狀態下的折價券券證"}
                     </div>
                   ) : activeTab === "locked" ? (
                     (paginatedCoupons as LockedRewardView[]).map((reward) => (
-                      <div
+                      <CouponTicketShell
                         key={reward.id}
-                        className="bg-[#26211C] border border-[rgba(237,232,224,0.1)] border-dashed rounded-2xl p-4 flex flex-col justify-between space-y-4 relative overflow-hidden opacity-90"
+                        accentClass="bg-text-disabled/40"
+                        borderClass="border-dashed border-white/[0.12]"
+                        bgClass="bg-white/[0.03]"
+                        stubClass="text-text-secondary"
+                        valueLabel={reward.valueLabel}
                       >
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#50453b]" />
-                        <div className="pl-2 space-y-2">
-                          <div className="flex items-baseline gap-1.5">
-                            <p className="font-mono font-black text-[22px] tracking-tight text-[#d4c4b7]">
-                              {reward.valueLabel}
-                            </p>
-                            <span className="font-mono text-[9px] text-[#50453b] uppercase">
-                              LOCKED
-                            </span>
-                          </div>
-                          <div>
-                            <h4 className="font-sans font-bold text-[13.5px] text-[#eae1da] truncate">
+                        <div className="space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="min-w-0 truncate font-sans text-[12.5px] font-bold leading-snug text-text-primary">
                               {reward.name}
                             </h4>
-                            <p className="font-sans text-[11px] text-[#d4c4b7] mt-0.5">
-                              {reward.minSpendLabel}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="pl-2 pt-3 border-t border-[rgba(237,232,224,0.06)] space-y-3 font-mono text-[11px]">
-                          <div>
-                            <span className="text-[#50453b] block text-[9px] uppercase">
-                              解鎖條件
-                            </span>
-                            <span className="text-[#eae1da] font-semibold">
-                              {reward.requirementLabel}
+                            <span className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-sans text-[9px] font-semibold text-text-disabled">
+                              待解鎖
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <div>
-                              <span className="text-[#50453b] block text-[9px] uppercase">
-                                進度
-                              </span>
-                              <span className="text-brand font-bold">
-                                {reward.progressLabel}
-                              </span>
-                            </div>
+                          <p className="font-sans text-[11px] leading-snug text-text-secondary">
+                            {reward.minSpendLabel}
+                          </p>
+                          <p className="text-[10px] leading-snug text-text-disabled">
+                            {reward.requirementLabel}
+                          </p>
+                          <div className="flex items-center justify-between gap-3 border-t border-dashed border-white/[0.08] pt-2 text-[10px]">
+                            <span className="font-mono font-bold text-brand">
+                              {reward.progressLabel}
+                            </span>
                             <Link
                               href={reward.ctaHref}
-                              className="text-brand font-bold hover:underline"
+                              className="shrink-0 font-semibold text-brand hover:underline"
                             >
                               去完成 →
                             </Link>
                           </div>
-                          <p className="text-[#50453b] text-[10px]">
-                            {reward.footerNote}
-                          </p>
                         </div>
-                      </div>
+                      </CouponTicketShell>
                     ))
                   ) : (
-                    (paginatedCoupons as UserCouponView[]).map((coupon) => (
-                      <div
-                        key={coupon.id}
-                        className={`bg-[#26211C] border rounded-2xl p-4 flex flex-col justify-between space-y-4 relative overflow-hidden group ${
-                          activeTab === "redeemable"
-                            ? "border-[rgba(212,165,116,0.2)] hover:border-brand/40 shadow-sm"
-                            : activeTab === "redeemed"
-                              ? "border-[rgba(16,185,129,0.15)] opacity-75"
-                              : "border-[rgba(237,232,224,0.06)] opacity-50"
-                        }`}
-                      >
-                        <div
-                          className={`absolute left-0 top-0 bottom-0 w-1 ${
-                            activeTab === "redeemable"
-                              ? "bg-brand"
-                              : activeTab === "redeemed"
-                                ? "bg-[#10b981]"
-                                : "bg-[#39342f]"
-                          }`}
-                        />
+                    (paginatedCoupons as UserCouponView[]).map((coupon) => {
+                      const ticketTone =
+                        activeTab === "redeemable"
+                          ? {
+                              accent: "bg-brand",
+                              border: "border-white/[0.08] hover:border-brand/35",
+                              bg: "bg-white/[0.03]",
+                              stub: "text-brand",
+                              opacity: "",
+                            }
+                          : activeTab === "redeemed"
+                            ? {
+                                accent: "bg-success",
+                                border: "border-white/[0.06]",
+                                bg: "bg-white/[0.02]",
+                                stub: "text-text-primary",
+                                opacity: "opacity-85",
+                              }
+                            : {
+                                accent: "bg-text-disabled/30",
+                                border: "border-white/[0.05]",
+                                bg: "bg-white/[0.02]",
+                                stub: "text-text-primary",
+                                opacity: "opacity-65",
+                              };
 
-                        <div className="pl-2 space-y-2">
-                          <div className="flex items-baseline gap-1.5">
-                            <p
-                              className={`font-mono font-black text-[22px] tracking-tight ${activeTab === "redeemable" ? "text-brand" : "text-[#eae1da]"}`}
-                            >
-                              {coupon.valueLabel}
-                            </p>
-                            <span className="font-mono text-[9px] text-[#50453b] uppercase">
-                              VOUCHER TOKEN
-                            </span>
-                          </div>
-
-                          <div>
-                            <h4 className="font-sans font-bold text-[13.5px] text-[#eae1da] truncate">
+                      return (
+                        <CouponTicketShell
+                          key={coupon.id}
+                          accentClass={ticketTone.accent}
+                          borderClass={`${ticketTone.border} ${ticketTone.opacity}`}
+                          bgClass={ticketTone.bg}
+                          stubClass={ticketTone.stub}
+                          valueLabel={coupon.valueLabel}
+                        >
+                          <div className="space-y-1.5">
+                            <h4 className="font-sans text-[12.5px] font-bold leading-snug text-text-primary line-clamp-2">
                               {coupon.name}
                             </h4>
-                            <p className="font-sans text-[11px] text-[#d4c4b7] mt-0.5">
+                            <p className="font-sans text-[11px] leading-snug text-text-secondary">
                               {coupon.minSpendLabel}
                             </p>
+                            <div className="flex items-center justify-between gap-3 border-t border-dashed border-white/[0.08] pt-2">
+                              <span className="truncate rounded-md border border-white/[0.06] bg-black/25 px-2 py-0.5 font-mono text-[10px] font-medium text-text-secondary select-all">
+                                {coupon.code}
+                              </span>
+                              <span
+                                className={`shrink-0 text-[10px] font-medium ${
+                                  activeTab === "redeemable"
+                                    ? "text-text-disabled"
+                                    : activeTab === "redeemed"
+                                      ? "text-success"
+                                      : "text-error"
+                                }`}
+                              >
+                                {coupon.expiryDate}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="pl-2 pt-3 border-t border-[rgba(237,232,224,0.06)] flex items-center justify-between flex-wrap gap-2 font-mono text-[11px]">
-                          <div>
-                            <span className="text-[#50453b] block text-[9px] uppercase">
-                              代碼
-                            </span>
-                            <span className="text-[#eae1da] font-bold select-all bg-[#17130f] px-1.5 py-0.5 rounded border border-white/5">
-                              {coupon.code}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[#50453b] block text-[9px] uppercase">
-                              {activeTab === "redeemable"
-                                ? "截止日期"
-                                : "流水備註"}
-                            </span>
-                            <span
-                              className={`font-semibold ${activeTab === "redeemable" ? "text-[#d4c4b7]" : activeTab === "redeemed" ? "text-[#10b981]" : "text-error"}`}
-                            >
-                              {coupon.expiryDate}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
+                        </CouponTicketShell>
+                      );
+                    })
                   )}
                 </div>
 
-                {/* ── 🟢 全域分頁器掛載（每 6 個券證為一頁） ── */}
                 <Pagination
                   currentPage={currentCouponPage}
                   totalPages={totalCouponPages}
@@ -362,7 +440,7 @@ export default function MemberRewardsPage() {
                   itemsPerPage={ITEMS_PER_PAGE}
                   hideControls={false}
                   enableScroll={true}
-                  className="mt-6"
+                  className="mt-2"
                   scrollToViewId="redeem-list"
                   scrollBlock="start"
                 />

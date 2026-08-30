@@ -20,9 +20,9 @@ test.describe("Merchant analytics & performance smoke (F-C-07)", () => {
       waitUntil: "domcontentloaded",
     });
 
-    await expect(
-      page.getByRole("heading", { name: "店舖經營與業績分析" }),
-    ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("歷史累計總營業額")).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(page.getByText("歷史累計總營業額")).toBeVisible();
     await expect(page.getByText("歷史累計平均單價")).toBeVisible();
     await expect(page.getByText("歷史累計總成交次數")).toBeVisible();

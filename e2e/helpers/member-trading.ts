@@ -328,7 +328,7 @@ export function offerCardWithAmount(page: Page, amountLabel: string) {
   const amountPattern = formattedAmount.replace(/,/g, ",?");
   return chatConsoleRoot(page)
     .locator("div.my-2.w-full")
-    .filter({ hasText: "⚡ 議價出價卡片" })
+    .filter({ hasText: "上架序號" })
     .filter({ hasText: new RegExp(`HK\\$\\s*${amountPattern}\\b`) })
     .last();
 }

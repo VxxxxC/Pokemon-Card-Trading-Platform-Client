@@ -239,5 +239,26 @@ test.describe("Marketplace search + make offer", () => {
         )
         .toBe(true);
     });
+
+    await test.step("Step 9 — duplicate pending offer is blocked", async () => {
+      const sellerRow = page
+        .locator("#live-order-book-panel [role='button']")
+        .filter({ hasText: fixture.sellerName })
+        .filter({ hasText: formatHkd(fixture.listingPrice) })
+        .first();
+      await sellerRow.click();
+
+      const slideOver = page.locator("div.fixed.inset-0.z-\\[400\\]");
+      await expect(slideOver).toBeVisible({ timeout: 15_000 });
+      await expect(slideOver.getByText("等待賣家回應中")).toBeVisible({
+        timeout: 15_000,
+      });
+
+      const pendingOffers = await getLatestOfferForListing({
+        listingId: fixture.listingId,
+        buyerId,
+      });
+      expect(pendingOffers?.status).toBe("pending");
+    });
   });
 });

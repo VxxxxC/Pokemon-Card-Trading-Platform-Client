@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CiBullhorn } from "react-icons/ci";
-import { Pencil } from "lucide-react";
+import { ChartLine, Eye, Pencil } from "lucide-react";
 import type { ListingStatus } from "@/app/lib/types/rbac";
 import type { ListingImage } from "@/lib/listings/images";
 import { Pagination } from "@/app/components/ui/Pagination";
@@ -92,8 +92,8 @@ const STATUS_LABEL: Record<
   },
   inactive: {
     label: "未上架",
-    className: "text-text-secondary",
-    dotClassName: "bg-text-secondary",
+    className: "text-text-disabled",
+    dotClassName: "bg-text-disabled",
   },
 };
 
@@ -116,21 +116,15 @@ function CardInstanceRow({
 }: CardInstanceRowProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { label, className, dotClassName } = STATUS_LABEL[item.status];
-  const canEdit = !item.isSealedListing;
+  const canEdit = item.status !== "sold";
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          if (canEdit) setIsOpen(true);
-        }}
+        onClick={() => setIsOpen(true)}
         disabled={!canEdit}
-        aria-label={
-          canEdit
-            ? `編輯掛單 上架序號 ${item.id}`
-            : `盒組掛單 上架序號 ${item.id}`
-        }
+        aria-label={`編輯掛單 上架序號 ${item.id}`}
         className={`w-full flex flex-col gap-1 py-2 px-2.5 bg-bg-page/40 border border-[rgba(237,232,224,0.08)] rounded-lg transition-colors select-none group/row text-left ${
           canEdit
             ? "hover:bg-bg-elevated/40 cursor-pointer"
@@ -141,6 +135,24 @@ function CardInstanceRow({
           <span className="text-text-disabled/80">上架序號 </span>
           {item.id}
         </p>
+
+        {inventoryContext === "merchant" ? (
+          <div className="mt-0.5 flex items-center gap-2 flex-wrap min-w-0 font-mono text-[9px] text-text-disabled leading-tight">
+            <span
+              className="inline-flex items-center gap-0.5 shrink-0 tabular-nums"
+              aria-label={`${item.views} 次瀏覽`}
+            >
+              <Eye className="h-3 w-3 shrink-0" aria-hidden />
+              {item.views}
+            </span>
+            {item.offersCount && item.offersCount > 0 ? (
+              <span className="inline-flex items-center gap-0.5 shrink-0 tabular-nums">
+                <CiBullhorn className="h-3 w-3 shrink-0" aria-hidden />
+                {item.offersCount} 次叫價
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex items-center gap-1 flex-wrap min-w-0 flex-1">
@@ -156,12 +168,6 @@ function CardInstanceRow({
               />
               {label}
             </span>
-            {item.offersCount && item.offersCount > 0 ? (
-              <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-warning shrink-0">
-                <CiBullhorn className="w-3 h-3 animate-pulse" aria-hidden />
-                {item.offersCount} 次叫價
-              </span>
-            ) : null}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -175,11 +181,7 @@ function CardInstanceRow({
               >
                 <Pencil className="h-3.5 w-3.5" aria-hidden />
               </span>
-            ) : (
-              <span className="flex items-center justify-center px-2 h-7 font-sans text-[10px] font-medium text-text-secondary border border-[rgba(237,232,224,0.12)] bg-bg-page/80 rounded-md shrink-0">
-                盒組
-              </span>
-            )}
+            ) : null}
           </div>
         </div>
       </button>
@@ -257,106 +259,121 @@ export function InventoryAccordion({
     <div className="divide-y divide-[rgba(237,232,224,0.06)]">
       {skuGroups.map((sku) => {
         const isOpen = openId === sku.id;
-        const totalOffers = sku.items.reduce((acc, item) => acc + (item.offersCount || 0), 0);
-        const hasActiveOffer = sku.items.some((item) => (item.offersCount || 0) > 0);
         const catalogLine = formatSkuCatalogLine(sku);
 
         return (
           <div key={sku.id}>
-            <button
-              type="button"
-              onClick={() => setOpenId(isOpen ? null : sku.id)}
-              aria-expanded={isOpen}
-              aria-controls={`sku-panel-${sku.id}`}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors cursor-pointer ${
+            <div
+              className={`px-3 py-2.5 ${
                 isOpen ? "bg-bg-elevated/50" : "hover:bg-bg-elevated/40"
               }`}
             >
-              <div className="relative w-12 h-[3.5rem] rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
-                <Image
-                  src={
-                    sku.imageUrl?.trim() ||
-                    `https://picsum.photos/seed/${sku.thumbnailSeed}/112/160`
-                  }
-                  alt={`${sku.cardName} 縮圖`}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-                {hasActiveOffer && (
-                  <div className="absolute top-1 right-1 z-10 w-5 h-5 bg-[#EF4444] rounded-full flex items-center justify-center animate-bounce shadow-md" title="有買家叫價！">
-                    <CiBullhorn className="w-3.5 h-3.5 text-white" />
-                  </div>
-                )}
-              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setOpenId(isOpen ? null : sku.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`sku-panel-${sku.id}`}
+                  className="flex flex-1 items-center gap-2.5 min-w-0 text-left transition-colors cursor-pointer"
+                >
+                <div className="relative w-12 h-[3.5rem] rounded-md overflow-hidden border border-[rgba(237,232,224,0.08)] shrink-0">
+                  <Image
+                    src={
+                      sku.imageUrl?.trim() ||
+                      `https://picsum.photos/seed/${sku.thumbnailSeed}/112/160`
+                    }
+                    alt={`${sku.cardName} 縮圖`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-sans text-[13px] font-medium text-text-primary truncate">
-                    {sku.cardName}
-                  </p>
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">
-                    {sku.items.length} 張
-                  </span>
-                  {totalOffers > 0 && (
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded text-warning bg-[rgba(239,68,68,0.10)] font-bold animate-pulse">
-                      {totalOffers} 次叫價
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-sans text-[13px] font-medium text-text-primary truncate">
+                      {sku.cardName}
+                    </p>
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[rgba(212,165,116,0.10)] text-brand border border-brand/20 shrink-0">
+                      {sku.items.length} 張
                     </span>
+                  </div>
+                  {(sku.nameZh || catalogLine) ? (
+                    <div className="mt-0.5 space-y-0.5 min-w-0">
+                      {catalogLine ? (
+                        <p className="font-mono text-[11px] text-text-secondary truncate uppercase">
+                          {catalogLine}
+                        </p>
+                      ) : null}
+                      {sku.nameZh ? (
+                        <p className="font-sans text-[11px] text-text-secondary truncate">
+                          {sku.nameZh}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="text-right shrink-0 hidden sm:block">
+                  {sku.items.length > 0 && (
+                    <>
+                      <p className="font-mono font-semibold text-[13px] text-text-primary">
+                        HK$ {Math.min(...sku.items.map((it) => it.askPrice)).toLocaleString()}
+                        {sku.items.length > 1 && (
+                          <span className="text-text-disabled text-[11px]"> 起</span>
+                        )}
+                      </p>
+                      <p className="font-mono text-[10.5px] mt-0.5">
+                        {sku.items.length > 1 ? (
+                          <>
+                            至 <span className="text-brand font-bold">HK$ {Math.max(...sku.items.map((it) => it.askPrice)).toLocaleString()}</span>
+                          </>
+                        ) : (
+                          sku.items[0].grade
+                        )}
+                      </p>
+                    </>
                   )}
                 </div>
-                {(sku.nameZh || catalogLine) ? (
-                  <div className="mt-0.5 space-y-0.5 min-w-0">
-                    {sku.nameZh ? (
-                      <p className="font-sans text-[11px] text-text-secondary truncate">
-                        {sku.nameZh}
-                      </p>
-                    ) : null}
-                    {catalogLine ? (
-                      <p className="font-mono text-[11px] text-text-secondary truncate uppercase">
-                        {catalogLine}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+              </button>
 
-              <div className="text-right shrink-0 hidden sm:block">
-                {sku.items.length > 0 && (
-                  <>
-                    <p className="font-mono font-semibold text-[13px] text-text-primary">
-                      HK$ {Math.min(...sku.items.map((it) => it.askPrice)).toLocaleString()}
-                      {sku.items.length > 1 && (
-                        <span className="text-text-disabled text-[11px]"> 起</span>
-                      )}
-                    </p>
-                    <p className="font-mono text-[10.5px] mt-0.5">
-                      {sku.items.length > 1 ? (
-                        <>
-                          至 <span className="text-brand font-bold">HK$ {Math.max(...sku.items.map((it) => it.askPrice)).toLocaleString()}</span>
-                        </>
-                      ) : (
-                        sku.items[0].grade
-                      )}
-                    </p>
-                  </>
-                )}
-              </div>
-
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#a89888"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                className={`shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+              <button
+                type="button"
+                onClick={() => setOpenId(isOpen ? null : sku.id)}
+                aria-expanded={isOpen}
+                aria-controls={`sku-panel-${sku.id}`}
+                aria-label={isOpen ? "收起掛單" : "展開掛單"}
+                className="shrink-0 p-1 text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className={`transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            </div>
+
+            {analytics ? (
+              <div className="mt-2">
+                <Link
+                  href={`/profile/merchant/analytics?productId=${sku.id}`}
+                  className="w-full flex items-center justify-center gap-1.5 h-9 bg-brand/10 text-brand border border-brand/25 font-mono text-[11px] font-semibold rounded-lg hover:bg-brand/15 active:scale-[0.98] transition-colors"
+                >
+                  <ChartLine className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  前往本卡牌進階商品分析
+                </Link>
+              </div>
+            ) : null}
+            </div>
 
             <div
               id={`sku-panel-${sku.id}`}
@@ -366,19 +383,7 @@ export function InventoryAccordion({
             >
               <div className="overflow-hidden">
                 <div className="bg-[rgba(212,165,116,0.02)] border-t border-[rgba(212,165,116,0.08)] px-3 pt-2 pb-2 space-y-2">
-
                   <SkuItemsList sku={sku} inventoryContext={inventoryContext} />
-
-                  {analytics ? 
-                  <div className="pt-1 border-t border-[rgba(237,232,224,0.06)]">
-                    <Link
-                      href={`/profile/merchant/analytics?productId=${sku.id}`}
-                      className="w-full flex items-center justify-center gap-2 h-10 bg-[rgba(212,165,116,0.07)] text-brand border border-brand/25 font-sans text-[13px] font-semibold rounded-xl hover:bg-[rgba(212,165,116,0.15)] active:scale-[0.98] transition-all"
-                    >
-                      📊 前往本卡牌進階商品分析
-                    </Link>
-                  </div>
-                    : null}
                 </div>
               </div>
             </div>

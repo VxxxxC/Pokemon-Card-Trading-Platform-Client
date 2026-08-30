@@ -304,7 +304,7 @@ async function buildOfferCardContextFromRow(
       room_id: data.room_id,
       use_authentication: data.use_authentication,
     },
-    listingId: data.listing_id,
+    listingId: listing.id,
     productId: catalog.id,
     cardName,
     cardNumber: catalog.card_number,
@@ -617,6 +617,67 @@ export async function batchGetOfferCardContexts(
   } catch (error) {
     console.error("[batchGetOfferCardContexts]", error);
     return { success: false, error: "載入出價卡片時發生錯誤" };
+  }
+}
+
+export type BuyerPendingOfferForListingResult =
+  | {
+      success: true;
+      data: { offerId: string; offerPrice: number } | null;
+    }
+  | { success: false; error: string };
+
+export async function getBuyerPendingOfferForListing(
+  listingId: string,
+): Promise<BuyerPendingOfferForListingResult> {
+  const trimmedListingId = listingId.trim();
+  if (!trimmedListingId) {
+    return { success: false, error: "缺少掛單識別碼" };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "未登入" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: true, data: null };
+    }
+
+    const { data, error } = await supabase
+      .from("offers")
+      .select("id, offer_price")
+      .eq("listing_id", trimmedListingId)
+      .eq("buyer_id", user.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<Pick<Tables<"offers">, "id" | "offer_price">>();
+
+    if (error) {
+      console.error("[getBuyerPendingOfferForListing]", error.message);
+      return { success: false, error: "無法載入出價狀態" };
+    }
+
+    if (!data) {
+      return { success: true, data: null };
+    }
+
+    return {
+      success: true,
+      data: {
+        offerId: data.id,
+        offerPrice: Number(data.offer_price),
+      },
+    };
+  } catch (error) {
+    console.error("[getBuyerPendingOfferForListing]", error);
+    return { success: false, error: "無法載入出價狀態" };
   }
 }
 

@@ -13,6 +13,7 @@ export interface SpecialTransactionProps {
   sellerName: string;
   cardName: string;
   cardId: string;
+  listingId?: string;
   offerId?: string;
   imageUrl?: string;
   offerPrice: number;
@@ -48,7 +49,7 @@ function buildHydratedContext(
       room_id: props.roomId ?? "",
       use_authentication: props.useAuthentication ?? false,
     },
-    listingId: props.cardId,
+    listingId: props.listingId ?? props.cardId,
     productId: props.cardId,
     cardName: props.cardName,
     cardNumber: null,
@@ -106,6 +107,7 @@ export function buildOfferCardHydrationFromSpecialData(
     sellerName: specialData.sellerName,
     cardName: specialData.cardName,
     cardId: specialData.cardId,
+    listingId: specialData.listingId,
     offerId: specialData.offerId,
     imageUrl: specialData.imageUrl,
     listingImageUrls: specialData.listingImageUrls,

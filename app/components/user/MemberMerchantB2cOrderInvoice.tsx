@@ -52,7 +52,7 @@ export function MemberMerchantB2cOrderInvoice({
 
         <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] pt-3 font-sans text-[14px]">
           <span className="font-semibold text-text-primary">
-            {isSeller ? "買家託管總額" : "託管付款總額"}
+            {isSeller ? "買家付款總額" : "託管付款總額"}
           </span>
           <span
             className="font-mono text-[18px] font-bold text-brand sm:text-[20px]"

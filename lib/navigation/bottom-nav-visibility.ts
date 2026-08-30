@@ -7,7 +7,9 @@ const BOTTOM_NAV_PATHS = new Set([
   "/profile/user/collection",
   "/profile/user/inventory",
   "/profile/user/trading",
+  "/profile/merchant/inventory",
   "/profile/merchant/trading",
+  "/profile/merchant/finance",
 ]);
 
 export function isUserProfileHubPath(pathname: string): boolean {
@@ -15,7 +17,9 @@ export function isUserProfileHubPath(pathname: string): boolean {
     pathname === "/profile/user" ||
     pathname === "/profile/merchant" ||
     pathname === "/profile/user/collection" ||
-    pathname === "/profile/user/inventory"
+    pathname === "/profile/user/inventory" ||
+    pathname === "/profile/merchant/inventory" ||
+    pathname === "/profile/merchant/finance"
   );
 }
 

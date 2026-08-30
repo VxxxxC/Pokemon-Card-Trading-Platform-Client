@@ -36,26 +36,28 @@ export default function MemberCampaignsPage() {
 
   return (
     <div className="space-y-4 animate-fadeIn text-text-primary">
-      <div className="flex border-b border-[rgba(237,232,224,0.08)]">
-          {(Object.keys(TAB_LABELS) as CampaignTab[]).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`pb-3 px-4 font-sans text-[13.5px] font-semibold transition-all relative cursor-pointer ${
-                  isActive ? "text-brand" : "text-[#d4c4b7] hover:text-[#eae1da]"
-                }`}
-              >
-                {TAB_LABELS[tab]}
-                {isActive ? (
-                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex border-b border-white/[0.06]">
+        {(Object.keys(TAB_LABELS) as CampaignTab[]).map((tab) => {
+          const isActive = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`relative shrink-0 cursor-pointer px-2.5 pb-2 pt-2 font-sans text-[12px] font-semibold transition-colors ${
+                isActive
+                  ? "text-brand"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {TAB_LABELS[tab]}
+              {isActive ? (
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-brand" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
 
         {activeTab === "flash" ? (
           <FlashCampaignSection

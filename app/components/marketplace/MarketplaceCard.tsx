@@ -194,8 +194,8 @@ function MarketplaceCardView({
           <div className="absolute inset-0 bg-linear-to-tr from-transparent via-[rgba(212,165,116,0.06)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
           {hasDisplayableRarity(listing.rarity) ? (
-            <div className="absolute top-1.5 left-1.5 pointer-events-none z-10">
-              <RarityBadge rarity={listing.rarity} />
+            <div className="absolute bottom-1.5 right-1.5 pointer-events-none z-10">
+              <RarityBadge rarity={listing.rarity} size="sm" />
             </div>
           ) : null}
 

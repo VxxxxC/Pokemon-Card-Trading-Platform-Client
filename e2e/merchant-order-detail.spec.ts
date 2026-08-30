@@ -39,7 +39,9 @@ test.describe("Merchant order detail (F-C-11)", () => {
       waitUntil: "domcontentloaded",
     });
 
-    await expect(page.getByText(/訂單號碼:/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("訂單號碼", { exact: true })).toBeVisible({
+      timeout: 20_000,
+    });
     await expect(
       page.getByText(/已提交物流單號|等待買家確認收貨/).first(),
     ).toBeVisible();

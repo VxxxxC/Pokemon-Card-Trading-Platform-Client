@@ -1,10 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { IoChevronBack } from "react-icons/io5";
 import {
   ComposedChart,
   Area,
@@ -146,7 +144,6 @@ export function MerchantPerformanceClient({
   initialData,
   bootstrapError,
 }: MerchantPerformanceClientProps) {
-  const router = useRouter();
   const [range, setRange] = useState<MerchantPerformanceRange>(
     initialData?.timeRange ?? "7d",
   );
@@ -211,7 +208,7 @@ export function MerchantPerformanceClient({
 
   return (
     <section
-      aria-labelledby="performance-heading"
+      aria-label="店舖經營與業績分析"
       className="space-y-4 animate-fadeIn text-text-primary"
     >
       {bootstrapError ? (
@@ -221,23 +218,6 @@ export function MerchantPerformanceClient({
           </p>
         </div>
       ) : null}
-
-      <div className="flex items-center gap-2 min-w-0">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="返回"
-          className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors focus:outline-none"
-        >
-          <IoChevronBack className="w-5 h-5" />
-        </button>
-        <h1
-          id="performance-heading"
-          className="font-sans font-bold text-[17px] sm:text-[20px] text-text-primary tracking-tight leading-tight"
-        >
-          店舖經營與業績分析
-        </h1>
-      </div>
 
       <section
         className="rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"

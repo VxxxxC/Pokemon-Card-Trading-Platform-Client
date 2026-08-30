@@ -400,7 +400,9 @@ async function fetchOffersForMessageRows(
           status,
           modified_count,
           use_authentication,
+          listing_id,
           listings!offers_listing_id_fkey (
+            id,
             product_id,
             images,
             product_catalog!listings_product_id_fkey (

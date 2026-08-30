@@ -1,8 +1,8 @@
 import type { Message } from "@/app/store/useHkCardVaultStore";
 import type { Tables } from "@/types/supabase";
 import {
-  SYSTEM_OFFER_ACCEPTED_TEXT,
-  SYSTEM_OFFER_REJECTED_TEXT,
+  resolveSystemOfferAcceptedText,
+  resolveSystemOfferRejectedText,
   SYSTEM_ORDER_CANCELLED_TEXT,
 } from "@/app/lib/chat/offerSystemMessageCopy";
 
@@ -39,6 +39,7 @@ export type OfferRealtimeEvent =
 export function mapChatMessageRowToStoreMessage(
   row: RealtimeChatMessageRow,
   currentUserId: string,
+  sellerId?: string,
 ): Message {
   const timestamp = row.created_at ?? new Date().toISOString();
   const content = row.content;
@@ -49,7 +50,9 @@ export function mapChatMessageRowToStoreMessage(
     return {
       id: row.id,
       sender: "system",
-      text: SYSTEM_OFFER_ACCEPTED_TEXT,
+      text: resolveSystemOfferAcceptedText(
+        sellerId != null && currentUserId === sellerId,
+      ),
       timestamp,
       type: "text",
       offerId: row.offer_id ?? undefined,
@@ -65,7 +68,9 @@ export function mapChatMessageRowToStoreMessage(
     return {
       id: row.id,
       sender: "system",
-      text: SYSTEM_OFFER_REJECTED_TEXT,
+      text: resolveSystemOfferRejectedText(
+        sellerId != null && currentUserId === sellerId,
+      ),
       timestamp,
       type: "text",
       offerId: row.offer_id ?? undefined,

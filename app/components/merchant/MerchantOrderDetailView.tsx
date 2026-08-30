@@ -4,25 +4,46 @@ import { formatPaymentDeadline } from "@/lib/merchant-checkout/pending-payment-e
 import { DEFAULT_COMMISSION_RATE } from "@/lib/platform/financial-config";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { Info, MessageSquareText } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { IoChevronBack } from "react-icons/io5";
 import {
   cancelMerchantAuthOrder,
   submitMerchantDirectFulfillment,
   submitMerchantLogistics,
   type MerchantOrderDetail,
 } from "@/app/actions/orders";
+import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
+import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
 import { mapMerchantOrderDetailToSaleOrder } from "@/app/lib/merchant-order/map-sale-order";
 import {
   formatMerchantPayoutHoldUntilLabel,
   formatMerchantPayoutStatusLabel,
+  MERCHANT_CONNECT_T7_PAYOUT_POLICY_TEXT,
+  resolveMerchantTransferDisplayLabel,
 } from "@/lib/merchant-order/merchant-payout-hold";
 import { MerchantAuthSellerTimeline } from "@/app/components/merchant/MerchantAuthSellerTimeline";
 import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2cDirectTimeline";
+import { SellerReputationMeta } from "@/lib/marketplace/seller-reputation-meta";
 import { toast } from "sonner";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import { OrderListingPhotoGrid } from "@/app/components/shared/OrderListingPhotoGrid";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const REMARKS_PRESETS = [
   "正面全貌：印刷居中度完美，閃膜無微劃傷",
@@ -32,6 +53,12 @@ const REMARKS_PRESETS = [
   "鑑定認證封殼：防塵防紫外，全密閉存證封裝",
   "條碼微距特寫：認證編號完美可讀，防偽一致",
 ];
+
+const ORDER_DETAIL_CARD_CLASS =
+  "rounded-lg border border-white/[0.08] bg-bg-card/20 p-4";
+
+const ORDER_ALERT_CLASS =
+  "rounded-lg border border-warning/30 bg-warning/10 p-3 space-y-2";
 
 type MerchantOrderDetailViewProps = {
   order: MerchantOrderDetail;
@@ -110,6 +137,7 @@ export function MerchantOrderDetailView({
   const [inboundCourierInput, setInboundCourierInput] = useState("");
   const [outboundTrackingInput, setOutboundTrackingInput] = useState("");
   const [outboundCourierInput, setOutboundCourierInput] = useState("");
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const isAuthOrder = Boolean(merchantOrder.requiresAuthentication);
 
   const merchantImages = useMemo(() => {
@@ -155,57 +183,130 @@ export function MerchantOrderDetailView({
     };
   }, [merchantOrder, defaultCommissionRate]);
 
+  const transferDisplay = useMemo(
+    () =>
+      resolveMerchantTransferDisplayLabel({
+        stripeTransferId: merchantOrder.stripeTransferId,
+        payoutStatus: merchantOrder.payoutStatus,
+        escrowStatus: merchantOrder.escrowStatus,
+      }),
+    [merchantOrder],
+  );
+
+  const displayOrderNumber = order.orderNumber ?? order.id;
+
   return (
-    <div className="min-h-screen bg-[#17130f] text-[#eae1da] font-sans p-6 space-y-5 animate-fadeIn lg:mx-[20%]">
-      <div className="flex items-center justify-between ">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="h-10 w-10 px-2.5 rounded-lg bg-bg-elevated font-sans text-md font-medium text-brand focus:outline-none"
+    <div className="mx-auto w-full max-w-2xl space-y-4 pb-6 animate-fadeIn">
+      <section
+        className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
+        aria-label="訂單摘要"
+      >
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 font-sans text-[11px] font-medium text-warning">
+            賣出交易
+          </span>
+          {isAuthOrder ? (
+            <span className="inline-flex items-center rounded-md border border-brand/30 bg-brand/10 px-2 py-0.5 font-sans text-[11px] font-medium text-brand">
+              鑑定訂單
+            </span>
+          ) : null}
+        </div>
+
+        <div className="space-y-3">
+          <div className="min-w-0">
+            <p className="font-sans text-[10px] text-text-disabled">訂單號碼</p>
+            <h1
+              className="truncate font-mono text-[18px] font-bold leading-tight text-text-primary sm:text-[20px]"
+              title={displayOrderNumber}
+            >
+              {displayOrderNumber}
+            </h1>
+          </div>
+
+          <div className="overflow-hidden rounded-lg bg-bg-page/25">
+            <div className="px-3 py-2.5">
+              <p className="truncate font-sans text-[15px] font-semibold text-text-primary">
+                {order.cardName}
+              </p>
+              <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+                {order.cardNo} · 等級: {order.grade}
+              </p>
+            </div>
+
+            <Link
+              href={`/profile/${merchantOrder.buyerId}`}
+              className="flex items-center gap-2 border-t border-white/[0.06] px-3 py-2 transition-colors hover:bg-bg-page/40"
+              title={`買家：${order.buyerName}`}
+            >
+              <ProfileAvatar
+                avatarUrl={merchantOrder.buyer.avatarUrl}
+                displayName={order.buyerName}
+                className="h-7 w-7 shrink-0 border border-white/10"
+                fallbackClassName="bg-bg-page text-brand text-[10px] font-bold"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="font-sans text-[10px] text-text-disabled shrink-0">
+                    買家
+                  </span>
+                  <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
+                    {order.buyerName}
+                  </span>
+                  <SellerReputationMeta
+                    rating={merchantOrder.buyer.ratingScore ?? 0}
+                    reviewCount={merchantOrder.buyer.publicReviewCount}
+                    totalTrades={merchantOrder.buyer.completedTradesCount}
+                  />
+                </div>
+              </div>
+              <span
+                className="shrink-0 font-sans text-[10px] text-brand"
+                aria-hidden="true"
+              >
+                →
+              </span>
+            </Link>
+          </div>
+        </div>
+
+        <dl
+          className="grid gap-2 rounded-lg bg-bg-page/25 px-3 py-2.5 font-mono text-[11px] sm:grid-cols-2"
         >
-          <IoChevronBack />
-        </button>
-      </div>
+          <div className="min-w-0">
+            <dt className="text-text-disabled">上架序號</dt>
+            <dd
+              className="mt-0.5 break-all text-text-secondary"
+              title={merchantOrder.listingId}
+            >
+              {merchantOrder.listingId}
+            </dd>
+            {order.createdAt ? (
+              <p className="mt-1 font-mono text-[10px] text-text-disabled">
+                建立 {order.createdAt}
+              </p>
+            ) : null}
+          </div>
+        </dl>
+      </section>
 
-      <div className="justify-items-start space-y-2">
-        <div className="font-sans font-black text-[22px] text-text-primary leading-tight">
-          {order.cardName}
-        </div>
-        <div className="w-full flex flex-col p-6 border border-brand/20 rounded-lg items-start space-y-3">
-          <div className="font-mono text-[11px] text-text-secondary">
-            序號: {order.cardNo} · 等級: {order.grade}
-          </div>
-          <div className="font-mono text-[12.5px] text-brand mt-1 space-y-1">
-            <p>商品上架序號: {order.productListingId || "—"}</p>
-            <p>訂單號碼: {order.orderNumber ?? order.id}</p>
-            <p className="font-mono text-[11px] text-text-disabled mt-1">
-              出價日期: {order.createdAt || "—"}
-            </p>
-          </div>
-          <div className="relative w-10 h-10 rounded-full border border-white/10 overflow-hidden bg-[#17130f] shrink-0 shadow-xs mb-1">
-            <Image
-              src={merchantOrder.buyer.avatarUrl}
-              alt={`${order.buyerName} 的頭像`}
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-          <p className="font-mono font-black text-md text-brand mt-1 text-nowrap">
-            {order.buyerName}
-          </p>
-        </div>
-      </div>
+      <section
+        className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
+        aria-label="交易進度"
+      >
+        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+          交易進度
+        </h2>
 
-      <div>
         <div className="space-y-4">
           {isAuthOrder ? (
             <MerchantAuthSellerTimeline
+              embedded
               escrowStatus={merchantOrder.escrowStatus}
               payoutStatus={merchantOrder.payoutStatus}
             />
           ) : (
             <MerchantB2cDirectTimeline
+              embedded
               escrowStatus={merchantOrder.escrowStatus}
               perspective="seller"
               shippingMethod={merchantOrder.shippingMethod}
@@ -218,11 +319,11 @@ export function MerchantOrderDetailView({
             merchantOrder.meetupDetail ||
             merchantOrder.buyerRemark ||
             merchantOrder.sfAddress) ? (
-            <div className="p-4 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-2">
-              <h3 className="font-sans font-bold text-[14px] text-[#eae1da]">
+            <div className="space-y-2 border-t border-white/[0.06] pt-4">
+              <h3 className="font-sans text-[13px] font-semibold text-text-primary">
                 買家交收資料
               </h3>
-              <div className="font-mono text-[12px] space-y-1.5 text-text-secondary">
+              <div className="space-y-1.5 font-mono text-[12px] text-text-secondary">
                 {merchantOrder.shippingMethod === "meetup" ? (
                   <>
                     {merchantOrder.buyerPhone ? (
@@ -271,16 +372,16 @@ export function MerchantOrderDetailView({
           ) : null}
 
           {order.status === "cancelled" && (
-            <div className="p-3.5 bg-[rgba(239,68,68,0.06)] border border-warning/20 rounded-xl flex items-start gap-3 animate-fadeIn">
-              <p className="font-sans font-bold text-[13.5px] text-warning">
+            <div className={ORDER_ALERT_CLASS}>
+              <p className="text-[12px] font-semibold text-warning">
                 訂單已退款 / 已取消
               </p>
             </div>
           )}
 
           {merchantOrder.escrowStatus === "pending_payment" && (
-            <div className="space-y-3">
-              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+            <div className="space-y-3 rounded-lg border border-brand/20 bg-brand/5 p-3">
+              <p className="text-[12px] text-text-secondary leading-relaxed">
                 訂單已成立，正在等待買家完成託管付款{" "}
                 <span className="text-brand font-mono font-bold">
                   HK$ {order.amount.toLocaleString("zh-TW")}
@@ -288,25 +389,61 @@ export function MerchantOrderDetailView({
                 。 收款確認後方可安排出貨。
               </p>
               {merchantOrder.paymentExpiresAt ? (
-                <p className="font-mono text-[11px] text-text-disabled">
+                <p className="font-mono text-[11px] leading-relaxed text-text-disabled">
                   買家須於 {formatPaymentDeadline(merchantOrder.paymentExpiresAt)}{" "}
-                  前完成付款
+                  前完成付款；若時限前未完成付款，訂單將自動取消，掛單會重新上架至大盤市場。
                 </p>
               ) : null}
             </div>
           )}
 
           {merchantOrder.canCancelAuthOrder ? (
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void runCancelMerchantAuthOrder(order.id, refreshAfterLogistics);
-                }}
+            <AlertDialog>
+              <AlertDialogTrigger
+                disabled={isActionLoading}
+                className="w-full h-10 font-sans font-semibold text-[13px] rounded-xl bg-[rgba(239,68,68,0.10)] text-warning border border-warning/20 hover:bg-[rgba(239,68,68,0.18)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                取消訂單
-              </button>
-            </div>
+                {isActionLoading ? "處理中…" : "取消訂單"}
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-sm rounded-2xl border border-[#ef4444]/30 bg-[#26211C] p-6 text-[#eae1da]">
+                <AlertDialogHeader className="text-left">
+                  <AlertDialogTitle className="text-[15px] font-black">
+                    確認取消訂單
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-[11px] font-mono uppercase tracking-wider text-[#8A8680]">
+                    Cancel Order
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <p className="py-3 text-[12.5px] leading-relaxed text-[#d4c4b7]">
+                  您即將取消與{" "}
+                  <span className="font-bold text-brand">{order.buyerName}</span>{" "}
+                  的鑑定訂單（
+                  <span className="font-mono text-warning">
+                    HK$ {order.amount.toLocaleString("zh-TW")}
+                  </span>
+                  ）。確認後訂單將取消並退款給買家。
+                </p>
+                <div className="flex flex-col gap-2">
+                  <AlertDialogAction
+                    disabled={isActionLoading}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setIsActionLoading(true);
+                      void runCancelMerchantAuthOrder(
+                        order.id,
+                        refreshAfterLogistics,
+                      ).finally(() => setIsActionLoading(false));
+                    }}
+                    className="h-11 rounded-xl bg-[#ef4444] font-black text-white hover:bg-[#dc2626] disabled:opacity-50"
+                  >
+                    {isActionLoading ? "處理中…" : "確認取消"}
+                  </AlertDialogAction>
+                  <AlertDialogCancel className="h-10 rounded-xl border border-white/10 bg-[#120F0C]">
+                    返回
+                  </AlertDialogCancel>
+                </div>
+              </AlertDialogContent>
+            </AlertDialog>
           ) : null}
 
           {merchantOrder.canSubmitLogistics &&
@@ -483,219 +620,166 @@ export function MerchantOrderDetailView({
           {(merchantOrder.escrowStatus === "completed_and_transferred" ||
             merchantOrder.payoutStatus === "paid") && (
             <div className="space-y-3">
-              <div className="p-3.5 bg-[rgba(16,185,129,0.06)] border border-success/20 rounded-xl flex items-start gap-3 animate-fadeIn">
-                <svg
-                  className="mt-0.5 shrink-0"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                  <path d="m9 12 2 2 4-4" />
-                </svg>
-                <div className="space-y-1">
-                  <p className="font-sans font-bold text-[13.5px] text-success">
-                    款項釋放成功，交易全流程關閉
-                  </p>
-                  <p className="text-[11.5px] text-text-secondary">
-                    此合約已完成全量閉環。款項{" "}
-                    <span className="font-mono text-brand font-bold">
-                      HK$ {order.amount.toLocaleString("zh-TW")}
-                    </span>{" "}
-                    已存入您的 Stripe / Supabase 託管錢包中。
-                  </p>
-                </div>
-              </div>
-              {merchantOrder.canReviewBuyer && onOpenReview && (
+              <p className="text-[12.5px] text-text-secondary leading-relaxed">
+                交易已完成，款項{" "}
+                <span className="font-mono font-bold text-brand">
+                  HK$ {order.amount.toLocaleString("zh-TW")}
+                </span>{" "}
+                已撥至你的 Stripe Connect 帳戶。
+              </p>
+              {merchantOrder.canReviewBuyer && onOpenReview ? (
                 <button
                   type="button"
+                  data-testid="order-review-cta"
                   onClick={() => onOpenReview(order.id, merchantOrder.buyerId)}
-                  className="w-full h-10 bg-brand/10 text-brand font-sans font-semibold text-[13px] rounded-xl border border-brand/20 hover:bg-brand/15 transition-all cursor-pointer"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-brand font-sans text-[13px] font-semibold text-[#17130f] transition-colors hover:bg-brand-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  評價買家
+                  <MessageSquareText
+                    className="size-3.5 shrink-0"
+                    aria-hidden="true"
+                  />
+                  給予對手評價
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 gap-6 items-start">
-        {order.hasAuthenticationToggle && (
-          <div className="p-4 bg-[#17130f] rounded-xl border border-white/5 space-y-3 animate-fadeIn">
-            <h4 className="font-sans font-bold text-[12.5px] text-[#eae1da] border-b border-white/5 pb-2">
-              📋 鑑定服務報告與商品描述
-            </h4>
-            <div className="text-[12px] space-y-2 text-text-secondary font-mono">
-              <div className="flex justify-between">
-                <span>鑑定方</span>
-                <span className="text-brand font-bold">
-                  B2C 平台中介鑑定託管
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>買方帳號</span>
-                <span className="text-text-primary">{order.buyerName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>鑑定標準</span>
-                <span className="text-text-primary">{order.grade}</span>
-              </div>
-              <div className="flex justify-between border-t border-white/5 pt-2">
-                <span>鑑定服務費用</span>
-                <span className="text-brand font-bold">
-                  HK$ {stripeDisplay.authFee.toLocaleString("zh-TW")}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+      <section className="space-y-3" aria-label="帳單明細">
+        <MemberMerchantB2cOrderInvoice
+          itemSubtotal={merchantOrder.itemSubtotal}
+          shippingFee={merchantOrder.shippingFee}
+          shippingMethod={merchantOrder.shippingMethod}
+          totalAmount={merchantOrder.totalAmount}
+          authFee={isAuthOrder ? stripeDisplay.authFee : 0}
+          isSeller
+        />
 
-        <div className="p-5 bg-[#26211C] border border-[rgba(237,232,224,0.08)] rounded-2xl space-y-4 shadow-md animate-fadeIn">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <h3 className="font-sans font-extrabold text-[14.5px] text-[#eae1da]">
-              🧾 交易資產最終交收電子收據
-            </h3>
-            <span className="font-sans text-[10px] font-black tracking-wide uppercase px-2 py-0.5 rounded border text-[#10b981] bg-[#10b981]/10 border-[#10b981]/30 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-              賣出交易
-            </span>
-          </div>
-
-          <div className="border-t border-[rgba(237,232,224,0.06)] font-mono text-[12px] space-y-2 text-text-secondary">
-            <div className="flex justify-between">
-              <span>商品最終成交價</span>
+        <div className={`${ORDER_DETAIL_CARD_CLASS} space-y-3`}>
+          <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+            撥款明細
+          </h3>
+          <div className="space-y-2 border-t border-white/[0.06] pt-3 font-mono text-[12px] text-text-secondary">
+            <div className="flex justify-between gap-3">
+              <span>商品成交價</span>
               <span className="text-text-primary">
                 HK$ {merchantOrder.itemSubtotal.toLocaleString("zh-TW")}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span>速遞本港運費</span>
-              <span className="text-text-primary">
-                HK$ {merchantOrder.shippingFee.toLocaleString("zh-TW")}
+            <div className="flex justify-between gap-3">
+              <span>
+                平台費用
+                {stripeDisplay.platformFeeIsEstimate ? "（預估）" : ""}
+              </span>
+              <span className="font-semibold text-warning">
+                -HK${" "}
+                {stripeDisplay.platformFee.toLocaleString("zh-TW")}
               </span>
             </div>
-
-            {order.hasAuthenticationToggle && (
-              <div className="flex justify-between text-brand">
-                <span>鑑定服務費</span>
-                <span className="font-bold">
-                  HK$ {stripeDisplay.authFee.toLocaleString("zh-TW")}
+            {stripeDisplay.recoveryDeductionTotal > 0 ? (
+              <div className="flex justify-between gap-3">
+                <span>應撥總額</span>
+                <span className="text-text-primary">
+                  HK$ {stripeDisplay.payoutGross.toLocaleString("zh-TW")}
                 </span>
               </div>
-            )}
-
-            <div className="border-t border-[rgba(237,232,224,0.08)] pt-3 flex justify-between items-center text-[#eae1da] font-black text-[14px] md:text-[16px]">
-              <span>最終實收總額</span>
-              <span className="text-brand font-mono text-[18px] md:text-[24px]">
-                HK$ {stripeDisplay.payoutAmount.toLocaleString("zh-TW")}
+            ) : null}
+            {stripeDisplay.recoveryDeductionTotal > 0 ? (
+              <div className="flex justify-between gap-3">
+                <span>追償抵扣</span>
+                <span className="font-semibold text-warning">
+                  -HK${" "}
+                  {stripeDisplay.recoveryDeductionTotal.toLocaleString("zh-TW")}
+                </span>
+              </div>
+            ) : null}
+            {merchantOrder.sellerSettlementStatus === "pending" &&
+            merchantOrder.gradingFailRecoveryAmount != null ? (
+              <div className="flex justify-between gap-3">
+                <span>鑑定失敗追償（待繳）</span>
+                <span className="font-semibold text-warning">
+                  HK${" "}
+                  {merchantOrder.gradingFailRecoveryAmount.toLocaleString("zh-TW")}
+                </span>
+              </div>
+            ) : null}
+            {merchantOrder.gradingFailRecoveryAmount != null &&
+            merchantOrder.sellerSettlementStatus === "cleared" ? (
+              <div className="flex justify-between gap-3">
+                <span>鑑定失敗追償</span>
+                <span className="font-semibold text-text-primary">
+                  HK${" "}
+                  {merchantOrder.gradingFailRecoveryAmount.toLocaleString("zh-TW")}
+                  （已確認）
+                </span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] pt-3 font-sans text-[14px]">
+              <span className="font-semibold text-text-primary">
+                預計撥款淨額
               </span>
-            </div>
-
-            {/* Stripe Escrow Section */}
-            <div className="mt-4 pt-3 border-t border-[rgba(237,232,224,0.08)] bg-[#17130f]/60 rounded-xl p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between pb-1 border-b border-white/5">
-                <span className="font-sans font-bold text-[12px] text-text-primary">
-                  💳 Stripe交易明細
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-[11.5px] gap-3">
-                <span className="text-text-secondary shrink-0">Payment Intent</span>
-                <span className="font-mono text-brand font-medium text-right break-all">
-                  {stripeDisplay.paymentIntentId ?? "—"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-[11.5px] gap-3">
-                <span className="text-text-secondary shrink-0">Transfer ID</span>
-                <span className="font-mono text-brand font-medium text-right break-all">
-                  {stripeDisplay.transferId ??
-                    (merchantOrder.payoutStatus === "held" ||
-                    merchantOrder.payoutStatus === "processing"
-                      ? "待 T+7 後撥款"
-                      : merchantOrder.escrowStatus === "completed_and_transferred"
-                        ? "—"
-                        : "待買家確認後撥款")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-[11.5px]">
-                <span className="text-text-secondary">
-                  平台費用
-                  {stripeDisplay.platformFeeIsEstimate ? "（預估）" : ""}
-                </span>
-                <span className="font-mono text-warning font-semibold">
-                  HK$ {stripeDisplay.platformFee.toLocaleString("zh-TW")}
-                </span>
-              </div>
-              {stripeDisplay.recoveryDeductionTotal > 0 ? (
-                <div className="flex justify-between items-center text-[11.5px]">
-                  <span className="text-text-secondary">應撥總額</span>
-                  <span className="font-mono text-text-primary font-semibold">
-                    HK$ {stripeDisplay.payoutGross.toLocaleString("zh-TW")}
-                  </span>
-                </div>
-              ) : null}
-              {stripeDisplay.recoveryDeductionTotal > 0 ? (
-                <div className="flex justify-between items-center text-[11.5px]">
-                  <span className="text-text-secondary">追償抵扣</span>
-                  <span className="font-mono text-warning font-semibold">
-                    -HK${" "}
-                    {stripeDisplay.recoveryDeductionTotal.toLocaleString("zh-TW")}
-                  </span>
-                </div>
-              ) : null}
-              <div className="flex justify-between items-center text-[11.5px]">
-                <span className="text-text-secondary">預計撥款淨額</span>
-                <span className="font-mono text-text-primary font-semibold">
+              <span className="flex items-center justify-end gap-1">
+                {transferDisplay.showT7PolicyTooltip ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger
+                        type="button"
+                        className="shrink-0 text-brand/70 hover:text-brand focus:outline-none"
+                        aria-label="撥款說明"
+                      >
+                        <Info className="size-3.5" />
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="max-w-xs border border-white/10 bg-bg-elevated text-left text-[11px] leading-relaxed text-text-primary"
+                      >
+                        {MERCHANT_CONNECT_T7_PAYOUT_POLICY_TEXT}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+                <span className="font-mono text-[18px] font-bold text-brand sm:text-[20px]">
                   HK$ {stripeDisplay.payoutAmount.toLocaleString("zh-TW")}
                 </span>
-              </div>
-              <div className="flex justify-between items-center text-[11.5px]">
-                <span className="text-text-secondary">撥款狀態</span>
-                <span className="font-mono text-text-primary">
+              </span>
+            </div>
+            <div className="space-y-2 border-t border-white/[0.06] pt-3">
+              <div className="flex justify-between gap-3">
+                <span>撥款狀態</span>
+                <span className="text-text-primary">
                   {formatMerchantPayoutStatusLabel(stripeDisplay.payoutStatus)}
                 </span>
               </div>
               {merchantOrder.payoutStatus === "held" &&
               merchantOrder.payoutHoldUntil ? (
-                <div className="flex justify-between items-center text-[11.5px]">
-                  <span className="text-text-secondary">預計撥款時間</span>
-                  <span className="font-mono text-text-primary">
+                <div className="flex justify-between gap-3">
+                  <span>預計撥款時間</span>
+                  <span className="text-text-primary">
                     {formatMerchantPayoutHoldUntilLabel(
                       merchantOrder.payoutHoldUntil,
                     )}
                   </span>
                 </div>
               ) : null}
-              {merchantOrder.sellerSettlementStatus === "pending" &&
-              merchantOrder.gradingFailRecoveryAmount != null ? (
-                <div className="flex justify-between items-center text-[11.5px]">
-                  <span className="text-text-secondary">鑑定失敗追償（待繳）</span>
-                  <span className="font-mono text-warning font-semibold">
-                    HK${" "}
-                    {merchantOrder.gradingFailRecoveryAmount.toLocaleString("zh-TW")}
-                  </span>
-                </div>
-              ) : null}
-              {merchantOrder.gradingFailRecoveryAmount != null &&
-              merchantOrder.sellerSettlementStatus === "cleared" ? (
-                <div className="flex justify-between items-center text-[11.5px]">
-                  <span className="text-text-secondary">鑑定失敗追償</span>
-                  <span className="font-mono text-text-primary font-semibold">
-                    HK${" "}
-                    {merchantOrder.gradingFailRecoveryAmount.toLocaleString("zh-TW")}
-                    （已確認）
-                  </span>
-                </div>
-              ) : null}
+              <div className="flex justify-between gap-3 text-[11px]">
+                <span>支付編號</span>
+                <span className="break-all text-right text-brand">
+                  {stripeDisplay.paymentIntentId ?? "—"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3 text-[11px]">
+                <span>撥款轉帳編號</span>
+                <span className="break-all text-right text-brand">
+                  {transferDisplay.label}
+                </span>
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
+      <section aria-label="實物照">
         <OrderListingPhotoGrid
           images={merchantImages}
           altPrefix={`${order.cardName} 實物照`}
@@ -705,7 +789,7 @@ export function MerchantOrderDetailView({
             setIsViewerOpen(true);
           }}
         />
-      </div>
+      </section>
 
       <ImageViewer
         isOpen={isViewerOpen}

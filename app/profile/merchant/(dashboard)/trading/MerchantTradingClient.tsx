@@ -2,16 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Search, X } from "lucide-react";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { MerchantOrderRow } from "@/app/components/merchant/MerchantOrderRow";
+import { TradingSegmentedFilter } from "@/app/components/trading/TradingSegmentedFilter";
 import {
   useMerchantTrading,
   type MerchantTradingInitialData,
 } from "@/app/lib/hooks/useMerchantTrading";
 import { mapMerchantTradingOrderToSaleOrder } from "@/app/lib/merchant-order/map-sale-order";
 import {
+  MERCHANT_STATUS_OPTIONS,
   TAB_STATUS_FROM_PARAM,
-  TAB_STATUS_TO_PARAM,
   type TabStatusFilter,
 } from "@/lib/merchant-order/constants";
 
@@ -20,13 +22,6 @@ type MerchantTradingClientProps = {
   initialTabStatus: TabStatusFilter;
   bootstrapError?: string;
 };
-
-const STATUS_TAB_LABELS: TabStatusFilter[] = [
-  "all",
-  "pending",
-  "completed",
-  "cancelled",
-];
 
 export function MerchantTradingClient({
   initialData,
@@ -43,6 +38,7 @@ export function MerchantTradingClient({
     orders,
     paginationMeta,
     filterCounts,
+    isLoading,
     isRefreshing,
     error: fetchError,
     setPage,
@@ -69,159 +65,153 @@ export function MerchantTradingClient({
 
   const needsAction = filterCounts.needsAction;
   const displayError = bootstrapError ?? fetchError;
-  const activeFilterLabel = TAB_STATUS_TO_PARAM[tabStatus];
+
+  const statusSegmentOptions = MERCHANT_STATUS_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label,
+    count: filterCounts.status[option.value],
+  }));
 
   return (
     <div
-      className={`space-y-5 animate-fadeIn${isRefreshing ? " opacity-80 pointer-events-none" : ""}`}
+      className={`animate-fadeIn${isRefreshing ? " opacity-80 pointer-events-none" : ""}`}
     >
-      {needsAction > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl animate-fadeIn">
+      {needsAction > 0 ? (
+        <div className="mb-3 flex items-start gap-2 px-3 py-2 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-lg">
           <svg
-            width="16"
-            height="16"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#ef4444"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            className="shrink-0 mt-0.5"
             aria-hidden="true"
           >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <p className="font-sans text-[13px] text-text-primary">
+          <p className="font-sans text-[12px] text-text-primary leading-snug">
             <span className="font-semibold text-warning">
               {needsAction} 件訂單
             </span>{" "}
             需要您的處理：確認訂單或安排發貨。
           </p>
         </div>
-      )}
+      ) : null}
 
-      {displayError && (
-        <div className="px-4 py-3 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-xl">
-          <p className="font-sans text-[13px] text-warning">
+      {displayError ? (
+        <div className="mb-3 px-3 py-2 bg-[rgba(239,68,68,0.06)] border border-warning/25 rounded-lg">
+          <p className="font-sans text-[12px] text-warning">
             無法載入訂單：{displayError}
           </p>
         </div>
-      )}
+      ) : null}
 
       <section
         id="orders-list"
-        aria-labelledby="trading-heading"
-        className="space-y-4"
+        aria-labelledby="merchant-trading-heading"
+        className="rounded-xl overflow-hidden bg-bg-card border border-[rgba(237,232,224,0.08)]"
       >
-        <div className="space-y-3">
-          <h2
-            id="trading-heading"
-            className="font-sans font-semibold text-[16px] text-text-primary"
-          >
-            交易管理（{paginationMeta.total}）
-          </h2>
-
+        <div className="px-3 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
           <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-disabled pointer-events-none"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-disabled pointer-events-none"
+              aria-hidden
+            />
             <input
               id="merchant-order-search"
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="輸入卡牌名稱、卡號、交易對手姓名或訂單ID…"
-              className="w-full h-10 pl-9 pr-10 bg-[#17130f] border border-white/[0.06] rounded-lg font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/30 transition-colors"
+              className="w-full h-9 pl-9 pr-9 bg-bg-page/50 border border-[rgba(237,232,224,0.08)] rounded-lg font-sans text-[13px] text-text-primary placeholder:text-text-disabled focus:outline-none focus:border-brand/30 transition-colors"
             />
             {searchQuery ? (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 font-sans text-[12px] text-text-disabled hover:text-text-primary transition-colors cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-disabled hover:text-text-primary transition-colors focus:outline-none"
+                aria-label="清除搜尋"
               >
-                清除
+                <X className="h-3.5 w-3.5" aria-hidden />
               </button>
             ) : null}
           </div>
-
-          <div className="flex gap-1.5 flex-wrap">
-            {STATUS_TAB_LABELS.map((statusValue) => {
-                const label = TAB_STATUS_TO_PARAM[statusValue];
-                const isActive = tabStatus === statusValue;
-                let btnClass =
-                  "text-text-secondary border-white/5 hover:text-text-primary hover:bg-bg-elevated";
-                if (isActive) {
-                  if (statusValue === "pending") {
-                    btnClass =
-                      "text-warning border-warning/40 bg-[rgba(239,68,68,0.06)] font-bold shadow-xs animate-fadeIn";
-                  } else {
-                    btnClass =
-                      "text-brand border-brand/40 bg-[rgba(212,165,116,0.08)] font-bold shadow-xs";
-                  }
-                }
-                return (
-                  <button
-                    key={statusValue}
-                    type="button"
-                    onClick={() => setTabStatus(statusValue)}
-                    className={
-                      "font-mono text-[11px] px-3 py-1 rounded-lg border transition-all cursor-pointer " +
-                      btnClass
-                    }
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-          </div>
         </div>
 
-        {activeFilterLabel === "待處理" && (
-          <div className="flex items-center gap-4 px-4 py-2.5 bg-[#17130f] border border-white/5 rounded-xl animate-fadeIn mt-2 w-full sm:w-auto">
-            <span className="font-sans text-[11px] text-text-secondary font-medium mr-2">
-              進階子篩選：
-            </span>
-            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={subPaymentChecked}
-                onChange={(e) => setSubPaymentChecked(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
-              />
-              待付款
-            </label>
-            <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={subGradingChecked}
-                onChange={(e) => setSubGradingChecked(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
-              />
-              鑑定中
-            </label>
-          </div>
-        )}
+        <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
+          <h2
+            id="merchant-trading-heading"
+            className="font-sans font-semibold text-[15px] text-text-primary min-w-0 truncate"
+          >
+            交易管理
+          </h2>
+        </div>
 
-        <div className="space-y-3 min-h-[200px]">
-          {saleOrders.length === 0 ? (
-            <div className="bg-bg-card rounded-2xl border border-white/5 p-12 text-center">
-              <p className="font-sans text-[13px] text-text-disabled">
-                沒有符合當前篩選與關鍵字的交易訂單記錄。
-              </p>
+        <div className="px-3 py-2 sm:px-4 border-b border-[rgba(237,232,224,0.06)] space-y-2">
+          <div className="space-y-1">
+            <p
+              className="font-mono text-[9px] text-text-disabled tracking-wide"
+              id="merchant-trading-status-filter-label"
+            >
+              訂單狀態
+            </p>
+            <TradingSegmentedFilter
+              options={statusSegmentOptions}
+              value={tabStatus}
+              onChange={setTabStatus}
+              columns={4}
+              pendingValue="pending"
+              ariaLabelledBy="merchant-trading-status-filter-label"
+            />
+          </div>
+
+          {tabStatus === "pending" ? (
+            <div className="flex flex-wrap items-center gap-3 pt-0.5">
+              <span className="font-mono text-[9px] text-text-disabled tracking-wide">
+                進階子篩選
+              </span>
+              <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={subPaymentChecked}
+                  onChange={(e) => setSubPaymentChecked(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                />
+                待付款
+                {filterCounts.pendingSub.payment > 0
+                  ? ` (${filterCounts.pendingSub.payment})`
+                  : ""}
+              </label>
+              <label className="flex items-center gap-2 font-sans text-[12px] text-text-primary cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={subGradingChecked}
+                  onChange={(e) => setSubGradingChecked(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-white/10 bg-bg-card text-brand focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                />
+                鑑定中
+                {filterCounts.pendingSub.authInProgress > 0
+                  ? ` (${filterCounts.pendingSub.authInProgress})`
+                  : ""}
+              </label>
             </div>
+          ) : null}
+        </div>
+
+        <div className="px-2 sm:px-3 py-2.5 min-h-[12rem] space-y-2.5">
+          {isLoading && saleOrders.length === 0 ? (
+            <div className="py-12 flex justify-center">
+              <div className="w-7 h-7 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            </div>
+          ) : saleOrders.length === 0 ? (
+            <p className="font-sans text-[13px] text-text-disabled py-12 text-center">
+              沒有符合當前篩選與關鍵字的交易訂單記錄。
+            </p>
           ) : (
             saleOrders.map((order) => (
               <MerchantOrderRow key={order.id} order={order} />
@@ -229,19 +219,21 @@ export function MerchantTradingClient({
           )}
         </div>
 
-        <div className="pt-2">
-          <Pagination
-            currentPage={paginationMeta.page}
-            totalPages={paginationMeta.totalPages}
-            onPageChange={(page) => setPage(page)}
-            itemLabel="筆訂單記錄"
-            totalItems={paginationMeta.total}
-            itemsPerPage={paginationMeta.pageSize}
-            enableScroll={true}
-            scrollBlock="start"
-            scrollToViewId="orders-list"
-          />
-        </div>
+        {paginationMeta.total > 0 ? (
+          <div className="px-3 pb-2 sm:px-4">
+            <Pagination
+              currentPage={paginationMeta.page}
+              totalPages={paginationMeta.totalPages}
+              onPageChange={(page) => setPage(page)}
+              itemLabel="筆訂單記錄"
+              totalItems={paginationMeta.total}
+              itemsPerPage={paginationMeta.pageSize}
+              enableScroll={true}
+              scrollBlock="start"
+              scrollToViewId="orders-list"
+            />
+          </div>
+        ) : null}
       </section>
     </div>
   );

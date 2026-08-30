@@ -50,7 +50,7 @@ export function ProfileTabNav({ tabs }: ProfileTabNavProps) {
 
   return (
     <nav
-      className="sticky top-12 z-30 flex gap-0 overflow-x-auto overflow-y-hidden scrollbar-none border-b border-[rgba(237,232,224,0.08)] mb-4 bg-bg-page/95 backdrop-blur-sm lg:top-0"
+      className="sticky top-12 z-40 flex w-full gap-0 overflow-x-auto overflow-y-hidden scrollbar-none border-b border-[rgba(237,232,224,0.08)] mb-4 bg-[#17130f]/95 backdrop-blur-sm lg:top-14"
       aria-label="個人頁面導航"
     >
       {tabs.map(({ href, label, icon, iconKey }) => {

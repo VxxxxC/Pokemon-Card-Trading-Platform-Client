@@ -987,6 +987,9 @@ export type MerchantTradingBuyer = {
   displayName: string;
   username: string | null;
   avatarUrl: string;
+  ratingScore?: number;
+  completedTradesCount?: number;
+  publicReviewCount?: number;
 };
 
 export type MerchantTradingOrder = {
@@ -1372,6 +1375,8 @@ type MerchantOrderDetailQueryRow = {
     display_name: string | null;
     username: string | null;
     avatar_path: string | null;
+    rating_score: number | null;
+    completed_trades_count: number | null;
   };
 };
 
@@ -1379,6 +1384,7 @@ function mapMerchantOrderDetailRow(
   row: MerchantOrderDetailQueryRow,
   hasReviewedByMe: boolean,
   gradingFailRecoveryAmount?: number | null,
+  buyerPublicReviewCount?: number,
 ): MerchantOrderDetail {
   const catalog = row.listings.product_catalog;
   const listingImageUrls = parseListingImageUrls(row.listings.images);
@@ -1414,6 +1420,9 @@ function mapMerchantOrderDetailRow(
       displayName: row.buyer.display_name ?? "未知用戶",
       username: row.buyer.username,
       avatarUrl: resolveAvatarUrl(row.buyer.avatar_path),
+      ratingScore: Number(row.buyer.rating_score ?? 0),
+      completedTradesCount: Number(row.buyer.completed_trades_count ?? 0),
+      publicReviewCount: buyerPublicReviewCount ?? 0,
     },
     listing: {
       gradingCompany: row.listings.grading_company,
@@ -1591,7 +1600,9 @@ export async function getMerchantOrderDetail(
             id,
             display_name,
             username,
-            avatar_path
+            avatar_path,
+            rating_score,
+            completed_trades_count
           )
         `,
       )
@@ -1612,15 +1623,32 @@ export async function getMerchantOrderDetail(
       return { success: false, error: "您沒有權限查閱此訂單" };
     }
 
-    const { data: reviewRows, error: reviewError } = await db
-      .from("transaction_reviews")
-      .select("id")
-      .eq("merchant_order_id", trimmedOrderId)
-      .eq("reviewer_id", user.id)
-      .limit(1);
+    const [{ data: reviewRows, error: reviewError }, { count: buyerPublicReviewCount, error: buyerPublicReviewCountError }] =
+      await Promise.all([
+        db
+          .from("transaction_reviews")
+          .select("id")
+          .eq("merchant_order_id", trimmedOrderId)
+          .eq("reviewer_id", user.id)
+          .limit(1),
+        db
+          .from("transaction_reviews")
+          .select("id", { count: "exact", head: true })
+          .eq("reviewee_id", row.buyer_id)
+          .eq("reviewee_persona", "member")
+          .eq("is_public", true),
+      ]);
 
     if (reviewError) {
       console.error("[getMerchantOrderDetail] reviews", reviewError.message);
+      return { success: false, error: "無法載入訂單" };
+    }
+
+    if (buyerPublicReviewCountError) {
+      console.error(
+        "[getMerchantOrderDetail] buyer reviews",
+        buyerPublicReviewCountError.message,
+      );
       return { success: false, error: "無法載入訂單" };
     }
 
@@ -1652,6 +1680,7 @@ export async function getMerchantOrderDetail(
         row,
         hasReviewedByMe,
         gradingFailRecoveryAmount,
+        buyerPublicReviewCount ?? 0,
       ),
     };
   } catch (error) {
