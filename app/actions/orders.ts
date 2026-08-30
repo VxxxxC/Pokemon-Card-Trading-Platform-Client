@@ -573,6 +573,9 @@ type BuyerMerchantOrderDetailQueryRow = {
   total_amount: number | null;
   buyer_total_amount: number | null;
   auth_fee: number | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
+  platform_subsidy_amount: number | null;
   inbound_tracking_no: string | null;
   inbound_courier_name: string | null;
   outbound_tracking_no: string | null;
@@ -1818,11 +1821,14 @@ function mapBuyerMerchantOrderDetailRow(
     useAuthentication,
     platformAuthFeeHkd,
   );
+  const inboundShippingFee = Number(row.inbound_shipping_fee ?? 0);
+  const outboundShippingFee = Number(row.outbound_shipping_fee ?? 0);
   const totalFromRow = Number(row.total_amount ?? 0);
-  const totalAmount =
-    useAuthentication && totalFromRow <= itemSubtotal
-      ? itemSubtotal + shippingFee + authFee
-      : merchantBuyerPaidAmount(row);
+  const totalAmount = useAuthentication
+    ? merchantBuyerPaidAmount(row)
+    : totalFromRow > 0
+      ? merchantBuyerPaidAmount(row)
+      : itemSubtotal + shippingFee + authFee;
 
   return {
     id: row.id,
@@ -1889,6 +1895,27 @@ function mapBuyerMerchantOrderDetailRow(
     buyerPhone: row.buyer_phone,
     meetupDetail: row.meetup_detail,
     buyerRemark: row.buyer_remark,
+    ...(useAuthentication
+      ? {
+          itemSubtotalAuth:
+            row.item_subtotal != null ? Number(row.item_subtotal) : undefined,
+          authFeeAuth: authFee,
+          inboundShippingFeeAuth:
+            row.inbound_shipping_fee != null ? inboundShippingFee : undefined,
+          outboundShippingFeeAuth:
+            row.outbound_shipping_fee != null ? outboundShippingFee : undefined,
+          totalAmountAuth:
+            row.total_amount != null ? totalFromRow : undefined,
+          buyerTotalAmount:
+            row.buyer_total_amount != null
+              ? Number(row.buyer_total_amount)
+              : undefined,
+          platformSubsidyAmount:
+            row.platform_subsidy_amount != null
+              ? Number(row.platform_subsidy_amount)
+              : undefined,
+        }
+      : {}),
   };
 }
 
@@ -1950,6 +1977,9 @@ async function getBuyerMerchantOrderDetail(
           total_amount,
           buyer_total_amount,
           auth_fee,
+          inbound_shipping_fee,
+          outbound_shipping_fee,
+          platform_subsidy_amount,
           inbound_tracking_no,
           inbound_courier_name,
           outbound_tracking_no,

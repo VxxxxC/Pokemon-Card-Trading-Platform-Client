@@ -46,7 +46,7 @@ export async function prepareCheckoutPayment(
   const shippingMethod =
     session.variant === "merchant_direct"
       ? (form?.shippingType ?? session.shippingMethod ?? "sf")
-      : "meetup";
+      : "sf";
 
   const result = await createMerchantOrderPaymentIntent(session.orderId, {
     shippingMethod,

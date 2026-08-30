@@ -979,7 +979,18 @@ export function MemberOrderDetailView({
       </section>
 
       <section className="space-y-3" aria-label="帳單明細">
-        {useMerchantB2cEscrowUi ? (
+        {useMerchantB2cEscrowUi && order.useAuthentication ? (
+          <MemberAuthOrderInvoice
+            finalPrice={order.finalPrice}
+            isSeller={isSeller}
+            buyerTotalAmount={order.buyerTotalAmount ?? order.totalAmount}
+            platformSubsidyAmount={order.platformSubsidyAmount}
+            authFee={order.authFeeAuth ?? order.authFee}
+            itemSubtotal={order.itemSubtotalAuth ?? order.itemSubtotal}
+            inboundShippingFee={order.inboundShippingFeeAuth}
+            outboundShippingFee={order.outboundShippingFeeAuth}
+          />
+        ) : useMerchantB2cEscrowUi ? (
           <MemberMerchantB2cOrderInvoice
             itemSubtotal={order.itemSubtotal ?? order.finalPrice}
             shippingFee={order.shippingFee ?? 0}
