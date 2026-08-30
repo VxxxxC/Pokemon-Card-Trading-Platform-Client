@@ -94,7 +94,7 @@ export function MemberAuthOrderInvoice({
         </div>
         {showSubsidy ? (
           <MemberOrderInvoiceRow
-            label="平台優惠"
+            label="平台優惠 (D)"
             amount={resolvedSubsidy}
             suffix={"-HK$ " + resolvedSubsidy.toLocaleString("zh-TW")}
             valueClassName="text-[#ef4444]"
@@ -120,7 +120,7 @@ export function MemberAuthOrderInvoice({
               <>
                 最終扣款總額
                 <span className="ml-1.5 font-mono text-[11px] font-normal text-text-disabled">
-                  (A − 平台優惠)
+                  (A − D)
                 </span>
               </>
             ) : (

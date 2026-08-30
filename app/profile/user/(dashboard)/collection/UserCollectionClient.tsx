@@ -297,7 +297,7 @@ export function UserCollectionClient({
               </span>
             </div>
             <div className="flex gap-1 overflow-x-auto scrollbar-none pb-0.5">
-              {["全部", "已鑑定", "未鑑定", "密封盒組", "已上架", "已售出"].map((f) => (
+              {["全部", "已鑑定", "裸卡", "密封盒組", "已上架", "已售出"].map((f) => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}

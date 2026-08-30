@@ -15,6 +15,7 @@ import {
 import { MemberOrderCompleteConfirmDialog } from "@/app/components/user/MemberOrderCompleteConfirmDialog";
 import { FpsIdCollectDialog } from "@/app/components/user/FpsIdCollectDialog";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
@@ -108,7 +109,7 @@ export function MemberOrderDetailView({
   const counterpartProfileHref = resolveSellerProfilePath({
     sellerId: order.counterparty.id,
     sellerUsername: order.counterparty.username,
-    sellerPersona: "member",
+    sellerPersona: order.orderKind === "merchant" ? "merchant" : "member",
   });
   const gradeLabel = formatListingGrade(order.listing);
   const cardMeta =
@@ -384,6 +385,12 @@ export function MemberOrderDetailView({
                   <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
                     {counterpartName}
                   </span>
+                  {isBuyer && order.orderKind === "merchant" ? (
+                    <CertifiedMerchantBadge
+                      label="認證商家"
+                      className="shrink-0 scale-[0.92] origin-left"
+                    />
+                  ) : null}
                   <SellerReputationMeta
                     rating={order.counterparty.ratingScore ?? 0}
                     reviewCount={order.counterparty.publicReviewCount}
@@ -811,6 +818,7 @@ export function MemberOrderDetailView({
             status={order.status}
             escrowStatus={order.escrowStatus}
             paymentConfirmedAt={order.paymentConfirmedAt}
+            perspective={order.persona}
           />
 
           {order.escrowStatus === "payment" && order.canPay && isBuyer ? (

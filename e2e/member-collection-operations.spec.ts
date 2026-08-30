@@ -76,7 +76,7 @@ test.describe("Member collection operations", () => {
       timeout: 20_000,
     });
 
-    for (const label of ["全部", "已鑑定", "未鑑定", "已上架", "已售出"]) {
+    for (const label of ["全部", "已鑑定", "裸卡", "已上架", "已售出"]) {
       await clickCollectionFilter(page, label);
       await expect(page.locator("#cards-heading")).toBeVisible({
         timeout: 10_000,
@@ -124,7 +124,7 @@ test.describe.serial("Member collection holdings mutations", () => {
     );
     await expect(updatedRow).toContainText("裸卡 A", { timeout: 20_000 });
 
-    await clickCollectionFilter(page, "未鑑定");
+    await clickCollectionFilter(page, "裸卡");
     const rawRow = await focusHoldingsRowByPurchasePrice(
       page,
       fixture.productName,

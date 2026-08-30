@@ -4,9 +4,20 @@ const BOTTOM_NAV_PATHS = new Set([
   "/marketplace",
   "/profile/user",
   "/profile/merchant",
+  "/profile/user/collection",
+  "/profile/user/inventory",
   "/profile/user/trading",
   "/profile/merchant/trading",
 ]);
+
+export function isUserProfileHubPath(pathname: string): boolean {
+  return (
+    pathname === "/profile/user" ||
+    pathname === "/profile/merchant" ||
+    pathname === "/profile/user/collection" ||
+    pathname === "/profile/user/inventory"
+  );
+}
 
 /**
  * Bottom nav only on the four hub screens — hidden on sub-flows (product detail, settings, etc.).

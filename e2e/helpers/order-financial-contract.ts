@@ -173,7 +173,7 @@ export async function assertMemberAuthInvoiceMatchesSnapshot(
       snapshot.authFee,
     );
     if (snapshot.platformSubsidyAmount > 0) {
-      expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠")).toBe(
+      expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠 (D)")).toBe(
         snapshot.platformSubsidyAmount,
       );
     }
@@ -193,7 +193,7 @@ export async function assertMemberAuthInvoiceMatchesSnapshot(
     await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）(B)"),
   ).toBe(snapshot.outboundShippingFee);
   if (snapshot.platformSubsidyAmount > 0) {
-    expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠")).toBe(
+    expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠 (D)")).toBe(
       snapshot.platformSubsidyAmount,
     );
   }

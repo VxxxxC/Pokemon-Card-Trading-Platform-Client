@@ -43,6 +43,7 @@ export function AuthEscrowReview({
             status="pending"
             escrowStatus="payment"
             paymentConfirmedAt={null}
+            perspective="buy"
           />
         ) : (
           <ol className="font-sans text-[11.5px] text-text-secondary space-y-1.5 list-decimal pl-4">

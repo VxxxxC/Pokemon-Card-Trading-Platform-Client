@@ -7,6 +7,7 @@ import {
   getMerchantDirectTimelineStepIndex,
   getMerchantDirectTimelineSteps,
 } from "@/lib/merchant-order/order-timeline-steps";
+import { OrderTimelineStepDot } from "@/app/components/shared/OrderTimelineStepDot";
 
 type MerchantEscrowStatus = Tables<"merchant_orders">["escrow_status"];
 
@@ -28,6 +29,7 @@ export function MerchantB2cDirectTimeline({
   const timelineSteps = getMerchantDirectTimelineSteps(
     shippingMethod,
     payoutStatus,
+    perspective,
   );
   const currentStepIdx =
     perspective === "buyer"
@@ -62,15 +64,9 @@ export function MerchantB2cDirectTimeline({
                 key={step.id}
                 className="relative text-[12.5px] leading-relaxed"
               >
-                <div
-                  className={cn(
-                    "absolute left-[-23px] top-1 w-3.5 h-3.5 rounded-full border-2 transition-all",
-                    isCompleted
-                      ? "bg-success border-success"
-                      : isActive
-                        ? "bg-brand border-brand animate-pulse"
-                        : "bg-[#1A1612] border-white/20",
-                  )}
+                <OrderTimelineStepDot
+                  isCompleted={isCompleted}
+                  isActive={isActive}
                 />
                 <div className="flex flex-col">
                   <span

@@ -66,26 +66,34 @@ export function formatSkuCatalogLine(
 
 // ─── Status Display Map ────────────────────────────────────────────────────────
 
-const STATUS_LABEL: Record<ListingStatus, { label: string; className: string }> = {
+const STATUS_LABEL: Record<
+  ListingStatus,
+  { label: string; className: string; dotClassName: string }
+> = {
   active: {
     label: "上架中",
-    className: "text-success bg-success/10 border border-success/20",
+    className: "text-success",
+    dotClassName: "bg-success",
   },
   sold: {
     label: "已售出",
-    className: "text-text-disabled bg-bg-elevated border border-[rgba(237,232,224,0.08)]",
+    className: "text-text-disabled",
+    dotClassName: "bg-text-disabled",
   },
   draft: {
     label: "草稿",
-    className: "text-warning bg-warning/10 border border-warning/20",
+    className: "text-warning",
+    dotClassName: "bg-warning",
   },
   pending: {
     label: "審核中",
-    className: "text-brand bg-brand/10 border border-brand/20",
+    className: "text-brand",
+    dotClassName: "bg-brand",
   },
   inactive: {
     label: "未上架",
-    className: "text-text-secondary bg-bg-page/80 border border-[rgba(237,232,224,0.12)]",
+    className: "text-text-secondary",
+    dotClassName: "bg-text-secondary",
   },
 };
 
@@ -107,7 +115,7 @@ function CardInstanceRow({
   inventoryContext = "member",
 }: CardInstanceRowProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { label, className } = STATUS_LABEL[item.status];
+  const { label, className, dotClassName } = STATUS_LABEL[item.status];
   const canEdit = !item.isSealedListing;
 
   return (
@@ -140,8 +148,12 @@ function CardInstanceRow({
               <span className="truncate">{item.grade}</span>
             </span>
             <span
-              className={`font-mono text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${className}`}
+              className={`inline-flex items-center gap-1 font-mono text-[10px] font-medium shrink-0 ${className}`}
             >
+              <span
+                className={`size-1.5 rounded-full shrink-0 ${dotClassName}`}
+                aria-hidden
+              />
               {label}
             </span>
             {item.offersCount && item.offersCount > 0 ? (

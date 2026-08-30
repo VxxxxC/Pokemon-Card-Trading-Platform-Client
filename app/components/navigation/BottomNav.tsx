@@ -6,7 +6,7 @@ import { ClipboardList } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { useUIStore } from "@/app/store/useUIStore";
 import { getProfileHomePath, getTradingHomePath } from "@/lib/auth/roles";
-import { shouldShowBottomNav } from "@/lib/navigation/bottom-nav-visibility";
+import { shouldShowBottomNav, isUserProfileHubPath } from "@/lib/navigation/bottom-nav-visibility";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -30,8 +30,7 @@ export function BottomNav() {
   const isTradingActive =
     pathname === "/profile/user/trading" ||
     pathname === "/profile/merchant/trading";
-  const isProfileActive =
-    pathname === "/profile/user" || pathname === "/profile/merchant";
+  const isProfileActive = isUserProfileHubPath(pathname);
 
   return (
     <nav

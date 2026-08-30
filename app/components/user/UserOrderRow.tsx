@@ -29,6 +29,7 @@ import {
 } from "@/app/lib/types/trading";
 import { ESCROW_STEPS } from "@/app/lib/types/rbac";
 import type { MemberEscrowStatus } from "@/app/lib/member-order/auth-escrow";
+import { CertifiedMerchantBadge } from "@/app/components/profile/CertifiedMerchantBadge";
 
 interface UserOrderRowProps {
   order: SaleOrder;
@@ -105,9 +106,11 @@ export function OrderRowChip({
 function OrderStatusBadge({
   status,
   labelOverride,
+  toneOverride,
 }: {
   status: OrderStatus;
   labelOverride?: string;
+  toneOverride?: keyof typeof ORDER_ROW_CHIP_TONES;
 }) {
   const stepIdx =
     STATUS_STEP_INDEX[status as Exclude<OrderStatus, "cancelled">];
@@ -121,7 +124,7 @@ function OrderStatusBadge({
     cancelled: "muted",
   };
   return (
-    <OrderRowChip tone={toneMap[status] ?? "muted"}>
+    <OrderRowChip tone={toneOverride ?? toneMap[status] ?? "muted"}>
       {status === "cancelled"
         ? "已取消"
         : (labelOverride ?? step?.label ?? status)}
@@ -130,7 +133,21 @@ function OrderStatusBadge({
 }
 
 const orderRowActionBtnClass =
-  "w-full h-9 font-sans text-[11px] font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5";
+  "w-full h-9 font-sans text-[11px] font-semibold rounded-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5";
+
+export const ORDER_ROW_ACTION_TONES = {
+  payment:
+    "bg-brand text-[#1A1612] hover:bg-brand-hover border-0 shadow-none",
+  complete:
+    "bg-success text-white hover:bg-success-hover border-0 shadow-none",
+  cancel:
+    "bg-[rgba(239,68,68,0.10)] text-warning border border-warning/20 hover:bg-[rgba(239,68,68,0.18)]",
+  review:
+    "bg-brand text-[#1A1612] hover:bg-brand-hover border-0 shadow-none",
+} as const;
+
+const orderRowEmbeddedActionClass =
+  "font-sans text-[10px] font-semibold px-2.5 py-1.5 rounded-md transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
 
 export function UserOrderRow({
   order,
@@ -147,6 +164,9 @@ export function UserOrderRow({
   const navigateOrderId = detailOrderId ?? order.id;
 
   const isBuyer = order.userContext === "BUYER";
+  const showCertifiedMerchantBadge =
+    isBuyer &&
+    (order.orderType === "B2C" || dbOrderContext?.orderKind === "merchant");
   const counterpartLabel = isBuyer ? "賣家" : "買家";
   const counterpartName = isBuyer ? order.sellerName : order.buyerName;
 
@@ -181,6 +201,15 @@ export function UserOrderRow({
     dbOrderContext?.dbStatus === "completed" &&
     !dbOrderContext.hasReviewedByMe &&
     Boolean(onOpenReview);
+
+  const paymentStatusBadgeLabel =
+    isPendingEscrowPayment && isExpired
+      ? "付款已過期"
+      : dbOrderContext?.canPay || dbOrderContext?.pendingPayment
+        ? "待付款"
+        : order.statusLabelOverride;
+  const paymentStatusBadgeTone: keyof typeof ORDER_ROW_CHIP_TONES | undefined =
+    isPendingEscrowPayment && isExpired ? "buy" : undefined;
 
   const handleComplete = async (): Promise<boolean> => {
     if (!dbOrderContext || isActionLoading) {
@@ -245,9 +274,10 @@ export function UserOrderRow({
         onClick={() =>
           router.push("/profile/user/orderDetail/" + navigateOrderId)
         }
-        className="flex items-center gap-2.5 py-2.5 px-3 cursor-pointer transition-colors hover:bg-bg-elevated/40 border-b border-[rgba(237,232,224,0.06)] last:border-b-0 animate-fadeIn"
+        className="py-2.5 px-3 cursor-pointer transition-colors hover:bg-bg-elevated/40 border-b border-[rgba(237,232,224,0.06)] last:border-b-0 animate-fadeIn"
       >
-        <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <OrderRowChip tone={isBuyer ? "buy" : "sell"}>
               {isBuyer ? "買入" : "賣出"}
@@ -255,11 +285,8 @@ export function UserOrderRow({
             {statusBadge ?? (
               <OrderStatusBadge
                 status={order.status}
-                labelOverride={
-                  dbOrderContext?.canPay || dbOrderContext?.pendingPayment
-                    ? "待付款"
-                    : order.statusLabelOverride
-                }
+                labelOverride={paymentStatusBadgeLabel}
+                toneOverride={paymentStatusBadgeTone}
               />
             )}
           </div>
@@ -271,26 +298,15 @@ export function UserOrderRow({
               {order.grade}
             </span>
           </div>
-          {displayOrderNumber ? (
-            <p className="font-mono text-[10px] text-text-disabled truncate">
-              訂單號碼 {formatOrderNumberLabel(displayOrderNumber)}
-              {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
-              <span
-                className={cn(
-                  "ml-1.5",
-                  isExpired || isExpiringSoon ? "text-warning" : "text-text-disabled",
-                )}
-                suppressHydrationWarning
-              >
-                {isExpired ? "付款已過期" : countdownLabel}
-              </span>
-            ) : null}
-            </p>
-          ) : null}
-          <p className="text-[10px] text-text-disabled truncate mt-0.5">
-            {counterpartLabel}：{counterpartName}
-            {order.createdAt ? (
-              <span className="text-text-disabled/80"> · {order.createdAt}</span>
+          <p className="flex items-center gap-1.5 min-w-0 text-[10px] text-text-disabled mt-0.5">
+            <span className="truncate">
+              {counterpartLabel}：{counterpartName}
+            </span>
+            {showCertifiedMerchantBadge ? (
+              <CertifiedMerchantBadge
+                label="認證商家"
+                className="shrink-0 scale-[0.92] origin-left"
+              />
             ) : null}
           </p>
         </div>
@@ -309,7 +325,10 @@ export function UserOrderRow({
                   type="button"
                   disabled={isActionLoading}
                   onClick={() => router.push("/checkout/" + navigateOrderId)}
-                  className="font-sans text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50"
+                  className={cn(
+                    orderRowEmbeddedActionClass,
+                    ORDER_ROW_ACTION_TONES.payment,
+                  )}
                 >
                   付款
                 </button>
@@ -319,7 +338,10 @@ export function UserOrderRow({
                   disabled={isActionLoading}
                   isActionLoading={isActionLoading}
                   onConfirm={handleComplete}
-                  triggerClassName="font-sans text-[10px] font-semibold px-2.5 py-1.5 rounded-md bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25 transition-colors disabled:opacity-50"
+                  triggerClassName={cn(
+                    orderRowEmbeddedActionClass,
+                    ORDER_ROW_ACTION_TONES.complete,
+                  )}
                 />
               )}
               {showReviewCta && (
@@ -328,7 +350,10 @@ export function UserOrderRow({
                   data-testid="order-review-cta"
                   disabled={isActionLoading}
                   onClick={handleOpenReview}
-                  className="font-sans text-[10px] font-semibold px-2 py-1 rounded-md border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12 transition-colors disabled:opacity-50"
+                  className={cn(
+                    orderRowEmbeddedActionClass,
+                    ORDER_ROW_ACTION_TONES.review,
+                  )}
                 >
                   評價交易
                 </button>
@@ -336,6 +361,34 @@ export function UserOrderRow({
             </div>
           )}
         </div>
+        </div>
+        {displayOrderNumber || order.createdAt || (isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt) ? (
+          <div className="flex items-center justify-between gap-3 min-w-0 mt-1.5">
+            <p className="font-mono text-[10px] text-text-disabled truncate min-w-0">
+              {displayOrderNumber
+                ? `訂單號碼 ${formatOrderNumberLabel(displayOrderNumber)}`
+                : null}
+              {isPendingEscrowPayment &&
+              dbOrderContext?.paymentExpiresAt &&
+              !isExpired ? (
+                <span
+                  className={cn(
+                    displayOrderNumber ? "ml-1.5" : null,
+                    isExpiringSoon ? "text-warning" : "text-text-disabled",
+                  )}
+                  suppressHydrationWarning
+                >
+                  {countdownLabel}
+                </span>
+              ) : null}
+            </p>
+            {order.createdAt ? (
+              <span className="font-sans text-[10px] text-text-disabled/80 shrink-0 tabular-nums">
+                {order.createdAt}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -356,11 +409,8 @@ export function UserOrderRow({
             {statusBadge ?? (
               <OrderStatusBadge
                 status={order.status}
-                labelOverride={
-                  dbOrderContext?.canPay || dbOrderContext?.pendingPayment
-                    ? "待付款"
-                    : order.statusLabelOverride
-                }
+                labelOverride={paymentStatusBadgeLabel}
+                toneOverride={paymentStatusBadgeTone}
               />
             )}
           </div>
@@ -374,41 +424,53 @@ export function UserOrderRow({
             </span>
           </div>
 
-          <p className="text-[11px] text-text-secondary truncate leading-relaxed">
-            {counterpartLabel}：{counterpartName}
-            {order.createdAt ? (
-              <span className="text-text-disabled"> · {order.createdAt}</span>
+          <p className="flex items-center gap-1.5 min-w-0 text-[11px] text-text-secondary leading-relaxed">
+            <span className="truncate">
+              {counterpartLabel}：{counterpartName}
+            </span>
+            {showCertifiedMerchantBadge ? (
+              <CertifiedMerchantBadge
+                label="認證商家"
+                className="shrink-0 scale-[0.92] origin-left"
+              />
             ) : null}
           </p>
-
-          {displayOrderNumber || (isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt) ? (
-            <p className="font-mono text-[10px] text-text-disabled truncate">
-              {displayOrderNumber
-                ? `訂單號碼 ${formatOrderNumberLabel(displayOrderNumber)}`
-                : null}
-              {isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt ? (
-                <span
-                  className={cn(
-                    displayOrderNumber ? "ml-1.5" : null,
-                    isExpired || isExpiringSoon
-                      ? "text-warning"
-                      : "text-text-disabled",
-                  )}
-                  suppressHydrationWarning
-                >
-                  {isExpired ? "付款已過期" : countdownLabel}
-                </span>
-              ) : null}
-            </p>
-          ) : null}
         </div>
 
-        <div className="shrink-0 self-center">
+        <div className="shrink-0">
           <span className="text-[15px] font-mono font-bold text-brand leading-none tabular-nums">
             {"HK$ " + order.amount.toLocaleString("zh-TW")}
           </span>
         </div>
       </div>
+
+      {displayOrderNumber || order.createdAt || (isPendingEscrowPayment && dbOrderContext?.paymentExpiresAt) ? (
+        <div className="flex items-center justify-between gap-3 min-w-0 mt-1.5">
+          <p className="font-mono text-[10px] text-text-disabled truncate min-w-0">
+            {displayOrderNumber
+              ? `訂單號碼 ${formatOrderNumberLabel(displayOrderNumber)}`
+              : null}
+            {isPendingEscrowPayment &&
+            dbOrderContext?.paymentExpiresAt &&
+            !isExpired ? (
+              <span
+                className={cn(
+                  displayOrderNumber ? "ml-1.5" : null,
+                  isExpiringSoon ? "text-warning" : "text-text-disabled",
+                )}
+                suppressHydrationWarning
+              >
+                {countdownLabel}
+              </span>
+            ) : null}
+          </p>
+          {order.createdAt ? (
+            <span className="font-sans text-[10px] text-text-disabled shrink-0 tabular-nums">
+              {order.createdAt}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {(showPendingActions || showReviewCta) && (
         <div
@@ -422,7 +484,8 @@ export function UserOrderRow({
               onClick={() => router.push("/checkout/" + navigateOrderId)}
               className={cn(
                 orderRowActionBtnClass,
-                "px-3 bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25",
+                "px-3",
+                ORDER_ROW_ACTION_TONES.payment,
               )}
             >
               <CreditCard className="size-3.5 shrink-0" aria-hidden />
@@ -437,7 +500,8 @@ export function UserOrderRow({
                 onConfirm={handleComplete}
                 triggerClassName={cn(
                   orderRowActionBtnClass,
-                  "px-3 bg-brand/15 text-brand border border-brand/25 hover:bg-brand/25",
+                  "px-3",
+                  ORDER_ROW_ACTION_TONES.complete,
                 )}
               />
             </div>
@@ -448,7 +512,8 @@ export function UserOrderRow({
                 disabled={isActionLoading}
                 className={cn(
                   orderRowActionBtnClass,
-                  "px-3 bg-[rgba(239,68,68,0.10)] text-warning border border-warning/20 hover:bg-[rgba(239,68,68,0.18)]",
+                  "px-3",
+                  ORDER_ROW_ACTION_TONES.cancel,
                 )}
               >
                 {isActionLoading ? (
@@ -501,7 +566,8 @@ export function UserOrderRow({
               onClick={handleOpenReview}
               className={cn(
                 orderRowActionBtnClass,
-                "px-3 border border-brand/30 text-brand bg-brand/5 hover:bg-brand/12",
+                "px-3",
+                ORDER_ROW_ACTION_TONES.review,
               )}
             >
               <PenLine className="size-3.5 shrink-0" aria-hidden />

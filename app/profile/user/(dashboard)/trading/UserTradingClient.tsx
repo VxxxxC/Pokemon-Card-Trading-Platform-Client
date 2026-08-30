@@ -22,6 +22,7 @@ import {
   type TabStatusFilter,
 } from "@/lib/member-order/constants";
 import { cn } from "@/lib/utils";
+import { isMerchantPaymentExpired } from "@/lib/merchant-checkout/pending-payment-expiry";
 
 const ReviewModal = dynamic(
   () =>
@@ -43,7 +44,20 @@ type UserTradingClientProps = {
 };
 
 function renderStatusBadge(order: UserTradingOrder) {
+  if (
+    order.merchantEscrowStatus === "refunded" &&
+    order.orderKind === "merchant"
+  ) {
+    return <OrderRowChip tone="buy">付款已過期</OrderRowChip>;
+  }
+
   if (order.pendingPayment) {
+    const expired = order.paymentExpiresAt
+      ? isMerchantPaymentExpired(order.paymentExpiresAt)
+      : false;
+    if (expired) {
+      return <OrderRowChip tone="buy">付款已過期</OrderRowChip>;
+    }
     return <OrderRowChip tone="warning">待付款</OrderRowChip>;
   }
 

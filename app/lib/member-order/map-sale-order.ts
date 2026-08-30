@@ -102,7 +102,7 @@ export function mapTradingOrderToSaleOrder(order: UserTradingOrder): SaleOrder {
       ? mapAuthOrderStatus(order.status, order.escrowStatus)
       : p2pStatus,
     createdAt: formatOrderDateTime(order.createdAt),
-    orderType: "C2C",
+    orderType: order.orderKind === "merchant" ? "B2C" : "C2C",
     userContext: isBuyer ? "BUYER" : "SELLER",
     productListingId: order.id,
     hasAuthenticationToggle: order.useAuthentication,

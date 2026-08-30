@@ -1,9 +1,11 @@
 type CertifiedMerchantBadgeProps = {
   className?: string;
+  label?: string;
 };
 
 export function CertifiedMerchantBadge({
   className = "",
+  label = "認證商戶",
 }: CertifiedMerchantBadgeProps) {
   return (
     <span
@@ -12,7 +14,7 @@ export function CertifiedMerchantBadge({
         className
       }
     >
-      認證商戶
+      {label}
     </span>
   );
 }

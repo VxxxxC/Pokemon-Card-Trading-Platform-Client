@@ -58,6 +58,6 @@ test.describe("P-B07 member order invoice coupon", () => {
     await expect(page.getByText("交易資產最終交收電子收據")).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByText("平台優惠", { exact: true })).toBeVisible();
+    await expect(page.getByText("平台優惠 (D)", { exact: true })).toBeVisible();
   });
 });
