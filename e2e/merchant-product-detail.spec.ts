@@ -274,7 +274,7 @@ test.describe("D. BuyButton interactions", () => {
     await openCoreDetailPage(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
 
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toBeVisible();
+    await expect(page.getByText("登入後方可交易")).toBeVisible();
     await expect(
       page.getByText("請先登入會員以活化平台第三方雙向鑑定與託管出價機制。"),
     ).toBeVisible();
@@ -294,7 +294,7 @@ test.describe("D. BuyButton interactions", () => {
     await openCoreDetailPage(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
 
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
+    await expect(page.getByText("登入後方可交易")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "確認立即購買" }),
     ).toBeVisible();
@@ -375,7 +375,7 @@ test.describe("F. Known suspicious behaviors", () => {
 
     await page.getByRole("button", { name: /立即購買/ }).click();
 
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
+    await expect(page.getByText("登入後方可交易")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "確認立即購買" }),
     ).toBeVisible();

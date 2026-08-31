@@ -164,10 +164,10 @@ export async function assertMemberAuthInvoiceMatchesSnapshot(
 
   if (persona === "seller") {
     expect(
-      await readMemberAuthInvoiceRowAmount(page, "運費（賣家寄送平台）"),
+      await readMemberAuthInvoiceRowAmount(page, "運費（賣家寄送平台）(B)"),
     ).toBe(snapshot.inboundShippingFee);
     expect(
-      await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）(B)"),
+      await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）"),
     ).toBe(snapshot.outboundShippingFee);
     expect(await readMemberAuthInvoiceRowAmount(page, "鑑定服務費 (C)")).toBe(
       snapshot.authFee,
@@ -187,10 +187,10 @@ export async function assertMemberAuthInvoiceMatchesSnapshot(
   }
 
   expect(
-    await readMemberAuthInvoiceRowAmount(page, "運費（賣家寄送平台）"),
+    await readMemberAuthInvoiceRowAmount(page, "運費（賣家寄送平台）(B)"),
   ).toBe(snapshot.inboundShippingFee);
   expect(
-    await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）(B)"),
+    await readMemberAuthInvoiceRowAmount(page, "運費（平台寄送買家）"),
   ).toBe(snapshot.outboundShippingFee);
   if (snapshot.platformSubsidyAmount > 0) {
     expect(await readMemberAuthInvoiceRowAmount(page, "平台優惠 (D)")).toBe(

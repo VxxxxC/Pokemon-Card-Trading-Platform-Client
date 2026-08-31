@@ -22,7 +22,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Lock } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+
+export const BUY_NOW_GUEST_LOCK_COPY = {
+  eyebrow: "訪客模式",
+  title: "登入後方可交易",
+  description:
+    "訪客模式僅供瀏覽。登入會員帳戶後，即可使用託管付款、即時議價及第三方鑑定服務。",
+  primaryCta: "登入或註冊",
+  secondaryCta: "稍後再說",
+} as const;
 
 export type BuyNowConfirmDialogProps = {
   open: boolean;
@@ -243,28 +253,40 @@ export function BuyNowGuestLockDialog({
 }: BuyNowGuestLockDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-sm rounded-2xl border border-brand/25 bg-[#26211C] p-6 text-[#eae1da]">
-        <AlertDialogHeader className="text-left">
-          <AlertDialogTitle className="text-[15px] font-black">
-            您目前正以遊客身份觀盤
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-[12px] leading-relaxed text-[#d4c4b7]">
-            請先登入會員以活化平台第三方雙向鑑定與託管出價機制。
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+      <AlertDialogContent className="max-w-[22rem] gap-0 overflow-hidden rounded-xl border border-[rgba(237,232,224,0.12)] bg-bg-card p-0 text-text-primary shadow-[0_12px_40px_rgba(0,0,0,0.55)] ring-1 ring-brand/20">
+        <div className="border-b border-[rgba(237,232,224,0.08)] bg-bg-elevated/40 px-5 pt-5 pb-4">
+          <div className="mb-3 flex size-10 items-center justify-center rounded-lg border border-brand/25 bg-brand/10">
+            <Lock className="size-[18px] text-brand" strokeWidth={2.25} aria-hidden />
+          </div>
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-brand">
+            {BUY_NOW_GUEST_LOCK_COPY.eyebrow}
+          </p>
+          <AlertDialogHeader className="mt-2 place-items-start gap-1.5 p-0 text-left">
+            <AlertDialogTitle className="font-sans text-[17px] font-semibold leading-snug tracking-tight text-text-primary">
+              {BUY_NOW_GUEST_LOCK_COPY.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[13px] leading-[1.55] text-text-secondary">
+              {BUY_NOW_GUEST_LOCK_COPY.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+        </div>
+        <AlertDialogFooter className="!mx-0 !mb-0 flex flex-col items-stretch gap-3 border-0 bg-transparent px-5 pt-4 pb-5 sm:flex-col">
           <AlertDialogAction
+            className="h-11 w-full rounded-lg border-0 bg-brand font-sans text-[13px] font-bold text-[#1A1612] shadow-[0_4px_16px_rgba(212,165,116,0.35)] ring-1 ring-brand/40 transition-all hover:bg-brand-hover hover:shadow-[0_6px_20px_rgba(212,165,116,0.45)] active:scale-[0.98]"
             render={
               <Link
                 href={`/auth?redirect=${encodeURIComponent(redirectPath)}`}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-brand font-black text-[#1A1612] hover:bg-[#e8b896]"
+                className="inline-flex h-11 w-full items-center justify-center"
               />
             }
           >
-            登入 / 註冊
+            {BUY_NOW_GUEST_LOCK_COPY.primaryCta}
           </AlertDialogAction>
-          <AlertDialogCancel className="h-10 w-full rounded-xl border border-white/10 bg-[#120F0C] mt-0">
-            返回
+          <AlertDialogCancel
+            variant="ghost"
+            className="mx-auto mt-0 h-auto w-auto border-0 bg-transparent px-2 py-1 font-sans text-[12px] font-medium text-text-disabled hover:bg-transparent hover:text-text-secondary"
+          >
+            {BUY_NOW_GUEST_LOCK_COPY.secondaryCta}
           </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>

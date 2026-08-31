@@ -1,5 +1,6 @@
 "use client";
 
+import { MEMBER_AUTH_SHIPPING_FEE } from "@/app/lib/member-order/p2p";
 import { formatPaymentDeadline } from "@/lib/merchant-checkout/pending-payment-expiry";
 import { DEFAULT_COMMISSION_RATE } from "@/lib/platform/financial-config";
 
@@ -15,6 +16,7 @@ import {
 } from "@/app/actions/orders";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
 import { MemberMerchantB2cOrderInvoice } from "@/app/components/user/MemberMerchantB2cOrderInvoice";
+import { MemberAuthOrderInvoice } from "@/app/components/user/MemberAuthOrderInvoice";
 import { mapMerchantOrderDetailToSaleOrder } from "@/app/lib/merchant-order/map-sale-order";
 import {
   formatMerchantPayoutHoldUntilLabel,
@@ -159,16 +161,64 @@ export function MerchantOrderDetailView({
     const platformFee =
       merchantOrder.commissionAmount ?? estimatedCommission;
     const platformFeeIsEstimate = merchantOrder.commissionAmount == null;
+    const directShippingFee = merchantOrder.requiresAuthentication
+      ? 0
+      : merchantOrder.shippingFee;
+    const authInboundShippingFee = merchantOrder.requiresAuthentication
+      ? merchantOrder.inboundShippingFee > 0
+        ? merchantOrder.inboundShippingFee
+        : MEMBER_AUTH_SHIPPING_FEE
+      : 0;
+    const sellerShippingReimbursement = merchantOrder.requiresAuthentication
+      ? authInboundShippingFee
+      : directShippingFee;
     const payoutAmount =
       merchantOrder.merchantPayoutAmount ??
       Math.max(
         0,
-        merchantOrder.itemSubtotal - platformFee,
+        merchantOrder.itemSubtotal +
+          sellerShippingReimbursement -
+          platformFee,
       );
     const payoutGross =
       merchantOrder.merchantPayoutGross ?? payoutAmount;
     const recoveryDeductionTotal =
       merchantOrder.recoveryDeductionTotal ?? 0;
+
+    // #region agent log
+    fetch(
+      "http://127.0.0.1:7625/ingest/dd5838b6-1aa4-4fc5-8100-f81b4ce987af",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "c2ae51",
+        },
+        body: JSON.stringify({
+          sessionId: "c2ae51",
+          runId: "b2c-payout-pre-fix",
+          hypothesisId: "H1-H2",
+          location: "MerchantOrderDetailView.tsx:stripeDisplay",
+          message: "seller payout breakdown snapshot",
+          data: {
+            orderId: merchantOrder.id,
+            isAuthOrder: Boolean(merchantOrder.requiresAuthentication),
+            itemSubtotal: merchantOrder.itemSubtotal,
+            directShippingFee,
+            sellerShippingReimbursement,
+            platformFee,
+            payoutAmount,
+            merchantPayoutAmount: merchantOrder.merchantPayoutAmount,
+            impliedFromRows:
+              merchantOrder.itemSubtotal +
+              sellerShippingReimbursement -
+              platformFee,
+          },
+          timestamp: Date.now(),
+        }),
+      },
+    ).catch(() => {});
+    // #endregion
 
     return {
       paymentIntentId: merchantOrder.stripePaymentIntentId,
@@ -180,6 +230,8 @@ export function MerchantOrderDetailView({
       payoutAmount,
       payoutStatus: merchantOrder.payoutStatus,
       authFee: merchantOrder.authFee,
+      authInboundShippingFee,
+      directShippingFee,
     };
   }, [merchantOrder, defaultCommissionRate]);
 
@@ -623,7 +675,7 @@ export function MerchantOrderDetailView({
               <p className="text-[12.5px] text-text-secondary leading-relaxed">
                 交易已完成，款項{" "}
                 <span className="font-mono font-bold text-brand">
-                  HK$ {order.amount.toLocaleString("zh-TW")}
+                  HK$ {stripeDisplay.payoutAmount.toLocaleString("zh-TW")}
                 </span>{" "}
                 已撥至你的 Stripe Connect 帳戶。
               </p>
@@ -647,14 +699,26 @@ export function MerchantOrderDetailView({
       </section>
 
       <section className="space-y-3" aria-label="帳單明細">
-        <MemberMerchantB2cOrderInvoice
-          itemSubtotal={merchantOrder.itemSubtotal}
-          shippingFee={merchantOrder.shippingFee}
-          shippingMethod={merchantOrder.shippingMethod}
-          totalAmount={merchantOrder.totalAmount}
-          authFee={isAuthOrder ? stripeDisplay.authFee : 0}
-          isSeller
-        />
+        {isAuthOrder ? (
+          <MemberAuthOrderInvoice
+            finalPrice={merchantOrder.finalPrice}
+            isSeller
+            buyerTotalAmount={merchantOrder.buyerTotalAmount}
+            authFee={merchantOrder.authFee}
+            itemSubtotal={merchantOrder.itemSubtotal}
+            inboundShippingFee={merchantOrder.inboundShippingFee}
+            outboundShippingFee={merchantOrder.outboundShippingFee}
+          />
+        ) : (
+          <MemberMerchantB2cOrderInvoice
+            itemSubtotal={merchantOrder.itemSubtotal}
+            shippingFee={merchantOrder.shippingFee}
+            shippingMethod={merchantOrder.shippingMethod}
+            totalAmount={merchantOrder.totalAmount}
+            authFee={0}
+            isSeller
+          />
+        )}
 
         <div className={`${ORDER_DETAIL_CARD_CLASS} space-y-3`}>
           <h3 className="font-sans text-[13px] font-semibold text-text-primary">
@@ -667,6 +731,32 @@ export function MerchantOrderDetailView({
                 HK$ {merchantOrder.itemSubtotal.toLocaleString("zh-TW")}
               </span>
             </div>
+            {isAuthOrder && stripeDisplay.authInboundShippingFee > 0 ? (
+              <div className="flex justify-between gap-3">
+                <span>運費（賣家寄送平台）</span>
+                <span className="text-text-primary">
+                  HK${" "}
+                  {stripeDisplay.authInboundShippingFee.toLocaleString("zh-TW")}
+                </span>
+              </div>
+            ) : null}
+            {!isAuthOrder && stripeDisplay.directShippingFee > 0 ? (
+              <div className="flex justify-between gap-3">
+                <span>
+                  運費（
+                  {merchantOrder.shippingMethod === "sf"
+                    ? "快遞寄貨"
+                    : merchantOrder.shippingMethod === "meetup"
+                      ? "面交自取"
+                      : "—"}
+                  ）
+                </span>
+                <span className="text-text-primary">
+                  HK${" "}
+                  {stripeDisplay.directShippingFee.toLocaleString("zh-TW")}
+                </span>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-3">
               <span>
                 平台費用

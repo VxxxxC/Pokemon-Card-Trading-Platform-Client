@@ -715,7 +715,7 @@ async function clickBuyNowAndOpenNegotiation(buyerPage: Page): Promise<void> {
     name: "確認立即購買",
   });
   const guestHeading = buyerPage.getByRole("heading", {
-    name: "您目前正以遊客身份觀盤",
+    name: "登入後方可交易",
   });
 
   for (let attempt = 0; attempt < 3; attempt += 1) {

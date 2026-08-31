@@ -164,16 +164,46 @@ export function parseRewardGrantRows(raw: unknown): UnacknowledgedRewardGrant[] 
   });
 }
 
+function resolveGrantPoints(grant: UnacknowledgedRewardGrant): number {
+  return (
+    grant.pointsGranted ??
+    (typeof grant.rewardValue === 'object' &&
+    grant.rewardValue !== null &&
+    'points' in grant.rewardValue
+      ? Number((grant.rewardValue as PointsRewardValue).points)
+      : 0)
+  );
+}
+
+/** Stub value for CouponTicketShell left panel (aligned with wallet coupon tickets). */
+export function formatRewardGrantValueLabel(
+  grant: UnacknowledgedRewardGrant,
+): string {
+  if (grant.type === 'points') {
+    return `+${resolveGrantPoints(grant).toLocaleString()}`;
+  }
+  if (grant.type === 'discount_coupon') {
+    const v = grant.rewardValue as DiscountCouponRewardValue | null;
+    if (v?.amount_hkd != null) {
+      return `HK$ ${v.amount_hkd.toLocaleString('en-HK')}`;
+    }
+    if (v?.percent_off != null) {
+      return `${v.percent_off}% OFF`;
+    }
+    return '折扣券';
+  }
+  if (grant.type === 'free_shipping') {
+    return '免運費';
+  }
+  if (grant.type === 'lucky_draw_ticket') {
+    return '抽獎券';
+  }
+  return '獎勵';
+}
+
 export function formatRewardGrantSummary(grant: UnacknowledgedRewardGrant): string {
   if (grant.type === 'points') {
-    const pts =
-      grant.pointsGranted ??
-      (typeof grant.rewardValue === 'object' &&
-      grant.rewardValue !== null &&
-      'points' in grant.rewardValue
-        ? Number((grant.rewardValue as PointsRewardValue).points)
-        : 0);
-    return `+${pts.toLocaleString()} PTS`;
+    return `+${resolveGrantPoints(grant).toLocaleString()} PTS`;
   }
   if (grant.type === 'discount_coupon') {
     const v = grant.rewardValue as DiscountCouponRewardValue | null;
