@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import {
   Calendar as CalendarIcon,
+  ChevronLeft,
   Link2,
   Upload,
   X,
@@ -25,6 +27,7 @@ import {
   updatePlatformAnnouncement,
 } from "@/app/actions/admin-announcements";
 import {
+  BTN_OUTLINE_CLASS,
   BTN_PRIMARY_CLASS,
   FORM_INPUT_CLASS,
   FORM_LABEL_CLASS,
@@ -185,9 +188,18 @@ export function AnnouncementForm({
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 pb-8">
-      <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
-        {pageTitle}
-      </h1>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/admin/announcements"
+          aria-label="返回公告列表"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-text-secondary transition-colors hover:border-brand/30 hover:bg-brand/10 hover:text-brand active:scale-[0.98]"
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </Link>
+        <h1 className="font-sans text-[24px] font-bold tracking-tight text-text-primary">
+          {pageTitle}
+        </h1>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1.5">
@@ -347,17 +359,27 @@ export function AnnouncementForm({
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={isSaving}
-        className={`${BTN_PRIMARY_CLASS} w-full disabled:opacity-50`}
-      >
-        {isSaving
-          ? "儲存中…"
-          : editingId
-            ? "儲存變更"
-            : "新增公告"}
-      </button>
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => router.push("/admin/announcements")}
+          disabled={isSaving}
+          className={`${BTN_OUTLINE_CLASS} min-w-0 flex-1 disabled:opacity-50 disabled:pointer-events-none`}
+        >
+          取消
+        </button>
+        <button
+          type="submit"
+          disabled={isSaving}
+          className={`${BTN_PRIMARY_CLASS} min-w-0 flex-1 disabled:opacity-50 disabled:pointer-events-none`}
+        >
+          {isSaving
+            ? "儲存中…"
+            : editingId
+              ? "儲存變更"
+              : "新增公告"}
+        </button>
+      </div>
     </form>
     </div>
   );
