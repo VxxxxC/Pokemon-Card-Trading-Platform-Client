@@ -79,11 +79,11 @@ export function MemberAuthOrderInvoice({
       <div className="space-y-2 border-t border-white/[0.06] pt-3 font-mono text-[12px] text-text-secondary">
         <MemberOrderInvoiceRow label="商品最終成交價" amount={cardPrice} />
         <MemberOrderInvoiceRow
-          label="運費（賣家寄送平台）"
+          label="運費（賣家寄送平台）(B)"
           amount={inboundFee}
         />
         <MemberOrderInvoiceRow
-          label="運費（平台寄送買家）(B)"
+          label="運費（平台寄送買家）"
           amount={outboundFee}
         />
         <div className="flex justify-between text-brand">
@@ -113,7 +113,7 @@ export function MemberAuthOrderInvoice({
               <>
                 最終實收總額
                 <span className="ml-1.5 font-mono text-[11px] font-normal text-text-disabled">
-                  (A − B − C)
+                  (商品最終成交價 + B)
                 </span>
               </>
             ) : showSubsidy ? (

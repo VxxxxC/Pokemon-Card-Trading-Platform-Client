@@ -1289,7 +1289,10 @@ export type MerchantOrderDetail = MerchantTradingOrder & {
   itemSubtotal: number;
   shippingFee: number;
   shippingMethod: string | null;
+  inboundShippingFee: number;
+  outboundShippingFee: number;
   totalAmount: number;
+  buyerTotalAmount: number;
   authFee: number;
   canSubmitLogistics: boolean;
   canSubmitDirectFulfillment: boolean;
@@ -1336,6 +1339,8 @@ type MerchantOrderDetailQueryRow = {
   item_subtotal: number | null;
   shipping_fee: number | null;
   shipping_method: string | null;
+  inbound_shipping_fee: number | null;
+  outbound_shipping_fee: number | null;
   total_amount: number | null;
   buyer_total_amount: number | null;
   auth_fee: number | null;
@@ -1448,7 +1453,10 @@ function mapMerchantOrderDetailRow(
     itemSubtotal: Number(row.item_subtotal ?? row.final_price),
     shippingFee: Number(row.shipping_fee ?? 0),
     shippingMethod: row.shipping_method,
+    inboundShippingFee: Number(row.inbound_shipping_fee ?? 0),
+    outboundShippingFee: Number(row.outbound_shipping_fee ?? 0),
     totalAmount: merchantBuyerPaidAmount(row),
+    buyerTotalAmount: merchantBuyerPaidAmount(row),
     authFee: Number(row.auth_fee ?? 0),
     canSubmitLogistics: sellerFlags.canSubmitLogistics,
     canSubmitDirectFulfillment: sellerFlags.canSubmitDirectFulfillment,
@@ -1562,6 +1570,8 @@ export async function getMerchantOrderDetail(
           item_subtotal,
           shipping_fee,
           shipping_method,
+          inbound_shipping_fee,
+          outbound_shipping_fee,
           total_amount,
           buyer_total_amount,
           auth_fee,
