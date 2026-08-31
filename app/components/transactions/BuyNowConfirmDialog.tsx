@@ -243,27 +243,31 @@ export function BuyNowGuestLockDialog({
 }: BuyNowGuestLockDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-sm rounded-2xl border border-brand/25 bg-[#26211C] p-6 text-[#eae1da]">
-        <AlertDialogHeader className="text-left">
-          <AlertDialogTitle className="text-[15px] font-black">
+      <AlertDialogContent className="max-w-sm gap-5 rounded-xl border border-brand/25 bg-bg-card p-6 text-text-primary shadow-[0_8px_32px_rgba(0,0,0,0.45)] ring-foreground/10">
+        <AlertDialogHeader className="place-items-start gap-2 text-left">
+          <AlertDialogTitle className="font-sans text-base font-semibold leading-snug text-text-primary">
             您目前正以遊客身份觀盤
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-[12px] leading-relaxed text-[#d4c4b7]">
+          <AlertDialogDescription className="text-sm leading-relaxed text-text-secondary">
             請先登入會員以活化平台第三方雙向鑑定與託管出價機制。
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+        <AlertDialogFooter className="!mx-0 !mb-0 !border-0 !bg-transparent !p-0 flex flex-col gap-2 sm:flex-col">
           <AlertDialogAction
+            className="h-11 w-full rounded-lg border-0 bg-brand font-sans text-sm font-bold text-[#1A1612] shadow-[0_4px_16px_rgba(212,165,116,0.35)] ring-1 ring-brand/40 transition-all hover:bg-brand-hover hover:shadow-[0_6px_20px_rgba(212,165,116,0.45)] active:scale-[0.98]"
             render={
               <Link
                 href={`/auth?redirect=${encodeURIComponent(redirectPath)}`}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-brand font-black text-[#1A1612] hover:bg-[#e8b896]"
+                className="inline-flex h-11 w-full items-center justify-center"
               />
             }
           >
             登入 / 註冊
           </AlertDialogAction>
-          <AlertDialogCancel className="h-10 w-full rounded-xl border border-white/10 bg-[#120F0C] mt-0">
+          <AlertDialogCancel
+            variant="outline"
+            className="mt-0 h-11 w-full rounded-lg border border-[rgba(237,232,224,0.12)] bg-bg-elevated font-sans text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+          >
             返回
           </AlertDialogCancel>
         </AlertDialogFooter>
