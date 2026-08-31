@@ -6,6 +6,12 @@ import { getCurrentUserProfile } from "@/app/actions/profile";
 import { isMerchantPayoutReady } from "@/lib/stripe/payout-ready";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import { enqueueB2cAwaitingPaymentBuyerEmail } from "@/lib/notifications/grading-emails";
+import {
+  enqueueBuyNowSellerEmail,
+  enqueueOfferExpiredEmailsForListing,
+} from "@/lib/notifications/offer-emails";
+import { enqueueP2pMeetupArrangedEmails } from "@/lib/notifications/p2p-order-emails";
 import type { Tables } from "@/types/supabase";
 
 type ActionResult<T> =
@@ -272,6 +278,37 @@ export async function buyNowListing(
     revalidateHomeListingsCache();
     revalidatePath("/profile/user/trading");
     revalidatePath("/profile/merchant/trading");
+
+    await enqueueBuyNowSellerEmail({
+      offerId: parsed.offer.id,
+      listingId: trimmedListingId,
+      sellerId: listing.seller_id,
+      buyerId: user.id,
+      orderId,
+      offerPrice: Number(parsed.offer.offer_price),
+    });
+
+    await enqueueOfferExpiredEmailsForListing({
+      listingId: trimmedListingId,
+      reason: "order_created_elsewhere",
+      excludeOfferIds: [parsed.offer.id],
+    });
+
+    if (orderKind === "merchant" && useAuth) {
+      await enqueueB2cAwaitingPaymentBuyerEmail(orderId);
+    } else if (orderKind === "member") {
+      const memberOrder = parsed.order as Tables<"member_orders">;
+      if (!memberOrder.use_authentication) {
+        await enqueueP2pMeetupArrangedEmails({
+          orderId,
+          buyerId: user.id,
+          sellerId: listing.seller_id,
+          listingId: trimmedListingId,
+          orderNumber,
+          sellerPersona: sellerPersona === "merchant" ? "merchant" : "member",
+        });
+      }
+    }
 
     return {
       success: true,

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getRoleDefaultLandingPath, getRoleSettingsPath } from "@/lib/auth/roles";
+import { buildConfirmEmailPath } from "@/lib/auth/email-confirmation";
 import { resolveCurrentAuthRole } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,6 +19,7 @@ import {
 } from "@/lib/auth/password-errors";
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { generateUniqueUsername } from "@/lib/auth/username";
+import { enqueuePasswordChangedEmail } from "@/lib/notifications/enqueue-email";
 
 function parseRegisterFields(formData: FormData) {
   return {
@@ -44,6 +46,13 @@ function mapAuthError(message: string): AuthFormErrors {
     normalized.includes("email address is already")
   ) {
     return { email: "此電子郵件已被註冊" };
+  }
+
+  if (
+    normalized.includes("email not confirmed") ||
+    normalized.includes("email not verified")
+  ) {
+    return { email: "請先確認電郵後再登入" };
   }
 
   if (normalized.includes("password")) {
@@ -133,28 +142,52 @@ export async function login(
   redirect(getRoleDefaultLandingPath(role));
 }
 
+async function notifyPasswordChanged(user: {
+  id: string;
+  email?: string | null;
+}): Promise<void> {
+  if (!user.email) return;
+
+  try {
+    await enqueuePasswordChangedEmail({
+      userId: user.id,
+      email: user.email,
+      transitionAt: Date.now(),
+    });
+  } catch {
+    // Email enqueue is non-blocking for auth flows.
+  }
+}
+
 async function registerMemberAccount(
   formData: FormData,
-): Promise<AuthFormErrors | null> {
+): Promise<
+  | { ok: false; errors: AuthFormErrors }
+  | { ok: true; needsEmailConfirmation: true; email: string }
+  | { ok: true; needsEmailConfirmation: false }
+> {
   const fields = parseRegisterFields(formData);
   const errors = validateRegisterFields(fields);
-  if (Object.keys(errors).length) return errors;
+  if (Object.keys(errors).length) return { ok: false, errors };
 
   try {
     const emailTaken = await isEmailTaken(fields.email);
 
     if (emailTaken) {
-      return { email: "此電子郵件已被註冊" };
+      return { ok: false, errors: { email: "此電子郵件已被註冊" } };
     }
   } catch {
-    return { email: "無法驗證帳戶資料，請稍後再試" };
+    return { ok: false, errors: { email: "無法驗證帳戶資料，請稍後再試" } };
   }
 
   const supabase = await createClient();
+  const siteUrl = await getSiteUrl();
+  const signupCallback = `${siteUrl}/auth/callback?next=${encodeURIComponent("/profile/user")}`;
   const { data, error } = await supabase.auth.signUp({
     email: fields.email,
     password: fields.password,
     options: {
+      emailRedirectTo: signupCallback,
       data: {
         display_name: fields.email.split("@")[0],
         role: "member",
@@ -163,31 +196,60 @@ async function registerMemberAccount(
   });
 
   if (error) {
-    return mapAuthError(error.message);
+    return { ok: false, errors: mapAuthError(error.message) };
   }
 
   if (!data.user) {
-    return { email: "註冊失敗，請稍後再試" };
+    return { ok: false, errors: { email: "註冊失敗，請稍後再試" } };
   }
 
   try {
     await assignGeneratedUsername(data.user.id);
   } catch {
-    return { email: "帳戶已建立，但用戶名稱設定失敗，請聯絡客服" };
+    return {
+      ok: false,
+      errors: { email: "帳戶已建立，但用戶名稱設定失敗，請聯絡客服" },
+    };
   }
 
-  return null;
+  const needsEmailConfirmation = !data.user.email_confirmed_at;
+  if (needsEmailConfirmation) {
+    if (data.session) {
+      await supabase.auth.signOut();
+    }
+
+    return {
+      ok: true,
+      needsEmailConfirmation: true,
+      email: fields.email,
+    };
+  }
+
+  return { ok: true, needsEmailConfirmation: false };
+}
+
+async function redirectAfterRegistration(nextPath?: string): Promise<void> {
+  if (nextPath?.startsWith("/")) {
+    redirect(nextPath);
+  }
+
+  const role = await resolveCurrentAuthRole();
+  redirect(getRoleDefaultLandingPath(role));
 }
 
 export async function registerMember(
   _prev: AuthFormErrors | null,
   formData: FormData,
 ): Promise<AuthFormErrors | null> {
-  const errors = await registerMemberAccount(formData);
-  if (errors) return errors;
+  const result = await registerMemberAccount(formData);
+  if (!result.ok) return result.errors;
 
-  const role = await resolveCurrentAuthRole();
-  redirect(getRoleDefaultLandingPath(role));
+  if (result.needsEmailConfirmation) {
+    redirect(buildConfirmEmailPath(result.email));
+  }
+
+  await redirectAfterRegistration();
+  return null;
 }
 
 /**
@@ -198,10 +260,58 @@ export async function registerMemberForMerchantApply(
   _prev: AuthFormErrors | null,
   formData: FormData,
 ): Promise<AuthFormErrors | null> {
-  const errors = await registerMemberAccount(formData);
-  if (errors) return errors;
+  const result = await registerMemberAccount(formData);
+  if (!result.ok) return result.errors;
+
+  if (result.needsEmailConfirmation) {
+    redirect(
+      `${buildConfirmEmailPath(result.email)}&next=${encodeURIComponent("/profile/user/merchant-apply")}`,
+    );
+  }
 
   redirect("/profile/user/merchant-apply");
+}
+
+export type ResendSignupConfirmationResult =
+  | { status: "sent" }
+  | { status: "error"; message: string };
+
+export async function resendSignupConfirmationEmail(
+  _prev: ResendSignupConfirmationResult | null,
+  formData: FormData,
+): Promise<ResendSignupConfirmationResult> {
+  const email = ((formData.get("email") as string | null) ?? "").trim();
+  const next = ((formData.get("next") as string | null) ?? "").trim();
+
+  if (!email) {
+    return { status: "error", message: "缺少電郵地址" };
+  }
+
+  try {
+    const siteUrl = await getSiteUrl();
+    const redirectTo = next.startsWith("/")
+      ? `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${siteUrl}/auth/callback?next=${encodeURIComponent("/profile/user")}`;
+
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (error) {
+      const normalized = error.message.toLowerCase();
+      if (normalized.includes("rate limit")) {
+        return { status: "error", message: "請求過於頻繁，請稍後再試" };
+      }
+      return { status: "error", message: "無法寄出驗證信，請稍後再試" };
+    }
+  } catch {
+    return { status: "error", message: "無法寄出驗證信，請稍後再試" };
+  }
+
+  return { status: "sent" };
 }
 
 export async function logout(): Promise<void> {
@@ -303,6 +413,8 @@ export async function completeForgotPassword(
     return mapPasswordUpdateAuthError(error.message);
   }
 
+  await notifyPasswordChanged(user);
+
   const role = await resolveCurrentAuthRole();
   redirect(`${getRoleDefaultLandingPath(role)}?passwordUpdated=1`);
 }
@@ -349,6 +461,8 @@ export async function updatePasswordFromProfile(
   if (error) {
     return mapPasswordUpdateAuthError(error.message);
   }
+
+  await notifyPasswordChanged(user);
 
   const role = await resolveCurrentAuthRole();
   redirect(`${getRoleSettingsPath(role)}?passwordUpdated=1`);

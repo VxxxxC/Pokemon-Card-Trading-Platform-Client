@@ -3,7 +3,8 @@
 > **角色：** Member · Merchant · Admin · System — **in-scope 全部上線功能**（除 [v3-deferred.md](./v3-deferred.md)）。  
 > **North star：** 本表 **每一行 `進度` = ☑** + [staging-certification.md](./staging-certification.md) `test:staging:certify` 綠 = **Staging 可俾人用**。  
 > **主 SSOT：** [test-coverage-ssot.md](./test-coverage-ssot.md) v2.5（旅程 TC/J/SEC 與本表對照）  
-> **Partner UI：** [partner-regression.md](./partner-regression.md)（P-* 進度 · 補 T2 顯示層缺口）
+> **Partner UI：** [partner-regression.md](./partner-regression.md)（P-* 進度 · 補 T2 顯示層缺口）  
+> **Email 通知（規劃）：** [email-notifications-ssot.md](./email-notifications-ssot.md)
 
 ---
 

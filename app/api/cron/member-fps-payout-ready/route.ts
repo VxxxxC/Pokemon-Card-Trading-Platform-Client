@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleCronRoute } from "@/lib/cron/request";
+import { enqueueMemberFpsPayoutCompletedEmail } from "@/lib/notifications/payout-emails";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           continue;
         }
 
+        await enqueueMemberFpsPayoutCompletedEmail(row.order_id);
         inserted += 1;
       }
 

@@ -1,3 +1,5 @@
+import { enqueueB2cGradingPayoutCompletedEmail } from "@/lib/notifications/grading-emails";
+import { enqueueConnectPayoutCompletedEmail, enqueueConnectPayoutFailedEmail, enqueueConnectPayoutProcessingEmail } from "@/lib/notifications/payout-emails";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeClient } from "@/lib/stripe/env";
 import {
@@ -113,6 +115,8 @@ export async function executeMerchantConnectPayout(
       };
     }
 
+    await enqueueConnectPayoutProcessingEmail(prepared.orderId);
+
     const paymentIntent = await stripe.paymentIntents.retrieve(
       prepared.paymentIntentId,
       { expand: ["latest_charge"] },
@@ -164,12 +168,21 @@ export async function executeMerchantConnectPayout(
           prepared.orderId,
           `finalize_failed: ${finalizeError.message}`,
         );
+        await enqueueConnectPayoutFailedEmail({
+          orderId: prepared.orderId,
+          errorMessage: finalizeError.message,
+        });
         return {
           success: false,
           orderId: trimmedOrderId,
           error: "finalize_failed",
         };
       }
+
+      await enqueueConnectPayoutCompletedEmail({
+        orderId: prepared.orderId,
+        merchantPayoutAmount: 0,
+      });
 
       return {
         success: true,
@@ -226,6 +239,10 @@ export async function executeMerchantConnectPayout(
         prepared.orderId,
         `finalize_failed: ${finalizeError.message}`,
       );
+      await enqueueConnectPayoutFailedEmail({
+        orderId: prepared.orderId,
+        errorMessage: finalizeError.message,
+      });
       return {
         success: false,
         orderId: trimmedOrderId,
@@ -233,12 +250,20 @@ export async function executeMerchantConnectPayout(
       };
     }
 
+    await enqueueConnectPayoutCompletedEmail({
+      orderId: prepared.orderId,
+      merchantPayoutAmount: prepared.merchantPayoutAmount,
+    });
+
     return {
       success: true,
       orderId: trimmedOrderId,
       transferId: transfer.id,
     };
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "unknown payout error";
+
     if (prepared && !prepared.alreadyApplied) {
       const admin = createAdminClient() as unknown as MerchantPayoutAdminRpcClient;
       await markMerchantConnectPayoutFailed(
@@ -246,10 +271,12 @@ export async function executeMerchantConnectPayout(
         prepared.orderId,
         "stripe_transfer_failed",
       );
+      await enqueueConnectPayoutFailedEmail({
+        orderId: prepared.orderId,
+        errorMessage: message,
+      });
     }
 
-    const message =
-      error instanceof Error ? error.message : "unknown payout error";
     console.error("[executeMerchantConnectPayout]", error);
     return {
       success: false,

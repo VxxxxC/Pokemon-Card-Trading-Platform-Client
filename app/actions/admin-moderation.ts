@@ -1,5 +1,7 @@
 "use server";
 
+import { enqueueModerationReportOutcomeEmails, enqueueModerationResolveFollowUpEmails, enqueueModerationEvidenceRequestEmail } from "@/lib/notifications/moderation-emails";
+import { enqueueRefundApprovedEmail, enqueueRefundFailedEmail } from "@/lib/notifications/refund-emails";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { isReportCategorySlug } from "@/lib/moderation/category-config";
@@ -958,6 +960,79 @@ export async function adjustAdminModerationCaseScore(input: {
   }
 }
 
+export async function requestAdminModerationEvidence(input: {
+  caseId: string;
+  targetRole: "subject" | "reporter";
+  message?: string;
+}): Promise<ActionResult<{ caseId: string; targetUserId: string }>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const caseId = input.caseId.trim();
+  if (!caseId) {
+    return { success: false, error: "找不到案件" };
+  }
+
+  if (input.targetRole !== "subject" && input.targetRole !== "reporter") {
+    return { success: false, error: "無效的通知對象" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { data: caseRow, error: caseError } = await supabase
+      .from("moderation_cases")
+      .select("case_number, subject_user_id")
+      .eq("id", caseId)
+      .maybeSingle<{ case_number: string | null; subject_user_id: string }>();
+
+    if (caseError) {
+      console.error("[requestAdminModerationEvidence] case lookup", caseError.message);
+      return { success: false, error: "無法載入案件" };
+    }
+
+    if (!caseRow?.subject_user_id) {
+      return { success: false, error: "找不到案件" };
+    }
+
+    let targetUserId = caseRow.subject_user_id;
+    if (input.targetRole === "reporter") {
+      const { data: reportRow, error: reportError } = await supabase
+        .from("reports")
+        .select("reporter_id")
+        .eq("case_id", caseId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle<{ reporter_id: string }>();
+
+      if (reportError || !reportRow?.reporter_id) {
+        console.error(
+          "[requestAdminModerationEvidence] reporter lookup",
+          reportError?.message,
+        );
+        return { success: false, error: "找不到舉報人" };
+      }
+      targetUserId = reportRow.reporter_id;
+    }
+
+    await enqueueModerationEvidenceRequestEmail({
+      caseId,
+      targetUserId,
+      caseNumber: caseRow.case_number,
+      message: input.message,
+    });
+
+    return {
+      success: true,
+      data: { caseId, targetUserId },
+    };
+  } catch (error) {
+    console.error("[requestAdminModerationEvidence]", error);
+    return { success: false, error: "無法發送證據補充通知" };
+  }
+}
+
 export async function resolveAdminModerationCase(input: {
   caseId: string;
 } & ResolveAdminModerationCaseInput): Promise<
@@ -1012,12 +1087,27 @@ export async function resolveAdminModerationCase(input: {
       });
 
       if (prepared) {
+        const orderKind =
+          prepared.orderKind === "member_auth" ? "member" : "merchant";
+        await enqueueRefundApprovedEmail({
+          orderKind,
+          orderId: prepared.orderId,
+          caseId,
+          refundCents: prepared.refundCents,
+        });
+
         const sagaResult = await runModerationOrderRefundSaga({
           caseId,
           prepared,
         });
         if (!sagaResult.ok) {
           refundWarning = `案件已裁定，但售後退款失敗：${sagaResult.error}`;
+          await enqueueRefundFailedEmail({
+            orderKind,
+            orderId: prepared.orderId,
+            caseId,
+            errorMessage: sagaResult.error,
+          });
         }
       } else {
         refundWarning = "案件已裁定，但售後退款準備資料無效";
@@ -1043,13 +1133,27 @@ export async function resolveAdminModerationCase(input: {
       }
     }
 
+    const resolution =
+      typeof payload.resolution === "string" ? payload.resolution : input.resolution;
+
+    await enqueueModerationReportOutcomeEmails({
+      caseId,
+      resolution,
+      notifyReporter: input.notifyReporter,
+    });
+
+    await enqueueModerationResolveFollowUpEmails({
+      caseId,
+      resolution,
+      sanction: input.sanction,
+    });
+
     return {
       success: true,
       data: {
         caseId: typeof payload.caseId === "string" ? payload.caseId : caseId,
         status: typeof payload.status === "string" ? payload.status : "",
-        resolution:
-          typeof payload.resolution === "string" ? payload.resolution : input.resolution,
+        resolution,
         ...(authBanWarning ? { authBanWarning } : {}),
         ...(refundWarning ? { refundWarning } : {}),
       },

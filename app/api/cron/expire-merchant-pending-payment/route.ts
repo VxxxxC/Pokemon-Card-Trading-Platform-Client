@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleCronRoute } from "@/lib/cron/request";
+import { enqueueMerchantOrderPaymentExpiredEmails } from "@/lib/notifications/order-emails";
 import { getStripeClient } from "@/lib/stripe/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -85,6 +86,7 @@ export async function GET(request: Request): Promise<NextResponse> {
           continue;
         }
 
+        await enqueueMerchantOrderPaymentExpiredEmails(row.order_id);
         expired += 1;
       }
 

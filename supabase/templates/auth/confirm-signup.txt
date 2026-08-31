@@ -1,0 +1,9 @@
+歡迎加入 Cardvault HK
+
+感謝註冊！請確認你的電郵地址以啟用帳戶。
+確認後即可開始瀏覽、議價與交易。
+
+確認電郵: {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup&next=/profile/user
+
+Cardvault HK
+如非本人註冊，請忽略此郵件。

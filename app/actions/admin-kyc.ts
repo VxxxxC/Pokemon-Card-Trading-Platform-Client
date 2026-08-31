@@ -20,6 +20,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/supabase";
+import {
+  enqueueMerchantKycApprovedEmail,
+  enqueueMerchantKycRejectedEmail,
+} from "@/lib/notifications/merchant-onboarding-emails";
 
 /**
  * Admin 商戶 KYC 審核。
@@ -552,6 +556,10 @@ export async function reviewKycApplication(
       revalidatePath("/profile/user/merchant-apply");
       revalidatePath("/profile/user");
       revalidatePath("/profile/merchant");
+      await enqueueMerchantKycRejectedEmail({
+        userId: application.user_id,
+        rejectReason: rejectReason!.trim(),
+      });
       return { success: true, data: { decision: "reject" } };
     }
 
@@ -600,6 +608,8 @@ export async function reviewKycApplication(
     revalidatePath("/admin/merchants");
     revalidatePath("/profile/user/merchant-apply");
     revalidatePath("/profile/merchant");
+
+    await enqueueMerchantKycApprovedEmail(application.user_id);
 
     return {
       success: true,

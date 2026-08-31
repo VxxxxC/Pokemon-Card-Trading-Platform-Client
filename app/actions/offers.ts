@@ -17,6 +17,14 @@ import { fetchPlatformAuthFeeHkd } from "@/lib/platform/resolve-display-auth-fee
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
 import type { Tables } from "@/types/supabase";
 import type { MemberOrderKind } from "@/lib/member-order/order-kind";
+import {
+  enqueueOfferAcceptedEmail,
+  enqueueOfferExpiredEmailsForListing,
+  enqueueOfferModifiedEmail,
+  enqueueOfferReceivedEmail,
+  enqueueOfferRejectedEmail,
+} from "@/lib/notifications/offer-emails";
+import { enqueueP2pMeetupArrangedEmails } from "@/lib/notifications/p2p-order-emails";
 
 type ChatRoomRow = Tables<"chat_rooms">;
 type OfferRow = Tables<"offers">;
@@ -762,6 +770,14 @@ export async function makeOffer(
       return { success: false, error: "出價回傳資料格式異常" };
     }
 
+    await enqueueOfferReceivedEmail({
+      offerId: parsed.offer.id,
+      listingId: trimmedListingId,
+      buyerId: user.id,
+      sellerId: listing.seller_id,
+      offerPrice: offerPrice,
+    });
+
     return {
       success: true,
       data: parsed,
@@ -823,6 +839,34 @@ export async function acceptOffer(offerId: string): Promise<AcceptOfferResult> {
     revalidatePath("/profile/merchant/inventory");
     revalidatePath("/profile/merchant/trading");
     revalidatePath("/profile/user/trading");
+
+    await enqueueOfferAcceptedEmail({
+      offerId: trimmedOfferId,
+      orderId: parsed.order.id,
+      orderKind: parsed.orderKind,
+    });
+
+    if (parsed.orderKind === "member") {
+      const memberOrder = parsed.order as MemberOrderRow;
+      if (!memberOrder.use_authentication) {
+        await enqueueP2pMeetupArrangedEmails({
+          orderId: memberOrder.id,
+          buyerId: memberOrder.buyer_id,
+          sellerId: memberOrder.seller_id,
+          listingId: memberOrder.listing_id,
+          orderNumber: memberOrder.order_number,
+        });
+      }
+    }
+
+    const listingId = parsed.order.listing_id;
+    if (listingId) {
+      await enqueueOfferExpiredEmailsForListing({
+        listingId,
+        reason: "order_created_elsewhere",
+        excludeOfferIds: [trimmedOfferId],
+      });
+    }
 
     return {
       success: true,
@@ -888,6 +932,15 @@ export async function modifyOffer(
       return { success: false, error: "修改出價回傳資料格式異常" };
     }
 
+    if (parsed.offer.listing_id) {
+      await enqueueOfferModifiedEmail({
+        offerId: parsed.offer.id,
+        listingId: parsed.offer.listing_id,
+        buyerId: user.id,
+        offerPrice: newPrice,
+      });
+    }
+
     return {
       success: true,
       data: parsed,
@@ -942,6 +995,17 @@ export async function rejectOffer(offerId: string): Promise<RejectOfferResult> {
     if (!parsed) {
       console.error("[rejectOffer] invalid rpc payload", data);
       return { success: false, error: "拒絕出價回傳資料格式異常" };
+    }
+
+    const listingId = parsed.offer.listing_id;
+    if (listingId && parsed.offer.buyer_id) {
+      await enqueueOfferRejectedEmail({
+        offerId: parsed.offer.id,
+        buyerId: parsed.offer.buyer_id,
+        listingId,
+        sellerId: user.id,
+        offerPrice: Number(parsed.offer.offer_price),
+      });
     }
 
     return {

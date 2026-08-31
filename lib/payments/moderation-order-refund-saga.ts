@@ -2,6 +2,7 @@ import {
   isGradingFaultParty,
   type GradingFaultParty,
 } from "@/lib/payments/auth-grading-fail-void-saga";
+import { enqueueRefundFailedEmail } from "@/lib/notifications/refund-emails";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -294,6 +295,15 @@ export async function runModerationOrderRefundSaga(input: {
       p_order_id: prepared.orderId,
       p_error: message,
       p_case_id: caseId,
+    });
+
+    const orderKind =
+      prepared.orderKind === "member_auth" ? "member" : "merchant";
+    await enqueueRefundFailedEmail({
+      orderKind,
+      orderId: prepared.orderId,
+      caseId,
+      errorMessage: message,
     });
 
     return { ok: false, error: message };

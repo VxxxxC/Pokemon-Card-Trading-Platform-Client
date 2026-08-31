@@ -13,6 +13,7 @@ import {
 } from "@/lib/storage/kyc-documents";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enqueueMerchantKycApplicationSubmittedEmail } from "@/lib/notifications/merchant-onboarding-emails";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -220,5 +221,6 @@ export async function submitMerchantKycApplication(
   revalidatePath("/profile/user/merchant-apply");
   revalidatePath("/profile/user");
   revalidatePath("/profile/merchant");
+  await enqueueMerchantKycApplicationSubmittedEmail(user.id);
   return null;
 }

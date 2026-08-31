@@ -14,6 +14,26 @@ import {
 import type { FpsPayoutRequestStatus } from "@/lib/admin-payouts/types";
 import { normalizeMemberFpsPayoutRequestStatus } from "@/lib/member-order/seller-payout";
 import {
+  enqueueB2cShippedBuyerEmail,
+  enqueueMemberOrderBuyerConfirmedSellerEmail,
+  enqueueMemberOrderCancelledEmails,
+  enqueueMerchantOrderBuyerConfirmedSellerEmail,
+  enqueueMerchantOrderCancelledEmails,
+  enqueueMerchantOrderShippedBuyerEmail,
+  enqueueOrderCompletedBuyerEmail,
+  enqueueOrderReviewInviteEmails,
+} from "@/lib/notifications/order-emails";
+import {
+  enqueueP2pMeetupCompletedCounterpartyEmail,
+  enqueueP2pMeetupArrangedEmails,
+} from "@/lib/notifications/p2p-order-emails";
+import {
+  enqueueB2cInboundShippedBuyerEmail,
+  enqueueB2cBuyerConfirmedMerchantEmail,
+  enqueueC2cBuyerConfirmedSellerEmail,
+  enqueueC2cInboundShippedBuyerEmail,
+} from "@/lib/notifications/grading-emails";
+import {
   rpcCancelMemberOrder,
   rpcCompleteMemberOrder,
 } from "@/lib/member-order/member-order-rpc";
@@ -2423,6 +2443,8 @@ export async function cancelMemberOrder(
     revalidateHomeListingsCache();
     revalidateMemberOrderPaths(trimmedOrderId);
 
+    await enqueueMemberOrderCancelledEmails(trimmedOrderId);
+
     return { success: true };
   } catch (error) {
     const message =
@@ -2524,6 +2546,8 @@ export async function cancelMerchantAuthOrder(
     revalidateHomeListingsCache();
     revalidateMerchantOrderPaths(trimmedOrderId);
 
+    await enqueueMerchantOrderCancelledEmails(trimmedOrderId);
+
     return { success: true };
   } catch (error) {
     const message =
@@ -2602,6 +2626,11 @@ export async function submitMerchantLogistics(
     revalidatePath("/profile/merchant/trading");
     revalidateMerchantOrderPaths(trimmedOrderId);
 
+    await enqueueB2cInboundShippedBuyerEmail(trimmedOrderId, {
+      trackingNo: trimmedTracking,
+      courierName: trimmedCourier,
+    });
+
     return { success: true };
   } catch (error) {
     console.error("[submitMerchantLogistics]", error);
@@ -2670,6 +2699,15 @@ export async function submitMerchantDirectFulfillment(
     revalidateMerchantOrderPaths(trimmedOrderId);
     revalidateMemberOrderPaths(trimmedOrderId);
 
+    await enqueueMerchantOrderShippedBuyerEmail(trimmedOrderId, {
+      trackingNo: trimmedTracking,
+      courierName: trimmedCourier,
+    });
+    await enqueueB2cShippedBuyerEmail(trimmedOrderId, {
+      trackingNo: trimmedTracking,
+      courierName: trimmedCourier,
+    });
+
     return { success: true };
   } catch (error) {
     console.error("[submitMerchantDirectFulfillment]", error);
@@ -2732,6 +2770,22 @@ export async function completeMerchantOrder(
     revalidateHomeListingsCache();
     revalidateMerchantOrderPaths(trimmedOrderId);
     revalidateMemberOrderPaths(trimmedOrderId);
+
+    await enqueueOrderCompletedBuyerEmail(trimmedOrderId, "merchant");
+    await enqueueOrderReviewInviteEmails(trimmedOrderId, "merchant");
+
+    const admin = createAdminClient();
+    const { data: merchantOrder } = await admin
+      .from("merchant_orders")
+      .select("use_authentication")
+      .eq("id", trimmedOrderId)
+      .maybeSingle<{ use_authentication: boolean | null }>();
+
+    if (merchantOrder?.use_authentication) {
+      await enqueueB2cBuyerConfirmedMerchantEmail(trimmedOrderId);
+    } else {
+      await enqueueMerchantOrderBuyerConfirmedSellerEmail(trimmedOrderId);
+    }
 
     return { success: true };
   } catch (error) {
@@ -2891,6 +2945,10 @@ export async function completeMemberOrder(
 
     revalidateMemberOrderPaths(trimmedOrderId);
 
+    await enqueueOrderCompletedBuyerEmail(trimmedOrderId, "member");
+    await enqueueP2pMeetupCompletedCounterpartyEmail(trimmedOrderId);
+    await enqueueOrderReviewInviteEmails(trimmedOrderId, "member");
+
     return { success: true };
   } catch (error) {
     const message =
@@ -2964,6 +3022,11 @@ export async function submitInboundTracking(
 
     revalidateMemberOrderPaths(trimmedOrderId);
 
+    await enqueueC2cInboundShippedBuyerEmail(trimmedOrderId, {
+      trackingNo: trimmedTracking,
+      courierName: trimmedCourier,
+    });
+
     return { success: true };
   } catch (error) {
     console.error("[submitInboundTracking]", error);
@@ -3016,6 +3079,23 @@ export async function confirmBuyerReceived(
     }
 
     revalidateMemberOrderPaths(trimmedOrderId);
+
+    await enqueueOrderCompletedBuyerEmail(trimmedOrderId, "member");
+
+    const admin = createAdminClient();
+    const { data: memberOrder } = await admin
+      .from("member_orders")
+      .select("use_authentication")
+      .eq("id", trimmedOrderId)
+      .maybeSingle<{ use_authentication: boolean | null }>();
+
+    if (memberOrder?.use_authentication) {
+      await enqueueC2cBuyerConfirmedSellerEmail(trimmedOrderId);
+    } else {
+      await enqueueMemberOrderBuyerConfirmedSellerEmail(trimmedOrderId);
+    }
+
+    await enqueueOrderReviewInviteEmails(trimmedOrderId, "member");
 
     return { success: true };
   } catch (error) {

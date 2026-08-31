@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   adjustAdminModerationCaseScore,
   previewModerationOrderRefund,
+  requestAdminModerationEvidence,
   resolveAdminModerationCase,
   retryModerationOrderRefund,
 } from "@/app/actions/admin-moderation";
@@ -54,6 +55,7 @@ import ModerationOrderContextPanel from "./ModerationOrderContextPanel";
 import ModerationReportSummaryPanel from "./ModerationReportSummaryPanel";
 import ModerationSubjectHistoryPanel from "./ModerationSubjectHistoryPanel";
 import {
+  BTN_OUTLINE_CLASS,
   BTN_PRIMARY_CLASS,
   INPUT_CLASS,
   META_TEXT_CLASS,
@@ -134,6 +136,11 @@ export default function DisputeDetailClient({
   const [previewFetchGeneration, setPreviewFetchGeneration] = useState(0);
   const [previewResolvedGeneration, setPreviewResolvedGeneration] = useState(0);
   const [isRetryPending, startRetryTransition] = useTransition();
+  const [isEvidenceRequestPending, startEvidenceRequestTransition] = useTransition();
+  const [evidenceRequestTarget, setEvidenceRequestTarget] = useState<
+    "subject" | "reporter" | ""
+  >("");
+  const [evidenceRequestMessage, setEvidenceRequestMessage] = useState("");
 
   const eligibleRefundOrders = relatedOrders.filter((order) => order.refundEligible);
 
@@ -241,6 +248,29 @@ export default function DisputeDetailClient({
 
       toast.success("風控分數已更新");
       router.refresh();
+    });
+  };
+
+  const handleRequestEvidence = () => {
+    if (!evidenceRequestTarget) {
+      toast.error("請選擇通知對象");
+      return;
+    }
+
+    startEvidenceRequestTransition(async () => {
+      const result = await requestAdminModerationEvidence({
+        caseId: caseDetail.id,
+        targetRole: evidenceRequestTarget,
+        message: evidenceRequestMessage.trim() || undefined,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("已發送補充證據通知郵件");
+      setEvidenceRequestMessage("");
     });
   };
 
@@ -561,6 +591,70 @@ export default function DisputeDetailClient({
               });
             }}
           />
+
+          {caseOpen ? (
+            <section className={SECTION_BLOCK_CLASS}>
+              <h2 className={SECTION_TITLE_CLASS}>要求補充證據</h2>
+              <p className="mb-4 font-sans text-[12px] text-text-secondary">
+                案件審查中向被舉報人或舉報人發送電郵，請其補充證據；不會關閉案件。
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                    通知對象
+                  </label>
+                  <Select
+                    value={evidenceRequestTarget}
+                    onValueChange={(value) =>
+                      setEvidenceRequestTarget(value as "subject" | "reporter")
+                    }
+                    disabled={isEvidenceRequestPending}
+                  >
+                    <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                      <SelectValue placeholder="請選擇通知對象" />
+                    </SelectTrigger>
+                    <SelectContent className={SELECT_CONTENT_CLASS}>
+                      <SelectItem value="subject" className={SELECT_ITEM_CLASS}>
+                        被舉報人（{caseDetail.subject.displayName}）
+                      </SelectItem>
+                      <SelectItem
+                        value="reporter"
+                        className={SELECT_ITEM_CLASS}
+                        disabled={!primaryReporter}
+                      >
+                        舉報人
+                        {primaryReporter
+                          ? `（${primaryReporter.displayName}）`
+                          : "（無舉報人）"}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block font-sans text-[12px] font-medium text-text-secondary">
+                    補充說明（選填）
+                  </label>
+                  <Textarea
+                    name="evidenceRequestMessage"
+                    rows={3}
+                    placeholder="請說明需要補充的證據或資料"
+                    value={evidenceRequestMessage}
+                    onChange={(event) => setEvidenceRequestMessage(event.target.value)}
+                    disabled={isEvidenceRequestPending}
+                    className={TEXTAREA_CLASS}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  disabled={isEvidenceRequestPending || !evidenceRequestTarget}
+                  onClick={handleRequestEvidence}
+                  className={BTN_OUTLINE_CLASS}
+                >
+                  {isEvidenceRequestPending ? "發送中…" : "發送補充證據通知"}
+                </Button>
+              </div>
+            </section>
+          ) : null}
 
           {caseOpen ? (
             <section className={SECTION_BLOCK_CLASS}>

@@ -13,6 +13,25 @@ import {
   finalizeGoodsCaptureFromWebhook,
   isGoodsCapturePaymentIntent,
 } from "@/lib/payments/goods-capture-saga";
+import {
+  enqueueB2cPaymentMerchantActionEmail,
+  enqueueMemberOrderPaymentConfirmedEmails,
+  enqueueMerchantOrderPaymentConfirmedEmails,
+} from "@/lib/notifications/order-emails";
+import {
+  enqueueB2cGradingFailSettlementMerchantEmail,
+  enqueueB2cMerchantShipInEmail,
+  enqueueC2cShipToPlatformEmail,
+  enqueueC2cGradingRefundEmail,
+} from "@/lib/notifications/grading-emails";
+import { enqueueMerchantConnectEnabledEmail, enqueueMerchantConnectActionRequiredEmail } from "@/lib/notifications/merchant-onboarding-emails";
+import { enqueueMerchantRecoveryDueEmail } from "@/lib/notifications/payout-emails";
+import { enqueueRefundCompletedFromStripeRefund, enqueueRefundFailedFromStripeRefund } from "@/lib/notifications/refund-emails";
+import { buildDailyReminderIdempotencySuffix } from "@/lib/notifications/reminder-idempotency";
+import {
+  stripeConnectAccountNeedsAction,
+  summarizeStripeConnectActionReason,
+} from "@/lib/stripe/connect-action-required";
 import { stripe } from "@/lib/stripe";
 import {
   processMerchantPaymentIntentCanceled,
@@ -157,14 +176,39 @@ async function handleAccountUpdated(
   admin: AdminSupabaseClient,
   account: Stripe.Account,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  return syncKycConnectFlagsFromStripeAccount(admin, account);
+  const result = await syncKycConnectFlagsFromStripeAccount(admin, account);
+  if (!result.ok) {
+    return result;
+  }
+
+  if (account.charges_enabled === true && account.payouts_enabled === true) {
+    await enqueueMerchantConnectEnabledEmail(account.id);
+  } else if (stripeConnectAccountNeedsAction(account)) {
+    await enqueueMerchantConnectActionRequiredEmail({
+      stripeAccountId: account.id,
+      actionReason: summarizeStripeConnectActionReason(account),
+      idempotencyDateSuffix: buildDailyReminderIdempotencySuffix(),
+    });
+  }
+  return { ok: true };
 }
 
 async function handleMerchantPaymentSucceeded(
   admin: AdminSupabaseClient,
   paymentIntent: Stripe.PaymentIntent,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  return processMerchantPaymentIntentSucceeded(admin, paymentIntent);
+  const result = await processMerchantPaymentIntentSucceeded(admin, paymentIntent);
+  if (!result.ok) {
+    return result;
+  }
+
+  const parsed = readMerchantOrderMetadata(paymentIntent);
+  if (parsed) {
+    await enqueueMerchantOrderPaymentConfirmedEmails(parsed.orderId);
+    await enqueueB2cPaymentMerchantActionEmail(parsed.orderId);
+  }
+
+  return { ok: true };
 }
 
 async function handleMemberAuthPaymentAuthorized(
@@ -197,6 +241,9 @@ async function handleMemberAuthPaymentAuthorized(
     );
     return { ok: false, error: "member auth order authorize failed" };
   }
+
+  await enqueueMemberOrderPaymentConfirmedEmails(parsed.orderId);
+  await enqueueC2cShipToPlatformEmail(parsed.orderId);
 
   return { ok: true };
 }
@@ -235,6 +282,10 @@ async function handleMerchantAuthPaymentAuthorized(
     );
     return { ok: false, error: "merchant auth order authorize failed" };
   }
+
+  await enqueueMerchantOrderPaymentConfirmedEmails(parsed.orderId);
+  await enqueueB2cPaymentMerchantActionEmail(parsed.orderId);
+  await enqueueB2cMerchantShipInEmail(parsed.orderId);
 
   return { ok: true };
 }
@@ -326,6 +377,13 @@ async function handleAuthGradingFailCaptureSucceeded(
       result.error,
     );
     return { ok: false, error: "auth grading fail finalize failed" };
+  }
+
+  if (orderKind === "member") {
+    await enqueueC2cGradingRefundEmail(orderId);
+  } else {
+    await enqueueB2cGradingFailSettlementMerchantEmail(orderId);
+    await enqueueMerchantRecoveryDueEmail(orderId);
   }
 
   return { ok: true };
@@ -654,9 +712,10 @@ export async function POST(request: Request) {
       }
 
       case "refund.created": {
+        const refund = event.data.object as Stripe.Refund;
         const result = await handleAuthGradingRefundCreated(
           createAdminClient(),
-          event.data.object as Stripe.Refund,
+          refund,
         );
         if (!result.ok) {
           return NextResponse.json(
@@ -664,6 +723,8 @@ export async function POST(request: Request) {
             { status: 500 },
           );
         }
+        await enqueueRefundCompletedFromStripeRefund(refund);
+        await enqueueRefundFailedFromStripeRefund(refund);
         break;
       }
 

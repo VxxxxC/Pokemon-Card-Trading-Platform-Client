@@ -11,6 +11,22 @@ import {
   type GradingFaultParty,
 } from "@/lib/payments/auth-grading-fail-void-saga";
 import { isAuthPassGradingOptionId } from "@/lib/grading/options";
+import {
+  enqueueB2cGradingFailSettlementMerchantEmail,
+  enqueueB2cInboundShippedBuyerEmail,
+  enqueueB2cBuyerConfirmedMerchantEmail,
+  enqueueC2cBuyerConfirmedSellerEmail,
+  enqueueC2cInboundShippedBuyerEmail,
+  enqueueMemberGradingFailedEmails,
+  enqueueMemberGradingIntakeEmails,
+  enqueueMemberGradingPassedShippedEmails,
+  enqueueMerchantGradingFailedEmails,
+  enqueueMerchantGradingIntakeEmails,
+  enqueueMerchantGradingPassedShippedEmails,
+  enqueueC2cPayoutReleasedSellerEmail,
+  enqueueC2cSellerReturnEmail,
+} from "@/lib/notifications/grading-emails";
+import { enqueueMerchantRecoveryDueEmail } from "@/lib/notifications/payout-emails";
 import { runGoodsCaptureSaga } from "@/lib/payments/goods-capture-saga";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -450,6 +466,11 @@ export async function adminConfirmGradingIntake(input: {
     }
 
     revalidateGradingPaths(input.orderKind, orderId);
+    if (input.orderKind === "member") {
+      await enqueueMemberGradingIntakeEmails(orderId);
+    } else {
+      await enqueueMerchantGradingIntakeEmails(orderId);
+    }
     return { success: true, data: { applied: true } };
   } catch (error) {
     console.error("[adminConfirmGradingIntake]", error);
@@ -532,6 +553,15 @@ export async function adminSubmitGradingOutbound(input: {
     }
 
     revalidateGradingPaths(input.orderKind, orderId);
+    if (input.orderKind === "member") {
+      await enqueueMemberGradingPassedShippedEmails(orderId, {
+        trackingNo,
+      });
+    } else {
+      await enqueueMerchantGradingPassedShippedEmails(orderId, {
+        trackingNo,
+      });
+    }
     return { success: true, data: { applied: true } };
   } catch (error) {
     console.error("[adminSubmitGradingOutbound]", error);
@@ -587,6 +617,13 @@ export async function adminFailGradingAndRefund(input: {
     }
 
     revalidateGradingPaths(input.orderKind, orderId);
+    if (input.orderKind === "member") {
+      await enqueueMemberGradingFailedEmails(orderId);
+    } else {
+      await enqueueMerchantGradingFailedEmails(orderId);
+      await enqueueB2cGradingFailSettlementMerchantEmail(orderId);
+      await enqueueMerchantRecoveryDueEmail(orderId);
+    }
     return { success: true, data: { applied: true } };
   } catch (error) {
     console.error("[adminFailGradingAndRefund]", error);
@@ -625,6 +662,9 @@ export async function adminClearSellerSettlement(input: {
     }
 
     revalidateGradingPaths(input.orderKind, orderId);
+    if (input.orderKind === "member") {
+      await enqueueC2cPayoutReleasedSellerEmail(orderId);
+    }
     return { success: true, data: { applied: true } };
   } catch (error) {
     console.error("[adminClearSellerSettlement]", error);
@@ -668,6 +708,9 @@ export async function adminSubmitSellerReturnTracking(input: {
     }
 
     revalidateGradingPaths(input.orderKind, orderId);
+    if (input.orderKind === "member") {
+      await enqueueC2cSellerReturnEmail(orderId);
+    }
     return { success: true, data: { applied: true } };
   } catch (error) {
     console.error("[adminSubmitSellerReturnTracking]", error);

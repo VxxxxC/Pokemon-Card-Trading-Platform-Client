@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getOptionalAuthUser, resolveCurrentAuthRole } from "@/lib/auth/session";
+import {
+  buildConfirmEmailPath,
+  isUserEmailConfirmed,
+} from "@/lib/auth/email-confirmation";
 import { AuthForm } from "./AuthForm";
 
 export const metadata: Metadata = {
@@ -124,6 +128,11 @@ export default async function AuthPage({
   if (roleParam === "merchant") {
     const user = await getOptionalAuthUser();
     if (user) {
+      if (!isUserEmailConfirmed(user)) {
+        redirect(
+          `${buildConfirmEmailPath(user.email)}&next=${encodeURIComponent("/profile/user/merchant-apply")}`,
+        );
+      }
       const authRole = await resolveCurrentAuthRole();
       redirect(
         authRole === "MERCHANT"

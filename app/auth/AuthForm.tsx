@@ -194,11 +194,45 @@ export function AuthForm() {
 
   // ── 🟢 核心狀態加裝：商戶審批成功攔截看板 ──
   const [isMerchantSubmitted, setIsMerchantSubmitted] = useState(false);
+  const [authCallbackNotice, setAuthCallbackNotice] = useState<string | null>(
+    null,
+  );
 
   // ── 🟢 終極破局：網址參數雷達自動追蹤與切換 ──
   useEffect(() => {
     if (!searchParams) return;
     const role = searchParams.get("role");
+    const error = searchParams.get("error");
+    const email = searchParams.get("email");
+
+    if (error === "auth_callback_expired") {
+      startTransition(() => {
+        setAuthCallbackNotice(
+          "驗證連結已失效或已使用，請重新寄送驗證信或登入。",
+        );
+        if (email) {
+          setRegisterEmail(email);
+          setTab("register");
+        }
+      });
+      return;
+    }
+
+    if (error === "auth_callback") {
+      startTransition(() => {
+        setAuthCallbackNotice(
+          "無法完成電郵驗證。請用 http://127.0.0.1:3000 開啟網站後重試，或重新寄送驗證信。",
+        );
+        if (email) {
+          setRegisterEmail(email);
+        }
+      });
+      return;
+    }
+
+    startTransition(() => {
+      setAuthCallbackNotice(null);
+    });
 
     // 商戶深連結：切換至註冊並進入商戶入駐模式
     if (role === "merchant") {
@@ -379,6 +413,12 @@ export function AuthForm() {
             免費註冊
           </button>
         </div>
+
+        {authCallbackNotice ? (
+          <p className="mb-4 font-sans text-[12px] text-warning leading-relaxed">
+            {authCallbackNotice}
+          </p>
+        ) : null}
       </div>
 
       {/* ── Login form ─────────────────────────────────────────────────────── */}

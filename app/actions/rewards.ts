@@ -24,6 +24,7 @@ import {
   resolveEffectiveCheckInStreak,
 } from "@/lib/rewards/check-in-streak";
 import { createClient } from "@/lib/supabase/server";
+import { enqueuePointsRedemptionGrantedEmail } from "@/lib/notifications/rewards-emails";
 
 type GamificationStatsResult =
   | {
@@ -672,6 +673,13 @@ export async function redeemPointsCatalogItem(
     if (!payload?.success) {
       return { success: false, error: "兌換失敗" };
     }
+
+    await enqueuePointsRedemptionGrantedEmail({
+      userId: user.id,
+      catalogId: trimmedId,
+      userRewardId: String(payload.user_reward_id ?? ""),
+      pointsRedeemed: Number(payload.points_redeemed ?? 0),
+    });
 
     return {
       success: true,

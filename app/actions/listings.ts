@@ -44,6 +44,7 @@ import {
   isBunnyStorageConfigured,
   uploadListingImageToBunny,
 } from "@/lib/storage/bunny";
+import { enqueueOfferExpiredEmailsForListing } from "@/lib/notifications/offer-emails";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -596,6 +597,13 @@ export async function updateCardListing(
 
     if (replacedKeys.length > 0) {
       await deleteListingImagesFromBunny(replacedKeys);
+    }
+
+    if (existingListing.status === "active" && !fields.isActive) {
+      await enqueueOfferExpiredEmailsForListing({
+        listingId: fields.listingId,
+        reason: "listing_inactive",
+      });
     }
 
     revalidatePath("/marketplace");

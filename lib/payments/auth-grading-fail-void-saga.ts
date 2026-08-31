@@ -9,6 +9,7 @@ import {
   type AuthGradingFailVoidMode,
 } from "@/lib/payments/stripe-capture-policy";
 import { ensureAuthEscrowAuthorizationFresh } from "@/lib/payments/auth-authorization-refresh";
+import { enqueueC2cGradingRefundEmail } from "@/lib/notifications/grading-emails";
 
 export type GradingFaultParty =
   | "buyer"
@@ -290,6 +291,10 @@ export async function runAuthGradingFailVoidSaga(input: {
       p_error: finalizeError.message,
     });
     return { ok: false, error: finalizeError.message };
+  }
+
+  if (input.orderKind === "member") {
+    await enqueueC2cGradingRefundEmail(input.orderId);
   }
 
   return { ok: true };

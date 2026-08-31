@@ -7,6 +7,11 @@ import {
   getRoleHomePath,
   isPathAllowedForRole,
 } from "@/lib/auth/roles";
+import { shouldRedirectAuthCallback } from "@/lib/auth/auth-callback-redirect";
+import {
+  getBrowserHostname,
+  getNormalizedBrowserHostname,
+} from "@/lib/auth/request-host";
 import { updateSession } from "@/lib/supabase/middleware";
 
 type ProfileRoleRow = Pick<Tables<"profiles">, "role">;
@@ -25,6 +30,20 @@ type ModerationAccessRpcClient = {
 };
 
 export async function proxy(request: NextRequest) {
+  if (shouldRedirectAuthCallback(request)) {
+    const url = request.nextUrl.clone();
+    url.hostname = getNormalizedBrowserHostname(request);
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
+
+  // Dev server binds 0.0.0.0; nextUrl.hostname may be 0.0.0.0 while Host is 127.0.0.1.
+  if (getBrowserHostname(request) === "0.0.0.0") {
+    const url = request.nextUrl.clone();
+    url.hostname = "127.0.0.1";
+    return NextResponse.redirect(url);
+  }
+
   const { supabase, user, response } = await updateSession(request);
 
   let role: AuthRole = "GUEST";

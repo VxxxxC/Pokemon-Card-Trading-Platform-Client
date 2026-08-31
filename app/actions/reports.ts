@@ -12,6 +12,7 @@ import type {
   SubmitUserReportRpcResult,
 } from "@/lib/moderation/types";
 import { reportOutcomeMessage } from "@/lib/moderation/report-outcome-copy";
+import { enqueueModerationReportReceivedEmail } from "@/lib/notifications/moderation-emails";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/types/supabase";
@@ -257,6 +258,12 @@ export async function submitUserReport(
     ) {
       return { success: false, error: "提交舉報回傳資料格式異常" };
     }
+
+    await enqueueModerationReportReceivedEmail({
+      reporterId: user.id,
+      reportId: payload.report_id,
+      caseNumber: payload.case_number,
+    });
 
     return {
       success: true,

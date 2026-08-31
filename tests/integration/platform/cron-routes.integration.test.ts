@@ -55,6 +55,7 @@ import { GET as getMemberFpsPayoutReady } from "@/app/api/cron/member-fps-payout
 import { GET as getMerchantConnectPayoutReady } from "@/app/api/cron/merchant-connect-payout-ready/route";
 import { GET as getIngestPlatformTrades } from "@/app/api/cron/ingest-platform-trades/route";
 import { GET as getAggregatePrices } from "@/app/api/cron/aggregate-prices/route";
+import { GET as getProcessEmailOutbox } from "@/app/api/cron/process-email-outbox/route";
 
 type CronCase = {
   id: string;
@@ -168,11 +169,30 @@ const CRON_CASES: CronCase[] = [
       });
     },
   },
+  {
+    id: "TC-M07",
+    path: "/api/cron/process-email-outbox",
+    handler: getProcessEmailOutbox,
+    setup: () => {
+      const limit = vi.fn().mockResolvedValue({ data: [], error: null });
+      const order = vi.fn().mockReturnValue({ limit });
+      const lte = vi.fn().mockReturnValue({ order });
+      const inFn = vi.fn().mockReturnValue({ lte });
+      const select = vi.fn().mockReturnValue({ in: inFn });
+      fromMock.mockReturnValue({ select });
+    },
+    assertBody: (body) => {
+      expect(body.success).toBe(true);
+      expect(body.scanned).toBe(0);
+    },
+  },
 ];
 
-describe("cron HTTP routes (TC-M01–M06)", () => {
+describe("cron HTTP routes (TC-M01–M07)", () => {
   beforeAll(() => {
     process.env.CRON_SECRET = CRON_SECRET;
+    process.env.RESEND_API_KEY =
+      process.env.RESEND_API_KEY ?? "re_cron_route_integration_test";
     process.env.NEXT_PUBLIC_SUPABASE_URL =
       process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://example.supabase.co";
     process.env.SUPABASE_SERVICE_ROLE_KEY =
