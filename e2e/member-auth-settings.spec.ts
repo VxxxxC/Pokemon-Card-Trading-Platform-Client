@@ -37,7 +37,7 @@ test.describe("Member auth redirect and settings", () => {
     });
     await page.getByRole("button", { name: /立即購買/ }).click();
 
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toBeVisible({
+    await expect(page.getByText("登入後方可交易")).toBeVisible({
       timeout: 15_000,
     });
     await expect(
@@ -64,7 +64,7 @@ test.describe("Member auth redirect and settings", () => {
     await page.goto(detailPath, { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
     await page.getByRole("button", { name: /立即購買/ }).click();
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
+    await expect(page.getByText("登入後方可交易")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "確認立即購買" }),
     ).toBeVisible({

@@ -46,7 +46,7 @@ test.describe("P-E05 merchant buy-now UI", () => {
     if (!(await openMerchantProductDetail(page))) return;
 
     await page.getByRole("button", { name: /立即購買/ }).click();
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toBeVisible();
+    await expect(page.getByText("登入後方可交易")).toBeVisible();
     await expect(page.getByRole("alertdialog")).toContainText("登入 / 註冊");
   });
 
@@ -56,7 +56,7 @@ test.describe("P-E05 merchant buy-now UI", () => {
     if (!(await openMerchantProductDetail(page))) return;
 
     await page.getByRole("button", { name: /立即購買/ }).click();
-    await expect(page.getByText("您目前正以遊客身份觀盤")).toHaveCount(0);
+    await expect(page.getByText("登入後方可交易")).toHaveCount(0);
     await expect(
       page.getByRole("heading", { name: "確認立即購買" }),
     ).toBeVisible();
