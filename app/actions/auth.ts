@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { getRoleDefaultLandingPath, getRoleSettingsPath } from "@/lib/auth/roles";
 import { buildConfirmEmailPath } from "@/lib/auth/email-confirmation";
@@ -413,7 +414,7 @@ export async function completeForgotPassword(
     return mapPasswordUpdateAuthError(error.message);
   }
 
-  await notifyPasswordChanged(user);
+  after(() => notifyPasswordChanged(user));
 
   const role = await resolveCurrentAuthRole();
   redirect(`${getRoleDefaultLandingPath(role)}?passwordUpdated=1`);
@@ -462,7 +463,7 @@ export async function updatePasswordFromProfile(
     return mapPasswordUpdateAuthError(error.message);
   }
 
-  await notifyPasswordChanged(user);
+  after(() => notifyPasswordChanged(user));
 
   const role = await resolveCurrentAuthRole();
   redirect(`${getRoleSettingsPath(role)}?passwordUpdated=1`);

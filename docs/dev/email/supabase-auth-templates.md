@@ -65,11 +65,15 @@ bunx supabase config push   # 若 storage 402 失败，auth 可能已部分更�
 
 1. **Supabase Site URL** 設 `http://127.0.0.1:3000`（唔好用 `0.0.0.0`）
 2. **Redirect URLs** 加 `http://127.0.0.1:3000/auth/callback`
-3. **重新貼** `confirm-signup.html`（現用 `token_hash` 直連 callback，唔靠 PKCE `code`）
+3. **重新貼** 模板 HTML（用 `token_hash` 直連 `/auth/callback`；**唔用** `{{ .ConfirmationURL }}` / `supabase.co/auth/v1/verify`）
 4. 瀏覽器用 **http://127.0.0.1:3000** 開站（唔用 `0.0.0.0`）
 
-新 confirm link 應類似：
-`http://127.0.0.1:3000/auth/callback?token_hash=...&type=signup&next=/profile/user`
+**正確連結格式（SSR + PKCE）：**
+
+- 註冊：`http://127.0.0.1:3000/auth/callback?token_hash=pkce_...&type=signup&next=/profile/user`
+- 重設密碼：`http://127.0.0.1:3000/auth/callback?token_hash=pkce_...&type=recovery&next=/auth/forgot-password/complete`
+
+`pkce_` token 必須由 app callback 呼叫 `verifyOtp`（唔係 `exchangeCodeForSession`）。
 
 ## 进 Spam 箱？
 

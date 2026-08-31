@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
-import type { EmailOtpType } from "@supabase/supabase-js";
 import { normalizePublicOrigin } from "@/lib/auth/normalize-public-origin";
+import {
+  establishAuthCallbackSession,
+  shouldRedirectToPasswordResetComplete,
+} from "@/lib/auth/auth-callback-session";
 import { getRoleDefaultLandingPath } from "@/lib/auth/roles";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,25 +94,14 @@ export async function GET(request: Request): Promise<NextResponse> {
   const pendingResponse = new NextResponse();
   const supabase = await createRouteHandlerClient(pendingResponse);
 
-  let authErrorMessage: string | null = null;
+  const sessionResult = await establishAuthCallbackSession(supabase, {
+    code,
+    tokenHash,
+    type,
+  });
 
-  if (tokenHash && type) {
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: type as EmailOtpType,
-    });
-    if (error) {
-      authErrorMessage = error.message;
-    }
-  } else if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      authErrorMessage = error.message;
-    }
-  }
-
-  if (authErrorMessage) {
-    const normalized = authErrorMessage.toLowerCase();
+  if (!sessionResult.ok) {
+    const normalized = sessionResult.message.toLowerCase();
     const reason =
       normalized.includes("expired") || normalized.includes("invalid")
         ? "auth_callback_expired"
@@ -122,6 +114,12 @@ export async function GET(request: Request): Promise<NextResponse> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (shouldRedirectToPasswordResetComplete(type, nextPath)) {
+    const finalResponse = NextResponse.redirect(new URL(nextPath, origin).toString());
+    copyResponseCookies(pendingResponse, finalResponse);
+    return finalResponse;
+  }
 
   if (!user?.email_confirmed_at) {
     return NextResponse.redirect(
