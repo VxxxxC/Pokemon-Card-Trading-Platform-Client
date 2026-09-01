@@ -34,6 +34,7 @@ import type {
   ViolationPersona,
 } from "@/lib/moderation/types";
 import { parseModerationRefundBreakdownPreview } from "@/lib/moderation/refund-breakdown-preview";
+import { enrichModerationSubjectPreviews } from "@/lib/moderation/resolve-subject-presentation";
 import {
   buildListingCdnUrl,
   getBunnyStorageConfig,
@@ -711,8 +712,9 @@ export async function searchAdminModerationCases(
   }
 
   try {
-    const supabase = asAdminModerationRpcClient(await createClient());
-    const { data, error } = await supabase.rpc("search_admin_moderation_cases", {
+    const supabase = await createClient();
+    const rpcClient = asAdminModerationRpcClient(supabase);
+    const { data, error } = await rpcClient.rpc("search_admin_moderation_cases", {
       p_status: normalizeSearchStatus(input.status),
       p_category: input.category ?? undefined,
       p_min_score: input.minScore ?? undefined,
@@ -730,6 +732,11 @@ export async function searchAdminModerationCases(
     if (!parsed) {
       return { success: false, error: "無法載入仲裁佇列" };
     }
+
+    await enrichModerationSubjectPreviews(
+      supabase,
+      parsed.rows.map((row) => ({ subject: row.subject })),
+    );
 
     return { success: true, data: parsed };
   } catch (error) {
@@ -752,8 +759,9 @@ export async function getAdminModerationCase(
   }
 
   try {
-    const supabase = asAdminModerationRpcClient(await createClient());
-    const { data, error } = await supabase.rpc(
+    const supabase = await createClient();
+    const rpcClient = asAdminModerationRpcClient(supabase);
+    const { data, error } = await rpcClient.rpc(
       "admin_get_moderation_case_bundle",
       { p_case_id: trimmedCaseId },
     );
@@ -767,6 +775,14 @@ export async function getAdminModerationCase(
     if (!parsed) {
       return { success: false, error: "找不到案件" };
     }
+
+    await enrichModerationSubjectPreviews(supabase, [
+      {
+        subject: parsed.case.subject,
+        violationPersona: parsed.case.violationPersona,
+        profileRole: parsed.case.subject.role,
+      },
+    ]);
 
     return { success: true, data: parsed };
   } catch (error) {
