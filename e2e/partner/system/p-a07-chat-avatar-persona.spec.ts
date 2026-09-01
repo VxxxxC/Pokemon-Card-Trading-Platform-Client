@@ -47,7 +47,7 @@ test.describe("P-A07 chat member avatar persona", () => {
     await expect(avatarLink).toBeVisible({ timeout: 20_000 });
     await expect(avatarLink).toHaveAttribute(
       "href",
-      new RegExp(`/profile/${buyerId}/?$`),
+      new RegExp(`/profile/${buyerId}\\?persona=member$`),
     );
     await avatarLink.click();
 

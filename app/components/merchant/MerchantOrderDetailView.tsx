@@ -185,41 +185,6 @@ export function MerchantOrderDetailView({
     const recoveryDeductionTotal =
       merchantOrder.recoveryDeductionTotal ?? 0;
 
-    // #region agent log
-    fetch(
-      "http://127.0.0.1:7625/ingest/dd5838b6-1aa4-4fc5-8100-f81b4ce987af",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "c2ae51",
-        },
-        body: JSON.stringify({
-          sessionId: "c2ae51",
-          runId: "b2c-payout-pre-fix",
-          hypothesisId: "H1-H2",
-          location: "MerchantOrderDetailView.tsx:stripeDisplay",
-          message: "seller payout breakdown snapshot",
-          data: {
-            orderId: merchantOrder.id,
-            isAuthOrder: Boolean(merchantOrder.requiresAuthentication),
-            itemSubtotal: merchantOrder.itemSubtotal,
-            directShippingFee,
-            sellerShippingReimbursement,
-            platformFee,
-            payoutAmount,
-            merchantPayoutAmount: merchantOrder.merchantPayoutAmount,
-            impliedFromRows:
-              merchantOrder.itemSubtotal +
-              sellerShippingReimbursement -
-              platformFee,
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ).catch(() => {});
-    // #endregion
-
     return {
       paymentIntentId: merchantOrder.stripePaymentIntentId,
       transferId: merchantOrder.stripeTransferId,

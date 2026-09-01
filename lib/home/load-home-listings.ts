@@ -35,18 +35,41 @@ type ListingRow = Pick<
 
 type ProfileRow = Pick<Tables<"profiles">, "id" | "display_name" | "role">;
 
+type MerchantShopRow = Pick<
+  Tables<"merchant_shops">,
+  "merchant_id" | "shop_name" | "shop_handle"
+>;
+
 const CATALOG_COLUMNS =
   "id, name_zh, name_en, name_ja, card_number, display_id, set_code, image_url, rarity";
+
+function resolveHomeSellerName(
+  profile: ProfileRow | undefined,
+  shop: MerchantShopRow | null | undefined,
+  persona: Tables<"listings">["seller_persona"],
+): string {
+  if (persona === "merchant") {
+    return (
+      shop?.shop_name?.trim() ||
+      shop?.shop_handle?.trim() ||
+      "認證商家"
+    );
+  }
+  return profile?.display_name?.trim() || "賣家";
+}
 
 function mapListingToCard(
   listing: ListingRow,
   catalog: CatalogRow | undefined,
   profile: ProfileRow | undefined,
+  shop: MerchantShopRow | null | undefined,
+  persona: Tables<"listings">["seller_persona"],
 ): HomeListingCard {
   const imageUrls = parseListingImageUrls(listing.images);
   const catalogImageUrl = catalog?.image_url?.trim() ?? null;
   const imageUrl =
     resolveListingCoverImageUrl(listing.images, catalogImageUrl) ?? "";
+  const sellerName = resolveHomeSellerName(profile, shop, persona);
 
   return {
     listingId: listing.id,
@@ -66,7 +89,7 @@ function mapListingToCard(
     imageUrl,
     catalogImageUrl,
     sellerId: listing.seller_id,
-    sellerName: profile?.display_name?.trim() || "賣家",
+    sellerName,
     sellerBadge:
       profile?.role === "merchant" ? "認證商家" : "C2C 賣家",
     photoCount: imageUrls.length,
@@ -112,12 +135,18 @@ export async function fetchHomeListingsByPersona(
   const productIds = [...new Set(listings.map((row) => row.product_id))];
   const sellerIds = [...new Set(listings.map((row) => row.seller_id))];
 
-  const [catalogResult, profileResult] = await Promise.all([
+  const [catalogResult, profileResult, shopResult] = await Promise.all([
     supabase.from("product_catalog").select(CATALOG_COLUMNS).in("id", productIds),
     supabase
       .from("profiles")
       .select("id, display_name, role")
       .in("id", sellerIds),
+    persona === "merchant"
+      ? supabase
+          .from("merchant_shops")
+          .select("merchant_id, shop_name, shop_handle")
+          .in("merchant_id", sellerIds)
+      : Promise.resolve({ data: [], error: null }),
   ]);
 
   if (catalogResult.error) {
@@ -130,11 +159,22 @@ export async function fetchHomeListingsByPersona(
     throw new Error("無法載入賣家資料");
   }
 
+  if (shopResult.error) {
+    console.error("[fetchHomeListingsByPersona]", shopResult.error.message);
+    throw new Error("無法載入商戶資料");
+  }
+
   const catalogById = new Map(
     ((catalogResult.data ?? []) as CatalogRow[]).map((row) => [row.id, row]),
   );
   const profileById = new Map(
     ((profileResult.data ?? []) as ProfileRow[]).map((row) => [row.id, row]),
+  );
+  const shopByMerchantId = new Map(
+    ((shopResult.data ?? []) as MerchantShopRow[]).map((row) => [
+      row.merchant_id,
+      row,
+    ]),
   );
 
   const cards = listings.map((listing) =>
@@ -142,6 +182,8 @@ export async function fetchHomeListingsByPersona(
       listing,
       catalogById.get(listing.product_id),
       profileById.get(listing.seller_id),
+      shopByMerchantId.get(listing.seller_id) ?? null,
+      persona,
     ),
   );
 

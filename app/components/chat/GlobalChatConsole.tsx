@@ -801,7 +801,7 @@ export function GlobalChatConsole({
   );
 
   const chatPartnerProfileHref = activeRoom
-    ? `/profile/${activeRoom.partnerId}?persona=member`
+    ? `/profile/${activeRoom.partnerId}?persona=${inferPartnerPersona(activeRoom)}`
     : "#";
 
   const handleChatPartnerProfileClick = useCallback(() => {
