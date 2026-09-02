@@ -6,9 +6,9 @@ export const ONESIGNAL_SDK_SW_SCRIPT_SRC =
   "/vendor/onesignal/v16/OneSignalSDK.sw.js";
 
 export const ONESIGNAL_SERVICE_WORKER_PATH =
-  "onesignal/OneSignalSDKWorker.js";
+  "/onesignal/OneSignalSDKWorker.js";
 
 export const ONESIGNAL_SERVICE_WORKER_UPDATER_PATH =
-  "onesignal/OneSignalSDKUpdaterWorker.js";
+  "/onesignal/OneSignalSDKUpdaterWorker.js";
 
 export const ONESIGNAL_SERVICE_WORKER_SCOPE = "/onesignal/";

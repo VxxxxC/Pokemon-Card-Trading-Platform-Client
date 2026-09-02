@@ -8,41 +8,56 @@ import {
   ONESIGNAL_SERVICE_WORKER_SCOPE,
   ONESIGNAL_SERVICE_WORKER_UPDATER_PATH,
 } from "@/lib/notifications/onesignal/client";
+import {
+  attachPushDevTools,
+  logPushClientDiagnostics,
+} from "@/lib/notifications/onesignal/dev-diagnostics";
 import { getOneSignalAppId } from "@/lib/notifications/onesignal/env";
 import type { OneSignalInitOptions } from "@/lib/notifications/onesignal/types";
 import { dispatchOneSignalReady } from "@/lib/notifications/onesignal/events";
 
+function bindForegroundNotifications(
+  oneSignal: NonNullable<typeof window.OneSignal>,
+): void {
+  oneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+    if (process.env.NODE_ENV === "development") {
+      console.info("[OneSignal] foregroundWillDisplay", {
+        id: event.notification.notificationId,
+        title: event.notification.title,
+      });
+    }
+
+    event.notification.display();
+  });
+}
+
 function runOneSignalInit(appId: string) {
   const initOptions: OneSignalInitOptions = {
     appId,
+    path: "/",
     allowLocalhostAsSecureOrigin: process.env.NODE_ENV === "development",
     serviceWorkerPath: ONESIGNAL_SERVICE_WORKER_PATH,
     serviceWorkerUpdaterPath: ONESIGNAL_SERVICE_WORKER_UPDATER_PATH,
     serviceWorkerParam: { scope: ONESIGNAL_SERVICE_WORKER_SCOPE },
+    serviceWorkerOverrideForTypical: true,
   };
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async (oneSignal) => {
+    if (process.env.NODE_ENV === "development") {
+      oneSignal.Debug.setLogLevel("trace");
+      attachPushDevTools();
+    }
+
     await oneSignal.init(initOptions);
+    bindForegroundNotifications(oneSignal);
     dispatchOneSignalReady();
 
     if (process.env.NODE_ENV !== "development") {
       return;
     }
 
-    console.info("[OneSignal] initialized", {
-      permission: Notification.permission,
-      note:
-        "workers stay empty until notification permission is granted (expected).",
-    });
-
-    window.setTimeout(async () => {
-      const workers = await navigator.serviceWorker.getRegistrations();
-      console.info("[OneSignal] service workers", {
-        permission: Notification.permission,
-        workers: workers.map((registration) => registration.scope),
-      });
-    }, 2000);
+    await logPushClientDiagnostics(oneSignal);
   });
 }
 

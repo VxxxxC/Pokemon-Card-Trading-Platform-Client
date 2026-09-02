@@ -12,6 +12,7 @@
     "supabase:types": "bunx supabase gen types typescript --linked > types/supabase.ts && bun run scripts/generate-supabase-md.ts",
     "email:generate-auth-templates": "bun run scripts/generate-supabase-auth-email-templates.ts",
     "test:email:phase1": "vitest run --config vitest.config.mts tests/unit/notifications/",
+    "test:push:phase1": "vitest run --config vitest.config.mts tests/unit/notifications/push-phase1-gate.test.ts",
     "test:email:phase2": "vitest run --config vitest.config.mts tests/unit/notifications/email-phase2-gate.test.ts",
     "test:email:phase3": "vitest run --config vitest.config.mts tests/unit/notifications/email-phase3-gate.test.ts",
     "test:email:phase4": "vitest run --config vitest.config.mts tests/unit/notifications/email-phase4-gate.test.ts",

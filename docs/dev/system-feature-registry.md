@@ -4,7 +4,8 @@
 > **North star：** 本表 **每一行 `進度` = ☑** + [staging-certification.md](./staging-certification.md) `test:staging:certify` 綠 = **Staging 可俾人用**。  
 > **主 SSOT：** [test-coverage-ssot.md](./test-coverage-ssot.md) v2.5（旅程 TC/J/SEC 與本表對照）  
 > **Partner UI：** [partner-regression.md](./partner-regression.md)（P-* 進度 · 補 T2 顯示層缺口）  
-> **Email 通知（規劃）：** [email-notifications-ssot.md](./email-notifications-ssot.md)
+> **Email 通知（規劃）：** [email-notifications-ssot.md](./email-notifications-ssot.md)  
+> **Push 通知（規劃）：** [push-notifications-ssot.md](./push-notifications-ssot.md)
 
 ---
 

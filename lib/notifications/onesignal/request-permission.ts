@@ -1,4 +1,5 @@
 import { dismissPushOptIn } from "@/lib/notifications/onesignal/prompt-state";
+import { syncOneSignalPushSubscription } from "@/lib/notifications/onesignal/sync-subscription";
 
 export async function requestOneSignalPushPermission(): Promise<boolean> {
   const oneSignal = window.OneSignal;
@@ -15,6 +16,10 @@ export async function requestOneSignalPushPermission(): Promise<boolean> {
 
   if (Notification.permission !== "default") {
     dismissPushOptIn();
+  }
+
+  if (granted) {
+    await syncOneSignalPushSubscription(oneSignal);
   }
 
   return granted;

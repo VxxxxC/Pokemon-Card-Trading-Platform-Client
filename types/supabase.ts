@@ -1433,6 +1433,69 @@ export type Database = {
           },
         ]
       }
+      notification_email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          event_id: string
+          html_body: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          max_attempts: number
+          next_attempt_at: string
+          payload: Json
+          resend_message_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["notification_email_status"]
+          subject: string
+          template_key: string
+          text_body: string | null
+          to_email: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          event_id: string
+          html_body: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_email_status"]
+          subject: string
+          template_key: string
+          text_body?: string | null
+          to_email: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          event_id?: string
+          html_body?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          max_attempts?: number
+          next_attempt_at?: string
+          payload?: Json
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["notification_email_status"]
+          subject?: string
+          template_key?: string
+          text_body?: string | null
+          to_email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       offers: {
         Row: {
           buyer_id: string
@@ -2662,6 +2725,36 @@ export type Database = {
           },
         ]
       }
+      user_push_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          onesignal_subscription_id: string
+          onesignal_user_id: string | null
+          opted_in: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          onesignal_subscription_id: string
+          onesignal_user_id?: string | null
+          opted_in?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          onesignal_subscription_id?: string
+          onesignal_user_id?: string | null
+          opted_in?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_rewards: {
         Row: {
           acknowledged_at: string | null
@@ -3045,6 +3138,13 @@ export type Database = {
         Args: { p_order_id: string; p_order_kind: string }
         Returns: Json
       }
+      fn_count_public_reviews_for_persona: {
+        Args: {
+          p_reviewee_id: string
+          p_reviewee_persona: Database["public"]["Enums"]["review_persona"]
+        }
+        Returns: number
+      }
       fn_effective_check_in_streak: {
         Args: { p_user_id: string }
         Returns: number
@@ -3177,6 +3277,12 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      fn_platform_auth_escrow_config: { Args: never; Returns: Json }
+      fn_platform_auth_fee_hkd: { Args: never; Returns: number }
+      fn_platform_auth_sf_leg_fee: { Args: never; Returns: number }
+      fn_platform_commission_rate: { Args: never; Returns: number }
+      fn_platform_financial_config: { Args: never; Returns: Json }
+      fn_platform_fps_manual_transfer_fee_hkd: { Args: never; Returns: number }
       fn_platform_home_banners: {
         Args: never
         Returns: {
@@ -3203,12 +3309,6 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      fn_platform_auth_escrow_config: { Args: never; Returns: Json }
-      fn_platform_auth_fee_hkd: { Args: never; Returns: number }
-      fn_platform_auth_sf_leg_fee: { Args: never; Returns: number }
-      fn_platform_commission_rate: { Args: never; Returns: number }
-      fn_platform_financial_config: { Args: never; Returns: Json }
-      fn_platform_fps_manual_transfer_fee_hkd: { Args: never; Returns: number }
       fn_preview_moderation_order_refund_breakdown: {
         Args: {
           p_carrier_liability_party?: string
@@ -3372,9 +3472,9 @@ export type Database = {
           seller_id: string
           seller_name: string
           seller_persona: Database["public"]["Enums"]["seller_persona_type"]
+          seller_public_review_count: number
           seller_rating: number
           seller_total_trades: number
-          seller_public_review_count: number
           total_count: number
           total_pages: number
           use_authentication: boolean
@@ -3477,10 +3577,6 @@ export type Database = {
         }
         Returns: Json
       }
-      rpc_admin_reward_activity_status_counts: {
-        Args: { p_search?: string }
-        Returns: Json
-      }
       rpc_admin_list_reward_campaigns: {
         Args: { p_page?: number; p_page_size?: number; p_status?: string }
         Returns: Json
@@ -3504,6 +3600,10 @@ export type Database = {
       }
       rpc_admin_reset_merchant_connect_payout_retry: {
         Args: { p_admin_id: string; p_order_id: string }
+        Returns: Json
+      }
+      rpc_admin_reward_activity_status_counts: {
+        Args: { p_search?: string }
         Returns: Json
       }
       rpc_admin_set_fps_payout_request_status: {
@@ -3591,7 +3691,7 @@ export type Database = {
         Returns: Json
       }
       rpc_cancel_merchant_auth_order: {
-        Args: { p_order_id: string; p_merchant_id: string }
+        Args: { p_merchant_id: string; p_order_id: string }
         Returns: Json
       }
       rpc_claim_flash_reward: { Args: { p_campaign_id: string }; Returns: Json }
@@ -3631,6 +3731,14 @@ export type Database = {
         Args: { p_order_id: string }
         Returns: Json
       }
+      rpc_e2e_clear_unsettled_grading_recovery: {
+        Args: { p_merchant_id: string }
+        Returns: Json
+      }
+      rpc_e2e_is_merchant_payout_hold_elapsed: {
+        Args: { p_order_id: string }
+        Returns: boolean
+      }
       rpc_e2e_reset_listing_trading_fixture: {
         Args: { p_buyer_id: string; p_listing_id: string; p_seller_id: string }
         Returns: Json
@@ -3647,6 +3755,14 @@ export type Database = {
         }
         Returns: string
       }
+      rpc_e2e_seed_merchant_auth_confirm_guard_order: {
+        Args: {
+          p_buyer_id: string
+          p_listing_id: string
+          p_payment_intent_suffix?: string
+        }
+        Returns: string
+      }
       rpc_e2e_seed_merchant_auth_refund_eligible_order: {
         Args: {
           p_buyer_id: string
@@ -3656,14 +3772,6 @@ export type Database = {
         Returns: string
       }
       rpc_e2e_seed_merchant_direct_refund_eligible_order: {
-        Args: {
-          p_buyer_id: string
-          p_listing_id: string
-          p_payment_intent_suffix?: string
-        }
-        Returns: string
-      }
-      rpc_e2e_seed_merchant_auth_confirm_guard_order: {
         Args: {
           p_buyer_id: string
           p_listing_id: string
@@ -3820,6 +3928,18 @@ export type Database = {
         Returns: {
           order_id: string
         }[]
+      }
+      rpc_list_merchant_finance_settlements: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_sort?: string
+          p_status_filter?: string
+        }
+        Returns: Json
       }
       rpc_list_merchant_pending_payment_expiry_candidates: {
         Args: { p_limit?: number }
@@ -4473,6 +4593,7 @@ export type Database = {
         | "failed"
       moderation_case_status: "open" | "reviewing" | "resolved" | "dismissed"
       moderation_resolution: "upheld" | "dismissed" | "insufficient_evidence"
+      notification_email_status: "pending" | "sent" | "failed" | "dead"
       offer_status: "pending" | "accepted" | "rejected" | "cancelled"
       payment_capture_status:
         | "none"
@@ -4539,12 +4660,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4568,11 +4689,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4593,11 +4714,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4618,11 +4739,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4635,11 +4756,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4707,6 +4828,7 @@ export const Constants = {
       ],
       moderation_case_status: ["open", "reviewing", "resolved", "dismissed"],
       moderation_resolution: ["upheld", "dismissed", "insufficient_evidence"],
+      notification_email_status: ["pending", "sent", "failed", "dead"],
       offer_status: ["pending", "accepted", "rejected", "cancelled"],
       payment_capture_status: [
         "none",

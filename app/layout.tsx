@@ -20,6 +20,7 @@ import { ReportOutcomeNotificationHost } from "@/app/components/report/ReportOut
 import { ExecutionSlideOverHost } from "@/app/components/transactions/ExecutionSlideOverHost";
 import { OneSignalProvider } from "@/app/components/notifications/OneSignalProvider";
 import { OneSignalOptInHost } from "@/app/components/notifications/OneSignalOptInHost";
+import { OneSignalSubscriptionSync } from "@/app/components/notifications/OneSignalSubscriptionSync";
 
 const APP_NAME = "HKCardVault";
 const APP_DEFAULT_TITLE = "HKCardVault — 寶可夢卡牌專業交易平台";
@@ -315,6 +316,7 @@ export default async function RootLayout({
             <AppSerwistProvider>
               <PwaNetworkBanner />
               <OneSignalOptInHost />
+              <OneSignalSubscriptionSync />
               {children}
             </AppSerwistProvider>
           </OneSignalProvider>

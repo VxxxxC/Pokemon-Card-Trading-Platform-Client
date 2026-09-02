@@ -44,6 +44,10 @@
     {
       "path": "/api/cron/sanction-expiry-notifications",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/wishlist-price-alerts",
+      "schedule": "0 * * * *"
     }
   ]
 }
