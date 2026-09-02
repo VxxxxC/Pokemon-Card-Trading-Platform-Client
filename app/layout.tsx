@@ -18,6 +18,8 @@ import { PasswordUpdatedToast } from "@/components/auth/PasswordUpdatedToast";
 import { GlobalChatOverlay } from "@/app/components/chat/GlobalChatOverlay";
 import { ReportOutcomeNotificationHost } from "@/app/components/report/ReportOutcomeNotificationHost";
 import { ExecutionSlideOverHost } from "@/app/components/transactions/ExecutionSlideOverHost";
+import { OneSignalProvider } from "@/app/components/notifications/OneSignalProvider";
+import { OneSignalOptInHost } from "@/app/components/notifications/OneSignalOptInHost";
 
 const APP_NAME = "HKCardVault";
 const APP_DEFAULT_TITLE = "HKCardVault — 寶可夢卡牌專業交易平台";
@@ -309,10 +311,13 @@ export default async function RootLayout({
           <ActiveListingPersonaSync />
           <IosPwaModal />
 
-          <AppSerwistProvider>
-            <PwaNetworkBanner />
-            {children}
-          </AppSerwistProvider>
+          <OneSignalProvider>
+            <AppSerwistProvider>
+              <PwaNetworkBanner />
+              <OneSignalOptInHost />
+              {children}
+            </AppSerwistProvider>
+          </OneSignalProvider>
         </RoleProvider>
 
         <Toaster
