@@ -2063,6 +2063,7 @@ export type Database = {
           fps_id: string | null
           fps_name: string | null
           id: string
+          push_transactional: boolean
           rating_score: number | null
           reputation_tag: Json | null
           role: Database["public"]["Enums"]["user_role"]
@@ -2080,6 +2081,7 @@ export type Database = {
           fps_id?: string | null
           fps_name?: string | null
           id: string
+          push_transactional?: boolean
           rating_score?: number | null
           reputation_tag?: Json | null
           role?: Database["public"]["Enums"]["user_role"]
@@ -2097,6 +2099,7 @@ export type Database = {
           fps_id?: string | null
           fps_name?: string | null
           id?: string
+          push_transactional?: boolean
           rating_score?: number | null
           reputation_tag?: Json | null
           role?: Database["public"]["Enums"]["user_role"]

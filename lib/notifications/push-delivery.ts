@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendOneSignalPush } from "@/lib/notifications/onesignal/send";
+import {
+  isTransactionalPushEvent,
+  isUserPushTransactionalEnabled,
+} from "@/lib/notifications/push-prefs";
 
 export async function loadOptedInPushSubscriptionIds(
   userId: string,
@@ -28,6 +32,21 @@ export async function sendPushToUser(input: {
   body: string;
   path: string;
 }): Promise<void> {
+  if (isTransactionalPushEvent(input.eventId)) {
+    const enabled = await isUserPushTransactionalEnabled(input.userId);
+    if (!enabled) {
+      if (process.env.NODE_ENV === "development") {
+        console.info(
+          "[push-delivery]",
+          input.eventId,
+          "skipped",
+          "push_transactional_disabled",
+        );
+      }
+      return;
+    }
+  }
+
   const subscriptionIds = await loadOptedInPushSubscriptionIds(input.userId);
   const result = await sendOneSignalPush({
     eventId: input.eventId,

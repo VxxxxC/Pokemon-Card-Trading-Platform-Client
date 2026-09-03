@@ -15,7 +15,7 @@
 | **2** | PR3 | **P-WIS-01** wishlist price alert cron | ✅ | `send.ts`, `process-wishlist-price-alerts.ts`, `/api/cron/wishlist-price-alerts` |
 | **3** | PR4 | **P-OFF-*** offer events (chat triggers) | ✅ | `offer-push.ts`, `push-delivery.ts`, `offers.ts`, `buy-now.ts` |
 | **4** | PR5 | **P-ORD-*** order lifecycle subset | ✅ | `order-push.ts`, `order-emails.ts`, webhook/cron hooks |
-| **5** | PR6 | User settings toggles (real prefs) | ⏳ | `UserSettingsClient` wire-up |
+| **5** | PR6 | User settings toggles (real prefs) | ✅ | `push_transactional`, `UserSettingsClient`, `push-delivery` gate |
 | **6** | PR7 | **P-MOD-*** moderation / sanction mirror | ⏳ | align with admin-moderation v2 batch |
 | **7** | PR8 | **P-CHT-01** chat unread daily digest | ⏳ | cron + inbox unread aggregate |
 
@@ -37,7 +37,7 @@ bun run lint
 | **PR3** | `push-phase1-registry` + copy/cooldown gate | `bun run test:push:phase1` |
 | **PR4** | phase2 gate + `offer-push-send` (merchant/negative) + `offer-push-action-wiring` | `bun run test:push:phase2` |
 | **PR5** | `push-phase3-registry` + order send helper + action/cron wiring | `bun run test:push:phase3` |
-| **PR6** | settings toggle contract tests (opt-in gates send) | TBD |
+| **PR6** | settings toggle contract tests (opt-in gates send) | `bun run test:push:phase6` |
 | **PR7** | moderation push gate + wiring | TBD |
 | **PR8** | chat digest cron gate (same pattern as wishlist) | TBD |
 | **Post-PR6** | One Playwright smoke journey (canonical offer or order flow) | `bun run test:e2e` *(targeted spec)* |
@@ -110,7 +110,7 @@ bun run lint
 - [x] `upsertUserPushSubscription` / `optOutUserPushSubscription`
 - [x] `OneSignalSubscriptionSync` on login + subscription change
 - [ ] Push outbox table (optional — defer until >3 event types)
-- [ ] User prefs `push_transactional` (Phase 6)
+- [x] User prefs `push_transactional` (Phase 6)
 
 ---
 
@@ -252,12 +252,27 @@ P-CHT-01   # P2 — after PR4–7; daily digest only
 | `tests/unit/notifications/order-push-send.test.ts` | Send helper: recipient, path, negative |
 | `tests/unit/notifications/order-push-action-wiring.test.ts` | Email enqueue → push call |
 
+### PR6 (push_transactional)
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/20261003100000_profiles_push_transactional.sql` | `profiles.push_transactional` default true |
+| `lib/notifications/push-prefs.ts` | Transactional event classification + profile lookup |
+| `lib/notifications/push-delivery.ts` | Skip P-OFF/P-ORD when pref off |
+| `app/actions/push-preferences.ts` | `updatePushTransactionalPreference` |
+| `app/actions/profile.ts` | Expose `pushTransactional` in `getUserSettings` |
+| `app/profile/user/settings/UserSettingsClient.tsx` | Wire「訂單狀態更新」toggle |
+| `tests/unit/notifications/push-prefs.test.ts` | Event class + profile pref |
+| `tests/unit/notifications/push-delivery-prefs.test.ts` | Delivery gate |
+| `tests/unit/notifications/push-preferences-action.test.ts` | Settings action |
+
 ---
 
 ## 7. Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | PR6 `push_transactional` pref + settings toggle + delivery gate |
 | 2026-09-03 | PR5 **P-ORD-01–03** wired via order-emails + phase3 tests |
 | 2026-09-03 | PR4 tests: action wiring + merchant/negative; §0 per-PR test checklist |
 | 2026-09-03 | PR4 **P-OFF-01–04** wired; add **P-CHT-01** daily digest (PR8) |

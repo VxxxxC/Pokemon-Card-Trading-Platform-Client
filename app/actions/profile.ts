@@ -52,6 +52,7 @@ type SettingsProfileRow = Pick<
   | "role"
   | "fps_id"
   | "fps_name"
+  | "push_transactional"
 >;
 
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -74,6 +75,7 @@ export type UserSettingsData = {
   bankAccount?: string;
   fpsId?: string;
   fpsName?: string;
+  pushTransactional: boolean;
 };
 
 export type PublicProfilePageProfile = import("@/lib/marketplace/load-seller-profile").MarketplaceSellerProfile & {
@@ -300,7 +302,7 @@ export async function getUserSettings(): Promise<
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, display_name, username, short_description, avatar_path, role, fps_id, fps_name",
+      "id, display_name, username, short_description, avatar_path, role, fps_id, fps_name, push_transactional",
     )
     .eq("id", user.id)
     .maybeSingle<SettingsProfileRow>();
@@ -321,6 +323,7 @@ export async function getUserSettings(): Promise<
       role: profile.role,
       fpsId: profile.fps_id ?? "",
       fpsName: profile.fps_name ?? "",
+      pushTransactional: profile.push_transactional !== false,
     },
   };
 }

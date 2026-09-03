@@ -15,6 +15,7 @@
     "test:push:phase1": "vitest run --config vitest.config.mts tests/unit/notifications/push-phase1-gate.test.ts",
     "test:push:phase2": "vitest run --config vitest.config.mts tests/unit/notifications/push-phase2-gate.test.ts tests/unit/notifications/offer-push-send.test.ts tests/unit/notifications/offer-push-action-wiring.test.ts",
     "test:push:phase3": "vitest run --config vitest.config.mts tests/unit/notifications/push-phase3-gate.test.ts tests/unit/notifications/order-push-send.test.ts tests/unit/notifications/order-push-action-wiring.test.ts",
+    "test:push:phase6": "vitest run --config vitest.config.mts tests/unit/notifications/push-prefs.test.ts tests/unit/notifications/push-delivery-prefs.test.ts tests/unit/notifications/push-preferences-action.test.ts",
     "test:email:phase2": "vitest run --config vitest.config.mts tests/unit/notifications/email-phase2-gate.test.ts",
     "test:email:phase3": "vitest run --config vitest.config.mts tests/unit/notifications/email-phase3-gate.test.ts",
     "test:email:phase4": "vitest run --config vitest.config.mts tests/unit/notifications/email-phase4-gate.test.ts",

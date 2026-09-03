@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useRef, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
+import { updatePushTransactionalPreference } from "@/app/actions/push-preferences";
 import {
   updateUserProfile,
   type UserSettingsData,
@@ -70,6 +71,10 @@ const settingsListRowClass =
 
 export function UserSettingsClient({ initialData }: Props) {
   const router = useRouter();
+  const [pushTransactional, setPushTransactional] = useState(
+    initialData.pushTransactional,
+  );
+  const [isUpdatingPushPref, startPushPrefTransition] = useTransition();
   const [errors, formAction, isPending] = useActionState<
     UserProfileFormErrors | null,
     FormData
@@ -98,6 +103,20 @@ export function UserSettingsClient({ initialData }: Props) {
     }
     wasPending.current = isPending;
   }, [isPending, errors, router]);
+
+  function handleTogglePushTransactional() {
+    const next = !pushTransactional;
+    startPushPrefTransition(async () => {
+      const result = await updatePushTransactionalPreference(next);
+      if (result.success) {
+        setPushTransactional(next);
+        toast.success(next ? "已開啟訂單推送通知" : "已關閉訂單推送通知");
+        router.refresh();
+        return;
+      }
+      toast.error(result.error);
+    });
+  }
 
   return (
     <div className="space-y-3 animate-fadeIn">
@@ -287,12 +306,32 @@ export function UserSettingsClient({ initialData }: Props) {
         </SettingsSection>
 
         <SettingsSection id="notif-heading" title="通知設定" variant="list">
+          <div className={settingsListRowClass}>
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-[13px] font-semibold text-text-primary">
+                訂單狀態更新
+              </p>
+              <p className="font-mono text-[10px] text-text-secondary truncate mt-0.5">
+                Escrow 進度變更即時推送
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="切換 訂單狀態更新 通知狀態"
+              aria-pressed={pushTransactional}
+              disabled={isUpdatingPushPref}
+              onClick={handleTogglePushTransactional}
+              className={cn(
+                "w-9 h-5 rounded-full flex items-center transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+                pushTransactional
+                  ? "bg-brand justify-end pr-0.5"
+                  : "bg-bg-elevated justify-start pl-0.5",
+              )}
+            >
+              <div className="w-4 h-4 rounded-full bg-[#17130f] shadow-sm" />
+            </button>
+          </div>
           {[
-            {
-              label: "訂單狀態更新",
-              desc: "Escrow 進度變更即時推送",
-              on: true,
-            },
             { label: "每日簽到提醒", desc: "連續簽到里程碑提醒", on: true },
             {
               label: "市場價格波動",
@@ -317,8 +356,9 @@ export function UserSettingsClient({ initialData }: Props) {
               <button
                 type="button"
                 aria-label={`切換 ${label} 通知狀態`}
+                disabled
                 className={cn(
-                  "w-9 h-5 rounded-full flex items-center transition-colors shrink-0 cursor-pointer",
+                  "w-9 h-5 rounded-full flex items-center transition-colors shrink-0 cursor-not-allowed opacity-50",
                   on
                     ? "bg-brand justify-end pr-0.5"
                     : "bg-bg-elevated justify-start pl-0.5",
