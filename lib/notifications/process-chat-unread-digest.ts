@@ -3,6 +3,7 @@ import { PUSH_CRON_BATCH_LIMIT } from "@/lib/notifications/push-config";
 import {
   buildChatUnreadDigestPushCopy,
   shouldSendChatUnreadDigest,
+  shouldSkipChatDigestForRecentActivity,
 } from "@/lib/notifications/chat-push";
 import { loadOptedInPushSubscriptionIds } from "@/lib/notifications/push-delivery";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -83,6 +84,28 @@ export async function processChatUnreadDigest(): Promise<{
     ((subscriptions ?? []) as PushSubscriptionRow[]).map((row) => row.user_id),
   );
 
+  const { data: activityRows, error: activityError } = await createAdminClient()
+    .from("profiles")
+    .select("id, last_active_at")
+    .in("id", userIds);
+
+  if (activityError) {
+    return {
+      scanned: rows.length,
+      sent: 0,
+      skipped: 0,
+      errors: [activityError.message],
+      deliveries: [],
+    };
+  }
+
+  const lastActiveByUser = new Map(
+    (activityRows ?? []).map((row) => [
+      row.id as string,
+      (row.last_active_at as string | null) ?? null,
+    ]),
+  );
+
   let sent = 0;
   let skipped = 0;
   const errors: string[] = [];
@@ -96,6 +119,16 @@ export async function processChatUnreadDigest(): Promise<{
     }
 
     if (!usersWithPush.has(row.user_id)) {
+      skipped += 1;
+      continue;
+    }
+
+    if (
+      shouldSkipChatDigestForRecentActivity(
+        lastActiveByUser.get(row.user_id),
+        now,
+      )
+    ) {
       skipped += 1;
       continue;
     }

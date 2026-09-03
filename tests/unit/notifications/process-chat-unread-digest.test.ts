@@ -43,13 +43,23 @@ describe("processChatUnreadDigest", () => {
     eqMock.mockResolvedValue({ error: null });
     updateMock.mockReturnValue({ eq: eqMock });
     fromMock.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        in: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: [{ user_id: "user-1", onesignal_subscription_id: "sub-1" }],
-            error: null,
+      select: vi.fn().mockImplementation((columns: string) => {
+        if (columns === "id, last_active_at") {
+          return {
+            in: vi.fn().mockResolvedValue({
+              data: [{ id: "user-1", last_active_at: null }],
+              error: null,
+            }),
+          };
+        }
+        return {
+          in: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ user_id: "user-1", onesignal_subscription_id: "sub-1" }],
+              error: null,
+            }),
           }),
-        }),
+        };
       }),
       update: updateMock,
     });
@@ -83,10 +93,59 @@ describe("processChatUnreadDigest", () => {
       error: null,
     });
     fromMock.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        in: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
+      select: vi.fn().mockImplementation((columns: string) => {
+        if (columns === "id, last_active_at") {
+          return {
+            in: vi.fn().mockResolvedValue({
+              data: [{ id: "user-1", last_active_at: null }],
+              error: null,
+            }),
+          };
+        }
+        return {
+          in: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }),
+      update: updateMock,
+    });
+
+    const result = await processChatUnreadDigest();
+
+    expect(result.sent).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(sendOneSignalPushMock).not.toHaveBeenCalled();
+  });
+
+  it("skips users active within the last 15 minutes", async () => {
+    rpcMock.mockResolvedValue({
+      data: [{ user_id: "user-1", unread_count: 2 }],
+      error: null,
+    });
+    fromMock.mockReturnValue({
+      select: vi.fn().mockImplementation((columns: string) => {
+        if (columns === "id, last_active_at") {
+          return {
+            in: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id: "user-1",
+                  last_active_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+                },
+              ],
+              error: null,
+            }),
+          };
+        }
+        return {
+          in: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [{ user_id: "user-1", onesignal_subscription_id: "sub-1" }],
+              error: null,
+            }),
+          }),
+        };
       }),
       update: updateMock,
     });

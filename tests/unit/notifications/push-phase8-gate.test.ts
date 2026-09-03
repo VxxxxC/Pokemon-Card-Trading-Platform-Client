@@ -8,6 +8,7 @@ import {
   buildChatUnreadDigestPushCopy,
   isChatDigestCooldownActive,
   shouldSendChatUnreadDigest,
+  shouldSkipChatDigestForRecentActivity,
 } from "@/lib/notifications/chat-push";
 
 describe("Phase 8 push gate (chat digest)", () => {
@@ -37,5 +38,16 @@ describe("Phase 8 push gate (chat digest)", () => {
     expect(isChatDigestCooldownActive("2026-09-01T10:00:00.000Z", now, 24)).toBe(
       false,
     );
+  });
+
+  it("shouldSkipChatDigestForRecentActivity enforces 15m window", () => {
+    const now = new Date("2026-09-02T12:00:00.000Z");
+    expect(shouldSkipChatDigestForRecentActivity(null, now, 15)).toBe(false);
+    expect(
+      shouldSkipChatDigestForRecentActivity("2026-09-02T11:50:00.000Z", now, 15),
+    ).toBe(true);
+    expect(
+      shouldSkipChatDigestForRecentActivity("2026-09-02T11:40:00.000Z", now, 15),
+    ).toBe(false);
   });
 });

@@ -1,7 +1,28 @@
-import { CHAT_UNREAD_DIGEST_COOLDOWN_HOURS } from "@/lib/notifications/push-config";
+import {
+  CHAT_UNREAD_DIGEST_COOLDOWN_HOURS,
+  CHAT_UNREAD_DIGEST_RECENT_ACTIVITY_MINUTES,
+} from "@/lib/notifications/push-config";
 
 export function shouldSendChatUnreadDigest(unreadCount: number): boolean {
   return Number.isFinite(unreadCount) && unreadCount > 0;
+}
+
+export function shouldSkipChatDigestForRecentActivity(
+  lastActiveAt: string | null | undefined,
+  now: Date,
+  recentActivityMinutes = CHAT_UNREAD_DIGEST_RECENT_ACTIVITY_MINUTES,
+): boolean {
+  if (!lastActiveAt) {
+    return false;
+  }
+
+  const lastMs = Date.parse(lastActiveAt);
+  if (!Number.isFinite(lastMs)) {
+    return false;
+  }
+
+  const elapsedMs = now.getTime() - lastMs;
+  return elapsedMs < recentActivityMinutes * 60 * 1000;
 }
 
 export function isChatDigestCooldownActive(

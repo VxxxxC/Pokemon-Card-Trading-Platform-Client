@@ -161,7 +161,7 @@ bun run lint
 1. Query inbox aggregate (`get_user_chat_inbox_lobby` or admin batch equivalent) → `SUM(unread_count) > 0` **or** any room `unread_count > 0`.
 2. User has `user_push_subscriptions.opted_in = true`.
 3. `last_chat_digest_pushed_at` is null or older than **24h** (per-user cooldown).
-4. Optional (P2+): skip if `last_active` within last **15 min** (user already online).
+4. Skip if `profiles.last_active_at` within last **15 min** (client heartbeat while tab visible).
 
 **Copy example:** `你有 {n} 則未讀訊息 — 打開收件匣查看`
 
@@ -285,8 +285,11 @@ P-CHT-01   # P2 — after PR4–7; daily digest only
 | `lib/notifications/chat-push.ts` | Copy + cooldown helpers |
 | `lib/notifications/process-chat-unread-digest.ts` | Cron business logic |
 | `app/api/cron/chat-unread-digest/route.ts` | Cron entry |
+| `supabase/migrations/20261003120000_profiles_last_active_at.sql` | `last_active_at` column for 15m online skip |
+| `app/components/notifications/UserActivityHeartbeat.tsx` | Client heartbeat → `profiles.last_active_at` |
+| `app/actions/user-activity.ts` | `touchUserLastActive` server action |
 | `vercel.json` | Daily schedule (01:00 UTC / 09:00 HKT) |
-| `tests/unit/notifications/push-phase8-gate.test.ts` | Registry + pure helpers |
+| `tests/unit/notifications/push-phase8-gate.test.ts` | Registry + pure helpers (incl. 15m skip) |
 | `tests/unit/notifications/process-chat-unread-digest.test.ts` | Cron send + skip paths |
 
 ---

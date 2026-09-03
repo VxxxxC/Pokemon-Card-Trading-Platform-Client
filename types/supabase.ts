@@ -2063,6 +2063,7 @@ export type Database = {
           fps_id: string | null
           fps_name: string | null
           id: string
+          last_active_at: string | null
           last_chat_digest_pushed_at: string | null
           push_transactional: boolean
           rating_score: number | null
@@ -2082,6 +2083,7 @@ export type Database = {
           fps_id?: string | null
           fps_name?: string | null
           id: string
+          last_active_at?: string | null
           last_chat_digest_pushed_at?: string | null
           push_transactional?: boolean
           rating_score?: number | null
@@ -2101,6 +2103,7 @@ export type Database = {
           fps_id?: string | null
           fps_name?: string | null
           id?: string
+          last_active_at?: string | null
           last_chat_digest_pushed_at?: string | null
           push_transactional?: boolean
           rating_score?: number | null
