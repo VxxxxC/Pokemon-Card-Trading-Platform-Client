@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { BrandWordmark } from "@/app/components/branding/BrandWordmark";
 
 type AuthFormShellProps = {
   title: string;
@@ -27,11 +28,8 @@ export function AuthFormShell({
       />
 
       <div className="relative z-10 flex flex-col flex-1 w-full max-w-100 mx-auto px-5 py-6 sm:px-6 sm:py-8 lg:py-16 lg:justify-center lg:min-h-dvh">
-        <Link
-          href="/"
-          className="mb-3 inline-block font-sans font-bold text-[18px] text-text-primary tracking-tight hover:text-brand transition-colors"
-        >
-          HKCardVault <span className="text-brand">JP</span>
+        <Link href="/" className="mb-3 inline-block">
+          <BrandWordmark className="text-[18px]" />
         </Link>
 
         <Link

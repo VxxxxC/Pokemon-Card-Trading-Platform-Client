@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Inbox, Megaphone } from "lucide-react";
 import { HeaderBreadcrumbNav } from "@/app/components/navigation/HeaderBreadcrumbNav";
+import { BrandWordmark } from "@/app/components/branding/BrandWordmark";
 import { useHkCardVaultStore } from "@/app/store/useHkCardVaultStore";
 import { useUIStore } from "@/app/store/useUIStore";
 import { isChatRoomId } from "@/app/lib/chat/constants";
@@ -105,14 +106,12 @@ export function MobileHeader() {
             >
               <Image
                 src="/asset/logo.png"
-                alt="HKCardvault"
+                alt="HKCardVault"
                 height={32}
                 width={32}
                 className="size-8 shrink-0 rounded-lg border border-white/10 object-cover"
               />
-              <span className="truncate font-sans text-[15px] font-bold tracking-tight text-text-primary">
-                HKCardvault
-              </span>
+              <BrandWordmark className="truncate text-[15px]" />
             </Link>
           )}
 

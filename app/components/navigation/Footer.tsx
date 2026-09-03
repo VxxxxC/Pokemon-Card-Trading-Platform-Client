@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Store } from "lucide-react";
+import { BrandWordmark } from "@/app/components/branding/BrandWordmark";
 import { FooterMemberCenterLinks } from "@/app/components/navigation/FooterMemberCenterLinks";
 
 // TODO: [server] Footer links (customer service, FAQ) should be fetched from CMS or Supabase `site_config` table
@@ -16,7 +17,7 @@ const footerSections = [
   {
     title: "關於平台",
     links: [
-      { label: "關於 HKCardvault", href: "/about" },
+      { label: "關於 HKCardVault", href: "/about" },
       { label: "服務條款", href: "/terms" },
       { label: "私隱政策", href: "/privacy" },
     ],
@@ -35,11 +36,8 @@ export function Footer() {
         <div className="flex flex-col gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Brand block — full width, separated from link grid */}
           <div className="flex flex-col items-start gap-3">
-            <Link
-              href="/"
-              className="font-sans font-bold text-[17px] sm:text-[18px] text-text-primary tracking-tight"
-            >
-              HKCardvault
+            <Link href="/">
+              <BrandWordmark className="text-[17px] sm:text-[18px]" />
             </Link>
             <p className="font-sans text-[12px] text-text-secondary leading-relaxed max-w-[300px] sm:max-w-[340px]">
               香港首個日版寶可夢卡牌專業交易平台。鑑定託管・安心交易。
@@ -85,7 +83,7 @@ export function Footer() {
         <div className="border-t border-[rgba(237,232,224,0.08)] pt-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="font-sans text-[11px] text-text-disabled">
-              {new Date().getFullYear()} HKCardvault All rights reserved
+              {new Date().getFullYear()} HKCardVault All rights reserved
             </p>
             <div className="flex items-center gap-4">
               

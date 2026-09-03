@@ -25,6 +25,7 @@ import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
+import { OrderCatalogThumb } from "@/app/components/shared/OrderCatalogThumb";
 import { OrderListingPhotoGrid } from "@/app/components/shared/OrderListingPhotoGrid";
 import {
   AlertDialog,
@@ -357,13 +358,19 @@ export function MemberOrderDetailView({
           </div>
 
           <div className="overflow-hidden rounded-lg bg-bg-page/25">
-            <div className="px-3 py-2.5">
-              <p className="truncate font-sans text-[15px] font-semibold text-text-primary">
-                {order.product.cardName}
-              </p>
-              <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
-                {cardMeta}
-              </p>
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <OrderCatalogThumb
+                catalogImageUrl={order.product.catalogImageUrl}
+                alt={order.product.cardName}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-sans text-[15px] font-semibold text-text-primary">
+                  {order.product.cardName}
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+                  {cardMeta}
+                </p>
+              </div>
             </div>
 
             <Link

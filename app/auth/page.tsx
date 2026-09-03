@@ -8,6 +8,7 @@ import {
   isUserEmailConfirmed,
 } from "@/lib/auth/email-confirmation";
 import { AuthForm } from "./AuthForm";
+import { BrandWordmark } from "@/app/components/branding/BrandWordmark";
 
 export const metadata: Metadata = {
   title: "登入 · HKCardVault",
@@ -157,9 +158,7 @@ export default async function AuthPage({
 
         {/* Logo */}
         <Link href="/" className="relative z-10 inline-block">
-          <span className="font-sans font-bold text-[22px] text-text-primary tracking-tight hover:text-brand transition-colors">
-            HKCardVault <span className="text-brand">JP</span>
-          </span>
+          <BrandWordmark className="text-[22px]" />
         </Link>
 
         {/* ── Floating relic cards ─────────────────────────────────────── */}
@@ -288,13 +287,8 @@ export default async function AuthPage({
 
         <div className="relative z-10 flex flex-col flex-1 w-full max-w-100 mx-auto px-5 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-16 lg:justify-center">
           {/* Mobile logo */}
-          <Link
-            href="/"
-            className="lg:hidden mb-5 self-start inline-block"
-          >
-            <span className="font-sans font-bold text-[18px] text-text-primary tracking-tight hover:text-brand transition-colors">
-              HKCardVault <span className="text-brand">JP</span>
-            </span>
+          <Link href="/" className="lg:hidden mb-5 self-start inline-block">
+            <BrandWordmark className="text-[18px]" />
           </Link>
 
           <Suspense fallback={null}>

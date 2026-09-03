@@ -422,6 +422,7 @@ export type UserTradingOrder = {
     setCode: string;
     displayId: string | null;
     imageUrl: string;
+    catalogImageUrl?: string | null;
   };
 };
 
@@ -1038,6 +1039,7 @@ export type MerchantTradingOrder = {
     setCode: string;
     displayId: string | null;
     imageUrl: string;
+    catalogImageUrl?: string | null;
   };
 };
 
@@ -1462,6 +1464,7 @@ function mapMerchantOrderDetailRow(
         row.listings.images,
         catalog.image_url,
       ),
+      catalogImageUrl: catalog.image_url?.trim() || null,
     },
     listingId: row.listing_id,
     listingImageUrls,
@@ -1781,6 +1784,7 @@ function mapMemberOrderDetailRow(
         row.listings.images,
         catalog.image_url,
       ),
+      catalogImageUrl: catalog.image_url?.trim() || null,
     },
     listingId: row.listing_id,
     listingImageUrls,
@@ -1926,6 +1930,7 @@ function mapBuyerMerchantOrderDetailRow(
         row.listings.images,
         catalog.image_url,
       ),
+      catalogImageUrl: catalog.image_url?.trim() || null,
     },
     listingId: row.listing_id,
     listingImageUrls,

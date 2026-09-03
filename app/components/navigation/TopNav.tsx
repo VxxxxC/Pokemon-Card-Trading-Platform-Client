@@ -18,6 +18,7 @@ import {
   ChatUnreadDotInline,
 } from "@/app/components/chat/ChatUnreadDot";
 import { HeaderBreadcrumbNav } from "@/app/components/navigation/HeaderBreadcrumbNav";
+import { BrandWordmark } from "@/app/components/branding/BrandWordmark";
 import { getHeaderBreadcrumb } from "@/lib/navigation/header-breadcrumb";
 
 const baseNavLinks = [
@@ -123,14 +124,14 @@ export function TopNav() {
             >
               <Image
                 src="/asset/logo.png"
-                alt="CardVaultHK"
+                alt="HKCardVault"
                 width={32}
                 height={32}
                 className="h-8 w-8 rounded-lg object-cover ring-1 ring-white/[0.06] group-hover:ring-brand/25 transition-all"
               />
-              <span className="font-sans font-semibold text-[16px] text-brand tracking-tight group-hover:text-brand-hover transition-colors">
-                CardVaultHK
-              </span>
+              <BrandWordmark
+                className="text-[16px] font-semibold group-hover:[&>span:last-child]:text-brand-hover [&>span:last-child]:transition-colors"
+              />
             </Link>
 
             {breadcrumb ? (

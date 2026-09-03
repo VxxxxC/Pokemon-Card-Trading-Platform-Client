@@ -29,6 +29,7 @@ import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2c
 import { SellerReputationMeta } from "@/lib/marketplace/seller-reputation-meta";
 import { toast } from "sonner";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
+import { OrderCatalogThumb } from "@/app/components/shared/OrderCatalogThumb";
 import { OrderListingPhotoGrid } from "@/app/components/shared/OrderListingPhotoGrid";
 import {
   AlertDialog,
@@ -241,13 +242,19 @@ export function MerchantOrderDetailView({
           </div>
 
           <div className="overflow-hidden rounded-lg bg-bg-page/25">
-            <div className="px-3 py-2.5">
-              <p className="truncate font-sans text-[15px] font-semibold text-text-primary">
-                {order.cardName}
-              </p>
-              <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
-                {order.cardNo} · 等級: {order.grade}
-              </p>
+            <div className="flex items-center gap-3 px-3 py-2.5">
+              <OrderCatalogThumb
+                catalogImageUrl={merchantOrder.product.catalogImageUrl}
+                alt={order.cardName}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-sans text-[15px] font-semibold text-text-primary">
+                  {order.cardName}
+                </p>
+                <p className="mt-0.5 font-mono text-[11px] text-text-secondary">
+                  {order.cardNo} · 等級: {order.grade}
+                </p>
+              </div>
             </div>
 
             <Link
