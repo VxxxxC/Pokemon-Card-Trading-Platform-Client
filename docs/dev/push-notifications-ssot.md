@@ -17,7 +17,7 @@
 | **4** | PR5 | **P-ORD-*** order lifecycle subset | ✅ | `order-push.ts`, `order-emails.ts`, webhook/cron hooks |
 | **5** | PR6 | User settings toggles (real prefs) | ✅ | `push_transactional`, `UserSettingsClient`, `push-delivery` gate |
 | **6** | PR7 | **P-MOD-*** moderation / sanction mirror | ✅ | `moderation-push.ts`, `moderation-emails.ts` |
-| **7** | PR8 | **P-CHT-01** chat unread daily digest | ⏳ | cron + inbox unread aggregate |
+| **7** | PR8 | **P-CHT-01** chat unread daily digest | ✅ | cron + `process-chat-unread-digest.ts` |
 
 **Gate commands (per phase):**
 
@@ -39,7 +39,7 @@ bun run lint
 | **PR5** | `push-phase3-registry` + order send helper + action/cron wiring | `bun run test:push:phase3` |
 | **PR6** | settings toggle contract tests (opt-in gates send) | `bun run test:push:phase6` |
 | **PR7** | moderation push gate + send + email wiring | `bun run test:push:phase7` |
-| **PR8** | chat digest cron gate (same pattern as wishlist) | TBD |
+| **PR8** | chat digest cron gate (cooldown + unread threshold) | `bun run test:push:phase8` |
 | **Post-PR6** | One Playwright smoke journey (canonical offer or order flow) | `bun run test:e2e` *(targeted spec)* |
 
 **PR4 test layers (reference):**
@@ -277,12 +277,25 @@ P-CHT-01   # P2 — after PR4–7; daily digest only
 | `tests/unit/notifications/moderation-push-send.test.ts` | Send helper wiring |
 | `tests/unit/notifications/moderation-push-action-wiring.test.ts` | Email enqueue → push call |
 
+### PR8 (P-CHT-01)
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/20261003110000_chat_unread_digest_push.sql` | Cooldown column + digest candidate RPC |
+| `lib/notifications/chat-push.ts` | Copy + cooldown helpers |
+| `lib/notifications/process-chat-unread-digest.ts` | Cron business logic |
+| `app/api/cron/chat-unread-digest/route.ts` | Cron entry |
+| `vercel.json` | Daily schedule (01:00 UTC / 09:00 HKT) |
+| `tests/unit/notifications/push-phase8-gate.test.ts` | Registry + pure helpers |
+| `tests/unit/notifications/process-chat-unread-digest.test.ts` | Cron send + skip paths |
+
 ---
 
 ## 7. Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | PR8 **P-CHT-01** daily chat unread digest cron + tests |
 | 2026-09-03 | PR7 **P-MOD-01–02** wired via moderation-emails + phase7 tests |
 | 2026-09-03 | PR6 `push_transactional` pref + settings toggle + delivery gate |
 | 2026-09-03 | PR5 **P-ORD-01–03** wired via order-emails + phase3 tests |

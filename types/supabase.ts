@@ -2063,6 +2063,7 @@ export type Database = {
           fps_id: string | null
           fps_name: string | null
           id: string
+          last_chat_digest_pushed_at: string | null
           push_transactional: boolean
           rating_score: number | null
           reputation_tag: Json | null
@@ -2081,6 +2082,7 @@ export type Database = {
           fps_id?: string | null
           fps_name?: string | null
           id: string
+          last_chat_digest_pushed_at?: string | null
           push_transactional?: boolean
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -2099,6 +2101,7 @@ export type Database = {
           fps_id?: string | null
           fps_name?: string | null
           id?: string
+          last_chat_digest_pushed_at?: string | null
           push_transactional?: boolean
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -3943,6 +3946,13 @@ export type Database = {
           p_status_filter?: string
         }
         Returns: Json
+      }
+      rpc_list_chat_unread_digest_candidates: {
+        Args: { p_limit?: number }
+        Returns: {
+          unread_count: number
+          user_id: string
+        }[]
       }
       rpc_list_merchant_pending_payment_expiry_candidates: {
         Args: { p_limit?: number }
