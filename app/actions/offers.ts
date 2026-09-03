@@ -24,6 +24,11 @@ import {
   enqueueOfferReceivedEmail,
   enqueueOfferRejectedEmail,
 } from "@/lib/notifications/offer-emails";
+import {
+  sendOfferAcceptedPush,
+  sendOfferReceivedPush,
+  sendOfferRejectedPush,
+} from "@/lib/notifications/offer-push";
 import { enqueueP2pMeetupArrangedEmails } from "@/lib/notifications/p2p-order-emails";
 
 type ChatRoomRow = Tables<"chat_rooms">;
@@ -778,6 +783,13 @@ export async function makeOffer(
       offerPrice: offerPrice,
     });
 
+    await sendOfferReceivedPush({
+      listingId: trimmedListingId,
+      buyerId: user.id,
+      sellerId: listing.seller_id,
+      offerPrice,
+    });
+
     return {
       success: true,
       data: parsed,
@@ -844,6 +856,11 @@ export async function acceptOffer(offerId: string): Promise<AcceptOfferResult> {
       offerId: trimmedOfferId,
       orderId: parsed.order.id,
       orderKind: parsed.orderKind,
+    });
+
+    await sendOfferAcceptedPush({
+      offerId: trimmedOfferId,
+      orderId: parsed.order.id,
     });
 
     if (parsed.orderKind === "member") {
@@ -1001,6 +1018,13 @@ export async function rejectOffer(offerId: string): Promise<RejectOfferResult> {
     if (listingId && parsed.offer.buyer_id) {
       await enqueueOfferRejectedEmail({
         offerId: parsed.offer.id,
+        buyerId: parsed.offer.buyer_id,
+        listingId,
+        sellerId: user.id,
+        offerPrice: Number(parsed.offer.offer_price),
+      });
+
+      await sendOfferRejectedPush({
         buyerId: parsed.offer.buyer_id,
         listingId,
         sellerId: user.id,

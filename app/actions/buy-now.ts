@@ -11,6 +11,7 @@ import {
   enqueueBuyNowSellerEmail,
   enqueueOfferExpiredEmailsForListing,
 } from "@/lib/notifications/offer-emails";
+import { sendBuyNowSellerPush } from "@/lib/notifications/offer-push";
 import { enqueueP2pMeetupArrangedEmails } from "@/lib/notifications/p2p-order-emails";
 import type { Tables } from "@/types/supabase";
 
@@ -281,6 +282,14 @@ export async function buyNowListing(
 
     await enqueueBuyNowSellerEmail({
       offerId: parsed.offer.id,
+      listingId: trimmedListingId,
+      sellerId: listing.seller_id,
+      buyerId: user.id,
+      orderId,
+      offerPrice: Number(parsed.offer.offer_price),
+    });
+
+    await sendBuyNowSellerPush({
       listingId: trimmedListingId,
       sellerId: listing.seller_id,
       buyerId: user.id,

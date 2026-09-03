@@ -13,18 +13,40 @@
 | **0** | PR1 | SDK init, SW, login opt-in banner | ✅ | `OneSignalProvider`, `PushOptInBanner`, `public/vendor/onesignal/` |
 | **1** | PR2 | `user_push_subscriptions` + client sync | ✅ | `push-subscriptions.ts`, `OneSignalSubscriptionSync`, migration `20261002100000` |
 | **2** | PR3 | **P-WIS-01** wishlist price alert cron | ✅ | `send.ts`, `process-wishlist-price-alerts.ts`, `/api/cron/wishlist-price-alerts` |
-| **3** | PR4 | **P-OFF-*** offer events (chat triggers) | ⏳ | `offer push` after `SYSTEM_OFFER_*` |
+| **3** | PR4 | **P-OFF-*** offer events (chat triggers) | ✅ | `offer-push.ts`, `push-delivery.ts`, `offers.ts`, `buy-now.ts` |
 | **4** | PR5 | **P-ORD-*** order lifecycle subset | ⏳ | webhook / cron hooks |
 | **5** | PR6 | User settings toggles (real prefs) | ⏳ | `UserSettingsClient` wire-up |
 | **6** | PR7 | **P-MOD-*** moderation / sanction mirror | ⏳ | align with admin-moderation v2 batch |
+| **7** | PR8 | **P-CHT-01** chat unread daily digest | ⏳ | cron + inbox unread aggregate |
 
 **Gate commands (per phase):**
 
 ```bash
-bun run test:push:phase1    # PR3+ registry + wishlist alert logic
+bun run test:push:phase1    # PR3 wishlist
+bun run test:push:phase2    # PR4 offers (gate + send + action wiring)
 bunx tsc --noEmit
 bun run lint
 ```
+
+### Per-PR test checklist (mandatory before merge)
+
+> **Rule:** 每完成一個 push PR，必須補齊對應 test — 唔好累積到 PR8 先寫。
+
+| PR | Required tests | Command |
+|----|----------------|---------|
+| **PR3** | `push-phase1-registry` + copy/cooldown gate | `bun run test:push:phase1` |
+| **PR4** | phase2 gate + `offer-push-send` (merchant/negative) + `offer-push-action-wiring` | `bun run test:push:phase2` |
+| **PR5** | `push-phase3-registry` + order send helper + action/cron wiring | `bun run test:push:phase3` *(add script)* |
+| **PR6** | settings toggle contract tests (opt-in gates send) | TBD |
+| **PR7** | moderation push gate + wiring | TBD |
+| **PR8** | chat digest cron gate (same pattern as wishlist) | TBD |
+| **Post-PR6** | One Playwright smoke journey (canonical offer or order flow) | `bun run test:e2e` *(targeted spec)* |
+
+**PR4 test layers (reference):**
+
+1. **Gate** — registry + copy (`push-phase2-gate.test.ts`)
+2. **Send helper** — `eventId` / `userId` / `path` + merchant branch + lookup-fail skip (`offer-push-send.test.ts`)
+3. **Action wiring** — RPC success → `sendOffer*Push` called; RPC fail → not called (`offer-push-action-wiring.test.ts`)
 
 ---
 
@@ -64,8 +86,9 @@ bun run lint
 ### Dedupe rules
 
 1. Wishlist **P-WIS-01**: max **1 push / 24h** per `(user_id, product_id, grading_company, grading_score)` via `product_watchlists.last_alerted_at`.
-2. Order reminders: align with email SSOT — max 1 / 24h per order + event class when wired.
-3. Same trigger as email: push is **additive**; email idempotency (`E-*` outbox) stays independent.
+2. Chat digest **P-CHT-01**: max **1 push / 24h** per `user_id` (daily bucket); skip if `unread_count = 0`.
+3. Order reminders: align with email SSOT — max 1 / 24h per order + event class when wired.
+4. Same trigger as email: push is **additive**; email idempotency (`E-*` outbox) stays independent.
 
 ### Env
 
@@ -125,7 +148,43 @@ bun run lint
 | P-MOD-01 | 舉報結果 | `rpc_resolve_moderation_case` | Reporter | P1 | in-app F-M-23 |
 | P-MOD-02 | 帳號制裁 | Sanction RPC | Subject | P0 | redirect |
 
-### 3.5 Account (`P-ACC`) — deferred
+### 3.5 Chat (`P-CHT`) — Phase 7 PR8
+
+> **Not per-message push.** Realtime chat + inbox badge stay primary; push is a **daily nudge** when user still has unread.
+
+| ID | Event (ZH) | Trigger | Recipient | P | Channel today | Feature | Deep link |
+|----|------------|---------|-----------|---|---------------|---------|-----------|
+| P-CHT-01 | 你有未讀訊息（每日摘要） | Cron `chat-unread-digest` (e.g. 09:00 HKT) | Users with `unread_count > 0` | P2 | in-app badge | F-M-13 | `/profile/user/chat` or active room |
+
+**Match rule:**
+
+1. Query inbox aggregate (`get_user_chat_inbox_lobby` or admin batch equivalent) → `SUM(unread_count) > 0` **or** any room `unread_count > 0`.
+2. User has `user_push_subscriptions.opted_in = true`.
+3. `last_chat_digest_pushed_at` is null or older than **24h** (per-user cooldown).
+4. Optional (P2+): skip if `last_active` within last **15 min** (user already online).
+
+**Copy example:** `你有 {n} 則未讀訊息 — 打開收件匣查看`
+
+**Why daily (not per message):**
+
+| Approach | Complexity | Risk |
+|----------|------------|------|
+| Per new message | High — realtime hook on every insert, aggressive dedupe, tab-focus checks | Spam / notification fatigue |
+| **Daily digest** | **Low–medium** — same pattern as wishlist cron; 1 row cooldown per user | User may see message hours later |
+
+**Implementation sketch (PR8):**
+
+| Piece | Notes |
+|-------|--------|
+| Migration | `profiles.last_chat_digest_pushed_at` **or** small `user_push_digest_state` table (preferred if multiple digest types) |
+| Cron | `app/api/cron/chat-unread-digest/route.ts` + `vercel.json` schedule (1×/day) |
+| Logic | `lib/notifications/process-chat-unread-digest.ts` |
+| Send | Reuse `sendOneSignalPush` + `external_id` fallback |
+| Tests | `push-phase2-registry` + gate (cooldown + unread threshold) |
+
+**Out of scope for P-CHT-01:** offer/order system messages (covered by **P-OFF-*** / **P-ORD-*** instant push in PR4–5).
+
+### 3.6 Account (`P-ACC`) — deferred
 
 | ID | Event (ZH) | Trigger | Recipient | P |
 |----|------------|---------|-----------|---|
@@ -139,6 +198,7 @@ bun run lint
 P-WIS-01
 P-OFF-01, P-OFF-02, P-OFF-04
 P-ORD-01, P-ORD-02
+P-CHT-01   # P2 — after PR4–7; daily digest only
 ```
 
 ---
@@ -149,11 +209,13 @@ P-ORD-01, P-ORD-02
 2. **Skip gracefully** — if `!isOneSignalConfigured()`, log + return `{ skipped: true }` (CI / local without secrets).
 3. **No segment spam** — always target `include_subscription_ids` from `user_push_subscriptions`.
 4. **禁碰範圍（unless explicit）** — `components/` styling-only tasks; payment/escrow RPC signatures; new migrations without approval.
-5. **一 slice 一驗** — update `push-phase*-registry.ts` + gate test per phase.
+5. **一 slice 一驗** — update `push-phase*-registry.ts` + gate test per phase; add send-helper + action/cron wiring tests before marking PR ✅ (see §0 checklist).
 
 ---
 
-## 6. PR3 implementation map (P-WIS-01)
+## 6. Implementation maps
+
+### PR3 (P-WIS-01)
 
 | File | Purpose |
 |------|---------|
@@ -166,10 +228,25 @@ P-ORD-01, P-ORD-02
 | `vercel.json` | Schedule (hourly) |
 | `tests/unit/notifications/push-phase1-gate.test.ts` | Registry + pure helpers |
 
+### PR4 (P-OFF-01–04)
+
+| File | Purpose |
+|------|---------|
+| `lib/notifications/push-delivery.ts` | Load subscriptions + `sendPushToUser` |
+| `lib/notifications/offer-push.ts` | Offer copy + send helpers |
+| `lib/notifications/push-phase2-registry.ts` | P-OFF event catalog |
+| `app/actions/offers.ts` | Wire after make/accept/reject offer RPC |
+| `app/actions/buy-now.ts` | Wire after buy-now RPC |
+| `tests/unit/notifications/push-phase2-gate.test.ts` | Copy + registry gate |
+| `tests/unit/notifications/offer-push-send.test.ts` | Send helper: recipient, path, merchant, negative |
+| `tests/unit/notifications/offer-push-action-wiring.test.ts` | Action RPC success/fail → push call |
+
 ---
 
 ## 7. Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | PR4 tests: action wiring + merchant/negative; §0 per-PR test checklist |
+| 2026-09-03 | PR4 **P-OFF-01–04** wired; add **P-CHT-01** daily digest (PR8) |
 | 2026-09-02 | Initial SSOT; Phase 2 PR3 (P-WIS-01) scoped |
