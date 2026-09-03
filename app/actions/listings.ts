@@ -5,6 +5,8 @@ import { revalidateHomeListingsCache } from "@/lib/home/revalidate-home-listings
 import {
   isCardCatalogType,
   isSealedCatalogType,
+  isSealedProductGrade,
+  normalizeSealedProductScore,
   parseSealState,
   sealedProductGradingFields,
   defaultSealedProductScore,
@@ -19,6 +21,7 @@ import {
   parseShippingFeeInput,
   validateListingExtraShippingFee,
 } from "@/lib/merchant/shipping-fee";
+import { fetchReservedListingIds } from "@/lib/listings/inventory-reservation";
 import { mapListingInsertError } from "@/lib/listings/errors";
 import {
   parseImageUploadsFromFormData,
@@ -478,12 +481,6 @@ export async function updateCardListing(
     return fail("上載的圖片資料無效，請重新上載相片");
   }
 
-  const imageCount = preUploaded?.length ?? 0;
-  const countError = validateListingImageCount(imageCount);
-  if (countError) {
-    return fail(countError);
-  }
-
   try {
     const supabase = await createClient();
     const {
@@ -518,6 +515,18 @@ export async function updateCardListing(
       return fail("找不到要更新的商品");
     }
 
+    const imageCount = preUploaded?.length ?? 0;
+    const isSealedListing = isSealedProductGrade(
+      existingListing.grading_company,
+      existingListing.grading_score,
+    );
+    const countError = isSealedListing
+      ? validateSealedListingImageCount(imageCount)
+      : validateListingImageCount(imageCount);
+    if (countError) {
+      return fail(countError);
+    }
+
     if (existingListing.seller_id !== user.id) {
       return fail("沒有權限更新此商品");
     }
@@ -535,13 +544,47 @@ export async function updateCardListing(
       return fail("已售出的商品無法編輯");
     }
 
+    const reservedListingIds = await fetchReservedListingIds(
+      supabase,
+      user.id,
+      [fields.listingId],
+    );
+    if (reservedListingIds.has(fields.listingId)) {
+      return fail("此商品有進行中訂單，暫時無法編輯");
+    }
+
     if (!isBunnyStorageConfigured()) {
       return fail("圖片儲存服務尚未設定，請稍後再試");
     }
 
-    const grading = gradingOptionToFields(
-      getGradingOption(fields.gradingOptionId),
-    );
+    let gradingCompany: string;
+    let gradingScore: string | null;
+    let useAuthentication: boolean;
+
+    if (isSealedListing) {
+      const sealFromField = fields.gradingOptionId.startsWith("sealed:")
+        ? parseSealState(fields.gradingOptionId.slice("sealed:".length))
+        : null;
+      const sealedFields = sealedProductGradingFields(
+        sealFromField ??
+          normalizeSealedProductScore(
+            existingListing.grading_company,
+            existingListing.grading_score,
+          ),
+      );
+      gradingCompany = sealedFields.gradingCompany;
+      gradingScore = sealedFields.gradingScore;
+      useAuthentication = false;
+    } else {
+      const grading = gradingOptionToFields(
+        getGradingOption(fields.gradingOptionId),
+      );
+      gradingCompany = grading.grader;
+      gradingScore =
+        grading.grader === "RAW" ? grading.condition : grading.gradeScore;
+      useAuthentication =
+        grading.grader === "RAW" ? fields.useAuthentication : false;
+    }
 
     const images: ListingImage[] = preUploaded!.map(
       ({ url, order, remark }) => ({
@@ -570,14 +613,12 @@ export async function updateCardListing(
       .from("listings")
       .update({
         price: fields.price,
-        grading_company: grading.grader,
-        grading_score:
-          grading.grader === "RAW" ? grading.condition : grading.gradeScore,
+        grading_company: gradingCompany,
+        grading_score: gradingScore,
         images,
         seller_description: fields.sellerDescription ?? null,
         status: fields.isActive ? "active" : "inactive",
-        use_authentication:
-          grading.grader === "RAW" ? fields.useAuthentication : false,
+        use_authentication: useAuthentication,
         extra_shipping_fee: extraShippingFee,
       })
       .eq("id", fields.listingId)

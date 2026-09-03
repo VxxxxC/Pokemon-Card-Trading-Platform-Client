@@ -28,6 +28,7 @@ export interface CardInstance {
   views: number;
   offersCount?: number;
   isSealedListing?: boolean;
+  isOrderReserved?: boolean;
   extraShippingFee?: number;
 }
 
@@ -97,6 +98,19 @@ const STATUS_LABEL: Record<
   },
 };
 
+const ORDER_RESERVED_STATUS = {
+  merchant: {
+    label: "待買家付款",
+    className: "text-warning",
+    dotClassName: "bg-warning",
+  },
+  member: {
+    label: "交易中",
+    className: "text-brand",
+    dotClassName: "bg-brand",
+  },
+} as const;
+
 function formatInventoryMobilePrice(value: number): string {
   return `$${value.toLocaleString("en-HK")}`;
 }
@@ -115,8 +129,11 @@ function CardInstanceRow({
   inventoryContext = "member",
 }: CardInstanceRowProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { label, className, dotClassName } = STATUS_LABEL[item.status];
-  const canEdit = item.status !== "sold";
+  const statusDisplay = item.isOrderReserved
+    ? ORDER_RESERVED_STATUS[inventoryContext]
+    : STATUS_LABEL[item.status];
+  const { label, className, dotClassName } = statusDisplay;
+  const canEdit = item.status !== "sold" && !item.isOrderReserved;
 
   return (
     <>

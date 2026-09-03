@@ -5,12 +5,15 @@ import type {
 } from "@/app/lib/inventory/types";
 import {
   filterInventoryListingsForDisplay,
-  groupListingsByProduct,
   matchesInventorySearch,
+  groupListingsByProduct,
   summarizeInventoryListings,
   type InventoryListingRow,
   type InventoryStatsRow,
 } from "@/lib/listings/build-inventory-groups";
+import {
+  fetchReservedListingIds,
+} from "@/lib/listings/inventory-reservation";
 import {
   inventoryPerfLog,
   inventoryPerfNow,
@@ -132,11 +135,13 @@ function buildInventoryGroupsPage(
   catalogById: Map<string, CatalogRow>,
   statsByListingId: Map<string, InventoryStatsRow>,
   input: UserInventoryViewInput,
+  reservedListingIds: ReadonlySet<string>,
 ): InventoryGroupsPage {
   let groups = groupListingsByProduct({
     listings,
     catalogById,
     statsByListingId,
+    reservedListingIds,
   });
 
   if (input.query) {
@@ -189,10 +194,12 @@ export async function loadUserInventoryView(
   }
 
   const contextStart = isInventoryPerfLogEnabled() ? inventoryPerfNow() : 0;
-  const { catalogById, statsByListingId } = await loadInventoryContext(
-    supabase,
-    listings,
-  );
+  const listingIds = listings.map((listing) => listing.id);
+  const [context, reservedListingIds] = await Promise.all([
+    loadInventoryContext(supabase, listings),
+    fetchReservedListingIds(supabase, userId, listingIds),
+  ]);
+  const { catalogById, statsByListingId } = context;
 
   if (isInventoryPerfLogEnabled()) {
     inventoryPerfLog(
@@ -200,16 +207,20 @@ export async function loadUserInventoryView(
     );
   }
 
+  const filteredListings = filterInventoryListingsForDisplay(
+    listings,
+    input.statusFilter ?? "active",
+    reservedListingIds,
+  );
+
   return {
-    summary: summarizeInventoryListings(listings),
+    summary: summarizeInventoryListings(listings, reservedListingIds),
     page: buildInventoryGroupsPage(
-      filterInventoryListingsForDisplay(
-        listings,
-        input.statusFilter ?? "active",
-      ),
+      filteredListings,
       catalogById,
       statsByListingId,
       input,
+      reservedListingIds,
     ),
   };
 }

@@ -24,6 +24,7 @@ import { submitCardListingWithProgress } from "@/lib/listings/submit-card-listin
 import {
   LISTING_DESCRIPTION_MAX,
   validateImageFile,
+  validateUpdateListingImageCount,
 } from "@/lib/listings/validation";
 import { useListingGradingAuthFields } from "@/lib/listings/use-listing-grading-auth-fields";
 
@@ -72,6 +73,8 @@ export function ListingEditDialog({
   const [activeReplaceIndex, setActiveReplaceIndex] = useState<number | null>(
     null,
   );
+
+  const itemKind = item.isSealedListing ? "box_set" : "card";
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoSlotsRef = useRef<EditListingPhotoSlot[]>(photoSlots);
@@ -168,16 +171,29 @@ export function ListingEditDialog({
       return;
     }
 
-    const missingSlot = photoSlots.find((slot) => !slot.previewUrl);
-    if (missingSlot) {
+    const filledPhotoSlots = photoSlots.filter((slot) => slot.previewUrl);
+    const imageCountError = validateUpdateListingImageCount(
+      filledPhotoSlots.length,
+      itemKind,
+    );
+    if (imageCountError) {
+      toast.error(imageCountError);
+      return;
+    }
+
+    if (itemKind === "card" && filledPhotoSlots.length !== photoSlots.length) {
       toast.error("必須上載全部 6 張卡牌相片（正面、背面及四個角）");
       return;
     }
 
     setIsSubmitting(true);
 
+    const slotsToSubmit =
+      itemKind === "box_set" ? filledPhotoSlots : photoSlots;
+
     const result = await submitCardListingWithProgress({
       mode: "edit",
+      itemKind,
       listingId: item.id,
       gradingOptionId,
       price: parsedPrice,
@@ -191,7 +207,7 @@ export function ListingEditDialog({
           : inventoryContext === "merchant"
             ? 0
             : undefined,
-      imageSlots: photoSlots.map((slot) => ({
+      imageSlots: slotsToSubmit.map((slot) => ({
         file: slot.file,
         existingUrl: slot.existingUrl ?? slot.previewUrl ?? undefined,
         existingObjectKey: slot.existingObjectKey ?? undefined,
@@ -251,7 +267,7 @@ export function ListingEditDialog({
                 showExtraShipping={inventoryContext === "merchant"}
                 extraShippingFee={extraShippingFee}
                 onExtraShippingFeeChange={setExtraShippingFee}
-                itemKind="card"
+                itemKind={itemKind}
                 photoMode="edit"
                 editPhotoSlots={photoSlots}
                 onEditPhotoReplaceClick={handleReplaceClick}
