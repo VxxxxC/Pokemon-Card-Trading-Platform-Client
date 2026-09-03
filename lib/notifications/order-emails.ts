@@ -9,6 +9,12 @@ import {
   buildSellerOrderDetailUrl,
 } from "@/lib/notifications/email-urls";
 import { enqueueTransactionalEmail } from "@/lib/notifications/enqueue-email";
+import {
+  sendMemberOrderPaymentConfirmedSellerPush,
+  sendMerchantOrderPaymentConfirmedSellerPush,
+  sendMerchantOrderPaymentExpiredBuyerPush,
+  sendMerchantOrderShippedBuyerPush,
+} from "@/lib/notifications/order-push";
 import { resolveAuthUserEmails } from "@/lib/notifications/resolve-auth-user-email";
 import { resolveEmailLogoUrl } from "@/lib/email/layout";
 
@@ -243,6 +249,8 @@ export async function enqueueMerchantOrderPaymentConfirmedEmails(
     amountLabel: resolveOrderAmountLabel(order),
     orderNumber: order.order_number,
   });
+
+  await sendMerchantOrderPaymentConfirmedSellerPush(order.id);
 }
 
 export async function enqueueMemberOrderPaymentConfirmedEmails(
@@ -271,6 +279,8 @@ export async function enqueueMemberOrderPaymentConfirmedEmails(
     amountLabel: resolveOrderAmountLabel(order),
     orderNumber: order.order_number,
   });
+
+  await sendMemberOrderPaymentConfirmedSellerPush(order.id);
 }
 
 async function enqueuePaymentExpiredPair(args: {
@@ -371,6 +381,8 @@ export async function enqueueMerchantOrderPaymentExpiredEmails(
     amountLabel: resolveOrderAmountLabel(order),
     orderNumber: order.order_number,
   });
+
+  await sendMerchantOrderPaymentExpiredBuyerPush(order.id);
 }
 
 async function enqueueOrderShippedBuyerEmail(args: {
@@ -503,6 +515,8 @@ export async function enqueueMerchantOrderShippedBuyerEmail(
     trackingNo: options?.trackingNo ?? order.outbound_tracking_no,
     courierName: options?.courierName ?? order.outbound_courier_name,
   });
+
+  await sendMerchantOrderShippedBuyerPush(orderId, options);
 }
 
 export async function enqueueMerchantOrderBuyerConfirmedSellerEmail(

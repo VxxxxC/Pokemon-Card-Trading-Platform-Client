@@ -14,7 +14,7 @@
 | **1** | PR2 | `user_push_subscriptions` + client sync | ✅ | `push-subscriptions.ts`, `OneSignalSubscriptionSync`, migration `20261002100000` |
 | **2** | PR3 | **P-WIS-01** wishlist price alert cron | ✅ | `send.ts`, `process-wishlist-price-alerts.ts`, `/api/cron/wishlist-price-alerts` |
 | **3** | PR4 | **P-OFF-*** offer events (chat triggers) | ✅ | `offer-push.ts`, `push-delivery.ts`, `offers.ts`, `buy-now.ts` |
-| **4** | PR5 | **P-ORD-*** order lifecycle subset | ⏳ | webhook / cron hooks |
+| **4** | PR5 | **P-ORD-*** order lifecycle subset | ✅ | `order-push.ts`, `order-emails.ts`, webhook/cron hooks |
 | **5** | PR6 | User settings toggles (real prefs) | ⏳ | `UserSettingsClient` wire-up |
 | **6** | PR7 | **P-MOD-*** moderation / sanction mirror | ⏳ | align with admin-moderation v2 batch |
 | **7** | PR8 | **P-CHT-01** chat unread daily digest | ⏳ | cron + inbox unread aggregate |
@@ -36,7 +36,7 @@ bun run lint
 |----|----------------|---------|
 | **PR3** | `push-phase1-registry` + copy/cooldown gate | `bun run test:push:phase1` |
 | **PR4** | phase2 gate + `offer-push-send` (merchant/negative) + `offer-push-action-wiring` | `bun run test:push:phase2` |
-| **PR5** | `push-phase3-registry` + order send helper + action/cron wiring | `bun run test:push:phase3` *(add script)* |
+| **PR5** | `push-phase3-registry` + order send helper + action/cron wiring | `bun run test:push:phase3` |
 | **PR6** | settings toggle contract tests (opt-in gates send) | TBD |
 | **PR7** | moderation push gate + wiring | TBD |
 | **PR8** | chat digest cron gate (same pattern as wishlist) | TBD |
@@ -241,12 +241,24 @@ P-CHT-01   # P2 — after PR4–7; daily digest only
 | `tests/unit/notifications/offer-push-send.test.ts` | Send helper: recipient, path, merchant, negative |
 | `tests/unit/notifications/offer-push-action-wiring.test.ts` | Action RPC success/fail → push call |
 
+### PR5 (P-ORD-01–03)
+
+| File | Purpose |
+|------|---------|
+| `lib/notifications/order-push.ts` | Order copy + send helpers |
+| `lib/notifications/push-phase3-registry.ts` | P-ORD event catalog |
+| `lib/notifications/order-emails.ts` | Wire after payment / ship / expiry email enqueue |
+| `tests/unit/notifications/push-phase3-gate.test.ts` | Copy + registry gate |
+| `tests/unit/notifications/order-push-send.test.ts` | Send helper: recipient, path, negative |
+| `tests/unit/notifications/order-push-action-wiring.test.ts` | Email enqueue → push call |
+
 ---
 
 ## 7. Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | PR5 **P-ORD-01–03** wired via order-emails + phase3 tests |
 | 2026-09-03 | PR4 tests: action wiring + merchant/negative; §0 per-PR test checklist |
 | 2026-09-03 | PR4 **P-OFF-01–04** wired; add **P-CHT-01** daily digest (PR8) |
 | 2026-09-02 | Initial SSOT; Phase 2 PR3 (P-WIS-01) scoped |
