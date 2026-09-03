@@ -9,6 +9,10 @@ import { enqueueTransactionalEmail } from "@/lib/notifications/enqueue-email";
 import { buildMemberTradingUrl } from "@/lib/notifications/email-urls";
 import { resolveAuthUserEmails } from "@/lib/notifications/resolve-auth-user-email";
 import { resolveEmailLogoUrl } from "@/lib/email/layout";
+import {
+  sendModerationReportOutcomePushes,
+  sendModerationSanctionPush,
+} from "@/lib/notifications/moderation-push";
 
 function moderationResolutionLabel(resolution: string): string {
   switch (resolution) {
@@ -99,6 +103,12 @@ export async function enqueueModerationReportOutcomeEmails(args: {
       },
     });
   }
+
+  await sendModerationReportOutcomePushes({
+    caseId: args.caseId,
+    resolution: args.resolution,
+    notifyReporter: args.notifyReporter,
+  });
 }
 
 export async function enqueueModerationReportReceivedEmail(args: {
@@ -344,5 +354,20 @@ export async function enqueueModerationResolveFollowUpEmails(args: {
       break;
     default:
       break;
+  }
+
+  if (
+    sanction.type === "freeze_payout" ||
+    sanction.type === "suspend" ||
+    sanction.type === "ban" ||
+    sanction.type === "warn" ||
+    sanction.type === "restrict_listing" ||
+    sanction.type === "restrict_chat"
+  ) {
+    await sendModerationSanctionPush({
+      caseId: args.caseId,
+      subjectUserId: subjectId,
+      sanctionType: sanction.type,
+    });
   }
 }

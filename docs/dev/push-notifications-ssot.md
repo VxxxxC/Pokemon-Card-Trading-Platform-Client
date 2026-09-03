@@ -16,7 +16,7 @@
 | **3** | PR4 | **P-OFF-*** offer events (chat triggers) | ✅ | `offer-push.ts`, `push-delivery.ts`, `offers.ts`, `buy-now.ts` |
 | **4** | PR5 | **P-ORD-*** order lifecycle subset | ✅ | `order-push.ts`, `order-emails.ts`, webhook/cron hooks |
 | **5** | PR6 | User settings toggles (real prefs) | ✅ | `push_transactional`, `UserSettingsClient`, `push-delivery` gate |
-| **6** | PR7 | **P-MOD-*** moderation / sanction mirror | ⏳ | align with admin-moderation v2 batch |
+| **6** | PR7 | **P-MOD-*** moderation / sanction mirror | ✅ | `moderation-push.ts`, `moderation-emails.ts` |
 | **7** | PR8 | **P-CHT-01** chat unread daily digest | ⏳ | cron + inbox unread aggregate |
 
 **Gate commands (per phase):**
@@ -38,7 +38,7 @@ bun run lint
 | **PR4** | phase2 gate + `offer-push-send` (merchant/negative) + `offer-push-action-wiring` | `bun run test:push:phase2` |
 | **PR5** | `push-phase3-registry` + order send helper + action/cron wiring | `bun run test:push:phase3` |
 | **PR6** | settings toggle contract tests (opt-in gates send) | `bun run test:push:phase6` |
-| **PR7** | moderation push gate + wiring | TBD |
+| **PR7** | moderation push gate + send + email wiring | `bun run test:push:phase7` |
 | **PR8** | chat digest cron gate (same pattern as wishlist) | TBD |
 | **Post-PR6** | One Playwright smoke journey (canonical offer or order flow) | `bun run test:e2e` *(targeted spec)* |
 
@@ -266,12 +266,24 @@ P-CHT-01   # P2 — after PR4–7; daily digest only
 | `tests/unit/notifications/push-delivery-prefs.test.ts` | Delivery gate |
 | `tests/unit/notifications/push-preferences-action.test.ts` | Settings action |
 
+### PR7 (P-MOD-01–02)
+
+| File | Purpose |
+|------|---------|
+| `lib/notifications/moderation-push.ts` | Moderation copy + send helpers |
+| `lib/notifications/push-phase7-registry.ts` | P-MOD event catalog |
+| `lib/notifications/moderation-emails.ts` | Wire after resolve case email enqueue |
+| `tests/unit/notifications/push-phase7-gate.test.ts` | Copy + registry gate |
+| `tests/unit/notifications/moderation-push-send.test.ts` | Send helper wiring |
+| `tests/unit/notifications/moderation-push-action-wiring.test.ts` | Email enqueue → push call |
+
 ---
 
 ## 7. Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-09-03 | PR7 **P-MOD-01–02** wired via moderation-emails + phase7 tests |
 | 2026-09-03 | PR6 `push_transactional` pref + settings toggle + delivery gate |
 | 2026-09-03 | PR5 **P-ORD-01–03** wired via order-emails + phase3 tests |
 | 2026-09-03 | PR4 tests: action wiring + merchant/negative; §0 per-PR test checklist |
