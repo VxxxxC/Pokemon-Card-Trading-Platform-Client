@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getAdminGradingTabCounts, searchAdminGradingOrders } from "@/app/actions/admin-grading";
+import {
+  getAdminGradingTabCounts,
+  searchAdminGradingOrders,
+  type AdminGradingTab,
+} from "@/app/actions/admin-grading";
+import { isAdminGradingTab } from "@/lib/admin-grading/tabs";
 import { isCurrentUserAdmin } from "@/lib/auth/require-admin";
 import { getOptionalAuthUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
@@ -12,7 +17,11 @@ export const metadata: Metadata = {
   description: "統一處理 Member C2C 與 Merchant B2C 鑑定訂單入庫、鑑定、出庫與退款",
 };
 
-export default async function AdminGradingPage() {
+interface PageProps {
+  searchParams: Promise<{ tab?: string }>;
+}
+
+export default async function AdminGradingPage({ searchParams }: PageProps) {
   if (!isSupabaseConfigured()) {
     redirect("/auth");
   }
@@ -28,8 +37,16 @@ export default async function AdminGradingPage() {
     redirect("/");
   }
 
+  const query = await searchParams;
+  const initialTab: AdminGradingTab =
+    query.tab === "recovery_tracking"
+      ? "awaiting_settlement"
+      : isAdminGradingTab(query.tab)
+        ? query.tab
+        : "awaiting_intake";
+
   const result = await searchAdminGradingOrders({
-    tab: "awaiting_intake",
+    tab: initialTab,
     page: 1,
     pageSize: 20,
   });
@@ -38,6 +55,7 @@ export default async function AdminGradingPage() {
 
   return (
     <AdminGradingClient
+      initialTab={initialTab}
       initialRows={result.success ? result.data.rows : []}
       initialTotal={result.success ? result.data.total : 0}
       initialTabCounts={

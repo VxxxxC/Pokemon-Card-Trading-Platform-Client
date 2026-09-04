@@ -30,21 +30,12 @@ import { enqueueMerchantRecoveryDueEmail } from "@/lib/notifications/payout-emai
 import { runGoodsCaptureSaga } from "@/lib/payments/goods-capture-saga";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
+import {
+  ADMIN_GRADING_TABS,
+  type AdminGradingTab,
+} from "@/lib/admin-grading/tabs";
 
-export type AdminGradingTab =
-  | "awaiting_intake"
-  | "grading"
-  | "awaiting_outbound"
-  | "awaiting_settlement"
-  | "closed";
-
-const ADMIN_GRADING_TABS: AdminGradingTab[] = [
-  "awaiting_intake",
-  "grading",
-  "awaiting_outbound",
-  "awaiting_settlement",
-  "closed",
-];
+export type { AdminGradingTab };
 
 export type AdminGradingTabCounts = Record<AdminGradingTab, number>;
 
@@ -98,13 +89,17 @@ export type AdminGradingQueueRow = {
   fault_party: string | null;
   seller_settlement_status: string | null;
   receivable_amount_hkd: number | null;
+  recovery_total_hkd: number | null;
+  recovery_applied_hkd: number | null;
+  recovery_remaining_hkd: number | null;
 };
 
 export type AdminGradingAuditRow = {
   id: string;
   order_kind: AdminGradingOrderKind;
   order_id: string;
-  admin_id: string;
+  admin_id: string | null;
+  event_source?: "audit" | "ledger" | "receivable";
   action: string;
   from_status: string | null;
   to_status: string | null;
@@ -112,6 +107,10 @@ export type AdminGradingAuditRow = {
   created_at: string;
   admin_display_name: string | null;
   admin_username: string | null;
+  amount_hkd?: number | null;
+  stripe_transfer_id?: string | null;
+  source_payout_order_number?: string | null;
+  source_payment_intent_id?: string | null;
 };
 
 type ActionResult<T> =
@@ -151,6 +150,7 @@ function revalidateGradingPaths(
   orderId: string,
 ): void {
   revalidatePath("/admin/grading");
+  revalidatePath(`/admin/grading/${orderKind}/${orderId}`);
   if (orderKind === "member") {
     revalidatePath("/profile/user/orderDetail/" + orderId);
     revalidatePath("/profile/user/trading");
@@ -225,6 +225,93 @@ function parseAuditPayload(data: unknown): AdminGradingAuditRow[] {
   }
   const rows = (data as { rows?: unknown }).rows;
   return Array.isArray(rows) ? (rows as AdminGradingAuditRow[]) : [];
+}
+
+function parseOrderPayload(data: unknown): AdminGradingQueueRow | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+  const row = (data as { row?: unknown }).row;
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  return row as AdminGradingQueueRow;
+}
+
+export async function getAdminGradingOrder(input: {
+  orderKind: AdminGradingOrderKind;
+  orderId: string;
+}): Promise<ActionResult<AdminGradingQueueRow>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) {
+    return { success: false, error: guard.error };
+  }
+
+  const orderId = input.orderId.trim();
+  if (!orderId) {
+    return { success: false, error: "找不到此訂單" };
+  }
+
+  try {
+    const supabase = asAdminGradingRpcClient(await createClient());
+    const { data, error } = await supabase.rpc("get_admin_grading_order", {
+      p_order_kind: input.orderKind,
+      p_order_id: orderId,
+    });
+
+    if (!error) {
+      const row = parseOrderPayload(data);
+      if (row) {
+        return { success: true, data: row };
+      }
+    } else {
+      console.error("[getAdminGradingOrder]", error.message);
+    }
+
+    const scanned = await findAdminGradingOrderInQueues(
+      supabase,
+      input.orderKind,
+      orderId,
+    );
+    if (scanned) {
+      return { success: true, data: scanned };
+    }
+
+    return { success: false, error: "找不到此鑑定訂單" };
+  } catch (error) {
+    console.error("[getAdminGradingOrder]", error);
+    return { success: false, error: "無法載入鑑定訂單" };
+  }
+}
+
+async function findAdminGradingOrderInQueues(
+  supabase: AdminGradingRpcClient,
+  orderKind: AdminGradingOrderKind,
+  orderId: string,
+): Promise<AdminGradingQueueRow | null> {
+  for (const tab of ADMIN_GRADING_TABS) {
+    for (const keyword of [orderId, null] as const) {
+      const { data, error } = await supabase.rpc("search_admin_grading_orders", {
+        p_tab: tab,
+        p_order_kind: orderKind,
+        p_keyword: keyword,
+        p_page: 1,
+        p_page_size: 50,
+      });
+
+      if (error) {
+        continue;
+      }
+
+      const parsed = parseQueuePayload(data);
+      const row = parsed?.rows.find((candidate) => candidate.order_id === orderId);
+      if (row) {
+        return row;
+      }
+    }
+  }
+
+  return null;
 }
 
 export async function countAdminPendingGradingOrders(): Promise<ActionResult<number>> {
@@ -319,6 +406,10 @@ type AdminGradingRpcClient = {
   ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "get_admin_grading_audit_history",
+    args: { p_order_kind: AdminGradingOrderKind; p_order_id: string },
+  ): Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: "get_admin_grading_order",
     args: { p_order_kind: AdminGradingOrderKind; p_order_id: string },
   ): Promise<{ data: unknown; error: { message: string } | null }>;
 };
