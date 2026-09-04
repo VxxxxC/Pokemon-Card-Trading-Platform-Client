@@ -156,7 +156,7 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" \
 
 - [x] E-ORD-04（需已付款、非 meetup、非鑑定直發）
 - [x] E-ORD-05
-- [ ] E-ORD-03
+- [x] E-ORD-03
 
 ---
 
@@ -174,11 +174,11 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" \
 | E-GRD-B2C-05/06 | 商戶鑑定出庫/失敗 | Admin grading outbound / fail（merchant）                        | 同 C2C 對應                    |
 | E-OFF-05        | 出價失效          | Accept offer / buy now / 下架 listing                            | 其他 pending buyer：`E-OFF-05` |
 
-- [ ] E-MOD-02
+- [x] E-MOD-02
 - [ ] E-PAY-02
-- [ ] E-GRD-C2C-01 / 05 / 06 / 07
-- [ ] E-GRD-B2C-02 / 05 / 06
-- [ ] E-OFF-05
+- [x] E-GRD-C2C-01 / 05 / 06 / 07
+- [x] E-GRD-B2C-02 / 05 / 06
+- [x] E-OFF-05
 
 ---
 
@@ -302,12 +302,12 @@ bun run test:email:phase6
 
 - [ ] E-REF-03
 - [ ] E-ACC-02
-- [ ] E-GRD-B2C-01
+- [x] E-GRD-B2C-01
 - [ ] E-GRD-B2C-09
 - [ ] E-PAY-01
-- [ ] E-ORD-P2P-01
-- [ ] E-ORD-P2P-02
-- [ ] E-ORD-09
+- [x] E-ORD-P2P-01
+- [x] E-ORD-P2P-02
+- [x] E-ORD-09
 - [ ] Phase 6 gate 全綠
 
 ---
@@ -328,10 +328,10 @@ bun run test:email:phase6
 
 只做以下 **6 步**，其餘靠 `bun run test:email:phase1` … `phase6`：
 
-1. [ ] 新信箱 **E-ACC-01** confirm link 可登入 → **E-ACC-02** `/auth/email-confirmed`
-2. [ ] **E-OFF-01** 叫價 → outbox + worker → 收信
-3. [ ] **E-ORD-01** 付款成功 → buyer+seller outbox（Stripe test）
-4. [ ] **E-ACC-03** forgot password 一輪
+1. [x] 新信箱 **E-ACC-01** confirm link 可登入 → **E-ACC-02** `/auth/email-confirmed`
+2. [x] **E-OFF-01** 叫價 → outbox + worker → 收信
+3. [x] **E-ORD-01** 付款成功 → buyer+seller outbox（Stripe test）
+4. [x] **E-ACC-03** forgot password 一輪
 5. [ ] Admin **E-MOD-06** 發送補充證據通知
 6. [ ] 任一 cron（如 `order-fulfillment-reminders`）→ outbox row
 
