@@ -112,5 +112,7 @@ bunx supabase config push   # 若 storage 402 失败，auth 可能已部分更�
 ## 验证 confirm email
 
 1. **Save 模板后**用新邮箱注册
-2. 主题应为「確認你的 Cardvault HK 帳戶」、暗金 header
-3. 点「確認電郵」→ `/auth/callback` → 登录成功
+2. 会员：主题「確認你的 Cardvault HK 帳戶」、暗金 header、CTA「確認電郵」→ `next=/profile/user`
+3. 商戶（`/auth?role=merchant`）：主题「確認電郵 — 開始商戶入駐 · Cardvault HK」、强调櫥窗 / Stripe / B2C 訂單、CTA「確認電郵並繼續入駐」→ `next=/profile/user/merchant-apply`
+4. 模板依 `user_metadata.onboarding_intent = merchant_apply`（注册时由 `registerMemberForMerchantApply` 写入）自动分支
+5. 点 CTA → `/auth/callback` → 登录成功
