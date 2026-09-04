@@ -5,6 +5,10 @@ const pushMocks = vi.hoisted(() => ({
   sendMemberOrderPaymentConfirmedSellerPush: vi.fn(),
   sendMerchantOrderShippedBuyerPush: vi.fn(),
   sendMerchantOrderPaymentExpiredBuyerPush: vi.fn(),
+  sendOrderBuyerConfirmedSellerPush: vi.fn(),
+  sendOrderCompletedBuyerPush: vi.fn(),
+  sendOrderCompletedMerchantPush: vi.fn(),
+  sendOrderReviewInvitePush: vi.fn(),
 }));
 
 const fromMock = vi.hoisted(() => vi.fn());
@@ -23,6 +27,10 @@ vi.mock("@/lib/notifications/order-push", () => ({
   sendMerchantOrderShippedBuyerPush: pushMocks.sendMerchantOrderShippedBuyerPush,
   sendMerchantOrderPaymentExpiredBuyerPush:
     pushMocks.sendMerchantOrderPaymentExpiredBuyerPush,
+  sendOrderBuyerConfirmedSellerPush: pushMocks.sendOrderBuyerConfirmedSellerPush,
+  sendOrderCompletedBuyerPush: pushMocks.sendOrderCompletedBuyerPush,
+  sendOrderCompletedMerchantPush: pushMocks.sendOrderCompletedMerchantPush,
+  sendOrderReviewInvitePush: pushMocks.sendOrderReviewInvitePush,
 }));
 
 vi.mock("@/lib/notifications/enqueue-email", () => ({
@@ -45,6 +53,10 @@ import {
   enqueueMerchantOrderPaymentExpiredEmails,
   enqueueMerchantOrderShippedBuyerEmail,
   enqueueMemberOrderPaymentConfirmedEmails,
+  enqueueMerchantOrderBuyerConfirmedSellerEmail,
+  enqueueMemberOrderBuyerConfirmedSellerEmail,
+  enqueueOrderCompletedBuyerEmail,
+  enqueueB2cCompletedMerchantEmail,
 } from "@/lib/notifications/order-emails";
 
 const ORDER_ID = "11111111-1111-4111-8111-111111111111";
@@ -156,6 +168,53 @@ describe("order push action wiring (PR5)", () => {
     await enqueueMerchantOrderPaymentExpiredEmails(ORDER_ID);
 
     expect(pushMocks.sendMerchantOrderPaymentExpiredBuyerPush).toHaveBeenCalledWith(
+      ORDER_ID,
+    );
+  });
+
+  it("enqueueMerchantOrderBuyerConfirmedSellerEmail triggers P-ORD-04 push", async () => {
+    mockMerchantOrderRow();
+    mockListingRow();
+
+    await enqueueMerchantOrderBuyerConfirmedSellerEmail(ORDER_ID);
+
+    expect(pushMocks.sendOrderBuyerConfirmedSellerPush).toHaveBeenCalledWith({
+      orderId: ORDER_ID,
+      orderKind: "merchant",
+    });
+  });
+
+  it("enqueueMemberOrderBuyerConfirmedSellerEmail triggers P-ORD-04 push", async () => {
+    mockMemberOrderRow();
+    mockListingRow();
+
+    await enqueueMemberOrderBuyerConfirmedSellerEmail(ORDER_ID);
+
+    expect(pushMocks.sendOrderBuyerConfirmedSellerPush).toHaveBeenCalledWith({
+      orderId: ORDER_ID,
+      orderKind: "member",
+    });
+  });
+
+  it("enqueueOrderCompletedBuyerEmail triggers P-ORD-05 buyer push", async () => {
+    mockMerchantOrderRow();
+    mockListingRow();
+
+    await enqueueOrderCompletedBuyerEmail(ORDER_ID, "merchant");
+
+    expect(pushMocks.sendOrderCompletedBuyerPush).toHaveBeenCalledWith(
+      ORDER_ID,
+      "merchant",
+    );
+  });
+
+  it("enqueueB2cCompletedMerchantEmail triggers P-ORD-05 merchant push", async () => {
+    mockMerchantOrderRow();
+    mockListingRow();
+
+    await enqueueB2cCompletedMerchantEmail(ORDER_ID);
+
+    expect(pushMocks.sendOrderCompletedMerchantPush).toHaveBeenCalledWith(
       ORDER_ID,
     );
   });

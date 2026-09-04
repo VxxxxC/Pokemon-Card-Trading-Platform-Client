@@ -8,6 +8,7 @@ import {
   buildSellerOrderDetailUrl,
 } from "@/lib/notifications/email-urls";
 import { enqueueTransactionalEmail } from "@/lib/notifications/enqueue-email";
+import { sendOrderBuyerConfirmedSellerPush } from "@/lib/notifications/order-push";
 import { resolveAuthUserEmails } from "@/lib/notifications/resolve-auth-user-email";
 import { resolveEmailLogoUrl } from "@/lib/email/layout";
 
@@ -873,6 +874,11 @@ export async function enqueueB2cBuyerConfirmedMerchantEmail(
       actionUrl: buildMerchantOrderDetailUrl(siteUrl, order.id),
       logoUrl,
     },
+  });
+
+  await sendOrderBuyerConfirmedSellerPush({
+    orderId: order.id,
+    orderKind: "merchant",
   });
 }
 

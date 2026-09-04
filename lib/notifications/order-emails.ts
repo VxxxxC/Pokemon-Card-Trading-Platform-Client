@@ -14,6 +14,12 @@ import {
   sendMerchantOrderPaymentConfirmedSellerPush,
   sendMerchantOrderPaymentExpiredBuyerPush,
   sendMerchantOrderShippedBuyerPush,
+  sendOrderBuyerConfirmedSellerPush,
+  sendOrderCompletedBuyerPush,
+  sendOrderCompletedMerchantPush,
+  sendOrderConfirmReminderBuyerPush,
+  sendOrderReviewInvitePush,
+  sendOrderShipReminderSellerPush,
 } from "@/lib/notifications/order-push";
 import { resolveAuthUserEmails } from "@/lib/notifications/resolve-auth-user-email";
 import { resolveEmailLogoUrl } from "@/lib/email/layout";
@@ -147,11 +153,17 @@ async function resolveSellerDisplayName(
 
 async function enqueueOrderEmailSafely(
   input: Parameters<typeof enqueueTransactionalEmail>[0],
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await enqueueTransactionalEmail(input);
+    const result = await enqueueTransactionalEmail(input);
+    if (!result.success) {
+      console.warn("[order-emails] enqueue failed", input.eventId, result.error);
+      return false;
+    }
+    return !result.data.duplicate;
   } catch (error) {
     console.warn("[order-emails] enqueue failed", input.eventId, error);
+    return false;
   }
 }
 
@@ -551,6 +563,11 @@ export async function enqueueMerchantOrderBuyerConfirmedSellerEmail(
     listingId: order.listing_id,
     orderNumber: order.order_number,
   });
+
+  await sendOrderBuyerConfirmedSellerPush({
+    orderId: order.id,
+    orderKind: "merchant",
+  });
 }
 
 export async function enqueueMemberOrderBuyerConfirmedSellerEmail(
@@ -584,6 +601,11 @@ export async function enqueueMemberOrderBuyerConfirmedSellerEmail(
     sellerId: order.seller_id,
     listingId: order.listing_id,
     orderNumber: order.order_number,
+  });
+
+  await sendOrderBuyerConfirmedSellerPush({
+    orderId: order.id,
+    orderKind: "member",
   });
 }
 
@@ -755,25 +777,28 @@ export async function enqueueOrderCompletedBuyerEmail(
   const buyerEmail = await resolveAuthUserEmails([orderRow.buyer_id]).then(
     (map) => map.get(orderRow.buyer_id),
   );
-  if (!buyerEmail) return;
 
   const siteUrl = await getSiteUrl();
   const logoUrl = resolveEmailLogoUrl(siteUrl);
 
-  await enqueueOrderEmailSafely({
-    eventId: "E-ORD-06",
-    templateKey: "order.completed",
-    toEmail: buyerEmail,
-    idempotencyKey: `E-ORD-06:${orderId}:buyer`,
-    payload: {
-      orderId,
-      orderKind,
-      cardName: listing.cardName,
-      orderNumber: orderRow.order_number,
-      actionUrl: buildBuyerOrderDetailUrl(siteUrl, orderId),
-      logoUrl,
-    },
-  });
+  if (buyerEmail) {
+    await enqueueOrderEmailSafely({
+      eventId: "E-ORD-06",
+      templateKey: "order.completed",
+      toEmail: buyerEmail,
+      idempotencyKey: `E-ORD-06:${orderId}:buyer`,
+      payload: {
+        orderId,
+        orderKind,
+        cardName: listing.cardName,
+        orderNumber: orderRow.order_number,
+        actionUrl: buildBuyerOrderDetailUrl(siteUrl, orderId),
+        logoUrl,
+      },
+    });
+  }
+
+  await sendOrderCompletedBuyerPush(orderId, orderKind);
 }
 export async function enqueueB2cPaymentMerchantActionEmail(
   orderId: string,
@@ -892,24 +917,27 @@ export async function enqueueB2cCompletedMerchantEmail(
   const merchantEmail = await resolveAuthUserEmails([order.merchant_id]).then(
     (map) => map.get(order.merchant_id),
   );
-  if (!merchantEmail) return;
 
   const siteUrl = await getSiteUrl();
   const logoUrl = resolveEmailLogoUrl(siteUrl);
 
-  await enqueueOrderEmailSafely({
-    eventId: "E-ORD-B2C-03",
-    templateKey: "b2c.completed",
-    toEmail: merchantEmail,
-    idempotencyKey: `E-ORD-B2C-03:${order.id}:merchant`,
-    payload: {
-      orderId: order.id,
-      cardName: listing.cardName,
-      orderNumber: order.order_number,
-      actionUrl: buildMerchantFinanceUrl(siteUrl),
-      logoUrl,
-    },
-  });
+  if (merchantEmail) {
+    await enqueueOrderEmailSafely({
+      eventId: "E-ORD-B2C-03",
+      templateKey: "b2c.completed",
+      toEmail: merchantEmail,
+      idempotencyKey: `E-ORD-B2C-03:${order.id}:merchant`,
+      payload: {
+        orderId: order.id,
+        cardName: listing.cardName,
+        orderNumber: order.order_number,
+        actionUrl: buildMerchantFinanceUrl(siteUrl),
+        logoUrl,
+      },
+    });
+  }
+
+  await sendOrderCompletedMerchantPush(order.id);
 }
 
 export async function enqueueOrderConfirmReminderBuyerEmail(args: {
@@ -956,7 +984,7 @@ export async function enqueueOrderConfirmReminderBuyerEmail(args: {
   const siteUrl = await getSiteUrl();
   const logoUrl = resolveEmailLogoUrl(siteUrl);
 
-  await enqueueOrderEmailSafely({
+  const emailed = await enqueueOrderEmailSafely({
     eventId: "E-ORD-07",
     templateKey: "order.confirm_reminder",
     toEmail: buyerEmail,
@@ -970,6 +998,13 @@ export async function enqueueOrderConfirmReminderBuyerEmail(args: {
       logoUrl,
     },
   });
+
+  if (emailed) {
+    await sendOrderConfirmReminderBuyerPush({
+      orderId: args.orderId,
+      orderKind: args.orderKind,
+    });
+  }
 }
 
 export async function enqueueOrderShipReminderSellerEmail(args: {
@@ -1025,7 +1060,7 @@ export async function enqueueOrderShipReminderSellerEmail(args: {
       ? buildMerchantOrderDetailUrl(siteUrl, args.orderId)
       : buildSellerOrderDetailUrl(siteUrl, args.orderId, listing.sellerPersona);
 
-  await enqueueOrderEmailSafely({
+  const emailed = await enqueueOrderEmailSafely({
     eventId: "E-ORD-08",
     templateKey: "order.ship_reminder",
     toEmail: sellerEmail,
@@ -1039,6 +1074,13 @@ export async function enqueueOrderShipReminderSellerEmail(args: {
       logoUrl,
     },
   });
+
+  if (emailed) {
+    await sendOrderShipReminderSellerPush({
+      orderId: args.orderId,
+      orderKind: args.orderKind,
+    });
+  }
 }
 
 export async function enqueueOrderReviewInviteEmails(
@@ -1099,7 +1141,7 @@ export async function enqueueOrderReviewInviteEmails(
 
       if (reviewRow?.id) continue;
 
-      await enqueueOrderEmailSafely({
+      const emailed = await enqueueOrderEmailSafely({
         eventId: "E-ORD-09",
         templateKey: "order.review_invite",
         toEmail: recipient.email,
@@ -1113,6 +1155,14 @@ export async function enqueueOrderReviewInviteEmails(
           logoUrl,
         },
       });
+
+      if (emailed) {
+        await sendOrderReviewInvitePush({
+          orderId,
+          orderKind,
+          userId: recipient.userId,
+        });
+      }
     }
 
     return;
@@ -1163,7 +1213,7 @@ export async function enqueueOrderReviewInviteEmails(
 
     if (reviewRow?.id) continue;
 
-    await enqueueOrderEmailSafely({
+    const emailed = await enqueueOrderEmailSafely({
       eventId: "E-ORD-09",
       templateKey: "order.review_invite",
       toEmail: recipient.email,
@@ -1177,5 +1227,13 @@ export async function enqueueOrderReviewInviteEmails(
         logoUrl,
       },
     });
+
+    if (emailed) {
+      await sendOrderReviewInvitePush({
+        orderId,
+        orderKind,
+        userId: recipient.userId,
+      });
+    }
   }
 }
