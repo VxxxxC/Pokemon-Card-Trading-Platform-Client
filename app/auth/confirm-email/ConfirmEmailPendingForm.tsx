@@ -32,12 +32,6 @@ export function ConfirmEmailPendingForm({
           。請檢查收件匣及垃圾郵件資料夾。
         </p>
 
-        {nextPath ? (
-          <p className="font-sans text-[12px] text-text-disabled">
-            確認後將帶你前往：{nextPath}
-          </p>
-        ) : null}
-
         {state?.status === "sent" ? (
           <p className="font-sans text-[13px] text-success">
             已重新寄出驗證信，請稍候查收。
