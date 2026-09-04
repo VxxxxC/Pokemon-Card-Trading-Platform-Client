@@ -125,6 +125,7 @@ export function MerchantOrderDetailView({
 }: MerchantOrderDetailViewProps) {
   const router = useRouter();
   const order = mapMerchantOrderDetailToSaleOrder(merchantOrder);
+  const buyerProfileHref = `/profile/${merchantOrder.buyer.id}?persona=member`;
 
   const refreshAfterLogistics = () => {
     if (onRefresh) {
@@ -258,7 +259,8 @@ export function MerchantOrderDetailView({
             </div>
 
             <Link
-              href={`/profile/${merchantOrder.buyerId}`}
+              href={buyerProfileHref}
+              data-testid="merchant-order-buyer-profile-link"
               className="flex items-center gap-2 border-t border-white/[0.06] px-3 py-2 transition-colors hover:bg-bg-page/40"
               title={`買家：${order.buyerName}`}
             >
