@@ -12,8 +12,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   login,
-  registerMember,
-  registerMemberForMerchantApply,
+  registerAccount,
 } from "@/app/actions/auth";
 import { validateRegisterFields } from "@/lib/auth/validation";
 
@@ -189,7 +188,9 @@ export function AuthForm() {
   // ── 🟢 React 19 原生表單動作架構：本地僅保留純 UI 互動旗標，文字載荷全數交由原生 FormData 託管 ──
   const [remember, setRemember] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [isMerchant, setIsMerchant] = useState(false);
+  const [isMerchant, setIsMerchant] = useState(
+    () => searchParams?.get("role") === "merchant",
+  );
   const [registerEmail, setRegisterEmail] = useState("");
 
   // ── 🟢 核心狀態加裝：商戶審批成功攔截看板 ──
@@ -254,7 +255,6 @@ export function AuthForm() {
     FormErrors | null,
     FormData
   >(async (prev, formData) => {
-    const merchantSelected = formData.get("isMerchant") === "true";
     const fields = {
       email: ((formData.get("email") as string | null) ?? "").trim(),
       password: (formData.get("password") as string | null) ?? "",
@@ -268,12 +268,7 @@ export function AuthForm() {
     const validationErrors = validateRegisterFields(fields);
     if (Object.keys(validationErrors).length) return validationErrors;
 
-    if (merchantSelected) {
-      // 真實註冊 member 帳戶後直接帶去商戶 KYC 申請頁（/profile/user/merchant-apply）
-      return registerMemberForMerchantApply(prev, formData);
-    }
-
-    return registerMember(prev, formData);
+    return registerAccount(prev, formData);
   }, null);
 
   // 派生錯誤源：依當前分頁直接讀取對應 Action 回傳的錯誤快照

@@ -21,6 +21,17 @@ import {
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { generateUniqueUsername } from "@/lib/auth/username";
 import { enqueuePasswordChangedEmail } from "@/lib/notifications/enqueue-email";
+import {
+  buildSignupCallbackUrl,
+  MEMBER_POST_CONFIRM_PATH,
+  MERCHANT_APPLY_ONBOARDING_INTENT,
+  MERCHANT_APPLY_POST_CONFIRM_PATH,
+} from "@/lib/auth/post-confirm-paths";
+
+type RegisterMemberAccountOptions = {
+  postConfirmPath?: string;
+  onboardingIntent?: string;
+};
 
 function parseRegisterFields(formData: FormData) {
   return {
@@ -162,6 +173,7 @@ async function notifyPasswordChanged(user: {
 
 async function registerMemberAccount(
   formData: FormData,
+  options: RegisterMemberAccountOptions = {},
 ): Promise<
   | { ok: false; errors: AuthFormErrors }
   | { ok: true; needsEmailConfirmation: true; email: string }
@@ -183,7 +195,8 @@ async function registerMemberAccount(
 
   const supabase = await createClient();
   const siteUrl = await getSiteUrl();
-  const signupCallback = `${siteUrl}/auth/callback?next=${encodeURIComponent("/profile/user")}`;
+  const postConfirmPath = options.postConfirmPath ?? MEMBER_POST_CONFIRM_PATH;
+  const signupCallback = buildSignupCallbackUrl(siteUrl, postConfirmPath);
   const { data, error } = await supabase.auth.signUp({
     email: fields.email,
     password: fields.password,
@@ -192,6 +205,9 @@ async function registerMemberAccount(
       data: {
         display_name: fields.email.split("@")[0],
         role: "member",
+        ...(options.onboardingIntent
+          ? { onboarding_intent: options.onboardingIntent }
+          : {}),
       },
     },
   });
@@ -238,6 +254,17 @@ async function redirectAfterRegistration(nextPath?: string): Promise<void> {
   redirect(getRoleDefaultLandingPath(role));
 }
 
+export async function registerAccount(
+  prev: AuthFormErrors | null,
+  formData: FormData,
+): Promise<AuthFormErrors | null> {
+  if (formData.get("isMerchant") === "true") {
+    return registerMemberForMerchantApply(prev, formData);
+  }
+
+  return registerMember(prev, formData);
+}
+
 export async function registerMember(
   _prev: AuthFormErrors | null,
   formData: FormData,
@@ -261,16 +288,19 @@ export async function registerMemberForMerchantApply(
   _prev: AuthFormErrors | null,
   formData: FormData,
 ): Promise<AuthFormErrors | null> {
-  const result = await registerMemberAccount(formData);
+  const result = await registerMemberAccount(formData, {
+    postConfirmPath: MERCHANT_APPLY_POST_CONFIRM_PATH,
+    onboardingIntent: MERCHANT_APPLY_ONBOARDING_INTENT,
+  });
   if (!result.ok) return result.errors;
 
   if (result.needsEmailConfirmation) {
     redirect(
-      `${buildConfirmEmailPath(result.email)}&next=${encodeURIComponent("/profile/user/merchant-apply")}`,
+      `${buildConfirmEmailPath(result.email)}&next=${encodeURIComponent(MERCHANT_APPLY_POST_CONFIRM_PATH)}`,
     );
   }
 
-  redirect("/profile/user/merchant-apply");
+  redirect(MERCHANT_APPLY_POST_CONFIRM_PATH);
 }
 
 export type ResendSignupConfirmationResult =
@@ -291,8 +321,8 @@ export async function resendSignupConfirmationEmail(
   try {
     const siteUrl = await getSiteUrl();
     const redirectTo = next.startsWith("/")
-      ? `${siteUrl}/auth/callback?next=${encodeURIComponent(next)}`
-      : `${siteUrl}/auth/callback?next=${encodeURIComponent("/profile/user")}`;
+      ? buildSignupCallbackUrl(siteUrl, next)
+      : buildSignupCallbackUrl(siteUrl, MEMBER_POST_CONFIRM_PATH);
 
     const supabase = await createClient();
     const { error } = await supabase.auth.resend({

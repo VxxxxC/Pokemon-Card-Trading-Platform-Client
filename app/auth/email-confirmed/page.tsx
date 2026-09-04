@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { AuthFormShell } from "@/app/auth/AuthFormShell";
-import { getRoleDefaultLandingPath } from "@/lib/auth/roles";
 import {
   buildConfirmEmailPath,
   isUserEmailConfirmed,
 } from "@/lib/auth/email-confirmation";
+import {
+  MERCHANT_APPLY_POST_CONFIRM_PATH,
+  resolvePostConfirmPathFromAuth,
+  sanitizePostConfirmPath,
+} from "@/lib/auth/post-confirm-paths";
 import { getOptionalAuthUser, resolveCurrentAuthRole } from "@/lib/auth/session";
 import { enqueueAccountEmailVerifiedEmail } from "@/lib/notifications/account-emails";
 import { EmailConfirmedClient } from "./EmailConfirmedClient";
@@ -15,23 +20,13 @@ export const metadata: Metadata = {
   description: "你的 Cardvault HK 帳戶電郵已成功確認。",
 };
 
-const DEFAULT_NEXT = "/profile/user";
-
-function sanitizeNextPath(next: string | undefined): string {
-  if (!next?.startsWith("/")) {
-    return DEFAULT_NEXT;
-  }
-
-  return next;
-}
-
 export default async function EmailConfirmedPage({
   searchParams,
 }: {
   searchParams: Promise<{ next?: string }>;
 }) {
   const { next: nextParam } = await searchParams;
-  const nextPath = sanitizeNextPath(nextParam);
+  const nextPath = sanitizePostConfirmPath(nextParam);
   const user = await getOptionalAuthUser();
 
   if (!user) {
@@ -43,8 +38,17 @@ export default async function EmailConfirmedPage({
   }
 
   const role = await resolveCurrentAuthRole();
-  const resolvedNext =
-    nextPath === DEFAULT_NEXT ? getRoleDefaultLandingPath(role) : nextPath;
+  const profileRole =
+    role === "ADMIN" ? "admin" : role === "MERCHANT" ? "merchant" : "member";
+  const resolvedNext = resolvePostConfirmPathFromAuth(
+    user,
+    nextPath,
+    profileRole,
+  );
+  const backLabel =
+    resolvedNext === MERCHANT_APPLY_POST_CONFIRM_PATH
+      ? "繼續商戶入駐申請"
+      : "進入會員中心";
 
   await enqueueAccountEmailVerifiedEmail(user.id);
 
@@ -53,9 +57,11 @@ export default async function EmailConfirmedPage({
       title="電郵已確認"
       description="歡迎加入 Cardvault HK，你的帳戶已可正常使用。"
       backHref={resolvedNext}
-      backLabel="進入會員中心"
+      backLabel={backLabel}
     >
-      <EmailConfirmedClient nextPath={resolvedNext} />
+      <Suspense fallback={null}>
+        <EmailConfirmedClient nextPath={resolvedNext} />
+      </Suspense>
     </AuthFormShell>
   );
 }

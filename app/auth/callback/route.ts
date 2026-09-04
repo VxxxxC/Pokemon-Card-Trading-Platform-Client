@@ -1,26 +1,21 @@
 import { NextResponse } from "next/server";
+import type { User } from "@supabase/supabase-js";
 import { normalizePublicOrigin } from "@/lib/auth/normalize-public-origin";
 import {
   establishAuthCallbackSession,
   shouldRedirectToPasswordResetComplete,
 } from "@/lib/auth/auth-callback-session";
-import { getRoleDefaultLandingPath } from "@/lib/auth/roles";
+import {
+  MEMBER_POST_CONFIRM_PATH,
+  resolvePostConfirmPathFromAuth,
+  sanitizePostConfirmPath,
+} from "@/lib/auth/post-confirm-paths";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const DEFAULT_POST_CONFIRM_PATH = "/profile/user";
-
-function sanitizeNextPath(next: string | null): string {
-  if (!next?.startsWith("/")) {
-    return DEFAULT_POST_CONFIRM_PATH;
-  }
-
-  return next;
-}
-
 function buildEmailConfirmedRedirect(origin: string, nextPath: string): string {
   const url = new URL("/auth/email-confirmed", origin);
-  if (nextPath !== DEFAULT_POST_CONFIRM_PATH) {
+  if (nextPath !== MEMBER_POST_CONFIRM_PATH) {
     url.searchParams.set("next", nextPath);
   }
   return url.toString();
@@ -40,34 +35,24 @@ function buildAuthCallbackErrorRedirect(
 }
 
 async function resolvePostConfirmPathForUser(
-  userId: string,
+  user: User,
   nextPath: string,
 ): Promise<string> {
-  if (nextPath !== DEFAULT_POST_CONFIRM_PATH) {
-    return nextPath;
-  }
+  let profileRole: "admin" | "merchant" | "member" | null = null;
 
   try {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
       .select("role")
-      .eq("id", userId)
+      .eq("id", user.id)
       .maybeSingle<{ role: "admin" | "merchant" | "member" | null }>();
-
-    switch (profile?.role) {
-      case "admin":
-        return getRoleDefaultLandingPath("ADMIN");
-      case "merchant":
-        return getRoleDefaultLandingPath("MERCHANT");
-      case "member":
-        return getRoleDefaultLandingPath("USER");
-      default:
-        return DEFAULT_POST_CONFIRM_PATH;
-    }
+    profileRole = profile?.role ?? null;
   } catch {
-    return DEFAULT_POST_CONFIRM_PATH;
+    profileRole = null;
   }
+
+  return resolvePostConfirmPathFromAuth(user, nextPath, profileRole);
 }
 
 function copyResponseCookies(from: NextResponse, to: NextResponse): void {
@@ -82,7 +67,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type");
   const emailHint = requestUrl.searchParams.get("email");
-  const nextPath = sanitizeNextPath(requestUrl.searchParams.get("next"));
+  const nextPath = sanitizePostConfirmPath(requestUrl.searchParams.get("next"));
   const origin = normalizePublicOrigin(requestUrl.origin);
 
   if (!code && !tokenHash) {
@@ -127,7 +112,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
   }
 
-  const resolvedNext = await resolvePostConfirmPathForUser(user.id, nextPath);
+  const resolvedNext = await resolvePostConfirmPathForUser(user, nextPath);
   const finalResponse = NextResponse.redirect(
     buildEmailConfirmedRedirect(origin, resolvedNext),
   );
