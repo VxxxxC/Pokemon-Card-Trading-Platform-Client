@@ -25,15 +25,26 @@ describe("isPathAllowedForRole", () => {
     );
   });
 
-  it("restricts admin to admin console, auth, and api routes", () => {
+  it("restricts admin to admin console, auth, api, and read-only order/profile routes", () => {
     expect(isPathAllowedForRole("ADMIN", "/admin/dashboard")).toBe(true);
     expect(isPathAllowedForRole("ADMIN", "/auth")).toBe(true);
     expect(isPathAllowedForRole("ADMIN", "/api/admin/upload-announcement-image")).toBe(
       true,
     );
+    expect(
+      isPathAllowedForRole("ADMIN", "/profile/user/orderDetail/ORD-2026-ABC123"),
+    ).toBe(true);
+    expect(
+      isPathAllowedForRole(
+        "ADMIN",
+        "/profile/merchant/orderDetail/550e8400-e29b-41d4-a716-446655440000",
+      ),
+    ).toBe(true);
+    expect(isPathAllowedForRole("ADMIN", "/profile/user_f9bc1c74c6")).toBe(true);
     expect(isPathAllowedForRole("ADMIN", "/")).toBe(false);
     expect(isPathAllowedForRole("ADMIN", "/profile/user")).toBe(false);
     expect(isPathAllowedForRole("ADMIN", "/profile/merchant")).toBe(false);
+    expect(isPathAllowedForRole("ADMIN", "/profile/user/trading")).toBe(false);
     expect(isPathAllowedForRole("ADMIN", "/marketplace")).toBe(false);
   });
 

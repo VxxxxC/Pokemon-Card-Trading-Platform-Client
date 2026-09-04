@@ -98,6 +98,28 @@ function isMerchantDashboardPath(pathname: string): boolean {
   );
 }
 
+function isAdminOrderDetailPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/profile/user/orderDetail/") ||
+    pathname.startsWith("/profile/merchant/orderDetail/")
+  );
+}
+
+/** Public storefront profile (`/profile/{userId}`), not member/merchant dashboards. */
+function isPublicProfilePath(pathname: string): boolean {
+  if (!pathname.startsWith("/profile/")) {
+    return false;
+  }
+
+  if (isMemberDashboardPath(pathname) || isMerchantDashboardPath(pathname)) {
+    return false;
+  }
+
+  const rest = pathname.slice("/profile/".length);
+  const firstSegment = rest.split("/")[0];
+  return firstSegment.length > 0;
+}
+
 function isAdminAllowedPath(pathname: string): boolean {
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
     return true;
@@ -108,6 +130,10 @@ function isAdminAllowedPath(pathname: string): boolean {
   }
 
   if (pathname.startsWith("/api/")) {
+    return true;
+  }
+
+  if (isAdminOrderDetailPath(pathname) || isPublicProfilePath(pathname)) {
     return true;
   }
 
