@@ -72,7 +72,10 @@ DELETE FROM public.moderation_cases;
 DELETE FROM public.account_sanctions;
 DELETE FROM public.grading_audit_logs;
 
--- 11) Reset profile trade counters (accounts kept)
+-- 11) Notification outbox
+DELETE FROM public.notification_email_outbox;
+
+-- 12) Reset profile trade counters (accounts kept)
 UPDATE public.profiles
 SET completed_trades_count = 0,
     cancelled_trades_count = 0,
