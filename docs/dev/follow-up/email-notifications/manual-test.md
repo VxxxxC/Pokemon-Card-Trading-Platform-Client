@@ -208,7 +208,7 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" \
 bun run test:email:phase3
 ```
 
-- [ ] Phase 3 gate 全綠
+- [x] Phase 3 gate 全綠
 - [ ] 抽樣 2–3 條真 flow outbox + worker
 
 ---
@@ -245,7 +245,7 @@ bun run test:email:phase4
 - [ ] E-MOD-05
 - [ ] E-RWD-01
 - [ ] E-RWD-02
-- [ ] Phase 4 gate 全綠
+- [x] Phase 4 gate 全綠
 
 ---
 
@@ -275,10 +275,10 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" \
 bun run test:email:phase5
 ```
 
-- [ ] E-MCH-06
+- [x] E-MCH-06
 - [ ] E-ACC-08
 - [ ] E-ACC-09
-- [ ] E-MOD-06
+- [x] E-MOD-06
 - [ ] Phase 5 gate 全綠
 
 ---
