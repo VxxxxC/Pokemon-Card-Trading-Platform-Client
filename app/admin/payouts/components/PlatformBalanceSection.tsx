@@ -7,6 +7,7 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type PlatformBalanceSectionProps = {
   balance: AdminPayoutsStripeBalance | null;
@@ -46,7 +47,7 @@ export default function PlatformBalanceSection({
     <section className="space-y-3 pb-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-sans text-[15px] font-semibold text-text-primary">
+          <h2 className={SECTION_TITLE_CLASS}>
             Stripe 平台餘額
           </h2>
           <p className="mt-0.5 hidden font-sans text-[11px] text-text-secondary sm:block">

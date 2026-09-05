@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateCcw, SearchX } from "lucide-react";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 interface MarketplaceEmptyStateProps {
   hasActiveFilters?: boolean;
@@ -21,7 +22,7 @@ export function MarketplaceEmptyState({
         <SearchX className="h-7 w-7 text-brand/70" aria-hidden />
       </div>
 
-      <h2 className="font-sans font-bold text-[16px] sm:text-[18px] text-[#eae1da] tracking-tight">
+      <h2 className={SECTION_TITLE_CLASS}>
         {hasActiveFilters ? "找不到符合條件的現貨" : "大盤暫無現貨標的"}
       </h2>
 

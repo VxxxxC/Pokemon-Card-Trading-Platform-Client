@@ -29,8 +29,7 @@ export const SELECT_ITEM_CLASS =
 export const MANUAL_LABEL_CLASS =
   "font-sans text-[11px] text-text-disabled";
 
-export const MANUAL_SECTION_CLASS =
-  "font-sans text-[12px] font-semibold text-text-primary";
+export { SECTION_TITLE_CLASS as MANUAL_SECTION_CLASS } from "@/lib/ui/section-title-ui";
 
 export const MANUAL_FORM_BLOCK_CLASS =
   "space-y-2.5 rounded-lg border border-white/[0.06] bg-bg-page/30 p-3";

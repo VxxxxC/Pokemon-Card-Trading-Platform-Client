@@ -28,6 +28,7 @@ import { MerchantAuthSellerTimeline } from "@/app/components/merchant/MerchantAu
 import { MerchantB2cDirectTimeline } from "@/app/components/merchant/MerchantB2cDirectTimeline";
 import { SellerReputationMeta } from "@/lib/marketplace/seller-reputation-meta";
 import { toast } from "sonner";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import { OrderCatalogThumb } from "@/app/components/shared/OrderCatalogThumb";
 import { OrderListingPhotoGrid } from "@/app/components/shared/OrderListingPhotoGrid";
@@ -275,7 +276,7 @@ export function MerchantOrderDetailView({
                   <span className="font-sans text-[10px] text-text-disabled shrink-0">
                     買家
                   </span>
-                  <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
+                  <span className={`truncate ${SECTION_TITLE_CLASS}`}>
                     {order.buyerName}
                   </span>
                   <SellerReputationMeta
@@ -319,7 +320,7 @@ export function MerchantOrderDetailView({
         className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
         aria-label="交易進度"
       >
-        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+        <h2 className={SECTION_TITLE_CLASS}>
           交易進度
         </h2>
 
@@ -346,7 +347,7 @@ export function MerchantOrderDetailView({
             merchantOrder.buyerRemark ||
             merchantOrder.sfAddress) ? (
             <div className="space-y-2 border-t border-white/[0.06] pt-4">
-              <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+              <h3 className={SECTION_TITLE_CLASS}>
                 買家交收資料
               </h3>
               <div className="space-y-1.5 font-mono text-[12px] text-text-secondary">
@@ -695,7 +696,7 @@ export function MerchantOrderDetailView({
         )}
 
         <div className={`${ORDER_DETAIL_CARD_CLASS} space-y-3`}>
-          <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+          <h3 className={SECTION_TITLE_CLASS}>
             撥款明細
           </h3>
           <div className="space-y-2 border-t border-white/[0.06] pt-3 font-mono text-[12px] text-text-secondary">

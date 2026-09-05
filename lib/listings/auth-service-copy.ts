@@ -1,11 +1,27 @@
-import { DEFAULT_AUTH_FEE_HKD } from "@/lib/platform/auth-escrow-config";
+import {
+  DEFAULT_AUTH_FEE_HKD,
+  formatAuthFeeLabel,
+} from "@/lib/platform/auth-escrow-config";
 
-export const LISTING_AUTH_SERVICE_TOOLTIP_TITLE = "平台鑑定託管（買家可選）";
+export const LISTING_AUTH_SERVICE_TOOLTIP_TITLE = "平台鑑定託管";
+
+export function buildAuthServiceTooltipBullets(
+  feeHkd: number,
+): readonly string[] {
+  const feeLabel = formatAuthFeeLabel(feeHkd);
+
+  return [
+    `買家可選加購（${feeLabel}，買家支付）`,
+    "您寄卡至平台鑑定，通過後代發貨並放款",
+    "關閉則買家無法加購鑑定服務",
+    "僅裸卡適用；已評級卡無需複鑑",
+  ];
+}
 
 export function buildAuthServiceTooltipBody(feeHkd: number): string {
-  return `開啟後，買家出價時可選擇加購平台鑑定服務。流程：買家付款（卡價 + HK$${feeHkd} 鑑定費，由買家承擔）→ 您將卡牌寄往平台 → 平台鑑定 → 平台代發貨予買家 → 放款予您。
-
-關閉則僅支援買賣雙方面交，買家無法加購鑑定。`;
+  return buildAuthServiceTooltipBullets(feeHkd)
+    .map((line) => `・${line}`)
+    .join("\n");
 }
 
 export function buildListingAuthServiceInlineSummary(feeHkd: number): string {

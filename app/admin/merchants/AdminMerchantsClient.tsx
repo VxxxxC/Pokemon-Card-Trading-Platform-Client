@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import {
   Popover,
   PopoverContent,
@@ -636,7 +637,7 @@ export function AdminMerchantsClient({
                           : ""
                       }`}
                     >
-                      <TableCell className="max-w-[12rem] py-2.5 font-sans text-[13px] font-semibold text-text-primary">
+                      <TableCell className={`max-w-[12rem] py-2.5 ${SECTION_TITLE_CLASS}`}>
                         <span className="line-clamp-2">
                           {app.companyNameEn}
                           {app.companyNameZh ? (

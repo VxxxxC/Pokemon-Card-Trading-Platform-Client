@@ -4,7 +4,7 @@ import Link from "next/link";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
-import { HomeShelfListingCard } from "@/app/components/home/HomeShelfListingCard";
+import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { PublicPersonaProfileHeader } from "@/app/components/profile/PublicPersonaProfileHeader";
 import { PublicReviewPreviewCard } from "@/app/components/profile/PublicReviewPreviewCard";
 import type { PublicProfilePageBootstrap } from "@/app/actions/profile";
@@ -124,12 +124,11 @@ export function PublicProfileClient({
             ) : (
               <div className="grid grid-cols-3 gap-2 md:gap-3 lg:grid-cols-4 lg:gap-4">
                 {listings.slice(0, 9).map((item, index) => (
-                  <HomeShelfListingCard
+                  <MarketplaceCard
                     key={item.id}
                     listing={item}
                     showSeller={false}
                     showMerchantBadge={false}
-                    layout="grid"
                     imagePriority={index < 3}
                   />
                 ))}

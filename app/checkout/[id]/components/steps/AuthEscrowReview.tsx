@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MemberAuthOrderTimeline } from "@/app/components/user/MemberAuthOrderTimeline";
 import { CheckoutCouponPicker } from "@/app/checkout/[id]/components/CheckoutCouponPicker";
 import type { CheckoutSession } from "@/lib/checkout/types";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type AuthEscrowReviewProps = {
   session: CheckoutSession;
@@ -30,7 +31,7 @@ export function AuthEscrowReview({
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+        <h2 className={SECTION_TITLE_CLASS}>
           鑑定託管流程
         </h2>
         <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
@@ -65,7 +66,7 @@ export function AuthEscrowReview({
         session.variant === "member_auth") &&
       onCouponChange ? (
         <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-          <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+          <h2 className={SECTION_TITLE_CLASS}>
             平台優惠券
           </h2>
           <CheckoutCouponPicker

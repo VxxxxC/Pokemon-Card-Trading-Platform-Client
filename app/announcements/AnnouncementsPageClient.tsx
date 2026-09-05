@@ -13,6 +13,7 @@ import { getAnnouncementStatus, sortAnnouncementsForPublicDisplay } from "@/lib/
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
 import { AnnouncementDetailLink } from "@/lib/announcements/announcement-detail-link";
 import { markAnnouncementsAsRead } from "@/lib/announcements/read-state";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import { cn } from "@/lib/utils";
 
 type AnnouncementsPageClientProps = {
@@ -65,7 +66,7 @@ export function AnnouncementsPageClient({
         >
           <h1
             id="announcements-heading"
-            className="font-sans font-semibold text-[15px] sm:text-[16px] text-text-primary tracking-tight"
+            className={SECTION_TITLE_CLASS}
           >
             平台官方公告
           </h1>
@@ -172,7 +173,7 @@ export function AnnouncementsPageClient({
                     </div>
 
                     <div className="px-3.5 py-3 sm:px-4 flex-1 flex flex-col gap-2">
-                      <h2 className="font-sans text-[14px] font-semibold text-text-primary leading-snug group-hover:text-brand transition-colors">
+                      <h2 className={`${SECTION_TITLE_CLASS} group-hover:text-brand transition-colors`}>
                         {item.title}
                       </h2>
                       <p className="font-sans text-[12px] text-text-secondary leading-relaxed line-clamp-3 whitespace-pre-line">

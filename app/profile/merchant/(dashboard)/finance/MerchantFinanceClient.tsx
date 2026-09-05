@@ -26,6 +26,7 @@ import {
 } from "@/lib/merchant-order/merchant-payout-hold";
 import { truncateStripeId } from "@/lib/stripe/display";
 import { cn } from "@/lib/utils";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type MerchantFinanceClientProps = {
   stripeConnected: boolean;
@@ -249,7 +250,7 @@ export function MerchantFinanceClient({
         <div className="px-3.5 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
           <h2
             id="tx-heading"
-            className="font-sans font-semibold text-[13px] sm:text-[14px] text-text-primary"
+            className={SECTION_TITLE_CLASS}
           >
             撥款記錄（{total}）
           </h2>
@@ -399,7 +400,7 @@ export function MerchantFinanceClient({
             <div className="min-w-0">
               <h2
                 id="stripe-heading"
-                className="font-sans font-semibold text-[13px] sm:text-[14px] text-text-primary"
+                className={SECTION_TITLE_CLASS}
               >
                 Stripe Connect 帳戶
               </h2>

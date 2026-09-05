@@ -15,6 +15,7 @@ import {
   CHECK_IN_STEPS,
   getCheckInCycleDayFromStreak,
 } from "@/lib/constants/rewards";
+import { DASHBOARD_SECTION_TITLE_CLASS } from "@/app/profile/dashboard-ui";
 
 export type CheckInCardStats = {
   pointsBalance: number;
@@ -256,7 +257,7 @@ export function CheckInCard({
             : "flex items-center justify-between gap-3"
         }
       >
-        <h3 className="font-sans font-bold text-[14px] text-text-primary leading-none">
+        <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>
           每日簽到
         </h3>
         {hidePointsBalance ? null : (

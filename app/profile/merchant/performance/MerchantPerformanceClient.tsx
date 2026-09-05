@@ -43,6 +43,7 @@ import type {
 } from "@/lib/dashboard/merchant-performance-types";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import { cn } from "@/lib/utils";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import { ChartLine } from "lucide-react";
 
 const chartConfig = {
@@ -257,7 +258,7 @@ export function MerchantPerformanceClient({
 
       <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card overflow-hidden">
         <div className="px-3.5 py-3 sm:px-4 border-b border-[rgba(237,232,224,0.06)] flex items-center justify-between gap-3 flex-wrap">
-          <p className="font-sans font-semibold text-[13px] sm:text-[14px] text-text-primary">
+          <p className={SECTION_TITLE_CLASS}>
             營收、價格與成交量
           </p>
           <div className="w-[110px] shrink-0">
@@ -397,7 +398,7 @@ export function MerchantPerformanceClient({
 
         <div className="border-t border-[rgba(237,232,224,0.06)]">
           <div className="px-3.5 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
-            <h2 className="font-sans font-semibold text-[12px] text-text-primary">
+            <h2 className={SECTION_TITLE_CLASS}>
               區間營收轉化 ({currentRangeLabel})
             </h2>
           </div>
@@ -462,7 +463,7 @@ export function MerchantPerformanceClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 w-full">
         <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card overflow-hidden">
           <div className="px-3.5 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
-            <h3 className="font-sans font-semibold text-[12px] text-text-primary">
+            <h3 className={SECTION_TITLE_CLASS}>
               暢銷商品排行榜
             </h3>
           </div>
@@ -523,7 +524,7 @@ export function MerchantPerformanceClient({
 
         <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card overflow-hidden">
           <div className="px-3.5 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
-            <h3 className="font-sans font-semibold text-[12px] text-text-primary">
+            <h3 className={SECTION_TITLE_CLASS}>
               高價值客戶
             </h3>
           </div>

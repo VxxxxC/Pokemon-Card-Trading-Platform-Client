@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/checkout";
 import { CheckoutProductCard } from "@/app/checkout/[id]/components/CheckoutProductCard";
 import type { CheckoutSession } from "@/lib/checkout/types";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 const ESCROW_POLL_INTERVAL_MS = 2000;
 const ESCROW_POLL_MAX_ATTEMPTS = 8;
@@ -148,7 +149,7 @@ export default function CheckoutSuccessPage({ params }: SuccessPageProps) {
         </section>
 
         <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-          <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+          <h2 className={SECTION_TITLE_CLASS}>
             訂單明細
           </h2>
 

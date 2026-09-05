@@ -16,6 +16,7 @@ import { CouponTicketShell } from "@/app/components/rewards/CouponTicketShell";
 import { RewardNotificationHost } from "@/app/components/rewards/RewardNotificationHost";
 import { CouponGridSkeleton } from "@/app/components/shared/CouponSkeletons";
 import { Pagination } from "@/app/components/ui/Pagination";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 interface PlatformMission {
   id: string;
@@ -215,7 +216,7 @@ export default function MemberRewardsPage() {
         className="overflow-hidden rounded-xl border border-white/[0.06] bg-bg-card"
       >
         <div className="border-b border-white/[0.06] px-4 py-3">
-          <h2 className="font-sans font-bold text-[15px] text-text-primary">
+          <h2 className={SECTION_TITLE_CLASS}>
             我的優惠劵
           </h2>
         </div>

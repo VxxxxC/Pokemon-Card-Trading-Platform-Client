@@ -8,6 +8,7 @@ import type {
   MerchantDirectCheckoutSession,
   MerchantDirectFormState,
 } from "@/lib/checkout/types";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type MerchantDirectReviewProps = {
   session: MerchantDirectCheckoutSession;
@@ -33,7 +34,7 @@ export function MerchantDirectReview({
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+        <h2 className={SECTION_TITLE_CLASS}>
           商品資訊
         </h2>
         <CheckoutProductCard session={session} />
@@ -42,7 +43,7 @@ export function MerchantDirectReview({
       {showDirectDeliverySection ? (
         <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-4">
           <div className="space-y-1">
-            <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+            <h2 className={SECTION_TITLE_CLASS}>
               交收方式
             </h2>
             <p className="font-sans text-[11px] text-text-disabled leading-relaxed">
@@ -153,7 +154,7 @@ export function MerchantDirectReview({
       <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex-1 space-y-1">
-            <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+            <h2 className={SECTION_TITLE_CLASS}>
               平台鑑定服務
             </h2>
             <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
@@ -197,7 +198,7 @@ export function MerchantDirectReview({
       <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
         <label
           htmlFor="p-rem"
-          className="font-sans text-[13px] font-semibold text-text-primary block"
+          className={`${SECTION_TITLE_CLASS} block`}
         >
           給賣家備註
         </label>
@@ -214,7 +215,7 @@ export function MerchantDirectReview({
       </section>
 
       <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+        <h2 className={SECTION_TITLE_CLASS}>
           平台優惠券
         </h2>
         <CheckoutCouponPicker

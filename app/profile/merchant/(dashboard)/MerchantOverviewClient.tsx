@@ -8,6 +8,7 @@ import { Camera } from "lucide-react";
 import { toast } from "sonner";
 import { CiSettings } from "react-icons/ci";
 import { updateMerchantShopAvatar } from "@/app/actions/merchant-settings";
+import { DASHBOARD_SECTION_TITLE_CLASS } from "@/app/profile/dashboard-ui";
 import { MerchantOrderRow } from "@/app/components/merchant/MerchantOrderRow";
 import { ProfilePersonaSwitch } from "@/app/components/profile/ProfilePersonaSwitch";
 import { PublicReviewPreviewCard } from "@/app/components/profile/PublicReviewPreviewCard";
@@ -447,7 +448,7 @@ export function MerchantOverviewClient({
         <div className="px-4 py-3 border-b border-[rgba(237,232,224,0.06)]">
           <h2
             id="pending-heading"
-            className="font-sans font-semibold text-[15px] text-text-primary"
+            className={DASHBOARD_SECTION_TITLE_CLASS}
           >
             待處理訂單
           </h2>
@@ -481,7 +482,7 @@ export function MerchantOverviewClient({
           <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(237,232,224,0.06)]">
             <h2
               id="rating-heading"
-              className="font-sans font-semibold text-[15px] text-text-primary"
+              className={DASHBOARD_SECTION_TITLE_CLASS}
             >
               最近收到的信用評價
             </h2>

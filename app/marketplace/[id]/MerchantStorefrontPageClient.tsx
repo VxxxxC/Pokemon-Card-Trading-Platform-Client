@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
-import { HomeShelfListingCard } from "@/app/components/home/HomeShelfListingCard";
+import { MarketplaceCard } from "@/app/components/marketplace/MarketplaceCard";
 import { PublicPersonaProfileHeader } from "@/app/components/profile/PublicPersonaProfileHeader";
 import { AccordionFilters } from "@/app/components/marketplace/filters/AccordionFilters";
 import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 interface MerchantStorefrontPageClientProps {
   seller: MarketplaceSellerProfile | null;
@@ -331,7 +332,7 @@ export function MerchantStorefrontPageClient({
         icon={SlidersHorizontal}
       >
         <div className="rounded-xl border border-white/[0.06] bg-[#26211C] p-3">
-          <h3 className="font-sans font-bold text-[12px] text-[#eae1da]">
+          <h3 className={SECTION_TITLE_CLASS}>
             商品排序
           </h3>
           <div className="mt-2">
@@ -415,14 +416,14 @@ export function MerchantStorefrontPageClient({
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 md:gap-3 lg:grid-cols-4 lg:gap-4">
-              {storefrontListings.map((listing) => (
-                <HomeShelfListingCard
+              {storefrontListings.map((listing, index) => (
+                <MarketplaceCard
                   key={listing.id}
                   listing={listing}
                   currentUserId={currentUserId}
-                  layout="grid"
                   showSeller={isMemberStorefront}
                   showMerchantBadge={isMemberStorefront}
+                  imagePriority={index < 4}
                 />
               ))}
             </div>

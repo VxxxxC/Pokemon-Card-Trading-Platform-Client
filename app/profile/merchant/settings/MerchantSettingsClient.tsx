@@ -27,6 +27,7 @@ import {
 } from "@/lib/merchant/client-upload";
 import { DEFAULT_AVATAR_URL } from "@/lib/profile/avatar";
 import { cn } from "@/lib/utils";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type Props = {
   initialData: MerchantSettingsData;
@@ -66,7 +67,7 @@ function SettingsSection({
       <div className="px-3 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
         <h2
           id={id}
-          className="font-sans font-semibold text-[12px] text-text-primary"
+          className={SECTION_TITLE_CLASS}
         >
           {title}
         </h2>
@@ -245,7 +246,7 @@ export function MerchantSettingsClient({ initialData }: Props) {
                   </button>
                 </div>
                 <div className="min-w-0">
-                  <p className="font-sans text-[13px] font-semibold text-text-primary">
+                  <p className={SECTION_TITLE_CLASS}>
                     店舖頭像
                   </p>
                   <p className="font-mono text-[10px] text-text-secondary mt-0.5">
@@ -291,7 +292,7 @@ export function MerchantSettingsClient({ initialData }: Props) {
                   </button>
                 </div>
                 <div>
-                  <p className="font-sans text-[13px] font-semibold text-text-primary">
+                  <p className={SECTION_TITLE_CLASS}>
                     店舖頂部橫幅
                   </p>
                   <p className="font-mono text-[10px] text-text-secondary mt-0.5">
@@ -476,7 +477,7 @@ export function MerchantSettingsClient({ initialData }: Props) {
           ].map(({ label, desc, on }) => (
             <div key={label} className={settingsListRowClass}>
               <div className="min-w-0 flex-1">
-                <p className="font-sans text-[13px] font-semibold text-text-primary">
+                <p className={SECTION_TITLE_CLASS}>
                   {label}
                 </p>
                 <p className="font-mono text-[10px] text-text-secondary truncate mt-0.5">

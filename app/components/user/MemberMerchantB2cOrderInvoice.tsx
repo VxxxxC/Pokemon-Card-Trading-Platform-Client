@@ -1,6 +1,7 @@
 "use client";
 
 import { MemberOrderInvoiceRow } from "@/app/components/user/member-order-invoice-row";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type MemberMerchantB2cOrderInvoiceProps = {
   itemSubtotal: number;
@@ -31,7 +32,7 @@ export function MemberMerchantB2cOrderInvoice({
 }: MemberMerchantB2cOrderInvoiceProps) {
   return (
     <div className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-      <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+      <h3 className={SECTION_TITLE_CLASS}>
         帳單明細
       </h3>
 

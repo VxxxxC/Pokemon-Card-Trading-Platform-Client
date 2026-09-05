@@ -37,6 +37,7 @@ import {
 } from "@/app/lib/marketplace/perf-log-client";
 import { MARKETPLACE_GRID_PAGE_SIZE } from "@/lib/marketplace/constants";
 import { formatListingGrade } from "@/lib/marketplace/listing-display";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 const MOBILE_VIEWPORT_QUERY = "(max-width: 1279px)";
 
@@ -481,7 +482,7 @@ export function MarketplacePageClient({
         icon={SlidersHorizontal}
       >
         <div className="rounded-xl border border-white/[0.06] bg-[#26211C] p-3">
-          <h3 className="font-sans font-bold text-[12px] text-[#eae1da]">
+          <h3 className={SECTION_TITLE_CLASS}>
             商品排序
           </h3>
           <div className="mt-2">

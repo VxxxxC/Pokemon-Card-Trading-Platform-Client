@@ -25,8 +25,7 @@ export const SECTION_BLOCK_CLASS =
 export const SECTION_DIVIDER_CLASS =
   "space-y-2 border-b border-white/[0.06] pb-4";
 
-export const SECTION_TITLE_CLASS =
-  "font-sans text-[14px] font-semibold text-text-primary";
+export { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 export const META_TEXT_CLASS =
   "font-sans text-[11px] text-text-disabled";

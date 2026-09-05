@@ -10,8 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   LISTING_AUTH_SERVICE_TOOLTIP_TITLE,
-  buildAuthServiceTooltipBody,
-  buildListingAuthServiceInlineSummary,
+  buildAuthServiceTooltipBullets,
 } from "@/lib/listings/auth-service-copy";
 import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
 
@@ -37,22 +36,31 @@ export function ListingAuthServiceToggle({
             <Tooltip>
               <TooltipTrigger
                 type="button"
-                className="shrink-0 text-[#8A8680] hover:text-brand focus:outline-none"
+                delay={0}
+                closeOnClick={false}
+                className="shrink-0 text-[#8A8680] hover:text-brand focus:outline-none focus-visible:ring-1 focus-visible:ring-brand/40 rounded-full"
                 aria-label="平台鑑定託管說明"
               >
                 <CircleHelp className="size-3.5" />
               </TooltipTrigger>
               <TooltipContent
                 side="top"
-                className="max-w-xs whitespace-pre-line text-left leading-relaxed"
+                align="start"
+                sideOffset={6}
+                className="flex w-[14.5rem] flex-col items-stretch gap-2 border border-white/10 bg-[#26211C] px-3 py-2.5 text-left shadow-lg"
               >
-                <span className="font-bold block mb-1">
+                <p className="font-sans text-[11px] font-bold leading-snug text-brand">
                   {LISTING_AUTH_SERVICE_TOOLTIP_TITLE}
-                </span>
-                <span className="block mb-2 text-text-secondary text-[11px]">
-                  {buildListingAuthServiceInlineSummary(authServiceFeeHkd)}
-                </span>
-                {buildAuthServiceTooltipBody(authServiceFeeHkd)}
+                </p>
+                <ul className="m-0 flex w-full flex-col gap-2 p-0 font-sans text-[10px] leading-snug text-[#d4c4b7]">
+                  {buildAuthServiceTooltipBullets(authServiceFeeHkd).map(
+                    (line) => (
+                      <li key={line} className="block w-full">
+                        {line}
+                      </li>
+                    ),
+                  )}
+                </ul>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

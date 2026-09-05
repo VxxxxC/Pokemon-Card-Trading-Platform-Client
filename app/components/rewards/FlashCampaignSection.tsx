@@ -10,6 +10,7 @@ import type { FlashCampaignView } from "@/lib/admin-rewards/types";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type FlashCampaignSectionProps = {
   onClaimed?: () => void;
@@ -206,7 +207,7 @@ export function FlashCampaignSection({
     <section className="space-y-4">
       {showHeading ? (
         <div>
-          <h3 className="font-sans font-bold text-[15px] text-[#eae1da]">
+          <h3 className={SECTION_TITLE_CLASS}>
             ⚡ 限時搶券
           </h3>
           <p className="font-mono text-[9px] text-[#50453b] uppercase tracking-wider">

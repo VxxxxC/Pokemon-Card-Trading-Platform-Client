@@ -3,6 +3,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, type LucideIcon } from "lucide-react";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 interface SlideOverProps {
   isOpen: boolean;
@@ -58,7 +59,7 @@ export function SlideOver({
                     </div>
                   ) : null}
                   <div className="min-w-0">
-                    <h2 className="font-sans font-bold text-[16px] text-[#eae1da] leading-tight truncate">
+                    <h2 className={`${SECTION_TITLE_CLASS} truncate`}>
                       {title}
                     </h2>
                     {subtitle ? (

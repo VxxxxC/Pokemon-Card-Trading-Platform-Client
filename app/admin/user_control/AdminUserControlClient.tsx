@@ -27,6 +27,7 @@ import {
   EMPTY_PLATFORM_USER_KYC_COUNTS,
   PLATFORM_USERS_PAGE_SIZE,
 } from "@/lib/admin-user-control/types";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import {
   Table,
   TableBody,
@@ -630,7 +631,7 @@ export default function AdminUserControlClient({
                   {/* Right Audit Log Table (Span 2 Cols) */}
                   <div className="lg:col-span-2 bg-bg-page rounded-2xl border border-[rgba(237,232,224,0.08)] p-4 flex flex-col justify-between space-y-3">
                     <div>
-                      <h3 className="font-sans font-bold text-[14px] text-text-primary mb-1">
+                      <h3 className={`${SECTION_TITLE_CLASS} mb-1`}>
                         特權覆寫審計日誌 (Audit Logs)
                       </h3>
                       <p className="font-sans text-[11px] text-text-secondary mb-3">
@@ -817,7 +818,7 @@ export default function AdminUserControlClient({
                         <TableCell className="max-w-[14rem] py-2.5">
                           <div className="flex min-w-0 items-center gap-2">
                             <PlatformUserTypeBadges userType={u.userType} />
-                            <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
+                            <span className={`truncate ${SECTION_TITLE_CLASS}`}>
                               {u.name}
                             </span>
                           </div>

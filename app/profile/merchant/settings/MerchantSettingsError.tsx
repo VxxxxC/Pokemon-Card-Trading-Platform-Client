@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type Props = {
   message: string;
@@ -13,7 +14,7 @@ export function MerchantSettingsError({ message }: Props) {
       <div className="px-3 py-2.5 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
         <h2
           id="settings-error-heading"
-          className="font-sans font-semibold text-[12px] text-text-primary"
+          className={SECTION_TITLE_CLASS}
         >
           無法載入店舖設定
         </h2>

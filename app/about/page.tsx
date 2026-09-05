@@ -11,6 +11,7 @@ import {
   ABOUT_LEGAL_SECTION,
   ABOUT_PAGE_SECTIONS,
 } from "@/lib/about/about-content";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 export const metadata: Metadata = {
   title: "關於我們",
@@ -138,7 +139,7 @@ export default function AboutPage() {
           className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card overflow-hidden"
         >
           <div className="border-b border-[rgba(237,232,224,0.06)] px-4 py-3 sm:px-5">
-            <h2 className="font-sans font-semibold text-[14px] text-text-primary">
+            <h2 className={SECTION_TITLE_CLASS}>
               平台簡介
             </h2>
           </div>
@@ -150,7 +151,7 @@ export default function AboutPage() {
                 id={section.id}
                 className="scroll-mt-20 py-4 first:pt-0 last:pb-0"
               >
-                <h3 className="font-sans font-semibold text-[14px] text-text-primary">
+                <h3 className={SECTION_TITLE_CLASS}>
                   {section.title}
                 </h3>
                 {"body" in section
@@ -188,7 +189,7 @@ export default function AboutPage() {
               id={ABOUT_LEGAL_SECTION.id}
               className="scroll-mt-20 py-4 first:pt-0 last:pb-0"
             >
-              <h3 className="font-sans font-semibold text-[14px] text-text-primary">
+              <h3 className={SECTION_TITLE_CLASS}>
                 {ABOUT_LEGAL_SECTION.title}
               </h3>
               {ABOUT_LEGAL_SECTION.body.map((paragraph) => (
@@ -222,7 +223,7 @@ export default function AboutPage() {
           <div className="border-b border-[rgba(237,232,224,0.06)] px-4 py-3 sm:px-5">
             <h2
               id="about-contact-heading"
-              className="font-sans font-semibold text-[14px] text-text-primary"
+              className={SECTION_TITLE_CLASS}
             >
               {ABOUT_CONTACT_SECTION.title}
             </h2>

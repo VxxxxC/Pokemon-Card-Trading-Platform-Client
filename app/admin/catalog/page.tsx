@@ -27,6 +27,7 @@ import { SmartSearch } from "@/app/components/marketplace/filters/SmartSearch";
 import { CatalogCard } from "@/app/components/admin/CatalogCard";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
 import { Pagination } from "@/app/components/ui/Pagination";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import {
   listAdminCatalogEntries,
   type AdminCatalogEntry,
@@ -899,7 +900,7 @@ export default function AdminCatalogPage() {
                   <span className="text-brand text-[13px]">✎</span>
                   <h3
                     id="pending-manual-heading"
-                    className="font-sans text-[13px] font-semibold text-text-primary"
+                    className={SECTION_TITLE_CLASS}
                   >
                     待寫入資料庫的手動錄入條目
                     <span className="ml-2 font-mono text-brand">

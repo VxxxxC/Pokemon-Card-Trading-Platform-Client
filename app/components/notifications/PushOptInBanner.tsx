@@ -1,5 +1,7 @@
 "use client";
 
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
+
 type PushOptInBannerProps = {
   onEnable: () => void;
   onSnooze: () => void;
@@ -22,7 +24,7 @@ export function PushOptInBanner({
         <div className="min-w-0">
           <p
             id="push-optin-title"
-            className="font-sans text-[13px] font-semibold text-text-primary"
+            className={SECTION_TITLE_CLASS}
           >
             開啟推送通知
           </p>

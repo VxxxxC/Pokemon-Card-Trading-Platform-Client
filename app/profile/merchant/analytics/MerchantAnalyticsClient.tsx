@@ -39,6 +39,7 @@ import {
 import type { MerchantPerformanceRange } from "@/lib/dashboard/merchant-performance-types";
 import type { MerchantProductAnalytics } from "@/lib/dashboard/merchant-product-analytics-types";
 import { cn } from "@/lib/utils";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import { ChartLine } from "lucide-react";
 
 const chartConfig = {
@@ -348,7 +349,7 @@ export function MerchantAnalyticsClient({
 
       <div className="rounded-xl border border-[rgba(237,232,224,0.08)] bg-bg-card overflow-hidden">
         <div className="px-3.5 py-3 sm:px-4 border-b border-[rgba(237,232,224,0.06)] flex items-center justify-between gap-3 flex-wrap">
-          <p className="font-sans font-semibold text-[13px] sm:text-[14px] text-text-primary">
+          <p className={SECTION_TITLE_CLASS}>
             商品表現
           </p>
           <div className="w-[110px] shrink-0">
@@ -515,7 +516,7 @@ export function MerchantAnalyticsClient({
         )}
       >
         <div className="px-3.5 py-3 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
-          <h2 className="font-sans font-semibold text-[13px] sm:text-[14px] text-text-primary">
+          <h2 className={SECTION_TITLE_CLASS}>
             交易歷史
           </h2>
           <p className="mt-0.5 font-mono text-[10px] text-text-disabled">

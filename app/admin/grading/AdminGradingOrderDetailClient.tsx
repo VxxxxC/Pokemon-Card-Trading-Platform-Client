@@ -218,7 +218,6 @@ export function AdminGradingOrderDetailClient({
                 <span className="truncate">{formatParty(row)}</span>
                 {row.order_kind === "merchant" ? (
                   <CertifiedMerchantBadge
-                    label="認證商家"
                     className="shrink-0 scale-[0.92] origin-left"
                   />
                 ) : null}

@@ -37,6 +37,7 @@ import {
   getAnnouncementDisplaySurfaceLabel,
 } from "@/lib/announcements/display-surfaces";
 import type { PlatformAnnouncement } from "@/lib/announcements/types";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 function AdminAnnouncementsFeedback() {
   const searchParams = useSearchParams();
@@ -238,7 +239,7 @@ export default function AdminAnnouncementsPage() {
           ) : filteredAnnouncements.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Megaphone className="mb-2 size-8 text-text-disabled" />
-              <p className="font-sans text-[13px] font-semibold text-text-primary">
+              <p className={SECTION_TITLE_CLASS}>
                 找不到符合條件的公告
               </p>
               <p className="mt-1 font-sans text-[12px] text-text-secondary">
@@ -276,7 +277,7 @@ export default function AdminAnnouncementsPage() {
                     </div>
 
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <h3 className="line-clamp-2 font-sans text-[13px] font-semibold text-text-primary">
+                      <h3 className={`line-clamp-2 ${SECTION_TITLE_CLASS}`}>
                         {item.title}
                       </h3>
                       <p className="line-clamp-2 font-sans text-[12px] leading-relaxed text-text-secondary">

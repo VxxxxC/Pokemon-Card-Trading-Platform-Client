@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
+import { DASHBOARD_SECTION_TITLE_CLASS } from "@/app/profile/dashboard-ui";
 import type { UserTradingOrder } from "@/app/actions/orders";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { UserOrderRow, OrderRowChip } from "@/app/components/user/UserOrderRow";
@@ -289,7 +290,7 @@ export function UserTradingClient({
           <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 border-b border-[rgba(237,232,224,0.06)]">
             <h2
               id="user-trading-heading"
-              className="font-sans font-semibold text-[15px] text-text-primary min-w-0 truncate"
+              className={`${DASHBOARD_SECTION_TITLE_CLASS} min-w-0 truncate`}
             >
               交易管理
             </h2>

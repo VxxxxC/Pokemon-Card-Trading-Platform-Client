@@ -304,7 +304,6 @@ export function UserOrderRow({
             </span>
             {showCertifiedMerchantBadge ? (
               <CertifiedMerchantBadge
-                label="認證商家"
                 className="shrink-0 scale-[0.92] origin-left"
               />
             ) : null}
@@ -430,7 +429,6 @@ export function UserOrderRow({
             </span>
             {showCertifiedMerchantBadge ? (
               <CertifiedMerchantBadge
-                label="認證商家"
                 className="shrink-0 scale-[0.92] origin-left"
               />
             ) : null}

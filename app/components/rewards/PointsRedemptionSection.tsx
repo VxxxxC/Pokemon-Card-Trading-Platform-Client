@@ -12,6 +12,7 @@ import type { PointsRedemptionCatalogView } from "@/lib/admin-rewards/types";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type PointsRedemptionSectionProps = {
   onRedeemed?: () => void;
@@ -193,7 +194,7 @@ export function PointsRedemptionSection({
     <section className="space-y-4">
       {showHeading ? (
         <div>
-          <h3 className="font-sans font-bold text-[15px] text-text-primary">
+          <h3 className={SECTION_TITLE_CLASS}>
             積分商城
           </h3>
         </div>

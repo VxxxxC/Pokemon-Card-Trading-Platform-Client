@@ -76,7 +76,7 @@ export default function ModerationSubjectHistoryPanel({
           </div>
 
           <div>
-            <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+            <h3 className={SECTION_TITLE_CLASS}>
               歷史案件
             </h3>
             {priorCases.length === 0 ? (
@@ -131,7 +131,7 @@ export default function ModerationSubjectHistoryPanel({
           </div>
 
           <div>
-            <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+            <h3 className={SECTION_TITLE_CLASS}>
               制裁紀錄
             </h3>
             {sanctionHistory.length === 0 ? (

@@ -10,6 +10,7 @@ import {
 } from "@/lib/platform/fps-payout-config";
 import { MemberOrderInvoiceRow } from "@/app/components/user/member-order-invoice-row";
 import { usePlatformAuthFee } from "@/lib/platform/use-platform-auth-fee";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type MemberAuthOrderInvoiceProps = {
   finalPrice: number;
@@ -72,7 +73,7 @@ export function MemberAuthOrderInvoice({
 
   return (
     <div className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-3">
-      <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+      <h3 className={SECTION_TITLE_CLASS}>
         帳單明細
       </h3>
 

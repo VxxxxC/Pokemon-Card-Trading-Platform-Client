@@ -1,6 +1,7 @@
 "use client";
 
 import type { CheckoutSession } from "@/lib/checkout/types";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 type CheckoutOrderSummaryProps = {
   session: CheckoutSession;
@@ -35,7 +36,7 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   return (
     <div className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-4">
-      <h3 className="font-sans text-[13px] font-semibold text-text-primary border-b border-white/[0.06] pb-2">
+      <h3 className={`${SECTION_TITLE_CLASS} border-b border-white/[0.06] pb-2`}>
         帳單明細
       </h3>
 

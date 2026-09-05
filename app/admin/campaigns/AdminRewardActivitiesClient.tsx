@@ -13,6 +13,7 @@ import {
 import { RewardActivityCard } from "@/app/admin/campaigns/components/RewardActivityCard";
 import { Pagination } from "@/app/components/ui/Pagination";
 import { Input } from "@/components/ui/input";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import type {
   AdminRewardActivityRow,
   AdminRewardActivityStatus,
@@ -183,7 +184,7 @@ export function AdminRewardActivitiesClient({
         className="scroll-mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h2 className="font-sans text-[15px] font-bold text-text-primary">
+          <h2 className={SECTION_TITLE_CLASS}>
             活動列表
           </h2>
           <p className="font-mono text-[11px] text-text-disabled">

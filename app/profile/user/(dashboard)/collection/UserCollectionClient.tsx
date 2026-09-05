@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Search, X } from "lucide-react";
+import { DASHBOARD_SECTION_TITLE_CLASS } from "@/app/profile/dashboard-ui";
 import { WishlistTable } from "@/app/components/market/WishlistTable";
 import { CollectionTable } from "@/app/components/market/CollectionTable";
 import { useWishlist } from "@/app/lib/hooks/useWishlist";
@@ -282,7 +283,7 @@ export function UserCollectionClient({
             <div className="flex items-center justify-between gap-3">
               <h2
                 id="cards-heading"
-                className="font-sans font-semibold text-[15px] text-text-primary min-w-0 truncate"
+                className={`${DASHBOARD_SECTION_TITLE_CLASS} min-w-0 truncate`}
               >
                 我的持有卡牌庫
               </h2>
@@ -333,7 +334,7 @@ export function UserCollectionClient({
         <div className="flex items-center justify-between gap-3 mb-3">
           <h2
             id="wishlist-heading"
-            className="font-sans font-semibold text-[15px] text-text-primary min-w-0 truncate"
+            className={`${DASHBOARD_SECTION_TITLE_CLASS} min-w-0 truncate`}
           >
             追蹤願望清單
           </h2>

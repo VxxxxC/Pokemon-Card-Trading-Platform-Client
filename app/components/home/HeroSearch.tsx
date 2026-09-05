@@ -6,6 +6,8 @@ import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import { useIsMemberPersonaActive } from "@/app/lib/hooks/useIsMemberPersonaActive";
 import { useHeroMarketplaceSearch } from "@/app/lib/hooks/useHeroMarketplaceSearch";
 import type { MarketplaceProductRow } from "@/app/lib/marketplace/types";
+import { cn } from "@/lib/utils";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 function formatPrice(value: number): string {
   return `HK$ ${value.toLocaleString()}`;
@@ -102,11 +104,10 @@ export function HeroSearch({ showCheckIn = false }: { showCheckIn?: boolean }) {
           <div className="min-w-0">
             <h1
               id="hero-search-heading"
-              className={`font-sans font-black text-text-primary leading-tight tracking-tight ${
-                showCheckInCard
-                  ? "text-[18px] sm:text-[20px] lg:text-[26px] mb-2.5"
-                  : "text-[16px] sm:text-[18px] lg:text-[22px] mb-1.5"
-              }`}
+              className={cn(
+                SECTION_TITLE_CLASS,
+                showCheckInCard ? "mb-2.5" : "mb-1.5",
+              )}
             >
               搜尋你的目標卡牌
             </h1>

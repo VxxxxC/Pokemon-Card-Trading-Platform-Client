@@ -25,6 +25,7 @@ import { usePaymentCountdown } from "@/app/lib/hooks/usePaymentCountdown";
 import { MemberP2pOrderInvoice } from "@/app/components/user/MemberP2pOrderInvoice";
 import { MemberP2pOrderTimeline } from "@/app/components/user/MemberP2pOrderTimeline";
 import { ImageViewer } from "@/app/components/shared/ImageViewer";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 import { OrderCatalogThumb } from "@/app/components/shared/OrderCatalogThumb";
 import { OrderListingPhotoGrid } from "@/app/components/shared/OrderListingPhotoGrid";
 import {
@@ -389,12 +390,11 @@ export function MemberOrderDetailView({
                   <span className="font-sans text-[10px] text-text-disabled shrink-0">
                     {counterpartLabel}
                   </span>
-                  <span className="truncate font-sans text-[13px] font-semibold text-text-primary">
+                  <span className={`truncate ${SECTION_TITLE_CLASS}`}>
                     {counterpartName}
                   </span>
                   {isBuyer && order.orderKind === "merchant" ? (
                     <CertifiedMerchantBadge
-                      label="認證商家"
                       className="shrink-0 scale-[0.92] origin-left"
                     />
                   ) : null}
@@ -566,7 +566,7 @@ export function MemberOrderDetailView({
         className={`${ORDER_DETAIL_CARD_CLASS} space-y-4`}
         aria-label="交易進度"
       >
-        <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+        <h2 className={SECTION_TITLE_CLASS}>
           交易進度
         </h2>
 
@@ -658,7 +658,7 @@ export function MemberOrderDetailView({
             order.buyerRemark ||
             order.sfAddress) ? (
             <div className="space-y-2 border-t border-white/[0.06] pt-4">
-              <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+              <h3 className={SECTION_TITLE_CLASS}>
                 交收資料
               </h3>
               <div className="space-y-1.5 font-mono text-[12px] text-text-secondary">

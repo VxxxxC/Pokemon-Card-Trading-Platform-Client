@@ -24,6 +24,7 @@ import {
 import { resolveGradingOptionId } from "@/lib/grading/resolve-option-id";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 export const TAB_LABELS: Record<AdminGradingTab, string> = {
   awaiting_intake: "待入庫",
@@ -953,7 +954,7 @@ export function ActionPanel({
   if (compact) {
     return (
       <section className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
-        <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+        <h3 className={SECTION_TITLE_CLASS}>
           {title}
         </h3>
         {children}
@@ -963,7 +964,7 @@ export function ActionPanel({
 
   return (
     <section className="space-y-3 border-t border-white/[0.08] pt-4">
-      <h3 className="font-sans text-[13px] font-semibold text-text-primary">
+      <h3 className={SECTION_TITLE_CLASS}>
         {title}
       </h3>
       <div className="space-y-3">{children}</div>

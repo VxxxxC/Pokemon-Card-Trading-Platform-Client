@@ -1,4 +1,5 @@
 import type { HomeListingCard } from "@/app/lib/home/types";
+import { CERTIFIED_MERCHANT_BADGE_LABEL } from "@/app/components/profile/CertifiedMerchantBadge";
 import { HOME_LISTING_LIMIT } from "@/lib/home/constants";
 import {
   parseListingImageUrls,
@@ -52,7 +53,7 @@ function resolveHomeSellerName(
     return (
       shop?.shop_name?.trim() ||
       shop?.shop_handle?.trim() ||
-      "認證商家"
+      "認證商戶"
     );
   }
   return profile?.display_name?.trim() || "賣家";
@@ -91,7 +92,7 @@ function mapListingToCard(
     sellerId: listing.seller_id,
     sellerName,
     sellerBadge:
-      profile?.role === "merchant" ? "認證商家" : "C2C 賣家",
+      profile?.role === "merchant" ? CERTIFIED_MERCHANT_BADGE_LABEL : "C2C 賣家",
     photoCount: imageUrls.length,
     createdAt: listing.created_at,
     useAuthentication: listing.use_authentication,

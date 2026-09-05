@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Camera, Settings, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { updateUserAvatar } from "@/app/actions/profile";
+import { DASHBOARD_SECTION_TITLE_CLASS } from "@/app/profile/dashboard-ui";
 import { CheckInCard } from "@/app/components/rewards/CheckInCard";
 import { TitleBadgeIcon } from "@/app/components/profile/TitleBadgeIcon";
 import { ProfileAvatar } from "@/app/components/profile/ProfileAvatar";
@@ -449,7 +450,7 @@ export function UserOverviewClient({
         <div className="px-4 py-3 border-b border-[rgba(237,232,224,0.06)]">
           <h2
             id="pending-heading"
-            className="font-sans font-semibold text-[15px] text-text-primary"
+            className={DASHBOARD_SECTION_TITLE_CLASS}
           >
             待處理訂單
           </h2>
@@ -491,7 +492,7 @@ export function UserOverviewClient({
           <div className="flex items-center justify-between px-4 py-3 border-b border-[rgba(237,232,224,0.06)]">
             <h2
               id="reviews-heading"
-              className="font-sans font-semibold text-[15px] text-text-primary"
+              className={DASHBOARD_SECTION_TITLE_CLASS}
             >
               最近收到的信用評價
             </h2>

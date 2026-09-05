@@ -21,6 +21,7 @@ import type {
 import { CHECKOUT_VARIANT_CONFIG } from "@/lib/checkout/variant-config";
 import { validateMerchantDirectForm } from "@/lib/checkout/validate-merchant-direct";
 import { Spinner } from "@/components/ui/spinner";
+import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
 
 const stripePaymentAvailable =
   typeof process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === "string" &&
@@ -416,7 +417,7 @@ export function CheckoutClient({ orderId }: CheckoutClientProps) {
               />
             ) : (
               <section className="rounded-lg border border-white/[0.08] bg-bg-card/20 p-4 space-y-2">
-                <h2 className="font-sans text-[13px] font-semibold text-text-primary">
+                <h2 className={SECTION_TITLE_CLASS}>
                   輸入付款資料
                 </h2>
                 <p className="font-sans text-[12px] text-text-secondary leading-relaxed">
