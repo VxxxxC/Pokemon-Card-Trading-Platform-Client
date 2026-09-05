@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const insertMock = vi.hoisted(() => vi.fn());
 const fromMock = vi.hoisted(() => vi.fn());
+const isEmailEnabledForUserMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: fromMock,
   }),
+}));
+
+vi.mock("@/lib/notifications/notification-prefs", () => ({
+  isEmailEnabledForUser: isEmailEnabledForUserMock,
 }));
 
 import { enqueueTransactionalEmail } from "@/lib/notifications/enqueue-email";
@@ -25,6 +30,8 @@ describe("enqueueTransactionalEmail", () => {
   beforeEach(() => {
     insertMock.mockReset();
     fromMock.mockReset();
+    isEmailEnabledForUserMock.mockReset();
+    isEmailEnabledForUserMock.mockResolvedValue(true);
   });
 
   it("inserts a rendered template row into outbox", async () => {
@@ -68,5 +75,25 @@ describe("enqueueTransactionalEmail", () => {
       success: true,
       data: { id: "E-ACC-04:user-1:1", duplicate: true },
     });
+  });
+
+  it("skips opt-outable email when recipient disabled preference", async () => {
+    isEmailEnabledForUserMock.mockResolvedValue(false);
+
+    const result = await enqueueTransactionalEmail({
+      eventId: "E-ORD-01",
+      templateKey: "order.payment_confirmed",
+      toEmail: "user@example.com",
+      recipientUserId: "user-1",
+      idempotencyKey: "E-ORD-01:order-1:buyer",
+      subject: "付款成功",
+      html: "<p>ok</p>",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      data: { id: "pref-skipped:E-ORD-01:order-1:buyer", duplicate: false },
+    });
+    expect(insertMock).not.toHaveBeenCalled();
   });
 });

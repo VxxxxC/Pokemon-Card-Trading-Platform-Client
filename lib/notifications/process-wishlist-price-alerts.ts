@@ -1,4 +1,5 @@
 import { sendOneSignalPush } from "@/lib/notifications/onesignal/send";
+import { isPushEnabledForUser } from "@/lib/notifications/notification-prefs";
 import {
   PUSH_CRON_BATCH_LIMIT,
   WISHLIST_PRICE_ALERT_COOLDOWN_HOURS,
@@ -174,6 +175,11 @@ export async function processWishlistPriceAlerts(): Promise<{
     }
 
     const subscriptionIds = subscriptionsByUser.get(row.user_id) ?? [];
+
+    if (!(await isPushEnabledForUser(row.user_id, "P-WIS-01"))) {
+      skipped += 1;
+      continue;
+    }
 
     const catalog = catalogById.get(row.product_id);
     const copy = buildWishlistPriceAlertCopy({

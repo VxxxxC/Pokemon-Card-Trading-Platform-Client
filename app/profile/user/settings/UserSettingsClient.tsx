@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LogoutModal } from "@/app/components/profile/LogoutModal";
-import { updatePushTransactionalPreference } from "@/app/actions/push-preferences";
+import { updateNotificationPreference } from "@/app/actions/notification-preferences";
 import {
   updateUserProfile,
   type UserSettingsData,
 } from "@/app/actions/profile";
+import type { NotificationPreferenceField } from "@/lib/notifications/notification-pref-catalog";
 import type { UserProfileFormErrors } from "@/lib/profile/validation";
 import { cn } from "@/lib/utils";
 import { SECTION_TITLE_CLASS } from "@/lib/ui/section-title-ui";
@@ -70,12 +71,110 @@ function SettingsSection({
 const settingsListRowClass =
   "flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4";
 
+type NotificationToggleConfig = {
+  field: NotificationPreferenceField;
+  label: string;
+  desc: string;
+};
+
+const PUSH_NOTIFICATION_TOGGLES: NotificationToggleConfig[] = [
+  {
+    field: "push_transactional",
+    label: "交易與訂單",
+    desc: "叫價、付款、發貨、鑑定託管進度",
+  },
+  {
+    field: "push_market_alerts",
+    label: "市場提醒",
+    desc: "願望清單目標價、追蹤系列上架",
+  },
+  {
+    field: "push_chat_digest",
+    label: "訊息摘要",
+    desc: "每日未讀訊息提醒",
+  },
+  {
+    field: "push_rewards",
+    label: "獎勵活動",
+    desc: "每日簽到、積分與優惠到期提醒",
+  },
+];
+
+const EMAIL_NOTIFICATION_TOGGLES: NotificationToggleConfig[] = [
+  {
+    field: "email_transactional",
+    label: "交易與訂單",
+    desc: "訂單、叫價、鑑定與撥款相關電郵",
+  },
+  {
+    field: "email_market_alerts",
+    label: "市場提醒",
+    desc: "價格與上架相關電郵",
+  },
+  {
+    field: "email_rewards",
+    label: "獎勵活動",
+    desc: "簽到、兌換與優惠到期電郵",
+  },
+];
+
+function NotificationPreferenceToggle({
+  label,
+  desc,
+  enabled,
+  disabled,
+  onToggle,
+}: {
+  label: string;
+  desc: string;
+  enabled: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className={settingsListRowClass}>
+      <div className="min-w-0 flex-1">
+        <p className="font-sans font-semibold text-[12px] text-text-primary leading-snug">
+          {label}
+        </p>
+        <p className="font-mono text-[10px] text-text-secondary truncate mt-0.5">
+          {desc}
+        </p>
+      </div>
+      <button
+        type="button"
+        aria-label={`切換 ${label} 通知狀態`}
+        aria-pressed={enabled}
+        disabled={disabled}
+        onClick={onToggle}
+        className={cn(
+          "w-9 h-5 rounded-full flex items-center transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
+          enabled
+            ? "bg-brand justify-end pr-0.5"
+            : "bg-bg-elevated justify-start pl-0.5",
+        )}
+      >
+        <div className="w-4 h-4 rounded-full bg-[#17130f] shadow-sm" />
+      </button>
+    </div>
+  );
+}
+
 export function UserSettingsClient({ initialData }: Props) {
   const router = useRouter();
-  const [pushTransactional, setPushTransactional] = useState(
-    initialData.pushTransactional,
-  );
-  const [isUpdatingPushPref, startPushPrefTransition] = useTransition();
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    push_transactional: initialData.pushTransactional,
+    push_market_alerts: initialData.pushMarketAlerts,
+    push_chat_digest: initialData.pushChatDigest,
+    push_rewards: initialData.pushRewards,
+    email_transactional: initialData.emailTransactional,
+    email_market_alerts: initialData.emailMarketAlerts,
+    email_rewards: initialData.emailRewards,
+  });
+  const [updatingField, setUpdatingField] =
+    useState<NotificationPreferenceField | null>(null);
+  const [isUpdatingNotificationPref, startNotificationPrefTransition] =
+    useTransition();
   const [errors, formAction, isPending] = useActionState<
     UserProfileFormErrors | null,
     FormData
@@ -105,13 +204,15 @@ export function UserSettingsClient({ initialData }: Props) {
     wasPending.current = isPending;
   }, [isPending, errors, router]);
 
-  function handleTogglePushTransactional() {
-    const next = !pushTransactional;
-    startPushPrefTransition(async () => {
-      const result = await updatePushTransactionalPreference(next);
+  function handleToggleNotificationPref(field: NotificationPreferenceField) {
+    const next = !notificationPrefs[field];
+    startNotificationPrefTransition(async () => {
+      setUpdatingField(field);
+      const result = await updateNotificationPreference(field, next);
+      setUpdatingField(null);
       if (result.success) {
-        setPushTransactional(next);
-        toast.success(next ? "已開啟訂單推送通知" : "已關閉訂單推送通知");
+        setNotificationPrefs((current) => ({ ...current, [field]: next }));
+        toast.success(next ? "已開啟通知" : "已關閉通知");
         router.refresh();
         return;
       }
@@ -306,69 +407,37 @@ export function UserSettingsClient({ initialData }: Props) {
           </div>
         </SettingsSection>
 
-        <SettingsSection id="notif-heading" title="通知設定" variant="list">
-          <div className={settingsListRowClass}>
-            <div className="min-w-0 flex-1">
-              <p className={SECTION_TITLE_CLASS}>
-                訂單狀態更新
-              </p>
-              <p className="font-mono text-[10px] text-text-secondary truncate mt-0.5">
-                Escrow 進度變更即時推送
-              </p>
-            </div>
-            <button
-              type="button"
-              aria-label="切換 訂單狀態更新 通知狀態"
-              aria-pressed={pushTransactional}
-              disabled={isUpdatingPushPref}
-              onClick={handleTogglePushTransactional}
-              className={cn(
-                "w-9 h-5 rounded-full flex items-center transition-colors shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed",
-                pushTransactional
-                  ? "bg-brand justify-end pr-0.5"
-                  : "bg-bg-elevated justify-start pl-0.5",
-              )}
-            >
-              <div className="w-4 h-4 rounded-full bg-[#17130f] shadow-sm" />
-            </button>
-          </div>
-          {[
-            { label: "每日簽到提醒", desc: "連續簽到里程碑提醒", on: true },
-            {
-              label: "市場價格波動",
-              desc: "持有卡牌超出 ±10% 提醒",
-              on: false,
-            },
-            {
-              label: "新卡上架提醒",
-              desc: "追蹤系列有新商品時通知",
-              on: false,
-            },
-          ].map(({ label, desc, on }) => (
-            <div key={label} className={settingsListRowClass}>
-              <div className="min-w-0 flex-1">
-                <p className={SECTION_TITLE_CLASS}>
-                  {label}
-                </p>
-                <p className="font-mono text-[10px] text-text-secondary truncate mt-0.5">
-                  {desc}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-label={`切換 ${label} 通知狀態`}
-                disabled
-                className={cn(
-                  "w-9 h-5 rounded-full flex items-center transition-colors shrink-0 cursor-not-allowed opacity-50",
-                  on
-                    ? "bg-brand justify-end pr-0.5"
-                    : "bg-bg-elevated justify-start pl-0.5",
-                )}
-              >
-                <div className="w-4 h-4 rounded-full bg-[#17130f] shadow-sm" />
-              </button>
-            </div>
+        <SettingsSection id="push-notif-heading" title="推送通知" variant="list">
+          {PUSH_NOTIFICATION_TOGGLES.map((item) => (
+            <NotificationPreferenceToggle
+              key={item.field}
+              label={item.label}
+              desc={item.desc}
+              enabled={notificationPrefs[item.field]}
+              disabled={
+                isUpdatingNotificationPref && updatingField === item.field
+              }
+              onToggle={() => handleToggleNotificationPref(item.field)}
+            />
           ))}
+        </SettingsSection>
+
+        <SettingsSection id="email-notif-heading" title="電郵通知" variant="list">
+          {EMAIL_NOTIFICATION_TOGGLES.map((item) => (
+            <NotificationPreferenceToggle
+              key={item.field}
+              label={item.label}
+              desc={item.desc}
+              enabled={notificationPrefs[item.field]}
+              disabled={
+                isUpdatingNotificationPref && updatingField === item.field
+              }
+              onToggle={() => handleToggleNotificationPref(item.field)}
+            />
+          ))}
+          <p className="px-3 py-2.5 sm:px-4 font-mono text-[10px] text-text-disabled leading-relaxed">
+            帳號安全與制裁通知將始終發送，無法關閉。
+          </p>
         </SettingsSection>
 
         <SettingsSection id="session-ctrl" title="登出帳戶" variant="list">

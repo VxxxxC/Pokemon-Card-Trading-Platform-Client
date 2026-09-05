@@ -6,6 +6,7 @@ import {
   shouldSkipChatDigestForRecentActivity,
 } from "@/lib/notifications/chat-push";
 import { loadOptedInPushSubscriptionIds } from "@/lib/notifications/push-delivery";
+import { isPushEnabledForUser } from "@/lib/notifications/notification-prefs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/types/supabase";
 
@@ -129,6 +130,11 @@ export async function processChatUnreadDigest(): Promise<{
         now,
       )
     ) {
+      skipped += 1;
+      continue;
+    }
+
+    if (!(await isPushEnabledForUser(row.user_id, "P-CHT-01"))) {
       skipped += 1;
       continue;
     }

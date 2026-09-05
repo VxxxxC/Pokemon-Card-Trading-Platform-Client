@@ -210,6 +210,7 @@ async function enqueuePaymentConfirmedPair(args: {
       templateKey: "order.payment_confirmed",
       toEmail: buyerEmail,
       idempotencyKey: `E-ORD-01:${args.orderId}:buyer`,
+      recipientUserId: args.buyerId,
       payload: {
         ...sharedPayload,
         recipientRole: "buyer",
@@ -225,6 +226,7 @@ async function enqueuePaymentConfirmedPair(args: {
       templateKey: "order.payment_confirmed",
       toEmail: sellerEmail,
       idempotencyKey: `E-ORD-01:${args.orderId}:seller`,
+      recipientUserId: args.sellerId,
       payload: {
         ...sharedPayload,
         recipientRole: "seller",
@@ -338,6 +340,7 @@ async function enqueuePaymentExpiredPair(args: {
       templateKey: "order.payment_expired",
       toEmail: buyerEmail,
       idempotencyKey: `E-ORD-02:${args.orderId}:buyer`,
+      recipientUserId: args.buyerId,
       payload: {
         ...sharedPayload,
         recipientRole: "buyer",
@@ -353,6 +356,7 @@ async function enqueuePaymentExpiredPair(args: {
       templateKey: "order.payment_expired",
       toEmail: sellerEmail,
       idempotencyKey: `E-ORD-02:${args.orderId}:seller`,
+      recipientUserId: args.sellerId,
       payload: {
         ...sharedPayload,
         recipientRole: "seller",
@@ -430,6 +434,7 @@ async function enqueueOrderShippedBuyerEmail(args: {
     templateKey: "order.shipped",
     toEmail: buyerEmail,
     idempotencyKey: `E-ORD-04:${args.orderId}:buyer`,
+    recipientUserId: args.buyerId,
     payload: {
       orderId: args.orderId,
       orderKind: args.orderKind,
@@ -472,6 +477,7 @@ async function enqueueOrderBuyerConfirmedSellerEmail(args: {
     templateKey: "order.buyer_confirmed",
     toEmail: sellerEmail,
     idempotencyKey: `E-ORD-05:${args.orderId}:seller`,
+      recipientUserId: args.sellerId,
     payload: {
       orderId: args.orderId,
       orderKind: args.orderKind,
@@ -648,6 +654,7 @@ async function enqueueOrderCancelledPair(args: {
       templateKey: "order.cancelled",
       toEmail: buyerEmail,
       idempotencyKey: `E-ORD-03:${args.orderId}:buyer`,
+      recipientUserId: args.buyerId,
       payload: {
         ...sharedPayload,
         recipientRole: "buyer",
@@ -662,6 +669,7 @@ async function enqueueOrderCancelledPair(args: {
       templateKey: "order.cancelled",
       toEmail: sellerEmail,
       idempotencyKey: `E-ORD-03:${args.orderId}:seller`,
+      recipientUserId: args.sellerId,
       payload: {
         ...sharedPayload,
         recipientRole: "seller",
@@ -787,6 +795,7 @@ export async function enqueueOrderCompletedBuyerEmail(
       templateKey: "order.completed",
       toEmail: buyerEmail,
       idempotencyKey: `E-ORD-06:${orderId}:buyer`,
+      recipientUserId: orderRow.buyer_id,
       payload: {
         orderId,
         orderKind,
@@ -830,6 +839,7 @@ export async function enqueueB2cPaymentMerchantActionEmail(
     templateKey: "b2c.payment_merchant_action",
     toEmail: merchantEmail,
     idempotencyKey: `E-ORD-B2C-01:${order.id}:merchant`,
+      recipientUserId: order.merchant_id,
     payload: {
       orderId: order.id,
       cardName: listing.cardName,
@@ -885,6 +895,7 @@ export async function enqueueB2cShippedBuyerEmail(
     templateKey: "b2c.shipped",
     toEmail: buyerEmail,
     idempotencyKey: `E-ORD-B2C-02:${order.id}:buyer`,
+    recipientUserId: order.buyer_id,
     payload: {
       orderId: order.id,
       cardName: listing.cardName,
@@ -927,6 +938,7 @@ export async function enqueueB2cCompletedMerchantEmail(
       templateKey: "b2c.completed",
       toEmail: merchantEmail,
       idempotencyKey: `E-ORD-B2C-03:${order.id}:merchant`,
+      recipientUserId: order.merchant_id,
       payload: {
         orderId: order.id,
         cardName: listing.cardName,
@@ -989,6 +1001,7 @@ export async function enqueueOrderConfirmReminderBuyerEmail(args: {
     templateKey: "order.confirm_reminder",
     toEmail: buyerEmail,
     idempotencyKey: `E-ORD-07:${args.orderId}:buyer:${args.idempotencyDateSuffix}`,
+      recipientUserId: orderRow.buyer_id,
     payload: {
       orderId: args.orderId,
       orderKind: args.orderKind,
@@ -1065,6 +1078,7 @@ export async function enqueueOrderShipReminderSellerEmail(args: {
     templateKey: "order.ship_reminder",
     toEmail: sellerEmail,
     idempotencyKey: `E-ORD-08:${args.orderId}:seller:${args.idempotencyDateSuffix}`,
+    recipientUserId: sellerId,
     payload: {
       orderId: args.orderId,
       orderKind: args.orderKind,
@@ -1146,6 +1160,7 @@ export async function enqueueOrderReviewInviteEmails(
         templateKey: "order.review_invite",
         toEmail: recipient.email,
         idempotencyKey: `E-ORD-09:${orderId}:${recipient.userId}`,
+      recipientUserId: recipient.userId,
         payload: {
           orderId,
           orderKind,
@@ -1218,6 +1233,7 @@ export async function enqueueOrderReviewInviteEmails(
       templateKey: "order.review_invite",
       toEmail: recipient.email,
       idempotencyKey: `E-ORD-09:${orderId}:${recipient.userId}`,
+      recipientUserId: recipient.userId,
       payload: {
         orderId,
         orderKind,

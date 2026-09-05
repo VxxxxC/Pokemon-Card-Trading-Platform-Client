@@ -32,6 +32,7 @@ import {
   validateUserProfileFields,
   type UserProfileFormErrors,
 } from "@/lib/profile/validation";
+import { mapProfileRowToNotificationPrefs } from "@/lib/notifications/notification-prefs";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Tables } from "@/types/supabase";
@@ -53,6 +54,12 @@ type SettingsProfileRow = Pick<
   | "fps_id"
   | "fps_name"
   | "push_transactional"
+  | "push_market_alerts"
+  | "push_chat_digest"
+  | "push_rewards"
+  | "email_transactional"
+  | "email_market_alerts"
+  | "email_rewards"
 >;
 
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -76,6 +83,12 @@ export type UserSettingsData = {
   fpsId?: string;
   fpsName?: string;
   pushTransactional: boolean;
+  pushMarketAlerts: boolean;
+  pushChatDigest: boolean;
+  pushRewards: boolean;
+  emailTransactional: boolean;
+  emailMarketAlerts: boolean;
+  emailRewards: boolean;
 };
 
 export type PublicProfilePageProfile = import("@/lib/marketplace/load-seller-profile").MarketplaceSellerProfile & {
@@ -302,7 +315,7 @@ export async function getUserSettings(): Promise<
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "id, display_name, username, short_description, avatar_path, role, fps_id, fps_name, push_transactional",
+      "id, display_name, username, short_description, avatar_path, role, fps_id, fps_name, push_transactional, push_market_alerts, push_chat_digest, push_rewards, email_transactional, email_market_alerts, email_rewards",
     )
     .eq("id", user.id)
     .maybeSingle<SettingsProfileRow>();
@@ -310,6 +323,8 @@ export async function getUserSettings(): Promise<
   if (error || !profile) {
     return { success: false, error: "無法取得用戶資料" };
   }
+
+  const notificationPrefs = mapProfileRowToNotificationPrefs(profile);
 
   return {
     success: true,
@@ -323,7 +338,13 @@ export async function getUserSettings(): Promise<
       role: profile.role,
       fpsId: profile.fps_id ?? "",
       fpsName: profile.fps_name ?? "",
-      pushTransactional: profile.push_transactional !== false,
+      pushTransactional: notificationPrefs.push_transactional,
+      pushMarketAlerts: notificationPrefs.push_market_alerts,
+      pushChatDigest: notificationPrefs.push_chat_digest,
+      pushRewards: notificationPrefs.push_rewards,
+      emailTransactional: notificationPrefs.email_transactional,
+      emailMarketAlerts: notificationPrefs.email_market_alerts,
+      emailRewards: notificationPrefs.email_rewards,
     },
   };
 }

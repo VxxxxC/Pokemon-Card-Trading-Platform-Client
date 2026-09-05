@@ -49,6 +49,7 @@ export async function enqueuePointsRedemptionGrantedEmail(args: {
     eventId: "E-RWD-01",
     templateKey: "rewards.grant",
     toEmail: userEmail,
+    recipientUserId: args.userId,
     idempotencyKey: `E-RWD-01:${args.userRewardId}:grant`,
     payload: {
       itemName,
@@ -78,6 +79,7 @@ export async function enqueueCouponExpiringReminderEmail(args: {
     eventId: "E-RWD-02",
     templateKey: "rewards.coupon_expiring",
     toEmail: userEmail,
+    recipientUserId: args.userId,
     idempotencyKey: `E-RWD-02:${args.userRewardId}:expiring:${args.idempotencyDateSuffix}`,
     payload: {
       expiryLabel: args.expiryLabel,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendOneSignalPushMock = vi.hoisted(() => vi.fn());
-const isUserPushTransactionalEnabledMock = vi.hoisted(() => vi.fn());
+const isUserPushPrefEnabledMock = vi.hoisted(() => vi.fn());
 const fromMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/notifications/onesignal/send", () => ({
@@ -9,9 +9,7 @@ vi.mock("@/lib/notifications/onesignal/send", () => ({
 }));
 
 vi.mock("@/lib/notifications/push-prefs", () => ({
-  isTransactionalPushEvent: (eventId: string) =>
-    eventId.startsWith("P-OFF-") || eventId.startsWith("P-ORD-"),
-  isUserPushTransactionalEnabled: isUserPushTransactionalEnabledMock,
+  isUserPushPrefEnabled: isUserPushPrefEnabledMock,
 }));
 
 vi.mock("@/lib/supabase/admin", () => ({
@@ -25,9 +23,9 @@ import { sendPushToUser } from "@/lib/notifications/push-delivery";
 describe("push delivery prefs gate", () => {
   beforeEach(() => {
     sendOneSignalPushMock.mockReset();
-    isUserPushTransactionalEnabledMock.mockReset();
+    isUserPushPrefEnabledMock.mockReset();
     fromMock.mockReset();
-    isUserPushTransactionalEnabledMock.mockResolvedValue(true);
+    isUserPushPrefEnabledMock.mockResolvedValue(true);
     sendOneSignalPushMock.mockResolvedValue({
       success: true,
       skipped: true,
@@ -40,8 +38,8 @@ describe("push delivery prefs gate", () => {
     fromMock.mockReturnValue({ select });
   });
 
-  it("skips transactional push when user disabled push_transactional", async () => {
-    isUserPushTransactionalEnabledMock.mockResolvedValue(false);
+  it("skips transactional push when user disabled preference", async () => {
+    isUserPushPrefEnabledMock.mockResolvedValue(false);
 
     await sendPushToUser({
       eventId: "P-OFF-01",
@@ -54,16 +52,19 @@ describe("push delivery prefs gate", () => {
     expect(sendOneSignalPushMock).not.toHaveBeenCalled();
   });
 
-  it("still evaluates delivery for non-transactional events", async () => {
+  it("still evaluates delivery for mandatory events", async () => {
     await sendPushToUser({
-      eventId: "P-WIS-01",
+      eventId: "P-MOD-02",
       userId: "user-1",
-      heading: "願望清單價格提醒",
+      heading: "帳號制裁",
       body: "test",
-      path: "/marketplace/product/abc",
+      path: "/profile/user/settings",
     });
 
-    expect(isUserPushTransactionalEnabledMock).not.toHaveBeenCalled();
+    expect(isUserPushPrefEnabledMock).toHaveBeenCalledWith(
+      "user-1",
+      "P-MOD-02",
+    );
     expect(sendOneSignalPushMock).toHaveBeenCalled();
   });
 });

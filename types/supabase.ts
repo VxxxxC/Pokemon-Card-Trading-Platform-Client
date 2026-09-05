@@ -2060,11 +2060,17 @@ export type Database = {
           completed_trades_count: number
           created_at: string
           display_name: string
+          email_market_alerts: boolean
+          email_rewards: boolean
+          email_transactional: boolean
           fps_id: string | null
           fps_name: string | null
           id: string
           last_active_at: string | null
           last_chat_digest_pushed_at: string | null
+          push_chat_digest: boolean
+          push_market_alerts: boolean
+          push_rewards: boolean
           push_transactional: boolean
           rating_score: number | null
           reputation_tag: Json | null
@@ -2080,11 +2086,17 @@ export type Database = {
           completed_trades_count?: number
           created_at?: string
           display_name: string
+          email_market_alerts?: boolean
+          email_rewards?: boolean
+          email_transactional?: boolean
           fps_id?: string | null
           fps_name?: string | null
           id: string
           last_active_at?: string | null
           last_chat_digest_pushed_at?: string | null
+          push_chat_digest?: boolean
+          push_market_alerts?: boolean
+          push_rewards?: boolean
           push_transactional?: boolean
           rating_score?: number | null
           reputation_tag?: Json | null
@@ -2100,11 +2112,17 @@ export type Database = {
           completed_trades_count?: number
           created_at?: string
           display_name?: string
+          email_market_alerts?: boolean
+          email_rewards?: boolean
+          email_transactional?: boolean
           fps_id?: string | null
           fps_name?: string | null
           id?: string
           last_active_at?: string | null
           last_chat_digest_pushed_at?: string | null
+          push_chat_digest?: boolean
+          push_market_alerts?: boolean
+          push_rewards?: boolean
           push_transactional?: boolean
           rating_score?: number | null
           reputation_tag?: Json | null

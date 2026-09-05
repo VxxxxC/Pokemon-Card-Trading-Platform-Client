@@ -1,5 +1,6 @@
 import { getSiteUrl } from "@/lib/auth/site-url";
 import { resolveEmailLogoUrl } from "@/lib/email/layout";
+import { isEmailEnabledForUser } from "@/lib/notifications/notification-prefs";
 import { renderEmailTemplate } from "@/lib/notifications/email-templates";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -8,6 +9,7 @@ export type EnqueueTransactionalEmailInput = {
   templateKey: string;
   toEmail: string;
   idempotencyKey: string;
+  recipientUserId?: string;
   payload?: Record<string, unknown>;
   subject?: string;
   html?: string;
@@ -66,6 +68,33 @@ export async function enqueueTransactionalEmail(
 
   if (!toEmail || !idempotencyKey) {
     return { success: false, error: "缺少收件人或 idempotency key" };
+  }
+
+  const recipientUserId =
+    input.recipientUserId ??
+    (typeof input.payload?.recipientUserId === "string"
+      ? input.payload.recipientUserId
+      : typeof input.payload?.userId === "string"
+        ? input.payload.userId
+        : undefined);
+
+  if (recipientUserId) {
+    const enabled = await isEmailEnabledForUser(recipientUserId, input.eventId);
+    if (!enabled) {
+      if (process.env.NODE_ENV === "development") {
+        console.info(
+          "[enqueue-email]",
+          input.eventId,
+          "skipped",
+          "notification_pref_disabled",
+          recipientUserId,
+        );
+      }
+      return {
+        success: true,
+        data: { id: `pref-skipped:${idempotencyKey}`, duplicate: false },
+      };
+    }
   }
 
   const content = buildEmailContent(input);

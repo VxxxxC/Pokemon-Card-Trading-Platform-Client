@@ -21,6 +21,7 @@ describe("push prefs", () => {
   it("classifies transactional push events", () => {
     expect(isTransactionalPushEvent("P-OFF-01")).toBe(true);
     expect(isTransactionalPushEvent("P-ORD-02")).toBe(true);
+    expect(isTransactionalPushEvent("P-GRD-C2C-01")).toBe(true);
     expect(isTransactionalPushEvent("P-WIS-01")).toBe(false);
     expect(isTransactionalPushEvent("P-CHT-01")).toBe(false);
   });
