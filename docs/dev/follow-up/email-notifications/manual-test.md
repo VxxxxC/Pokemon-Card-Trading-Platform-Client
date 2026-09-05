@@ -244,7 +244,7 @@ bun run test:email:phase4
 - [ ] E-MCH-04
 - [ ] E-MOD-05
 - [ ] E-RWD-01
-- [ ] E-RWD-02
+- [x] E-RWD-02
 - [x] Phase 4 gate 全綠
 
 ---
@@ -260,11 +260,11 @@ bun run test:email:phase4
 
 **E-MOD-06 UI 驗證：**
 
-- [ ] 僅 `open` / `reviewing` 案件顯示表單
-- [ ] 選 **被舉報人** → outbox `to_email` = subject
-- [ ] 選 **舉報人** → outbox `to_email` = primary reporter（無舉報人時 option disabled）
-- [ ] 填補充說明 → 信中顯示 `message`
-- [ ] 案件狀態保持 open（唔會自動結案）
+- [x] 僅 `open` / `reviewing` 案件顯示表單
+- [x] 選 **被舉報人** → outbox `to_email` = subject
+- [x] 選 **舉報人** → outbox `to_email` = primary reporter（無舉報人時 option disabled）
+- [x] 填補充說明 → 信中顯示 `message`
+- [x] 案件狀態保持 open（唔會自動結案）
 
 ```bash
 curl -s -H "Authorization: Bearer $CRON_SECRET" \
@@ -279,7 +279,7 @@ bun run test:email:phase5
 - [ ] E-ACC-08
 - [ ] E-ACC-09
 - [x] E-MOD-06
-- [ ] Phase 5 gate 全綠
+- [x] Phase 5 gate 全綠
 
 ---
 
@@ -308,7 +308,7 @@ bun run test:email:phase6
 - [x] E-ORD-P2P-01
 - [x] E-ORD-P2P-02
 - [x] E-ORD-09
-- [ ] Phase 6 gate 全綠
+- [x] Phase 6 gate 全綠
 
 ---
 
