@@ -3968,6 +3968,16 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_list_home_trade_ticker: {
+        Args: { p_limit?: number }
+        Returns: {
+          card_code: string
+          completed_at: string
+          price_hkd: number
+          product_name: string
+          trade_id: string
+        }[]
+      }
       rpc_list_chat_unread_digest_candidates: {
         Args: { p_limit?: number }
         Returns: {

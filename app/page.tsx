@@ -32,9 +32,7 @@ export default async function HomePage() {
     ? await getHomeBannersForDisplay()
     : { success: true as const, data: [] };
   const homeBanners = homeBannersResult.success ? homeBannersResult.data : [];
-  const tickerItems = isSupabaseConfigured()
-    ? await loadHomePriceTickerItems()
-    : [];
+  const tickerItems = await loadHomePriceTickerItems();
 
   return (
     <HomePageShell

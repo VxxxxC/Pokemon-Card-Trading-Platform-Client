@@ -436,7 +436,7 @@ export function UserSettingsClient({ initialData }: Props) {
             />
           ))}
           <p className="px-3 py-2.5 sm:px-4 font-mono text-[10px] text-text-disabled leading-relaxed">
-            帳號安全與制裁通知將始終發送，無法關閉。
+            上方開關只控制交易、市場與獎勵電郵。驗證帳號、密碼變更、停權或制裁等系統電郵仍會照常發送，無法關閉。
           </p>
         </SettingsSection>
 

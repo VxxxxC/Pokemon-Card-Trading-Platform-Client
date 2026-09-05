@@ -52,11 +52,7 @@ export function SlideOver({
               <div className="px-4 py-3.5 border-b border-[rgba(237,232,224,0.08)] flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   {Icon ? (
-                    <div
-                      className="w-9 h-9 shrink-0 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center"
-                    >
-                      <Icon className="size-4 text-brand" strokeWidth={2.25} />
-                    </div>
+                    <Icon className="size-4 shrink-0 text-brand" strokeWidth={2.25} />
                   ) : null}
                   <div className="min-w-0">
                     <h2 className={`${SECTION_TITLE_CLASS} truncate`}>

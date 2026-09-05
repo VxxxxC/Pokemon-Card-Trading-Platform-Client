@@ -22,7 +22,7 @@ test.describe("P-B01 home ticker HKD currency", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
 
-    const ticker = page.getByLabel("即時價格走勢");
+    const ticker = page.getByLabel("最新平台成交");
     await expect(ticker).toBeVisible({ timeout: 20_000 });
     await expect(ticker.getByText(/HK\$/).first()).toBeVisible();
     await expect(ticker.getByText(/¥/)).toHaveCount(0);

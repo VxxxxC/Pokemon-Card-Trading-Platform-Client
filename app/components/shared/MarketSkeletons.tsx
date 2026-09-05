@@ -7,7 +7,7 @@ export function PriceTickerSkeleton() {
   return (
     <div
       className="w-full h-9 bg-[#26211C] border-b border-white/5 flex items-center justify-start gap-6 px-4 overflow-hidden select-none"
-      aria-label="即時價格走勢"
+      aria-label="最新平台成交"
     >
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 shrink-0 min-w-[140px]">

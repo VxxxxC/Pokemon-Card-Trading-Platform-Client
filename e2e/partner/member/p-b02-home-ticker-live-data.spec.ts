@@ -24,7 +24,7 @@ test.describe("P-B02 home ticker live data", () => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
     await dismissBlockingOverlays(page);
 
-    const ticker = page.getByLabel("即時價格走勢");
+    const ticker = page.getByLabel("最新平台成交");
     await expect(ticker).toBeVisible({ timeout: 20_000 });
     await expect(ticker.getByText("sv2a-182")).toHaveCount(0);
     await expect(ticker.getByText("Charizard ex SAR")).toHaveCount(0);

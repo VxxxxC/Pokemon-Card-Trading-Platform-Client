@@ -1,7 +1,9 @@
-import { fetchHomeListingsByPersona } from "@/lib/home/load-home-listings";
+import { unstable_cache } from "next/cache";
+import { HOME_TICKER_CACHE_SECONDS, HOME_TICKER_LIMIT } from "@/lib/home/constants";
+import { getHomeTickerFallbackItems } from "@/lib/home/home-ticker-fallback";
+import { homePerfLog } from "@/lib/home/perf-log";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createPublicClient } from "@/lib/supabase/public";
-import { resolveProductName, type CatalogRow } from "@/lib/marketplace/portfolio-pricing";
 
 export type HomePriceTickerItem = {
   id: string;
@@ -9,106 +11,105 @@ export type HomePriceTickerItem = {
   price: number;
   delta: number;
   direction: "up" | "down";
+  /** `trade` = completed platform sale; legacy market rows may omit. */
+  kind?: "trade" | "market";
 };
 
-type MarketPriceRow = {
-  market_avg_price: number | null;
-  market_trend_30d: number | null;
-  product_id: string | null;
-  product_catalog: CatalogRow | CatalogRow[] | null;
+type HomeTradeTickerRow = {
+  trade_id: string;
+  card_code: string;
+  product_name: string;
+  price_hkd: number;
+  completed_at: string;
 };
 
-function catalogFromEmbed(
-  embedded: MarketPriceRow["product_catalog"],
-): CatalogRow | undefined {
-  if (!embedded) return undefined;
-  return Array.isArray(embedded) ? embedded[0] : embedded;
+type HomeTradeTickerRpcClient = {
+  rpc(
+    fn: "rpc_list_home_trade_ticker",
+    args: { p_limit: number },
+  ): Promise<{
+    data: HomeTradeTickerRow[] | null;
+    error: { message: string } | null;
+  }>;
+};
+
+export function mapHomeTradeTickerRows(
+  rows: HomeTradeTickerRow[],
+  limit: number,
+): HomePriceTickerItem[] {
+  const items: HomePriceTickerItem[] = [];
+
+  for (const row of rows) {
+    const price = Number(row.price_hkd);
+    if (!Number.isFinite(price) || price <= 0) continue;
+
+    const cardCode = row.card_code?.trim();
+    const name = row.product_name?.trim();
+    if (!cardCode || !name) continue;
+
+    items.push({
+      id: cardCode,
+      name,
+      price: Math.round(price),
+      delta: 0,
+      direction: "up",
+      kind: "trade",
+    });
+
+    if (items.length >= limit) break;
+  }
+
+  return items;
 }
 
-export async function loadHomePriceTickerItems(
-  limit = 8,
+async function fetchHomeTradeTickerItems(
+  limit: number,
 ): Promise<HomePriceTickerItem[]> {
   if (!isSupabaseConfigured()) {
     return [];
   }
 
+  const startedAt = Date.now();
+
   try {
-    const supabase = createPublicClient();
-    const { data, error } = await supabase
-      .from("product_grading_market_prices")
-      .select(
-        "market_avg_price, market_trend_30d, product_id, product_catalog(name_zh, name_en, name_ja, card_number, display_id, set_code)",
-      )
-      .not("market_avg_price", "is", null)
-      .gt("market_avg_price", 0)
-      .order("updated_at", { ascending: false })
-      .limit(limit * 3);
+    const supabase = createPublicClient() as unknown as HomeTradeTickerRpcClient;
+    const { data, error } = await supabase.rpc("rpc_list_home_trade_ticker", {
+      p_limit: limit,
+    });
 
-    if (error || !data) {
-      return loadTickerItemsFromHomeListings(limit);
+    if (error || !data?.length) {
+      homePerfLog(`ticker.trades=empty ${Date.now() - startedAt}ms`);
+      return [];
     }
 
-    const seen = new Set<string>();
-    const items: HomePriceTickerItem[] = [];
-
-    for (const raw of data as MarketPriceRow[]) {
-      const price = Number(raw.market_avg_price);
-      if (!Number.isFinite(price) || price <= 0) continue;
-
-      const catalog = catalogFromEmbed(raw.product_catalog);
-      const productKey = raw.product_id ?? catalog?.display_id ?? "";
-      if (!productKey || seen.has(productKey)) continue;
-      seen.add(productKey);
-
-      const trend = Number(raw.market_trend_30d ?? 0);
-      const delta = Number.isFinite(trend) ? Math.abs(trend) : 0;
-      items.push({
-        id: catalog?.display_id?.trim() || catalog?.set_code || productKey,
-        name: resolveProductName(catalog),
-        price: Math.round(price),
-        delta: Math.round(delta),
-        direction: trend < 0 ? "down" : "up",
-      });
-
-      if (items.length >= limit) break;
-    }
-
-    if (items.length > 0) {
-      return items;
-    }
-  } catch {
-    // Fall through to live listing prices.
-  }
-
-  return loadTickerItemsFromHomeListings(limit);
-}
-
-async function loadTickerItemsFromHomeListings(
-  limit: number,
-): Promise<HomePriceTickerItem[]> {
-  try {
-    const [merchant, member] = await Promise.all([
-      fetchHomeListingsByPersona("merchant", limit),
-      fetchHomeListingsByPersona("member", limit),
-    ]);
-    const seen = new Set<string>();
-    const items: HomePriceTickerItem[] = [];
-    for (const listing of [...merchant, ...member]) {
-      if (!Number.isFinite(listing.price) || listing.price <= 0) continue;
-      const key = listing.productId || listing.listingId;
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      items.push({
-        id: listing.cardCode || listing.displayId || listing.setCode || key,
-        name: listing.name,
-        price: Math.round(listing.price),
-        delta: 0,
-        direction: "up",
-      });
-      if (items.length >= limit) break;
-    }
+    const items = mapHomeTradeTickerRows(data, limit);
+    homePerfLog(`ticker.trades=${items.length} ${Date.now() - startedAt}ms`);
     return items;
-  } catch {
+  } catch (error) {
+    console.warn("[loadHomePriceTickerItems]", error);
     return [];
   }
+}
+
+const getCachedHomeTradeTickerItems = unstable_cache(
+  async (limit: number) => fetchHomeTradeTickerItems(limit),
+  ["home-trade-ticker", String(HOME_TICKER_LIMIT)],
+  { revalidate: HOME_TICKER_CACHE_SECONDS },
+);
+
+export async function loadHomePriceTickerItems(
+  limit = HOME_TICKER_LIMIT,
+): Promise<HomePriceTickerItem[]> {
+  const safeLimit = Math.max(1, Math.min(limit, 24));
+  const liveItems = isSupabaseConfigured()
+    ? await getCachedHomeTradeTickerItems(safeLimit).catch(() =>
+        fetchHomeTradeTickerItems(safeLimit),
+      )
+    : [];
+
+  if (liveItems.length > 0) {
+    return liveItems;
+  }
+
+  return getHomeTickerFallbackItems(safeLimit);
 }
