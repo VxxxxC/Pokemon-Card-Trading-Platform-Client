@@ -4,10 +4,14 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { getUserChatInboxLobby } from "@/app/actions/chat";
+import { ensureChatRoom, getUserChatInboxLobby } from "@/app/actions/chat";
 import { readChatLocalCache } from "@/app/lib/chat/chatLocalCache";
 import { hydrateChatRoomThread } from "@/app/lib/chat/hydrateChatRoomThread";
-import { isDbChatRoomId } from "@/app/lib/chat/constants";
+import {
+  isDbChatRoomId,
+  isEphemeralChatRoomId,
+} from "@/app/lib/chat/constants";
+import { isProfileUuid } from "@/app/lib/chat/partnerRoomKey";
 import {
   findRoomByPartnerId,
   findRoomByPartnerName,
@@ -42,6 +46,10 @@ export function GlobalChatOverlay() {
   const setChats = useHkCardVaultStore((state) => state.setChats);
   const setActiveRoomId = useHkCardVaultStore((state) => state.setActiveRoomId);
   const setMobileView = useHkCardVaultStore((state) => state.setMobileView);
+  const promotePendingChatRoom = useHkCardVaultStore(
+    (state) => state.promotePendingChatRoom,
+  );
+  const chats = useHkCardVaultStore((state) => state.chats);
   const activeListingPersona = useUIStore((state) => state.activeListingPersona);
   const currentUserId = useCurrentUserId();
   const isDesktopChat = useIsDesktopChat();
@@ -56,6 +64,10 @@ export function GlobalChatOverlay() {
   const [threadLoadingRoomId, setThreadLoadingRoomId] = useState<string | null>(
     null,
   );
+  const [provisioningRoomId, setProvisioningRoomId] = useState<string | null>(
+    null,
+  );
+  const provisionAttemptedRef = useRef<Set<string>>(new Set());
 
   useChatRoomRealtime({ enabled: Boolean(currentUserId) });
   useChatLocalCachePersistence(currentUserId, activeListingPersona);
@@ -269,6 +281,72 @@ export function GlobalChatOverlay() {
   }, [activeRoomId, hydrateActiveThread, isChatOpen]);
 
   useEffect(() => {
+    if (!isChatOpen || !activeRoomId || isDbChatRoomId(activeRoomId)) {
+      if (!isChatOpen) {
+        setProvisioningRoomId(null);
+      }
+      return;
+    }
+
+    if (!currentUserId) {
+      if (!provisionAttemptedRef.current.has(activeRoomId)) {
+        provisionAttemptedRef.current.add(activeRoomId);
+        toast.error("請先登入後再開啟對話");
+      }
+      return;
+    }
+
+    const activeRoom = chats.find((room) => room.id === activeRoomId);
+    if (!activeRoom || !isEphemeralChatRoomId(activeRoomId)) {
+      return;
+    }
+
+    if (!isProfileUuid(activeRoom.partnerId)) {
+      if (!provisionAttemptedRef.current.has(activeRoomId)) {
+        provisionAttemptedRef.current.add(activeRoomId);
+        toast.error("請輸入有效用戶 ID 開啟對話");
+      }
+      return;
+    }
+
+    if (provisionAttemptedRef.current.has(activeRoomId)) {
+      return;
+    }
+
+    provisionAttemptedRef.current.add(activeRoomId);
+    setProvisioningRoomId(activeRoomId);
+
+    void ensureChatRoom({
+      partnerId: activeRoom.partnerId,
+      partnerPersona: activeRoom.partnerPersona,
+      viewerPersona: activeListingPersona,
+    })
+      .then((result) => {
+        if (!result.success) {
+          toast.error(result.error);
+          provisionAttemptedRef.current.delete(activeRoomId);
+          return;
+        }
+
+        promotePendingChatRoom(activeRoomId, result.data);
+        void hydrateActiveThread(result.data.id);
+      })
+      .finally(() => {
+        setProvisioningRoomId((current) =>
+          current === activeRoomId ? null : current,
+        );
+      });
+  }, [
+    activeListingPersona,
+    activeRoomId,
+    chats,
+    currentUserId,
+    hydrateActiveThread,
+    isChatOpen,
+    promotePendingChatRoom,
+  ]);
+
+  useEffect(() => {
     if (!isChatOpen || !activeRoomId || !isDbChatRoomId(activeRoomId)) {
       return;
     }
@@ -314,6 +392,7 @@ export function GlobalChatOverlay() {
           inboxLoading={inboxLoading}
           isLobbyRefreshing={isLobbyRefreshing}
           threadLoadingRoomId={threadLoadingRoomId}
+          isProvisioningRoom={provisioningRoomId === activeRoomId}
         />
       ) : null}
     </AnimatePresence>

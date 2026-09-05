@@ -4198,6 +4198,14 @@ export type Database = {
         Args: { p_case_id: string; p_order_id: string }
         Returns: Json
       }
+      rpc_ensure_chat_room: {
+        Args: {
+          p_partner_id: string
+          p_partner_persona?: Database["public"]["Enums"]["seller_persona_type"]
+          p_viewer_persona?: Database["public"]["Enums"]["seller_persona_type"]
+        }
+        Returns: Json
+      }
       rpc_send_chat_message: {
         Args: { p_content: string; p_room_id: string; p_sender_id: string }
         Returns: Json

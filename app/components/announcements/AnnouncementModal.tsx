@@ -89,9 +89,7 @@ export function AnnouncementModal({ announcements }: AnnouncementModalProps) {
         className="w-[calc(100vw-2rem)] max-w-md sm:max-w-lg p-0 overflow-hidden border border-[rgba(237,232,224,0.15)] bg-[#26211C] text-text-primary shadow-2xl rounded-2xl outline-none min-w-0 flex flex-col max-h-[min(90dvh,540px)]"
       >
         <div className="flex items-center gap-3 border-b border-[rgba(237,232,224,0.08)] bg-[#17130f] px-4 py-3 sm:px-5 shrink-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 border border-brand/20">
-            <Megaphone className="h-4 w-4 text-brand" />
-          </div>
+          <Megaphone className="h-4 w-4 shrink-0 text-brand" aria-hidden />
           <div className="min-w-0 flex-1">
             <DialogTitle
               className="font-sans text-sm font-bold text-text-primary tracking-tight"

@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import { usePwaInstall } from "@/app/lib/hooks/usePwaInstall";
 import { useUIStore } from "@/app/store/useUIStore";
+import { isAppleSafariInstallContext } from "@/lib/pwa/detect-apple-safari";
 
 const SNOOZE_KEY = "pwa_snooze_until";
 const SNOOZE_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const IOS_AUTO_PROMPT_DELAY_MS = 2_000;
 
 export function PwaInstallPrompt() {
   const { promptState, onInstall } = usePwaInstall();
   const openIosPwaModal = useUIStore((state) => state.openIosPwaModal);
+  const closeIosPwaModal = useUIStore((state) => state.closeIosPwaModal);
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window === "undefined") return false; //
     const snoozeUntil = localStorage.getItem(SNOOZE_KEY); //
@@ -17,13 +20,27 @@ export function PwaInstallPrompt() {
   });
 
   useEffect(() => {
-    if (
-      promptState !== "ALREADY_INSTALLED" &&
-      !dismissed &&
-      promptState !== "NATIVE_READY"
-    ) {
-      openIosPwaModal();
+    if (promptState === "NATIVE_READY") {
+      closeIosPwaModal();
     }
+  }, [promptState, closeIosPwaModal]);
+
+  useEffect(() => {
+    if (
+      promptState === "ALREADY_INSTALLED" ||
+      dismissed ||
+      promptState === "NATIVE_READY" ||
+      promptState === "BROWSER_COOLING" ||
+      !isAppleSafariInstallContext()
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      openIosPwaModal();
+    }, IOS_AUTO_PROMPT_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
   }, [promptState, dismissed, openIosPwaModal]);
 
   const handleSnooze = () => {

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { buildPendingChatRoomId } from "@/app/lib/chat/constants";
 import { filterChatRoomsForViewerPersona } from "@/app/lib/chat/filter-rooms-for-viewer-persona";
-import { findRoomByPartnerId } from "@/app/lib/chat/mergeChatRooms";
+import { findRoomByPartnerId, mergeChatRoomsWithDb } from "@/app/lib/chat/mergeChatRooms";
 import type { ChatPartnerPersona } from "@/app/lib/chat/partnerRoomKey";
 import { partnerTierForPersona } from "@/app/lib/chat/partnerRoomKey";
 import { generateDeterministicRoomId } from "@/app/lib/utils/chatUtils";
@@ -297,6 +297,9 @@ interface HkCardVaultStore {
   rollbackOptimisticMessage: (roomId: string, optimisticId: string) => void;
 
   reconcileOfferLedger: () => void;
+
+  /** Replace a pending/ephemeral room stub with a persisted DB room row. */
+  promotePendingChatRoom: (pendingRoomId: string, dbRoom: ChatRoom) => void;
 }
 
 export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
@@ -961,6 +964,34 @@ export const useHkCardVaultStore = create<HkCardVaultStore>((set) => ({
         };
       }),
     })),
+
+  promotePendingChatRoom: (pendingRoomId, dbRoom) =>
+    set((state) => {
+      const pendingStub = state.chats.find((room) => room.id === pendingRoomId);
+      const chatsWithoutPending = state.chats.filter(
+        (room) => room.id !== pendingRoomId,
+      );
+
+      const dbRoomWithStubMessages =
+        pendingStub && dbRoom.messages.length === 0 && pendingStub.messages.length > 0
+          ? {
+              ...dbRoom,
+              messages: pendingStub.messages,
+              lastMessage: pendingStub.lastMessage,
+              timestamp: pendingStub.timestamp,
+            }
+          : dbRoom;
+
+      const chats = mergeChatRoomsWithDb(chatsWithoutPending, [dbRoomWithStubMessages], {
+        preferServerUnread: true,
+      });
+
+      return {
+        chats,
+        activeRoomId: dbRoom.id,
+        offers: buildOfferLedgerFromChats(chats),
+      };
+    }),
 
   reconcileOfferLedger: () =>
     set((state) => ({

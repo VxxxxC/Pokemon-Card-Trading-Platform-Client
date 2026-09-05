@@ -484,12 +484,18 @@ export default function AdminUserControlClient({
                 ease: "linear",
               }}
               className="fixed inset-0 z-[70] sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(92vw,1100px)] sm:max-h-[min(85vh,800px)] sm:rounded-2xl bg-bg-card border border-[rgba(237,232,224,0.08)] shadow-2xl overflow-hidden flex flex-col"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="admin-override-title"
             >
               {/* Overlay header */}
               <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-[rgba(237,232,224,0.08)] bg-[rgba(239,68,68,0.04)]">
                 <div className="flex items-center gap-2">
                   <span className="text-warning text-[20px]">⚠️</span>
-                  <h2 className="font-sans font-bold text-[16px] text-warning">
+                  <h2
+                    id="admin-override-title"
+                    className="font-sans font-bold text-[16px] text-warning"
+                  >
                     管理員特權覆寫面板
                   </h2>
                 </div>

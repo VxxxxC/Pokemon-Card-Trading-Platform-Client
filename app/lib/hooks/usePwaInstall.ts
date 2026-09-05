@@ -12,6 +12,7 @@ type DeferredPromptEvent = Event & {
 };
 
 export type PwaPromptState =
+  | "WAITING"
   | "NATIVE_READY"
   | "BROWSER_COOLING"
   | "ALREADY_INSTALLED";
@@ -102,10 +103,8 @@ if (typeof window !== "undefined") {
 function derivePromptState(): PwaPromptState {
   if (isInstalled) return "ALREADY_INSTALLED";
   if (deferredPrompt) return "NATIVE_READY";
-  // Only show cooling UI if user previously dismissed the prompt;
-  // otherwise the beforeinstallprompt event simply hasn't fired yet.
   if (coolingFlagSet) return "BROWSER_COOLING";
-  return "BROWSER_COOLING";
+  return "WAITING";
 }
 
 /* ------------------------------------------------------------------ */

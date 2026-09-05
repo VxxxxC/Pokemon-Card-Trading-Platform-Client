@@ -588,12 +588,14 @@ type GlobalChatConsoleProps = {
   inboxLoading?: boolean;
   isLobbyRefreshing?: boolean;
   threadLoadingRoomId?: string | null;
+  isProvisioningRoom?: boolean;
 };
 
 export function GlobalChatConsole({
   inboxLoading = false,
   isLobbyRefreshing = false,
   threadLoadingRoomId = null,
+  isProvisioningRoom = false,
 }: GlobalChatConsoleProps) {
   const {
     isChatOpen,
@@ -850,9 +852,11 @@ export function GlobalChatConsole({
   const canPersistMessages = Boolean(activeRoom) && isDbChatRoomId(activeRoomId);
   const composerPlaceholder = !activeRoom
     ? "請先選擇對話…"
-    : canPersistMessages
-      ? "回覆給 " + activeRoom.partnerName + "..."
-      : "等待對話同步…";
+    : isProvisioningRoom
+      ? "正在建立對話…"
+      : canPersistMessages
+        ? "回覆給 " + activeRoom.partnerName + "..."
+        : "等待對話同步…";
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1159,12 +1163,12 @@ export function GlobalChatConsole({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={composerPlaceholder}
-                disabled={!canPersistMessages}
+                disabled={!canPersistMessages || isProvisioningRoom}
                 className="flex-1 h-9 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-lg px-3 text-[12px] text-text-primary focus:outline-none disabled:opacity-50"
               />
               <button
                 type="submit"
-                disabled={!canPersistMessages || !inputText.trim()}
+                disabled={!canPersistMessages || !inputText.trim() || isProvisioningRoom}
                 className="h-9 px-4 bg-brand text-[#17130f] font-sans font-bold text-[12px] rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
               >
                 發送 ⚡
@@ -1199,6 +1203,9 @@ export function GlobalChatConsole({
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
           className="fixed inset-0 z-[500] bg-[#17130f] flex flex-col"
+          role="dialog"
+          aria-modal="true"
+          aria-label="聊天"
         >
           {mobileView === "LIST" || !activeRoom ? (
             <div className="flex flex-col h-full">
@@ -1459,12 +1466,12 @@ export function GlobalChatConsole({
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder={composerPlaceholder}
-                  disabled={!canPersistMessages}
+                  disabled={!canPersistMessages || isProvisioningRoom}
                   className="flex-1 h-11 bg-[#17130f] border border-[rgba(237,232,224,0.12)] rounded-xl px-4 text-[13px] text-text-primary focus:outline-none disabled:opacity-50"
                 />
                 <button
                   type="submit"
-                  disabled={!canPersistMessages || !inputText.trim()}
+                  disabled={!canPersistMessages || !inputText.trim() || isProvisioningRoom}
                   className="h-11 px-5 bg-brand text-[#17130f] font-sans font-bold text-[13px] rounded-xl cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none"
                 >
                   發送

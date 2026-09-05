@@ -22,6 +22,7 @@ import { OneSignalProvider } from "@/app/components/notifications/OneSignalProvi
 import { OneSignalOptInHost } from "@/app/components/notifications/OneSignalOptInHost";
 import { OneSignalSubscriptionSync } from "@/app/components/notifications/OneSignalSubscriptionSync";
 import { UserActivityHeartbeat } from "@/app/components/notifications/UserActivityHeartbeat";
+import { ModalScrollLockProvider } from "@/app/components/providers/ModalScrollLockProvider";
 
 const APP_NAME = "HKCardVault";
 const APP_DEFAULT_TITLE = "HKCardVault — 寶可夢卡牌專業交易平台";
@@ -310,6 +311,7 @@ export default async function RootLayout({
         style={{ backgroundColor: "#17130f" }}
       >
         <RoleProvider initialRole={initialRole}>
+          <ModalScrollLockProvider />
           <ActiveListingPersonaSync />
           <IosPwaModal />
 

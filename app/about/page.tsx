@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Shield, Sparkles, Store, MessagesSquare } from "lucide-react";
+import { Shield, Sparkles, Store, MessagesSquare, Mail } from "lucide-react";
 import { TopNav } from "@/app/components/navigation/TopNav";
 import { MobileHeader } from "@/app/components/navigation/MobileHeader";
 import { BottomNav } from "@/app/components/navigation/BottomNav";
@@ -239,8 +239,9 @@ export default function AboutPage() {
             ))}
             <a
               href={`mailto:${ABOUT_CONTACT_SECTION.email}`}
-              className="inline-flex h-10 items-center rounded-lg border border-brand/25 bg-brand/10 px-4 font-mono text-[12px] font-semibold text-brand hover:bg-brand/15 hover:border-brand/40 transition-colors"
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-brand/25 bg-brand/10 px-4 font-mono text-[12px] font-semibold text-brand hover:bg-brand/15 hover:border-brand/40 transition-colors"
             >
+              <Mail className="size-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
               {ABOUT_CONTACT_SECTION.email}
             </a>
           </div>

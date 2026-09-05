@@ -9,6 +9,11 @@ import {
   type DbOfferSnippet,
 } from "@/app/lib/chat/mapDbChats";
 import { isDbChatRoomId, CHAT_THREAD_PAGE_SIZE } from "@/app/lib/chat/constants";
+import {
+  isProfileUuid,
+  normalizeChatPartnerPersona,
+  type ChatPartnerPersona,
+} from "@/app/lib/chat/partnerRoomKey";
 import type { ChatRoom, Message } from "@/app/store/useHkCardVaultStore";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +42,16 @@ export type SendMessagePayload = {
 
 export type SendMessageResult =
   | { success: true; data: SendMessagePayload }
+  | { success: false; error: string };
+
+export type EnsureChatRoomInput = {
+  partnerId: string;
+  partnerPersona?: ChatPartnerPersona;
+  viewerPersona?: ChatPartnerPersona;
+};
+
+export type EnsureChatRoomResult =
+  | { success: true; data: ChatRoom }
   | { success: false; error: string };
 
 export type GetUserChatInboxResult =
@@ -615,6 +630,94 @@ function parseRpcSendChatMessagePayload(
         : new Date().toISOString(),
     isSystemWarning: payload.is_system_warning === true,
   };
+}
+
+function parseEnsureChatRoomPayload(data: unknown): DbChatRoomBaseRow | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const payload = data as Record<string, unknown>;
+  if (typeof payload.id !== "string" || !isDbChatRoomId(payload.id)) {
+    return null;
+  }
+
+  return payload as DbChatRoomBaseRow;
+}
+
+export async function ensureChatRoom(
+  input: EnsureChatRoomInput,
+): Promise<EnsureChatRoomResult> {
+  const partnerId = input.partnerId?.trim() ?? "";
+  const partnerPersona = normalizeChatPartnerPersona(input.partnerPersona);
+  const viewerPersona = normalizeChatPartnerPersona(input.viewerPersona);
+
+  if (!partnerId) {
+    return { success: false, error: "無效的對話對象" };
+  }
+
+  if (!isProfileUuid(partnerId)) {
+    return {
+      success: false,
+      error: "請使用用戶 ID 開啟對話，或用戶名搜尋功能尚未支援直接發送",
+    };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: "服務尚未設定" };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "請先登入後再開啟對話" };
+    }
+
+    const { data, error } = await (
+      supabase as unknown as {
+        rpc: (
+          fn: "rpc_ensure_chat_room",
+          args: {
+            p_partner_id: string;
+            p_partner_persona: ChatPartnerPersona;
+            p_viewer_persona: ChatPartnerPersona;
+          },
+        ) => Promise<{
+          data: unknown;
+          error: { message: string } | null;
+        }>;
+      }
+    ).rpc("rpc_ensure_chat_room", {
+      p_partner_id: partnerId,
+      p_partner_persona: partnerPersona,
+      p_viewer_persona: viewerPersona,
+    });
+
+    if (error) {
+      console.error("[ensureChatRoom] rpc", error.message);
+      return { success: false, error: error.message };
+    }
+
+    const parsedRoom = parseEnsureChatRoomPayload(data);
+    if (!parsedRoom) {
+      console.error("[ensureChatRoom] invalid rpc payload", data);
+      return { success: false, error: "建立對話回傳資料格式異常" };
+    }
+
+    const [room] = assembleDbChatLobbyRooms([parsedRoom], [], user.id);
+    if (!room) {
+      return { success: false, error: "建立對話失敗" };
+    }
+
+    return { success: true, data: room };
+  } catch (error) {
+    console.error("[ensureChatRoom]", error);
+    return { success: false, error: "建立對話時發生錯誤" };
+  }
 }
 
 export async function sendMessage(

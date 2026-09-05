@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
   getUserChatInboxLobby,
+  ensureChatRoom,
   markChatRoomRead,
   sendMessage,
 } from "@/app/actions/chat";
@@ -44,6 +45,30 @@ describe("TC-M21 chat server actions — contract", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toBe("無效的聊天室");
+    }
+  });
+
+  it("ensureChatRoom rejects non-uuid partner id", async () => {
+    const result = await ensureChatRoom({
+      partnerId: "pikachu",
+      partnerPersona: "member",
+      viewerPersona: "member",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("用戶 ID");
+    }
+  });
+
+  it("ensureChatRoom rejects empty partner id", async () => {
+    const result = await ensureChatRoom({
+      partnerId: "",
+      partnerPersona: "member",
+      viewerPersona: "member",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("無效的對話對象");
     }
   });
 

@@ -670,7 +670,12 @@ export function AddAssetModal() {
 
   return (
     <>
-    <div className="fixed inset-0 z-[350] flex items-center justify-center p-2 sm:p-4">
+    <div
+      className="fixed inset-0 z-[350] flex items-center justify-center p-2 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-asset-modal-title"
+    >
       <div
         className="absolute inset-0 bg-black/75 backdrop-blur-xs"
         onClick={handleCloseAndReset}
@@ -678,7 +683,10 @@ export function AddAssetModal() {
 
       <div className="relative bg-[#2e2925] border border-white/[0.08] rounded-xl w-full max-w-md shadow-2xl text-left flex flex-col max-h-[calc(100dvh-1rem)] overflow-y-auto animate-scaleUp">
         <div className="shrink-0 px-3 pt-1.5 pb-1 border-b border-white/[0.06] flex items-start justify-between gap-2">
-          <h2 className="font-sans font-bold text-[16px] text-brand leading-tight min-w-0">
+          <h2
+            id="add-asset-modal-title"
+            className="font-sans font-bold text-[16px] text-brand leading-tight min-w-0"
+          >
             {displayMode}
           </h2>
           <button
