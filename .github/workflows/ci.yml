@@ -15,7 +15,6 @@ jobs:
         uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version-file: package.json
-          cache: true
       - name: 📦 Hydrate Node Dependency Cache
         run: bun ci
       - name: 🛡️ Gate 1 TypeScript Global Type Safety Verification

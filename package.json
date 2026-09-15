@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -H 0.0.0.0",
     "build": "next build",
-    "build:ci": "NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= next build",
+    "build:ci": "NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= STRIPE_SECRET_KEY=sk_test_ci_build_placeholder next build",
     "start": "next start",
     "lint": "eslint",
     "vercel:env:push": "bash scripts/push-env-to-vercel.sh",
