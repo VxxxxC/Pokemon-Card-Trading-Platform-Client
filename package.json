@@ -9,6 +9,8 @@
     "build:ci": "NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= next build",
     "start": "next start",
     "lint": "eslint",
+    "vercel:env:push": "bash scripts/push-env-to-vercel.sh",
+    "vercel:env:push:dry-run": "bash scripts/push-env-to-vercel.sh --dry-run",
     "supabase:types": "bunx supabase gen types typescript --linked > types/supabase.ts && bun run scripts/generate-supabase-md.ts",
     "email:generate-auth-templates": "bun run scripts/generate-supabase-auth-email-templates.ts",
     "test:email:phase1": "vitest run --config vitest.config.mts tests/unit/notifications/",
