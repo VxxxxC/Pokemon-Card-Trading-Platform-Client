@@ -1,3 +1,5 @@
+import type Stripe from "stripe";
+
 /** Merchant B2C checkout: card only (hide wallets / WeChat / Alipay). */
 export const MERCHANT_CHECKOUT_PAYMENT_METHOD_TYPES = ["card"] as const;
 
