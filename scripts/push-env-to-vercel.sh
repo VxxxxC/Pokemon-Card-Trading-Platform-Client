@@ -113,13 +113,16 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
   echo "ADD $key ..."
   add_args=(env add "$key" "$TARGET_ENVS" --force --yes)
-  if is_public_env_key "$key"; then
+  if [[ "$key" == NEXT_PUBLIC_* ]]; then
+    add_args+=(--type config --value "$value")
+  elif is_public_env_key "$key"; then
     add_args+=(--value "$value")
   else
     add_args+=(--sensitive --value "$value")
   fi
 
-  if bunx vercel "${add_args[@]}"; then
+  # Prevent vercel CLI from consuming the .env file still open on stdin for the while-loop.
+  if bunx vercel "${add_args[@]}" < /dev/null; then
     added=$((added + 1))
   else
     echo "FAIL $key" >&2
