@@ -1,9 +1,4 @@
 import type { MarketplaceProductListingsInput } from "@/app/lib/marketplace/types";
-import {
-  MARKETPLACE_PRODUCT_CATALOG_CACHE_SECONDS,
-  MARKETPLACE_PRODUCT_DEFAULT_LISTINGS_CACHE_SECONDS,
-  MARKETPLACE_PRODUCT_MARKET_PRICES_CACHE_SECONDS,
-} from "@/lib/marketplace/constants";
 
 export const DEFAULT_PRODUCT_DETAIL_LISTINGS_PAGE_SIZE = 5;
 

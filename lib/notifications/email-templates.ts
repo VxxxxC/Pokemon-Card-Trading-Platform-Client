@@ -232,7 +232,6 @@ function renderOrderPaymentExpired(
 ): EmailTemplateRenderResult {
   const cardName = asString(payload?.cardName, "商品");
   const amountLabel = asString(payload?.amountLabel, "HK$0");
-  const counterpartyName = asString(payload?.counterpartyName, "對方");
   const actionUrl = asString(payload?.actionUrl);
   const recipientRole = asString(payload?.recipientRole, "buyer");
   const orderNumber = asString(payload?.orderNumber);
